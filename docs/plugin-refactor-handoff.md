@@ -9,12 +9,13 @@ matching evidence exists. Use only isolated Runtime/data/browser/native resource
 preserve the primary checkout, daily Runtime, stash, assertions and time limits,
 with no push or main merge.
 
-The original P01-P48 audit is **39 Evidenced / 9 Partial / 0 Open**, not an
+The original P01-P48 audit is **40 Evidenced / 8 Partial / 0 Open**, not an
 implementation percentage or a 100% claim. P13 public installed Tool proposals,
 P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup now have matching
 evidence, including the newly authorized complete frontend gate.
-Nine graphical rows and all four added
-review cross-scenarios remain Partial.
+P45 now has actual synchronous renderer-blocking recovery evidence. Eight
+graphical rows and three review cross-scenarios remain Partial; independent
+renderer recovery is Evidenced.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
 The user confirms no original Runtime log, goroutine dump or test data remains.
 Passing repetitions do not close that item. An earlier test-only qualification
@@ -27,6 +28,19 @@ passes at `9f5a66d51`; these gates do not close the historical deadlines or
 other graphical scenarios. The following frontend change has its own qualification.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
+
+The latest acceptance slice executes an installed synchronous module loop in a
+separately identified task Wails app. A one-second WebContent sample captures 855
+main-thread samples in module evaluation/JIT. Independent CLI disable confirms
+disabled/withheld in 0.229s while the app is alive, and an independent read agrees.
+The bounded task supervisor stops only the verified app after five seconds; the
+original WebContent exits. Real native restart retains the disabled card, removes
+its command and renders another multi-resource shared-React component with a real
+0 -> 1 update. This closes P45 and the fourth review scenario, with no production
+change, relaxed deadline or automatic JavaScript interruption. Evidence includes
+the controller JSON, native sample and restored native screenshot. Historical
+safe-steer/MCP causes, other graphical scenarios and fresh Scope-graph independent
+author archives remain unresolved or unqualified as previously recorded.
 
 The user-requested dependency cut now selects all 30 Scope modules at v0.51.1,
 without replace. Production builds and workspace synchronization pass. Runtime
@@ -70,7 +84,9 @@ retained. Complete frontend qualification passes 355 files/2,418 tests (95.36s f
 tests) and all source/resource/bundle gates; fresh beta.29 packaging/signature pass.
 This is not synchronous CPU-blocking recovery, pending business-operation
 replacement, active-Run shutdown or the complete Web/Wails review matrix. The
-39 Evidenced / 9 Partial audit and four Partial review groups remain unchanged.
+preceding 39 Evidenced / 9 Partial audit and four Partial review groups are not
+advanced by that lifecycle repair alone. The later P45 execution above advances
+its own matching criterion and review scenario.
 
 A second actual Web failure is now causally fixed: an imported ESM dependency
 throws, but its resource close never settles because the HTTP transport suppresses

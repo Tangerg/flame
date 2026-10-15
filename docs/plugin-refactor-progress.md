@@ -9,11 +9,13 @@ actual matching evidence is obtained; authorization alone closes no criterion.
 Keep the primary checkout, daily Runtime/data, stash, original assertions and
 timeouts intact, with no push or main merge. New UI work uses isolated resources.
 
-Original-proposal acceptance remains **incomplete: 39 Evidenced / 9 Partial / 0 Open**.
+Original-proposal acceptance remains **incomplete: 40 Evidenced / 8 Partial / 0 Open**.
 These are evidence counts, not an implementation percentage. P13 public installed
 Tool proposal transformation, P12/P16/P18/P41 real-process scenarios and P48
-source/API/doc cleanup now have matching evidence. Nine graphical rows and
-all four additional review cross-scenarios remain Partial. The historical post-SDK 10s safe-steer timeout
+source/API/doc cleanup now have matching evidence. P45 now has actual synchronous
+renderer-blocking recovery evidence. Eight graphical rows and three additional
+review cross-scenarios remain Partial; the independent-recovery review is Evidenced.
+The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
 An earlier test-only qualification also retains unclassified MCP startup
 discovery deadlines; passing focused or complete reruns do not explain them.
@@ -27,6 +29,34 @@ canonical `0` still saves and recovers the business owner's `invalidUpdate` rece
 Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
+
+### Graphical acceptance: synchronous module blocking and independent recovery (2026-10-15)
+
+The current 695879a46 production bundle executes an installed namespace-local
+module that makes one synchronous task-only entry notification and then runs
+while (true) during module evaluation. A separately identified Wails application,
+private data and local Runtime are used. This is actual CPU-blocking code, not the
+earlier never-finishing asynchronous await. A one-second sample of the sole newly
+launched task WebContent process captures 855 main-thread samples under
+JSC::moduleLoaderEvaluate / JSC::Interpreter::executeModuleProgram and JIT code.
+
+An independent executable CLI sends the ordinary disable command after the entry
+notification. It receives enabled=false / presentation=withheld in 0.229s while
+the native process is still alive; another CLI list independently confirms the
+same retained fact. The task supervisor ends only the verified native executable
+at its predetermined five-second boundary (5.074s total). Its original WebContent
+process exits. The marker server and sampler settle; no renderer responsiveness
+is needed to advance installation state.
+
+Computer use restarts that same bundle and reconnects to the same Runtime with
+its ephemeral token. The native management page shows the exact blocking digest
+as disabled, its command is absent, and the separate Healthy multi-resource module
+renders shared React identity true and increments 0 -> 1. The controller JSON,
+native sample, before/withdrawn-command captures and restored native screenshot
+retain the causal record. This closes P45 and the review's independent renderer
+recovery scenario. It requires explicit disable and client restart; no sandbox,
+automatic JavaScript interruption or old-format compatibility is claimed.
+No production source or assertion/deadline changes occur in this acceptance slice.
 
 ### Released Scope v0.51.1 dependency qualification (2026-10-15)
 
@@ -3468,43 +3498,45 @@ The review's four extra cross-acceptance groups are independently tracked:
 | --- | --- | --- | --- |
 | No-Run mutation loses reply; UI and Runtime restart; update/uninstall/provider change | Partial | Actual installed Reviews no-Run Runtime recovery across cold restart, disable/reenable, update/uninstall holds and replacement-target refusal; Memory selected-provider tests; shared TS journal | Actual Reviews UI/Runtime restart followed by all replacement attempts and provider selection, retaining original receipt or explicit unrecoverable binding |
 | Same refusal through Tool, CLI and UI | Partial | Complete typed/Tool revision/identity evidence; real Tool/CLI revision and missing-review refusal plus original-receipt recovery after 4,096 historical calls; actual model/CLI private invocation conflict preserves original private receipts and refuses different-input recovery; real CLI Core binding conflict with matching Go problem and immutable earlier receipt; incorrect lifetime-quota outcome removed without compatibility | Executed comparison including rendered UI |
-| Remote multi-resource ESM in Web and Wails | Partial | Exact-release resource/auth implementation, shared import map, independent component build, native compilation | Actual remote resource/assets/module identity, auth and connection replacement in both graphical environments |
-| Module initialization blocks renderer startup; independent recovery disables it | Partial | Independent management code/CLI plus real blocked stdio-backend recovery | Actual failed graphical module startup and disabling it through a functioning independent entrance |
+| Remote multi-resource ESM in Web and Wails | Partial | Actual Web/Wails shared-React rendering plus current native relative-resource loading, authenticated connection replacement and pending-module retirement RED/GREEN; explicit reload and token reentry restore normal rendering. | The matching complete Web resource/auth/connection-replacement sequence remains unexecuted. |
+| Module initialization blocks renderer startup; independent recovery disables it | Evidenced | Actual installed synchronous module loop in a separately identified Wails app; native WebContent samples remain in module evaluation while independent CLI disable/read confirms the retained fact in 0.229s. Bounded task-app termination and real native restart show disabled state, withdrawn command and working shared-React control. | No remaining proof for this scenario; automatic JavaScript interruption or sandboxing is not claimed. |
 
-The review's early graphical feasibility gate has not passed. The real-process
+Actual Web/Wails ESM execution and independent synchronous-block recovery now
+qualify those graphical feasibility paths; the three other review groups above
+remain Partial. The real-process
 headless callback/streaming observer feasibility gate now also has P12's actual
 two-installed-layer trace and P16's durable inner-mutation/outer-failure proof.
-Those proofs do not complete the excluded graphical feasibility gate.
+Those headless proofs do not substitute for the remaining graphical scenarios.
 
 ## Proposal acceptance coverage
 
-Audit date: 2026-10-15; production implementation: `9f5a66d51`; latest focused
+Audit date: 2026-10-15; current production implementation: `695879a46`, including
+Scope dependency cut `62431f987` and SQLite repair `c83f19ba7`; earlier focused
 CLI proof: `cae633a29`; source/API closure milestone: `b2dcbfbba`. Scenario titles
 and expected behaviors are rechecked against the original proposal and review,
 rather than substituted with easier checks.
-**39 Evidenced / 9 Partial / 0 Open** is a count of evidence coverage, not a
+**40 Evidenced / 8 Partial / 0 Open** is a count of evidence coverage, not a
 percentage of implementation or a claim of release readiness.
 
 `Evidenced` means matching executable evidence is recorded and the relevant source
 or test was checked in this audit. It does not mean a fresh invocation occurred
 in this audit. `Partial` means an original behavior is only partly demonstrated;
-`Open` identifies known unfinished work. The complete normal and original
-parallel-race selections recorded in Current stage each finish all 174 selected
-packages with unchanged production implementation `9f5a66d51`: 159 tested
-packages pass, fifteen have no tests, and seven existing paid/subprocess tests
-skip. The normal and race test sets differ, and later test-only additions have
-their own scoped qualification above. No full-selection rerun follows the
-private-conflict addition at `cae633a29`. Current-production vet, shared TS,
-architecture, Runtime/native, independent Go author and freshly packed Usage
-results are recorded in Current stage; `5ff75fffc` results retain their frozen
-earlier scope. Platform/conditional test execution is not inferred from package
-summaries. The user has since authorized graphical execution. The new actual
-Web/Wails evidence above closes P29/P30/P32/P35; the complete frontend/source cut
-closes reopened P48. Other criteria retain their exact scope.
+`Open` identifies known unfinished work. The complete post-Scope/WAL parallel
+race at the c83f19ba7 Go source finishes all 174 packages: 159 tested packages
+pass, fifteen have no tests, 5,198 top-level tests pass and seven unchanged
+opt-in live-provider/helper tests skip. Production build, vet and the rebuilt
+49-test HTTP client suite pass. The 695879a46 frontend cut then passes its complete
+355-file/2,418-test pipeline, native packaging and actual native connection
+retirement RED/GREEN. Earlier complete normal/race, shared-client and independent
+author results retain their exact source scope; fresh independent Go archives for
+the new Scope graph remain pending. Platform/conditional or paid execution is
+never inferred from package summaries. Actual graphical evidence closes
+P29/P30/P32/P35/P45, and the complete frontend/source cut closes reopened P48.
+Other criteria retain their exact scope.
 
 | Requirement | Original scenario | Status | Evidence and remaining work |
 | --- | --- | --- | --- |
-| P01 | Build a bundled feature outside the repository | Evidenced | Current packed Usage typecheck/build and exact resource-byte reproduction pass outside the checkout from public SDK/UI/icons/Runtime archives, followed by an offline clean reinstall/typecheck/build. Current independent Reviews plus Tool-proposal/command-next author tidy/race/vet/build also pass with workspace off, no replace and local module archives. Author code imports only public APIs; the Go artifact includes required internal implementation and companion localruntime. Neither exercise is registry publication or independent qualification of every feature. |
+| P01 | Build a bundled feature outside the repository | Evidenced | Packed Usage typecheck/build and exact resource-byte reproduction pass outside the checkout from public SDK/UI/icons/Runtime archives, followed by an offline clean reinstall/typecheck/build; these authored sources are unchanged by the later Scope/WAL/Desktop-ESM cuts. Earlier independent Reviews and Tool-proposal/command-next Go author gates pass at 9f5a66d51 with workspace off and no replace; their fresh Scope-graph archive qualification remains pending. Neither exercise is registry publication or independent qualification of every feature. |
 | P02 | Install the same feature from a non-bundled origin | Evidenced | Verified by `TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource`: ordinary source, same contract/resources, independent identity, withdrawal, restart and uninstall. |
 | P03 | Disable or remove a seeded plugin, then restart | Evidenced | `TestFirstPartyInitializationAndRestartPreserveUserDecisions` and the independent Usage lifecycle exercise durable disable/uninstall without reseeding; bootstrap initialization failure cannot commit partial defaults. |
 | P04 | Two candidates implement one selected role | Evidenced | Backend verified by explicit provider selection and original-command routing tests; enablement never selects another provider. |
@@ -3533,7 +3565,7 @@ closes reopened P48. Other criteria retain their exact scope.
 | P27 | Memory provider is absent versus enabled but broken | Evidenced | Backend absence versus operational failure tests pass. The complete Memory consumer migration preserves this distinction in real installed checks. |
 | P28 | Human memory edit races with curation publication | Evidenced | Private Memory review/ledger/watermark/CAS and concurrent publication tests pass, including exactly one winning generation. |
 | P29 | Full installed component uses Hooks and shared UI | Evidenced | The current production Web and separately identified Wails bundle both render independently installed Reviews with real Hooks and shared controls. Both submit owner-backed mutations; the emitted React/React DOM/JSX facade regression links actual public named imports. This is execution evidence, not a build-only substitution. |
-| P30 | Component or dependency throws | Evidenced | Actual installed Web controls throw in React rendering and in a relative ESM dependency. The dependency case exposes a public HTTP resource-close deadlock; the shared transport repair has an unchanged-5s RED/GREEN regression, complete 356-test shared qualification and actual Web recovery-boundary proof. Native failure execution and blocked initialization retain their separate criteria. |
+| P30 | Component or dependency throws | Evidenced | Actual installed Web controls throw in React rendering and in a relative ESM dependency. The dependency case exposes a public HTTP resource-close deadlock; the shared transport repair has an unchanged-5s RED/GREEN regression and complete 356-test shared qualification. Both rebuilt Web and Scope/WAL Wails executions display the explicit dependency-failure boundary. Synchronous blocking is separately qualified by P45. |
 | P31 | Navigate from resource A to B during an operation | Partial | Captured target/generation source and shared mutation-journal tests fence old requests. Actual A -> B navigation during a pending component operation has not run. |
 | P32 | Two views edit one workflow/resource | Evidenced | Actual Web and Wails editors read the same installed review at revision 3. Wails saves revision 4; Web still holding 3 submits and receives the explicit revision-conflict message, then rereads unchanged revision 4. An actual CLI query independently agrees. |
 | P33 | Applicability changes with selected content | Partial | Declarative applicability admission and metadata-only menu resolution exist. Actual selected-content action visibility and absence of heavy render-time work have not been executed. |
@@ -3543,12 +3575,12 @@ closes reopened P48. Other criteria retain their exact scope.
 | P37 | Update is attempted with waiting execution dependencies | Evidenced | Backend waiting/checkpoint/pending-command dependencies retain exact activation/release identity and refuse unsafe replacement. |
 | P38 | Private data remains after disable/uninstall | Evidenced | Backend withdrawal/uninstall and private namespace admission tests preserve retained data and prevent another installation adopting it. |
 | P39 | Open old result without its renderer | Partial | Current generic history/renderer selection and retained canonical evidence have source/backend proof. Opening an old result with its renderer absent in the graphical client has not run. |
-| P40 | Use a remote Runtime from Desktop/Web | Partial | Backend Runtime-host execution and authenticated exact-release resource delivery have implementation/tests. Actual remote multi-resource ESM rendering, shared identity/auth and connection replacement in Web and Wails have not run. |
+| P40 | Use a remote Runtime from Desktop/Web | Partial | Actual native execution uses the task's standalone authenticated Runtime, relative ESM resources, shared React identity and Hook state. Pending-module connection replacement has native RED/GREEN and explicit reload/token reentry proof. Earlier Web shared modules render and mutate through HTTP; the matching complete Web resource/auth/connection-replacement sequence is still missing. This is one independent local Runtime over HTTP, not evidence from a second physical host. |
 | P41 | Use plugin business commands from CLI without a page | Evidenced | `TestExecutableCLIPluginCommandCallsTheHostWithoutAPage` builds/runs the actual CLI through authenticated HTTP to installed Schedules, creates private work and invokes its host callback to Core Run acceptance. Same-command redelivery retains the same accepted handle; no page or browser relay is involved. |
 | P42 | Load a purely portable Skill/MCP package | Evidenced | Portable Skill/MCP admission, independent failure and source semantics pass in the full backend suites. |
 | P43 | Load an obsolete Flame declaration or old protocol | Evidenced | Exact backend/Core protocol, strict declaration and retired request refusal tests pass; no old reader/alias is introduced. |
 | P44 | Open incompatible persisted state | Evidenced | Strict incompatible schema and immutable namespace admission tests pass. New current-schema regression also proves missing owner facts are not silently recreated. |
-| P45 | Recover from a broken optional-plugin startup | Partial | Real never-handshaking backend restart/list/disable passes; independent CLI management does not evaluate component JS. No execution of recovery while an installed module blocks renderer startup is recorded; the review requires that stronger scenario. |
+| P45 | Recover from a broken optional-plugin startup | Evidenced | In the actual native client an installed synchronous loop blocks module initialization; 855 task WebContent main-thread samples remain in the module evaluator/JIT. Independent CLI disable acknowledges in 0.229s while the native process is alive, and a separate read confirms disabled/withheld. A bounded supervisor stops only that task app; after real restart the UI shows disabled state, withdraws the command and renders another shared-React multi-resource component with a 0 -> 1 state change. Earlier blocked-backend coverage remains separately valid. |
 | P46 | Shutdown with active backend callbacks and UI teardown | Partial | Backend reverse-order cancel/join, callback retirement and settled close/error tests pass. Shutdown combined with actual component async work/resource teardown has not run. |
 | P47 | Inspect effective behavior | Evidenced | Owner-backed selection, composition, connection and release inspection exist and are tested. Transitive failure context is fixed and tested in `9f3de47f0`. Existing requirement resolution and MCP connection status remain the only owners; no second readiness ledger. |
 | P48 | Final source/API cutover review | Evidenced | Earlier backend architecture/generation closure is retained. The newly authorized complete frontend pipeline now passes all 355 files/2,418 tests and every source/resource/bundle gate. Unused workspace Memory facade, gateway, mutation owner, read cache and redundant visual provider are deleted with exclusive tests; surviving installed HTTP and actual Web mutation/refresh remain proven. Stale fixtures migrate to the current publisher contract. This source-cut evidence does not close the nine remaining graphical criteria, four review scenarios or historical timeouts. |
