@@ -9,15 +9,18 @@ source/API/doc cleanup now have matching evidence. Thirteen graphical rows and
 all four additional review cross-scenarios remain Partial under the continuing
 UI/E2E/screenshot prohibition. The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
+The latest test-only qualification also retains unclassified MCP startup
+discovery deadlines; passing focused runs do not close those failures.
 
 The latest complete product qualification is frozen `b2dcbfbba`. Production Go
-remains unchanged. Later test-only slices add failure-only steer diagnostics and
-the installed Reviews no-Run recovery scenario below. Current complete bootstrap
-race passes 408.052s before final no-redispatch assertions; that final case passes
-focused race in 35.311s. All eight SIGKILL cuts pass separately in execution
-(58.876s), and current architecture passes 31.663s. The earlier complete CLI/root
-binding race remains recorded below. The following full-product result predates
-these test-only changes and is not a newly executed whole-product gate:
+remains unchanged. Later test-only slices add failure-only steer diagnostics,
+installed Reviews no-Run recovery and real Tool/CLI equivalence. The latest
+fixture/CLI slice has failed parallel qualification recorded below; the bounded
+startup diagnostic does not reproduce those deadlines. Earlier bootstrap race 408.052s, focused
+Reviews race 35.311s, eight-cut execution race 58.876s and architecture 31.663s
+predate this latest slice. The earlier complete CLI/root binding race remains
+recorded below. The following full-product result predates these test-only
+changes and is not a newly executed whole-product gate:
 
 ```sh
 go test -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s
@@ -82,6 +85,108 @@ The existing worktree/`codex/unified-plugins` branch and integrated main
 edit, stash mutation or user-data conversion occurred. Required private checkpoint
 fields are a deliberate break: preserve old data and finish old waiting work with
 its original binary. No compatibility reader, dual writer or provider replay.
+
+### Real CLI query/refusal equivalence and coherent plugin test bindings (2026-10-15)
+
+The installed Reviews lifecycle test now builds the real CLI and reaches the same
+Runtime through authenticated HTTP. It preserves the existing CLI history check,
+also calls the installed list operation, compares its complete canonical result
+with the model Tool result, invokes the stale update with an explicit retained
+human command identity twice, and compares both complete `revisionConflict`
+payloads with the Tool refusal. A final list confirms the refusal did not change
+the private review. The Tool keeps `tool_failed` plus its business result, and
+the scripted Run completes rather than treating this known refusal as uncertain
+execution. No rendered client participates.
+
+The first real CLI mutation fails (package 28.998s, case 19.45s) with
+`idempotency_store_mismatch`; its query already succeeds. Source tracing finds
+that `poMCPOpen` advertised the conformance helper's fixed namespace while its
+Endpoint enforced the isolated store's actual namespace. Direct in-process calls
+omitting that header did not expose the inconsistency. The plugin fixture now
+derives both projections from the store's single namespace. Conformance tests
+retain their deliberately fixed binding, and both fixtures share only assembly
+and startup recovery ordering. Production `Instance` already passes the same
+store namespace to its Handler and Endpoint; no production bypass or repair is
+introduced. This fixture defect does not diagnose the historical safe-steer
+timeout, which uses a different Runtime-opening path and remains unresolved.
+
+After the first fixture correction, the expanded normal case passes 16.658s.
+That intermediate result predates the final Tool-error/Run-outcome assertions.
+The next complete bootstrap race **fails** 346.037s: a custom Schedules loss
+fixture still starts with the old fixed binding, then reopens through the newly
+corrected helper. This omitted consumer makes the private backend refuse its
+changed Core namespace. All custom plugin startup/discovery/approval/lifecycle
+and loss fixtures now use the same store-derived binding; constrained startup
+still retains its original lifetime. Restoring only the old custom Schedules
+entrance in a temporary overlay reproduces `mcp_configuration_failed` (exit 1,
+22.404s). It is an expected failing control, not acceptance or a product repair.
+
+That failed suite also exposes a cancellation model stub closing its primary
+barrier again during auxiliary title generation. The stack identifies
+`modelTitleGenerator.Generate`. The stub now handles no-Tool title calls
+separately and still fails on a repeated primary call; no broad `sync.Once`
+guard conceals another primary dispatch. The related Reviews/Schedules-loss/
+cancel-restart focused race then passes 29.250s.
+
+A further complete bootstrap race **fails** 523.661s: 147 top-level cases pass,
+one fails (`TestScheduleRunNowMissingReceiptRetainsUncertaintyWithoutCreatingRun`)
+at its existing 10s discovery wait with an original server still `connecting`.
+The concurrent eight-cut execution invocation also **fails** 152.600s: commit
+and malformed cannot reach their initial durable cut because their same 10s
+MCP discovery prerequisite expires; six cuts pass. These failures overlap other
+qualification/diagnostic builds. Overlap is not a CPU-contention diagnosis and
+does not establish their causes or excuse them.
+
+A temporary CPU/Go-trace/inittrace diagnostic runs the two failed cuts without
+changing their assertions/deadlines and passes 37.901s. It does not reproduce a
+deadline. One completed helper profile covers 3.54s with 450ms CPU; killed
+backend profiles lack completion markers and are not qualified measurements.
+These are normal-path observations, not an explanation. The startup causes
+remain unclassified. The fixture now logs public MCP status and live owner
+goroutines only after its unchanged discovery deadline expires, before cleanup
+destroys that evidence. The no-overlay execution/bootstrap parallel gate now
+captures another original deadline: execution fails 392.755s because the edited
+cut cannot complete initial discovery (helper 10.25s, cut 10.75s); the other seven
+cuts pass. Its live goroutines identify SDK `Client.discover` awaiting the first
+`server/discover` response, before `VerifyCapabilities`, admission, setup or Core
+callbacks. This narrows that failure's location; it does not establish why the
+proxy/backend has not answered, nor explain the historical safe-steer deadline.
+Bootstrap from the paired command also fails 543.824s: four Memory/Schedules
+reply-loss cases expire discovery, each with the same `Client.discover` wait.
+The whole paired command exits 1 after 551.760s, with 380 top-level cases passed,
+five failed and zero skipped. The expanded real Reviews Tool/CLI case passes
+29.58s, cancellation/restart passes 1.52s and lost Core-opening recovery passes
+5.42s; those local passes do not qualify the failed packages. A temporary overlay
+records backend startup phases, proxy request/response metadata and a live
+9s CPU/stack snapshot, without changing assertions or original deadlines.
+The representative failed live stack, complete package counts and candidate
+test-source hashes are retained in
+[MCP startup deadline evidence](plugin-refactor-mcp-startup-evidence.md), so
+temporary-resource cleanup does not discard the newly captured failure.
+
+That bounded diagnostic exits 0 after 454.684s: execution/bootstrap pass
+333.208/435.734s, all 385 top-level cases pass with zero skips, and all eight cuts
+pass (parent 52.33s). It contains 73 process logs and 39 complete proxy discovery
+traces; none reproduces an unanswered discovery deadline. Its sole 9s live
+snapshot belongs to a backend already in `server.Run` during the executable CLI
+case, not a blocked startup. The native-sampling watcher therefore has no eligible
+blocked child and captures no sample. Killed, unclosed CPU profiles are not
+qualified. This overlay changes diagnostic bytes and timing and is not substituted
+for the failed no-overlay gate. Neither its pass nor its normal-path observations
+establish the cause of the new MCP deadline class or the historical safe-steer
+deadline. Those causes remain open; no production repair is claimed.
+
+Current final-fixture architecture passes 68.933s and bootstrap vet passes.
+The earlier eight-cut 50.932s pass predates these later failures and is not
+substituted for them. No whole Runtime/shared TS/native gate is newly run for
+these test-only changes. No assertion or original case deadline is weakened,
+no UI/E2E/screenshot test or aggregate Desktop check is added/run, and no
+production API changes. The historical safe-steer cause is still unresolved.
+
+P21 and the additional Tool/CLI/UI refusal review scenario remain Partial:
+their actual graphical entrance is unexecuted. This slice compares revision
+conflict and queries; other refusal classes retain their separate existing
+backend evidence, without a newly claimed cross-entrance execution.
 
 ### Installed Reviews no-Run recovery and full-module historical diagnosis (2026-10-15)
 
@@ -2602,7 +2707,7 @@ and unrun, so those requirements remain unverified rather than waived.
 | P18 | Streaming backend disconnects after output began | Evidenced | `TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalCommand` exits a real installed stdio process after acknowledged output. It retains one chunk and unknown final evidence, refuses uninstall while unresolved, explicitly reconnects and queries the original receipt without reentering the mutation. |
 | P19 | A slow stream consumer receives a large result | Evidenced | Verified at backend stream/transport boundaries for pull backpressure, captured byte budgets and explicit capacity failure. |
 | P20 | A model route is changed by a plugin | Evidenced | Backend verified by actual selected provider/model/options, independent routes, metering and durable endpoint evidence. |
-| P21 | A query is called through Tool, CLI, and UI | Partial | Backend Tool/typed operations, CLI projections/adapters and component source share the operation owner. Actual Tool -> CLI -> rendered UI query equivalence has not run. The 95/95 source-consumer count does not prove this interaction. |
+| P21 | A query is called through Tool, CLI, and UI | Partial | The installed Reviews case compares the complete real Tool/CLI query and revision-conflict results through authenticated HTTP, including same-command refusal redelivery and unchanged private state. The rendered UI entrance has not run; source counts do not prove it. |
 | P22 | Reviews mutation commits but reply is dropped | Evidenced | Public-SDK/private receipt and Run response-loss tests cover real committed reply loss, restart, original recovery and stale revision. `TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRestart` adds the installed Runtime no-Run path, exact read-only receipt, pending release holds and replacement-target conflict. The larger graphical review cross-scenario remains Partial. |
 | P23 | A command identity is reused with different input | Evidenced | Verified by private receipt, public binding and CLI/shared-client original-input conflict tests, including external public idempotency classification. |
 | P24 | Schedule dispatch acknowledgement is lost | Evidenced | The complete product parallel gate includes lost-Core-opening reconciliation in bootstrap and the eight `TestScheduleCreateRecoversAcrossSIGKILLCuts` cuts whose parent is in execution. That parent passes separately again in the current slice (58.876s). Bootstrap alone does not execute it. Earlier repetitions remain historical runs. |

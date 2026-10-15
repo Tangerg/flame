@@ -60,7 +60,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	}
 	cfg.ChatResolver = testChatResolver(client)
 
-	host, api := buildProtocolRuntime(t, cfg, cfg.DefaultWorkspacePath)
+	host, api := buildPluginProtocolRuntime(t, cfg)
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
 			t.Error(err)
@@ -194,7 +194,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if err = host.Close(); err != nil {
 		t.Fatal(err)
 	}
-	host, api = buildProtocolRuntime(t, cfg, cfg.DefaultWorkspacePath)
+	host, api = buildPluginProtocolRuntime(t, cfg)
 	endpoint, err = delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
 	if err != nil {
 		t.Fatal(err)

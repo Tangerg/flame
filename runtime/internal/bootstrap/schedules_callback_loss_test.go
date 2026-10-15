@@ -40,7 +40,7 @@ func (w lostOpeningWriter) Write(body []byte) (int, error) {
 
 func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testing.T) {
 	cfg := poMCPConfig(t)
-	host, api := buildProtocolRuntime(t, cfg, cfg.DefaultWorkspacePath)
+	host, api := buildPluginProtocolRuntime(t, cfg)
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
 	if err != nil {
 		_ = host.Close()

@@ -72,7 +72,7 @@ func TestEnabledPluginCannotBlockRuntimeManagementAfterRestart(t *testing.T) {
 					t.Error(err)
 				}
 			}()
-			api, err := protocolHandler(host, cfg.DefaultWorkspacePath)
+			api, err := pluginProtocolHandler(host, cfg)
 			if err != nil {
 				t.Fatal(err)
 			}

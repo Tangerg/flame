@@ -7,7 +7,9 @@ implementation percentage or a 100% claim. P13 public installed Tool proposals,
 P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup are complete.
 Thirteen graphical rows and all four added review cross-scenarios remain Partial.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
-Passing repetitions and the current full parallel gate do not close that item.
+Passing repetitions do not close that item. The latest test-only qualification
+also has unclassified MCP startup discovery deadlines; its failed gates remain
+recorded separately from the earlier complete product pass.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 
@@ -32,6 +34,10 @@ Production Go remains `b2dcbfbba`. Later test-only slices add steer failure
 diagnostics and actual installed Reviews no-Run recovery across restart,
 disable/reenable, retained update/uninstall holds and replacement-target refusal.
 The original private receipt recovers once; a second installation stays unchanged.
+The real CLI now compares installed query and revision-conflict results with the
+model Tool result through authenticated HTTP, including same-command redelivery.
+Plugin test Handlers and Endpoints now share the isolated store's namespace;
+the fixed conformance namespace remains confined to its matching test binding.
 There is no production timeout repair or completed graphical cross-scenario.
 
 - `6a88bd45a`: public `ToolProposalContract`/`ToolProposalMethod` queries use the
@@ -70,6 +76,46 @@ Other completed contract/dependency/retention/model/feature ownership work remai
 recorded in progress rather than duplicated here.
 
 ## Actual current qualification
+
+The latest fixture/CLI slice is not qualified by a complete passing gate.
+After correcting every custom plugin fixture, a focused Reviews/Schedules-loss/
+cancel-restart race passes 29.250s; architecture passes 68.933s and bootstrap vet
+passes. A complete bootstrap race fails 523.661s (147 cases pass, one fails):
+`TestScheduleRunNowMissingReceiptRetainsUncertaintyWithoutCreatingRun` expires
+its unchanged 10s discovery prerequisite while the original server is `connecting`.
+A concurrent eight-cut execution invocation fails 152.600s: commit and malformed
+expire that same initial discovery prerequisite; the other six cuts pass.
+Those failures have no established cause. A temporary CPU/trace diagnostic of
+the two cuts passes 37.901s and does not explain the failures. The helper now logs
+public status and live goroutines after the original timeout, before cleanup.
+The no-overlay complete execution/bootstrap parallel race now records execution
+failure 392.755s: the edited cut expires initial discovery (helper 10.25s,
+cut 10.75s); the other seven cuts pass. Its live goroutines show SDK
+`Client.discover` awaiting the first `server/discover` response, before admission,
+setup or Core callbacks. The proxy/backend's missing reply is not yet explained.
+Bootstrap from that paired command fails 543.824s: four Memory/Schedules reply-loss
+cases reach the same `Client.discover` wait. The paired command exits 1 after
+551.760s (380 top-level passes, five failures, zero skips). The expanded Reviews
+Tool/CLI case passes 29.58s, cancellation/restart 1.52s and lost Core-opening
+recovery 5.42s; those cases do not qualify the failed packages. A temporary
+startup-phase/proxy-metadata/9s-stack-and-CPU overlay then passes after 454.684s:
+execution/bootstrap 333.208/435.734s, 385 top-level passes, zero skips, all eight
+cuts pass (parent 52.33s). It does not reproduce unanswered discovery. Its only
+9s snapshot belongs to an already-running backend, with no eligible blocked
+child for native sampling. Killed/unclosed profiles are not qualified. This is
+a diagnostic overlay, not a replacement for the failed unmodified-source gate;
+no startup cause or production repair is established.
+The representative live failure and exact candidate hashes are retained in
+[MCP startup deadline evidence](plugin-refactor-mcp-startup-evidence.md).
+
+The earlier namespace mismatch is a separate, established fixture defect:
+initial plugin startup advertised the conformance namespace but reopening and
+the Endpoint used the real store. A temporary negative control restoring the
+mixed binding fails with `mcp_configuration_failed`, rather than remaining
+`connecting`. A cancellation model stub also incorrectly treated an auxiliary
+title request as a repeated primary request; that stub now distinguishes it.
+Neither finding diagnoses the historical safe-steer deadline or the later
+connecting deadlines. No assertion or original case deadline is weakened.
 
 The original complete command passes on frozen `b2dcbfbba`, with no overlay,
 exclusion or changed original case deadline:
@@ -212,6 +258,9 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
   typed refusal through Tool/CLI/rendered UI; authenticated remote multi-resource
   ESM/module identity/connection replacement in Web and Wails; independent recovery
   while module initialization blocks the renderer.
+  Real Tool/CLI query and revision-conflict equivalence now has backend process
+  evidence; the graphical entrance and other cross-entrance refusal classes are
+  not newly qualified by that case.
 - Paid live DeepSeek is not enabled (`FLAME_LIVE_DEEPSEEK` unset). Windows/Linux/
   alternate native execution and registry/deployment publication are not qualified.
 - Read-only npm audit exits 1 with eight alerts (four high/four low). All high
@@ -254,6 +303,10 @@ Next substantive unresolved work is to capture a real historical-class safe-stee
 deadline with phase/state/stack evidence. Determine whether execution is still
 live, where it stopped, and what the original owner retained; a terminal Run can
 also explain the caller's wait. Do not relax assertions or limits.
+The retained MCP connecting-deadline stacks stop in initial SDK discovery, before
+admission/Core callbacks. A bounded phase/CPU diagnostic does not reproduce them;
+obtain a failing child/proxy snapshot before making a production repair.
+Do not substitute a later pass or build overlap for a cause of its failed gates.
 Keep graphical criteria and dependency/live/platform/publication limits explicit.
 Do not declare the whole plugin system 100%.
 

@@ -28,6 +28,9 @@ func TestCancelAndNaturalCompletionPreserveTerminalAcrossRestart(t *testing.T) {
 			}
 			entered, finish := make(chan struct{}), make(chan struct{})
 			model := delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+				if len(request.Tools) == 0 {
+					return newReplyStub("terminal restart title").Call(ctx, request)
+				}
 				close(entered)
 				select {
 				case <-finish:

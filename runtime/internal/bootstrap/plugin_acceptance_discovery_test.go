@@ -103,7 +103,7 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 	}
 	cfg.ChatResolver = testChatResolver(client)
 
-	host, api := buildProtocolRuntime(t, cfg, cfg.DefaultWorkspacePath)
+	host, api := buildPluginProtocolRuntime(t, cfg)
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
 			t.Error(err)

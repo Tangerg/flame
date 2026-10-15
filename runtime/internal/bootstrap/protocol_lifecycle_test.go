@@ -446,6 +446,17 @@ func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.
 
 func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Instance, *delivery.Handler) {
 	t.Helper()
+	host := assembleTestRuntime(t, cfg)
+	api, err := protocolHandler(host, cwd)
+	if err != nil {
+		_ = host.Close()
+		t.Fatalf("build protocol server: %v", err)
+	}
+	return host, api
+}
+
+func assembleTestRuntime(t *testing.T, cfg Config) *Instance {
+	t.Helper()
 	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
 	if err != nil {
 		t.Fatalf("build runtime: %v", err)
@@ -454,12 +465,7 @@ func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Instance, *del
 		_ = host.Close()
 		t.Fatalf("recover runtime: %v", recoverStartupErr)
 	}
-	api, err := protocolHandler(host, cwd)
-	if err != nil {
-		_ = host.Close()
-		t.Fatalf("build protocol server: %v", err)
-	}
-	return host, api
+	return host
 }
 
 func protocolHandler(host *Instance, cwd string) (*delivery.Handler, error) {

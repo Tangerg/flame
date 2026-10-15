@@ -2,12 +2,14 @@ package bootstrap
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
+	goruntime "runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -36,7 +39,7 @@ type poMCPRuntime struct {
 
 func poMCPOpen(t *testing.T, cfg Config) *poMCPRuntime {
 	t.Helper()
-	host, api := buildProtocolRuntime(t, cfg, cfg.DefaultWorkspacePath)
+	host, api := buildPluginProtocolRuntime(t, cfg)
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
 	if err != nil {
 		_ = host.Close()
@@ -56,6 +59,26 @@ func poMCPOpen(t *testing.T, cfg Config) *poMCPRuntime {
 	runtime := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
 	t.Cleanup(runtime.close)
 	return runtime
+}
+
+func buildPluginProtocolRuntime(t *testing.T, cfg Config) (*Instance, *delivery.Handler) {
+	t.Helper()
+	host := assembleTestRuntime(t, cfg)
+	api, err := pluginProtocolHandler(host, cfg)
+	if err != nil {
+		_ = host.Close()
+		t.Fatalf("build plugin delivery handler: %v", err)
+	}
+	return host, api
+}
+
+func pluginProtocolHandler(host *Instance, cfg Config) (*delivery.Handler, error) {
+	// Plugin callbacks retain Core identity across restart. Discovery and the
+	// Endpoint must use the store's namespace, including in custom loss fixtures.
+	return host.application.newDeliveryHandler(protocol.ServerInfo{
+		Name: "plugin-acceptance-test", Version: "0.0.0-test", InstanceID: testsupport.RuntimeInstanceID,
+		DefaultWorkspace: protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}, Home: cfg.UserHome,
+	}, cfg.Stores.IdempotencyNamespace.String())
 }
 
 func (r *poMCPRuntime) close() {
@@ -96,6 +119,14 @@ func (r *poMCPRuntime) poMCPTools(server *protocol.MCPServerID, ready func([]pro
 		}
 		if time.Now().After(deadline) {
 			servers := r.must(delivery.MCPServersList, struct{}{}, "").(*protocol.Page[protocol.MCPServer])
+			for _, value := range servers.Data {
+				status, err := json.Marshal(value.Status)
+				r.t.Logf("MCP discovery deadline: server=%s status=%s encoding_error=%v", value.ID.Name, status, err)
+			}
+			// A connecting projection omits the blocked handshake phase. Capture its
+			// live owner before test cleanup cancels and joins that evidence.
+			stack := make([]byte, 1<<20)
+			r.t.Logf("MCP discovery deadline goroutines:\n%s", stack[:goruntime.Stack(stack, true)])
 			r.t.Fatalf("MCP tools never settled: %+v; servers: %+v", tools.Data, servers.Data)
 		}
 		time.Sleep(10 * time.Millisecond)

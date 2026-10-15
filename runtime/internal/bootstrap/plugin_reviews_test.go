@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"bytes"
 	"context"
 	json "encoding/json/v2"
 	"fmt"
@@ -14,8 +15,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -44,7 +47,7 @@ func reviewAuthorPackage(t *testing.T, packagePath, executable string) string {
 	return source
 }
 
-func assertReviewCLIProjection(t *testing.T, runtime *poMCPRuntime, sessionID, runID string, expected any) {
+func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *protocol.PluginInstallation, sessionID, runID string, expected, conflict any) {
 	t.Helper()
 	directory := t.TempDir()
 	executable := filepath.Join(directory, "flame")
@@ -67,13 +70,20 @@ func assertReviewCLIProjection(t *testing.T, runtime *poMCPRuntime, sessionID, r
 	if err := os.WriteFile(config, []byte("{}\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	command := exec.CommandContext(t.Context(), executable, "--config", config, "--runtime-url", remote.URL, "sessions", "show", sessionID, "--json")
-	command.Dir = directory
-	command.Env = append(os.Environ(), "FLAME_HOME="+filepath.Join(directory, "home"), "FLAME_RUNTIME_TOKEN=review-acceptance-token")
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("CLI read: %s, %v", output, err)
+	runCLI := func(arguments ...string) []byte {
+		t.Helper()
+		command := exec.CommandContext(t.Context(), executable, append([]string{"--config", config, "--runtime-url", remote.URL}, arguments...)...)
+		command.Dir = directory
+		command.Env = append(os.Environ(), "FLAME_HOME="+filepath.Join(directory, "home"), "FLAME_RUNTIME_TOKEN=review-acceptance-token")
+		var stderr bytes.Buffer
+		command.Stderr = &stderr
+		output, err := command.Output()
+		if err != nil {
+			t.Fatalf("CLI %s: %s, %s, %v", strings.Join(arguments[:min(2, len(arguments))], " "), output, stderr.String(), err)
+		}
+		return output
 	}
+	output := runCLI("sessions", "show", sessionID, "--json")
 	var snapshot struct {
 		Transcript []struct {
 			RunID string `json:"runId"`
@@ -94,15 +104,57 @@ func assertReviewCLIProjection(t *testing.T, runtime *poMCPRuntime, sessionID, r
 	if err := json.Unmarshal(encoded, &result); err != nil {
 		t.Fatal(err)
 	}
+	found := false
 	for _, block := range snapshot.Transcript {
 		if block.RunID == runID && block.Tool != nil && block.Tool.Name == "reviews_list_reviews" {
 			if !reflect.DeepEqual(block.Tool.Result, result) {
 				t.Fatalf("CLI result = %+v, canonical result = %+v", block.Tool.Result, result)
 			}
-			return
+			found = true
+			break
 		}
 	}
-	t.Fatal("CLI snapshot omitted the canonical backend read")
+	if !found {
+		t.Fatal("CLI snapshot omitted the canonical backend read")
+	}
+	contribution := installed.Selected.Contributions[0]
+	request := protocol.CallPluginRequest{
+		InstallationID: installed.ID, Digest: installed.Selected.Digest,
+		Contribution: contribution.ID, Contract: contribution.Contract,
+		Target: capability.Target{Scope: "installation", Reference: installed.ID},
+		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
+	}
+	call := func(key string, expected any) {
+		t.Helper()
+		encoded, err := json.Marshal(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		arguments := []string{"plugins", "call", "--request", string(encoded)}
+		if key != "" {
+			arguments = append(arguments, "--command-id", key)
+		}
+		output := runCLI(arguments...)
+		var reply protocol.CallPluginResponse
+		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil || reply.Failure != nil {
+			t.Fatalf("CLI lost the structured business result: %s, %v", output, err)
+		}
+		want, err := jsoninput.Encode(expected)
+		if err != nil {
+			t.Fatal(err)
+		}
+		actual, err := jsoninput.Parse([]byte(reply.Output))
+		if err != nil || actual != want {
+			t.Fatalf("CLI operation differs from the Tool owner's result: %s, want %s, %v", reply.Output, want.JSON(), err)
+		}
+	}
+	call("", expected)
+	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.update", `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
+	key := "cli_" + strings.Repeat("c", 32)
+	call(key, conflict)
+	call(key, conflict)
+	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
+	call("", expected)
 }
 
 func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T) {
@@ -248,7 +300,6 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 	read = start()
 	drain(invoke(delivery.RunsResume, approval(read), "read-after-update"))
 	assertList(read, 2, "resolved")
-	assertReviewCLIProjection(t, r, session.ID, read, toolResult(read, "reviews_list_reviews").Tool.Result)
 	phase.Store(4)
 	stale := start()
 	drain(invoke(delivery.RunsResume, approval(stale), "stale-approved"))
@@ -257,6 +308,14 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 	if err != nil || item.Status != protocol.ItemStatusIncomplete || !strings.Contains(string(encoded), `"type":"revisionConflict"`) {
 		t.Fatalf("stale update = %+v, %s, %v", item, encoded, err)
 	}
+	if item.Error == nil || item.Error.Type != protocol.ProblemToolFailed {
+		t.Fatalf("known revision refusal lost its Tool failure classification: %+v", item.Error)
+	}
+	finished := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: stale}, "").(*protocol.RunRef)
+	if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted {
+		t.Fatalf("known revision refusal became uncertain execution: %+v", finished)
+	}
+	assertReviewCLIEntrances(t, r, installed, session.ID, read, toolResult(read, "reviews_list_reviews").Tool.Result, item.Tool.Result)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	if current := toolResult(update, "reviews_update_review"); !reflect.DeepEqual(current.Tool.Result, savedResult) {
 		t.Fatal("withdrawal changed history")
