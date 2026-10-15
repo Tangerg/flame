@@ -1,13 +1,102 @@
 package sqlite_test
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/storage/sqlite"
 )
+
+func TestWALAdmissionKeepsCallerCancellationBeforeSchemaInitialization(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "rollback.db")
+	blocker, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer blocker.Close()
+	for _, statement := range seededSchema {
+		if _, err := blocker.ExecContext(t.Context(), statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read, err := blocker.BeginTx(t.Context(), &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer read.Rollback()
+	var value string
+	if err := read.QueryRowContext(t.Context(), `SELECT value FROM identity WHERE id=1`).Scan(&value); err != nil {
+		t.Fatal(err)
+	}
+	cause := errors.New("wal admission caller stopped")
+	ctx, cancel := context.WithTimeoutCause(t.Context(), 25*time.Millisecond, cause)
+	defer cancel()
+	type result struct {
+		db  *sql.DB
+		err error
+	}
+	settled := make(chan result, 1)
+	go func() {
+		db, err := sqlite.OpenSchema(ctx, path, seededSchema)
+		settled <- result{db, err}
+	}()
+	var opened result
+	// The error category alone cannot prove cancellation while the peer keeps
+	// its lock: implicit driver setup can return the same error after waiting.
+	select {
+	case opened = <-settled:
+	case <-time.After(time.Second):
+		_ = read.Rollback()
+		opened = <-settled
+		if opened.db != nil {
+			_ = opened.db.Close()
+		}
+		t.Fatalf("WAL admission ignored cancellation until the read owner released: %v", opened.err)
+	}
+	db, err := opened.db, opened.err
+	if db != nil {
+		_ = db.Close()
+		t.Fatal("WAL conversion crossed another owner's read transaction")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("WAL admission did not wait with caller cancellation: %v", err)
+	}
+	if !errors.Is(err, cause) {
+		t.Fatalf("WAL admission lost its caller's cancellation cause: %v", err)
+	}
+	if err := read.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sqlite.OpenSchema(t.Context(), path, seededSchema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var mode string
+	if err := db.QueryRowContext(t.Context(), `PRAGMA journal_mode`).Scan(&mode); err != nil || mode != "wal" {
+		t.Fatalf("admitted journal mode = %q, %v", mode, err)
+	}
+	if err := db.QueryRowContext(t.Context(), `SELECT value FROM identity WHERE id=1`).Scan(&value); err != nil || value != "original" {
+		t.Fatalf("original owner fact = %q, %v", value, err)
+	}
+}
+
+func TestSchemaAdmissionSupportsExplicitMemoryDatabase(t *testing.T) {
+	db, err := sqlite.OpenSchema(t.Context(), ":memory:", seededSchema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var value string
+	if err := db.QueryRowContext(t.Context(), `SELECT value FROM identity WHERE id=1`).Scan(&value); err != nil || value != "original" {
+		t.Fatalf("memory owner fact = %q, %v", value, err)
+	}
+}
 
 var seededSchema = []string{
 	`CREATE TABLE IF NOT EXISTS identity (id INTEGER PRIMARY KEY, value TEXT NOT NULL)`,

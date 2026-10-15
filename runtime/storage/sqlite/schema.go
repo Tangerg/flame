@@ -12,16 +12,21 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 
-	_ "modernc.org/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	sqlitedriver "modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 )
+
+const busyTimeout = 5 * time.Second
 
 // OpenSchema admits an exact owner-supplied schema in its private database.
 func OpenSchema(ctx context.Context, path string, statements []string) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
-		"file:%s?_txlock=immediate&_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)",
-		url.PathEscape(filepath.ToSlash(path)),
+		"file:%s?_txlock=immediate&_pragma=foreign_keys(ON)&_pragma=busy_timeout(%d)",
+		url.PathEscape(filepath.ToSlash(path)), busyTimeout/time.Millisecond,
 	)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -32,10 +37,53 @@ func OpenSchema(ctx context.Context, path string, statements []string) (*sql.DB,
 	// One connection serializes this owner's write-sets; SQLite coordinates peers.
 	db.SetMaxOpenConns(1)
 
+	if path != ":memory:" {
+		if err := admitWAL(ctx, db); err != nil {
+			return nil, errors.Join(fmt.Errorf("sqlite: admit wal: %w", err), cancellation.Err(ctx), db.Close())
+		}
+	}
 	if err := InstallSchema(ctx, db, statements); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
 	return db, nil
+}
+
+func admitWAL(ctx context.Context, db *sql.DB) (err error) {
+	connection, err := db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, connection.Close()) }()
+	if _, err := connection.ExecContext(ctx, `PRAGMA busy_timeout=0`); err != nil {
+		return err
+	}
+	wait, cancel := context.WithTimeout(ctx, busyTimeout)
+	defer cancel()
+	for {
+		var mode string
+		err := connection.QueryRowContext(wait, `PRAGMA journal_mode=WAL`).Scan(&mode)
+		if err == nil {
+			if mode != "wal" {
+				return fmt.Errorf("journal mode is %q, require wal", mode)
+			}
+			_, err = connection.ExecContext(ctx, fmt.Sprintf("PRAGMA busy_timeout=%d", busyTimeout/time.Millisecond))
+			return err
+		}
+		var busy *sqlitedriver.Error
+		if !errors.As(err, &busy) || busy.Code() != sqlite3.SQLITE_BUSY {
+			return err
+		}
+		// WAL conversion can bypass SQLite's busy handler to avoid a lock-upgrade
+		// deadlock. Wait only for this idempotent configuration, before owner SQL;
+		// WAL persists, so replacement pool connections need no mode transition.
+		timer := time.NewTimer(time.Millisecond)
+		select {
+		case <-wait.Done():
+			timer.Stop()
+			return wait.Err()
+		case <-timer.C:
+		}
+	}
 }
 
 func InstallSchema(ctx context.Context, db *sql.DB, stmts []string) error {

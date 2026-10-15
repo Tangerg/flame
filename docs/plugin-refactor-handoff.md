@@ -38,10 +38,23 @@ Every other tested package passes, including complete bootstrap, both steer mode
 all eight SIGKILL cuts and the formerly timed-out discovery cases. Do not call this
 a passing whole gate or historical diagnosis. A bounded WAL-only probe and a new
 cancellation regression identify the SQLite opening boundary. Its working repair
-passes focused race and 100 original concurrent repetitions; complete post-repair
-qualification is next. The original five-second busy budget and existing test
+passes focused race and 100 original concurrent repetitions. The original
+five-second busy budget and existing test
 assertions remain intact. Current source, failed harness attempts and exact
 timings are recorded in Current stage of the progress document.
+The first expanded WAL repair candidate wrongly rejects existing :memory:
+consumers and is interrupted as failed. The corrected boundary retains explicit
+memory databases, requires WAL for files and preserves custom cancellation causes.
+All four focused SQLite/persistence/recovery/Segment race packages pass. Complete
+post-repair parallel race now exits 0 on the final frozen source: all 174 packages
+finish, 159 tested packages pass and fifteen have no tests; 5,198 top-level tests
+pass with seven unchanged opt-in paid/helper skips and no failures. Safe-steer
+passes 2.79s; delegated approval, all eight SIGKILL cuts and complete bootstrap
+(402.385s) pass. All four participating modules pass go mod verify. Workspace vet
+and production build pass, as does the real Go Runtime -> HTTP -> TypeScript suite
+(49 tests, 36.96s) with freshly built executables and first-party packages. Fresh
+native qualification and independent author archives for this graph remain
+pending. This current pass does not establish either historical timeout's cause.
 
 A second actual Web failure is now causally fixed: an imported ESM dependency
 throws, but its resource close never settles because the HTTP transport suppresses
@@ -56,11 +69,11 @@ the unused workspace Memory path is deleted end to end, the dialog uses the atom
 boundary and management controls use the shared pending contract. Complete frontend
 check passes all 355 files/2,418 tests plus every source/resource/bundle gate. Actual
 rebuilt Web Memory adds and refreshes its owner-backed task-only row. Fresh native
-execution after this cut remains pending because the Mac is locked; fresh task-local
-beta.29 macOS packaging passes. Earlier results retain their exact scope.
-The user requests a released Scope upgrade next. Official module metadata reports
-v0.51.1. Inspect and upgrade the full graph in this worktree; do not treat upgrade
-success as either historical timeout diagnosis.
+execution after this cut remains pending; the user has now unlocked the Mac.
+Fresh task-local beta.29 macOS packaging passes before the Scope dependency cut;
+the latest graph still needs fresh native qualification. Earlier results retain
+their exact scope. The requested Scope v0.51.1 upgrade is complete as described
+above; upgrade success is not either historical timeout diagnosis.
 Bounded MCP controls now distinguish whole/fragmented frames, lease release and
 pre-transport EOF/SIGTERM, with package init traces. They do not reproduce or explain
 the historical MCP deadline; safe-steer also remains unresolved. Full details and

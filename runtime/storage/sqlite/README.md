@@ -6,6 +6,16 @@ and a private database path. Empty databases receive that schema; an incompatibl
 existing schema is refused before writes. The owner retains its old data separately.
 The package configures WAL, foreign keys, bounded busy waits and one connection.
 
+File-backed WAL is admitted explicitly before schema SQL; the explicit :memory:
+database keeps SQLite's memory journal. SQLite can bypass its busy handler
+while upgrading journal-mode locks, so connection-string WAL setup cannot promise
+either concurrent admission or caller cancellation. The boundary waits only for
+SQLITE_BUSY from that idempotent mode acquisition, within the existing five-second
+budget and caller context, then requires the returned mode to be WAL. Ordinary
+write contention retains SQLite's busy handler. WAL is persistent; replacement
+pool connections do not reconfigure the journal. Schema and business callbacks
+are never repeated by this wait.
+
 Existing schema admission owns a read-only snapshot and never reexecutes
 initialization statements. It cannot compete with a live recovery write-set or
 recreate a missing owner fact. Empty databases are rechecked under the writer

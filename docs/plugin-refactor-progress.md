@@ -86,7 +86,34 @@ SQLite race package passes 1.545s, and the unchanged original concurrent case
 passes 100 bounded repetitions in 2.030s. The initial classification-only check
 passed after 5.715s and did not expose cancellation latency; it is not a RED proof.
 An attempted driver-cache overlay is rejected by Go before tests and is not a
-product result. Complete post-repair race/vet/build/native qualification is pending.
+product result.
+
+The first expanded repair run exposes an introduced contract error: the new
+file-backed WAL assertion also rejects legitimate :memory: consumers. That failed
+candidate is interrupted and not qualified; its five recorded task processes all
+settle, with no remaining owned process to stop. The corrected boundary explicitly
+retains SQLite's memory journal for :memory: while file databases still require
+WAL. It also preserves the caller's custom cancellation cause. A real memory
+schema/fact regression and the stronger held-reader cancellation test pass with
+complete SQLite/persistence/recovery/Segment race (1.528/21.775/4.254/7.039s).
+The same complete parallel race selection now exits 0 on the corrected, frozen
+source: all 174 packages finish, 159 tested packages pass, fifteen have no tests,
+and top-level results are 5,198 pass, seven existing paid/helper skips and zero
+failures. Execution/bootstrap/architecture/CLI/root-binding pass
+251.348/402.385/77.647/71.343/101.489s. Both steer modes pass (safe 2.79s, yolo
+2.75s), as do delegated-approval recovery (3.70s), all eight Schedule SIGKILL cuts
+(parent 44.09s), lost-Core-opening reconciliation (5.64s), the held-reader
+cancellation regression (0.03s) and the complete public SQLite package (1.627s).
+The seven unchanged skips are the opt-in live DeepSeek/helper tests; they are not
+paid-provider evidence. All four participating modules pass go mod verify. This
+qualifies the current parallel selection, not either historical deadline cause.
+Post-repair workspace vet and production build pass for Runtime/localruntime/CLI/
+Reviews. The real Go Runtime -> HTTP -> TypeScript client suite rebuilds its
+executables and first-party packages from this source and passes all 49 tests
+(36.96s), including real restart and installed-owner interactions. The complete
+frontend and shared-client gates retain their earlier unchanged-JavaScript scope.
+Fresh native qualification and independent author archives for this Scope graph
+remain pending; neither is inferred from the passing build.
 
 ### Graphical acceptance: shared React exports (2026-10-15)
 
