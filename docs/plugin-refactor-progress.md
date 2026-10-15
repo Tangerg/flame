@@ -9,7 +9,7 @@ actual matching evidence is obtained; authorization alone closes no criterion.
 Keep the primary checkout, daily Runtime/data, stash, original assertions and
 timeouts intact, with no push or main merge. New UI work uses isolated resources.
 
-Original-proposal acceptance remains **incomplete: 44 Evidenced / 4 Partial / 0 Open**.
+Original-proposal acceptance remains **incomplete: 46 Evidenced / 2 Partial / 0 Open**.
 These are evidence counts, not an implementation percentage. P13 public installed
 Tool proposal transformation, P12/P16/P18/P41 real-process scenarios and P48
 source/API/doc cleanup now have matching evidence. P45 now has actual synchronous
@@ -19,7 +19,8 @@ revision-refusal results through an actual model Tool, executable CLI and render
 Reviews board. P39 now proves generic historical inspection after renderer and
 producer withdrawal in a fresh window, without loading their modules. P26 now
 proves a UI-accepted Run survives its initiating window and component teardown.
-Four graphical rows and the no-Run recovery review remain Partial;
+P31/P36 now have actual in-flight navigation and release-replacement evidence.
+P33/P46 and the no-Run recovery review remain Partial;
 the three other review cross-scenarios are Evidenced.
 The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
@@ -35,6 +36,42 @@ canonical `0` still saves and recovers the business owner's `invalidUpdate` rece
 Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
+
+### Graphical acceptance: in-flight target and release replacement (2026-10-16)
+
+Create a second installation of the independently built Reviews package, with
+release and private SQLite owner. A task-only HTTP proxy forwards real production
+traffic and can hold exactly one selected plugin response for at most 60 seconds.
+It changes neither the request nor the Runtime result, logs no credentials and
+does not inject application state. No gate expires during either scenario.
+
+For P31, A initially shows resolved / revision 2. Submit its inspected update to
+open; the private owner commits revision 3 while the proxy holds that real reply.
+Navigate to B before releasing it. B already renders open / revision 1 with its
+own default selection. Navigation cancels A's old HTTP observation with
+net::ERR_ABORTED. Releasing A's reply cannot add its success message or result to
+B. The complete request trace contains exactly one update, targeting A, followed
+by B's read. Independent executable queries confirm A=revision 3 and B=revision 1.
+This proves captured routing and observation retirement, not execution of an old
+callback after cancellation or cancellation of the accepted private mutation.
+
+For P36, hold B's actual revision-1 query reply. An independent CLI mutation moves
+B to resolved / revision 2, then ordinary stage/select admits a new package digest
+whose component title is visibly changed. The old query is canceled with
+net::ERR_ABORTED, and the loaded window displays its explicit reload boundary.
+Release the old reply: the boundary remains and revision 1 does not reappear.
+Explicit reload clears the ephemeral token; after reentry the newly selected
+component displays its replacement title and current revision 2. The selected
+digest and independent final query agree. No old module or data is silently
+adopted by the new activation.
+
+Strict comparisons, original requests, private results, transport cancellation,
+proxy phase records and actual screenshots remain in private evidence. Close the
+owned window, uninstall B through the public CLI, remove both temporary source
+copies and stop/join the verified proxy process (exit 0). Broken pipes belong to
+retired resource/subscription observations; no timeout or expired gate is hidden.
+No production source, assertion or deadline changes are needed. P33/P46, the
+no-Run UI/Runtime restart review and both historical timeout causes remain open.
 
 ### Graphical acceptance: close the initiating UI during an accepted Run (2026-10-15)
 
@@ -3291,7 +3328,7 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-Original-proposal acceptance remains incomplete: 4 Partial rows and
+Original-proposal acceptance remains incomplete: 2 Partial rows and
 the no-Run recovery review cross-scenario. The two reopened production defects and
 original complete parallel-race gate are closed; that narrower result does not
 close the other criteria. Historical slice entries retain their original evidence.
@@ -3324,7 +3361,7 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 - The released Scope v0.51.1 upgrade, complete parallel race and current standalone
   author qualification now pass within their recorded scopes. Preserve separate
   historical safe-steer/MCP uncertainty until causal evidence closes it.
-- P31/P33/P36/P46 and the no-Run recovery review still need
+- P33/P46 and the no-Run recovery review still need
   matching graphical interaction. The user has lifted the prohibition; use isolated
   resources and do not substitute source/native builds for matching interactions.
 - The high and low dependency entries have source/exposure triage but remain
@@ -3647,7 +3684,7 @@ qualification.
 | Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
 | Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
 | Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
-| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures and four broader graphical rows remain unqualified. |
+| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures and two broader graphical rows remain unqualified. |
 | Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification and the separately unexecuted graphical criteria are not completed by P48 source closure. The newly authorized complete frontend gate now passes after removing the unused workspace Memory path and migrating stale fixtures; actual installed Web Memory still writes and refreshes its owner-backed row. |
 
 The review's four extra cross-acceptance groups are independently tracked:
@@ -3725,12 +3762,12 @@ Other criteria retain their exact scope.
 | P28 | Human memory edit races with curation publication | Evidenced | Private Memory review/ledger/watermark/CAS and concurrent publication tests pass, including exactly one winning generation. |
 | P29 | Full installed component uses Hooks and shared UI | Evidenced | The current production Web and separately identified Wails bundle both render independently installed Reviews with real Hooks and shared controls. Both submit owner-backed mutations; the emitted React/React DOM/JSX facade regression links actual public named imports. This is execution evidence, not a build-only substitution. |
 | P30 | Component or dependency throws | Evidenced | Actual installed Web controls throw in React rendering and in a relative ESM dependency. The dependency case exposes a public HTTP resource-close deadlock; the shared transport repair has an unchanged-5s RED/GREEN regression and complete 356-test shared qualification. Both rebuilt Web and Scope/WAL Wails executions display the explicit dependency-failure boundary. Synchronous blocking is separately qualified by P45. |
-| P31 | Navigate from resource A to B during an operation | Partial | Captured target/generation source and shared mutation-journal tests fence old requests. Actual A -> B navigation during a pending component operation has not run. |
+| P31 | Navigate from resource A to B during an operation | Evidenced | Two actual Reviews installations have separate private owners. A commits revision 3 while its real HTTP reply is held; navigation renders B revision 1 and cancels A observation with net::ERR_ABORTED. Releasing the old reply adds no A success message/result to B. Exactly one captured update targets A; independent CLI reads confirm A=3/B=1. Accepted private mutation is preserved while obsolete UI observation ends. |
 | P32 | Two views edit one workflow/resource | Evidenced | Actual Web and Wails editors read the same installed review at revision 3. Wails saves revision 4; Web still holding 3 submits and receives the explicit revision-conflict message, then rereads unchanged revision 4. An actual CLI query independently agrees. |
 | P33 | Applicability changes with selected content | Partial | Declarative applicability admission and metadata-only menu resolution exist. Actual selected-content action visibility and absence of heavy render-time work have not been executed. |
 | P34 | One large item exceeds inline transport capacity | Evidenced | Backend stream/body/resource bounds, explicit capacity refusal and Tool-result offloading tests cover the required transport behavior. No graphical large-item display is claimed. |
 | P35 | Theme or font scale changes | Evidenced | Actual installed Reviews follows live light/dark/light palette changes with unchanged revision 4. Changing interface size makes the shared button 18px and restoring default returns it to 14px; computed styles and actual screenshots are observed. |
-| P36 | Entry or provider is replaced during pending async work | Partial | Backend/shared-client withdrawal, exact capture and late-response refusal are tested. Replacing a graphical entry/provider during its pending work has not run. |
+| P36 | Entry or provider is replaced during pending async work | Evidenced | Hold the actual B revision-1 query response, advance private B to revision 2 and select a staged new package digest with a visible replacement title. Old observation is canceled and the window keeps its explicit reload boundary after the late reply is released. Ordinary reload/token reentry renders the new title and current revision 2. No old callback execution, implicit module adoption or provider-selection cross-scenario is claimed. |
 | P37 | Update is attempted with waiting execution dependencies | Evidenced | Backend waiting/checkpoint/pending-command dependencies retain exact activation/release identity and refuse unsafe replacement. |
 | P38 | Private data remains after disable/uninstall | Evidenced | Backend withdrawal/uninstall and private namespace admission tests preserve retained data and prevent another installation adopting it. |
 | P39 | Open old result without its renderer | Evidenced | The installed recorded-result filter mounts before CLI disables it and Reviews. A fresh actual Web window then displays original search text and complete revision-1 Reviews JSON through the generic inspector. Its complete 21-request trace contains no plugin resource/call or Run start/resume. Canonical cold transcript/Runs and provider request counters remain unchanged. Both task installations are restored after closing the window. |

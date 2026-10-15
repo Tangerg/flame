@@ -9,7 +9,7 @@ matching evidence exists. Use only isolated Runtime/data/browser/native resource
 preserve the primary checkout, daily Runtime, stash, assertions and time limits,
 with no push or main merge.
 
-The original P01-P48 audit is **44 Evidenced / 4 Partial / 0 Open**, not an
+The original P01-P48 audit is **46 Evidenced / 2 Partial / 0 Open**, not an
 implementation percentage or a 100% claim. P13 public installed Tool proposals,
 P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup now have matching
 evidence, including the newly authorized complete frontend gate.
@@ -18,7 +18,8 @@ matching Web/Wails resource, authentication and connection-retirement sequence.
 P21 now has complete same-owner query and revision-refusal comparisons through
 the actual model Tool, executable CLI and rendered Reviews board. P39 now proves
 fresh-window historical inspection without renderer/producer modules. P26 now
-proves a UI-accepted Run survives window/component closure. Four graphical
+proves a UI-accepted Run survives window/component closure. P31/P36 now have real
+in-flight navigation and release-replacement proof. Two graphical
 rows and one review cross-scenario remain Partial; the three other review groups
 are Evidenced.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
@@ -33,6 +34,21 @@ passes at `9f5a66d51`; these gates do not close the historical deadlines or
 other graphical scenarios. The following frontend change has its own qualification.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
+
+P31/P36 use a second actual Reviews installation and one bounded task HTTP proxy.
+For P31, A commits revision 3 while its response is held; navigating to B renders
+B's own revision 1 and cancels A's old observation. Releasing that reply cannot
+retarget the update or publish A's message into B. Actual request capture and
+independent CLI reads retain A=3/B=1. For P36, hold B's revision-1 query, advance
+private state to revision 2 and select a staged package with a changed digest and
+visible replacement title. Old observation cancellation and the explicit reload
+boundary prevent the late result appearing. After ordinary reload/token reentry,
+the new title and revision 2 render. The gate never expires; cancellation is not
+claimed to execute the old callback. Close the window, uninstall B, remove its
+temporary sources and join the verified proxy at exit 0. Evidence and retained
+private data remain separate. No production assertion/deadline changes occur.
+Remaining criteria are P33/P46 and the no-Run UI/Runtime restart review; historical
+safe-steer/MCP causes remain unestablished.
 
 P26 now uses a Run actually started by the Web composer in the task workspace.
 While a bounded local provider gate holds its model exchange, the installed
