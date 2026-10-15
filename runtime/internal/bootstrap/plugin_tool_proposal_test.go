@@ -66,16 +66,21 @@ func installCallContributor(t *testing.T, r *poMCPRuntime, binary, mode, trace s
 
 func waitCallContributor(t *testing.T, r *poMCPRuntime, installation string) {
 	t.Helper()
+	waitCallContributorState(t, r, installation, protocol.MCPServerConnected)
+}
+
+func waitCallContributorState(t *testing.T, r *poMCPRuntime, installation string, state protocol.MCPServerStateType) {
+	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
 		page := r.must(delivery.MCPServersList, struct{}{}, "").(*protocol.Page[protocol.MCPServer])
 		for _, server := range page.Data {
-			if server.ID.Origin.InstallationID == installation && server.Status.Type == protocol.MCPServerConnected {
+			if server.ID.Origin.InstallationID == installation && server.Status.Type == state {
 				return
 			}
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("call contributor never connected: %+v", page.Data)
+			t.Fatalf("call contributor did not reach %s: %+v", state, page.Data)
 		}
 		time.Sleep(time.Millisecond)
 	}
@@ -83,10 +88,18 @@ func waitCallContributor(t *testing.T, r *poMCPRuntime, installation string) {
 
 func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformReplay(t *testing.T) {
 	binary := buildCallContributor(t)
-	for _, mode := range []string{"proposal", "invalid-proposal"} {
+	for _, mode := range []string{"proposal", "invalid-proposal", "withdrawn-proposal", "failed-proposal"} {
 		t.Run(mode, func(t *testing.T) {
 			var transformations atomic.Int32
+			var sourceAvailable atomic.Bool
+			sourceAvailable.Store(true)
 			trace := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					if !sourceAvailable.Load() {
+						w.WriteHeader(http.StatusServiceUnavailable)
+					}
+					return
+				}
 				transformations.Add(1)
 				w.WriteHeader(http.StatusNoContent)
 			}))
@@ -126,7 +139,13 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			if err != nil {
 				t.Fatal(err)
 			}
-			contributor := installCallContributor(t, r, binary, mode, trace.URL, contract)
+			contributorMode := mode
+			if mode == "withdrawn-proposal" {
+				contributorMode = "proposal"
+			} else if mode == "failed-proposal" {
+				contributorMode = "gated-proposal"
+			}
+			contributor := installCallContributor(t, r, binary, contributorMode, trace.URL, contract)
 			r.must(delivery.PluginsSetComposition, protocol.SetPluginCompositionRequest{Contract: contract.Identity().String(), Members: []protocol.PluginCompositionMember{{InstallationID: contributor.ID, Contribution: "contributor"}}}, "select-proposals")
 			session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "public proposal"}, "session").(*protocol.Session)
 			meta := protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}
@@ -150,7 +169,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			}
 			pending := interrupts.Value.(*protocol.Page[protocol.PendingInterruptSet])
 			var approvedArguments map[string]any
-			if mode == "proposal" {
+			if mode != "invalid-proposal" {
 				encoded, err := json.Marshal(pending)
 				if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 {
 					t.Fatalf("approval does not contain the final installed proposal: %s, %v", encoded, err)
@@ -160,15 +179,34 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 					t.Fatalf("approval retained original or unrelated arguments: %s", encoded)
 				}
 				approvedArguments = payload.Tool.Arguments
+				if mode == "withdrawn-proposal" {
+					r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: contributor.ID, Enabled: false}, "withdraw-captured-contributor")
+				}
+				if mode == "failed-proposal" {
+					sourceAvailable.Store(false)
+				}
 				r.close()
 				r = poMCPOpen(t, cfg)
-				waitCallContributor(t, r, contributor.ID)
 				r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
-				result := r.endpoint.Invoke(t.Context(), delivery.RunsResume, protocol.ResumeRunRequest{RunID: started.RunID, Responses: []protocol.InterruptResponse{{ItemID: pending.Data[0].Interrupts[0].ItemID, Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseApproval, Decision: protocol.ApprovalApprove}}}}, delivery.Options{IdempotencyKey: "approve", RequestMeta: meta})
-				if result.Failure != nil {
-					t.Fatalf("resume captured proposal: %v; cause: %v", result.Failure, errors.Unwrap(result.Failure))
+				if mode == "failed-proposal" {
+					waitCallContributorState(t, r, contributor.ID, protocol.MCPServerFailed)
+					if err := r.host.application.recoverUncertainExecutions(t.Context()); err != nil {
+						t.Fatal(err)
+					}
 				}
-				drainRun(result)
+				if mode == "withdrawn-proposal" || mode == "failed-proposal" {
+					lost := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: started.RunID}, "").(*protocol.RunRef)
+					if lost.Status != protocol.RunStatusFinished || lost.Outcome == nil || lost.Outcome.Type != protocol.OutcomeLost {
+						t.Fatalf("withdrawn captured contributor blocked or silently changed waiting recovery: %+v", lost)
+					}
+				} else {
+					waitCallContributor(t, r, contributor.ID)
+					result := r.endpoint.Invoke(t.Context(), delivery.RunsResume, protocol.ResumeRunRequest{RunID: started.RunID, Responses: []protocol.InterruptResponse{{ItemID: pending.Data[0].Interrupts[0].ItemID, Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseApproval, Decision: protocol.ApprovalApprove}}}}, delivery.Options{IdempotencyKey: "approve", RequestMeta: meta})
+					if result.Failure != nil {
+						t.Fatalf("resume captured proposal: %v; cause: %v", result.Failure, errors.Unwrap(result.Failure))
+					}
+					drainRun(result)
+				}
 			} else if len(pending.Data) != 0 {
 				t.Fatalf("invalid transformed arguments reached approval: %+v", pending.Data)
 			}
@@ -183,7 +221,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 					t.Fatalf("executed/history arguments differ from approval: approved=%+v executed=%+v", approvedArguments, item.Tool.Arguments)
 				}
 				encoded, err := json.Marshal(item.Tool)
-				if err != nil || (mode == "proposal" && (item.Status != protocol.ItemStatusCompleted || !strings.Contains(string(encoded), `resolved`) || !strings.Contains(string(encoded), `updated`))) || (mode == "invalid-proposal" && item.Status == protocol.ItemStatusCompleted) {
+				if err != nil || (mode == "proposal" && (item.Status != protocol.ItemStatusCompleted || !strings.Contains(string(encoded), `resolved`) || !strings.Contains(string(encoded), `updated`))) || (mode != "proposal" && item.Status == protocol.ItemStatusCompleted) {
 					t.Fatalf("executed/history outcome differs from final admission: %+v, %s, %v", item, encoded, err)
 				}
 			}
@@ -204,7 +242,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 				t.Fatalf("private owner read failed: %s, %v", read.Output, err)
 			}
 			expectedRevision, expectedStatus := int64(2), "resolved"
-			if mode == "invalid-proposal" {
+			if mode != "proposal" {
 				expectedRevision, expectedStatus = 1, "open"
 			}
 			if current.Reviews[0].Revision != expectedRevision || current.Reviews[0].Status != expectedStatus {

@@ -44,6 +44,22 @@ func run(ctx context.Context) error {
 	if mode == "stream-drop" || mode == "describe-stream-drop" {
 		return runDroppingStream(ctx, server, backend, mode, trace)
 	}
+	if mode == "gated-proposal" {
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, trace+"/startup", nil)
+		if err != nil {
+			return err
+		}
+		response, err := http.DefaultClient.Do(request)
+		if err != nil {
+			return err
+		}
+		if err := response.Body.Close(); err != nil {
+			return err
+		}
+		if response.StatusCode != http.StatusOK {
+			return errors.New("contributor: source is unavailable")
+		}
+	}
 	method, err := pluginsdk.ToolProposalMethod()
 	if err != nil {
 		return err
@@ -65,7 +81,7 @@ func run(ctx context.Context) error {
 			return chat.ToolCall{}, err
 		}
 		switch mode {
-		case "proposal":
+		case "proposal", "gated-proposal":
 			proposal.Arguments = `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
 		case "invalid-proposal":
 			proposal.Arguments = `{"id":"example-review","expectedRevision":1,"status":17}`

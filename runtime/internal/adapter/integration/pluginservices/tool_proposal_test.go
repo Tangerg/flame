@@ -7,10 +7,43 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+func TestCapturedContributionActivationClassifiesMissingLiveSource(t *testing.T) {
+	contract, err := pluginsdk.ToolProposalContract()
+	if err != nil {
+		t.Fatal(err)
+	}
+	composition, _ := installedCallCompositionFixture(t, contract, []string{"proposal"}, func(backend *pluginsdk.Backend) {
+		method, err := pluginsdk.ToolProposalMethod()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginsdk.Command[chat.ToolCall]) (chat.ToolCall, error) {
+			return command.Input, nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	bindings, err := composition.ResolveToolProposals(t.Context())
+	if err != nil || len(bindings) != 1 {
+		t.Fatalf("capture installed contribution: %+v, %v", bindings, err)
+	}
+	if err := composition.calls.pool.Detach(bindings[0].ServerID); err != nil {
+		t.Fatal(err)
+	}
+	if composition.Pending(bindings) {
+		t.Fatal("retired source became a pending connection")
+	}
+	if _, err := composition.Activations(t.Context(), bindings); !errors.Is(err, plugin.ErrUnavailable) || !errors.Is(err, mcp.ErrUnavailable) {
+		t.Fatalf("missing source lost its definite availability category: %v", err)
+	}
+}
 
 func TestInstalledToolProposalsPreserveOrderCallerAndWithdrawal(t *testing.T) {
 	for _, mode := range []string{"ordered", "identity", "name", "failure"} {

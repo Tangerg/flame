@@ -15,10 +15,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -26,6 +28,51 @@ import (
 type pendingCallComposition struct {
 	contextCaptureComposition
 	t *testing.T
+}
+
+type unavailableCallComposition struct {
+	contextCaptureComposition
+	cause error
+}
+
+func (c *unavailableCallComposition) Activations(context.Context, []plugins.ContributionBinding) ([]plugin.Activation, error) {
+	return nil, c.cause
+}
+
+func TestWaitingContributionProbeDistinguishesWithdrawalFromInconclusiveRead(t *testing.T) {
+	for _, cause := range []error{plugin.ErrUnavailable, plugin.ErrStale, errors.New("activation storage unavailable")} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			workspace := t.TempDir()
+			checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
+			executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+				t.Fatal("probe called the provider")
+				return nil, nil
+			}), InteractionExecutorConfig{CallComposition: &unavailableCallComposition{cause: cause}})
+			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_unavailable", run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}})
+			verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+			if cause == plugin.ErrUnavailable || cause == plugin.ErrStale {
+				if err != nil || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != runs.LossConfigurationChanged {
+					t.Fatalf("definite withdrawal blocked startup or changed capture: %+v, %v", verdict, err)
+				}
+			} else if !errors.Is(err, cause) || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != "" {
+				t.Fatalf("inconclusive read silently lost waiting state: %+v, %v", verdict, err)
+			}
+		})
+	}
+}
+
+func TestFailedCompositionAssemblyReleasesResourcesBeforeEngineConstruction(t *testing.T) {
+	failure := errors.New("activation storage unavailable")
+	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		t.Fatal("failed staging called the provider")
+		return nil, nil
+	}), InteractionExecutorConfig{CallComposition: &unavailableCallComposition{cause: failure}})
+	if _, err := executor.StageRoot(t.Context(), interactionTestStart()); !errors.Is(err, failure) || errors.Is(err, agent.ErrInvalidEngineConfig) {
+		t.Fatalf("failed pre-engine assembly did not preserve its cause and release resources: %v", err)
+	}
+	if err := executor.AwaitShutdown(t.Context()); err != nil {
+		t.Fatalf("failed pre-engine assembly left shutdown resources: %v", err)
+	}
 }
 
 func (c *pendingCallComposition) Pending(bindings []plugins.ContributionBinding) bool {

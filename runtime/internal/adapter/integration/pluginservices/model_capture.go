@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
@@ -76,6 +77,9 @@ func (o *CallComposition) Activations(ctx context.Context, bindings []plugins.Co
 	for _, binding := range bindings {
 		activation, err := o.calls.pool.InstallationActivation(ctx, binding.ServerID)
 		if err != nil {
+			if errors.Is(err, mcp.ErrUnavailable) {
+				return nil, errors.Join(plugin.ErrUnavailable, err)
+			}
 			return nil, err
 		}
 		if !slices.Contains(activation.Dependencies, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}) {

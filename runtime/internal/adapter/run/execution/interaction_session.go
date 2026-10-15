@@ -791,8 +791,10 @@ func (i *interactionSession) release(ctx context.Context) error {
 // Scope must drain the Engine before the host revokes its Tool capabilities.
 // An interrupted close retains those resources for the next release attempt.
 func (i *interactionSession) closeExecution(ctx context.Context) error {
-	if err := i.engine.Close(ctx); err != nil {
-		return err
+	if i.engine != nil {
+		if err := i.engine.Close(ctx); err != nil {
+			return err
+		}
 	}
 	i.closeTelemetry()
 	i.state.mu.Lock()
