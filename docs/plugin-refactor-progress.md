@@ -61,6 +61,11 @@ that the vulnerable parser is real, while its current inputs are fixed repositor
 build globs. The production-only audit reports zero high and four low alerts;
 this does not close the full audit. Dependency manifests/locks are unchanged.
 The detailed triage below retains the upstream risk and its reopening conditions.
+The four low entries also share one advisory, in two transitive KaTeX 0.16.47
+copies. The direct KaTeX 0.19.0 used for CSS does not upgrade those renderers.
+This is a conditional read-side prototype-pollution vulnerability; its current
+exposure and unsupported automatic downgrade are recorded below, without a
+graphical test, dependency override or claim of remediation.
 Paid DeepSeek
 (`FLAME_LIVE_DEEPSEEK` unset), Windows/Linux/alternate native execution, registry
 publication and the excluded graphical scenarios remain unexecuted.
@@ -240,7 +245,41 @@ these four high entries as one dependency/advisory chain:
   the dependency graph changes, or an upstream patched release/replacement is
   available. Do not hide the finding with audit exclusions, an override, a local
   node_modules patch or a forced downgrade. No manifest/lock mutation occurs.
-- The four low math/KaTeX entries remain outside this high-alert triage and open.
+- The four low math/KaTeX entries were outside that high-alert slice. Their later
+  source/dependency triage follows; none is claimed remediated.
+
+### npm low-alert source and dependency triage (2026-10-15)
+
+Read-only `npm audit --omit=dev --json` exits 1 with four low entries:
+`katex`, `rehype-katex`, `micromark-extension-math` and `remark-math`. They share
+[GHSA-238p-pmpm-9mq7 / CVE-2026-103923](https://github.com/advisories/GHSA-238p-pmpm-9mq7),
+not four independent vulnerabilities. The advisory affects KaTeX >=0.11.0 and
+<0.18.2; 0.18.2 is patched. It requires an existing prototype-pollution path or
+attacker control of an options prototype. KaTeX itself does not create that
+pollution. Inherited settings can bypass trust restrictions when rendering
+attacker-authored expressions; inserting the resulting HTML creates the exposure.
+
+The lockfile retains two KaTeX 0.16.47 copies beneath `rehype-katex` and
+`micromark-extension-math`. The direct 0.19.0 dependency supplies the stylesheet
+import; it does not replace either renderer. `MarkdownRenderer` admits message
+math through `rehype-katex` with its default options. That dependency spreads
+ordinary objects into renderer options, and the installed transitive KaTeX reads
+inherited options and setting metadata. A direct fixed dependency therefore
+does not establish that the actual renderer is fixed. No end-to-end pollution
+source is demonstrated by this source inspection, and the conditional risk
+remains. No expression rendering, component, UI or exploit test is run.
+
+`remark-math` registers the micromark math syntax and mdast conversions, without
+calling that package's separately exported `mathHtml` renderer. Its low entry is
+still present in the installed graph; this limited source path does not waive
+the advisory. Official registry `npm view` reports `rehype-katex` 7.0.1 and
+`micromark-extension-math` 3.1.0 as latest, both requiring KaTeX `^0.16.0`, which
+cannot select patched 0.18.2. Audit suggests major downgrades to `rehype-katex`
+1.2.0 / `remark-math` 3.0.1; these are not evidence of a compatible security fix.
+No forced downgrade, override, local dependency patch, prototype mutation,
+replacement renderer or manifest/lock change is introduced. Reopen remediation
+when those integrations support the fixed version or a qualified replacement is
+available. Full audit remains four high/four low; triage is not remediation.
 
 ### Bounded historical safe-steer diagnosis and current author artifacts (2026-10-15)
 
@@ -2117,8 +2156,9 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 - P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 and the four review cross-scenarios need
   actual graphical interaction. The user prohibition stays in force; do not add
   or execute UI/E2E/screenshot tests or substitute source/native builds for them.
-- The four high dependency entries have current exposure triage but remain
-  unpatched upstream; the four low alerts are not triaged. Paid/live,
+- The high and low dependency entries have source/exposure triage but remain
+  unremediated. The high root is unpatched upstream; patched KaTeX is outside the
+  current transitive integrations' supported range. Paid/live,
   other native platforms/architectures and publication remain unexecuted; source
   archives are not releases. Do not push, merge main or alter retained user data.
 

@@ -196,7 +196,15 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
   upstream build dependency risk; reopen on external-pattern admission, dependency
   changes or a fixed release. Detailed triage is in the progress document. No audit suppression,
   override, local dependency patch, downgrade or manifest/lock change occurs.
-  The four low math/KaTeX entries are not triaged by this slice.
+  The four low entries share GHSA-238p-pmpm-9mq7: two transitive KaTeX 0.16.47
+  renderers beneath rehype-katex/micromark-extension-math. Direct KaTeX 0.19.0
+  supplies CSS and does not upgrade those copies. Source tracing confirms the
+  message renderer uses the affected dependency; no actual prototype-pollution
+  source or rendered exploit is demonstrated. Fixed 0.18.2 is outside both latest
+  integrations' `^0.16.0` range. Keep the conditional risk open; audit's suggested
+  major downgrades are not a qualified fix. No UI rendering/test, dependency
+  override, forced downgrade or manifest/lock change occurs. All eight alerts
+  now have triage, and none is claimed remediated.
 - Core is `2026-10-15.2`, backend is
   `io.github.tangerg.flame/backend/2026-10-14.2`, export schema is 3. Private
   checkpoints require per-group `mcp_manifests` and `tool_proposals`. Preserve old
