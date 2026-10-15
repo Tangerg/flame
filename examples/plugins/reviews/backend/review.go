@@ -4,15 +4,18 @@ import (
 	"errors"
 	"slices"
 	"unicode/utf8"
+
+	"github.com/invopop/jsonschema"
 )
 
 type Status string
 
 const (
-	Open            Status = "open"
-	Resolved        Status = "resolved"
-	MaxRevision     int64  = 1<<53 - 1
-	ExampleReviewID        = "example-review"
+	Open             Status = "open"
+	Resolved         Status = "resolved"
+	MaxRevision      int64  = 1<<53 - 1
+	ExampleReviewID         = "example-review"
+	maxReviewIDBytes        = 128
 )
 
 var (
@@ -69,8 +72,15 @@ type Update struct {
 	Status           Status `json:"status"`
 }
 
+func (Update) JSONSchemaExtend(schema *jsonschema.Schema) {
+	id, _ := schema.Properties.Get("id")
+	// Schema lengths count characters. Admitted Unicode values that exceed the
+	// byte bound remain business refusals with their own original receipt.
+	id.MaxLength = new(uint64(maxReviewIDBytes))
+}
+
 func (u Update) Validate() error {
-	if u.ID == "" || len(u.ID) > 128 || !utf8.ValidString(u.ID) || u.ExpectedRevision < 1 || u.ExpectedRevision > MaxRevision || !validStatus(u.Status) {
+	if u.ID == "" || len(u.ID) > maxReviewIDBytes || !utf8.ValidString(u.ID) || u.ExpectedRevision < 1 || u.ExpectedRevision > MaxRevision || !validStatus(u.Status) {
 		return errors.New("reviews: invalid update")
 	}
 	return nil

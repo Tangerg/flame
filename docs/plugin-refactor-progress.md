@@ -15,13 +15,15 @@ The user confirms no original safe-steer logs, goroutine dump or test data remai
 The missing failure interval cannot be reconstructed from normal-path observations.
 
 The latest complete product qualification is frozen `b2dcbfbba`; it predates the
-current Reviews contract repair. Runtime production Go remains unchanged. Reviews
-now removes its incorrect 4,096-entry lifetime quota and `receiptCapacity`
-outcome. Real history beyond that former cutoff retains new mutations and known
-refusals in the original private receipt transaction. All current schema/TS/ESM
-consumers are regenerated without a compatibility path. The new Store/SDK/process
-proofs and their actual verification scope are recorded below; earlier complete
-product/native/independent author gates are not inferred to cover this change.
+current Reviews and admission repairs. `490bb1105` removes Reviews' incorrect
+lifetime receipt quota. The subsequent production slice now commits structurally
+admitted `invalidUpdate` decisions with their immutable receipt, uses the same
+Go-owned bounded schema for input and receipt integrity, and classifies fresh
+command schema rejection before binding as invalid parameters. Original-key
+recovery still precedes new-call discovery; no host result cache or replay is
+added. Current schema/TS/ESM consumers are regenerated without compatibility.
+The new Store/SDK/process proofs and exact verification scope are recorded below;
+earlier complete product/native/independent author gates do not cover this source.
 Earlier test-only slices add steer diagnostics, installed Reviews no-Run recovery
 and real Tool/CLI equivalence. The old first-capacity-result proof is superseded
 by the corrected history/recovery scenario, not called durable refusal recovery.
@@ -99,6 +101,88 @@ The existing worktree/`codex/unified-plugins` branch and integrated main
 edit, stash mutation or user-data conversion occurred. Required private checkpoint
 fields are a deliberate break: preserve old data and finish old waiting work with
 its original binary. No compatibility reader, dual writer or provider replay.
+
+### Preserve admitted invalid-input decisions and classify structural refusal (2026-10-15)
+
+The remaining `Invalid` audit reproduces another real missing-receipt window.
+`expectedRevision: 0` satisfies the public structural schema, receives
+`invalidUpdate` through both model Tool and actual CLI, then CLI redelivery fails
+with `command outcome is unconfirmed`. The private backend retains only the
+4,096 setup receipts instead of the required 4,098. The original-key public
+regression fails (case 23.31s, package 33.101s). No timeout, assertion or replay
+policy is changed to obtain that failure.
+
+The writer returned before its transaction; the reader also reran business
+validation and would reject an original invalid-input decision. Store admission
+now uses one immutable schema compiled from the public Go `Update` type at open.
+Structurally admitted business validation runs inside the existing transition/
+receipt transaction. Receipt reads validate original shape/fingerprint and stored
+outcome without reapplying the business decision. A known invalid-input refusal
+now consumes its immutable identity; changed input requires a new one. No second
+result store, special retry, compatibility reader or private format is added.
+
+The original 128-byte identifier rule is preserved. Its one constant projects a
+128-character schema bound, which contains every valid identifier while bounding
+admitted strings. A Unicode identifier can pass shape admission and still exceed
+the byte limit; that business refusal is stored and read exactly. Oversized
+shape, unknown status, malformed JSON/type and invalid invocation identity remain
+unadmitted. Tests keep their no-identity-consumption guarantee for malformed
+requests and independently prove refusal recovery, changed-input conflict, later
+successful work and private restart for five admitted-invalid cases. A forced
+receipt-insert failure preserves uncertainty instead of returning `invalidUpdate`.
+
+A strengthened public malformed-input assertion identifies a separate projection
+defect: fresh command schema validation returned an unclassified error, so both
+history cases reported `internal_error` instead of invalid parameters (race group
+fails 113.281s). `admitCommandRoute` now joins `plugin.ErrInvalid` precisely at
+validation before `Commands.Bind`. Original-route lookup stays first, preserving
+receipt-only recovery under its captured contract. No post-dispatch error is
+reclassified. The streaming regression proves zero events, zero dispatches and
+zero saved bindings for malformed input, then successful work with that same
+logical identity. Each actual CLI case also reuses the identity of its prior
+schema-rejected Endpoint request and retains one Tool/typed dispatch plus two
+receipt reads, with 4,098 receipts and no Review mutation.
+
+Passed: focused Store/SDK/schema cases 3.463s; complete Reviews normal backend/
+analyzer 5.166/1.526s; complete Reviews race 10.668/3.062s (two command packages
+have no tests). Final actual history/invalid model-CLI cases pass normal 86.684s.
+Complete pluginservices race passes 145.790s before the extra stream regression;
+that final test passes focused race 2.957s. Current affected vet and Reviews build
+pass; Reviews TS typecheck/build and an isolated byte-identical component rebuild
+pass. Initial new-test missing-import and wrong-protocol-sentinel compile errors
+are corrected before the reported passes. The original complete participating
+package gate now passes with no source overlay, inherited GOFLAGS, exclusion,
+weaker assertion or changed original context:
+
+```sh
+go test -json -race -p 2 ./runtime/internal/adapter/run/execution ./runtime/internal/bootstrap -count=1 -timeout=900s
+```
+
+Execution/bootstrap pass 459.715/605.718s; all 386 top-level cases pass, zero
+failures/skips. All eight Schedule SIGKILL cuts pass (parent 63.07s), and lost
+Core-opening reconciliation passes 4.29s. The two actual history model/CLI cases
+pass under this race gate (missing review 29.12s, invalid revision 18.27s; parent
+47.39s). This is current complete execution/bootstrap qualification, not a new
+174-package/full-product, native or graphical gate. Its success does not explain
+either the historical safe-steer deadline or earlier MCP discovery deadlines.
+Current complete Runtime architecture passes 30.155s. Eleven Reviews/analyzer
+artifacts reproduce byte-for-byte after all owner generation directives and
+format normalization; formatting/diff checks pass.
+
+`go mod tidy` exits 1: the unchanged declared Runtime pseudo-version does not
+contain the already used `capability`, `jsoninput`, `plugin` and `point` packages.
+This is not reported as a passed tidy or independent released-graph check.
+The schema extension promotes existing `invopop/jsonschema v0.14.0` from indirect
+to direct, with no selected-version or sum change. No local replace, published
+version impersonation, cache overwrite, registry publication or ignored tidy error
+is used. A fresh isolated current-source author archive qualification remains
+pending with the existing unavailable released SDK graph.
+
+Current source/contract consumers and component metadata are migrated together.
+Full product/native/shared-TS/independent archive and graphical gates are not
+newly executed by this slice. Original P01-P48 remains 35 Evidenced/13 Partial;
+all four added review groups remain Partial. The historical safe-steer and the
+separate initial-MCP-discovery deadlines still have no established cause.
 
 ### Remove the Reviews lifetime quota at its receipt owner (2026-10-15)
 
@@ -2574,12 +2658,11 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
   repair. Do not inherit the old source's archive or whole-product/native result.
   The separate initial-MCP-discovery failures also retain no established cause;
   a passing later gate does not close them.
-- Audit public input-admission versus the remaining `Invalid` outcome before
-  claiming every refusal class has original-key recovery. `Store.Update` still
-  returns that outcome before opening its receipt transaction. The existing
-  direct-Store malformed-input/nonconsumption test does not establish whether
-  public structural admission excludes every such request or how a public
-  same-command reconciliation behaves. This quota slice makes no such claim.
+- The `Invalid` audit now has a causal public regression, owner/reader plus
+  fresh-command admission repairs, and complete current execution/bootstrap
+  parallel race qualification. Retain the distinction between unadmitted input and a stored business
+  refusal. The actual CLI/Tool invalid-input proof does not qualify rendered UI
+  or the still separate actual CLI invocation-conflict case.
 - P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 and the four review cross-scenarios need
   actual graphical interaction. The user prohibition stays in force; do not add
   or execute UI/E2E/screenshot tests or substitute source/native builds for them.
@@ -2593,6 +2676,7 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-15 | Persist structurally admitted invalid-input business decisions in the original receipt transaction; classify fresh schema rejection before binding | Actual CLI original-key recovery failed for `expectedRevision: 0`; an additional public assertion exposed an unclassified pre-binding schema error. The 128-byte rule and original-route-first recovery are preserved | Leaving a known refusal unrecorded, revalidating its business decision on lookup, caching another result in Core, consuming a malformed request's identity, blanket reclassification after dispatch or widening the byte bound |
 | 2026-10-15 | Remove Reviews' incorrect lifetime receipt quota and its outcome; migrate all contracts/consumers without compatibility | Actual original-key CLI recovery proved that the quota returned a known refusal with no private receipt. The user explicitly authorizes the breaking owner repair; historical evidence must not permanently exhaust normal business use | Increasing the quota, evicting identities, caching business results in Core, fabricating absent receipts, redispatching or preserving the obsolete outcome as an alias |
 | 2026-10-14 | Record embedding as a kind of the shared physical endpoint; keep its call budget/envelope Memory-owned | Embedding evidence/metering/recovery/reporting belong to the one physical endpoint owner, but the proposal states "Memory's optional embedding fallback and its own model-work limits remain Memory policy" | A general embedding host API with no second consumer (contradicts the proposal and YAGNI), a parallel embedding store (inconsistent query/recovery), or synthesizing a chat response from vectors |
 | 2026-10-14 | Pause this session for handoff; retain the existing managed branch and committed work | The user explicitly wants to continue in a fresh session after this long conversation | Continuing automatic development, recreating from main or leaving an uncompilable partial embedding draft |

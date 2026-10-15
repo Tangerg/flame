@@ -12,13 +12,17 @@ import (
 
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	"github.com/Tangerg/scope/core/jsonschema"
 
 	_ "modernc.org/sqlite"
 )
 
 // Store owns this backend's business transitions and immutable invocation
 // receipts. The review and its receipt commit together in the private database.
-type Store struct{ db *sql.DB }
+type Store struct {
+	db          *sql.DB
+	inputSchema jsonschema.Schema
+}
 
 func validateInvocationID(id string) error {
 	if id == "" || len(id) > 256 || !utf8.ValidString(id) {
@@ -30,6 +34,10 @@ func validateInvocationID(id string) error {
 func OpenStore(ctx context.Context, directory string) (_ *Store, err error) {
 	if !filepath.IsAbs(directory) {
 		return nil, errors.New("reviews: data directory must be absolute")
+	}
+	inputSchema, err := jsonschema.For[Update]()
+	if err != nil {
+		return nil, fmt.Errorf("reviews: input schema: %w", err)
 	}
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		return nil, err
@@ -60,7 +68,7 @@ func OpenStore(ctx context.Context, directory string) (_ *Store, err error) {
 	if err = admitSchema(ctx, db, schema); err != nil {
 		return nil, fmt.Errorf("reviews: open private database: %w", err)
 	}
-	return &Store{db: db}, nil
+	return &Store{db: db, inputSchema: inputSchema}, nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }
@@ -98,7 +106,7 @@ func (s *Store) Receipt(ctx context.Context, request pluginsdk.ReceiptRequest, u
 	if err := json.Unmarshal(arguments, &input, json.RejectUnknownMembers(true)); err != nil {
 		return pluginsdk.Receipt{}, err
 	}
-	if err := input.Validate(); err != nil {
+	if err := s.inputSchema.Validate(arguments); err != nil {
 		return pluginsdk.Receipt{}, err
 	}
 	admitted, err := jsoninput.Parse(arguments)
@@ -130,9 +138,6 @@ func (s *Store) Update(ctx context.Context, invocationID string, input Update, a
 	if err := validateInvocationID(invocationID); err != nil {
 		return UpdateResult{}, err
 	}
-	if input.Validate() != nil {
-		return UpdateResult{Type: Invalid}, nil
-	}
 	if err := admitted.Validate(); err != nil {
 		return UpdateResult{}, err
 	}
@@ -142,6 +147,9 @@ func (s *Store) Update(ctx context.Context, invocationID string, input Update, a
 	}
 	if received != input {
 		return UpdateResult{}, errors.New("reviews: update differs from admitted input")
+	}
+	if err := s.inputSchema.Validate(admitted.JSON()); err != nil {
+		return UpdateResult{}, err
 	}
 	arguments := admitted.String()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -190,6 +198,9 @@ func (s *Store) Update(ctx context.Context, invocationID string, input Update, a
 }
 
 func applyUpdate(ctx context.Context, tx *sql.Tx, input Update) (UpdateResult, error) {
+	if input.Validate() != nil {
+		return UpdateResult{Type: Invalid}, nil
+	}
 	var snapshot Snapshot
 	err := tx.QueryRowContext(ctx, `SELECT id, title, status, revision FROM reviews WHERE id = ?`, input.ID).Scan(&snapshot.ID, &snapshot.Title, &snapshot.Status, &snapshot.Revision)
 	if errors.Is(err, sql.ErrNoRows) {

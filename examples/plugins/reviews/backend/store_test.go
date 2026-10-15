@@ -71,6 +71,11 @@ func TestReceiptFailureRollsBackBusinessTransition(t *testing.T) {
 	if _, err := testUpdate(t.Context(), store, "original-call", input); err == nil {
 		t.Fatal("receipt failure became success")
 	}
+	invalid := input
+	invalid.ExpectedRevision = 0
+	if refused, err := testUpdate(t.Context(), store, "refused-call", invalid); err == nil || refused.Type != "" {
+		t.Fatalf("failed refusal receipt became a known result: %+v, %v", refused, err)
+	}
 	current, err := store.List(t.Context())
 	if err != nil || current[0].Revision != 1 || current[0].Status != Open {
 		t.Fatalf("failed commit advanced review: %+v, %v", current, err)
@@ -163,7 +168,7 @@ func TestReceiptHistoryDoesNotExhaustMutationAdmission(t *testing.T) {
 	}
 }
 
-func TestInvalidInputsCannotConsumeInvocationOrAdvanceReview(t *testing.T) {
+func TestMalformedInputsCannotConsumeInvocationOrAdvanceReview(t *testing.T) {
 	store := openTestStore(t, t.TempDir())
 	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
 	for _, id := range []string{"", strings.Repeat("x", 257), "invalid\xff"} {
@@ -173,13 +178,11 @@ func TestInvalidInputsCannotConsumeInvocationOrAdvanceReview(t *testing.T) {
 	}
 	for _, invalid := range []Update{
 		{ID: strings.Repeat("x", 129), ExpectedRevision: 1, Status: Resolved},
-		{ID: ExampleReviewID, Status: Resolved},
-		{ID: ExampleReviewID, ExpectedRevision: MaxRevision + 1, Status: Resolved},
 		{ID: ExampleReviewID, ExpectedRevision: 1, Status: "unknown"},
 	} {
 		result, err := testUpdate(t.Context(), store, "original", invalid)
-		if err != nil || result.Type != Invalid {
-			t.Fatalf("invalid input = %+v, %v", result, err)
+		if err == nil || result.Type != "" {
+			t.Fatalf("malformed input became an admitted result: %+v, %v", result, err)
 		}
 	}
 	if _, err := testUpdate(t.Context(), store, "original", Update{ID: "invalid\xff", ExpectedRevision: 1, Status: Resolved}); err == nil {
@@ -188,6 +191,62 @@ func TestInvalidInputsCannotConsumeInvocationOrAdvanceReview(t *testing.T) {
 	result, err := testUpdate(t.Context(), store, "original", input)
 	if err != nil || result.Type != Updated || result.Review.Revision != 2 {
 		t.Fatalf("admitted input after invalid proposals = %+v, %v", result, err)
+	}
+}
+
+func TestInvalidBusinessInputRetainsItsOriginalReceiptAcrossRestart(t *testing.T) {
+	for _, invalid := range []Update{
+		{ID: "", ExpectedRevision: 1, Status: Resolved},
+		{ID: ExampleReviewID, Status: Resolved},
+		{ID: ExampleReviewID, ExpectedRevision: -1, Status: Resolved},
+		{ID: ExampleReviewID, ExpectedRevision: MaxRevision + 1, Status: Resolved},
+		{ID: strings.Repeat("界", 43), ExpectedRevision: 1, Status: Resolved},
+	} {
+		t.Run(fmt.Sprintf("%s/%d", invalid.ID, invalid.ExpectedRevision), func(t *testing.T) {
+			directory := t.TempDir()
+			store := openTestStore(t, directory)
+			for range 2 {
+				refused, err := testUpdate(t.Context(), store, "refused", invalid)
+				if err != nil || refused.Type != Invalid || refused.Review != nil {
+					t.Fatalf("business refusal = %+v, %v", refused, err)
+				}
+			}
+			valid := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
+			if changed, err := testUpdate(t.Context(), store, "refused", valid); err != nil || changed.Type != IdentityConflict {
+				t.Fatalf("refused identity accepted changed input: %+v, %v", changed, err)
+			}
+			if accepted, err := testUpdate(t.Context(), store, "next", valid); err != nil || accepted.Type != Updated || accepted.Review == nil || accepted.Review.Revision != 2 {
+				t.Fatalf("fresh identity lost independent business work: %+v, %v", accepted, err)
+			}
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
+			store = openTestStore(t, directory)
+			contracts, err := NewContracts()
+			if err != nil {
+				t.Fatal(err)
+			}
+			admitted, err := jsoninput.Encode(invalid)
+			if err != nil {
+				t.Fatal(err)
+			}
+			receipt, err := store.Receipt(t.Context(), pluginsdk.ReceiptRequest{ID: "refused", Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
+			if err != nil || !receipt.Found {
+				t.Fatalf("lost original invalid-input receipt: %+v, %v", receipt, err)
+			}
+			result, err := pluginsdk.DecodeReply[UpdateResult](receipt.Reply)
+			if err != nil || result.Type != Invalid || result.Review != nil {
+				t.Fatalf("invalid-input receipt changed: %+v, %v", result, err)
+			}
+			var receipts int
+			if err := store.db.QueryRowContext(t.Context(), `SELECT count(*) FROM invocations`).Scan(&receipts); err != nil || receipts != 2 {
+				t.Fatalf("refusal or success was lost or duplicated: %d, %v", receipts, err)
+			}
+			current, err := store.List(t.Context())
+			if err != nil || len(current) != 1 || current[0].Revision != 2 || current[0].Status != Resolved {
+				t.Fatalf("refusal/recovery advanced the review: %+v, %v", current, err)
+			}
+		})
 	}
 }
 

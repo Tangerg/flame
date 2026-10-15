@@ -95,6 +95,20 @@ func reviewHistoryBackend(t *testing.T) (string, func()) {
 }
 
 func TestReviewReceiptHistoryMatchesModelToolAndExecutableCLI(t *testing.T) {
+	for _, scenario := range []struct {
+		name, input, outcome string
+	}{
+		{"missing_review", `{"id":"missing-history-review","expectedRevision":1,"status":"resolved"}`, `{"type":"notFound"}`},
+		{"invalid_revision", `{"id":"example-review","expectedRevision":0,"status":"resolved"}`, `{"type":"invalidUpdate"}`},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			testReviewReceiptHistoryEntrances(t, scenario.input, scenario.outcome)
+		})
+	}
+}
+
+func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected string) {
+	t.Helper()
 	url, closeBackend := reviewHistoryBackend(t)
 	defer closeBackend()
 	source := reviewExamplePackage(t)
@@ -109,15 +123,14 @@ func TestReviewReceiptHistoryMatchesModelToolAndExecutableCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	const toolName = "reviews_update_review"
-	const updateInput = `{"id":"missing-history-review","expectedRevision":1,"status":"resolved"}`
 	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 		if len(request.Tools) == 0 {
-			return completedTextResponse("missing review"), nil
+			return completedTextResponse("business refusal"), nil
 		}
 		conversation := withoutDeferredCatalog(request)
 		for _, part := range conversation[len(conversation)-1].Parts {
 			if part.ToolResult != nil && part.ToolResult.Name == toolName {
-				return completedTextResponse("observed the missing-review refusal"), nil
+				return completedTextResponse("observed the business refusal"), nil
 			}
 		}
 		call := chat.ToolCall{ID: "history-call", Name: "search_tools", Arguments: `{"query":"select:` + toolName + `"}`}
@@ -153,6 +166,16 @@ func TestReviewReceiptHistoryMatchesModelToolAndExecutableCLI(t *testing.T) {
 	if err != nil || initial.Failure != nil {
 		t.Fatalf("initial review read: %+v, %v", initial, err)
 	}
+	key := "cli_" + strings.Repeat("d", 32)
+	malformed := request
+	malformed.Method = "io.github.tangerg.flame.examples/reviews.update"
+	malformed.Input = `{"id":"` + strings.Repeat("x", 129) + `","expectedRevision":1,"status":"resolved"}`
+	refused := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, malformed, delivery.Options{
+		IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion},
+	})
+	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrInvalidParams) || refused.Value != nil {
+		t.Fatalf("malformed input entered command execution: %+v", refused)
+	}
 	session := runtime.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Receipt history"}, "session").(*protocol.Session)
 	started := runtime.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Resolve the inspected review"}}}, delivery.Options{IdempotencyKey: "history-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if started.Failure != nil {
@@ -176,7 +199,7 @@ func TestReviewReceiptHistoryMatchesModelToolAndExecutableCLI(t *testing.T) {
 		t.Fatalf("known history refusal became uncertain execution: %+v", finished)
 	}
 	items := runtime.must(delivery.ItemsList, protocol.ListItemsRequest{Scope: protocol.ItemListScope{Type: protocol.ItemScopeRun, RunID: runID}}, "").(*protocol.ListItemsResponse)
-	want, err := jsoninput.Parse([]byte(`{"type":"notFound"}`))
+	want, err := jsoninput.Parse([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +224,6 @@ func TestReviewReceiptHistoryMatchesModelToolAndExecutableCLI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key := "cli_" + strings.Repeat("d", 32)
 	arguments := []string{"plugins", "call", "--request", string(encoded), "--command-id", key}
 	assertReply := func(reply *protocol.CallPluginResponse) {
 		t.Helper()

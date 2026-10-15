@@ -31,7 +31,18 @@ Detailed evidence and each row live in
 
 ## Current product changes
 
-Runtime production Go remains `b2dcbfbba`. The latest Reviews production slice
+The latest Runtime delta classifies fresh command input rejection at its actual
+pre-binding boundary as invalid parameters, preserving original-route-first
+recovery. Reviews now saves structurally admitted `invalidUpdate` decisions in
+the existing transaction and validates receipt shape without redoing the
+business decision. Its compiled input schema derives from the same public Go
+type; a single 128-byte ID bound projects a conservative character bound without
+weakening the byte rule. Malformed public input keeps its identity available;
+an admitted invalid business decision owns its identity and original receipt.
+No post-dispatch error, provider replay, host business cache or old format is added.
+Current schema/TS/component consumers are regenerated together.
+
+The preceding Reviews production slice `490bb1105`
 removes its incorrect 4,096-entry lifetime receipt quota and `receiptCapacity`
 outcome, with regenerated schema/TS/component resources and no compatibility.
 The old branch returned a known refusal before saving its receipt; actual CLI
@@ -96,6 +107,36 @@ Other completed contract/dependency/retention/model/feature ownership work remai
 recorded in progress rather than duplicated here.
 
 ## Actual current qualification
+
+The invalid-input public regression first fails on old source (case 23.31s,
+package 33.101s): the CLI cannot recover its known refusal and private storage
+contains only 4,096 setup receipts. A subsequent public malformed-input assertion
+fails the focused race group 113.281s by exposing `internal_error`; the local
+pre-binding classification repair resolves that path without changing assertions.
+Final actual missing-review/invalid-revision model/CLI cases pass normal 86.684s.
+Complete Reviews normal backend/analyzer pass 5.166/1.526s, race 10.668/3.062s;
+two command packages have no tests. Complete pluginservices race passes 145.790s
+before the additional malformed-stream case, which passes final focused race
+2.957s. Affected vet, Reviews build/typecheck/component build and an isolated
+byte-identical component rebuild pass. Current complete execution/bootstrap race
+at `-json -race -p 2 -count=1 -timeout=900s` passes 459.715/605.718s: 386 top-level
+passes, zero failures/skips, all eight SIGKILL cuts (parent 63.07s) and lost Core
+opening 4.29s. Both actual model/CLI cases pass (parent 47.39s). No source overlay,
+GOFLAGS, exclusion or original assertion/context change is used. This is not a
+new whole-product or historical-deadline diagnosis.
+Complete current Runtime architecture passes 30.155s; eleven Reviews/analyzer
+artifacts reproduce byte-for-byte after generation/normalization. Formatting and
+diff checks pass.
+
+Default `go mod tidy` fails against the unchanged declared old Runtime version:
+it lacks the already used capability/jsoninput/plugin/point packages. Existing
+`invopop/jsonschema v0.14.0` is promoted to direct for the public schema extension;
+no version or sum changes. Do not claim a passing tidy or released-graph check.
+Current isolated author artifacts, whole-product/native/shared-TS and graphical
+gates are not newly qualified by this slice. Published metadata is not spoofed
+and no replace, ignored error or compatibility path is added.
+
+The preceding quota repair's qualification follows:
 
 The latest Reviews quota repair has a causal RED/GREEN regression: old source
 refuses the first post-cutoff mutation with `receiptCapacity` (case 1.65s, package
@@ -385,10 +426,9 @@ history/refusal recovery. The previous capacity contract is removed without
 compatibility; do not cite its old fresh-response proof as current behavior.
 Current independent author artifacts must be requalified after that contract
 repair; the recorded whole-product/native/archive passes precede it.
-The remaining `Store.Update` pre-transaction `Invalid` outcome also needs a
-separate public-admission/original-key audit. The direct malformed-input Store
-test alone does not prove that every public known-refusal class has a receipt;
-the current quota repair does not claim that broader guarantee.
+The `Invalid` audit now has a causal public regression and production writer/
+reader/admission repairs. Its exact qualification is recorded above; do not
+extend that evidence to actual rendered UI or every CLI refusal class.
 Do not declare the whole plugin system 100%.
 
 Read-only original inputs:

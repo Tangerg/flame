@@ -246,7 +246,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 			return plugin.CommandBinding{}, errors.New("managed plugin: command requires a command contract")
 		}
 		if err := binding.ValidateInput(admitted); err != nil {
-			return plugin.CommandBinding{}, err
+			return plugin.CommandBinding{}, errors.Join(plugin.ErrInvalid, err)
 		}
 		command, routeErr = c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.CommandAdmission, error) {
 			current, err := resolve(ctx)

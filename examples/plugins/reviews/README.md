@@ -139,6 +139,20 @@ consume a permanent mutation quota and are never expired or deleted to make
 space. Valid new business decisions, including known refusals, retain their
 original receipts in the same transaction.
 
+The Go-owned `Update` schema bounds identifiers to 128 characters. The business
+rule retains its stricter 128-byte limit, derived from the same constant; Unicode
+input can satisfy structural admission and still receive `invalidUpdate`. Zero,
+negative or above-maximum expected revisions and an empty identifier are known
+business refusals. They consume the original command identity and save a receipt;
+corrected input requires a fresh identity. Malformed types, unknown status values
+and structural overflow are rejected before command admission and cannot consume
+an identity. Runtime projects such schema rejection as `invalid_params` before
+binding/dispatch, for both unary and streaming commands.
+
+The Store compiles the same Go-owned input schema at open and uses it for writes
+and receipt integrity checks. Receipt reads do not rerun business admission:
+an original `invalidUpdate` remains recoverable after restart or later work.
+
 The former 4,096-entry lifetime cap and `receiptCapacity` outcome are removed.
 That branch returned a known refusal without storing its receipt, so a later
 read-only reconciliation could only report uncertainty. The current operation
@@ -185,7 +199,9 @@ The temporary offline proxy is not a published release. That independent artifac
 qualification has not yet been repeated after removal of the lifetime quota.
 
 `TestTypedAndToolEntrancesShareTheBusinessReceipt` compares complete canonical
-results and the Tool error flag for revision and invocation conflicts. It retains
+results and the Tool error flag for revision, invocation and invalid-input refusals.
+It also reads the public receipt of invalid revision and Unicode byte-overflow
+decisions. It retains
 4,096 receipts through real Store updates, admits another successful update and
 preserves new business refusals and original recovery beyond that history size.
 This SDK/MCP test uses
@@ -207,13 +223,17 @@ the test needs no provider credentials or external service.
 
 `go test ./internal/bootstrap -run TestReviewReceiptHistory -count=1` instead
 starts a separate HTTP backend fixture with 4,096 real historical receipts before
-Runtime connects. A model Run and the executable CLI receive the same complete
-missing-review refusal. The CLI and public Endpoint recover the new refusal
+Runtime connects. Separate model Run/executable CLI cases compare the complete
+missing-review and invalid-revision refusals. Each first rejects an oversized
+public request, then uses that still-available command identity for actual work.
+The CLI and public Endpoint recover the new refusal
 through the original read-only receipt query. Child-process counters prove one
 Tool dispatch, one typed update dispatch and two receipt reads; final private
 assertions retain the original Review and all 4,098 receipts. The Store regression
 also reopens the private database and reads original success/refusal receipts
-after an actual successful update beyond the old cutoff. These cases do not
+after an actual successful update beyond the old cutoff. Separate invalid-input
+cases verify exact recovery and changed-input conflict across private restart.
+These cases do not
 execute the board or invocation conflict through the actual CLI.
 
 This package's MCP tools execute through Session-owned Runs and the existing

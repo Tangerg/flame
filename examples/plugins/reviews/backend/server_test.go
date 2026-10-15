@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
@@ -189,6 +190,21 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	}
 	assertToolOutcome("tool-stale", input, conflict)
 	assertToolOutcome("shared-command", changed, identityConflict)
+	for _, invalid := range []Update{
+		{ID: ExampleReviewID, ExpectedRevision: 0, Status: Resolved},
+		{ID: strings.Repeat("界", 43), ExpectedRevision: 1, Status: Resolved},
+	} {
+		identity := fmt.Sprintf("invalid-%s-%d", invalid.ID, invalid.ExpectedRevision)
+		refused, err := updateMethod.CallCommand(t.Context(), identity, invalid)
+		if err != nil || refused.Type != Invalid || refused.Review != nil {
+			t.Fatalf("typed invalid-input refusal = %+v, %v", refused, err)
+		}
+		assertToolOutcome(identity, invalid, refused)
+		recovered, found, err := updateMethod.ReadReceipt(t.Context(), identity, invalid)
+		if err != nil || !found || !reflect.DeepEqual(recovered, refused) {
+			t.Fatalf("typed invalid-input receipt = %+v, %t, %v", recovered, found, err)
+		}
+	}
 
 	missing := Update{ID: "history-missing", ExpectedRevision: 1, Status: Open}
 	admitted, err := jsoninput.Encode(missing)

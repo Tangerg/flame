@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
@@ -90,6 +91,44 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestUpdateStructuralAdmissionBoundsInputBeforeBusinessDecision(t *testing.T) {
+	contracts, err := NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	method, found := contracts.Capability.Method(contracts.Update.Name())
+	if !found {
+		t.Fatal("update method is absent")
+	}
+	for _, scenario := range []struct {
+		name            string
+		input           Update
+		shape, business bool
+	}{
+		{"ascii_boundary", Update{ID: strings.Repeat("x", 128), ExpectedRevision: 1, Status: Open}, true, true},
+		{"ascii_overflow", Update{ID: strings.Repeat("x", 129), ExpectedRevision: 1, Status: Open}, false, false},
+		{"unicode_inside_byte_bound", Update{ID: strings.Repeat("界", 42), ExpectedRevision: 1, Status: Open}, true, true},
+		{"unicode_outside_byte_bound", Update{ID: strings.Repeat("界", 43), ExpectedRevision: 1, Status: Open}, true, false},
+		{"unicode_shape_overflow", Update{ID: strings.Repeat("界", 129), ExpectedRevision: 1, Status: Open}, false, false},
+		{"empty_identifier", Update{ID: "", ExpectedRevision: 1, Status: Open}, true, false},
+		{"zero_revision", Update{ID: ExampleReviewID, ExpectedRevision: 0, Status: Open}, true, false},
+		{"unknown_status", Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: "unknown"}, false, false},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			admitted, err := jsoninput.Encode(scenario.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if accepted := method.ValidateInput(admitted) == nil; accepted != scenario.shape {
+				t.Fatalf("structural admission = %t, want %t", accepted, scenario.shape)
+			}
+			if accepted := scenario.input.Validate() == nil; accepted != scenario.business {
+				t.Fatalf("business admission = %t, want %t", accepted, scenario.business)
+			}
+		})
 	}
 }
 

@@ -189,6 +189,7 @@
                 "type": "integer"
               },
               "id": {
+                "maxLength": 128,
                 "type": "string"
               },
               "status": {
@@ -213,6 +214,7 @@
             "type": "integer"
           },
           "id": {
+            "maxLength": 128,
             "type": "string"
           },
           "status": {

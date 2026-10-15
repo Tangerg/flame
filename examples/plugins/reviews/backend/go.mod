@@ -7,6 +7,7 @@ require (
 	github.com/Tangerg/go-sdk v1.8.1-scope.1
 	github.com/Tangerg/scope/core v0.50.0
 	github.com/Tangerg/scope/mcp v0.50.0
+	github.com/invopop/jsonschema v0.14.0
 	modernc.org/sqlite v1.60.1
 )
 
@@ -20,7 +21,6 @@ require (
 	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/google/pprof v0.0.0-20261008003335-7bae8d8c4c9e // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/invopop/jsonschema v0.14.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect

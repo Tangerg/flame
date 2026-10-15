@@ -55,6 +55,30 @@ func TestInstalledCommandBindingPersistenceFailurePreventsDispatch(t *testing.T)
 	}
 }
 
+func TestMalformedStreamInputIsRefusedBeforeBindingAndLeavesIdentityAvailable(t *testing.T) {
+	f := newStreamFixture(t, "complete")
+	ctx := operation.Bind(t.Context(), "records.stream", "malformed-input")
+	original := f.request.Input
+	malformed, err := jsoninput.Parse([]byte(`{"unexpected":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.request.Input = malformed
+	events, err := f.run(t, ctx)
+	if !errors.Is(err, plugin.ErrInvalid) || errors.Is(err, plugin.ErrCommandUnconfirmed) || len(events) != 0 || f.invocations.Load() != 0 {
+		t.Fatalf("malformed stream entered execution or uncertainty: events=%+v calls=%d, %v", events, f.invocations.Load(), err)
+	}
+	var bindings int
+	if err := f.host.QueryRowContext(t.Context(), `SELECT count(*) FROM plugin_commands`).Scan(&bindings); err != nil || bindings != 0 {
+		t.Fatalf("malformed stream retained a command binding: %d, %v", bindings, err)
+	}
+	f.request.Input = original
+	events, err = f.run(t, ctx)
+	if err != nil || len(events) != 2 || events[0].Kind != plugins.StreamChunk || events[1].Kind != plugins.StreamResult || f.invocations.Load() != 1 {
+		t.Fatalf("malformed stream consumed the original identity: events=%+v calls=%d, %v", events, f.invocations.Load(), err)
+	}
+}
+
 func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	t.Helper()
 	f := &streamFixture{}

@@ -373,6 +373,13 @@ identity. Tool and model deployment identities include this proof for restoratio
 Known command receipt lookup remains with its original business owner and does not require replaying collaborators.
 Command observation releases its dependencies without erasing the original route.
 
+Fresh command input is validated against the concrete export's contract before
+persisting a binding or dispatching. Schema rejection projects as `invalid_params`
+and leaves that identity available. Original-route lookup stays first on
+reconciliation; it never revalidates an accepted command against a replacement
+provider. Storage, reply validation and other post-dispatch failures still retain
+execution uncertainty rather than becoming caller-input refusals.
+
 `plugin_commands.activation_json` is required immutable routing evidence containing
 that identity and its release projection. The former release-only column is removed.
 Former Runtime databases are refused before writes; retain them separately and use
