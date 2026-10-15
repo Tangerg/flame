@@ -1,7 +1,7 @@
 # Unified plugin refactor handoff
 
-Original-proposal acceptance is reopened by the 2026-10-15 audit: **30 Evidenced,
-17 Partial, 1 Open** across P01-P48. These are evidence counts, not implementation
+Original-proposal acceptance is reopened by the 2026-10-15 audit: **34 Evidenced,
+13 Partial, 1 Open** across P01-P48. These are evidence counts, not implementation
 percentages. P13 is implemented and normal-verified at `6a88bd45a`; the global gates below
 precede that change and must not be relabeled as current. The whole-plugin-system
 100% claim remains withdrawn. The distinct causal
@@ -26,6 +26,22 @@ detailed failures, measurements, individual proposal rows and review reconciliat
   root/module instructions apply. No sub-agent delegation occurred.
 
 ## Current implementation
+
+`ef5a9a0f3` closes the four missing real-process scenarios P12/P16/P18/P41:
+installed nested observer order, durable inner command receipt with outer failure,
+actual post-chunk process exit without mutation replay, and executable CLI ->
+installed backend -> Core callback. The CLI test exposes and fixes inherited
+HTTP key/namespace/cursor metadata; the Core error encoder no longer lets a
+nested transport error replace its projected vocabulary. Four focused bootstrap
+scenarios pass together 50.975s; complete Delivery/dispatch/transport/HTTP/SDK pass.
+Current global race/native/artifact checks still need the final frozen source.
+
+The original historical post-`366ffff6a` CLI/root + runtimebinding pair passes
+at `-race -p 2` in an external overlay (80.695/68.655s); safe steer reaches its
+second provider at 1.252s and closes at 1.435s. The historical timeout is not yet
+causally explained. A complete historical diagnostic is running; do not label
+its result current acceptance or infer a cause from a pass. P48 source/docs
+cleanup and failed/withdrawn captured-contributor qualification remain next.
 
 `6a88bd45a` adds public ordered Tool proposal queries, preserving logical identity
 and Tool authority before final schema/approval. Bindings/activation/dependencies

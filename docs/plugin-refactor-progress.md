@@ -4,8 +4,8 @@
 
 P13 public installed Tool proposal transformation is implemented and verified
 in ordinary backend tests at `6a88bd45a`. Overall acceptance remains **incomplete**:
-**30 Evidenced / 17 Partial / 1 Open**. These are evidence counts, not an
-implementation percentage. P12/P16/P18/P41, P48, safe-steer causal investigation
+**34 Evidenced / 13 Partial / 1 Open**. These are evidence counts, not an
+implementation percentage. P48, safe-steer causal investigation
 and the unexecuted graphical criteria remain. Current complete parallel/vet/native/
 standalone-artifact qualification is pending after this new product change.
 
@@ -38,6 +38,46 @@ The original worktree/`codex/unified-plugins` branch and last integrated main
 stash mutation or user-data conversion occurred. The private checkpoint format
 changes explicitly: preserve old data and finish old waiting work with its original
 binary. There is no compatibility reader, dual writer, silent fallback or replay.
+
+### Real installed/CLI acceptance and callback isolation (2026-10-15)
+
+- `ef5a9a0f3` qualifies P12/P16/P18/P41 in actual processes. The table now has
+  34 Evidenced, 13 Partial and 1 Open rows; the thirteen graphical rows and all
+  four review cross-scenarios remain Partial. Current global gates are pending.
+- P12 installs two independent public-SDK stdio model observers. Their production
+  stream trace proves outer-before/inner-before/inner-after/outer-after, unchanged
+  original call identity, frozen in-flight order and reversed order on the next Run.
+- P16's external public-SDK executable captures a call-bound command `next`. The
+  inner SQLite business mutation and private receipt commit once; the outer layer
+  then fails. Same-command redelivery reads that receipt, stale `next` is refused,
+  and reopening private storage retains exactly one mutation. This proves real
+  author command decoration, not a new general Core command-middleware entrance.
+- P18 exits the actual installed stdio process after its chunk yield is acknowledged.
+  Exactly one witnessed chunk and no final success survive. Unknown work prevents
+  uninstall; explicit reconnect/redelivery queries the original receipt without
+  redispatching the original handler. The missing receipt stays unknown.
+- P41 builds and executes the actual CLI over authenticated HTTP. An installed
+  Schedules business command calls Core, returns its accepted Run reference and
+  preserves it on same-command redelivery, without a graphical page or relay.
+- This real HTTP path exposes inherited transport metadata: an empty nested query
+  header retained its parent's command key, refusing `runtime.discover`. Each new
+  request now replaces key/namespace/cursor even when absent. Another RED/GREEN
+  test proves a nested JSON-RPC error could bypass Core's projected problem; the
+  dispatch boundary now encodes only the Delivery-owned error vocabulary.
+- The initial CLI fixture also mismatched advertised and endpoint store namespaces;
+  it now uses the production endpoint constructor. The isolation assertion remains.
+  Failed iterations remain failures; original assertions/deadlines are unchanged.
+- Passed: the four installed proposal/order/process-exit/CLI tests together 50.975s;
+  complete Delivery, dispatch, transport, HTTP and SDK packages
+  12.748/3.534/2.969/2.421/3.387s, including the real command decorator regression.
+  P41 independently passes 21.816s; earlier focused order/process-exit tests pass
+  8.088/8.070s and the command decorator passes 0.515s.
+- Historical safe-steer diagnosis on `366ffff6a` via an external source overlay
+  preserves both assertions and the 10s context. CLI/root and runtimebinding run
+  together at `-race -p 2`: 80.695/68.655s pass; safe execution reaches the second
+  provider at 1.252s and finishes its stream at 1.435s. This does not reproduce or
+  explain the historical timeout. A complete historical parallel diagnostic is
+  running separately; neither diagnostic is current-source acceptance.
 
 ### Installed Tool proposal boundary (2026-10-15)
 
@@ -1767,7 +1807,7 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-Original-proposal acceptance remains incomplete: 17 Partial rows, P48 cleanup and
+Original-proposal acceptance remains incomplete: 13 Partial rows, P48 cleanup and
 the four review cross-scenarios above. The two reopened production defects and
 original complete parallel-race gate are closed; that narrower result does not
 close the other criteria. Historical slice entries retain their original evidence.
@@ -2135,13 +2175,13 @@ and unrun, so those requirements remain unverified rather than waived.
 | P09 | Backend never completes handshake | Evidenced | `TestBlockedStdioPluginReleasesProcessAfterRestartAndDisable` constructs/reopens Runtime, lists installations and disables the actual never-handshaking child. It proves backend management availability. |
 | P10 | Host callback occurs during an outer backend request | Evidenced | `TestPublicCallbacksAreReentrantThroughARealHeadlessBackend` and installed observer callback tests exercise a host callback inside the outer backend request without a graphical client. |
 | P11 | Installed decorator wraps a real host model call | Evidenced | `TestExecutableBackendStreamsDecorationThroughOriginalModelNext` and installed observer/model-endpoint tests prove the public executable callback path and actual endpoint identity/evidence. |
-| P12 | Two decorators run | Partial | Frozen configuration/checkpoint order is tested by `TestOrderedCompositionFreezesExplicitOrderAndRejectsWithdrawnMembers` and `TestCapturedModelObserversRetainIdentityOrderAndInstallationDependencies`. `TestExecutableConsumesFrozenRemainingModelStream` uses two local Scope wrappers behind a callback. Missing: observed before/after order of two installed remote decorators through the production binding. |
+| P12 | Two decorators run | Evidenced | `TestInstalledModelDecoratorsObserveFrozenBeforeAfterOrder` installs two real independent stdio decorators through production composition/streaming, observes nested before/after order and original identity, changes configuration in flight and proves the captured order remains while the next Run reverses it. |
 | P13 | Decorator rewrites a Tool proposal | Evidenced | `6a88bd45a` provides the public installed `ToolProposalContract`. `TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformReplay` builds a real public-SDK stdio author, installs it beside Reviews, compares approval/execution/history, cold-restarts without another transformation, and checks private owner state and invalid-proposal refusal. Whole normal bootstrap and affected Go packages pass; current global race/artifact qualification is pending. |
 | P14 | A command continuation is redelivered | Evidenced | Public command/stream continuation and original receipts are verified. `6b3a1d823` removes Core Schedule-specific reconstruction, proves unrelated Tool recovery and preserves all eight crash cuts. The final original 174-package parallel race and all eight crash cuts pass after immutable contract reuse and per-group MCP capture/restoration; earlier failures remain recorded in Current stage. |
 | P15 | A stale continuation is invoked | Evidenced | Backend verified by expired/captured callback, next withdrawal and replacement activation refusal tests. |
-| P16 | Inner mutation succeeds, outer decorator fails | Partial | `TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart` plus streaming/model-output tests retain known inner model result/usage. Missing: durable business mutation followed by outer decorator failure and original-receipt redelivery. Model completion is narrower than the original mutation scenario. |
+| P16 | Inner mutation succeeds, outer decorator fails | Evidenced | `TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt` uses an actual external public-SDK executable and call-bound command next. Private SQLite mutation/receipt commits once, outer failure stays unknown, redelivery reads the original receipt, stale next is refused and private restart retains one mutation. This is author-SDK command decoration, not an additional generic Core command middleware API. |
 | P17 | Stream consumer stops early | Evidenced | Backend/shared-client verified by early consumer withdrawal, cancellation/join and no premature final-result tests. |
-| P18 | Streaming backend disconnects after output began | Partial | `TestBackendStreamFailureKeepsPartialEvidenceWithoutRetry` yields a handler error; the shared TS stream fixture ends a simulated body before final evidence. Original receipt-only recovery is covered. Missing: actual backend/transport disconnection after witnessed output, with retained evidence and no automatic replay. |
+| P18 | Streaming backend disconnects after output began | Evidenced | `TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalCommand` exits a real installed stdio process after acknowledged output. It retains one chunk and unknown final evidence, refuses uninstall while unresolved, explicitly reconnects and queries the original receipt without reentering the mutation. |
 | P19 | A slow stream consumer receives a large result | Evidenced | Verified at backend stream/transport boundaries for pull backpressure, captured byte budgets and explicit capacity failure. |
 | P20 | A model route is changed by a plugin | Evidenced | Backend verified by actual selected provider/model/options, independent routes, metering and durable endpoint evidence. |
 | P21 | A query is called through Tool, CLI, and UI | Partial | Backend Tool/typed operations, CLI projections/adapters and component source share the operation owner. Actual Tool -> CLI -> rendered UI query equivalence has not run. The 95/95 source-consumer count does not prove this interaction. |
@@ -2164,7 +2204,7 @@ and unrun, so those requirements remain unverified rather than waived.
 | P38 | Private data remains after disable/uninstall | Evidenced | Backend withdrawal/uninstall and private namespace admission tests preserve retained data and prevent another installation adopting it. |
 | P39 | Open old result without its renderer | Partial | Current generic history/renderer selection and retained canonical evidence have source/backend proof. Opening an old result with its renderer absent in the graphical client has not run. |
 | P40 | Use a remote Runtime from Desktop/Web | Partial | Backend Runtime-host execution and authenticated exact-release resource delivery have implementation/tests. Actual remote multi-resource ESM rendering, shared identity/auth and connection replacement in Web and Wails have not run. |
-| P41 | Use plugin business commands from CLI without a page | Partial | Real CLI Reviews-history projection, CLI adapter business operations and actual headless backend callbacks are separately tested. Missing: an executable CLI business command invoking an installed backend that calls the host, in one acceptance scenario. No browser relay appears in the implementation. |
+| P41 | Use plugin business commands from CLI without a page | Evidenced | `TestExecutableCLIPluginCommandCallsTheHostWithoutAPage` builds/runs the actual CLI through authenticated HTTP to installed Schedules, creates private work and invokes its host callback to Core Run acceptance. Same-command redelivery retains the same accepted handle; no page or browser relay is involved. |
 | P42 | Load a purely portable Skill/MCP package | Evidenced | Portable Skill/MCP admission, independent failure and source semantics pass in the full backend suites. |
 | P43 | Load an obsolete Flame declaration or old protocol | Evidenced | Exact backend/Core protocol, strict declaration and retired request refusal tests pass; no old reader/alias is introduced. |
 | P44 | Open incompatible persisted state | Evidenced | Strict incompatible schema and immutable namespace admission tests pass. New current-schema regression also proves missing owner facts are not silently recreated. |
