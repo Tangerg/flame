@@ -9,14 +9,16 @@ matching evidence exists. Use only isolated Runtime/data/browser/native resource
 preserve the primary checkout, daily Runtime, stash, assertions and time limits,
 with no push or main merge.
 
-The original P01-P48 audit is **41 Evidenced / 7 Partial / 0 Open**, not an
+The original P01-P48 audit is **42 Evidenced / 6 Partial / 0 Open**, not an
 implementation percentage or a 100% claim. P13 public installed Tool proposals,
 P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup now have matching
 evidence, including the newly authorized complete frontend gate.
 P45 now has actual synchronous renderer-blocking recovery evidence; P40 has the
 matching Web/Wails resource, authentication and connection-retirement sequence.
-Seven graphical rows and two review cross-scenarios remain Partial; independent
-renderer recovery and remote component resources are Evidenced.
+P21 now has complete same-owner query and revision-refusal comparisons through
+the actual model Tool, executable CLI and rendered Reviews board. Six graphical
+rows and one review cross-scenario remain Partial; the three other review groups
+are Evidenced.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
 The user confirms no original Runtime log, goroutine dump or test data remains.
 Passing repetitions do not close that item. An earlier test-only qualification
@@ -29,6 +31,20 @@ passes at `9f5a66d51`; these gates do not close the historical deadlines or
 other graphical scenarios. The following frontend change has its own qualification.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
+
+The fresh installed Reviews UI reads revision 1 while executable CLI and actual
+model Tool return the same complete query. CLI advances private state to revision
+2; Tool, CLI and that stale UI submit identical revision-1 input and return the
+same complete revisionConflict result. The rendered conflict rereads revision 2,
+Tool keeps tool_failed while its Run completes, and same-identity CLI refusal
+redelivery preserves the original outcome. A final independent query confirms no
+further mutation. Browser network evidence and canonical cold snapshots prove
+the comparison; no result injection, source change or weakened assertion occurs.
+The first model attempt's retained port-1 provider configuration and initial
+scratch shape/command-ID mistakes are recorded as fixture failures. An explicit
+ordinary provider update fixes the isolated fixture before creating new Runs;
+none of this explains the historical deadlines. Next graphical criteria are
+P26/P31/P33/P36/P39/P46 and the no-Run UI/Runtime restart review.
 
 Fresh independent Go qualification now passes against the Scope-v0.51.1 graph:
 explicit b2f1da248 Runtime/localruntime unpublished archives, workspace off,
