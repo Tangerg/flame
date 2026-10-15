@@ -9,7 +9,7 @@ matching evidence exists. Use only isolated Runtime/data/browser/native resource
 preserve the primary checkout, daily Runtime, stash, assertions and time limits,
 with no push or main merge.
 
-The original P01-P48 audit is **43 Evidenced / 5 Partial / 0 Open**, not an
+The original P01-P48 audit is **44 Evidenced / 4 Partial / 0 Open**, not an
 implementation percentage or a 100% claim. P13 public installed Tool proposals,
 P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup now have matching
 evidence, including the newly authorized complete frontend gate.
@@ -17,7 +17,8 @@ P45 now has actual synchronous renderer-blocking recovery evidence; P40 has the
 matching Web/Wails resource, authentication and connection-retirement sequence.
 P21 now has complete same-owner query and revision-refusal comparisons through
 the actual model Tool, executable CLI and rendered Reviews board. P39 now proves
-fresh-window historical inspection without renderer/producer modules. Five graphical
+fresh-window historical inspection without renderer/producer modules. P26 now
+proves a UI-accepted Run survives window/component closure. Four graphical
 rows and one review cross-scenario remain Partial; the three other review groups
 are Evidenced.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
@@ -32,6 +33,18 @@ passes at `9f5a66d51`; these gates do not close the historical deadlines or
 other graphical scenarios. The following frontend change has its own qualification.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
+
+P26 now uses a Run actually started by the Web composer in the task workspace.
+While a bounded local provider gate holds its model exchange, the installed
+trajectory component displays the exact running Run. Closing the only task
+window retires its resource lease from 200 to 410; an independent public read
+still sees the same Run running. Releasing the gate completes it in 0.057s within
+the ten-second assertion. Cold CLI and reopened graphical trajectory show the
+same completed Run and reply. The primary model call remains one; the separately
+recorded title endpoint is auxiliary Session work. No production source or
+assertion/deadline changes occur. Temporary capability URL material and both
+windows are removed. Remaining rows: P31/P33/P36/P46, plus no-Run UI/Runtime
+restart and the unestablished historical safe-steer/MCP causes.
 
 P39 now has actual renderer-present and renderer-absent controls. The installed
 recorded-result filter mounts before independent CLI disables it and Reviews.

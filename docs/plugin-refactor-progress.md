@@ -9,7 +9,7 @@ actual matching evidence is obtained; authorization alone closes no criterion.
 Keep the primary checkout, daily Runtime/data, stash, original assertions and
 timeouts intact, with no push or main merge. New UI work uses isolated resources.
 
-Original-proposal acceptance remains **incomplete: 43 Evidenced / 5 Partial / 0 Open**.
+Original-proposal acceptance remains **incomplete: 44 Evidenced / 4 Partial / 0 Open**.
 These are evidence counts, not an implementation percentage. P13 public installed
 Tool proposal transformation, P12/P16/P18/P41 real-process scenarios and P48
 source/API/doc cleanup now have matching evidence. P45 now has actual synchronous
@@ -17,8 +17,9 @@ renderer-blocking recovery evidence. P40 now has the matching Web/Wails resource
 auth and connection-retirement proof. P21 now compares complete query and known
 revision-refusal results through an actual model Tool, executable CLI and rendered
 Reviews board. P39 now proves generic historical inspection after renderer and
-producer withdrawal in a fresh window, without loading their modules. Five
-graphical rows and the no-Run recovery review remain Partial;
+producer withdrawal in a fresh window, without loading their modules. P26 now
+proves a UI-accepted Run survives its initiating window and component teardown.
+Four graphical rows and the no-Run recovery review remain Partial;
 the three other review cross-scenarios are Evidenced.
 The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
@@ -34,6 +35,33 @@ canonical `0` still saves and recovers the business owner's `invalidUpdate` rece
 Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
+
+### Graphical acceptance: close the initiating UI during an accepted Run (2026-10-15)
+
+The actual Web composer creates a Session in the task workspace and starts a Run
+against the controlled local provider. The ordinary runs.start SSE response is
+HTTP 200. Open the installed Session trajectory component while the provider is
+held at a bounded 120-second fixture gate: it renders the exact Session, Run and
+started model endpoint. This is a real accepted Run initiated by the UI, rather
+than an independently started Run with an idle page beside it.
+
+Close the only task window before releasing the provider. An independent public
+runs.get still returns the same Run as running. The exact observed component
+resource lease changes from HTTP 200 to the specified 410. Release the fixture
+gate; the same Run finishes completed after 0.057s within the ten-second assertion.
+A cold executable-CLI snapshot contains the one Run and final authored reply.
+Reopen a new window and the same installed trajectory displays that Run and its
+primary model call as completed. The Session's separate title-generation endpoint
+is also visible; it is not counted as another primary Run call.
+
+This closes P26 without changing production code, assertions or timeouts. Private
+evidence contains the UI request/SSE metadata, held/running and finished owner
+reads, exact resource-retirement verdict, cold snapshot and before/reopened
+screenshots. An attempted CDP body read correctly cannot obtain an unfinished SSE
+body; acceptance instead uses its observed status and independent canonical owner
+read, never an invented full-body observation. Temporary capability URL material
+is deleted and both task windows are closed. P31/P33/P36/P46, the no-Run recovery
+review and both historical timeout causes remain incomplete.
 
 ### Graphical acceptance: history without its optional renderer (2026-10-15)
 
@@ -3263,7 +3291,7 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-Original-proposal acceptance remains incomplete: 5 Partial rows and
+Original-proposal acceptance remains incomplete: 4 Partial rows and
 the no-Run recovery review cross-scenario. The two reopened production defects and
 original complete parallel-race gate are closed; that narrower result does not
 close the other criteria. Historical slice entries retain their original evidence.
@@ -3296,7 +3324,7 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 - The released Scope v0.51.1 upgrade, complete parallel race and current standalone
   author qualification now pass within their recorded scopes. Preserve separate
   historical safe-steer/MCP uncertainty until causal evidence closes it.
-- P26/P31/P33/P36/P46 and the no-Run recovery review still need
+- P31/P33/P36/P46 and the no-Run recovery review still need
   matching graphical interaction. The user has lifted the prohibition; use isolated
   resources and do not substitute source/native builds for matching interactions.
 - The high and low dependency entries have source/exposure triage but remain
@@ -3619,7 +3647,7 @@ qualification.
 | Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
 | Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
 | Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
-| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures and five broader graphical rows remain unqualified. |
+| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures and four broader graphical rows remain unqualified. |
 | Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification and the separately unexecuted graphical criteria are not completed by P48 source closure. The newly authorized complete frontend gate now passes after removing the unused workspace Memory path and migrating stale fixtures; actual installed Web Memory still writes and refreshes its owner-backed row. |
 
 The review's four extra cross-acceptance groups are independently tracked:
@@ -3692,7 +3720,7 @@ Other criteria retain their exact scope.
 | P23 | A command identity is reused with different input | Evidenced | Private receipt/public binding/shared-client conflict tests and `TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt` verify the real executable CLI's known Core conflict, matching Go problem, new-key progress and unchanged original receipt after another command advances private state. `TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI` separately qualifies the private outcome, unchanged prior receipts, explicit unconfirmed recovery and fresh-key progress. |
 | P24 | Schedule dispatch acknowledgement is lost | Evidenced | Current-production complete qualification includes lost-Core-opening reconciliation in bootstrap and all eight `TestScheduleCreateRecoversAcrossSIGKILLCuts` cuts whose parent is in execution. The recorded complete parallel-race parent passes 112.75s; the later complete ordinary selection's parent passes 44.94s. Bootstrap alone does not execute those cuts. Subsequent CLI test-only slices do not rerun or extend this gate. |
 | P25 | Schedule is edited after work is captured | Evidenced | Verified by retained Schedule input after definition edit/deletion and negative receipt/capture cuts. |
-| P26 | UI closes during an accepted Run | Partial | Independent accepted Run and observation lifetimes have backend/shared-client evidence. Closing an actual installed view during that Run has not been executed. |
+| P26 | UI closes during an accepted Run | Evidenced | Actual Web composer accepts a Run in the task workspace and its installed trajectory displays the held model endpoint. Closing the initiating window retires the exact component lease from 200 to 410 while an independent canonical read still sees that Run running. After fixture release it completes in 0.057s within the ten-second assertion. Cold CLI and a reopened actual trajectory show the same one Run and final reply, without primary-call replay. |
 | P27 | Memory provider is absent versus enabled but broken | Evidenced | Backend absence versus operational failure tests pass. The complete Memory consumer migration preserves this distinction in real installed checks. |
 | P28 | Human memory edit races with curation publication | Evidenced | Private Memory review/ledger/watermark/CAS and concurrent publication tests pass, including exactly one winning generation. |
 | P29 | Full installed component uses Hooks and shared UI | Evidenced | The current production Web and separately identified Wails bundle both render independently installed Reviews with real Hooks and shared controls. Both submit owner-backed mutations; the emitted React/React DOM/JSX facade regression links actual public named imports. This is execution evidence, not a build-only substitution. |
