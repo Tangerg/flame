@@ -19,9 +19,11 @@ import (
 // Runtime binds the resolved Session/workspace scope to ctx before calling it;
 // resolution must not execute a Tool or call a model. A successful resolution
 // transfers manifest resource ownership to this execution, including on later
-// assembly failure. [toolset.Resolver] satisfies this port directly.
+// assembly failure. A nil capturedMCP admits the current catalog; a non-nil
+// slice retains only this group's original MCP authority before discovery and
+// collision resolution. [toolset.Resolver] satisfies this port directly.
 type InteractionToolResolver interface {
-	Manifest(ctx context.Context, group tool.Group) (toolset.Manifest, error)
+	Manifest(ctx context.Context, group tool.Group, capturedMCP []tool.Ref) (toolset.Manifest, error)
 }
 
 // InteractionToolInterpreter owns product policy facts implied by concrete

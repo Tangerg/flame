@@ -17,7 +17,9 @@ import (
 )
 
 type interactionDeploymentSet struct {
-	manifests         []toolset.Manifest
+	// Connection publication can occur between group resolutions. Recovery must
+	// retain each group's authority rather than reconstructing their union.
+	manifests         map[domaintool.Group]toolset.Manifest
 	root              agent.Deployment
 	delegatesByParent map[agent.DeploymentRef]map[string]agent.Deployment
 	managedChildren   map[agent.DeploymentRef]struct{}
@@ -82,9 +84,10 @@ func (i *InteractionExecutor) buildInteractionDeployments(
 	start runs.RootExecutionStart,
 	model *observedInteractionModel,
 	counter ModelContextInputTokenCounter,
+	checkpoint *interactionCheckpointState,
 ) (*interactionDeploymentSet, error) {
 	builder, err := i.newInteractionDeploymentBuilder(
-		ctx, session, start, model, counter,
+		ctx, session, start, model, counter, checkpoint,
 	)
 	if err != nil {
 		return nil, err
@@ -115,12 +118,13 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	start runs.RootExecutionStart,
 	model *observedInteractionModel,
 	counter ModelContextInputTokenCounter,
+	checkpoint *interactionCheckpointState,
 ) (_ *interactionDeploymentBuilder, err error) {
 	instructions, err := interactionInstructionContext(start.WorkingContext)
 	if err != nil {
 		return nil, err
 	}
-	rootManifest, err := i.resolveInteractionManifest(ctx, domaintool.GroupRoot)
+	rootManifest, err := i.resolveInteractionManifest(ctx, domaintool.GroupRoot, checkpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +132,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 		executor: i, session: session, start: start, model: model, counter: counter,
 		instructions: instructions, rootManifest: rootManifest,
 		deployments: &interactionDeploymentSet{
-			manifests:         []toolset.Manifest{rootManifest},
+			manifests:         map[domaintool.Group]toolset.Manifest{domaintool.GroupRoot: rootManifest},
 			toolChildren:      make(map[agent.DeploymentRef]struct{}),
 			toolContracts:     make(map[agent.DeploymentRef]map[domaintool.Ref]toolcontract.Contract),
 			toolSets:          make(map[agent.DeploymentRef]interaction.ToolSet),
@@ -149,11 +153,11 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 		builder.deployments.treeLimits.MaxActiveChildren = uint32(min(uint64(i.policy.maxConcurrentToolCalls)+runs.MaxActiveChildRuns, math.MaxUint32))
 	}
 	if builder.maxDepth > 0 {
-		builder.delegatedManifest, err = i.resolveInteractionManifest(ctx, domaintool.GroupDelegated)
+		builder.delegatedManifest, err = i.resolveInteractionManifest(ctx, domaintool.GroupDelegated, checkpoint)
 		if err != nil {
 			return nil, err
 		}
-		builder.deployments.manifests = append(builder.deployments.manifests, builder.delegatedManifest)
+		builder.deployments.manifests[domaintool.GroupDelegated] = builder.delegatedManifest
 	}
 	return builder, nil
 }
@@ -351,11 +355,20 @@ func (i *interactionDeploymentBuilder) deploymentDefinition(
 func (i *InteractionExecutor) resolveInteractionManifest(
 	ctx context.Context,
 	group domaintool.Group,
+	checkpoint *interactionCheckpointState,
 ) (toolset.Manifest, error) {
+	var captured []domaintool.Ref
+	if checkpoint != nil {
+		var found bool
+		captured, found = checkpoint.mcpManifests[group]
+		if !found {
+			return toolset.Manifest{}, errors.New("execution: captured Tool group is missing")
+		}
+	}
 	if i.config.ToolResolver == nil {
 		return toolset.Manifest{}, nil
 	}
-	manifest, err := i.config.ToolResolver.Manifest(ctx, group)
+	manifest, err := i.config.ToolResolver.Manifest(ctx, group, captured)
 	if err != nil {
 		return toolset.Manifest{}, fmt.Errorf("execution: resolve Interaction %s Tools: %w", group, err)
 	}

@@ -37,7 +37,7 @@ const runAsMCPServerEnv = "FLAME_TEST_RUN_AS_MCP_SERVER"
 
 func resolvedRootTools(t *testing.T, resolver *toolset.Resolver) []toolcontract.Tool {
 	t.Helper()
-	manifest, err := resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
+	manifest, err := resolver.Manifest(attachedRun(t), domaintool.GroupRoot, nil)
 	if err != nil {
 		t.Fatalf("root manifest: %v", err)
 	}

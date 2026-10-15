@@ -233,7 +233,7 @@ func (i *InteractionExecutor) StageRoot(
 		return runs.ExecutorRef{}, err
 	}
 	ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: "exec_" + uuid.NewString()}
-	session, err := i.assembleInteraction(ctx, ref, start, nil, nil, nil)
+	session, err := i.assembleInteraction(ctx, ref, start, nil)
 	if err != nil {
 		return runs.ExecutorRef{}, err
 	}
@@ -261,9 +261,7 @@ func (i *InteractionExecutor) assembleInteraction(
 	ctx context.Context,
 	ref runs.ExecutorRef,
 	start runs.RootExecutionStart,
-	frozenObservers *[]plugins.ContributionBinding,
-	frozenContexts *[]plugins.ContributionBinding,
-	frozenInputs *[]plugins.ContributionBinding,
+	checkpoint *interactionCheckpointState,
 ) (_ *interactionSession, err error) {
 	resolved, err := i.resolveChat(ctx, start.ModelSelection)
 	if err != nil {
@@ -288,24 +286,24 @@ func (i *InteractionExecutor) assembleInteraction(
 			err = errors.Join(err, i.discardInteraction(session))
 		}
 	}()
-	if frozenObservers != nil {
-		session.modelObservers = slices.Clone(*frozenObservers)
+	if checkpoint != nil {
+		session.modelObservers = slices.Clone(checkpoint.modelObservers)
 	} else if i.config.ModelComposition != nil {
 		session.modelObservers, err = i.config.ModelComposition.Resolve(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if frozenContexts != nil {
-		session.modelContexts = slices.Clone(*frozenContexts)
+	if checkpoint != nil {
+		session.modelContexts = slices.Clone(checkpoint.modelContexts)
 	} else if i.config.ModelComposition != nil {
 		session.modelContexts, err = i.config.ModelComposition.ResolveContext(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if frozenInputs != nil {
-		session.modelInputs = slices.Clone(*frozenInputs)
+	if checkpoint != nil {
+		session.modelInputs = slices.Clone(checkpoint.modelInputs)
 	} else if i.config.ModelComposition != nil {
 		session.modelInputs, err = i.config.ModelComposition.ResolveInput(ctx)
 		if err != nil {
@@ -352,7 +350,7 @@ func (i *InteractionExecutor) assembleInteraction(
 		return nil, fmt.Errorf("execution: observe Interaction model: %w", err)
 	}
 	deployments, err := i.buildInteractionDeployments(
-		runExecutionContext(ctx, rootExecutionScope(start), start), session, start, observed, counter,
+		runExecutionContext(ctx, rootExecutionScope(start), start), session, start, observed, counter, checkpoint,
 	)
 	if err != nil {
 		return nil, err
@@ -660,7 +658,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return fmt.Errorf("%w: Interaction restore requires a product waiting boundary", runs.ErrExecutorStateLost)
 	}
 	start := checkpoint.restoredStart(continuation)
-	session, err := i.assembleInteraction(ctx, ref, start, &checkpoint.modelObservers, &checkpoint.modelContexts, &checkpoint.modelInputs)
+	session, err := i.assembleInteraction(ctx, ref, start, &checkpoint)
 	if err != nil {
 		return err
 	}

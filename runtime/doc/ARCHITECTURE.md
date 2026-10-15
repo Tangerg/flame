@@ -123,8 +123,11 @@ does not change it. Scope carries that exact child binding
 into its parent's identity. Deployment configurations use Scope's canonical
 Payload encoding, so JSON object order is immaterial and numeric literals remain
 exact. Recovery probing and live restoration reconstruct
-the same checkpoint-owned instructions and generation options before Scope
-validates the tree; probing never acquires a writer or changes the durable head.
+the same checkpoint-owned instructions, generation options and per-group MCP
+Tool sets before Scope validates the tree. Root and delegated resolution may straddle
+a connection publication, so their original sets remain separate. The resolver filters
+before constructing discovery; new backend availability cannot expand captured authority
+or mutate the current catalog. Probing never acquires a writer or changes the durable head.
 Only confirmed incompatible state is classified as lost. Canceled validation,
 inconclusive workspace inspection, writer activation failures, and unavailable
 live inspection preserve their errors so recovery cannot discard a valid waiting Run.

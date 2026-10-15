@@ -10,7 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -32,7 +31,7 @@ type interactionCheckpointPayloadWire struct {
 	ModelInputs         *[]modelContributionWire            `json:"model_inputs"`
 	ModelContexts       *[]modelContributionWire            `json:"model_contexts"`
 	ModelObservers      *[]modelContributionWire            `json:"model_observers"`
-	MCPReferences       *[]string                           `json:"mcp_references"`
+	MCPManifests        *map[domaintool.Group][]string      `json:"mcp_manifests"`
 	Options             *corechat.Options                   `json:"options"`
 	ToolMetadata        []toolResultMetadata                `json:"tool_metadata,omitempty"`
 	Handoff             *interactionHandoffWire             `json:"handoff"`
@@ -91,7 +90,7 @@ type interactionCheckpointState struct {
 	modelInputs         []plugins.ContributionBinding
 	modelContexts       []plugins.ContributionBinding
 	modelObservers      []plugins.ContributionBinding
-	mcpSources          []mcpserver.ID
+	mcpManifests        map[domaintool.Group][]domaintool.Ref
 	options             corechat.Options
 	toolMetadata        map[string]toolResultMetadata
 	tree                agent.TreeSnapshot
@@ -150,7 +149,7 @@ func encodeInteractionCheckpointPayload(
 	pendingContinuation *pendingInteractionContinuation,
 	toolMetadata []toolResultMetadata,
 	options corechat.Options,
-	mcpReferences []string,
+	mcpManifests map[domaintool.Group][]string,
 	handoff *interactionHandoffWire,
 	observers []plugins.ContributionBinding,
 	contexts []plugins.ContributionBinding,
@@ -167,7 +166,7 @@ func encodeInteractionCheckpointPayload(
 		ModelObservers: new(modelBindingsWire(observers)),
 		ModelContexts:  new(modelBindingsWire(contexts)),
 		ModelInputs:    new(modelBindingsWire(inputs)),
-		MCPReferences:  new(mcpReferences),
+		MCPManifests:   new(mcpManifests),
 		ToolMetadata:   toolMetadata, Options: new(options.Clone()),
 		Instructions: new(frozenInstructions),
 	}
@@ -207,7 +206,8 @@ func encodeInteractionCheckpointPayload(
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode pending Interaction continuation: %w", err)
 	}
-	payload, err := json.Marshal(wire)
+	// Map iteration must not change the identity of the same captured checkpoint.
+	payload, err := json.Marshal(wire, json.Deterministic(true))
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction checkpoint: %w", err)
 	}
@@ -381,8 +381,8 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
-	if wire.MCPReferences == nil {
-		return interactionCheckpointState{}, errors.New("execution: checkpoint MCP dependencies are required")
+	if wire.MCPManifests == nil {
+		return interactionCheckpointState{}, errors.New("execution: checkpoint MCP manifests are required")
 	}
 	if wire.ModelObservers == nil {
 		return interactionCheckpointState{}, errors.New("execution: frozen model observers are required")
@@ -398,19 +398,9 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if wire.Options == nil || wire.Instructions == nil {
 		return interactionCheckpointState{}, errors.New("execution: frozen options and instructions are required")
 	}
-	var sources []mcpserver.ID
-	for _, text := range *wire.MCPReferences {
-		ref, err := domaintool.ParseRef(text)
-		if err != nil {
-			return interactionCheckpointState{}, err
-		}
-		id, _, mcp := ref.MCP()
-		if !mcp {
-			return interactionCheckpointState{}, errors.New("execution: checkpoint source is not MCP")
-		}
-		if !slices.Contains(sources, id) {
-			sources = append(sources, id)
-		}
+	manifests, err := decodeMCPManifests(*wire.MCPManifests)
+	if err != nil {
+		return interactionCheckpointState{}, err
 	}
 	if err := wire.Options.Validate(); err != nil {
 		return interactionCheckpointState{}, err
@@ -471,7 +461,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 		modelObservers: observers,
 		modelContexts:  contexts,
 		modelInputs:    inputs,
-		mcpSources:     sources,
+		mcpManifests:   manifests,
 		handoff:        handoff, callsByProcess: callsByProcess,
 		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,
 		pendingContinuation: pendingContinuation, toolMetadata: metadata,

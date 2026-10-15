@@ -59,7 +59,7 @@ func TestResolverMCPToolsReadsCurrentPolicy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			disabled = tt.disabled
-			gotTools, _, err := resolver.mcpTools()
+			gotTools, _, err := resolver.mcpTools(nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -97,7 +97,7 @@ func TestResolverMCPPolicyUsesSourceIdentityNotModelName(t *testing.T) {
 		name: liveName, server: "a", remote: "b_c",
 	}}, nil)
 
-	got, _, err := resolver.mcpTools()
+	got, _, err := resolver.mcpTools(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestResolverMCPPolicyRejectsInvalidSourceIdentity(t *testing.T) {
 			// Identity is required even when no disabled-tool policy is installed.
 			resolver := &Resolver{}
 			resolver.SetMCPTools([]toolcontract.Tool{valid, test.tool}, nil)
-			got, _, err := resolver.mcpTools()
+			got, _, err := resolver.mcpTools(nil)
 			if err == nil || got != nil || test.want != nil && !errors.Is(err, test.want) {
 				t.Fatalf("MCP catalog = %v, %v; want complete rejection", got, err)
 			}
@@ -154,7 +154,7 @@ func TestResolverSetMCPToolsSnapshotsInput(t *testing.T) {
 	resolver.SetMCPTools(tools, nil)
 	tools[0] = mcpToolStub{name: "after"}
 
-	got, _, err := resolver.mcpTools()
+	got, _, err := resolver.mcpTools(nil)
 	if err != nil {
 		t.Fatal(err)
 	}

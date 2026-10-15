@@ -18,6 +18,39 @@ remain historical evidence. The full parallel race has 173 passing package
 results and one deadline failure. Independent package and serial CLI race passes
 are diagnostic results only. UI/E2E/screenshot execution remains excluded.
 
+### Waiting authority across backend connection publication (2026-10-15)
+
+- The full post-`366ffff6a` parallel sweep passes 173 package results, including
+  execution 292.273s and complete bootstrap/all eight crash cuts 328.469s. It
+  still exits 1: delegated approval now fails in 4.57s with `interrupt_not_open`
+  after a confirmed Deployment mismatch; safe steer also hits its original
+  context. This invocation is a failure, not a completed acceptance gate.
+- A diagnostic observer pause at the existing approval boundary reproduces the
+  lost waiting Run three times inside the unchanged 10s context. Captured and
+  reconstructed root configuration fields match; the Tool catalogs differ as
+  Memory/Schedules finish connecting. Root and delegated resolution can straddle
+  a publication, so even a frozen union cannot reconstruct either group.
+- `TestWaitingRecoveryKeepsMCPManifestsPerGroup` fails on the former production
+  path with `configurationChanged` (0.57s), without timing or external processes.
+  Checkpoints now own separate group manifests, and every cold/probe/accepted
+  restoration consumes that same capture. The resolver selects original MCP
+  authority before discovery/collision resolution without changing the live
+  current catalog. New executions continue to see newly available Tools.
+- The private checkpoint replaces flat `mcp_references` with required per-group
+  `mcp_manifests`; the old reader is deleted. Missing, null, unknown-group,
+  duplicate and non-MCP captures are refused. Preserve old data and finish waiting
+  work with its original binary; no compatibility, migration or replay.
+- Focused race passes execution 8.862s and toolset 5.364s, including pending-source
+  attribution, descriptor/discovery authority, unchanged current catalog and the
+  deterministic lifecycle regression. An isolated diagnostic observer pause now
+  passes all three repetitions (Execute 4.504/4.388/4.410s), and both steer modes
+  pass all three repetitions with unchanged assertions and 10s contexts. These
+  diagnostic passes do not replace the original parallel gate.
+- Complete affected normal execution/toolset/bootstrap verification passes
+  (71.935/3.835/106.444s), including all original recovery/steer/schedule cases and
+  all eight Schedule SIGKILL cuts. The original full parallel race, vet and current
+  artifacts follow on frozen source. Acceptance remains open.
+
 ### Parallel race deadline investigation (2026-10-15)
 
 - The original `-race -p 2` failure reproduces with only `./cli` and
@@ -1610,19 +1643,21 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-Parallel race acceptance is reopened. The delegated-approval deadline has a
-reproduced production cause: every Interaction checkpoint decode recompiled the
-three fixed published model contracts. The SDK now owns one immutable admitted
-instance of each. Full verification of the original parallel scenario is running.
-Original assertions and the 10-second case deadline remain unchanged.
+Parallel race acceptance is reopened. `366ffff6a` fixes measured repeated
+compilation of immutable published contracts. The subsequent original parallel
+gate exposes a separate late-backend catalog expansion in waiting recovery.
+Per-group capture/restoration now fixes that authority boundary; deterministic
+RED/GREEN, focused race, delayed-observer diagnostics and complete affected
+normal execution/toolset/bootstrap pass. Final parallel race/vet/artifacts remain.
+Original assertions and every 10-second recovery/steer context remain unchanged.
 
 ## Next
 
-Finish the complete original `-race -p 2` sweep, including the entire bootstrap
-suite and all Schedule SIGKILL cuts. Investigate any failure instead of accepting
-serial reruns. Record current source validation and the causal measurements,
-review the diff, commit explicit paths and remove only owned scratch resources.
-Do not push, merge, edit the primary checkout or alter the user's stash.
+Finish the complete original `-race -p 2` sweep on frozen current source, including
+all bootstrap tests and Schedule SIGKILL cuts. Investigate failures rather than
+accepting serial reruns. Record current validation, commit explicit paths and
+remove only owned scratch resources. Do not push, merge, edit the primary checkout
+or alter the user's stash.
 
 ## Decision ledger
 

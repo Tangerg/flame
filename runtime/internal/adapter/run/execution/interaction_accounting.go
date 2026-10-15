@@ -224,7 +224,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 	if err != nil {
 		return nil, err
 	}
-	references, err := i.checkpointMCPReferences()
+	manifests, err := i.checkpointMCPManifests()
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 		pendingContinuation,
 		metadata,
 		executionOptions(i.start.ModelSelection, i.start.Options),
-		references,
+		manifests,
 		handoff,
 		i.modelObservers,
 		i.modelContexts,

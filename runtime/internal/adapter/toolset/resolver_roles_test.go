@@ -55,7 +55,7 @@ func TestPlanModeToolsAreRootOnly(t *testing.T) {
 			_ = close()
 		}
 	})
-	delegated, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupDelegated)
+	delegated, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupDelegated, nil)
 	if err != nil {
 		t.Fatalf("Manifest(delegated): %v", err)
 	}
@@ -75,7 +75,7 @@ func TestPlanModeToolsAreRootOnly(t *testing.T) {
 		t.Fatalf("delegated tools = %v; Plan control belongs only to the root Agent", names)
 	}
 
-	root, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
+	root, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot, nil)
 	if err != nil {
 		t.Fatalf("Manifest(root): %v", err)
 	}
@@ -139,7 +139,7 @@ func TestGoalToolsAreRootOnlyAndOutcomeRequiresGoalRunProvenance(t *testing.T) {
 		{name: "goal-owned delegate", ctx: goalRunContext, group: domaintool.GroupDelegated, want: map[string]bool{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			manifest, err := built.Resolver.Manifest(tc.ctx, tc.group)
+			manifest, err := built.Resolver.Manifest(tc.ctx, tc.group, nil)
 			if err != nil {
 				t.Fatalf("Manifest(%s): %v", tc.group, err)
 			}
@@ -175,7 +175,7 @@ func TestProposeSkillIsRootOnlyAndDeferred(t *testing.T) {
 		{group: domaintool.GroupRoot, want: true},
 		{group: domaintool.GroupDelegated, want: false},
 	} {
-		manifest, err := built.Resolver.Manifest(attachedRun(t), tc.group)
+		manifest, err := built.Resolver.Manifest(attachedRun(t), tc.group, nil)
 		if err != nil {
 			t.Fatalf("Manifest(%s): %v", tc.group, err)
 		}
@@ -203,7 +203,7 @@ func TestResolverAcceptsOnlyCanonicalGroups(t *testing.T) {
 	closeBuiltToolset(t, built)
 
 	for _, group := range []domaintool.Group{domaintool.GroupRoot, domaintool.GroupDelegated} {
-		manifest, err := built.Resolver.Manifest(attachedRun(t), group)
+		manifest, err := built.Resolver.Manifest(attachedRun(t), group, nil)
 		if err != nil {
 			t.Errorf("Manifest(%q): %v", group, err)
 		}
@@ -212,7 +212,7 @@ func TestResolverAcceptsOnlyCanonicalGroups(t *testing.T) {
 		}
 	}
 	for _, obsolete := range []domaintool.Group{"coding", "subtask"} {
-		if _, err := built.Resolver.Manifest(attachedRun(t), obsolete); err == nil {
+		if _, err := built.Resolver.Manifest(attachedRun(t), obsolete, nil); err == nil {
 			t.Errorf("Manifest accepted obsolete group %q", obsolete)
 		}
 	}

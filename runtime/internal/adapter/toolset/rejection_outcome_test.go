@@ -52,7 +52,7 @@ func TestRejectedCallsDoNotCostTheRun(t *testing.T) {
 		t.Fatalf("Build: %v", err)
 	}
 	closeBuiltToolset(t, built)
-	manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
+	manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

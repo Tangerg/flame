@@ -125,7 +125,7 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 		SessionID: "session-goal", GoalIncarnationID: "incarnation-1",
 		CWD: t.TempDir(), WorkspaceCWD: t.TempDir(),
 	})
-	manifest, err := built.Resolver.Manifest(goalRunContext, tool.GroupRoot)
+	manifest, err := built.Resolver.Manifest(goalRunContext, tool.GroupRoot, nil)
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}
@@ -183,7 +183,7 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 		SessionID: "session-goal", GoalIncarnationID: "incarnation-1",
 		CWD: t.TempDir(), WorkspaceCWD: t.TempDir(),
 	})
-	manifest, err := built.Resolver.Manifest(goalRunContext, tool.GroupRoot)
+	manifest, err := built.Resolver.Manifest(goalRunContext, tool.GroupRoot, nil)
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}

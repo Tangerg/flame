@@ -6,6 +6,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 // resolveRootManifest builds one exact root visibility snapshot.
@@ -18,7 +19,7 @@ func resolveRootManifest(t *testing.T, mcpTools []toolcontract.Tool) Manifest {
 	closeBuiltToolset(t, built)
 	built.Resolver.SetMCPTools(mcpTools, nil)
 
-	manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
+	manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot, nil)
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}
@@ -89,4 +90,72 @@ func nameSliceSet(names []string) map[string]bool {
 		out[name] = true
 	}
 	return out
+}
+
+func TestResolverRetainsCapturedMCPAuthorityBeforeDiscovery(t *testing.T) {
+	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	closeBuiltToolset(t, built)
+	built.Resolver.SetMCPTools([]toolcontract.Tool{
+		mcpToolStub{name: "files_read", server: "files", remote: "read"},
+		mcpToolStub{name: "files_write", server: "files", remote: "write"},
+	}, nil)
+	read := testsupport.MCPTool(testsupport.UserMCPServer("files"), "read")
+	for _, test := range []struct {
+		name        string
+		captured    []domaintool.Ref
+		read, write bool
+	}{
+		{"fresh", nil, true, true},
+		{"captured empty", []domaintool.Ref{}, false, false},
+		{"captured read", []domaintool.Ref{read}, true, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot, test.captured)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := manifest.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			names := definitionNames(manifest.Deferred)
+			if names["files_read"] != test.read || names["files_write"] != test.write {
+				t.Fatalf("restored executable authority = %v", names)
+			}
+			var discovery deferredNamer
+			for _, executable := range manifest.Visible {
+				candidate, found, err := toolcontract.Capability[deferredNamer](executable)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if found {
+					discovery = candidate
+				}
+			}
+			if discovery == nil {
+				t.Fatal("deferred discovery is missing")
+			}
+			advertised := nameSliceSet(discovery.DeferredToolNames())
+			if advertised["files_read"] != test.read || advertised["files_write"] != test.write {
+				t.Fatalf("restored discovery authority = %v", advertised)
+			}
+		})
+	}
+	fresh, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := fresh.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	names := definitionNames(fresh.Deferred)
+	if !names["files_read"] || !names["files_write"] {
+		t.Fatalf("restoration changed the shared current catalog: %v", names)
+	}
 }

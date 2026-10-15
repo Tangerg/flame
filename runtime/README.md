@@ -2390,11 +2390,17 @@ connects independently under the Runtime lifetime. Plugin management stays avail
 while a source is connecting; disable cancels its attempt and shutdown joins it.
 A construction caller's cancellation after admission cannot retire accepted attempts.
 Catalog publications include pending source identities atomically with executable tools.
-Waiting checkpoints capture their frozen MCP tool references; recovery defers validation
-only when a captured source is still connecting. This preserves waiting facts without
-granting resumption or blocking startup on unrelated sources. Once dependencies settle,
-resumption validates the exact configuration again. Checkpoints without these dependency
-references are incompatible and are not decoded through a fallback.
+Checkpoints capture MCP Tool references separately for root and delegated groups.
+A connection may publish between those two resolutions, so a union cannot reconstruct
+either group's original authority. Recovery filters each group to its captured references
+before discovery/collision resolution and then validates its exact Deployment. A newly
+available backend belongs to future executions; it cannot add Tools to a waiting tree.
+The shared current catalog is never changed by this restoration filter.
+Recovery defers validation only when a source captured by that group is still connecting,
+without granting resumption or blocking startup on unrelated sources. The former flat
+`mcp_references` checkpoint field is replaced by required `mcp_manifests`; old shapes
+are refused unchanged. Preserve old data and finish waiting work with its original binary.
+There is no compatibility reader, migration or provider replay.
 Plugin realization describes current release and backend availability separately.
 Server listing and startup enumerate desired definitions without realizing plugin resources;
 these reads cannot overwrite the state of an admitted connection.

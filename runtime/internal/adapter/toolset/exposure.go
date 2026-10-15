@@ -187,7 +187,7 @@ func (m *manifestBuilder) excludeCollisions(ctx context.Context) error {
 // pair one catalog's tools with another catalog's conflicts.
 func (r *Resolver) MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error) {
 	snapshot := r.mcpSnapshot()
-	exposed, err := r.exposedMCPTools(snapshot)
+	exposed, err := r.exposedMCPTools(snapshot, nil)
 	if err != nil {
 		return nil, nil, err
 	}

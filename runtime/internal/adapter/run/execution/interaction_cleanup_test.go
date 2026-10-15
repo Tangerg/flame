@@ -86,7 +86,7 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 		}
 		start.WorkingContext = cloneChatMessages(state.instructions)
 		ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: "exec_unpublished"}
-		session, err := executor.assembleInteraction(t.Context(), ref, start, nil, nil, nil)
+		session, err := executor.assembleInteraction(t.Context(), ref, start, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

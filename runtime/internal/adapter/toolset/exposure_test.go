@@ -33,7 +33,7 @@ func TestResolverRegistersTheMutationVocabulary(t *testing.T) {
 		t.Fatalf("Build: %v", err)
 	}
 	closeBuiltToolset(t, built)
-	manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
+	manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot, nil)
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 	resolver.SetMCPTools([]toolcontract.Tool{
 		mcpToolStub{name: "linear_create_issue", server: "linear", remote: "create_issue"},
 	}, nil)
-	manifest, err := resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
+	manifest, err := resolver.Manifest(attachedRun(t), domaintool.GroupRoot, nil)
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}

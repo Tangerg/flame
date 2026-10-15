@@ -208,12 +208,12 @@ type mcpCatalog struct {
 	pending []mcpserver.ID
 }
 
-func (r *Resolver) mcpTools() ([]toolcontract.Tool, []mcpserver.ID, error) {
+func (r *Resolver) mcpTools(capturedMCP []domaintool.Ref) ([]toolcontract.Tool, []mcpserver.ID, error) {
 	snapshot := r.mcp.Load()
 	if snapshot == nil {
 		return nil, nil, nil
 	}
-	tools, err := r.exposedMCPTools(snapshot.tools)
+	tools, err := r.exposedMCPTools(snapshot.tools, capturedMCP)
 	return tools, slices.Clone(snapshot.pending), err
 }
 
@@ -229,7 +229,7 @@ func (r *Resolver) mcpSnapshot() []toolcontract.Tool {
 // here, not at SetMCPTools, so it stays correct regardless of which hot-swap
 // fired last (a reconnect that swaps tools vs. a configure that swaps the
 // disabled set).
-func (r *Resolver) exposedMCPTools(values []toolcontract.Tool) ([]toolcontract.Tool, error) {
+func (r *Resolver) exposedMCPTools(values []toolcontract.Tool, capturedMCP []domaintool.Ref) ([]toolcontract.Tool, error) {
 	var out []toolcontract.Tool
 	for i, tool := range values {
 		ref, found, err := mcp.IdentifyTool(tool)
@@ -239,7 +239,7 @@ func (r *Resolver) exposedMCPTools(values []toolcontract.Tool) ([]toolcontract.T
 		if !found {
 			return nil, errors.New("toolset: MCP tool has no source identity")
 		}
-		if r.mcpToolDisabled != nil && r.mcpToolDisabled(ref) {
+		if (capturedMCP != nil && !slices.Contains(capturedMCP, ref)) || (r.mcpToolDisabled != nil && r.mcpToolDisabled(ref)) {
 			if out == nil {
 				out = append(make([]toolcontract.Tool, 0, len(values)-1), values[:i]...)
 			}
@@ -289,15 +289,18 @@ func (r *Resolver) toolsForCWD(cwd string) (cwdTools, error) {
 // is the integration surface for execution strategies that distinguish initial
 // visibility from deferred executable authority without importing this package
 // into their framework.
-func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group) (Manifest, error) {
-	resolved, err := r.resolve(ctx, group)
+// capturedMCP is nil for a new execution and non-nil for its exact restored
+// group. Filtering precedes discovery so a late connection cannot enter either
+// executable authority or the model's deferred catalog.
+func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group, capturedMCP []domaintool.Ref) (Manifest, error) {
+	resolved, err := r.resolve(ctx, group, capturedMCP)
 	if err != nil {
 		return Manifest{}, err
 	}
 	return resolved.manifest(r.telemetry)
 }
 
-func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manifestBuilder, err error) {
+func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, capturedMCP []domaintool.Ref) (_ manifestBuilder, err error) {
 	if !group.Valid() {
 		return manifestBuilder{}, fmt.Errorf("toolset: unsupported Tool group %q", group)
 	}
@@ -319,7 +322,7 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manif
 	tools.direct(localTools.edit)
 	tools.direct(localTools.applyPatch)
 	tools.deferTools(r.online...)
-	mcpTools, pending, err := r.mcpTools()
+	mcpTools, pending, err := r.mcpTools(capturedMCP)
 	if err != nil {
 		return manifestBuilder{}, err
 	}

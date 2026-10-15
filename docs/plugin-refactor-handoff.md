@@ -113,11 +113,32 @@ current Execute takes 2.391s. With all instrumentation removed and the original
 10s/assertions unchanged, complete CLI root/runtimebinding passes at `-race -p 2`
 (74.798/42.144s). The original full parallel gate is still running.
 
-One profiling run also observes a refused waiting-tree Deployment validation.
-Investigate the captured/current configuration and asynchronous backend catalog;
-do not erase that finding or close acceptance merely because the deadline fix
-passes. All diagnostic overlays/logs live in owned temporary storage, not the
-production tree, and must be removed after their evidence is recorded.
+That refused Deployment validation is a second confirmed production defect. A
+short observer pause at the existing approval boundary reproduces lost waiting
+Runs three times inside the unchanged 10s context. Root configuration fields
+match, but the Tool catalog expands as Memory/Schedules finish connecting.
+Root/delegated resolution can straddle that publication. The post-SDK full
+parallel gate fails the unchanged case in 4.57s with `interrupt_not_open`, and
+also records a safe-steer deadline. Execution/bootstrap pass 292.273/328.469s,
+but that aggregate is explicitly a failure.
+
+A deterministic per-group waiting lifecycle regression fails on the original
+path with `configurationChanged` (0.57s). The execution owner now captures each
+original group separately; all cold/probe/accepted restoration consumes the same
+capture. The resolver filters MCP authority before discovery/collision resolution
+and leaves the current catalog intact. The private flat `mcp_references` field is
+replaced by required `mcp_manifests`. Old shapes are refused unchanged; preserve
+old data and finish waiting work with its original binary. No compatibility reader,
+migration, dual writer or replay is added.
+
+Focused race passes execution/toolset 8.862/5.364s. The same diagnostic observer
+pause passes three times (Execute 4.504/4.388/4.410s), and both steer modes pass
+three repetitions, with original assertions and 10s contexts unchanged. Complete
+normal execution/toolset/bootstrap passes 71.935/3.835/106.444s, including all eight
+Schedule crash cuts. The original uninstrumented parallel gate, vet and current
+artifacts still require final verification. No 100% claim is made yet.
+All diagnostic overlays/logs live in owned temporary storage and are removed only
+after their failure/cause/validation evidence is recorded.
 
 ## Scope and data boundaries
 

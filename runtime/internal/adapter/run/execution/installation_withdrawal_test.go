@@ -27,7 +27,7 @@ type liveCatalogTools struct {
 	live atomic.Pointer[plugin.Dependency]
 }
 
-func (l *liveCatalogTools) Manifest(context.Context, domaintool.Group) (toolset.Manifest, error) {
+func (l *liveCatalogTools) Manifest(context.Context, domaintool.Group, []domaintool.Ref) (toolset.Manifest, error) {
 	var manifest toolset.Manifest
 	if dependency := l.live.Load(); dependency != nil {
 		manifest.Installations = []plugin.Dependency{*dependency}
@@ -41,8 +41,8 @@ type assemblingCatalogTools struct {
 	proceed <-chan struct{}
 }
 
-func (a assemblingCatalogTools) Manifest(ctx context.Context, group domaintool.Group) (toolset.Manifest, error) {
-	manifest, err := a.catalog.Manifest(ctx, group)
+func (a assemblingCatalogTools) Manifest(ctx context.Context, group domaintool.Group, capturedMCP []domaintool.Ref) (toolset.Manifest, error) {
+	manifest, err := a.catalog.Manifest(ctx, group, capturedMCP)
 	if err != nil || group != domaintool.GroupRoot {
 		return manifest, err
 	}
