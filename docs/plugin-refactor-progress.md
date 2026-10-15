@@ -2,42 +2,105 @@
 
 ## Current stage
 
-P13 public installed Tool proposal transformation is implemented and verified
-in ordinary backend tests at `6a88bd45a`. Overall acceptance remains **incomplete**:
-**35 Evidenced / 13 Partial / 0 Open**. These are evidence counts, not an
-implementation percentage. Safe-steer causal investigation
-and the unexecuted graphical criteria remain. Current complete parallel/vet/native/
-standalone-artifact qualification is pending after this new product change.
+Original-proposal acceptance remains **incomplete: 35 Evidenced / 13 Partial / 0 Open**.
+These are evidence counts, not an implementation percentage. P13 public installed
+Tool proposal transformation, P12/P16/P18/P41 real-process scenarios and P48
+source/API/doc cleanup now have matching evidence. Thirteen graphical rows and
+all four additional review cross-scenarios remain Partial under the continuing
+UI/E2E/screenshot prohibition. The historical post-SDK 10s safe-steer timeout
+still has no established cause and is not closed by passing reruns.
 
-The following complete parallel result belongs to the preceding `981c4c915`
-source, not the new P13 source. Its causal fixes stand, but it is historical
-acceptance evidence until the final current-source sweep:
+Frozen current Go source is `b2dcbfbba`; later commits update documentation only.
+The original full parallel command passes without overlay or exclusions:
 
 ```sh
 go test -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s
 ```
 
-`366ffff6a` gives the fixed published model contracts one immutable compiled owner;
-`981c4c915` captures/restores original MCP authority separately for root/delegated
-Tool groups. Both causes have measured or deterministic RED/GREEN evidence below.
-All original recovery/steer assertions and 10-second contexts are unchanged.
-Execution passes 294.118s, complete bootstrap/all eight Schedule SIGKILL cuts
-364.471s, CLI root 70.971s, runtimebinding 42.169s and terminal 49.862s. These are
-complete uninstrumented parallel results, not isolated/serial substitution.
+All **174 selected packages** finish: **159 packages with tests pass; 15 have no
+test files**. Race execution/bootstrap/SDK/CLI/runtimebinding/terminal pass
+276.599/330.789/9.619/70.109/40.204/41.828s (total wall time 775.933s), including
+all eight Schedule SIGKILL cuts. Complete current normal has the same 159 passes
+and 15 no-test packages; execution/bootstrap/CLI/runtimebinding/terminal pass
+57.079/118.847/39.523/12.150/24.648s (wall time 292.538s). Full-module vet passes.
+Original recovery/steer test files, assertions and 10s contexts are unchanged.
+Conditional paid/live and platform cases are not inferred from package summaries.
 
-Complete affected normal execution/toolset/bootstrap passes 71.935/3.835/106.444s.
-Full-module vet, exact Core/feature/API regeneration, current Runtime/native
-production builds and strict/deep native signature pass. Current static boundary,
-context, port and 95/95 API-consumer closure pass. Earlier unchanged shared TS and
-standalone-artifact evidence remains recorded; no frontend UI/E2E/screenshot tests
-or Desktop aggregate `npm run check` were run. Graphical interaction stays
-unexecuted; exclusion does not satisfy its acceptance criteria.
+Core/Memory/Schedules/API generation and complete architecture checks pass.
+Current shared TS check passes 30 files/355 tests, plus types/lint/format/dead-code
+checks. Desktop, component SDK, Reviews and portable component typechecks pass.
+Direct layer/published-boundary/context/port/API closure passes: 95/95 fact
+families, 112 typed sites, three sidecars, fourteen event types and four result
+readers. These are source/backend proofs, not graphical interaction.
 
-The original worktree/`codex/unified-plugins` branch and last integrated main
-`7ba40c117` (Scope v0.50.0) are retained. No push, main merge, primary-checkout edit,
-stash mutation or user-data conversion occurred. The private checkpoint format
-changes explicitly: preserve old data and finish old waiting work with its original
-binary. There is no compatibility reader, dual writer, silent fallback or replay.
+Current Runtime production build contains all ten ordinary packages and both
+backend executables. Current Wails native Go/CGo/package and strict/deep ad-hoc
+signature pass for arm64/macOS 13.0; its unchanged frontend build is reported
+up-to-date and reused, not a newly executed Vite build. No app is launched.
+Current independent Usage public archives reproduce package resources and pass
+clean offline reinstall/typecheck/build. Current external Reviews/Tool-proposal/
+command-next author passes offline tidy/race/vet/build with workspace off and no
+replace. Its Go artifacts contain the actual required internal implementation;
+author source imports only public APIs. No registry release is claimed.
+
+Safe restoration has additional causal evidence: fully pinned old source
+`366ffff6a` reproduces `configurationChanged` / exact Root Deployment mismatch /
+`interrupt_not_open` in 2.78s. Current pinned source passes eight safe/yolo rounds.
+This verifies the already repaired per-group MCP authority defect in safe mode;
+it is not a reproduction or explanation of the separate historical 10s timeout.
+
+The native dependency install/read-only npm audit reports **8 dependency alerts
+(4 high, 4 low)** and audit exit 1. The high chain includes the direct StyleX
+PostCSS build dependency through fast-glob/micromatch/braces; low math dependencies
+include KaTeX. Exploitability/remediation is not qualified and no dependency or
+lockfile is changed. Build success does not close those alerts. Paid DeepSeek
+(`FLAME_LIVE_DEEPSEEK` unset), Windows/Linux/alternate native execution, registry
+publication and the excluded graphical scenarios remain unexecuted.
+
+The existing worktree/`codex/unified-plugins` branch and integrated main
+`7ba40c117` (Scope v0.50.0) are preserved. No push, main merge, primary-checkout
+edit, stash mutation or user-data conversion occurred. Required private checkpoint
+fields are a deliberate break: preserve old data and finish old waiting work with
+its original binary. No compatibility reader, dual writer or provider replay.
+
+### Bounded historical safe-steer diagnosis and current author artifacts (2026-10-15)
+
+- A second historical diagnostic freezes **all 2,426 Go files** at `366ffff6a`
+  through a temporary overlay; new files are excluded. SQL and module files have
+  no diff through `b2dcbfbba`. Original safe/yolo assertions and 10s contexts stay
+  intact. Only timestamps and deadline-only state/stack inspection are added.
+- The first six-repetition diagnostic fails one safe case before its second
+  provider; its filtered output did not retain the precise refusal. It is a failed
+  diagnostic, not a timeout reproduction or qualified pass. A subsequent eight-
+  repetition diagnostic retains its raw failure log and pinned sources for review.
+- That eight-repetition run reproduces one safe failure in 2.78s (package 49.051s).
+  Steer is accepted at 0.815s and the waiting snapshot is read at 1.020s. Runtime
+  then logs `configurationChanged`, `exact root Deployment does not match` and
+  returns `interrupt_not_open` from Resume. This is causal evidence that safe
+  restoration also suffers the original current-catalog reconstruction defect,
+  already fixed by the per-group MCP capture in `981c4c915`.
+- The same fully pinned diagnostic at current `b2dcbfbba` passes eight complete
+  safe/yolo repetitions (53.615s). This strengthens that restore repair. Neither
+  run produces a deadline marker, so it does **not** establish the cause of the
+  historical post-SDK 10s safe-steer timeout. That independent item remains open.
+  The original uninstrumented complete current parallel gate is still running.
+- Current Usage public-artifact qualification passes packed SDK/UI/icons/Runtime
+  build with exact bundled resource equality, followed by offline clean npm ci,
+  typecheck and build. The owned kit is removed; no component is rendered.
+- Current independent Reviews plus the real Tool-proposal executable and command-
+  next/private-receipt test pass tidy, complete race (backend 4.215s), vet and build
+  with GOWORK=off, no replace, isolated module cache and offline local module archives.
+  Author source imports only public APIs. Runtime's real implementation closure
+  includes internal metadata/transaction/Core implementation; a public-directories-
+  only archive assertion fails and is not called a pass. The normal Go artifact
+  contains its required implementation (111 packages/900 files, no private feature
+  backend source) and a separate current localruntime artifact. An initial archive
+  omitted that unavailable cached companion version; supplying both current local
+  artifacts fixes the qualification graph without changing repository go.mod or
+  overwriting a cached published module. The archives are explicitly unpublished.
+- Paid live DeepSeek gates are not enabled (`FLAME_LIVE_DEEPSEEK` is unset), so
+  those conditional scenarios are not executed by a package pass. No Windows,
+  Linux or alternate native architecture execution is claimed.
 
 ### Unavailable captured contributors and final source cleanup (2026-10-15)
 
@@ -1863,17 +1926,18 @@ close the other criteria. Historical slice entries retain their original evidenc
 
 ## Next
 
-P13 is implemented and normal-verified. Next qualify two actual installed
-decorator ordering (P12), durable inner-mutation/outer-failure recovery
-(P16), actual post-output backend disconnection (P18) and a real CLI business
-command with a host callback (P41). Clean the stale active owner documentation
-and recheck the original replacement map for P48.
-Requalify affected independent public artifacts after any public SDK change.
+The authorized source/backend/build work now has current full qualification.
+Preserve the remaining acceptance gaps instead of reporting 100%:
 
-Keep graphical criteria explicitly unverified while the user's UI/E2E/screenshot
-prohibition remains. No implementation percentage or whole-proposal 100% follows
-from that prohibition. Preserve this worktree, branch, primary checkout and stash;
-no push, merge, publication, external deployment or user-data mutation is authorized.
+- Obtain actual deadline evidence for the historical post-SDK safe-steer timeout.
+  Fully pinned old source reproduces a distinct 2.78s Deployment refusal; current
+  eight-round and original full parallel passes do not prove the 10s timeout cause.
+- P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 and the four review cross-scenarios need
+  actual graphical interaction. The user prohibition stays in force; do not add
+  or execute UI/E2E/screenshot tests or substitute source/native builds for them.
+- Dependency audit alerts need separate exposure/remediation assessment. Paid/live,
+  other native platforms/architectures and publication remain unexecuted; source
+  archives are not releases. Do not push, merge main or alter retained user data.
 
 ## Decision ledger
 
@@ -2149,9 +2213,10 @@ no push, merge, publication, external deployment or user-data mutation is author
 ## Review closure
 
 This is a reconciliation with the original review, not a blanket closure.
-The current complete parallel race and affected normal suites are recorded above;
-the complete normal 174-package run and independent artifact/TS qualifications are
-earlier evidence. Graphical proof remains unexecuted, not satisfied by exclusion,
+Current complete normal/original parallel race, vet, shared TS, static checks,
+standalone author artifacts and Runtime/native builds pass on frozen Go source
+`b2dcbfbba` as recorded above. Packages without tests and guarded live/platform
+scenarios are distinguished from executed tests. Graphical proof remains unexecuted, not satisfied by exclusion,
 source checks or native compilation. The partial requirements below prevent
 whole-proposal completion and public-contract freeze qualification.
 
@@ -2163,7 +2228,7 @@ whole-proposal completion and public-contract freeze qualification.
 | Origin, parent, target and lifetime | Installed operation, Tool preparation, background capture, model callback and active-member tests pass. Memory Search's detached embedding parent was RED/GREEN fixed in `6d3728a0c`; restored attribution never manufactures an execution publisher. |
 | Collection/selection/decoration and plugin points | Exact consumer contracts, immutable setup, cycle checks, explicit compositions and actual Reviews/analyzer process lifetimes pass. CLI `33696b3c2` adds real composition inspection/selection/resolution; transitive failures retain their complete consumer path. No second readiness ledger. |
 | Reentrant RPC, remote next and streams | Actual SDK/headless processes verify reentrancy, frozen remaining chains, lazy consumption, acknowledgement backpressure, cancellation, byte budgets and stale grant refusal. The first remote model observer is explicitly transparent; its once-through rule is not universal middleware policy. |
-| Final transformed Tool arguments | `6a88bd45a` adds the public installed contract and actual stdio/Reviews normal proof across approval and Runtime restart. Final arguments, private mutation and canonical history agree; invalid proposals do not execute. Current global race/artifact requalification remains pending. |
+| Final transformed Tool arguments | `6a88bd45a` adds the public installed contract and actual stdio/Reviews normal proof across approval and Runtime restart. Final arguments, private mutation and canonical history agree; invalid proposals do not execute. Current global race/artifact requalification is recorded in Current stage. |
 | Independent model work and accounting | Each physical exchange has its own identity, captured route, caller budget and durable source. Source/Run/Goal tests preserve known inner usage under outer failure and unknown consumption under restart/cancellation. Independent output cannot alter primary conversation/context. No invented universal Goal ceiling. |
 | Model selection/context/input/counter admission | Primary/auxiliary/installed request tests preserve captured order/selection, authored input, final media/input/output capacity and counter failure/cancellation. Original sources remain evidence; providers are never automatically replayed. |
 | Ordinary embedding access and Memory-specific limits | Public text embedding and Tool context replace private metadata/methods. Ordinary installed callbacks support multiple embedding exchanges; Memory's operation grant consumes one generated published caller policy. Absence, configured errors and storage failures retain distinct semantics. |
@@ -2178,8 +2243,8 @@ whole-proposal completion and public-contract freeze qualification.
 | Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
 | Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
 | Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
-| Independent authors and current distributions | Earlier offline external public Go binding/storage/receipt/module and packed Usage build checks pass; they were not rerun on a post-repair SDK archive. Independent Usage installation is in the current Runtime suite; ten-package Runtime and signed arm64 `.app` production builds are current. No registry publication, all-feature external-author qualification or graphical execution is claimed. |
-| Final deletion and documentation | Partial: major superseded API/carrier/schema/private construction paths are deleted. Active Runtime/SDK/Reviews README contradictions remain, and the public proposal-transformation boundary is not established. P48 is Open; the original replacement map is not fully closed. |
+| Independent authors and current distributions | Current packed Usage and offline independent Reviews/Tool-proposal/command-next author qualification pass. The complete Go dependency artifact contains internal implementation; authored code has no private imports. Current Runtime/native builds pass at frozen `b2dcbfbba`; the native frontend task reuses an unchanged up-to-date build. No registry publication, all-platform execution or graphical qualification is claimed. |
+| Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification and the separately unexecuted graphical criteria are not completed by P48 source closure. |
 
 The review's four extra cross-acceptance groups are independently tracked:
 
@@ -2191,29 +2256,31 @@ The review's four extra cross-acceptance groups are independently tracked:
 | Module initialization blocks renderer startup; independent recovery disables it | Partial | Independent management code/CLI plus real blocked stdio-backend recovery | Actual failed graphical module startup and disabling it through a functioning independent entrance |
 
 The review's early graphical feasibility gate has not passed. The real-process
-headless callback/streaming observer feasibility gate has execution evidence, but
-does not supply P12's two-installed-layer trace or P16's durable mutation case.
+headless callback/streaming observer feasibility gate now also has P12's actual
+two-installed-layer trace and P16's durable inner-mutation/outer-failure proof.
+Those proofs do not complete the excluded graphical feasibility gate.
 
 ## Proposal acceptance coverage
 
-Audit date: 2026-10-15; P13 update: `6a88bd45a`. Scenario titles below are
+Audit date: 2026-10-15; latest source closure: `b2dcbfbba`. Scenario titles below are
 copied from the original proposal, rather than substituted with easier checks.
-**30 Evidenced / 17 Partial / 1 Open** is a count of evidence coverage, not a
+**35 Evidenced / 13 Partial / 0 Open** is a count of evidence coverage, not a
 percentage of implementation or a claim of release readiness.
 
 `Evidenced` means matching executable evidence is recorded and the relevant source
 or test was checked in this audit. It does not mean a fresh invocation occurred
 in this audit. `Partial` means an original behavior is only partly demonstrated;
-`Open` identifies known unfinished work. The preceding full parallel race includes all
-174 selected packages at `981c4c915`; it has not rerun after P13. Earlier full
-normal and independent artifact/TS proofs have the
-freshness limits stated in Current stage. Platform/conditional test execution is
+`Open` identifies known unfinished work. The earlier full parallel race includes all
+174 selected packages at `981c4c915`. Current complete normal and original parallel race finish all 174 selected
+packages at frozen `b2dcbfbba`: 159 tested packages pass and fifteen have no tests.
+Current vet, shared TS, static, Runtime/native and independent Usage/Go author
+results are recorded in Current stage. Platform/conditional test execution is
 not inferred from package summaries. UI/E2E/screenshot execution remains forbidden
 and unrun, so those requirements remain unverified rather than waived.
 
 | Requirement | Original scenario | Status | Evidence and remaining work |
 | --- | --- | --- | --- |
-| P01 | Build a bundled feature outside the repository | Evidenced | Earlier independent packed Usage typecheck/build and exact resource-byte reproduction pass; public SDK/UI/icons/Runtime artifacts suffice for that feature. Offline public Go author qualification is also recorded. Neither artifact exercise is a new run after the reopened SDK repairs; registry publication is absent. This does not qualify every bundled feature independently. |
+| P01 | Build a bundled feature outside the repository | Evidenced | Current packed Usage typecheck/build and exact resource-byte reproduction pass outside the checkout from public SDK/UI/icons/Runtime archives, followed by an offline clean reinstall/typecheck/build. Current independent Reviews plus Tool-proposal/command-next author tidy/race/vet/build also pass with workspace off, no replace and local module archives. Author code imports only public APIs; the Go artifact includes required internal implementation and companion localruntime. Neither exercise is registry publication or independent qualification of every feature. |
 | P02 | Install the same feature from a non-bundled origin | Evidenced | Verified by `TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource`: ordinary source, same contract/resources, independent identity, withdrawal, restart and uninstall. |
 | P03 | Disable or remove a seeded plugin, then restart | Evidenced | `TestFirstPartyInitializationAndRestartPreserveUserDecisions` and the independent Usage lifecycle exercise durable disable/uninstall without reseeding; bootstrap initialization failure cannot commit partial defaults. |
 | P04 | Two candidates implement one selected role | Evidenced | Backend verified by explicit provider selection and original-command routing tests; enablement never selects another provider. |
@@ -2225,7 +2292,7 @@ and unrun, so those requirements remain unverified rather than waived.
 | P10 | Host callback occurs during an outer backend request | Evidenced | `TestPublicCallbacksAreReentrantThroughARealHeadlessBackend` and installed observer callback tests exercise a host callback inside the outer backend request without a graphical client. |
 | P11 | Installed decorator wraps a real host model call | Evidenced | `TestExecutableBackendStreamsDecorationThroughOriginalModelNext` and installed observer/model-endpoint tests prove the public executable callback path and actual endpoint identity/evidence. |
 | P12 | Two decorators run | Evidenced | `TestInstalledModelDecoratorsObserveFrozenBeforeAfterOrder` installs two real independent stdio decorators through production composition/streaming, observes nested before/after order and original identity, changes configuration in flight and proves the captured order remains while the next Run reverses it. |
-| P13 | Decorator rewrites a Tool proposal | Evidenced | `6a88bd45a` provides the public installed `ToolProposalContract`. `TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformReplay` builds a real public-SDK stdio author, installs it beside Reviews, compares approval/execution/history, cold-restarts without another transformation, and checks private owner state and invalid-proposal refusal. Whole normal bootstrap and affected Go packages pass; current global race/artifact qualification is pending. |
+| P13 | Decorator rewrites a Tool proposal | Evidenced | `6a88bd45a` supplies the public installed ToolProposal contract. The actual stdio/Reviews test compares final approval/execution/history and private state, restarts without another transformation, rejects invalid input and qualifies disabled/failed original contributors. Whole current normal/original parallel race/bootstrap and independent author artifacts pass as recorded in Current stage. |
 | P14 | A command continuation is redelivered | Evidenced | Public command/stream continuation and original receipts are verified. `6b3a1d823` removes Core Schedule-specific reconstruction, proves unrelated Tool recovery and preserves all eight crash cuts. The final original 174-package parallel race and all eight crash cuts pass after immutable contract reuse and per-group MCP capture/restoration; earlier failures remain recorded in Current stage. |
 | P15 | A stale continuation is invoked | Evidenced | Backend verified by expired/captured callback, next withdrawal and replacement activation refusal tests. |
 | P16 | Inner mutation succeeds, outer decorator fails | Evidenced | `TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt` uses an actual external public-SDK executable and call-bound command next. Private SQLite mutation/receipt commits once, outer failure stays unknown, redelivery reads the original receipt, stale next is refused and private restart retains one mutation. This is author-SDK command decoration, not an additional generic Core command middleware API. |
@@ -2260,11 +2327,12 @@ and unrun, so those requirements remain unverified rather than waived.
 | P45 | Recover from a broken optional-plugin startup | Partial | Real never-handshaking backend restart/list/disable passes; independent CLI management does not evaluate component JS. No execution of recovery while an installed module blocks renderer startup is recorded; the review requires that stronger scenario. |
 | P46 | Shutdown with active backend callbacks and UI teardown | Partial | Backend reverse-order cancel/join, callback retirement and settled close/error tests pass. Shutdown combined with actual component async work/resource teardown has not run. |
 | P47 | Inspect effective behavior | Evidenced | Owner-backed selection, composition, connection and release inspection exist and are tested. Transitive failure context is fixed and tested in `9f3de47f0`. Existing requirement resolution and MCP connection status remain the only owners; no second readiness ledger. |
-| P48 | Final source/API cutover review | Evidenced | `b2dcbfbba` reconciles the original replacement map against current source: superseded service/view/carrier/feature facades and compatibility readers are absent; remaining negative fixtures assert refusal. Runtime/Reviews/CLI active guidance and public API inventory are current, with strict architecture/generation/static closure passed. Overall graphical criteria and current final global/native/artifact gates remain separately recorded; this row does not qualify them. |
+| P48 | Final source/API cutover review | Evidenced | `b2dcbfbba` reconciles the original replacement map against current source: superseded service/view/carrier/feature facades and compatibility readers are absent; remaining negative fixtures assert refusal. Runtime/Reviews/CLI active guidance and public API inventory are current, with strict architecture/generation/static closure passed. Current global/native/artifact gates pass as separately recorded; this source row does not qualify graphical criteria. |
 
 ## Verification
 
-Current reopened-goal qualification after `981c4c915` (2026-10-15):
+Historical reopened-goal qualification at `981c4c915` (2026-10-15), superseded
+for current-source freshness by Current stage:
 
 - The original complete `go test -race -p 2 ./runtime/... ./runtime/localruntime/...
   ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s` exits 0.
@@ -3874,17 +3942,17 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-P13 has current ordinary installed-process evidence. Direct installed composition/
-inner-mutation/disconnection/CLI-host proofs (P12/P16/P18/P41), active documentation
-cleanup (P48), 13 partially demonstrated graphical rows and all four review cross-scenarios remain
-open for acceptance. The user prohibition prevents graphical execution; it does
+P13 and direct installed composition/inner-mutation/disconnection/CLI-host proofs
+(P12/P16/P18/P41) now have matching executable evidence. P48 source/docs/API cleanup
+is committed. Thirteen partially demonstrated graphical rows and all four review
+cross-scenarios remain open for acceptance. The user prohibition prevents graphical execution; it does
 not waive the original requirements. See the individual table for exact limits.
 
 The delegated-approval deadline and waiting-tree authority defect have causal
 production repairs and a passing original complete parallel gate. That result
 stands independently of the withdrawn overall completion claim. The post-SDK
 safe-steer timeout remains a historical failure without a separately established
-cause; current parallel verification and three focused repetitions pass. A passing
+cause; current parallel verification and eight fully pinned safe/yolo repetitions pass. A passing
 rerun does not establish its independent cause, nor prove timing margin under
 other contention. No assertions or original deadlines were relaxed.
 
@@ -3896,7 +3964,12 @@ universal Goal cost/step ceiling was inferred from silence.
 Graphical interaction remains unexecuted by user instruction. The earlier
 interrupted prohibited UI run is not current acceptance evidence and is not
 claimed resolved. Earlier public artifact qualification used branch-source archives
-and an offline external Go module; it was not rerun after the reopened SDK changes.
+and an offline external Go module. Current Usage artifacts and an independently
+compiled Reviews/Tool-proposal/command-next author now pass fresh qualification.
+The current full Runtime module archive includes its internal implementation and
+companion localruntime artifact; author source imports only public APIs. An archive
+of public directories alone is insufficient for this current SDK and is not
+claimed as a new pass.
 Registry publication and external deployment are not authorized or claimed.
 
 ## Spillover risks
