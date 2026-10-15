@@ -2,10 +2,19 @@
 
 ## Current acceptance
 
-The original P01-P48 audit is **35 Evidenced / 13 Partial / 0 Open**, not an
+On 2026-10-15 the user lifts the UI/E2E/screenshot test prohibition and authorizes
+actual graphical qualification. Earlier no-UI statements retain their historical
+scope. The 13 graphical rows and four review scenarios stay Partial until their
+matching evidence exists. Use only isolated Runtime/data/browser/native resources;
+preserve the primary checkout, daily Runtime, stash, assertions and time limits,
+with no push or main merge.
+
+The original P01-P48 audit is **36 Evidenced / 12 Partial / 0 Open**, not an
 implementation percentage or a 100% claim. P13 public installed Tool proposals,
-P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup are complete.
-Thirteen graphical rows and all four added review cross-scenarios remain Partial.
+P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup has earlier source evidence but now needs the frontend
+fixture migration exposed by newly authorized checks.
+Eleven graphical rows, reopened P48 frontend fixture migration and all four added
+review cross-scenarios remain Partial.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
 The user confirms no original Runtime log, goroutine dump or test data remains.
 Passing repetitions do not close that item. An earlier test-only qualification
@@ -15,9 +24,22 @@ Complete typed-input structural admission now has an actual installed CLI
 RED/GREEN regression and shared SDK/Runtime repair for unary and streaming
 consumers. Current parallel race, native and independent-author qualification
 passes at `9f5a66d51`; these gates do not close the historical deadlines or
-prohibited graphical scenarios.
+other graphical scenarios. The following frontend change has its own qualification.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
+
+Actual Web execution now exposes and repairs dropped CommonJS named exports in
+the production shared React facades. The Vite owner emits explicit installed React
+bindings and checks its output; a new author-consumer link gate uses actual built
+ESM. Web and an isolated Wails bundle render installed Reviews, save through its
+real backend and demonstrate stale-editor revision refusal (Web holds 3, Wails
+saves 4, Web refuses without overwriting 4). An executable CLI query agrees with
+revision 4. P29/P32 now have graphical evidence. Current native packaging and the
+public-module gate pass. The full frontend gate remains failed/unqualified:
+a clean focused run reproduces nine failures in five files (105 pass), including
+obsolete service/Skill-cache fixtures and Memory raw-input/cache expectations.
+Reconcile these next, without restoring old APIs or relaxing assertions. See the
+current graphical-acceptance section of the progress document for exact scope.
 
 The following test-only slice qualifies the actual CLI original-binding conflict:
 a successful update's key cannot accept otherwise-valid changed input, a fresh
@@ -67,8 +89,8 @@ their unchanged-production qualification retains its exact earlier scope.
   main, push, merge main or mutate stash. The retained stash is
   `WIP on main: c443a1a8 refactor(runtime): finish the json/v2 migration across delivery and tooling`.
 - No user/production data initialization, copying, conversion or deletion occurs.
-- No frontend UI/E2E/screenshot tests are added or run. No Desktop aggregate
-  `npm run check` is run. Source/type/native build checks do not qualify rendering.
+- UI/E2E/screenshot qualification is now authorized by the user. Source/type/native
+  build checks alone still do not qualify rendering. Keep each gate's actual scope.
 - Replies are Chinese; code/comments/errors/docs are English. Existing root/module
   instructions apply. No sub-agent delegation occurs.
 - Stage explicit paths. Hooks run with `lint-staged --no-stash
@@ -512,8 +534,9 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
 
 ## Unexecuted scenarios and risks
 
-- P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 need actual graphical interaction.
-  The user prohibition remains in force; no UI tests or application launch.
+- P21/P26/P30-P31/P33/P35-P36/P39-P40/P45-P46 still need matching graphical
+  interaction. The user has authorized UI/E2E/screenshots; keep resources isolated.
+  P29/P32 have actual Web/Wails proof. P48 is reopened for frontend fixture closure.
 - All four review cross-scenarios remain Partial: no-Run mutation response loss
   across actual UI/Runtime restart plus update/uninstall/selection; equivalent
   typed refusal through Tool/CLI/rendered UI; authenticated remote multi-resource

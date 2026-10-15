@@ -2,12 +2,18 @@
 
 ## Current stage
 
-Original-proposal acceptance remains **incomplete: 35 Evidenced / 13 Partial / 0 Open**.
+On 2026-10-15 the user lifts the UI/E2E/screenshot test prohibition and authorizes
+graphical qualification in the existing worktree. Prior no-UI statements record
+their historical verification scope. The graphical rows remain Partial until
+actual matching evidence is obtained; authorization alone closes no criterion.
+Keep the primary checkout, daily Runtime/data, stash, original assertions and
+timeouts intact, with no push or main merge. New UI work uses isolated resources.
+
+Original-proposal acceptance remains **incomplete: 36 Evidenced / 12 Partial / 0 Open**.
 These are evidence counts, not an implementation percentage. P13 public installed
 Tool proposal transformation, P12/P16/P18/P41 real-process scenarios and P48
-source/API/doc cleanup now have matching evidence. Thirteen graphical rows and
-all four additional review cross-scenarios remain Partial under the continuing
-UI/E2E/screenshot prohibition. The historical post-SDK 10s safe-steer timeout
+source/API/doc cleanup now have matching evidence. Eleven graphical rows, reopened P48 frontend fixture migration and
+all four additional review cross-scenarios remain Partial. The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
 An earlier test-only qualification also retains unclassified MCP startup
 discovery deadlines; passing focused or complete reruns do not explain them.
@@ -21,6 +27,49 @@ canonical `0` still saves and recovers the business owner's `invalidUpdate` rece
 Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
+
+### Graphical acceptance: shared React exports (2026-10-15)
+
+Actual isolated Web execution finds an installed Reviews page stuck at its loading
+boundary. Authenticated resource delivery succeeds, but the emitted `react` facade
+has only a default export and the JSX facade has no exports. Linking the installed
+component fails because `useEffect` is absent. A CommonJS star re-export cannot
+publish the public named ESM contract reliably; the host's own successful build
+never exercised that independent author entrance.
+
+The Vite owner now derives explicit named exports from the installed React module
+family, retains the existing default exports and verifies the emitted bindings.
+The normal production module graph still owns a single shared instance. A new
+`check:plugin-modules` links independent author imports against the actual emitted
+React/React DOM/JSX ESM; the aggregate pipeline runs it after its production build.
+No component-local fallback, bundled second React, compatibility or protocol change
+is introduced. The checker initially has incorrect virtual-entry and Vite result
+assumptions; both are corrected before its passing invocation.
+
+Production frontend typecheck/build and the emitted-module consumer check pass.
+The existing plugin-pane/SDK focused baseline passes 27 tests in three files.
+Pinned Wails v3 beta.29 packaging passes with the current frontend, arm64/macOS
+13.0 metadata and strict/deep ad-hoc signature; the duplicate `-lobjc` warning
+remains. Computer use then runs a separately identified native bundle and a Web
+window against one task-owned Runtime and private data root. Both actually render
+the independently installed Reviews Hooks and shared UI controls. Web saves
+revision 1 -> 2; Wails reads 2 and saves 3, then 4. With Web still holding 3, its
+submission returns the explicit revision-conflict message and rereads 4 without
+another transition. Actual executable CLI query independently returns resolved
+revision 4. Screenshots retain the Web conflict and Wails revision 4. This closes
+P29/P32; it does not establish multi-resource remote ESM, connection replacement,
+response-loss recovery, blocked module management or historical timeout causes.
+
+The first aggregate check stops on a pre-existing formatting failure. A second
+reaches frontend tests and exposes nine failures before a concurrently launched
+native dependency task reinstalls frontend dependencies; that invocation is
+terminated and is not qualification. A clean focused run after native packaging
+confirms all nine failures in five files, with 105 passing tests. They involve an
+obsolete service field in the theme fixture, retired Skill-cache expectations,
+raw-JSON Memory test input and cached-Memory projection expectations. P48 is
+reopened until the affected contracts and fixtures are reconciled; no failure,
+assertion or original timeout is skipped or relaxed. Full frontend qualification,
+remaining graphical rows and safe-steer/MCP root causes remain incomplete.
 
 A following test-only slice adds
 `TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt`. The actual
@@ -2858,8 +2907,8 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
   receipt recovery remains explicitly unconfirmed; it cannot adopt the older
   outcome. None of those backend/CLI cases qualifies rendered interaction.
 - P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 and the four review cross-scenarios need
-  actual graphical interaction. The user prohibition stays in force; do not add
-  or execute UI/E2E/screenshot tests or substitute source/native builds for them.
+  actual graphical interaction. The user has lifted the prohibition; use isolated
+  resources and do not substitute source/native builds for matching interactions.
 - The high and low dependency entries have source/exposure triage but remain
   unremediated. The high root is unpatched upstream; patched KaTeX is outside the
   current transitive integrations' supported range. Paid/live,
@@ -3217,8 +3266,8 @@ private-conflict addition at `cae633a29`. Current-production vet, shared TS,
 architecture, Runtime/native, independent Go author and freshly packed Usage
 results are recorded in Current stage; `5ff75fffc` results retain their frozen
 earlier scope. Platform/conditional test execution is not inferred from package
-summaries. UI/E2E/screenshot execution remains forbidden and unrun, so those
-requirements remain unverified rather than waived.
+summaries. The user has since authorized graphical execution. The new actual
+Web/Wails evidence above closes only P29/P32; other criteria retain their exact scope.
 
 | Requirement | Original scenario | Status | Evidence and remaining work |
 | --- | --- | --- | --- |
@@ -3250,10 +3299,10 @@ requirements remain unverified rather than waived.
 | P26 | UI closes during an accepted Run | Partial | Independent accepted Run and observation lifetimes have backend/shared-client evidence. Closing an actual installed view during that Run has not been executed. |
 | P27 | Memory provider is absent versus enabled but broken | Evidenced | Backend absence versus operational failure tests pass. The complete Memory consumer migration preserves this distinction in real installed checks. |
 | P28 | Human memory edit races with curation publication | Evidenced | Private Memory review/ledger/watermark/CAS and concurrent publication tests pass, including exactly one winning generation. |
-| P29 | Full installed component uses Hooks and shared UI | Partial | Packed Usage builds outside the checkout; shared-module graph, types and native production compilation pass. Hooks and provider identity in an actual rendered installed component have not run. |
+| P29 | Full installed component uses Hooks and shared UI | Evidenced | The current production Web and separately identified Wails bundle both render independently installed Reviews with real Hooks and shared controls. Both submit owner-backed mutations; the emitted React/React DOM/JSX facade regression links actual public named imports. This is execution evidence, not a build-only substitution. |
 | P30 | Component or dependency throws | Partial | Error-boundary and management entrances exist in source; failed/blocked backend management is tested. Throwing component/dependency recovery in the renderer has not run. |
 | P31 | Navigate from resource A to B during an operation | Partial | Captured target/generation source and shared mutation-journal tests fence old requests. Actual A -> B navigation during a pending component operation has not run. |
-| P32 | Two views edit one workflow/resource | Partial | One backend owner and revision conflict behavior are tested; Reviews board source submits inspected revisions. Two simultaneous graphical editors have not run. |
+| P32 | Two views edit one workflow/resource | Evidenced | Actual Web and Wails editors read the same installed review at revision 3. Wails saves revision 4; Web still holding 3 submits and receives the explicit revision-conflict message, then rereads unchanged revision 4. An actual CLI query independently agrees. |
 | P33 | Applicability changes with selected content | Partial | Declarative applicability admission and metadata-only menu resolution exist. Actual selected-content action visibility and absence of heavy render-time work have not been executed. |
 | P34 | One large item exceeds inline transport capacity | Evidenced | Backend stream/body/resource bounds, explicit capacity refusal and Tool-result offloading tests cover the required transport behavior. No graphical large-item display is claimed. |
 | P35 | Theme or font scale changes | Partial | Shared appearance/CSS/UI ownership is visible in source and builds. Existing component reaction to live theme/font-scale changes has not run. |
@@ -3269,7 +3318,7 @@ requirements remain unverified rather than waived.
 | P45 | Recover from a broken optional-plugin startup | Partial | Real never-handshaking backend restart/list/disable passes; independent CLI management does not evaluate component JS. No execution of recovery while an installed module blocks renderer startup is recorded; the review requires that stronger scenario. |
 | P46 | Shutdown with active backend callbacks and UI teardown | Partial | Backend reverse-order cancel/join, callback retirement and settled close/error tests pass. Shutdown combined with actual component async work/resource teardown has not run. |
 | P47 | Inspect effective behavior | Evidenced | Owner-backed selection, composition, connection and release inspection exist and are tested. Transitive failure context is fixed and tested in `9f3de47f0`. Existing requirement resolution and MCP connection status remain the only owners; no second readiness ledger. |
-| P48 | Final source/API cutover review | Evidenced | `b2dcbfbba` reconciles the original replacement map against current source: superseded service/view/carrier/feature facades and compatibility readers are absent; remaining negative fixtures assert refusal. Runtime/Reviews/CLI active guidance and public API inventory are current, with strict architecture/generation/static closure passed. Current global/native/artifact gates pass as separately recorded; this source row does not qualify graphical criteria. |
+| P48 | Final source/API cutover review | Partial | The earlier source/API cleanup and strict backend architecture/generation closure remain recorded. Newly authorized frontend checks expose nine failures, including obsolete theme service fields, retired Skill-cache expectations and Memory input/cache fixture contracts. Reconcile these without restoring retired APIs or weakening valid assertions, then rerun the full frontend gate. |
 
 ## Verification
 
