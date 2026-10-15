@@ -2,21 +2,35 @@
 
 ## Current stage
 
-Reopened on 2026-10-15: the parallel race deadline in
-`TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot` remains unresolved.
-The previous completion declaration was premature. Serial passes do not establish
-a cause or qualify the failed parallel invocation. Investigation retains every
-original assertion and the 10-second case deadline, and requires causal evidence
-plus verification of the original parallel scenario before acceptance can close.
+Completed after causal repairs on 2026-10-15 within the user's authorized scope.
+The earlier completion declaration based on serial race passes was premature and
+was withdrawn. The original complete parallel command now exits 0 with all 174
+package results passing on frozen `981c4c915` source:
 
-The original worktree and `codex/unified-plugins` branch are retained; last
-integrated main is `7ba40c117` (Scope v0.50.0). No push, main merge, primary-checkout
-edit or user-data conversion is authorized. Preserve the original stash.
+```sh
+go test -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s
+```
 
-Existing normal Go, vet, shared protocol, generation, artifact and native results
-remain historical evidence. The full parallel race has 173 passing package
-results and one deadline failure. Independent package and serial CLI race passes
-are diagnostic results only. UI/E2E/screenshot execution remains excluded.
+`366ffff6a` gives the fixed published model contracts one immutable compiled owner;
+`981c4c915` captures/restores original MCP authority separately for root/delegated
+Tool groups. Both causes have measured or deterministic RED/GREEN evidence below.
+All original recovery/steer assertions and 10-second contexts are unchanged.
+Execution passes 294.118s, complete bootstrap/all eight Schedule SIGKILL cuts
+364.471s, CLI root 70.971s, runtimebinding 42.169s and terminal 49.862s. These are
+complete uninstrumented parallel results, not isolated/serial substitution.
+
+Complete affected normal execution/toolset/bootstrap passes 71.935/3.835/106.444s.
+Full-module vet, exact Core/feature/API regeneration, current Runtime/native
+production builds and strict/deep native signature pass. Current static boundary,
+context, port and 95/95 API-consumer closure pass. Earlier unchanged shared TS and
+standalone-artifact evidence remains recorded; no frontend UI/E2E/screenshot tests
+or Desktop aggregate `npm run check` were run. Graphical interaction stays excluded.
+
+The original worktree/`codex/unified-plugins` branch and last integrated main
+`7ba40c117` (Scope v0.50.0) are retained. No push, main merge, primary-checkout edit,
+stash mutation or user-data conversion occurred. The private checkpoint format
+changes explicitly: preserve old data and finish old waiting work with its original
+binary. There is no compatibility reader, dual writer, silent fallback or replay.
 
 ### Waiting authority across backend connection publication (2026-10-15)
 
@@ -46,10 +60,12 @@ are diagnostic results only. UI/E2E/screenshot execution remains excluded.
   passes all three repetitions (Execute 4.504/4.388/4.410s), and both steer modes
   pass all three repetitions with unchanged assertions and 10s contexts. These
   diagnostic passes do not replace the original parallel gate.
-- Complete affected normal execution/toolset/bootstrap verification passes
-  (71.935/3.835/106.444s), including all original recovery/steer/schedule cases and
-  all eight Schedule SIGKILL cuts. The original full parallel race, vet and current
-  artifacts follow on frozen source. Acceptance remains open.
+- Complete affected normal execution/toolset/bootstrap passes
+  71.935/3.835/106.444s. The final original complete parallel race then exits 0:
+  174 packages, execution 294.118s, bootstrap 364.471s, CLI root 70.971s,
+  runtimebinding 42.169s and terminal 49.862s. All original assertions/10s contexts,
+  recovery/steer/schedule coverage and eight crash cuts remain. Vet, exact generation,
+  static closure and current Runtime/native builds pass. This closes acceptance.
 
 ### Parallel race deadline investigation (2026-10-15)
 
@@ -74,11 +90,12 @@ are diagnostic results only. UI/E2E/screenshot execution remains excluded.
   the 10s context unchanged. Temporary timestamps/stacks/counters are not product
   code. Uninstrumented complete CLI root/runtimebinding at `-race -p 2` passes
   (74.798/42.144s), including both previously failing cases.
-- The complete original 174-package parallel race command is running. A separate
-  profiling run also observed a refused waiting-tree Deployment validation; its
-  configuration/source evidence is being investigated rather than discarded.
-  Acceptance remains open until both the original parallel gate and this finding
-  are resolved. The earlier completion declaration remains withdrawn.
+- The first complete post-SDK parallel sweep exposes the separate waiting-tree
+  authority defect recorded above. `981c4c915` repairs it with deterministic
+  RED/GREEN and original-configuration/source evidence. The final original complete
+  parallel command passes all 174 packages. Earlier failures and the withdrawn
+  premature completion declaration remain recorded; serial passes do not explain
+  or qualify those failed runs.
 
 ### Current native and standalone artifact qualification (2026-10-15)
 
@@ -97,9 +114,10 @@ are diagnostic results only. UI/E2E/screenshot execution remains excluded.
   and matches every bundled release resource byte. A second offline clean
   `npm ci --ignore-scripts`, typecheck and build reproduces the same bytes.
   The owned temporary kit is removed. Registry publication is not claimed.
-- Complete current full-module race remains the last running gate. Final source
-  and P01-P48/review reconciliation will distinguish executed backend/shared
-  verification from the user's explicitly excluded graphical interaction.
+- At this slice close, full parallel race was still pending. The causal repairs
+  and final 174-package parallel pass above supersede that pending status. Current
+  Runtime and native artifacts are rebuilt after `981c4c915`, including strict/deep
+  signature, arm64 and macOS 13.0 floor. No application is launched.
 
 ### Public Memory client and complete current Go gates (2026-10-15)
 
@@ -118,10 +136,9 @@ are diagnostic results only. UI/E2E/screenshot execution remains excluded.
   localruntime, CLI and Reviews, with no excluded Go tests. Full module vet passes.
   Root and both feature generation pipelines reproduce every tracked artifact
   exactly. These Go sources are unchanged by the final TS client relocation.
-- Final complete race is running over that same full module set with unchanged
-  case assertions and a 900s package aggregate limit. Native/current artifact
-  qualification and final P01-P48/review reconciliation follow. The earlier failed
-  and terminated full run is retained as failure history, not counted as passed.
+- At this slice close, complete race and native qualification were pending.
+  The final causal repair/parallel pass above supersedes that status. Failed and
+  terminated runs remain failure history and are never counted as passed.
 
 ### Product-consumer closure and current author documentation (2026-10-15)
 
@@ -1643,21 +1660,19 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-Parallel race acceptance is reopened. `366ffff6a` fixes measured repeated
-compilation of immutable published contracts. The subsequent original parallel
-gate exposes a separate late-backend catalog expansion in waiting recovery.
-Per-group capture/restoration now fixes that authority boundary; deterministic
-RED/GREEN, focused race, delayed-observer diagnostics and complete affected
-normal execution/toolset/bootstrap pass. Final parallel race/vet/artifacts remain.
-Original assertions and every 10-second recovery/steer context remain unchanged.
+None within the authorized implementation and verification scope. The two
+reopened production causes are repaired and the original complete parallel race
+passes. Historical slice entries retain their original status and failure evidence;
+Current stage and current qualification below own the final state.
 
 ## Next
 
-Finish the complete original `-race -p 2` sweep on frozen current source, including
-all bootstrap tests and Schedule SIGKILL cuts. Investigate failures rather than
-accepting serial reruns. Record current validation, commit explicit paths and
-remove only owned scratch resources. Do not push, merge, edit the primary checkout
-or alter the user's stash.
+Keep the qualified source and reviewable Runtime/native outputs in this original
+worktree and branch. Owned diagnostic scratch is removed and the original stash
+is verified. Confirm the final documentation commit leaves Git clean, then stop.
+No push, merge, primary-checkout edit or user-data mutation is authorized.
+Graphical execution, registry publication and external deployment remain outside
+this goal's authorized scope.
 
 ## Decision ledger
 
@@ -1934,7 +1949,7 @@ or alter the user's stash.
 
 Current implementation/evidence replaces the historical open-stage labels.
 The complete normal backend suites and current source/build checks are recorded
-above; complete module-isolated race qualification is recorded in Current stage. Graphical interaction
+above; causal repairs and the original complete parallel race pass are recorded in Current stage. Graphical interaction
 proof is excluded, never converted into a pass by source or native compilation.
 
 | Review requirement | Current implementation and evidence |
@@ -1985,7 +2000,7 @@ the user; source inspection and native builds do not become rendered proof.
 | P11 | Verified by executable stdio decorator/model-next and installed model-call evidence tests. |
 | P12 | Backend verified by captured composition order and checkpoint activation identity tests. |
 | P13 | Final rewritten Tool proposals are structurally admitted before approval; `9f3de47f0` verifies approved, executed and historical arguments match and rejects invalid proposals before approval/execution. |
-| P14 | Public command/stream continuation and original receipts are verified. `6b3a1d823` removes Core Schedule-specific reconstruction, proves unrelated Tool recovery and preserves all eight crash cuts. Complete Runtime race and original crash-cut coverage pass; CLI race qualification and the failed parallel invocation are recorded in Current stage. |
+| P14 | Public command/stream continuation and original receipts are verified. `6b3a1d823` removes Core Schedule-specific reconstruction, proves unrelated Tool recovery and preserves all eight crash cuts. The final original 174-package parallel race and all eight crash cuts pass after immutable contract reuse and per-group MCP capture/restoration; earlier failures remain recorded in Current stage. |
 | P15 | Backend verified by expired/captured callback, next withdrawal and replacement activation refusal tests. |
 | P16 | Backend verified by known inner response/consumption surviving failed outer observation and reopen; uncertainty is not relabeled as no effect. |
 | P17 | Backend/shared-client verified by early consumer withdrawal, cancellation/join and no premature final-result tests. |
@@ -2022,6 +2037,38 @@ the user; source inspection and native builds do not become rendered proof.
 | P48 | The live Schedule-specific host receipt codec is removed in `6b3a1d823`. Core private Memory entity/application imports are removed in `9f2bac554`. Its private RPC grant dependencies are removed in `6d3728a0c`, with external Core build-closure proof. Superseded active source/API/schema/example/README claims are removed; current complete, dependency, artifact and native gates pass within the stated scope. |
 
 ## Verification
+
+Current reopened-goal qualification after `981c4c915` (2026-10-15):
+
+- The original complete `go test -race -p 2 ./runtime/... ./runtime/localruntime/...
+  ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s` exits 0.
+  All 174 package results pass; execution 294.118s, complete bootstrap/all eight
+  Schedule SIGKILL cuts 364.471s, SDK 13.946s, CLI root 70.971s, complete
+  runtimebinding 42.169s and terminal 49.862s. No Go test is excluded. Original
+  recovery/steer assertions and 10-second contexts remain byte-for-byte unchanged.
+- Complete affected normal execution/toolset/bootstrap passes
+  71.935/3.835/106.444s. Focused race passes 8.862/5.364s. The same delayed-observer
+  diagnostic that lost waiting Runs three times now passes three repetitions;
+  both steer modes also pass three repetitions. Diagnostics are external overlays,
+  never committed production/test changes or replacements for the parallel gate.
+- Full-module vet and exact Core/Memory/Schedules/API regeneration pass with no
+  tracked drift. SDK concurrent descriptor-isolation/input-admission race and
+  repeated-lookup benchmark pass; warm fixed-contract lookups allocate zero bytes.
+- Current Runtime `make build` produces all ten ordinary packages and both backend
+  executables. Current native `wails3 task package` passes typecheck/Vite/Go/CGo and
+  strict/deep ad-hoc signature, arm64 and macOS 13.0 floor. Neither app/distribution
+  is launched against user data. The existing duplicate `-lobjc` warning remains.
+- Direct static layer, published-boundary, context, port and API-consumer checks
+  pass on current source: 95/95 fact families, 112 typed sites, all 3 sidecars,
+  all 14 event types and all 4 Tool-result readers. These are source checks; no
+  frontend UI/E2E/screenshot test or Desktop aggregate check is run.
+- The original failed parallel invocation, post-SDK full parallel failure,
+  profiling refusal and deterministic RED regression remain recorded above.
+  They are never relabeled as passes or pre-existing defects. Serial passes did
+  not establish the cause; production ownership repairs and the original complete
+  parallel command close the reopened requirement.
+
+The qualification below predates the reopened repairs and is retained as history.
 
 Final current qualification (2026-10-15):
 
@@ -3601,18 +3648,19 @@ Stage 2a verification:
 
 ## Unresolved questions
 
-No unresolved implementation decision blocks the authorized scope. Current
-retention remains conservative: Run-linked evidence follows its Run, Session-only
+No unresolved implementation or authorized verification blocks this goal.
+The delegated-approval deadline and waiting-tree authority defect have causal
+production repairs, deterministic/measurement evidence and a passing original
+complete parallel gate. The earlier serial-only completion declaration remains
+withdrawn; all failed invocations remain explicit history. The safe-steer timeout
+from the post-SDK failed sweep is retained as a failure record; current complete
+parallel verification and three focused repetitions of both modes pass. No
+separate cause is invented for that historical timeout.
+
+Retention remains conservative: Run-linked evidence follows its Run, Session-only
 evidence follows atomic Session deletion, and unattached evidence is retained.
 Pending/unknown commands never expire into replay permission. No new TTL or
 universal Goal cost/step ceiling was inferred from silence.
-
-The original parallel race deadline is reproduced with just the CLI root and
-runtimebinding packages at `-race -p 2`. Causal measurements identify repeated
-compilation of immutable model contracts; current parallel qualification follows
-the SDK fix. One profiling run also exposed a refused waiting-tree deployment
-validation; retain that failure and investigate it before closing acceptance.
-No test is skipped or relaxed.
 
 Graphical interaction remains unexecuted by user instruction. The earlier
 interrupted prohibited UI run is not current acceptance evidence and is not

@@ -1,25 +1,26 @@
 # Unified plugin refactor handoff
 
-Reopened on 2026-10-15: parallel race acceptance remains unresolved. The earlier
-completion declaration was premature; serial passes do not establish the cause. The detailed slice history, 48 individual acceptance rows,
-review reconciliation and failure records remain in
-[plugin-refactor-progress.md](plugin-refactor-progress.md). Current repository
-state is authoritative.
+Closed after causal repairs on 2026-10-15 within the user's authorized scope.
+The earlier completion declaration based on serial reruns was premature and was
+withdrawn. The original full parallel race now passes all 174 packages on frozen
+`981c4c915` source. Current repository state is authoritative; detailed failures,
+measurements, 48 individual proposal rows and review reconciliation remain in
+[plugin-refactor-progress.md](plugin-refactor-progress.md).
 
 ## Workspace and preservation
 
 - Worktree: `/Users/tangerg/.codex/worktrees/unified-plugins/flame`.
 - Branch: `codex/unified-plugins`; last integrated main: `7ba40c117`,
-  released Scope v0.50.0. No push or merge into main was performed.
+  released Scope v0.50.0. No push or merge into main.
 - The primary checkout `/Users/tangerg/Desktop/flame` was not edited.
-- Preserve the original stash: `WIP on main: c443a1a8 refactor(runtime): finish
-  the json/v2 migration across delivery and tooling`. No automatic/bare stash.
+- Preserve `WIP on main: c443a1a8 refactor(runtime): finish the json/v2 migration
+  across delivery and tooling`. No automatic/bare stash or stash mutation.
 - No production/user-data initialization, copying, conversion or deletion.
 - No frontend UI/E2E/screenshot execution or additions; no Desktop aggregate
-  `npm run check`. The existing E2E file only migrates its import to the public
-  feature client, with test logic/assertions unchanged.
+  `npm run check`. Production builds/typechecks and direct static checks are not
+  rendered UI verification. No application was launched.
 - Replies remain Chinese; code/comments/errors/docs remain English. Existing
-  root/module instructions continue to apply. No sub-agent delegation occurred.
+  root/module instructions apply. No sub-agent delegation occurred.
 
 ## Final implementation
 
@@ -36,7 +37,7 @@ artifact/lifecycle qualification are implemented. Existing pending commands and
 waiting executions retain original target/origin/parent/route and exact transitive
 dependencies. No compatibility reader, dual business writer or provider replay.
 
-Final product commits:
+Final product commits (including reopened repairs):
 
 - `6b3a1d823`: generic public original-owner Tool receipts; private Schedule
   reconstruction removed, unrelated Tool/failure recovery verified.
@@ -54,6 +55,10 @@ Final product commits:
   competing writer. Existing snapshot assertions and transaction settlement
   guarantees remain intact.
 - `33696b3c2`: actual CLI composition inspection, ordering and resolution.
+- `366ffff6a`: fixed published model contracts have one immutable compiled owner;
+  checkpoint decoding no longer recompiles them on every durable commit.
+- `981c4c915`: each Tool group's original MCP authority is captured/restored before
+  discovery. New backend availability cannot expand a waiting Deployment.
 - `b577d3b15`, `03fb6eeb6`: active author/docs cleanup and public feature-owned
   Memory client, with Workspace consuming its own adapted application ports.
 
@@ -62,112 +67,102 @@ Schedule definitions/cursors/captured pending work/receipts. Runtime keeps accep
 Runs, execution, accounting source evidence and its original acceptance receipts.
 The shared callback layer has no Memory domain or universal Memory work limit.
 
+## Causal parallel race closure
+
+The original deadline reproduces with CLI root/runtimebinding at `-race -p 2`.
+`executorCheckpoint` decodes its payload, and each decode rebuilt all three fixed
+model contracts. One original exact-case run constructs observer/input/context
+contracts 36/38/38 times: 8.201s cumulative constructor wall time and a 9.808s
+Execute window. Intervals can overlap; this is not an exclusive critical-path sum.
+Race benchmarks measure 127.5/50.7/41.0ms and 20.4/7.9/6.5MB per lookup. The SDK
+now shares each immutable admitted contract through `sync.OnceValues`, while
+received/authored contracts retain strict admission and descriptors own their bytes.
+Warm lookups allocate zero bytes. Concurrent descriptor/input-admission race passes.
+
+A profiling refusal exposes a second production defect. Root and delegated Tool
+resolution can straddle asynchronous Memory/Schedules publication. Recovery rebuilt
+from the current catalog, changing an accepted waiting Deployment. Root configuration
+fields match; MCP Tool authority expands. A short observer pause at the existing
+approval boundary reproduces lost waiting Runs three times inside the unchanged
+10s context. After the SDK fix alone, the complete parallel gate fails the unchanged
+case in 4.57s with `interrupt_not_open`; a safe-steer deadline is also recorded.
+
+The deterministic `TestWaitingRecoveryKeepsMCPManifestsPerGroup` fails on that
+original path with `configurationChanged` (0.57s). The execution owner now captures
+each group's original references separately. Every cold/probe/accepted restoration
+consumes that capture, and the resolver selects original MCP authority before
+discovery/collision resolution without changing the current catalog. An unrelated
+backend becoming available belongs to future executions. The same diagnostic
+observer pause passes three times (Execute 4.504/4.388/4.410s); both steer modes
+also pass three repetitions. The original test files, assertions and 10s contexts
+are unchanged. Temporary probes/delays are external overlays, never product code.
+
+These focused results do not substitute for the original parallel gate. Its final
+complete invocation below exits 0 with 174 passing package results. Earlier failed
+invocations remain failures; no pre-existing cause is claimed. No separate cause
+is invented for the historical safe-steer timeout, whose current complete parallel
+and focused mode repetitions pass.
+
 ## Final verification
 
-- Complete normal Runtime/localruntime/CLI/Reviews: all 174 packages pass.
-  Complete bootstrap 94.535s; execution 68.930s. All original assertions and
-  eight Schedule SIGKILL cuts remain present and pass.
-- Full-module vet and exact Core/feature/API regeneration pass.
-- Full parallel race passes all Runtime/localruntime/Reviews and 173 total package
-  results, including execution 318.622s, bootstrap 399.488s and Core SQLite 34.489s.
-  Its aggregate exits 1: one CLI delegated-approval recovery exceeds its unchanged
-  10s deadline. This invocation is explicitly not a pass or a pre-existing failure.
-- The unchanged whole failed CLI package passes race independently (67.710s).
-  Three exact-case repetitions pass (39.668s). After temporary diagnostics are
-  removed, complete serial CLI race passes all 33 packages, including runtimebinding
-  67.414s and terminal 56.501s. No source, assertion, timeout or test selection was
-  changed to obtain those passes. These passes do not qualify the failed parallel
-  scenario or establish its cause. Preserve the original assertions and 10s limit.
-- Shared contract checks: 30 files/355 tests plus types/lint/format/knip pass.
-  SDK/Reviews/portable/Desktop typechecks and portable exact resources pass.
-- Static dependency/layer/public-boundary/context/port/API checks pass; 95/95 API
-  fact families have real consumers. No coverage exemption is added.
-- Current native Wails production `.app`, strict/deep ad-hoc signature, arm64 and
-  macOS 13.0 floor pass, without launch. Runtime `make build` includes all ten
-  ordinary packages and current backend executables; publisher policy bytes match.
-- Current packed Usage author kit builds outside the checkout. A second offline
-  clean reinstall/typecheck/build reproduces every resource byte. Offline external
-  Go authors compile public SDK/storage/receipts and a Runtime graph without private
-  feature imports. No published registry/module release is claimed.
+- The original complete command passes, without exclusions or changed case limits:
 
-The first full acceptance run found genuine snapshot `SQLITE_BUSY` failures;
-`f8d2d9bd8` repairs their read/write boundary. A later clean full run passes all
-174 packages. The failed/terminated earlier run and failed parallel race are
-preserved in the progress history, never counted as passes. No test was skipped,
-weakened or given a larger case deadline to manufacture a pass.
+  ```sh
+  go test -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s
+  ```
 
-## Reopened parallel race investigation
-
-The deadline reproduces with just CLI root/runtimebinding at `-race -p 2`.
-`executorCheckpoint` decodes its own payload, and every decode rebuilt the three
-fixed model contracts. One original case builds observer/input/context contracts
-36/38/38 times, with 8.201s cumulative constructor wall time and a 9.808s Execute
-window. Race benchmarks show 127.5/50.7/41.0ms and 20.4/7.9/6.5MB per lookup.
-This is a measured production cause; serial passes were insufficient evidence.
-
-The SDK owns one immutable admitted instance of each fixed contract through
-`sync.OnceValues`. Received/authored contracts retain ordinary strict admission;
-consumer descriptors still own their schema bytes. Race coverage exercises
-concurrent descriptor isolation and valid/invalid input admission. A diagnostic
-current Execute takes 2.391s. With all instrumentation removed and the original
-10s/assertions unchanged, complete CLI root/runtimebinding passes at `-race -p 2`
-(74.798/42.144s). The original full parallel gate is still running.
-
-That refused Deployment validation is a second confirmed production defect. A
-short observer pause at the existing approval boundary reproduces lost waiting
-Runs three times inside the unchanged 10s context. Root configuration fields
-match, but the Tool catalog expands as Memory/Schedules finish connecting.
-Root/delegated resolution can straddle that publication. The post-SDK full
-parallel gate fails the unchanged case in 4.57s with `interrupt_not_open`, and
-also records a safe-steer deadline. Execution/bootstrap pass 292.273/328.469s,
-but that aggregate is explicitly a failure.
-
-A deterministic per-group waiting lifecycle regression fails on the original
-path with `configurationChanged` (0.57s). The execution owner now captures each
-original group separately; all cold/probe/accepted restoration consumes the same
-capture. The resolver filters MCP authority before discovery/collision resolution
-and leaves the current catalog intact. The private flat `mcp_references` field is
-replaced by required `mcp_manifests`. Old shapes are refused unchanged; preserve
-old data and finish waiting work with its original binary. No compatibility reader,
-migration, dual writer or replay is added.
-
-Focused race passes execution/toolset 8.862/5.364s. The same diagnostic observer
-pause passes three times (Execute 4.504/4.388/4.410s), and both steer modes pass
-three repetitions, with original assertions and 10s contexts unchanged. Complete
-normal execution/toolset/bootstrap passes 71.935/3.835/106.444s, including all eight
-Schedule crash cuts. The original uninstrumented parallel gate, vet and current
-artifacts still require final verification. No 100% claim is made yet.
-All diagnostic overlays/logs live in owned temporary storage and are removed only
-after their failure/cause/validation evidence is recorded.
+  All 174 packages pass; execution 294.118s, complete bootstrap/all eight Schedule
+  SIGKILL cuts 364.471s, SDK 13.946s, CLI root 70.971s, complete runtimebinding
+  42.169s and terminal 49.862s. No data-race report or failing package.
+- Complete affected normal execution/toolset/bootstrap passes
+  71.935/3.835/106.444s; focused execution/toolset race passes 8.862/5.364s.
+- Full-module vet and exact Core/Memory/Schedules/public API regeneration pass
+  with no tracked drift. No dependency or public protocol shape changes in these
+  reopened repairs.
+- Current Runtime `make build` contains all ten ordinary packages and both backend
+  executables. Current native `wails3 task package` passes typecheck/Vite/Go/CGo,
+  strict/deep ad-hoc signature, arm64 and macOS 13.0 floor. Its existing duplicate
+  `-lobjc` linker warning remains; neither distribution is launched or published.
+- Current direct static dependency/layer/published-boundary/context/port/API checks
+  pass. All 95/95 fact families, 112 typed sites, 3 sidecars, 14 event types and
+  4 Tool-result readers have actual consumers. These are source proofs.
+- Earlier unchanged shared contract 30 files/355 tests, SDK/Reviews/portable types,
+  component byte reproduction and independent packed Usage/offline Go author
+  qualification remain recorded in progress. They are not relabeled as new runs
+  after the reopened Go repairs; public declarations/resources remain unchanged.
+- Full normal 174-package acceptance before reopening is historical evidence.
+  Current complete affected normal suites and the original complete parallel race
+  provide current-source execution evidence. No UI/E2E/screenshot test or Desktop
+  aggregate check is used to close this goal.
 
 ## Scope and data boundaries
 
 Current Core is `2026-10-15.2`, backend protocol is
 `io.github.tangerg.flame/backend/2026-10-14.2`, and trajectory export schema is 3.
-Rebuild affected consumers and backend/component artifacts together. Replaced
-host/checkpoint/private receipt shapes are refused unchanged; preserve old data
-directories and finish waiting work with its original binary. Unchanged private
-formats stay with their exact owner and explicit data binding. No automatic
-compatibility, migration, private copying or historical JS execution is introduced.
+The private checkpoint replaces flat `mcp_references` with required per-group
+`mcp_manifests`; old captures cannot reconstruct both groups and are not read as
+defaults. Preserve original data and finish old waiting work with its original
+binary. There is no compatibility reader, automatic migration, private copying,
+dual business writer or provider replay. Rebuild affected consumers and backend/
+component artifacts together. Unchanged private formats keep their exact owner.
 
-Run-linked evidence follows existing Run retention; Session-only endpoints follow
-atomic Session deletion; unattached evidence is retained. Pending/unknown routes
-never expire into replay permission. No new TTL or universal Goal ceiling is
-invented.
+Run-linked evidence follows Run retention; Session-only endpoints follow atomic
+Session deletion; unattached evidence is retained. Pending/unknown routes never
+expire into replay permission. No new TTL or universal Goal ceiling is invented.
 
 Rendered UI/Hooks/provider identity, remote graphical Web/Wails workflows and
-window-reload interaction are excluded from executed acceptance by user instruction.
-Source, types and native builds are not those proofs. The earlier interrupted
-prohibited UI run is not claimed resolved. Registry publication, external deployment,
-pushing/merging and user-data migration require a separately authorized scope.
+window-reload interaction remain excluded from executed acceptance by user
+instruction. Source/types/native builds are not those proofs. The earlier
+interrupted prohibited UI run is not claimed resolved. Registry publication,
+external deployment, pushing/merging and user-data migration remain unauthorized.
 
 ## Read-only references and next action
 
 - `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal.html`.
 - `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal-Review-2026-10-13.md`.
 
-Both original inputs are unchanged. Trace and reproduce the delegated-approval
-recovery timeout under parallel race, collect phase evidence, and repair the
-responsible production boundary if defective. Reverify the original parallel
-scenario and affected modules. Do not close acceptance on serial reruns alone.
-Keep reviewable Runtime/native outputs and remove only owned scratch resources.
+Both original inputs are unchanged. No required implementation or authorized
+verification remains. Owned diagnostic scratch is removed and the original stash
+is verified. Keep reviewable Runtime/native outputs, confirm the final documentation
+commit leaves Git clean, and stop. Do not push, merge, edit the primary checkout
+or mutate user data.
