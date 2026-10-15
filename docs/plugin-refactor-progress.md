@@ -43,6 +43,22 @@ Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
 
+### MCP SDK provenance audit (2026-10-16)
+
+The retained failed connection stack names go-sdk v1.8.1-scope.1. Its expected
+module checksum is identical at 366ffff6a, b2dcbfbba, the failed candidate base
+523b2e917 and the current qualified source: h1:8V8k8aeqbEDgLlH3T4+DZnf0DM1dSOGofkAXb3dZjKM=.
+The current expanded server.go equals its cached module archive byte for byte
+(SHA-256 c76b26ff34eff9b53761708ba476c4dd7b822a8201e3618098ecd49e1cab812b).
+Its discovery handler already reads request metadata before updateState acquires
+the session mutex; fallback metadata accessors can acquire that same mutex.
+The SDK client supplies protocol/client/capability metadata on its discover call.
+This audits the expected dependency source and rules out treating that already
+present lock-order correction as a new fix delivered by the Scope upgrade.
+It does not reconstruct the old failing child's actual execution or identify
+another blocked phase. Historical safe-steer/MCP causes remain unestablished;
+no product/dependency change or repeated full gate is substituted for evidence.
+
 ### Final current-source gates and native original-command recovery (2026-10-16)
 
 Freeze product source at 6d5e2427d. The original complete four-module command,

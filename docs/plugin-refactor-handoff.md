@@ -32,6 +32,11 @@ The user confirms no original Runtime log, goroutine dump or test data remains.
 Passing repetitions do not close that item. An earlier test-only qualification
 also has unclassified MCP startup discovery deadlines; its failed gates remain
 recorded separately from the earlier complete product pass.
+A current SDK provenance audit confirms the failed stack's go-sdk version and
+expected module checksum did not change across the historical/current references.
+The matching archive already contains the discovery metadata-before-session-lock
+correction. It cannot be credited as a new Scope-upgrade fix or used to explain
+the missing failed child interval; details are recorded in progress.
 Complete typed-input structural admission now has an actual installed CLI
 RED/GREEN regression and shared SDK/Runtime repair for unary and streaming
 consumers. The earlier `9f5a66d51` qualification retains its source scope; the
