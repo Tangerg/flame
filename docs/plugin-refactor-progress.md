@@ -9,10 +9,10 @@ actual matching evidence is obtained; authorization alone closes no criterion.
 Keep the primary checkout, daily Runtime/data, stash, original assertions and
 timeouts intact, with no push or main merge. New UI work uses isolated resources.
 
-Original-proposal acceptance remains **incomplete: 36 Evidenced / 12 Partial / 0 Open**.
+Original-proposal acceptance remains **incomplete: 38 Evidenced / 10 Partial / 0 Open**.
 These are evidence counts, not an implementation percentage. P13 public installed
 Tool proposal transformation, P12/P16/P18/P41 real-process scenarios and P48
-source/API/doc cleanup now have matching evidence. Eleven graphical rows, reopened P48 frontend fixture migration and
+source/API/doc cleanup now have matching evidence. Nine graphical rows, reopened P48 frontend cleanup and
 all four additional review cross-scenarios remain Partial. The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
 An earlier test-only qualification also retains unclassified MCP startup
@@ -70,6 +70,89 @@ raw-JSON Memory test input and cached-Memory projection expectations. P48 is
 reopened until the affected contracts and fixtures are reconciled; no failure,
 assertion or original timeout is skipped or relaxed. Full frontend qualification,
 remaining graphical rows and safe-steer/MCP root causes remain incomplete.
+
+### Graphical acceptance: resource-stream termination (2026-10-15)
+
+The actual independently installed multi-resource control loads its relative ESM
+resource, reports shared React identity and increments Hook state. A throwing React
+component shows the existing recovery boundary. A throwing imported dependency,
+however, remains at the loading boundary: resource retirement waits forever.
+This is a new reproduced frontend/shared-client defect, separate from either
+historical Go timeout.
+
+The responsible owner is HTTP stream draining. On request cancellation it cleans
+the response reader but suppresses its terminal transport notification; the resource
+subscription therefore cannot settle `closed`, and module evaluation failure
+cannot finish cleanup. The shared transport now publishes one terminal notification
+from its final cleanup path, including cancellation and early consumer withdrawal.
+Expected cancellation carries no fabricated error or result. Resource closure still
+joins actual reader release; client/transport closure retains its existing owner.
+There is no timeout, retry, replay, fallback or component-local exception patch.
+
+The public-client regression uses an acknowledged HTTP resource stream and its
+real aborting response body. Before the repair it fails at the unchanged default
+5,000ms test limit (5.005s); afterward close and `closed` settle, the request is
+aborted and the body reader is unlocked. Five focused transport/client/stream files
+pass all 80 tests in 447ms. The complete shared-client check passes typecheck,
+lint, formatting, all 356 tests in 30 files and Knip (tests 1.91s). The production
+frontend typecheck/Vite build passes (Vite 4.81s). With that actual production build,
+the same installed dependency failure now shows the explicit reload recovery
+entrance within the original requested UI wait bound. This closes P30's Web
+component/dependency failure scenario; native failure execution, blocked initialization,
+connection replacement and shutdown interaction remain separately unqualified.
+
+P35 also has actual Web evidence: the displayed installed Reviews follows light ->
+dark -> light without changing revision 4; its shared button's computed foreground
+changes with the palette. Selecting interface size 18 makes that button 18px;
+restoring default makes it 14px. Screenshots retain the actual rendered state.
+The document root's font size stays 16px by design; component token scale supplies
+the changed control size. This is graphical evidence, not a source-only assertion.
+
+Newly authorized full frontend execution first reaches 358 passing files and 2,429
+passing tests in 94.53s, then Knip identifies a stranded workspace Memory route.
+Consumer tracing proves its facade, commands, publication slot, mutation cohort,
+DTO/read cache and startup registration have no real UI consumer; only exclusive
+tests and a redundant visual provider remain. Those obsolete paths are removed
+end to end; the installed component and its backend/public SDK remain the owners.
+The real HTTP tests preserve Memory mutation loss, explicit provider selection,
+original acknowledgement attempts and cold reads. Generic plugin invalidation is
+not a claim that private business data changed. The fixture now consumes exactly
+one command invalidation for a duplicate add and proves the private row is unchanged.
+Usage checks the current exact totals/model/coverage rather than obsolete flat fields.
+The old capability-count assertion was an invalid implementation inventory; explicit
+scanner examples and comparison to the published feature vocabulary replace it.
+No valid business or lifecycle assertion or timeout is weakened.
+
+The replacement-cut check passes all remaining frontend/HTTP tests, Knip and source
+boundary gates, then finds the Session action dialog bypassing the design-system
+primitive boundary. Its existing visual/focus structure is moved to a ContentDialog
+atom; the feature retains action binding and failure/Suspense composition. P48 stays
+Partial while the complete final gate is running. The native product still needs a
+fresh build/execution after the HTTP resource fix. Earlier native/Go/race evidence
+retains its exact production-source scope.
+
+### Bounded MCP startup controls (2026-10-15)
+
+Task-local overlays mark Memory/Schedules lease entry, acquired lease, schema-ready
+and `server.Run`; the parent records discovery writes/replies. Eight bounded controls
+cover whole frames, byte-fragmented frames, held-lease release and held-lease stdin
+EOF plus SIGTERM. Both frame forms receive valid replies. Contention keeps both
+backends before acquired-lease/stdio reading; releasing the held directory lease
+produces the reply approximately 16.0/13.3ms later. Closing stdin while still waiting
+for that lease does not itself end pre-transport startup; SIGTERM settles the process
+without creating its database. Those expected nonzero cancellation exits are control
+results, not passing ordinary backend startup claims.
+
+The first whole-frame processes take 863.109/2,257.704ms from spawn to reply, with
+850.466/2,242.308ms already elapsed at lease entry. Later fragmented controls take
+24.132/34.054ms. This distinguishes pre-main/startup delay from the demonstrated
+lease wait; it does not identify a loader, scheduler, CPU or historical cause.
+A further actual Go init trace receives replies in 152.852/373.907ms. Its largest
+recorded package initializers are 12/20ms; it does not reproduce a 10s stall.
+Two initial init-trace harness attempts incorrectly close stdin before receiving or
+omit required discovery metadata and are corrected; they are not qualified passes.
+No production Go code, original test deadline or assertion changes. These controlled
+phase observations do not close the historical MCP or safe-steer deadlines.
 
 A following test-only slice adds
 `TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt`. The actual
@@ -3300,12 +3383,12 @@ Web/Wails evidence above closes only P29/P32; other criteria retain their exact 
 | P27 | Memory provider is absent versus enabled but broken | Evidenced | Backend absence versus operational failure tests pass. The complete Memory consumer migration preserves this distinction in real installed checks. |
 | P28 | Human memory edit races with curation publication | Evidenced | Private Memory review/ledger/watermark/CAS and concurrent publication tests pass, including exactly one winning generation. |
 | P29 | Full installed component uses Hooks and shared UI | Evidenced | The current production Web and separately identified Wails bundle both render independently installed Reviews with real Hooks and shared controls. Both submit owner-backed mutations; the emitted React/React DOM/JSX facade regression links actual public named imports. This is execution evidence, not a build-only substitution. |
-| P30 | Component or dependency throws | Partial | Error-boundary and management entrances exist in source; failed/blocked backend management is tested. Throwing component/dependency recovery in the renderer has not run. |
+| P30 | Component or dependency throws | Evidenced | Actual installed Web controls throw in React rendering and in a relative ESM dependency. The dependency case exposes a public HTTP resource-close deadlock; the shared transport repair has an unchanged-5s RED/GREEN regression, complete 356-test shared qualification and actual Web recovery-boundary proof. Native failure execution and blocked initialization retain their separate criteria. |
 | P31 | Navigate from resource A to B during an operation | Partial | Captured target/generation source and shared mutation-journal tests fence old requests. Actual A -> B navigation during a pending component operation has not run. |
 | P32 | Two views edit one workflow/resource | Evidenced | Actual Web and Wails editors read the same installed review at revision 3. Wails saves revision 4; Web still holding 3 submits and receives the explicit revision-conflict message, then rereads unchanged revision 4. An actual CLI query independently agrees. |
 | P33 | Applicability changes with selected content | Partial | Declarative applicability admission and metadata-only menu resolution exist. Actual selected-content action visibility and absence of heavy render-time work have not been executed. |
 | P34 | One large item exceeds inline transport capacity | Evidenced | Backend stream/body/resource bounds, explicit capacity refusal and Tool-result offloading tests cover the required transport behavior. No graphical large-item display is claimed. |
-| P35 | Theme or font scale changes | Partial | Shared appearance/CSS/UI ownership is visible in source and builds. Existing component reaction to live theme/font-scale changes has not run. |
+| P35 | Theme or font scale changes | Evidenced | Actual installed Reviews follows live light/dark/light palette changes with unchanged revision 4. Changing interface size makes the shared button 18px and restoring default returns it to 14px; computed styles and actual screenshots are observed. |
 | P36 | Entry or provider is replaced during pending async work | Partial | Backend/shared-client withdrawal, exact capture and late-response refusal are tested. Replacing a graphical entry/provider during its pending work has not run. |
 | P37 | Update is attempted with waiting execution dependencies | Evidenced | Backend waiting/checkpoint/pending-command dependencies retain exact activation/release identity and refuse unsafe replacement. |
 | P38 | Private data remains after disable/uninstall | Evidenced | Backend withdrawal/uninstall and private namespace admission tests preserve retained data and prevent another installation adopting it. |

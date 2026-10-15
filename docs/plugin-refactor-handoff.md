@@ -9,11 +9,11 @@ matching evidence exists. Use only isolated Runtime/data/browser/native resource
 preserve the primary checkout, daily Runtime, stash, assertions and time limits,
 with no push or main merge.
 
-The original P01-P48 audit is **36 Evidenced / 12 Partial / 0 Open**, not an
+The original P01-P48 audit is **38 Evidenced / 10 Partial / 0 Open**, not an
 implementation percentage or a 100% claim. P13 public installed Tool proposals,
 P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup has earlier source evidence but now needs the frontend
 fixture migration exposed by newly authorized checks.
-Eleven graphical rows, reopened P48 frontend fixture migration and all four added
+Nine graphical rows, reopened P48 frontend cleanup and all four added
 review cross-scenarios remain Partial.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
 The user confirms no original Runtime log, goroutine dump or test data remains.
@@ -27,6 +27,23 @@ passes at `9f5a66d51`; these gates do not close the historical deadlines or
 other graphical scenarios. The following frontend change has its own qualification.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
+
+A second actual Web failure is now causally fixed: an imported ESM dependency
+throws, but its resource close never settles because the HTTP transport suppresses
+stream termination on cancellation. Publish the terminal notice from reader cleanup,
+including early withdrawal; do not patch the component or add a timeout. The real
+public-client regression fails before repair at its unchanged 5s limit and passes
+afterward; focused 80 tests and the complete 30-file/356-test shared-client check
+pass. The rebuilt production Web displays the existing explicit recovery boundary
+for the same dependency failure. Actual theme/font-scale interaction also passes.
+P30/P35 join P29/P32 as graphical evidence. P48 remains Partial: full frontend tests
+pass, but newly enabled dead-code/design-system gates expose a stranded old workspace
+Memory path and a Session dialog primitive bypass. Their end-to-end cleanup is in
+progress; a current complete gate and fresh native qualification are pending.
+Bounded MCP controls now distinguish whole/fragmented frames, lease release and
+pre-transport EOF/SIGTERM, with package init traces. They do not reproduce or explain
+the historical MCP deadline; safe-steer also remains unresolved. Full details and
+failed harness attempts are retained in Current stage of the progress document.
 
 Actual Web execution now exposes and repairs dropped CommonJS named exports in
 the production shared React facades. The Vite owner emits explicit installed React
