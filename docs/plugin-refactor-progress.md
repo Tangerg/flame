@@ -9,7 +9,8 @@ actual matching evidence is obtained; authorization alone closes no criterion.
 Keep the primary checkout, daily Runtime/data, stash, original assertions and
 timeouts intact, with no push or main merge. New UI work uses isolated resources.
 
-Original-proposal acceptance remains **incomplete: 47 Evidenced / 1 Partial / 0 Open**.
+Original-proposal rows now have **48 Evidenced / 0 Partial / 0 Open**; overall
+acceptance remains incomplete pending the review and final qualification below.
 These are evidence counts, not an implementation percentage. P13 public installed
 Tool proposal transformation, P12/P16/P18/P41 real-process scenarios and P48
 source/API/doc cleanup now have matching evidence. P45 now has actual synchronous
@@ -21,8 +22,9 @@ producer withdrawal in a fresh window, without loading their modules. P26 now
 proves a UI-accepted Run survives its initiating window and component teardown.
 P31/P36 now have actual in-flight navigation and release-replacement evidence.
 P33 now has an installed applicability read model and actual no-menu-I/O proof.
-P46 and the no-Run recovery review remain Partial;
-the three other review cross-scenarios are Evidenced.
+P46 now has actual shutdown during a component-initiated backend/model callback,
+including cooperative session-resource closure. The no-Run recovery review remains
+Partial; the three other review cross-scenarios are Evidenced.
 The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
 An earlier test-only qualification also retains unclassified MCP startup
@@ -37,6 +39,49 @@ canonical `0` still saves and recovers the business owner's `invalidUpdate` rece
 Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
+
+### Graphical acceptance: active callback and component shutdown (2026-10-16)
+
+At 87719309c, install task-only Reviews and an ordinary analyzer through the
+existing public callable/point contracts. The actual hosted Reviews board starts
+Analyze. The independent analyzer calls the public selected-model callback with
+a distinct child identity, explicit budget and a local controlled provider. That
+provider emits a real initial stream delta and holds completion under a 120s
+fixture bound. Assert the stream is active before signaling only the isolated
+Runtime. Neither control reaches that bound or changes any product/test deadline.
+
+The first stdio control cancels the entered callback, closes the model transport,
+retires the actual component and exits Runtime at 0. The existing process-group
+hard-stop policy then ends the backend; its in-process setup closer does not
+report completion. This control alone does not prove that closer or graceful
+backend cleanup, and its log remains retained unchanged.
+
+The cooperative control uses the same actual board and an independently running
+Streamable HTTP analyzer. Its entered model stream closes 0.494ms after the
+Runtime shutdown signal; the backend callback settles canceled at 1.271ms and
+the session-owned setup resource closes once at 4.649ms. Runtime exits at 0.
+The remote process remains alive after session retirement, so its resource
+closure is directly observed rather than inferred from process death. Stopping
+that task process afterward joins the HTTP server and Backend.Close with nil
+results and exits at 0; the setup close count remains exactly one.
+
+The actual workbench withdraws the component during connection retirement. Its
+complete, untruncated network capture shows one plugins.call and exactly one
+canceled terminal for that request. No late analyzer result or cleanup console
+error appears. The old view renders its explicit unavailable state; its window
+is then closed. The model provider records exactly two entered streams and two
+peer closures across the two controls, with no final fabricated model response.
+No Run is started or canceled by the component lifetime.
+
+Focused existing Runtime shutdown/copy/idempotence/resource-join tests pass
+(bootstrap 5.909s); public callback/setup/model cancellation tests pass (0.785s).
+The package-generation, real Host lifetime and Reviews consumer frontend group
+passes all 38 tests in 3.83s. No production source, assertion, timeout or close
+owner changes. Both temporary installations are explicitly uninstalled, their
+package copies removed and all owned processes joined. Private captures retain
+the precise source/transport scope. This closes P46's matching combined scene;
+fresh global race/native/closure gates, the no-Run graphical restart review and
+historical safe-steer/MCP causes remain open.
 
 ### Graphical acceptance: contextual applicability without menu I/O (2026-10-16)
 
@@ -3429,8 +3474,9 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-Original-proposal acceptance remains incomplete: 1 Partial row and
-the no-Run recovery review cross-scenario. The two reopened production defects and
+Overall acceptance remains incomplete despite matching evidence for all 48
+proposal rows: the no-Run recovery review cross-scenario and fresh final gates
+remain outstanding. The two reopened production defects and
 original complete parallel-race gate are closed; that narrower result does not
 close the other criteria. Historical slice entries retain their original evidence.
 
@@ -3463,7 +3509,7 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 - The released Scope v0.51.1 upgrade, complete parallel race and current standalone
   author qualification now pass within their recorded scopes. Preserve separate
   historical safe-steer/MCP uncertainty until causal evidence closes it.
-- P46 and the no-Run recovery review still need
+- The no-Run recovery review still needs
   matching graphical interaction. The user has lifted the prohibition; use isolated
   resources and do not substitute source/native builds for matching interactions.
 - The high and low dependency entries have source/exposure triage but remain
@@ -3786,7 +3832,7 @@ qualification.
 | Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
 | Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
 | Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
-| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures and the remaining graphical row retain separate qualification gaps. |
+| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures, the remaining graphical review and fresh global gates retain separate qualification gaps. |
 | Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification and the separately unexecuted graphical criteria are not completed by P48 source closure. The newly authorized complete frontend gate now passes after removing the unused workspace Memory path and migrating stale fixtures; actual installed Web Memory still writes and refreshes its owner-backed row. |
 
 The review's four extra cross-acceptance groups are independently tracked:
@@ -3808,12 +3854,13 @@ Those headless proofs do not substitute for the remaining graphical scenarios.
 ## Proposal acceptance coverage
 
 Audit date: 2026-10-16; current source adds `1ce03662a` and the Reviews contextual
-point consumer after the `695879a46` frontend cut, Scope dependency cut
+point consumer `87719309c`, with the combined P46 shutdown proof above, after
+the `695879a46` frontend cut, Scope dependency cut
 `62431f987` and SQLite repair `c83f19ba7`; earlier focused
 CLI proof: `cae633a29`; source/API closure milestone: `b2dcbfbba`. Scenario titles
 and expected behaviors are rechecked against the original proposal and review,
 rather than substituted with easier checks.
-**47 Evidenced / 1 Partial / 0 Open** is a count of evidence coverage, not a
+**48 Evidenced / 0 Partial / 0 Open** is a count of evidence coverage, not a
 percentage of implementation or a claim of release readiness.
 
 `Evidenced` means matching executable evidence is recorded and the relevant source
@@ -3880,7 +3927,7 @@ Other criteria retain their exact scope.
 | P43 | Load an obsolete Flame declaration or old protocol | Evidenced | Exact backend/Core protocol, strict declaration and retired request refusal tests pass; no old reader/alias is introduced. |
 | P44 | Open incompatible persisted state | Evidenced | Strict incompatible schema and immutable namespace admission tests pass. New current-schema regression also proves missing owner facts are not silently recreated. |
 | P45 | Recover from a broken optional-plugin startup | Evidenced | In the actual native client an installed synchronous loop blocks module initialization; 855 task WebContent main-thread samples remain in the module evaluator/JIT. Independent CLI disable acknowledges in 0.229s while the native process is alive, and a separate read confirms disabled/withheld. A bounded supervisor stops only that task app; after real restart the UI shows disabled state, withdraws the command and renders another shared-React multi-resource component with a 0 -> 1 state change. Earlier blocked-backend coverage remains separately valid. |
-| P46 | Shutdown with active backend callbacks and UI teardown | Partial | Backend reverse-order cancel/join, callback retirement and settled close/error tests pass. Shutdown combined with actual component async work/resource teardown has not run. |
+| P46 | Shutdown with active backend callbacks and UI teardown | Evidenced | Actual Reviews starts an analyzer that enters a public selected-model callback and a held local provider stream before isolated Runtime shutdown. The UI request has one canceled terminal and its component retires; Runtime exits 0. In the cooperative HTTP control the callback settles canceled, the session setup resource closes once, and later remote Backend.Close/server joins return nil without another resource close. The stdio control separately demonstrates the existing forced process policy, not an in-process closer. Existing single-owner/repeated-close/error and package-generation tests pass; no competing shutdown root or relaxed deadline is added. |
 | P47 | Inspect effective behavior | Evidenced | Owner-backed selection, composition, connection and release inspection exist and are tested. Transitive failure context is fixed and tested in `9f3de47f0`. Existing requirement resolution and MCP connection status remain the only owners; no second readiness ledger. |
 | P48 | Final source/API cutover review | Evidenced | Earlier backend architecture/generation closure is retained. The newly authorized complete frontend pipeline now passes all 355 files/2,418 tests and every source/resource/bundle gate. Unused workspace Memory facade, gateway, mutation owner, read cache and redundant visual provider are deleted with exclusive tests; surviving installed HTTP and actual Web mutation/refresh remain proven. Stale fixtures migrate to the current publisher contract. This source-cut evidence does not close the remaining graphical/review criteria, fresh global requalification or historical timeouts. |
 

@@ -4,12 +4,12 @@
 
 On 2026-10-15 the user lifts the UI/E2E/screenshot test prohibition and authorizes
 actual graphical qualification. Earlier no-UI statements retain their historical
-scope. Remaining graphical rows and four review scenarios stay Partial until their
+scope. Graphical rows and review scenarios stay Partial until their
 matching evidence exists. Use only isolated Runtime/data/browser/native resources;
 preserve the primary checkout, daily Runtime, stash, assertions and time limits,
 with no push or main merge.
 
-The original P01-P48 audit is **47 Evidenced / 1 Partial / 0 Open**, not an
+The original P01-P48 audit is **48 Evidenced / 0 Partial / 0 Open**, not an
 implementation percentage or a 100% claim. P13 public installed Tool proposals,
 P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup now have matching
 evidence, including the newly authorized complete frontend gate.
@@ -20,9 +20,10 @@ the actual model Tool, executable CLI and rendered Reviews board. P39 now proves
 fresh-window historical inspection without renderer/producer modules. P26 now
 proves a UI-accepted Run survives window/component closure. P31/P36 now have real
 in-flight navigation and release-replacement proof. P33 now uses the owner point
-for actual contextual action visibility without menu I/O. One graphical
-row and one review cross-scenario remain Partial; the three other review groups
-are Evidenced.
+for actual contextual action visibility without menu I/O. P46 now has actual
+shutdown with an active backend/model callback and component teardown, including
+one cooperative session-resource close. One review cross-scenario remains Partial;
+the three other review groups are Evidenced. Fresh final global gates are pending.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
 The user confirms no original Runtime log, goroutine dump or test data remains.
 Passing repetitions do not close that item. An earlier test-only qualification
@@ -35,6 +36,21 @@ passes at `9f5a66d51`; these gates do not close the historical deadlines or
 other graphical scenarios. The following frontend change has its own qualification.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
+
+P46 executes the actual installed Reviews board against a task analyzer that
+enters the public selected-model callback and a held local provider stream before
+isolated Runtime shutdown. The complete network capture shows one plugins.call
+and one canceled terminal; the component retires and Runtime exits 0. The first
+stdio control follows the existing hard-stop policy, so it does not prove the
+plugin's in-process closer. A separate ordinary Streamable HTTP control directly
+observes model peer closure, canceled callback settlement and one setup-resource
+close at 0.494/1.271/4.649ms after shutdown. Its process survives session retirement;
+later HTTP/Backend.Close joins return nil and the process exits 0 without another
+setup close. Bootstrap shutdown tests, public callback/setup tests and 38 frontend
+lifetime/generation/Reviews tests pass. Both installations and package copies are
+removed, windows close and all owned processes join. No production behavior,
+assertion, deadline or lifecycle owner changes. The no-Run restart review,
+historical timeouts, dependency alerts and fresh final global gates stay open.
 
 P33 is now qualified with the real installed Reviews/analyzer pair. The Go-owned
 point emits one exact TS contract string; the board resolves metadata during its
