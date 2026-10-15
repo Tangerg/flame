@@ -49,11 +49,14 @@ Safe restoration has additional causal evidence: fully pinned old source
 This verifies the already repaired per-group MCP authority defect in safe mode;
 it is not a reproduction or explanation of the separate historical 10s timeout.
 
-The native dependency install/read-only npm audit reports **8 dependency alerts
-(4 high, 4 low)** and audit exit 1. The high chain includes the direct StyleX
-PostCSS build dependency through fast-glob/micromatch/braces; low math dependencies
-include KaTeX. Exploitability/remediation is not qualified and no dependency or
-lockfile is changed. Build success does not close those alerts. Paid DeepSeek
+The read-only npm audit still exits 1 with **8 alerts (4 high, 4 low)**.
+The four high package entries share one unpatched braces advisory in the StyleX
+PostCSS development chain. Source tracing and a bounded dependency probe establish
+that the vulnerable parser is real, while its current inputs are fixed repository
+build globs. The production-only audit reports zero high and four low alerts;
+this does not close the full audit. Dependency manifests/locks are unchanged.
+The detailed triage below retains the upstream risk and its reopening conditions.
+Paid DeepSeek
 (`FLAME_LIVE_DEEPSEEK` unset), Windows/Linux/alternate native execution, registry
 publication and the excluded graphical scenarios remain unexecuted.
 
@@ -62,6 +65,100 @@ The existing worktree/`codex/unified-plugins` branch and integrated main
 edit, stash mutation or user-data conversion occurred. Required private checkpoint
 fields are a deliberate break: preserve old data and finish old waiting work with
 its original binary. No compatibility reader, dual writer or provider replay.
+
+### Historical deadline location and npm high-alert triage (2026-10-15)
+
+The current chat's retained original command output recovers the historical failure
+location: `steer_receipt_integration_test.go:144`, safe case 15.70s, outer case
+26.75s, runtimebinding package 69.060s. The original test is unchanged. Line 144
+waits for the **second provider request after Resume returns successfully with a
+new Segment**. This is not the earlier `interrupt_not_open` return. Resume's
+acceptance precedes detached activation (`segmentStartup.activate` /
+`activateExecutor` -> `StageAcceptedContinuation` -> `BeginContinuation`), so the
+failure line alone cannot distinguish activation failure, a stalled Tool/commit
+or missing next model dispatch. The historical output has no Session snapshot,
+activation error, execution stack or profile for that interval. No exact cause is
+inferred from the later Deployment refusal or passing repetitions.
+
+The next fully pinned historical diagnostic runs both complete CLI packages:
+
+```sh
+go test -race -p 2 ./cli ./cli/internal/adapter/runtimebinding -count=6 -timeout=600s -v
+```
+
+- All 2,426 historical Go files are frozen at `366ffff6a`; newly added Go files
+  are excluded. Only the safe/yolo test's timestamps and deadline-only Session/
+  goroutine inspection differ. The original assertions, 10s case contexts and
+  event-stream consumption stay intact. SQL, module files and fixture build
+  scripts/manifests are unchanged. No source is edited during the run.
+- CLI passes 409.513s. Runtimebinding **fails** in 200.863s with two delegated-
+  approval `interrupt_not_open` / exact Deployment mismatch failures (2.59/2.82s).
+  Overall exit is 1, wall time 415.146s. It is a failed historical diagnostic,
+  not current-source acceptance and not a pass obtained by excluding failures.
+- All six original safe/yolo pairs pass inside that failed invocation. Safe
+  Resume returns at 0.942-1.279s; the second provider enters at 1.115-1.462s,
+  168-188ms after Resume. Final stream closure is 1.682-2.073s. No deadline
+  inspection marker occurs. These times do not explain the original timeout.
+- The retained chat also shows an additional normal execution-package RED-test
+  compilation/run at 10:09:15-10:09:40 overlapping the original safe case (whose
+  last pinned-memory warning is 10:09:22). That task is separate from the original
+  command's `-p 2` limit. There is no critical-interval CPU/scheduler measurement;
+  overlap alone is not proof of contention or a timeout cause. A one-second native
+  sample during the new repetition run has no resolved Go frames and establishes
+  no deadline cause. Do not add artificial delays/load and label that historical
+  causality, or optimize production from an unmeasured hypothesis.
+- A first instrumentation attempt has a malformed diagnostic Go string and fails
+  package setup before the cases run. Its owned process is stopped and the
+  instrumentation is corrected. This is not a product test failure or evidence
+  about the timeout. Raw logs are inspected before owned snapshots/logs are removed.
+- Production Go/test/dependency sources remain unchanged in this slice. The
+  historical 10s item remains **unresolved**. Standalone Markdown formatting
+  checks also report warnings on both unchanged HEAD documents; this pre-existing
+  formatting result is not reported as a passing gate or reformatted wholesale.
+
+Read-only audit and registry queries on the unchanged Desktop lockfile establish
+these four high entries as one dependency/advisory chain:
+
+| Audit entry | Installed version | Relationship | Current disposition |
+| --- | --- | --- | --- |
+| `@stylexjs/postcss-plugin` | 0.19.1 | Direct dev dependency; via fast-glob | Inherited high; no separate advisory |
+| `fast-glob` | 3.3.3 | StyleX's glob enumeration; via micromatch | Inherited high; no separate advisory |
+| `micromatch` | 4.0.8 | Brace expansion; via braces | Inherited high; no separate advisory |
+| `braces` | 3.0.3 | Recursive compile/expand AST walkers | Root high; affected <=3.0.3; no patched release |
+
+- Primary advisory: [GHSA-vfj7-8cjw-p6xm / CVE-2026-93687](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
+  The [upstream issue](https://github.com/micromatch/braces/issues/70) disputes the
+  untrusted-pattern use case; it does not provide a patched release. Registry
+  `npm view` confirms these installed versions are currently the latest for all
+  four packages. Full audit reports `fixAvailable: false` for every entry.
+- A standalone Node subprocess, bounded to 5s, passes a 9,001-character,
+  4,500-level pattern to installed braces compile/expand and fast-glob. All three
+  throw `RangeError: Maximum call stack size exceeded`. The probe catches those
+  errors and exits 0; this confirms the dependency defect, not a product exploit.
+  It adds/runs no UI test, loads no component and writes no source/build artifact.
+- The current StyleX PostCSS config supplies only `src/**/*.{ts,tsx}` and
+  `visual/**/*.{ts,tsx}`. Installed StyleX `resolveIncludeWithMetadata` respects
+  explicit includes and skips dependency auto-discovery; `builder.getFiles`
+  passes those config patterns to `globSync`, then reads the resulting filenames.
+  The same bounded probe enumerates 1,151/58 files with the real patterns without
+  exception. Source text, model content, workspace filenames and installed plugin
+  metadata do not become glob-pattern inputs on this path. Arbitrary build-config
+  edits already execute Node/Babel code; they are not a new Runtime input surface.
+- `npm explain braces` and the lockfile show a single path, with all four packages
+  marked dev. There are no imports of these packages in the client/SDK/component
+  runtime sources. `npm audit --omit=dev --json` exits 1 with **0 high / 4 low**;
+  the full audit exits 1 with **4 high / 4 low**. Development classification alone
+  is not proof of absence; the fixed configuration and consumer trace provide
+  the current exposure assessment. No new native/browser build or UI execution
+  is claimed by this triage.
+- Disposition: retain one upstream build-tool vulnerability represented by four
+  high package entries. No demonstrated untrusted-pattern path exists in the
+  current product; do not call the dependency fixed, globally safe or audit clean.
+  Reassess when StyleX/discovery configuration starts accepting external patterns,
+  the dependency graph changes, or an upstream patched release/replacement is
+  available. Do not hide the finding with audit exclusions, an override, a local
+  node_modules patch or a forced downgrade. No manifest/lock mutation occurs.
+- The four low math/KaTeX entries remain outside this high-alert triage and open.
 
 ### Bounded historical safe-steer diagnosis and current author artifacts (2026-10-15)
 
@@ -1935,7 +2032,8 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 - P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 and the four review cross-scenarios need
   actual graphical interaction. The user prohibition stays in force; do not add
   or execute UI/E2E/screenshot tests or substitute source/native builds for them.
-- Dependency audit alerts need separate exposure/remediation assessment. Paid/live,
+- The four high dependency entries have current exposure triage but remain
+  unpatched upstream; the four low alerts are not triaged. Paid/live,
   other native platforms/architectures and publication remain unexecuted; source
   archives are not releases. Do not push, merge main or alter retained user data.
 

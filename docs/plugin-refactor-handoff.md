@@ -115,6 +115,24 @@ Only timestamps and deadline-only inspection are added; original assertions and
 catalog reconstruction defect. The identical current-source diagnostic passes
 eight safe/yolo repetitions (53.615s), matching the existing per-group repair.
 
+The current chat's retained original output now recovers the historical failure
+line: `steer_receipt_integration_test.go:144` (safe 15.70s, outer 26.75s). That
+select waits for the second provider request after Resume succeeds with a new
+Segment. Resume acceptance precedes detached activation, so this location alone
+does not identify a failed activation, stalled Tool/commit or missing dispatch.
+No original state/stack/profile survives for that interval.
+
+A further fully pinned historical diagnostic runs the complete CLI root and
+runtimebinding packages together at `-race -p 2 -count=6`. Overall exit is 1:
+CLI passes 409.513s; runtimebinding fails 200.863s on two known delegated
+Deployment refusals (2.59/2.82s). All six safe/yolo pairs pass, with safe's
+second provider 168-188ms after Resume and no deadline markers. This does not
+close the historical 10s failure. Retained command history shows a separate
+normal execution-package RED-test build/run overlapping the original safe case;
+without critical-interval scheduler/CPU evidence it is not a contention diagnosis.
+An initial malformed diagnostic string fails setup, is corrected, and is not
+counted as a product result. Production/tests/dependencies remain unchanged.
+
 No deadline marker occurs in those runs. The historical post-SDK 10s timeout
 remains unclassified; do not relabel this faster refusal as that timeout or claim
 serial/current parallel success establishes its cause. An earlier full overlay
@@ -133,10 +151,17 @@ attempt are not timeout stacks. Failed iterations remain failed/inconclusive.
   while module initialization blocks the renderer.
 - Paid live DeepSeek is not enabled (`FLAME_LIVE_DEEPSEEK` unset). Windows/Linux/
   alternate native execution and registry/deployment publication are not qualified.
-- Read-only npm audit exits 1 with eight alerts (four high/four low): the high
-  chain includes StyleX PostCSS/fast-glob/micromatch/braces, with low math/KaTeX
-  alerts. Exposure/remediation is unqualified; dependency manifests/locks are
-  unchanged. Build success does not close these alerts.
+- Read-only npm audit exits 1 with eight alerts (four high/four low). All high
+  entries share one unpatched advisory, GHSA-vfj7-8cjw-p6xm: StyleX PostCSS
+  0.19.1 -> fast-glob 3.3.3 -> micromatch 4.0.8 -> braces 3.0.3. A bounded Node
+  probe confirms stack overflow for deeply nested patterns. Current consumers
+  accept only two repository-owned build globs; explicit includes disable StyleX
+  dependency auto-discovery. No current untrusted-pattern path is demonstrated.
+  Production-only audit reports zero high/four low and still exits 1. Retain the
+  upstream build dependency risk; reopen on external-pattern admission, dependency
+  changes or a fixed release. Detailed triage is in the progress document. No audit suppression,
+  override, local dependency patch, downgrade or manifest/lock change occurs.
+  The four low math/KaTeX entries are not triaged by this slice.
 - Core is `2026-10-15.2`, backend is
   `io.github.tangerg.flame/backend/2026-10-14.2`, export schema is 3. Private
   checkpoints require per-group `mcp_manifests` and `tool_proposals`. Preserve old
