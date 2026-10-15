@@ -10,13 +10,17 @@ all four additional review cross-scenarios remain Partial under the continuing
 UI/E2E/screenshot prohibition. The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
 The latest test-only qualification also retains unclassified MCP startup
-discovery deadlines; passing focused runs do not close those failures.
+discovery deadlines; passing focused or complete reruns do not explain them.
 
 The latest complete product qualification is frozen `b2dcbfbba`. Production Go
 remains unchanged. Later test-only slices add failure-only steer diagnostics,
 installed Reviews no-Run recovery and real Tool/CLI equivalence. The latest
-fixture/CLI slice has failed parallel qualification recorded below; the bounded
-startup diagnostic does not reproduce those deadlines. Earlier bootstrap race 408.052s, focused
+fixture/CLI slice passes the complete execution/bootstrap parallel race on clean
+`6b3a175e8`: 385 top-level passes, zero failures/skips, package times
+240.475/328.931s, wall 334.225s. This run has no source overlay or changed test
+deadline. A read-only process observer finds no proxy/backend reaching its
+sampling threshold, so it takes no native sample and does not diagnose the
+earlier discovery deadlines recorded below. Earlier bootstrap race 408.052s, focused
 Reviews race 35.311s, eight-cut execution race 58.876s and architecture 31.663s
 predate this latest slice. The earlier complete CLI/root binding race remains
 recorded below. The following full-product result predates these test-only
@@ -85,6 +89,43 @@ The existing worktree/`codex/unified-plugins` branch and integrated main
 edit, stash mutation or user-data conversion occurred. Required private checkpoint
 fields are a deliberate break: preserve old data and finish old waiting work with
 its original binary. No compatibility reader, dual writer or provider replay.
+
+### Original-source process observation and current fixture qualification (2026-10-15)
+
+Starting from clean `6b3a175e8`, the complete participating packages run with no
+source overlay, inherited `GOFLAGS`, profiling flags, exclusion or changed test
+assertion/deadline:
+
+```sh
+go test -json -race -p 2 ./runtime/internal/adapter/run/execution ./runtime/internal/bootstrap -count=1 -timeout=900s
+```
+
+`-json` projects the same test events for the external observer. The observer
+follows only descendants of this Go command and considers native sampling only
+for its message-loss proxy and Memory/Schedules child at 4s/8s of observed
+lifetime. It changes no executable bytes and reads no user's Runtime process.
+No such pair reaches either threshold: there are zero samples or sampled binary
+copies. The prepared symbol reader is not executed.
+
+The command exits 0 after 334.225s. Execution/bootstrap pass 240.475/328.931s;
+all 385 top-level cases pass and none fails or skips. All eight Schedule SIGKILL
+cuts pass (parent 47.73s). The complete real Reviews Tool/CLI case passes 15.64s,
+lost Core-opening reconciliation 4.44s and cancellation/restart 1.50s. This is
+current two-package verification of the fixture slice, not a fresh whole-product,
+shared TS, native, graphical or historical-source gate.
+
+The observation does not reproduce the prior initial-discovery deadline. Its
+absence of samples cannot identify the failing child state, justify CPU/OS/lease/
+schema/proxy attribution, or close either that class or the independent historical
+safe-steer deadline. The earlier failures stay unresolved. No production code
+changes or timeout repair are claimed.
+
+The representative actual failure below is consolidated into this progress owner.
+The complete normalized snapshot and candidate hashes remain in Git history:
+`git show 6b3a175e8:docs/plugin-refactor-mcp-startup-evidence.md`. The standalone
+temporary evidence report is removed from the current tree in accordance with
+the repository's commit/test progress workflow. Temporary observer resources are
+removed after inspection; current Runtime/native build outputs are retained.
 
 ### Real CLI query/refusal equivalence and coherent plugin test bindings (2026-10-15)
 
@@ -159,10 +200,36 @@ five failed and zero skipped. The expanded real Reviews Tool/CLI case passes
 5.42s; those local passes do not qualify the failed packages. A temporary overlay
 records backend startup phases, proxy request/response metadata and a live
 9s CPU/stack snapshot, without changing assertions or original deadlines.
-The representative failed live stack, complete package counts and candidate
-test-source hashes are retained in
-[MCP startup deadline evidence](plugin-refactor-mcp-startup-evidence.md), so
-temporary-resource cleanup does not discard the newly captured failure.
+The edited-cut helper's actual post-deadline stack retains this owner chain
+(SDK v1.8.1-scope.1; representative original goroutine states shown):
+
+```text
+goroutine 192 [select]:
+jsonrpc2.(*AsyncCall).Await                       conn.go:435
+mcp.call                                        transport.go:320
+mcp.defaultSendingMethodHandler                 shared.go:164
+mcp.(*Client).discover                          client.go:429
+mcp.(*Client).Connect                           client.go:328
+infra/integration/mcp.dial.func2                 config.go:124
+infra/integration/mcp.connectSession             config.go:204
+infra/integration/mcp.dial                       config.go:133
+infra/integration/mcp.(*Connections).dialAndSwap  reconnect.go:105
+infra/integration/mcp.(*Connections).configure    reconnect.go:48
+infra/integration/mcp.(*Attempt).connect          attempt.go:168
+
+goroutine 306 [IO wait]:
+internal/poll.(*FD).Read
+os.(*File).Read
+mcp.(*pipeRWC).Read                              cmd.go:59
+mcp.(*frameLimitReader).Read                     transport.go:604
+jsontext.(*decoderState).ReadValue
+mcp.newIOConnLimited.func1                       transport.go:550
+```
+
+The reader waits for pipe output while the initial discovery call awaits its
+response. These frames precede admission/setup/Core callbacks; they do not expose
+the proxy or backend's execution state. The complete snapshot remains reachable
+from the exact Git reference above, independent of temporary-resource cleanup.
 
 That bounded diagnostic exits 0 after 454.684s: execution/bootstrap pass
 333.208/435.734s, all 385 top-level cases pass with zero skips, and all eight cuts

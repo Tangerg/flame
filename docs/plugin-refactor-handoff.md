@@ -77,7 +77,23 @@ recorded in progress rather than duplicated here.
 
 ## Actual current qualification
 
-The latest fixture/CLI slice is not qualified by a complete passing gate.
+The latest fixture/CLI slice passes both complete participating packages on clean
+`6b3a175e8`, without an overlay or changed assertion/deadline:
+
+```sh
+go test -json -race -p 2 ./runtime/internal/adapter/run/execution ./runtime/internal/bootstrap -count=1 -timeout=900s
+```
+
+Execution/bootstrap pass 240.475/328.931s (wall 334.225s), with 385 top-level
+passes, zero failures/skips and all eight SIGKILL cuts passing (parent 47.73s).
+A read-only native observer follows only this command's message-loss proxies and
+their Memory/Schedules children. No pair reaches its 4s/8s sampling threshold;
+there are no native samples or sampled binary copies. No source, executable,
+deadline or assertion is modified. This verifies the current fixture slice; it
+does not explain the earlier failed gates or the historical safe-steer timeout,
+and is not a newly run whole-product/TS/native/graphical gate.
+
+The preceding failed qualifications and bounded diagnostics remain relevant:
 After correcting every custom plugin fixture, a focused Reviews/Schedules-loss/
 cancel-restart race passes 29.250s; architecture passes 68.933s and bootstrap vet
 passes. A complete bootstrap race fails 523.661s (147 cases pass, one fails):
@@ -105,8 +121,10 @@ cuts pass (parent 52.33s). It does not reproduce unanswered discovery. Its only
 child for native sampling. Killed/unclosed profiles are not qualified. This is
 a diagnostic overlay, not a replacement for the failed unmodified-source gate;
 no startup cause or production repair is established.
-The representative live failure and exact candidate hashes are retained in
-[MCP startup deadline evidence](plugin-refactor-mcp-startup-evidence.md).
+The representative live failure is consolidated in the progress document. Its
+complete normalized snapshot and candidate hashes remain reachable with
+`git show 6b3a175e8:docs/plugin-refactor-mcp-startup-evidence.md`; the temporary
+standalone report is removed from the current tree.
 
 The earlier namespace mismatch is a separate, established fixture defect:
 initial plugin startup advertised the conformance namespace but reopening and
