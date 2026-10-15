@@ -3,10 +3,13 @@ package runtimebinding
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
+	"github.com/Tangerg/flame/runtime/capability"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 
@@ -19,6 +22,7 @@ type pluginBindingStub struct {
 	selected    *protocol.PluginInstallation
 	provider    *protocol.PluginProviderSelection
 	composition *protocol.PluginComposition
+	lookup      func(context.Context, protocol.GetPluginCommandRequest, flameruntime.CallOptions) (*protocol.CallPluginRequest, error)
 }
 
 func (s pluginBindingStub) SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest, flameruntime.CommandOptions) (*protocol.PluginComposition, error) {
@@ -98,5 +102,60 @@ func TestPluginMutationRefusesAnotherInstallationsResult(t *testing.T) {
 		if _, err := runtime.SelectPlugin(t.Context(), request, ""); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 			t.Fatalf("%s select result = %v", name, err)
 		}
+	}
+}
+
+func (s pluginBindingStub) GetPluginCommand(ctx context.Context, query protocol.GetPluginCommandRequest, options flameruntime.CallOptions) (*protocol.CallPluginRequest, error) {
+	return s.lookup(ctx, query, options)
+}
+
+func TestPluginCommandLookupPreservesScopeInputAndFailure(t *testing.T) {
+	const installation = "12345678-1234-1234-1234-123456789abc"
+	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: `{}`, Method: "test.retained/save.v1", Input: `{"scale":1.0,"value":18446744073709551615}`, Target: capability.Target{Scope: "installation", Reference: installation}}
+	invalid := original
+	invalid.Digest = "changed"
+	upstream := errors.New("original route unavailable")
+	query := protocol.GetPluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "original-command"}
+	for _, test := range []struct {
+		name    string
+		value   *protocol.CallPluginRequest
+		failure error
+	}{
+		{name: "original", value: &original},
+		{name: "nil"},
+		{name: "invalid", value: &invalid},
+		{name: "upstream error", failure: upstream},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := t.Context()
+			var connection *Connection
+			calls := 0
+			stub := pluginBindingStub{lookup: func(gotContext context.Context, got protocol.GetPluginCommandRequest, options flameruntime.CallOptions) (*protocol.CallPluginRequest, error) {
+				calls++
+				if gotContext != ctx || got != query || !reflect.DeepEqual(options, connection.callOptions()) {
+					t.Fatalf("lookup changed its caller scope: %+v %+v", got, options)
+				}
+				return test.value, test.failure
+			}}
+			connection = &Connection{plugins: stub, meta: requestMeta("original command inspection")}
+			actual, err := connection.GetPluginCommand(ctx, query)
+			if calls != 1 {
+				t.Fatalf("lookup calls = %d", calls)
+			}
+			switch test.name {
+			case "original":
+				if err != nil || actual != &original || actual.Input != original.Input {
+					t.Fatalf("original request changed: %+v, %v", actual, err)
+				}
+			case "upstream error":
+				if !errors.Is(err, upstream) {
+					t.Fatalf("lookup lost its cause: %v", err)
+				}
+			default:
+				if !errors.Is(err, conversation.ErrIncompatibleRuntime) {
+					t.Fatalf("invalid lookup response accepted: %+v, %v", actual, err)
+				}
+			}
+		})
 	}
 }

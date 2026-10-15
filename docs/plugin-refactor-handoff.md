@@ -38,6 +38,24 @@ other graphical scenarios. The following frontend change has its own qualificati
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 
+The first current-source complete four-module parallel race at a857d264a exits 1
+on the single CLI inventory omission GetPluginCommand. Its 174-package result
+contains 9,180 passes/seven unchanged helper skips; complete bootstrap passes
+384.822s, safe/yolo steer 2.76/2.58s, delegated approval 3.03s, lost-Core recovery
+4.60s and all eight crash cuts (parent 44.35s). These do not diagnose old timeouts
+or count as an all-green final gate. The CLI now has an actual get-command query,
+metadata-preserving public adapter and strict current inventory entry. Root
+RED/GREEN and focused plugin/inventory races pass; an actual new CLI executable
+reads the old uninstalled B request over authenticated HTTP and refuses another
+store namespace without output, mutation identity or provider/model execution.
+Its Runtime/provider lifetimes join and temporary CLI profile is removed. The
+corrected full/global/native/closure qualification remains next.
+Fresh npm audits still exit 1: 4 high/4 low overall, 0 high/4 low production;
+all high fixes remain unavailable. Global Wails CLI beta.25 is preserved. A private
+beta.29 tool is built under task scratch. Native controls are not run yet; the
+prepared task-only overlay changes only its default bootstrap address to 57324,
+with product source unchanged and production packaging separately qualified.
+
 The remaining no-Run review finds and repairs an actual client-recreation gap.
 Reviews' recovery control was tied to the mounted MutationPromise even though the
 existing journal retained its unresolved identity. A causal RED/GREEN component

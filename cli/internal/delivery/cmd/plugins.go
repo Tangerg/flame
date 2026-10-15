@@ -14,6 +14,7 @@ import (
 )
 
 type pluginRuntime interface {
+	GetPluginCommand(context.Context, protocol.GetPluginCommandRequest) (*protocol.CallPluginRequest, error)
 	ListPluginCompositions(context.Context) ([]protocol.PluginComposition, error)
 	SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest, replay.CommandID) (*protocol.PluginComposition, error)
 	ResolvePluginComposition(context.Context, protocol.ResolvePluginCompositionRequest) ([]protocol.PluginOperationBinding, error)
@@ -48,6 +49,7 @@ func requirePluginRuntime(cmd *cobra.Command, provider runtimeProvider) (pluginR
 
 func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 	root := &cobra.Command{Use: "plugins", Short: "Manage Runtime-owned portable plugins"}
+	root.AddCommand(newPluginGetCommand(provider))
 	root.AddCommand(newPluginCallCommand(provider))
 	root.AddCommand(newPluginRequirementsCommand(provider))
 	root.AddCommand(newPluginPointCommand(provider))
@@ -107,6 +109,30 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		}),
 	)
 	return root
+}
+
+func newPluginGetCommand(provider runtimeProvider) *cobra.Command {
+	var input string
+	command := &cobra.Command{Use: "get-command", Short: "Read an original admitted plugin request by its retained namespace and key", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		if len(input) > 1<<20 {
+			return errors.New("plugin input exceeds 1 MiB")
+		}
+		var request protocol.GetPluginCommandRequest
+		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
+			return err
+		}
+		runtime, err := requirePluginRuntime(cmd, provider)
+		if err != nil {
+			return err
+		}
+		original, err := runtime.GetPluginCommand(cmd.Context(), request)
+		if err != nil {
+			return err
+		}
+		return render.WriteJSONLine(cmd.OutOrStdout(), original)
+	}}
+	command.Flags().StringVar(&input, "request", "{}", "Original Runtime store namespace and command key as JSON")
+	return command
 }
 
 func newPluginResolveCompositionCommand(provider runtimeProvider) *cobra.Command {

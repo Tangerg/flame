@@ -84,6 +84,14 @@ Runtime's durable idempotency namespace still guards command replay independentl
 of that local endpoint partition. Changing an endpoint's spelling selects a new
 local partition; it does not migrate pending commands automatically.
 
+`flame plugins get-command --request '<JSON>'` inspects the Core-owned original
+request using its retained `namespace` and `key`. It returns the exact installation,
+release, contribution, target, contract and admitted input, including when that
+producer has been uninstalled. It does not allocate a mutation identity or execute
+the plugin. The original backend receipt remains the owner of the business
+outcome. A different store namespace is refused; selection of a new provider cannot
+replace the retained binding.
+
 Dynamic value completion loads the effective configuration before opening Runtime
 so it cannot silently query another target. Completion-script generation and help
 remain independent of Runtime startup.

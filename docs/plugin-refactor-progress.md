@@ -41,6 +41,51 @@ Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
 
+### Current-source parallel gate and CLI original-request inspection (2026-10-16)
+
+Freeze a857d264a and run the original complete four-module command with -json,
+-race, -p 2, -count=1 and the unchanged 900s package bound. It exits 1: 174
+packages finish, with one failing test, TestRuntimeAPIInventoryHasNoUnreviewedMethods.
+GetPluginCommand was added to the public Go/TS surface but its CLI consumer/review
+was missed. The other 9,180 tests pass and seven unchanged opt-in helpers skip.
+This is an introduced migration omission, not a passing final gate.
+
+Complete bootstrap race passes 384.822s; lost-Core-opening recovery passes 4.60s,
+delegated approval 3.03s, safe/yolo steer 2.76/2.58s and the eight SIGKILL cuts'
+parent 44.35s. Their presence in that parallel gate is checked explicitly.
+Those passes neither diagnose historical deadlines nor erase the inventory failure.
+
+A new real-root CLI regression first fails with unknown flag --request. The CLI
+now exposes plugins get-command --request with the existing typed request decoder,
+public binding, caller metadata and JSON renderer. It reads only the original
+namespace/key; it neither allocates a mutation identity nor invokes a provider.
+The adapter retains original feature JSON and refuses nil/invalid wire results
+while preserving upstream causes. The inventory entry points to this actual
+command; no exception, skipped assertion or replacement-provider path is added.
+
+Focused normal root/adapter/inventory checks pass 6.014/5.978s. Focused plugin and
+inventory races pass 7.392/7.383s; affected command/adapter vet also passes.
+A fresh executable then queries the retained,
+already-uninstalled B command through authenticated shared HTTP within the existing
+five-second CLI control. Its complete request/routing/admitted input equals the
+original Web command; a different valid store namespace exits 1 with no stdout.
+The command emits no new mutation identity and produces zero model POSTs. The
+private server joins at 0, its quiet provider joins after SIGTERM and the temporary
+CLI profile is removed. The unknown browser command and original private evidence
+remain retained. Current full vet/global-race/native/closure gates still need their
+remaining qualification after this repair.
+
+Fresh read-only npm audit exits 1 with 4 high/4 low; omit-dev exits 1 with 0
+high/4 low. All four high entries still report fixAvailable false. The recorded
+source/exposure triage remains applicable; no dependency is claimed remediated.
+Native preparation finds the global Wails CLI is beta.25 while Desktop pins
+beta.29. A private GOWORK=off beta.29 CLI build succeeds without replacing the
+global executable. Native execution/build at this source is not yet qualified.
+A task-only Go overlay is prepared for the native control: its only change is
+the default bootstrap loopback address, 17171 -> 57324, to avoid the daily Runtime.
+It does not edit product source and must not be described as an unmodified
+production binary; the ordinary production package has its separate build gate.
+
 ### Graphical review: no-Run loss, restart and provider replacement (2026-10-16)
 
 At c44671017, use ordinary copies of the built Memory distribution, the actual

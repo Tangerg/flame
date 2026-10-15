@@ -3,11 +3,13 @@ package cmd
 import (
 	"context"
 	json "encoding/json/v2"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/capability"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -20,6 +22,8 @@ type pluginCommandFixture struct {
 	command     replay.CommandID
 	provider    protocol.SelectPluginProviderRequest
 	composition protocol.SetPluginCompositionRequest
+	lookup      protocol.GetPluginCommandRequest
+	original    protocol.CallPluginRequest
 }
 
 func (f *pluginCommandFixture) ListPluginCompositions(context.Context) ([]protocol.PluginComposition, error) {
@@ -170,6 +174,9 @@ func TestPluginConfigureSendsComponentDeltas(t *testing.T) {
 func TestPluginCommandRejectsInvalidInputBeforeOpeningRuntime(t *testing.T) {
 	for _, args := range [][]string{
 		{"plugins", "install", "--request", `{"source":null}`},
+		{"plugins", "get-command", "--request", `{"namespace":"another-store","key":"original"}`},
+		{"plugins", "get-command", "--request", `{"namespace":"idp_11111111111111111111111111111111","key":"original","installationId":"replacement"}`},
+		{"plugins", "get-command", "--command-id", "cli_11111111111111111111111111111111"},
 		{"plugins", "install", "--request", `{"source":"/package"}`, "--command-id", "invalid"},
 	} {
 		root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
@@ -213,5 +220,46 @@ func TestPluginUninstallIsAnAcknowledgementWithoutResult(t *testing.T) {
 	out, stderr, err := executeCommand(t, fixture, "", "plugins", "uninstall", "--request", `{"installationId":"12345678-1234-1234-1234-123456789abc"}`)
 	if err != nil || fixture.calls != 1 || out != "" || !strings.Contains(stderr, string(fixture.command)) {
 		t.Fatalf("uninstall = %q %q, calls=%d, error=%v", out, stderr, fixture.calls, err)
+	}
+}
+
+func (f *pluginCommandFixture) GetPluginCommand(_ context.Context, query protocol.GetPluginCommandRequest) (*protocol.CallPluginRequest, error) {
+	f.calls++
+	f.lookup = query
+	return &f.original, nil
+}
+
+func TestPluginGetCommandReadsOriginalIdentityWithoutMutation(t *testing.T) {
+	method, err := pluginsdk.NewMethod[struct {
+		Value uint64  `json:"value"`
+		Scale float64 `json:"scale"`
+	}, struct {
+		Saved bool `json:"saved"`
+	}](pluginsdk.MethodConfig{Name: "test.retained/save.v1", Kind: capability.Mutation, Target: "installation", Description: "Retain one authored input."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	contract, err := capability.New(capability.Config{Reference: "test.retained", Composition: capability.Collection, Scope: "installation"}, method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	const installation = "12345678-1234-1234-1234-123456789abc"
+	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: string(contract.Identity().JSON()), Method: method.Name(), Input: `{"scale":1.0,"value":18446744073709551615}`, Target: capability.Target{Scope: "installation", Reference: installation}}
+	query := protocol.GetPluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "retained-web-command"}
+	encoded, err := json.Marshal(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := &pluginCommandFixture{Runtime: runtimefixture.New(), original: original}
+	out, stderr, err := executeCommand(t, fixture, "", "plugins", "get-command", "--request", string(encoded))
+	if err != nil {
+		t.Fatalf("get original command: %v, %s", err, stderr)
+	}
+	var got protocol.CallPluginRequest
+	if err := json.Unmarshal([]byte(out), &got, json.RejectUnknownMembers(true)); err != nil {
+		t.Fatal(err)
+	}
+	if fixture.calls != 1 || fixture.lookup != query || fixture.command != "" || stderr != "" || !reflect.DeepEqual(got, original) {
+		t.Fatalf("original request lookup changed evidence or allocated mutation: got=%+v calls=%d query=%+v command=%q stderr=%q", got, fixture.calls, fixture.lookup, fixture.command, stderr)
 	}
 }

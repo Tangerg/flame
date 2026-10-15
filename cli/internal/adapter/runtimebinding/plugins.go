@@ -10,6 +10,7 @@ import (
 )
 
 type pluginBinding interface {
+	GetPluginCommand(context.Context, protocol.GetPluginCommandRequest, flameruntime.CallOptions) (*protocol.CallPluginRequest, error)
 	ListPluginCompositions(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.PluginComposition], error)
 	SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest, flameruntime.CommandOptions) (*protocol.PluginComposition, error)
 	ResolvePluginComposition(context.Context, protocol.ResolvePluginCompositionRequest, flameruntime.CallOptions) (*protocol.Page[protocol.PluginOperationBinding], error)
@@ -25,6 +26,21 @@ type pluginBinding interface {
 	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, flameruntime.CommandOptions) error
+}
+
+// Retained input remains evidence after producer withdrawal; inspection cannot re-admit or route it.
+func (r *Connection) GetPluginCommand(ctx context.Context, request protocol.GetPluginCommandRequest) (*protocol.CallPluginRequest, error) {
+	value, err := r.plugins.GetPluginCommand(ctx, request, r.callOptions())
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	if value == nil {
+		return nil, runtimeContractViolation("get plugin command returned nil")
+	}
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return nil, runtimeContractViolation("get plugin command returned invalid request: %v", err)
+	}
+	return value, nil
 }
 
 func (r *Connection) ListPluginCompositions(ctx context.Context) ([]protocol.PluginComposition, error) {
