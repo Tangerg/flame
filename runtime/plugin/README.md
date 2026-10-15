@@ -20,6 +20,24 @@ relabel commands as queries. Server admission retains and validates original inp
 so typed decoding cannot hide missing fields. Invalid output remains a protocol failure,
 preserving uncertainty about an already committed effect.
 
+`Binding.ValidateInput(ctx, input)` checks the exact backend's complete structural
+contract without a command identity or business dispatch. Schema cannot express
+every Go decoder constraint, including integer token spelling and custom JSON
+decoding. Typed decoders must therefore be deterministic, bounded, side-effect-free
+functions of their input. The same decoder admits validation and execution;
+validation preserves the original JSON and cannot call a business handler.
+`ErrInvalidInput` identifies only a definite structural refusal; transport and
+backend failures retain their own errors.
+
+Runtime validates fresh unary and streaming inputs before saving a command route
+or recording dispatch. A definite structural refusal leaves the identity unused.
+Structurally accepted business refusals still own their original receipts.
+Original-command recovery does not run new admission: it only queries the captured
+owner's receipt. Backend protocol `2026-10-15.3` requires this validation operation;
+rebuild package declarations, backend and consumers together. Older backend
+protocols are refused without negotiation or a fallback. Keep old data separately
+and complete old waiting work with its original binary.
+
 `github.com/Tangerg/flame/runtime/capability` owns the immutable callable
 contracts independently of transport. `capability.AdmitMethod` admits local
 method metadata; typed SDK methods, live bindings, callbacks and generation
@@ -308,7 +326,7 @@ cannot name another resource. This attribution does not restore an expired next
 continuation or a stopped Scope effect's execution authority.
 Origin, parent and target are ephemeral transport context, not business input or
 credentials. Closing the callback observation leaves independently accepted Runs with
-their canonical Runtime owner. Rebuild against backend protocol 2026-10-14.2.
+their canonical Runtime owner. Rebuild against backend protocol 2026-10-15.3.
 
 Known business refusals use capability.Refusal. The former plugin.Failure type is
 removed; migrate external Go classifiers and errors.AsType calls to the pure

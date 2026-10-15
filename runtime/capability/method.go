@@ -16,7 +16,7 @@ import (
 
 // Protocol identifies public wire behavior, independently of private releases.
 // Only the current contract is admitted; a source relocation does not change it.
-const Protocol = "io.github.tangerg.flame/backend/2026-10-14.2"
+const Protocol = "io.github.tangerg.flame/backend/2026-10-15.3"
 
 type MethodKind string
 

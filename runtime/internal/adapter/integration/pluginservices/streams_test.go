@@ -40,6 +40,10 @@ type streamFixture struct {
 	digest      string
 }
 
+type streamInput struct {
+	Revision int64 `json:"revision,omitempty"`
+}
+
 func TestInstalledCommandBindingPersistenceFailurePreventsDispatch(t *testing.T) {
 	f := newStreamFixture(t, "complete")
 	if _, err := f.host.ExecContext(t.Context(), `CREATE TRIGGER refuse_command BEFORE INSERT ON plugin_commands BEGIN SELECT RAISE(ABORT,'binding storage refused'); END`); err != nil {
@@ -79,6 +83,40 @@ func TestMalformedStreamInputIsRefusedBeforeBindingAndLeavesIdentityAvailable(t 
 	}
 }
 
+func TestTypedStreamInputIsRefusedBeforeBindingAndLeavesIdentityAvailable(t *testing.T) {
+	for _, mode := range []string{"complete", "query"} {
+		t.Run(mode, func(t *testing.T) {
+			f := newStreamFixture(t, mode)
+			ctx := operation.Bind(t.Context(), "records.stream", "typed-input")
+			original := f.request.Input
+			for _, number := range []string{"0.0", "1e0"} {
+				input, err := jsoninput.Parse([]byte(`{"revision":` + number + `}`))
+				if err != nil {
+					t.Fatal(err)
+				}
+				method, _ := f.request.Contract.Method(f.request.Method)
+				if err := method.ValidateInput(input); err != nil {
+					t.Fatalf("probe must reach the complete typed admission owner: %v", err)
+				}
+				f.request.Input = input
+				events, err := f.run(t, ctx)
+				if !errors.Is(err, plugin.ErrInvalid) || errors.Is(err, plugin.ErrCommandUnconfirmed) || len(events) != 0 || f.invocations.Load() != 0 {
+					t.Fatalf("typed-invalid stream entered execution or uncertainty: events=%+v calls=%d, %v", events, f.invocations.Load(), err)
+				}
+				var bindings int
+				if err := f.host.QueryRowContext(t.Context(), `SELECT count(*) FROM plugin_commands`).Scan(&bindings); err != nil || bindings != 0 {
+					t.Fatalf("typed-invalid stream retained a command binding: %d, %v", bindings, err)
+				}
+			}
+			f.request.Input = original
+			events, err := f.run(t, ctx)
+			if err != nil || len(events) != 2 || events[0].Kind != plugins.StreamChunk || events[1].Kind != plugins.StreamResult || f.invocations.Load() != 1 {
+				t.Fatalf("typed-invalid stream consumed the original identity: events=%+v calls=%d, %v", events, f.invocations.Load(), err)
+			}
+		})
+	}
+}
+
 func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	t.Helper()
 	f := &streamFixture{}
@@ -86,7 +124,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	if mode == "query" {
 		kind = capability.Query
 	}
-	method, err := pluginsdk.NewStreamingMethod[struct{}, string, bool](pluginsdk.MethodConfig{Name: "records.stream", Kind: kind, Target: "installation", Description: "Stream owned records."})
+	method, err := pluginsdk.NewStreamingMethod[streamInput, string, bool](pluginsdk.MethodConfig{Name: "records.stream", Kind: kind, Target: "installation", Description: "Stream owned records."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +154,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[struct{}]) iter.Seq2[pluginsdk.StreamValue[string, bool], error] {
+	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[streamInput]) iter.Seq2[pluginsdk.StreamValue[string, bool], error] {
 		return func(yield func(pluginsdk.StreamValue[string, bool], error) bool) {
 			f.invocations.Add(1)
 			if mode == "query" && command.ID != "" {

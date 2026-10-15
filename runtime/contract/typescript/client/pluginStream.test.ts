@@ -7,7 +7,7 @@ import { MutationLookupError } from "./mutation";
 import type { ServerCapabilities } from "@flame/runtime-contract/wire";
 
 const contract = JSON.stringify({
-  protocol: "io.github.tangerg.flame/backend/2026-10-14.2",
+  protocol: "io.github.tangerg.flame/backend/2026-10-15.3",
   reference: "records",
   composition: "selection",
   scope: "installation",

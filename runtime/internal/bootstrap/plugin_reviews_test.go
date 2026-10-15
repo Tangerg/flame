@@ -50,6 +50,19 @@ func reviewAuthorPackage(t *testing.T, packagePath, executable string) string {
 
 func reviewCLICommand(t *testing.T, runtime *poMCPRuntime) (func(...string) []byte, func()) {
 	t.Helper()
+	invoke, closeCLI := reviewCLIInvocation(t, runtime)
+	return func(arguments ...string) []byte {
+		t.Helper()
+		output, stderr, err := invoke(arguments...)
+		if err != nil {
+			t.Fatalf("CLI %s: %s, %s, %v", strings.Join(arguments[:min(2, len(arguments))], " "), output, stderr, err)
+		}
+		return output
+	}, closeCLI
+}
+
+func reviewCLIInvocation(t *testing.T, runtime *poMCPRuntime) (func(...string) ([]byte, []byte, error), func()) {
+	t.Helper()
 	directory := t.TempDir()
 	executable := filepath.Join(directory, "flame")
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", executable, ".")
@@ -74,7 +87,7 @@ func reviewCLICommand(t *testing.T, runtime *poMCPRuntime) (func(...string) []by
 	if err := os.WriteFile(config, []byte("{}\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	runCLI := func(arguments ...string) []byte {
+	runCLI := func(arguments ...string) ([]byte, []byte, error) {
 		t.Helper()
 		command := exec.CommandContext(t.Context(), executable, append([]string{"--config", config, "--runtime-url", remote.URL}, arguments...)...)
 		command.Dir = directory
@@ -82,10 +95,7 @@ func reviewCLICommand(t *testing.T, runtime *poMCPRuntime) (func(...string) []by
 		var stderr bytes.Buffer
 		command.Stderr = &stderr
 		output, err := command.Output()
-		if err != nil {
-			t.Fatalf("CLI %s: %s, %s, %v", strings.Join(arguments[:min(2, len(arguments))], " "), output, stderr.String(), err)
-		}
-		return output
+		return output, stderr.Bytes(), err
 	}
 	return runCLI, closeCLI
 }

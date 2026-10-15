@@ -11,10 +11,10 @@ The user confirms no original Runtime log, goroutine dump or test data remains.
 Passing repetitions do not close that item. An earlier test-only qualification
 also has unclassified MCP startup discovery deadlines; its failed gates remain
 recorded separately from the earlier complete product pass.
-Current SDK/MCP probes additionally expose incomplete typed-input structural
-admission for decimal/exponent integer spellings. The actual installed CLI
-regression and shared-owner repair remain open; do not treat the complete
-existing suites as coverage of that new case.
+Complete typed-input structural admission now has an actual installed CLI
+RED/GREEN regression and shared SDK/Runtime repair for unary and streaming
+consumers. Broader current-source qualification is still pending; do not count
+the preceding source's complete/native/independent-author gates as current.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 
@@ -45,6 +45,16 @@ weakening the byte rule. Malformed public input keeps its identity available;
 an admitted invalid business decision owns its identity and original receipt.
 No post-dispatch error, provider replay, host business cache or old format is added.
 Current schema/TS/component consumers are regenerated together.
+
+The current slice completes structural admission against the exact registered
+backend's typed decoder before fresh command binding or dispatch. Schema-valid
+decimal/exponent integer spellings are definite `invalid_params`, leaving their
+identity unused. The same key can then admit canonical input, retain a business
+refusal and recover its original receipt. A read-only validation operation has
+no command identity and never enters the business handler. Transport/registry
+failures are not definite refusals. Original recovery stays receipt-only;
+the backend protocol, every declaration and generated consumer migrate together
+to `2026-10-15.3`, without compatibility, numeric coercion or another receipt owner.
 
 The preceding Reviews production slice `490bb1105`
 removes its incorrect 4,096-entry lifetime receipt quota and `receiptCapacity`
@@ -112,7 +122,21 @@ recorded in progress rather than duplicated here.
 
 ## Actual current qualification
 
-Concentrated qualification now covers production `5ff75fffc`. With ordinary
+The current typed-admission slice passes complete SDK/service/Reviews race,
+affected vet, architecture/Runtime build, shared TS 30 files/355 tests, Desktop
+typecheck, component rebuilds and all eight unchanged Schedule SIGKILL cuts
+(parent 44.53s). The real CLI reproduces the old uncertainty (9.99s) and passes
+after the repair (cold-cache 37.98s), including original-key reuse/recovery and
+changed-input conflict. The first complete bootstrap attempt fails only its two
+history-fixture counters, which incorrectly include the new read-only validation
+in typed dispatch. Those counters now separately require exactly one validation,
+one typed update, one Tool and two receipt reads; all original assertions stay.
+The complete bootstrap rerun passes all 150 top-level tests (178.324s), zero
+failures/skips, with history refusal recovery 34.49s, typed admission 9.66s and
+lost Core opening 1.94s. A fresh full 174-package parallel race gate is running;
+native/independent-author qualification has not been repeated for this protocol.
+
+The frozen concentrated qualification covers production `5ff75fffc`. With ordinary
 workspace discovery, full normal and `-race -p 2` runs over Runtime, localruntime,
 CLI and Reviews finish all 174 selected packages: 159 tested packages pass,
 fifteen have no tests; each reports 5,190 top-level passes and seven existing
@@ -154,19 +178,17 @@ runner is stopped at 357.989s; no recorded descendant remains. Its failed/incomp
 attempt is not counted as a pass. The replacement asserts this worktree's
 automatically discovered workspace without exporting it to child workspaces.
 
-New public typed-input probe, still unresolved: the actual Reviews method Schema
+The original public typed-input probe establishes the repaired cause: Reviews' method Schema
 accepts `expectedRevision: 0.0` and `1e0`, while JSON/v2 rejects their int64
 projection. Through the real Store/server/public capability binding, ordinary
 `0` returns and recovers `invalidUpdate`; the other spellings return an invoke
 protocol error, no receipt, and a Tool error without structured business output.
 Scope Func explicitly supports additional pure typed InputValidator constraints
-that Schema cannot express. Core currently records dispatch after schema-only
-admission, before the remote typed check. The resulting installed-command
-uncertainty is inferred from the call chain, not yet an executed CLI regression.
-Establish complete public structural admission and its definite-refusal identity
-behavior at the shared owner; do not add a Reviews-specific coercion, rewrite raw
-identity or replay mutations. Preserve original receipt-only recovery and cover
-unary/stream consumers. All temporary probe source/data is removed.
+that Schema cannot express. The old Core records dispatch after schema-only
+admission, before the remote typed check. The permanent real CLI regression and
+shared-owner repair above establish that causal boundary. Original receipt-only
+recovery, raw identity and all original deadlines remain intact. Temporary probe
+source/data is removed.
 
 The preceding narrower qualification is retained below with its original scope:
 

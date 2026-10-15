@@ -114,7 +114,7 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 		for key, value := range frozen.Meta {
 			metadata.Meta[key] = value
 		}
-		if err := b.ValidateInput(input); err != nil {
+		if err := b.method.ValidateInput(input); err != nil {
 			fail(err)
 			return
 		}

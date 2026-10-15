@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.flame/backend/2026-10-14.2",
+  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
   "reference": "schedules",
   "composition": "selection",
   "scope": "installation",
@@ -56,11 +56,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "model",
-              "provider",
-              "reasoningEffort"
-            ],
+            "required": ["model", "provider", "reasoningEffort"],
             "type": "object"
           }
         },
@@ -168,11 +164,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "model",
-              "provider",
-              "reasoningEffort"
-            ],
+            "required": ["model", "provider", "reasoningEffort"],
             "type": "object"
           }
         },
@@ -248,9 +240,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "ID"
-            ],
+            "required": ["ID"],
             "type": "object"
           }
         },
@@ -261,9 +251,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "ID"
-        ],
+        "required": ["ID"],
         "type": "object"
       },
       "output": {
@@ -303,9 +291,7 @@
                 "type": "integer"
               }
             },
-            "required": [
-              "Cursor"
-            ],
+            "required": ["Cursor"],
             "type": "object"
           }
         },
@@ -325,9 +311,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "Cursor"
-        ],
+        "required": ["Cursor"],
         "type": "object"
       },
       "output": {
@@ -402,10 +386,7 @@
                 "type": "array"
               }
             },
-            "required": [
-              "Rows",
-              "NextCursor"
-            ],
+            "required": ["Rows", "NextCursor"],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]": {
@@ -421,11 +402,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "model",
-              "provider",
-              "reasoningEffort"
-            ],
+            "required": ["model", "provider", "reasoningEffort"],
             "type": "object"
           }
         },
@@ -442,10 +419,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "Rows",
-          "NextCursor"
-        ],
+        "required": ["Rows", "NextCursor"],
         "type": "object"
       }
     },
@@ -463,9 +437,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "ID"
-            ],
+            "required": ["ID"],
             "type": "object"
           }
         },
@@ -476,9 +448,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "ID"
-        ],
+        "required": ["ID"],
         "type": "object"
       },
       "output": {
@@ -493,10 +463,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "SessionID",
-              "RunID"
-            ],
+            "required": ["SessionID", "RunID"],
             "type": "object"
           }
         },
@@ -510,10 +477,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "SessionID",
-          "RunID"
-        ],
+        "required": ["SessionID", "RunID"],
         "type": "object"
       }
     },
@@ -573,11 +537,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "ID",
-              "ExpectedRevision",
-              "ModelSelection"
-            ],
+            "required": ["ID", "ExpectedRevision", "ModelSelection"],
             "type": "object"
           }
         },
@@ -615,11 +575,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "ID",
-          "ExpectedRevision",
-          "ModelSelection"
-        ],
+        "required": ["ID", "ExpectedRevision", "ModelSelection"],
         "type": "object"
       },
       "output": {
@@ -694,11 +650,7 @@
                 "type": "string"
               }
             },
-            "required": [
-              "model",
-              "provider",
-              "reasoningEffort"
-            ],
+            "required": ["model", "provider", "reasoningEffort"],
             "type": "object"
           }
         },

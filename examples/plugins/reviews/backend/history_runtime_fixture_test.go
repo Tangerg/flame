@@ -48,14 +48,15 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var updates, toolUpdates, receiptReads atomic.Int32
+	var updates, inputChecks, toolUpdates, receiptReads atomic.Int32
 	server.AddReceivingMiddleware(func(next sdk.MethodHandler) sdk.MethodHandler {
 		return func(ctx context.Context, method string, request sdk.Request) (sdk.Result, error) {
 			if call, ok := request.(*sdk.CallToolRequest); ok && call.Params != nil && call.Params.Name == "update_review" {
 				toolUpdates.Add(1)
 			}
 			var operation struct {
-				Method string `json:"method"`
+				Method    string `json:"method"`
+				CommandID string `json:"commandId"`
 			}
 			if sdk.HasParams(request) {
 				encoded, err := json.Marshal(request.GetParams())
@@ -68,7 +69,12 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 			}
 			switch operation.Method {
 			case contracts.Update.Name():
-				updates.Add(1)
+				// Structural admission has no mutation authority or receipt identity.
+				if operation.CommandID == "" {
+					inputChecks.Add(1)
+				} else {
+					updates.Add(1)
+				}
 			case pluginsdk.ReceiptMethod:
 				receiptReads.Add(1)
 			}
@@ -89,7 +95,7 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 	if err := store.db.QueryRowContext(t.Context(), `SELECT count(*) FROM invocations`).Scan(&receipts); err != nil || receipts != 4098 {
 		t.Fatalf("new refusals were lost or recovery wrote receipts: %d, %v", receipts, err)
 	}
-	if updates.Load() != 1 || toolUpdates.Load() != 1 || receiptReads.Load() != 2 {
-		t.Fatalf("history recovery changed dispatch: typed=%d tool=%d receipt=%d", updates.Load(), toolUpdates.Load(), receiptReads.Load())
+	if updates.Load() != 1 || inputChecks.Load() != 1 || toolUpdates.Load() != 1 || receiptReads.Load() != 2 {
+		t.Fatalf("history recovery changed dispatch: typed=%d validation=%d tool=%d receipt=%d", updates.Load(), inputChecks.Load(), toolUpdates.Load(), receiptReads.Load())
 	}
 }

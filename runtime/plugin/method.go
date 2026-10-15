@@ -67,24 +67,32 @@ func (p *Params[T]) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &wire, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	if len(wire.Input) == 0 || string(wire.Input) == "null" {
-		return errors.New("plugin: input is required")
-	}
-	admitted, err := jsoninput.Parse(wire.Input)
-	if err != nil {
-		return err
-	}
 	if wire.CommandID != "" {
 		if err := validateCommandID(wire.CommandID); err != nil {
 			return err
 		}
 	}
-	var input T
-	if err := json.Unmarshal(wire.Input, &input, json.RejectUnknownMembers(true)); err != nil {
+	input, admitted, err := decodeMethodInput[T](wire.Input)
+	if err != nil {
 		return err
 	}
 	*p = Params[T]{ParamsBase: wire.ParamsBase, Input: input, CommandID: wire.CommandID, inputJSON: admitted}
 	return nil
+}
+
+func decodeMethodInput[T any](data jsontext.Value) (T, jsoninput.Input, error) {
+	var input T
+	if len(data) == 0 || string(data) == "null" {
+		return input, jsoninput.Input{}, errors.New("plugin: input is required")
+	}
+	admitted, err := jsoninput.Parse(data)
+	if err != nil {
+		return input, jsoninput.Input{}, err
+	}
+	if err := json.Unmarshal(data, &input, json.RejectUnknownMembers(true)); err != nil {
+		return input, jsoninput.Input{}, err
+	}
+	return input, admitted, nil
 }
 
 type Result[T any] struct {
@@ -170,6 +178,7 @@ func RegisterClient(client *sdk.Client) error {
 		sdk.AddSendingCustomMethod[*setupParams, *Result[bool]](client, setupMethod),
 		sdk.AddSendingCustomMethod[*protocolParams, *Result[bool]](client, activateMethod),
 		sdk.AddSendingCustomMethod[*invokeParams, *Result[jsontext.Value]](client, invokeMethod),
+		sdk.AddSendingCustomMethod[*invokeParams, *Result[string]](client, validateMethod),
 		sdk.AddSendingCustomMethod[*protocolParams, *Result[Description]](client, describeMethod),
 	)
 }

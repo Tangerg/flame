@@ -17,6 +17,7 @@ import (
 
 const invokeMethod = "io.github.tangerg.flame/operations.invoke"
 const describeMethod = "io.github.tangerg.flame/operations.describe"
+const validateMethod = "io.github.tangerg.flame/operations.validate"
 
 type invokeParams struct {
 	sdk.ParamsBase
@@ -71,6 +72,7 @@ type Description struct {
 
 type boundMethod struct {
 	contract *capability.Method
+	validate func(jsontext.Value) error
 	invoke   func(context.Context, *sdk.ServerSession, *invokeParams) (*Result[jsontext.Value], error)
 	stream   func(context.Context, *sdk.ServerSession, *invokeParams) (iter.Seq2[streamValue, error], error)
 }
@@ -100,27 +102,29 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 		return nil, err
 	}
 	if err := sdk.AddReceivingCustomMethod(server, invokeMethod, func(ctx context.Context, session *sdk.ServerSession, params *invokeParams) (*Result[jsontext.Value], error) {
-		if params == nil || params.Protocol != capability.Protocol {
-			return nil, errors.New("plugin: current backend protocol is required")
-		}
-		b.mu.RLock()
-		method, found := b.methods[params.Method]
-		ready := b.published && !b.closed
-		exportErr := b.checkCapability(params)
-		b.mu.RUnlock()
-		if !ready || !found {
-			return nil, errors.New("plugin: operation export is not published")
-		}
-		if params.Contract != method.contract.Identity().Digest() {
-			return nil, errors.New("plugin: operation contract mismatch")
-		}
-		if exportErr != nil {
-			return nil, exportErr
+		method, err := b.resolveMethod(params)
+		if err != nil {
+			return nil, err
 		}
 		if method.stream != nil {
 			return invokeBackendStream(ctx, session, method, params)
 		}
 		return method.invoke(ctx, session, params)
+	}); err != nil {
+		return nil, err
+	}
+	if err := sdk.AddReceivingCustomMethod(server, validateMethod, func(_ context.Context, _ *sdk.ServerSession, params *invokeParams) (*Result[string], error) {
+		method, err := b.resolveMethod(params)
+		if err != nil {
+			return nil, err
+		}
+		if params.CommandID != "" {
+			return nil, errors.New("plugin: input validation cannot carry a command identity")
+		}
+		if err := method.validate(params.Input); err != nil {
+			return Reply(err.Error(), nil, nil)
+		}
+		return Reply("", nil, nil)
 	}); err != nil {
 		return nil, err
 	}
@@ -150,6 +154,25 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 	return b, nil
 }
 
+func (b *Backend) resolveMethod(params *invokeParams) (boundMethod, error) {
+	if params == nil || params.Protocol != capability.Protocol {
+		return boundMethod{}, errors.New("plugin: current backend protocol is required")
+	}
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	method, found := b.methods[params.Method]
+	if !b.published || b.closed || !found {
+		return boundMethod{}, errors.New("plugin: operation export is not published")
+	}
+	if params.Contract != method.contract.Identity().Digest() {
+		return boundMethod{}, errors.New("plugin: operation contract mismatch")
+	}
+	if err := b.checkCapability(params); err != nil {
+		return boundMethod{}, err
+	}
+	return method, nil
+}
+
 func (b *Backend) Publish() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -167,7 +190,7 @@ func (b *Backend) register(method boundMethod) error {
 	if b == nil {
 		return errors.New("plugin: backend is required")
 	}
-	if method.contract == nil || method.invoke == nil && method.stream == nil {
+	if method.contract == nil || method.validate == nil || method.invoke == nil && method.stream == nil {
 		return errors.New("plugin: admitted method and handler are required")
 	}
 	b.mu.Lock()

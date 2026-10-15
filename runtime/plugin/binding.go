@@ -13,7 +13,8 @@ import (
 )
 
 // Binding freezes one public operation contract against one concrete session.
-// The pure capability owner supplies admission; the feature owns its receipt.
+// Capability supplies Schema admission; the backend owns typed input admission
+// and the feature owns its business receipt.
 type Binding struct {
 	session    *sdk.ClientSession
 	method     *capability.Method
@@ -37,11 +38,29 @@ func NewBinding(session *sdk.ClientSession, descriptor capability.MethodDescript
 func (b *Binding) Descriptor() capability.MethodDescriptor { return b.method.Descriptor() }
 func (b *Binding) Contract() jsoninput.Input               { return b.method.Identity() }
 
-func (b *Binding) ValidateInput(input jsoninput.Input) error {
+var ErrInvalidInput = errors.New("plugin: input is not structurally admitted")
+
+// ValidateInput checks the exact backend's complete structural contract without
+// a command identity or business dispatch. Transport failure proves no refusal.
+func (b *Binding) ValidateInput(ctx context.Context, input jsoninput.Input) error {
 	if b == nil {
 		return errors.New("plugin: operation binding is required")
 	}
-	return b.method.ValidateInput(input)
+	if err := b.method.ValidateInput(input); err != nil {
+		return errors.Join(ErrInvalidInput, err)
+	}
+	result, err := sdk.CallCustomMethod[*invokeParams, *Result[string]](ctx, b.session, validateMethod, &invokeParams{Protocol: capability.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON()})
+	if err != nil {
+		return err
+	}
+	problem, err := result.value(validateMethod)
+	if err != nil {
+		return err
+	}
+	if problem != "" {
+		return fmt.Errorf("%w: %s", ErrInvalidInput, problem)
+	}
+	return nil
 }
 
 // Resolve discovers a published export for a new call. An original command
@@ -91,7 +110,7 @@ func (b *Binding) invokeMode(ctx context.Context, id string, input jsoninput.Inp
 	} else if id != "" {
 		return nil, errors.New("plugin: query must not carry a command identity")
 	}
-	if err := b.ValidateInput(input); err != nil {
+	if err := b.method.ValidateInput(input); err != nil {
 		return nil, fmt.Errorf("plugin: %s input: %w", b.method.Name(), err)
 	}
 	result, err := sdk.CallCustomMethod[*invokeParams, *Result[jsontext.Value]](ctx, b.session, invokeMethod, &invokeParams{ParamsBase: meta, Protocol: capability.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON(), CommandID: id})

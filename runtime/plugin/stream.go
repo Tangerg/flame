@@ -66,7 +66,7 @@ func NewStreamingCallback[P, C, R any](method *StreamingMethod[P, C, R], handler
 }
 
 func bindStreaming[P, C, R any](method *StreamingMethod[P, C, R], handler func(context.Context, *sdk.ServerSession, Command[P]) iter.Seq2[StreamValue[C, R], error]) boundMethod {
-	return boundMethod{contract: method.contract, stream: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (iter.Seq2[streamValue, error], error) {
+	return boundMethod{contract: method.contract, validate: validateMethodInput[P](method.contract), stream: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (iter.Seq2[streamValue, error], error) {
 		ctx, command, err := admitCommand[P](ctx, method.contract, wire)
 		if err != nil {
 			return nil, err

@@ -167,6 +167,10 @@ func (c *installedStream) streamQuery(ctx context.Context, yield func(plugins.St
 		fail(err)
 		return
 	}
+	if err := validateInput(ctx, binding, c.request.Input); err != nil {
+		fail(err)
+		return
+	}
 	invocation, err := operation.Capture(ctx, c.request.Target)
 	if err != nil {
 		fail(err)

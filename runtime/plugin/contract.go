@@ -57,7 +57,7 @@ func (m *Method[P, R]) RegisterServer(backend *Backend, classify func(error) str
 }
 
 func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) boundMethod {
-	return boundMethod{contract: m.contract, invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*Result[jsontext.Value], error) {
+	return boundMethod{contract: m.contract, validate: validateMethodInput[P](m.contract), invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*Result[jsontext.Value], error) {
 		ctx, command, err := admitCommand[P](ctx, m.contract, wire)
 		if err != nil {
 			return nil, err
@@ -86,6 +86,18 @@ func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Co
 		}
 		return &result, nil
 	}}
+}
+
+// Typed decoders may enforce constraints Schema cannot express. Validation must
+// stay pure so a host can establish admission before retaining mutation work.
+func validateMethodInput[P any](contract *capability.Method) func(jsontext.Value) error {
+	return func(data jsontext.Value) error {
+		_, input, err := decodeMethodInput[P](data)
+		if err != nil {
+			return err
+		}
+		return contract.ValidateInput(input)
+	}
 }
 
 func (m *Method[P, R]) Call(ctx context.Context, session *sdk.ClientSession, input P) (R, error) {

@@ -13,11 +13,30 @@ An earlier test-only qualification also retains unclassified MCP startup
 discovery deadlines; passing focused or complete reruns do not explain them.
 The user confirms no original safe-steer logs, goroutine dump or test data remain.
 The missing failure interval cannot be reconstructed from normal-path observations.
-A new SDK/MCP probe also reopens complete typed-input structural admission:
-decimal/exponent integer spellings pass Schema but fail before the business
-handler, leaving no receipt. Existing passing suites do not close that gap.
+Complete typed-input structural admission now has a public RED/GREEN regression
+and shared-owner repair. The exact registered backend decoder checks fresh unary
+and streaming inputs before Core saves a command route. Schema-valid `0.0`/`1e0`
+integer tokens receive definite `invalid_params` without consuming their identity;
+canonical `0` still saves and recovers the business owner's `invalidUpdate` receipt.
+Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
+declarations, generated Go/TS contracts and component resources migrate together,
+without coercion, replay, another result store or compatibility.
 
-Current concentrated qualification covers production source `5ff75fffc`, after
+The current slice passes SDK, installed-service and Reviews full-package race,
+affected vet, Runtime architecture/build, shared TS (30 files/355 tests), Desktop
+typecheck and component builds. All eight Schedule SIGKILL cuts pass unchanged
+(parent 44.53s; package 45.415s). The first complete bootstrap run fails its two
+history subcases because their transport counters also count the new read-only
+validation as mutation dispatch. The fixture now counts validation separately,
+requiring exactly one validation, one typed update, one Tool and two receipt reads;
+all original mutation/private-state/receipt assertions remain. The complete
+bootstrap rerun passes all 150 top-level tests without skips or failures (package
+178.324s; runner 183.667s), including history model/CLI refusal recovery 34.49s,
+typed admission 9.66s and lost Core opening 1.94s. A fresh complete 174-package
+parallel race gate is running. Native packaging and independent author archives
+have not been repeated; do not inherit the preceding source's gates below.
+
+The frozen concentrated qualification covers production source `5ff75fffc`, after
 both Reviews receipt repairs and fresh structural-refusal classification. With
 ordinary workspace discovery, both complete normal and `-race -p 2` commands
 finish all 174 selected packages: 159 tested packages pass and fifteen have no
@@ -29,7 +48,7 @@ is changed. Normal/race wall times are 448.909/931.384s. Execution/bootstrap pas
 pass (parents 75.55/54.87s); actual history model/CLI refusal recovery passes
 23.54/44.18s and lost Core-opening reconciliation 2.55/5.48s. Passing these suites
 does not diagnose either historical deadline or cover the new input-admission
-case below.
+case added in the current slice.
 
 Full-module vet/build pass 1.552/8.657s. Shared Runtime TS check passes 30 files,
 355 tests, types/lint/format/dead-code checks; Desktop typecheck passes 2.402s.
@@ -38,7 +57,7 @@ author archives pass offline tidy/module verification/full race/vet/build, with
 workspace off and no replace, as detailed below. The earlier packed Usage proof
 remains unchanged-source evidence, not a newly executed archive build.
 
-Current Runtime production/catalog build passes 13.747s, including all ten
+That frozen Runtime production/catalog build passes 13.747s, including all ten
 packages and both backend executables. A task-owned Wails CLI exactly matching
 project beta.29 builds outside the checkout (16.487s); the pre-existing global
 beta.25 binary's hash remains unchanged. The native package passes 12.519s,
@@ -59,7 +78,8 @@ Fresh read-only npm audits still exit 1: full audit 4 high/4 low; production-onl
 source/exposure triage stands; no dependency manifest, lockfile, override or audit
 suppression changes. The KaTeX low findings remain unremediated. Paid live tests,
 other native platforms/architectures, registry publication, graphical criteria
-and the new typed-input admission proof remain outside these passes. Core and
+remain outside these passes. Current typed-input and broader artifact freshness
+are distinguished above. Core and
 backend protocol/storage cutover limits recorded below remain deliberate breaks.
 
 ### Requalify current independent Go author artifacts (2026-10-15)
@@ -108,7 +128,7 @@ full package patterns, assertions and 900s package timeout. The terminal
 replacement results appear in Current stage; the invalid first run is retained as
 a failed/incomplete attempt rather than counted as qualification.
 
-### Reopened typed-input admission boundary (2026-10-15)
+### Complete typed-input admission before retaining commands (2026-10-15)
 
 A bounded current-source probe finds a concrete gap not exercised by the passing
 suites. Reviews' actual generated method Schema accepts `expectedRevision: 0.0`
@@ -124,20 +144,48 @@ the temporary source and private data are removed.
 Scope v0.50.0 `tool.Func` deliberately retains a strict typed InputValidator for
 constraints Schema cannot fully express. This is therefore a missing complete
 structural-admission boundary, not another known business-refusal writer defect.
-Fresh Core command routing currently schema-validates and records dispatch before
-that remote typed decoder runs. Its resulting unconfirmed original-route
-behavior is inferred from that production chain; the actual installed CLI case
-has not yet been executed. A permanent public regression and repair at the
-shared admission owner remain required, including unary/stream consumers,
-original identity reuse after definite structural refusal and unchanged receipt
-recovery. Do not coerce only Reviews, alter raw request identity, replay an
-uncertain mutation, cache business results in Core or weaken assertions. The
-correct classification and complete input-owner contract must be established
-before changing codec or wire semantics. This gap remains open alongside the
-historical safe-steer/MCP deadlines; successful compilation and existing numeric
-corpora do not close it.
+The old Core command route schema-validates and records dispatch before that
+remote typed decoder. `TestReviewTypedInputRefusalPreservesIdentityAcrossExecutableCLI`
+then reproduces the actual unconfirmed CLI command on old source (case 9.99s;
+package 16.735s), before any repair or assertion change. The same public regression
+passes after the repair (cold-cache case 37.98s; package 112.111s). It checks two
+refusals per decimal/exponent spelling through the actual authenticated HTTP CLI,
+the Go Endpoint's matching classification, the still-available identity, original
+business-refusal receipt recovery, changed-input conflict and unchanged private data.
 
-All qualification handles are terminal. Task-owned author copies, module archives,
+The registered unary/stream method owns one pure typed decoder, shared by input
+validation and actual invocation. The backend validates its exact export/member/
+method contract through a read-only operation that cannot carry a command ID or
+enter a business handler. `Binding.ValidateInput(ctx, input)` distinguishes only
+definite structural refusal as `ErrInvalidInput`; registry, cancellation and
+transport errors retain their causes. Core uses it before fresh route binding,
+including query/query-stream consumers. Original-route-first recovery never runs
+new admission, discovers another provider or repeats a mutation. Backend protocol
+`2026-10-15.3` is a deliberate breaking cutover, with every current declaration,
+generated Go/TS projection, component resource and consumer migrated together.
+No Reviews-specific coercion, raw-identity rewrite or host business cache is added.
+
+SDK regression covers query, command and mutation-stream admission, Schema-only
+versus typed rejection, exact wide integers, cancellation and zero business
+dispatches. Installed stream cases prove Schema-valid typed refusals retain no
+command record, return no event and leave the same identity usable for valid
+work, for queries and commands. Complete SDK/service/Reviews race passes
+9.942+2.525/46.078/13.462+3.107s; affected vet passes (runner 9.386s).
+Runtime architecture/build pass 33.982/5.700s. Shared TS check passes all 355
+tests in 30 files and its type/lint/format/dead-code gates; Desktop typecheck,
+first-party and Reviews component builds also pass. The first typed test fixture
+incorrectly expected Schema to admit int64 overflow; it now explicitly proves
+Schema rejects overflow while decimal/exponent tokens reach the typed owner.
+The unchanged decimal/exponent and no-dispatch assertions remain.
+
+Early generation/compilation attempts fail when the shared build cache loses
+archives; repository guidance requires rebuilding rather than investigating
+scheduled cleanup. Qualification therefore uses a task-owned private GOCACHE.
+This is not evidence about either historical deadline. A mistaken architecture
+command targets nonexistent `./architecture` and fails setup; the verified
+`./internal/arch` gate then passes. No failed attempt is counted as a pass.
+
+The earlier `5ff75fffc` qualification handles are terminal. Task-owned author copies, module archives,
 file proxies, private caches, probes, logs and pinned CLI are removed. Current
 Runtime/native product outputs remain for inspection. The invalid runner's
 recorded process tree has no remaining descendant, and its identified build/test
@@ -2684,12 +2732,11 @@ close the other criteria. Historical slice entries retain their original evidenc
 
 ## Next
 
-The complete product/source/backend/build baseline is qualified at `b2dcbfbba`
-before the current Reviews quota/contract repair. Later test-only slices retain
-the CLI/root binding and execution/bootstrap race results recorded above. The
-current production repair has complete Reviews module and installed Reviews/P13/
-point race evidence, generated artifacts and component build proof. Independent
-author archives and complete product/native gates have not been rerun after it.
+The complete normal/race product, native and independent-author baseline is
+qualified at `5ff75fffc` after the Reviews receipt repairs. The current typed-input
+admission slice changes the backend protocol and therefore does not inherit
+those artifact gates. Its exact focused passes and pending full gates are
+recorded in Current stage.
 Preserve the remaining acceptance gaps instead of reporting 100%:
 
 - Obtain actual deadline evidence for the historical post-SDK safe-steer timeout.
@@ -2697,13 +2744,12 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
   post-Resume sequence. Fault controls prove the same caller timeout can follow
   already finished failed/lost Runs. Use retained failure phase/state/stack
   evidence to distinguish those from live blocking; the old cause is unresolved.
-- Requalify current independent author artifacts after the Reviews quota/contract
-  repair. Do not inherit the old source's archive or whole-product/native result.
+- Requalify complete product/native and independent author artifacts after the
+  typed-input admission protocol cutover. Do not inherit the old source's gates.
   The separate initial-MCP-discovery failures also retain no established cause;
   a passing later gate does not close them.
-- The `Invalid` audit now has a causal public regression, owner/reader plus
-  fresh-command admission repairs, and complete current execution/bootstrap
-  parallel race qualification. Retain the distinction between unadmitted input and a stored business
+- The `Invalid` audit now has causal public regressions, owner/reader and complete
+  fresh typed-input admission repairs. Retain the distinction between unadmitted input and a stored business
   refusal. The actual CLI/Tool invalid-input proof does not qualify rendered UI
   or the still separate actual CLI invocation-conflict case.
 - P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 and the four review cross-scenarios need
@@ -2719,6 +2765,7 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-15 | Ask the exact registered typed input owner for pure structural admission before binding fresh commands; migrate all backend consumers to protocol 2026-10-15.3 | An actual CLI regression proves Schema-valid decimal/exponent integer tokens can fail the Go decoder after Core has recorded dispatch, leaving no business receipt | Reviews-only numeric coercion, changing raw identity, post-dispatch blanket refusal classification, uncertain mutation replay, another result cache or an old-protocol fallback |
 | 2026-10-15 | Persist structurally admitted invalid-input business decisions in the original receipt transaction; classify fresh schema rejection before binding | Actual CLI original-key recovery failed for `expectedRevision: 0`; an additional public assertion exposed an unclassified pre-binding schema error. The 128-byte rule and original-route-first recovery are preserved | Leaving a known refusal unrecorded, revalidating its business decision on lookup, caching another result in Core, consuming a malformed request's identity, blanket reclassification after dispatch or widening the byte bound |
 | 2026-10-15 | Remove Reviews' incorrect lifetime receipt quota and its outcome; migrate all contracts/consumers without compatibility | Actual original-key CLI recovery proved that the quota returned a known refusal with no private receipt. The user explicitly authorizes the breaking owner repair; historical evidence must not permanently exhaust normal business use | Increasing the quota, evicting identities, caching business results in Core, fabricating absent receipts, redispatching or preserving the obsolete outcome as an alias |
 | 2026-10-14 | Record embedding as a kind of the shared physical endpoint; keep its call budget/envelope Memory-owned | Embedding evidence/metering/recovery/reporting belong to the one physical endpoint owner, but the proposal states "Memory's optional embedding fallback and its own model-work limits remain Memory policy" | A general embedding host API with no second consumer (contradicts the proposal and YAGNI), a parallel embedding store (inconsistent query/recovery), or synthesizing a chat response from vectors |
@@ -4758,17 +4805,16 @@ Registry publication and external deployment are not authorized or claimed.
 
 ## Spillover risks
 
-- Complete typed structural input admission is not yet closed. Schema-valid
-  decimal/exponent integer spellings currently fail the remote typed decoder
-  before business entry and have no receipt. The real installed CLI regression
-  and shared unary/stream admission repair remain required; do not count existing
-  passing numeric corpora or the full module gate as proof of that missing case.
+- Complete typed structural input admission has its shared unary/stream repair
+  and public CLI RED/GREEN proof. This backend protocol cutover still needs fresh
+  complete product/native and independent-author qualification; preceding-source
+  artifacts do not qualify the new wire contract.
 - The native build's existing npm prepare wrote shared
   `core.hooksPath=desktop/.husky/_` without a captured prior value. That value is
   preserved rather than guessed away; future task-owned qualification sets
   `HUSKY=0`. The primary checkout's source and user stash are untouched.
 - Current Core is `2026-10-15.2`, backend protocol is
-  `io.github.tangerg.flame/backend/2026-10-14.2`, and trajectory export schema is 3.
+  `io.github.tangerg.flame/backend/2026-10-15.3`, and trajectory export schema is 3.
   Rebuild affected Go/TS/component/backend consumers together. Old wire shapes,
   private scope metadata and retired APIs have no reader or compatibility alias.
 - Strict host schema/checkpoint admission refuses former activation-only routing,

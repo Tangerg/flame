@@ -1189,7 +1189,7 @@
         {
           "name": "Protocol",
           "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/backend/2026-10-14.2\""
+          "value": "\"io.github.tangerg.flame/backend/2026-10-15.3\""
         },
         {
           "name": "Query",
@@ -1919,6 +1919,10 @@
       ],
       "variables": [
         {
+          "name": "ErrInvalidInput",
+          "type": "error"
+        },
+        {
           "name": "ErrStaleCall",
           "type": "error"
         },
@@ -2244,7 +2248,7 @@
             },
             {
               "name": "ValidateInput",
-              "signature": "func(input jsoninput.Input) error"
+              "signature": "func(ctx context.Context, input jsoninput.Input) error"
             }
           ]
         },

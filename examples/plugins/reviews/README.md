@@ -190,7 +190,7 @@ From `backend`, run `go test ./...`, `go vet ./...`, and `go build ./...`.
 ownership. Use `GOWORK=off` for the same checks against this module's independent
 released dependency graph once its Runtime dependency names a release containing
 the new public SDK. Current workspace checks use the branch's SDK. An isolated
-offline author build of current source `5ff75fffc` is verified with Runtime
+offline author build of frozen source `5ff75fffc` is verified with Runtime
 and companion localruntime module archives, `GOWORK=off`, and no local `replace`.
 The archives include the actual implementation required by their public packages,
 including internal directories; author source imports only public APIs. A
@@ -205,12 +205,18 @@ declared older Runtime version still lacks the new public SDK. An optional full
 release-metadata listing is not qualified because the offline third-party cache
 lacks an IAM `.info` entry.
 
-A current public SDK/MCP probe also identifies an unresolved admission gap:
-Schema accepts integer spellings such as `0.0` and `1e0`, but the typed Go
-decoder rejects them before Store entry, so no business receipt exists. The
-passing tests below do not cover that complete structural-admission boundary.
-Its shared-owner repair and actual installed CLI regression remain tracked in
-the [refactor handoff](../../../docs/plugin-refactor-handoff.md).
+Schema accepts integer spellings such as `0.0` and `1e0`, while the typed Go
+decoder rejects them before Store entry. Runtime now asks that same registered
+typed input owner for complete structural admission before saving a command route.
+The real installed CLI regression first reproduces an unconfirmed command on old
+code, then verifies definite invalid-parameters refusal without consuming the key.
+Canonical `0` with that key still reaches the business owner, saves `invalidUpdate`
+and recovers its receipt; another input cannot reuse the admitted identity.
+This is a shared SDK/Runtime admission contract, with no Reviews-specific numeric
+coercion or business receipt for a never-admitted request. The current backend
+protocol is `2026-10-15.3`; rebuild every package and consumer together. The
+broader qualification limits remain in the
+[refactor handoff](../../../docs/plugin-refactor-handoff.md).
 
 `TestTypedAndToolEntrancesShareTheBusinessReceipt` compares complete canonical
 results and the Tool error flag for revision, invocation and invalid-input refusals.
@@ -242,7 +248,8 @@ missing-review and invalid-revision refusals. Each first rejects an oversized
 public request, then uses that still-available command identity for actual work.
 The CLI and public Endpoint recover the new refusal
 through the original read-only receipt query. Child-process counters prove one
-Tool dispatch, one typed update dispatch and two receipt reads; final private
+Tool dispatch, one read-only typed input validation, one typed update dispatch
+and two receipt reads; final private
 assertions retain the original Review and all 4,098 receipts. The Store regression
 also reopens the private database and reads original success/refusal receipts
 after an actual successful update beyond the old cutoff. Separate invalid-input

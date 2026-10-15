@@ -110,6 +110,9 @@ func (c *installedCall) Invoke(ctx context.Context) (jsoninput.Input, error) {
 	if err != nil {
 		return jsoninput.Input{}, err
 	}
+	if err := validateInput(ctx, bound, c.request.Input); err != nil {
+		return jsoninput.Input{}, err
+	}
 	invocation, err := operation.Capture(ctx, c.request.Target)
 	if err != nil {
 		return jsoninput.Input{}, err
@@ -124,6 +127,14 @@ func (c *installedCall) Invoke(ctx context.Context) (jsoninput.Input, error) {
 	}
 	defer release()
 	return bound.InvokeWithMetadata(ctx, "", c.request.Input, metadata)
+}
+
+func validateInput(ctx context.Context, binding *pluginsdk.Binding, input jsoninput.Input) error {
+	err := binding.ValidateInput(ctx, input)
+	if errors.Is(err, pluginsdk.ErrInvalidInput) {
+		return errors.Join(plugin.ErrInvalid, err)
+	}
+	return err
 }
 
 func admitCallRequest(request plugins.CallRequest, streaming bool) (*capability.Method, error) {

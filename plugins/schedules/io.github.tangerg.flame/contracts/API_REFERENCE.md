@@ -10,6 +10,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.schedules/runNow.v1` | command | installation | Capture and reconcile one manual Run through its original Runtime acceptance. |
 | `flame.schedules/update.v1` | command | installation | Change one schedule using its inspected revision. |
 
-Capability `schedules` uses `selection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.flame/backend/2026-10-14.2`.
+Capability `schedules` uses `selection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.flame/backend/2026-10-15.3`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.
