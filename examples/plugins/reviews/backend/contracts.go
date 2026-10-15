@@ -2,6 +2,7 @@ package reviews
 
 //go:generate sh -c "go run ./cmd/contracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../package/io.github.tangerg.flame/contracts --ts ../client"
 //go:generate sh -c "go run ./cmd/contracts --analyzers > ../package/io.github.tangerg.flame/contracts/analyzers.generated.json"
+//go:generate sh -c "go run ./cmd/contracts --analyzers-ts > ../client/analyzers.generated.ts"
 //go:generate sh -c "go run ./cmd/contracts --analyzer-capability | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../analyzer/package/io.github.tangerg.flame/contracts --ts ../analyzer/client"
 //go:generate sh -c "go run ./cmd/contracts --analyzers > ../analyzer/package/io.github.tangerg.flame/contracts/analyzers.generated.json"
 //go:generate sh -c "go run ./cmd/contracts --analyzer-capability > ../package/io.github.tangerg.flame/contracts/analyzer-capability.generated.json"

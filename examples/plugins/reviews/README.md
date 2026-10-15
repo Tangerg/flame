@@ -37,6 +37,15 @@ Schema and method references are presentation projections. Capability calls and
 receipt queries carry the original export identity; omitting it is refused before
 the business owner. The package declares its generic installed contribution and analyzer point.
 The ordinary board is compiled from `client/board.tsx` through the public SDK.
+The same Go-owned analyzer point also generates `client/analyzers.generated.ts`
+as an exact JSON string; TypeScript does not copy its applicability predicate.
+On refresh, the board resolves point metadata against its accepted review status
+and publishes that read model with the review. Analyze appears only when that
+projection contains an applicable contributor. Constructing controls or opening
+the status menu performs no remote work; explicit Analyze invokes the backend.
+This action relevance is an accepted snapshot, not an execution grant. Draft
+status changes do not advance the accepted context. Metadata failure keeps
+the review visible with an explicit error rather than claiming an empty collection.
 
 The backend owns one example review in `PLUGIN_DATA/reviews.sqlite`. Runtime
 owns execution and approval; its stored Tool results are historical observations,
@@ -119,8 +128,11 @@ checks disable/reenable and refuses newly discovered contributors outside captur
 setup authority. Reconnecting the consumer explicitly admits its new collection.
 Point declaration availability belongs to the target consumer installation; another
 enabled copy cannot keep a disabled consumer's point available. This backend proof
-does not execute the board. Independent public-module compilation and native
-packaging are separate gates; rendered board interaction is excluded.
+does not execute the board. Actual installed Web qualification separately covers
+applicable/inapplicable actions, provider absence, metadata-only menu construction
+and explicit analysis. Independent public-module compilation, native packaging
+and broader graphical lifetimes retain their own verification scope in the
+refactor progress record.
 
 ## Mutation and recovery
 

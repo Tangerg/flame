@@ -9,7 +9,7 @@ matching evidence exists. Use only isolated Runtime/data/browser/native resource
 preserve the primary checkout, daily Runtime, stash, assertions and time limits,
 with no push or main merge.
 
-The original P01-P48 audit is **46 Evidenced / 2 Partial / 0 Open**, not an
+The original P01-P48 audit is **47 Evidenced / 1 Partial / 0 Open**, not an
 implementation percentage or a 100% claim. P13 public installed Tool proposals,
 P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup now have matching
 evidence, including the newly authorized complete frontend gate.
@@ -19,8 +19,9 @@ P21 now has complete same-owner query and revision-refusal comparisons through
 the actual model Tool, executable CLI and rendered Reviews board. P39 now proves
 fresh-window historical inspection without renderer/producer modules. P26 now
 proves a UI-accepted Run survives window/component closure. P31/P36 now have real
-in-flight navigation and release-replacement proof. Two graphical
-rows and one review cross-scenario remain Partial; the three other review groups
+in-flight navigation and release-replacement proof. P33 now uses the owner point
+for actual contextual action visibility without menu I/O. One graphical
+row and one review cross-scenario remain Partial; the three other review groups
 are Evidenced.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
 The user confirms no original Runtime log, goroutine dump or test data remains.
@@ -34,6 +35,25 @@ passes at `9f5a66d51`; these gates do not close the historical deadlines or
 other graphical scenarios. The following frontend change has its own qualification.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
+
+P33 is now qualified with the real installed Reviews/analyzer pair. The Go-owned
+point emits one exact TS contract string; the board resolves metadata during its
+owned refresh and renders actions from that accepted read model. It copies no
+predicate. Open with a provider shows Analyze; Resolved and provider absence do
+not. Draft edits cannot change the accepted context, and status-menu interaction
+issues zero RPC requests. Only explicit Analyze returns actual findings; the model
+provider receives zero requests. Six consumer tests, generated point parity,
+Desktop/author typechecks, focused lint, ESM build and the Reviews backend module
+pass. Metadata errors remain explicit with accepted review data. Test-fixture
+matcher/quoting/filesystem mistakes are corrected without loosening assertions or
+Vite access. The separate actual withdrawal failure is fixed by 1ce03662a below.
+Owned windows close, both temporary installations are uninstalled and their source
+copies are removed. After the inspection-state lint repair, the final 11,828-byte
+component is byte-identical to its installed entry and repeats Open/Analyze,
+zero-RPC menu interaction and accepted Resolved revision 2 successfully; all six
+consumer tests pass in 2.06s. The final pair is also uninstalled and removed.
+P46, the no-Run graphical restart review, historical safe-steer/
+MCP causes and fresh final race/native/closure qualification remain pending.
 
 Actual graphical qualification exposes and repairs a pre-admission error-category
 defect. When a frozen optional collaborator is withdrawn, activation capture must

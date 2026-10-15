@@ -104,8 +104,9 @@ The checked Reviews Board is the concrete consumer. It displays current owner
 data, submits inspected-revision changes, exposes conflict and uncertainty,
 retains the original recovery identity and invokes the installed analyzer query.
 The Reviews workspace declaration and actual ESM loader use the same shared
-module graph as other components. Source, types and native builds are checked
-separately from graphical execution; no UI/E2E or screenshot tests are run.
+module graph as other components. Source, type, build and actual graphical
+qualification retain their own recorded scope; compilation alone does not prove
+component or recovery lifetimes.
 
 Core Runtime failures are classified with the shared SDK's `isErrorType` export.
 Components must use this host module rather than bundling another RPC error class;

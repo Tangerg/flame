@@ -11,9 +11,25 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	"github.com/Tangerg/flame/runtime/point"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
+
+func TestGeneratedAnalyzerPointPreservesTheConsumerContract(t *testing.T) {
+	owner, err := NewAnalyzerPoint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join("..", "package", "io.github.tangerg.flame", "contracts", "analyzers.generated.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact, err := point.Parse(data)
+	if err != nil || artifact.Identity() != owner.Identity() {
+		t.Fatalf("packaged analyzer point differs from its consumer owner: %v", err)
+	}
+}
 
 func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 	contracts, err := NewContracts()

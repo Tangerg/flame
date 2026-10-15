@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend"
 	"github.com/Tangerg/flame/runtime/capability"
@@ -21,14 +22,19 @@ func main() {
 
 func run() error {
 	analyzer := flag.Bool("analyzers", false, "Emit Reviews' consumer-owned analyzer point")
+	analyzerTypeScript := flag.Bool("analyzers-ts", false, "Emit the exact analyzer point for TypeScript consumers")
 	analyzerCapability := flag.Bool("analyzer-capability", false, "Emit Reviews' callable analyzer contract")
 	flag.Parse()
-	if *analyzer && *analyzerCapability {
+	if *analyzerCapability && (*analyzer || *analyzerTypeScript) || *analyzer && *analyzerTypeScript {
 		return fmt.Errorf("select one contract projection")
 	}
-	if *analyzer {
+	if *analyzer || *analyzerTypeScript {
 		contract, err := reviews.NewAnalyzerPoint()
 		if err != nil {
+			return err
+		}
+		if *analyzerTypeScript {
+			_, err := fmt.Fprintf(os.Stdout, "// Code generated from Reviews' Go-owned analyzer point. DO NOT EDIT.\nexport const ANALYZERS_JSON = %s;\n", strconv.Quote(string(contract.Identity().JSON())))
 			return err
 		}
 		data, err := json.Marshal(contract.Definition(), json.Deterministic(true))

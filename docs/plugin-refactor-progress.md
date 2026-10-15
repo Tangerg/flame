@@ -9,7 +9,7 @@ actual matching evidence is obtained; authorization alone closes no criterion.
 Keep the primary checkout, daily Runtime/data, stash, original assertions and
 timeouts intact, with no push or main merge. New UI work uses isolated resources.
 
-Original-proposal acceptance remains **incomplete: 46 Evidenced / 2 Partial / 0 Open**.
+Original-proposal acceptance remains **incomplete: 47 Evidenced / 1 Partial / 0 Open**.
 These are evidence counts, not an implementation percentage. P13 public installed
 Tool proposal transformation, P12/P16/P18/P41 real-process scenarios and P48
 source/API/doc cleanup now have matching evidence. P45 now has actual synchronous
@@ -20,7 +20,8 @@ Reviews board. P39 now proves generic historical inspection after renderer and
 producer withdrawal in a fresh window, without loading their modules. P26 now
 proves a UI-accepted Run survives its initiating window and component teardown.
 P31/P36 now have actual in-flight navigation and release-replacement evidence.
-P33/P46 and the no-Run recovery review remain Partial;
+P33 now has an installed applicability read model and actual no-menu-I/O proof.
+P46 and the no-Run recovery review remain Partial;
 the three other review cross-scenarios are Evidenced.
 The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
@@ -36,6 +37,69 @@ canonical `0` still saves and recovers the business owner's `invalidUpdate` rece
 Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
+
+### Graphical acceptance: contextual applicability without menu I/O (2026-10-16)
+
+Reviews previously rendered Analyze unconditionally. Its consumer-owned Go point
+already owns applicability, optionality and contributor admission; the board was
+not consuming it. The existing owner command now emits analyzers.generated.ts as
+an exact JSON-string projection. Generated JSON/TS point artifacts are compared
+with that owner without decoding contract numbers through ordinary JS numbers.
+No TS predicate, new expression language, schema owner or Core business branch
+is introduced. Existing callable inputs/outputs and protocol epochs are unchanged.
+
+The board's owned refresh first reads the current review, then resolves that
+point using the accepted status and exact installation target. It publishes the
+review and action projection together. Controls read this projection; a failed
+metadata read preserves the review with an explicit alert, while genuine optional
+absence has no Analyze action. Only explicit Analyze executes the private query.
+The component uses mapped shared modules; encoding its string-only status context
+does not bundle another Runtime client.
+
+The original four consumer regressions fail because no point request exists.
+After the repair, six tests pass, including generated-contract parity, Open with
+and without a contributor, Resolved, explicit metadata failure, context replacement
+and zero remote requests while opening the local status menu. Desktop and standalone author
+typechecks, focused lint, author ESM build and the complete Reviews backend module
+pass. Initial fixture failures from unsupported DOM matchers and reading a TS
+literal with Go quoting rules are corrected at their test boundaries, preserving
+the assertion intent. The projection comparison runs in TypeScript; its initial
+browser-URL/file and out-of-root raw-import fixture mistakes are retained rather
+than widening Vite access. No deadline or valid assertion is relaxed.
+The broader focused lint also exposes the original refresh effect's implicit
+dependency and synchronous loading-state write. A context-owned inspection now
+holds accepted data and read status together; initial unread state is derived.
+Explicit refresh events mark a read pending, and Promise completion publishes it.
+The effect only starts owned I/O. A replacement-context regression confirms old
+actions are absent until the successor read settles. Hooks dependencies are
+explicit and focused lint passes without suppressions.
+
+The final inspection-state artifact is requalified after that lint repair: all
+six consumer tests pass in 2.06s, both typechecks and the author ESM build pass.
+The installed component is byte-identical to the 11,828-byte source artifact
+(SHA-256 694a1ca966dd28d9a1b7cd4375c36f0c028a7f42cf88a3e2aaac791b62816aa5).
+Its actual Open read, explicit analyzer finding, zero-RPC menu interaction and
+accepted Resolved revision 2 are repeated successfully. Both final temporary
+installations are uninstalled and their package copies removed.
+
+Freshly built installed Reviews and analyzer executables now execute the same
+contract through the public Web client. Open / revision 1 resolves one contributor
+and shows Analyze; explicit activation returns the analyzer's actual finding.
+Opening/changing the status menu produces zero RPC requests. A Resolved draft
+cannot replace the accepted Open context. Saving and rereading Resolved / revision
+2 resolves an empty set and withdraws Analyze; changing only the draft back to Open
+does not restore it. Open / revision 3 under a genuinely absent provider also has
+no Analyze action. The controlled model provider receives zero requests throughout.
+Requests, exact metadata replies, known-refusal/rebind evidence and actual
+screenshots remain private. Both temporary installations are uninstalled and
+their source copies removed after the owned windows close.
+
+The extra bound-provider-withdrawal control exposes the separate pre-admission
+classification defect documented below and fixed in 1ce03662a. It is diagnosed
+and reproduced before repeating that scene with the repair. Explicit consumer
+reconnect admits true optional absence; it never silently substitutes another
+graph. This closes P33. P46, the no-Run UI/Runtime restart review, both historical
+timeout causes and fresh final global qualification remain incomplete.
 
 ### Definite activation failure before command admission (2026-10-16)
 
@@ -3365,17 +3429,18 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 
 ## In progress
 
-Original-proposal acceptance remains incomplete: 2 Partial rows and
+Original-proposal acceptance remains incomplete: 1 Partial row and
 the no-Run recovery review cross-scenario. The two reopened production defects and
 original complete parallel-race gate are closed; that narrower result does not
 close the other criteria. Historical slice entries retain their original evidence.
 
 ## Next
 
-Current production `9f5a66d51` has complete parallel race, normal bootstrap,
-full vet/build, shared TS/Desktop typecheck, current isolated Go author, packed
-Usage and native qualification. Their exact scope and results are recorded in
-Current stage. The following test-only slices add actual CLI Core binding-conflict
+The earlier `9f5a66d51` milestone has complete parallel race, normal bootstrap,
+full vet/build, shared TS/Desktop typecheck, isolated Go author, packed Usage and
+native qualification. Later Scope/WAL/frontend gates and current focused results
+retain their exact source scope in Current stage. The 1ce03662a Runtime repair
+and subsequent Reviews consumer slice need fresh final global qualification. The following test-only slices add actual CLI Core binding-conflict
 and private invocation-conflict proof. The first adds a complete ordinary
 174-package pass; preceding-source results retain their labels and subsequent
 test evidence is separately scoped.
@@ -3398,7 +3463,7 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 - The released Scope v0.51.1 upgrade, complete parallel race and current standalone
   author qualification now pass within their recorded scopes. Preserve separate
   historical safe-steer/MCP uncertainty until causal evidence closes it.
-- P33/P46 and the no-Run recovery review still need
+- P46 and the no-Run recovery review still need
   matching graphical interaction. The user has lifted the prohibition; use isolated
   resources and do not substitute source/native builds for matching interactions.
 - The high and low dependency entries have source/exposure triage but remain
@@ -3721,7 +3786,7 @@ qualification.
 | Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
 | Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
 | Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
-| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures and two broader graphical rows remain unqualified. |
+| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures and the remaining graphical row retain separate qualification gaps. |
 | Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification and the separately unexecuted graphical criteria are not completed by P48 source closure. The newly authorized complete frontend gate now passes after removing the unused workspace Memory path and migrating stale fixtures; actual installed Web Memory still writes and refreshes its owner-backed row. |
 
 The review's four extra cross-acceptance groups are independently tracked:
@@ -3742,12 +3807,13 @@ Those headless proofs do not substitute for the remaining graphical scenarios.
 
 ## Proposal acceptance coverage
 
-Audit date: 2026-10-15; current production implementation: `695879a46`, including
-Scope dependency cut `62431f987` and SQLite repair `c83f19ba7`; earlier focused
+Audit date: 2026-10-16; current source adds `1ce03662a` and the Reviews contextual
+point consumer after the `695879a46` frontend cut, Scope dependency cut
+`62431f987` and SQLite repair `c83f19ba7`; earlier focused
 CLI proof: `cae633a29`; source/API closure milestone: `b2dcbfbba`. Scenario titles
 and expected behaviors are rechecked against the original proposal and review,
 rather than substituted with easier checks.
-**41 Evidenced / 7 Partial / 0 Open** is a count of evidence coverage, not a
+**47 Evidenced / 1 Partial / 0 Open** is a count of evidence coverage, not a
 percentage of implementation or a claim of release readiness.
 
 `Evidenced` means matching executable evidence is recorded and the relevant source
@@ -3801,7 +3867,7 @@ Other criteria retain their exact scope.
 | P30 | Component or dependency throws | Evidenced | Actual installed Web controls throw in React rendering and in a relative ESM dependency. The dependency case exposes a public HTTP resource-close deadlock; the shared transport repair has an unchanged-5s RED/GREEN regression and complete 356-test shared qualification. Both rebuilt Web and Scope/WAL Wails executions display the explicit dependency-failure boundary. Synchronous blocking is separately qualified by P45. |
 | P31 | Navigate from resource A to B during an operation | Evidenced | Two actual Reviews installations have separate private owners. A commits revision 3 while its real HTTP reply is held; navigation renders B revision 1 and cancels A observation with net::ERR_ABORTED. Releasing the old reply adds no A success message/result to B. Exactly one captured update targets A; independent CLI reads confirm A=3/B=1. Accepted private mutation is preserved while obsolete UI observation ends. |
 | P32 | Two views edit one workflow/resource | Evidenced | Actual Web and Wails editors read the same installed review at revision 3. Wails saves revision 4; Web still holding 3 submits and receives the explicit revision-conflict message, then rereads unchanged revision 4. An actual CLI query independently agrees. |
-| P33 | Applicability changes with selected content | Partial | Declarative applicability admission and metadata-only menu resolution exist. Actual selected-content action visibility and absence of heavy render-time work have not been executed. |
+| P33 | Applicability changes with selected content | Evidenced | Actual installed Reviews consumes the Go-owned point through an exact generated TS string and an owned metadata read model. Open with an analyzer shows Analyze; Resolved and genuine provider absence do not. Draft edits cannot advance accepted context. Opening/changing the status menu issues zero RPCs; only explicit Analyze returns actual findings and the model provider sees zero requests. Six consumer regressions cover projection parity, absence, context replacement and explicit resolution failure; no TS predicate or second rule owner exists. |
 | P34 | One large item exceeds inline transport capacity | Evidenced | Backend stream/body/resource bounds, explicit capacity refusal and Tool-result offloading tests cover the required transport behavior. No graphical large-item display is claimed. |
 | P35 | Theme or font scale changes | Evidenced | Actual installed Reviews follows live light/dark/light palette changes with unchanged revision 4. Changing interface size makes the shared button 18px and restoring default returns it to 14px; computed styles and actual screenshots are observed. |
 | P36 | Entry or provider is replaced during pending async work | Evidenced | Hold the actual B revision-1 query response, advance private B to revision 2 and select a staged new package digest with a visible replacement title. Old observation is canceled and the window keeps its explicit reload boundary after the late reply is released. Ordinary reload/token reentry renders the new title and current revision 2. No old callback execution, implicit module adoption or provider-selection cross-scenario is claimed. |
@@ -3816,7 +3882,7 @@ Other criteria retain their exact scope.
 | P45 | Recover from a broken optional-plugin startup | Evidenced | In the actual native client an installed synchronous loop blocks module initialization; 855 task WebContent main-thread samples remain in the module evaluator/JIT. Independent CLI disable acknowledges in 0.229s while the native process is alive, and a separate read confirms disabled/withheld. A bounded supervisor stops only that task app; after real restart the UI shows disabled state, withdraws the command and renders another shared-React multi-resource component with a 0 -> 1 state change. Earlier blocked-backend coverage remains separately valid. |
 | P46 | Shutdown with active backend callbacks and UI teardown | Partial | Backend reverse-order cancel/join, callback retirement and settled close/error tests pass. Shutdown combined with actual component async work/resource teardown has not run. |
 | P47 | Inspect effective behavior | Evidenced | Owner-backed selection, composition, connection and release inspection exist and are tested. Transitive failure context is fixed and tested in `9f3de47f0`. Existing requirement resolution and MCP connection status remain the only owners; no second readiness ledger. |
-| P48 | Final source/API cutover review | Evidenced | Earlier backend architecture/generation closure is retained. The newly authorized complete frontend pipeline now passes all 355 files/2,418 tests and every source/resource/bundle gate. Unused workspace Memory facade, gateway, mutation owner, read cache and redundant visual provider are deleted with exclusive tests; surviving installed HTTP and actual Web mutation/refresh remain proven. Stale fixtures migrate to the current publisher contract. This source-cut evidence does not close the nine remaining graphical criteria, four review scenarios or historical timeouts. |
+| P48 | Final source/API cutover review | Evidenced | Earlier backend architecture/generation closure is retained. The newly authorized complete frontend pipeline now passes all 355 files/2,418 tests and every source/resource/bundle gate. Unused workspace Memory facade, gateway, mutation owner, read cache and redundant visual provider are deleted with exclusive tests; surviving installed HTTP and actual Web mutation/refresh remain proven. Stale fixtures migrate to the current publisher contract. This source-cut evidence does not close the remaining graphical/review criteria, fresh global requalification or historical timeouts. |
 
 ## Verification
 

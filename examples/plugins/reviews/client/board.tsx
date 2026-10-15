@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   EmptyState,
@@ -16,6 +16,7 @@ import {
   type ComponentContext,
 } from "@flame/plugin-sdk";
 import type { MutationPromise } from "@flame/runtime-contract/client";
+import { ANALYZERS_JSON } from "./analyzers.generated";
 import {
   CAPABILITY_JSON,
   type MethodInputs,
@@ -29,9 +30,17 @@ type Review = MethodOutputs[typeof listMethod]["reviews"][number];
 type UpdateResult = MethodOutputs[typeof updateMethod];
 type Status = MethodInputs[typeof updateMethod]["status"];
 type Analysis = MethodOutputs[typeof analyzeMethod];
+type AnalyzerRead =
+  { type: "ready"; available: boolean } | { type: "failed"; message: string };
 
 type BoundContext = ComponentContext & {
   readonly binding: NonNullable<ComponentContext["binding"]>;
+};
+type Inspection = {
+  context: BoundContext;
+  pending: boolean;
+  reviews: Review[];
+  analyzers: AnalyzerRead;
 };
 
 export function Board({ context }: { context: ComponentContext }) {
@@ -53,9 +62,12 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
       }),
     [context],
   );
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [inspection, setInspection] = useState<Inspection>();
+  const current = inspection?.context === context ? inspection : undefined;
+  const reviews = current?.reviews ?? [];
+  const analyzers = current?.analyzers;
+  const loading = current === undefined || current.pending;
   const [analysis, setAnalysis] = useState<Analysis>();
-  const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string>();
   const [unknown, setUnknown] = useState<MutationPromise<UpdateResult>>();
@@ -63,24 +75,77 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
   const lifetime = useRef<AbortController>(undefined);
   const reading = useRef<AbortController>(undefined);
 
-  async function refresh(owner: AbortSignal) {
-    reading.current?.abort();
-    const request = new AbortController();
-    reading.current = request;
-    const signal = AbortSignal.any([owner, request.signal]);
-    setLoading(true);
-    try {
-      const result = await operations.query(listMethod, {}, signal);
-      if (signal.aborted) return;
-      setReviews(result.reviews);
-    } catch (error) {
-      if (!signal.aborted)
-        setMessage(
-          `The current review could not be read: ${failureMessage(error)}`,
-        );
-    } finally {
-      if (!signal.aborted) setLoading(false);
-    }
+  const refresh = useCallback(
+    (owner: AbortSignal) => {
+      reading.current?.abort();
+      const request = new AbortController();
+      reading.current = request;
+      const signal = AbortSignal.any([owner, request.signal]);
+      return operations
+        .query(listMethod, {}, signal)
+        .then(async (result) => {
+          let analyzers: AnalyzerRead = { type: "ready", available: false };
+          const review = result.reviews[0];
+          if (review) {
+            try {
+              const values = await context.track(
+                context.runtime.plugins.resolvePoint(
+                  {
+                    contract: ANALYZERS_JSON,
+                    target: {
+                      scope: "installation",
+                      reference: context.binding.installationId,
+                    },
+                    attributes: JSON.stringify({ reviewStatus: review.status }),
+                    order: [],
+                  },
+                  signal,
+                ),
+              );
+              analyzers = { type: "ready", available: values.data.length > 0 };
+            } catch (error) {
+              analyzers = { type: "failed", message: failureMessage(error) };
+            }
+          }
+          if (signal.aborted) return;
+          setInspection({
+            context,
+            pending: false,
+            reviews: result.reviews,
+            analyzers,
+          });
+        })
+        .catch((error) => {
+          if (!signal.aborted) {
+            setMessage(
+              `The current review could not be read: ${failureMessage(error)}`,
+            );
+            setInspection((previous) => ({
+              context,
+              pending: false,
+              reviews: previous?.context === context ? previous.reviews : [],
+              analyzers:
+                previous?.context === context
+                  ? previous.analyzers
+                  : { type: "ready", available: false },
+            }));
+          }
+        });
+    },
+    [context, operations],
+  );
+
+  function reload(owner: AbortSignal) {
+    setInspection((previous) => ({
+      context,
+      pending: true,
+      reviews: previous?.context === context ? previous.reviews : [],
+      analyzers:
+        previous?.context === context
+          ? previous.analyzers
+          : { type: "ready", available: false },
+    }));
+    return refresh(owner);
   }
 
   useEffect(() => {
@@ -89,7 +154,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
     const signal = AbortSignal.any([context.signal, owner.signal]);
     void refresh(signal);
     return () => owner.abort();
-  }, [operations, context.signal]);
+  }, [refresh, context.signal]);
 
   async function observe(
     command: MutationPromise<UpdateResult>,
@@ -109,7 +174,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
             ? "The review changed after you read it. Inspect the current revision before submitting another change."
             : `The change was refused: ${result.type}.`,
       );
-      await refresh(owner);
+      await reload(owner);
     } catch (error) {
       if (owner.aborted) return;
       if (mutationSettlementIsUnknown(error)) {
@@ -140,7 +205,14 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
 
   async function analyze() {
     const owner = lifetime.current;
-    if (!owner || pending || loading) return;
+    if (
+      !owner ||
+      pending ||
+      loading ||
+      analyzers?.type !== "ready" ||
+      !analyzers.available
+    )
+      return;
     const signal = AbortSignal.any([owner.signal, context.signal]);
     setPending(true);
     try {
@@ -163,20 +235,27 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
           onClick={() => {
             const owner = lifetime.current;
             if (owner)
-              void refresh(AbortSignal.any([owner.signal, context.signal]));
+              void reload(AbortSignal.any([owner.signal, context.signal]));
           }}
         >
           Refresh
         </Button>
-        <Button
-          disabled={loading || pending || !!unknown}
-          onClick={() => void analyze()}
-        >
-          Analyze
-        </Button>
+        {analyzers?.type === "ready" && analyzers.available && (
+          <Button
+            disabled={loading || pending || !!unknown}
+            onClick={() => void analyze()}
+          >
+            Analyze
+          </Button>
+        )}
       </Toolbar>
       {loading && <p role="status">Reading current reviews…</p>}
       {message && <p role="status">{message}</p>}
+      {analyzers?.type === "failed" && (
+        <p role="alert">
+          Analyzer actions could not be resolved: {analyzers.message}
+        </p>
+      )}
       {unknown && (
         <Toolbar label="Original command recovery">
           <Metadata>Command: {unknown.idempotencyKey}</Metadata>
