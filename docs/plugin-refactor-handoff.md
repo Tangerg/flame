@@ -30,6 +30,21 @@ other graphical scenarios. The following frontend change has its own qualificati
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 
+Fresh independent Go qualification now passes against the Scope-v0.51.1 graph:
+explicit b2f1da248 Runtime/localruntime unpublished archives, workspace off,
+no replace, no authored internal imports and an initially source-empty private
+module cache with offline file proxies. Third-party checksum verification stays
+enabled. Tidy/verify/full metadata/race/vet/build pass; 22 tests pass without test
+skips/failures and the Tool-proposal command also builds. The full offline metadata
+inventory now succeeds. Temporary trees/proxies/caches are removed, and an
+installable stripped Reviews package is retained for the next actual UI scenarios.
+An initial pre-qualification cache-cleanup permission failure is preserved as a
+fixture failure; Go's private-cache cleanup corrects it. No published dependency
+or shared cache entry is overwritten. Ordinary released-graph CLI/Reviews tidy
+still needs a future published Runtime containing these APIs; no publication or
+paid/all-platform execution occurs. The SDK README's retired workspace Memory
+consumer reference is removed.
+
 The matching current Web sequence now passes: actual entry/relative ESM responses
 are 200 and exact entry bytes match; shared React identity and Hook 0 -> 1 work.
 After pending.js returns 200, changing to a wrong token yields UI 401 and retires
@@ -53,13 +68,13 @@ its command and renders another multi-resource shared-React component with a rea
 0 -> 1 update. This closes P45 and the fourth review scenario, with no production
 change, relaxed deadline or automatic JavaScript interruption. Evidence includes
 the controller JSON, native sample and restored native screenshot. Historical
-safe-steer/MCP causes, other graphical scenarios and fresh Scope-graph independent
-author archives remain unresolved or unqualified as previously recorded.
+safe-steer/MCP causes and other graphical scenarios remain unresolved or
+unqualified; the later Scope-graph independent author pass is recorded above.
 
 The user-requested dependency cut now selects all 30 Scope modules at v0.51.1,
 without replace. Production builds and workspace synchronization pass. Runtime
 tidy passes; ordinary CLI/Reviews tidy still cannot resolve the unpublished Flame
-plugin APIs, so fresh independent archives are separately pending. The complete
+plugin APIs. Subsequent independent snapshots now pass as recorded above. The complete
 parallel race selection finishes all 174 packages but exits 1 on the existing
 concurrent SQLite initialization case (immediate SQLITE_BUSY before schema SQL).
 Every other tested package passes, including complete bootstrap, both steer modes,
@@ -81,8 +96,8 @@ passes 2.79s; delegated approval, all eight SIGKILL cuts and complete bootstrap
 (402.385s) pass. All four participating modules pass go mod verify. Workspace vet
 and production build pass, as does the real Go Runtime -> HTTP -> TypeScript suite
 (49 tests, 36.96s) with freshly built executables and first-party packages. Fresh
-native ESM/connection evidence follows; other graphical criteria and independent
-author archives for this graph remain pending. This current pass does not
+native ESM/connection evidence follows; other graphical criteria remain pending,
+while independent archives have their own subsequent qualification. This current pass does not
 establish either historical timeout's cause.
 
 Fresh Scope/WAL Runtime and native builds actually render multi-resource ESM,

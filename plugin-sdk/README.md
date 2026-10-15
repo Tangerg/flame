@@ -80,9 +80,12 @@ a binding preparation callback and an output decoder. Recovery runs before the
 callback and retains the original route/key/retention guard. The caller supplies
 the original serialized input; changed input is refused. The decoder must validate
 the publisher acknowledgement before settlement. Journal routing/fingerprints are
-durable; authored input and business results are not copied into it. The workspace
-Memory deletion consumer uses this path. Other durable component commands use
-the same journal; graphical reload interaction remains outside executed acceptance.
+durable; authored input and business results are not copied into it. Low-level
+calls and stable-intent commands share that journal; stable intents additionally
+retain their original route across client/provider generations. Neither owns the
+business outcome. The combined graphical command-reply-loss/restart scenario
+remains separately unqualified; resource connection/reload qualification does not
+prove it.
 
 Use `buildComponent` from `@flame/plugin-sdk/build` with a source entry, output
 directory and `compiler: rolldown` imported from the author toolchain's declared

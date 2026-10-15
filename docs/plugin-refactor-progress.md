@@ -32,6 +32,44 @@ Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
 
+### Independent author qualification after Scope v0.51.1 (2026-10-15)
+
+Current Go source at b2f1da248 passes standalone Reviews, the public Tool-proposal
+contributor and the unchanged command-next/private-receipt regression outside
+the checkout. Runtime and localruntime are explicit private module snapshots
+v0.0.0-unreleased.b2f1da2486f2. Only task-owned dependency metadata names them;
+repository manifests and published cache entries are unchanged. Authored Go code
+has no Runtime internal imports, workspace is off and the selected graph has no
+replace. All thirty selected Scope modules remain at v0.51.1.
+
+The artifact includes the tracked Runtime implementation and a separate nested
+localruntime module. Its source staging is deleted before qualification. A
+preparation step fills exact dependency downloads/metadata, then the Go owner
+cleans only that task's preparation cache. The offline qualification uses a new
+isolated module cache without module sources and file proxies only. sum.golang.org
+remains enabled for third-party dependencies; only the explicitly unpublished
+Flame snapshots are exempt. Offline tidy/verify/full metadata inventory pass
+3.949/2.010/0.039s, full race passes 74.716s, vet 38.844s and build 5.932s. Two
+tested author packages pass (backend/analyzer 11.750/2.130s), 22 top-level tests
+pass with no test skip/failure, and three command packages have no tests. Full
+module metadata now resolves offline, superseding the earlier missing .info gate.
+
+An installable stripped Reviews executable is built from that offline author
+graph (8.035s) for subsequent graphical cross-scenarios. Temporary source trees,
+module archives/proxies and both private caches are removed by their owner; the
+installable task package and evidence remain. The first harness exits before
+offline checks because Python cannot delete read-only Go cache directories.
+That failed preparation record is retained; using go clean against the verified
+private cache fixes the fixture without bypassing a product assertion or check.
+The SDK README also removes its stale reference to the deleted workspace Memory
+consumer and distinguishes stable-intent recovery from resource reload proof.
+
+This does not publish a module. Ordinary CLI/Reviews tidy against their old
+published Flame reference still cannot find the unreleased plugin APIs; release
+metadata must advance before an independent release. Paid models, another native
+platform/architecture and the remaining graphical/review scenarios are not
+qualified by this source-archive pass.
+
 ### Graphical acceptance: Web/Wails resource and connection ownership (2026-10-15)
 
 The current 695879a46 Web build completes the native resource/connection sequence
@@ -112,8 +150,9 @@ Flame dependency lacks the new capability/jsoninput/plugin/point public packages
 tidy does not substitute the workspace sources. This is the existing unreleased
 Flame artifact boundary, not a Scope API failure. No local replace, old API shim,
 publication or module-cache overwrite is used to conceal it. Workspace builds and
-synchronization pass; fresh independent unreleased archives remain separately
-unqualified for this Scope graph. The first configured-mirror attempt returns a
+synchronization pass; the subsequent independent-author section above now qualifies
+the current Scope graph through explicit unpublished archives. The first
+configured-mirror attempt returns a
 new-version checksum-lookup 404; fetching through the official proxy succeeds with
 sum.golang.org verification still enabled.
 
@@ -174,8 +213,8 @@ executables and first-party packages from this source and passes all 49 tests
 (36.96s), including real restart and installed-owner interactions. The complete
 frontend and shared-client gates retain their earlier unchanged-JavaScript scope.
 Fresh native execution for this Scope graph now has the exact ESM and connection
-evidence below. Other graphical criteria and independent author archives remain
-pending; neither is inferred from the passing build.
+evidence below. Other graphical criteria remain pending; independent Go archives
+have their own subsequent qualification above, not an inference from this build.
 
 ### Graphical acceptance: pending ESM and connection retirement (2026-10-15)
 
@@ -3520,7 +3559,7 @@ qualification.
 | Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
 | Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
 | Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
-| Independent authors and current distributions | Current `9f5a66d51` independent Reviews/Tool-proposal/command-next author offline tidy/verify/race/vet/build passes with workspace off, no replace and explicit unreleased module archives. Required internal implementation and companion localruntime are included; authored code has no private imports. Current Runtime/catalog/native packaging passes with pinned task-local beta.29 and a fresh Vite build. Current packed Usage also reproduces formal component bytes outside the repository, including offline clean reinstall. Registry publication, full offline release-metadata inventory, all-platform execution and graphical qualification remain absent. |
+| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures and seven broader graphical rows remain unqualified. |
 | Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification and the separately unexecuted graphical criteria are not completed by P48 source closure. The newly authorized complete frontend gate now passes after removing the unused workspace Memory path and migrating stale fixtures; actual installed Web Memory still writes and refreshes its owner-backed row. |
 
 The review's four extra cross-acceptance groups are independently tracked:
@@ -3560,14 +3599,15 @@ opt-in live-provider/helper tests skip. Production build, vet and the rebuilt
 355-file/2,418-test pipeline, native packaging and actual native connection
 retirement RED/GREEN. Earlier complete normal/race, shared-client and independent
 author results retain their exact source scope; fresh independent Go archives for
-the new Scope graph remain pending. Platform/conditional or paid execution is
+the new Scope graph now pass all author and offline metadata gates above.
+Platform/conditional or paid execution is
 never inferred from package summaries. Actual graphical evidence closes
 P29/P30/P32/P35/P40/P45, and the complete frontend/source cut closes reopened P48.
 Other criteria retain their exact scope.
 
 | Requirement | Original scenario | Status | Evidence and remaining work |
 | --- | --- | --- | --- |
-| P01 | Build a bundled feature outside the repository | Evidenced | Packed Usage typecheck/build and exact resource-byte reproduction pass outside the checkout from public SDK/UI/icons/Runtime archives, followed by an offline clean reinstall/typecheck/build; these authored sources are unchanged by the later Scope/WAL/Desktop-ESM cuts. Earlier independent Reviews and Tool-proposal/command-next Go author gates pass at 9f5a66d51 with workspace off and no replace; their fresh Scope-graph archive qualification remains pending. Neither exercise is registry publication or independent qualification of every feature. |
+| P01 | Build a bundled feature outside the repository | Evidenced | Packed Usage typecheck/build and exact resource-byte reproduction pass outside the checkout from public SDK/UI/icons/Runtime archives, followed by an offline clean reinstall/typecheck/build; these authored sources are unchanged by later cuts. Current Scope-v0.51.1 Reviews and public Tool-proposal/command-next author also pass offline tidy/verify/full metadata/race/vet/build from b2f1da248 Runtime/localruntime snapshots, with workspace off, no replace and no authored private imports. This is source-artifact qualification, not registry publication or every feature's independent build. |
 | P02 | Install the same feature from a non-bundled origin | Evidenced | Verified by `TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource`: ordinary source, same contract/resources, independent identity, withdrawal, restart and uninstall. |
 | P03 | Disable or remove a seeded plugin, then restart | Evidenced | `TestFirstPartyInitializationAndRestartPreserveUserDecisions` and the independent Usage lifecycle exercise durable disable/uninstall without reseeding; bootstrap initialization failure cannot commit partial defaults. |
 | P04 | Two candidates implement one selected role | Evidenced | Backend verified by explicit provider selection and original-command routing tests; enablement never selects another provider. |
