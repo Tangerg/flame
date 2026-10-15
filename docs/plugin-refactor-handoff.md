@@ -19,6 +19,26 @@ prohibited graphical scenarios.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 
+The following test-only slice qualifies the actual CLI original-binding conflict:
+a successful update's key cannot accept otherwise-valid changed input, a fresh
+key can advance the review, and the original key/input still recovers its complete
+earlier receipt through CLI/Go while current private state remains advanced.
+Normal/race cases pass 14.60/10.92s; the race group also retains typed-admission
+proof (10.91s). Bootstrap vet passes. Complete ordinary qualification passes
+346.527s: all 174 packages finish (159 tested, fifteen without tests), 5,194
+top-level passes, seven existing paid/helper skips and zero failures. Execution/
+bootstrap/architecture/CLI pass 59.954/182.835/30.910/43.143s. Bootstrap has all
+151 top-level tests passing without skips/failures. The identity/typed/history/
+lost-Core-opening cases pass 11.01/12.81/29.07/1.85s, with all eight SIGKILL cuts
+passing (parent 44.94s). Existing assertions, contexts and the 900s package limit
+remain unchanged. The earlier complete parallel gate covers unchanged production
+source; the added test's focused race is separately recorded.
+Final stronger assertions check the public Go problem type and exclude CLI
+`internal_error`; that final case passes normal/race 8.66/11.79s after the complete
+normal run. No assertion or limit is relaxed.
+This proves Core `idempotency_conflict`; private `invocationConflict` remains
+separate SDK/Tool evidence. Production source stays `9f5a66d51`.
+
 ## Workspace and preservation
 
 - Reuse `/Users/tangerg/.codex/worktrees/unified-plugins/flame`, branch
@@ -84,7 +104,8 @@ one typed dispatch and two receipt reads, with 4,098 receipts and an unchanged
 Review. A Store regression reopens and reads old/new success and new refusal
 receipts after actual post-cutoff business mutation. The former capacity tests
 and fixture are migrated, not kept as a parallel contract or accepted alias.
-Actual CLI invocation conflict and graphical cross-scenarios are not qualified.
+The private `invocationConflict` value through the actual CLI and graphical
+cross-scenarios remain unqualified. Core binding-conflict proof is recorded above.
 
 - `6a88bd45a`: public `ToolProposalContract`/`ToolProposalMethod` queries use the
   existing installed composition. Only arguments may transform; execution owns
@@ -141,8 +162,8 @@ Wall time is 1,324.824s; execution/bootstrap pass 494.464/835.832s. All eight
 SIGKILL cuts pass (112.75s), as do typed admission 20.33s, history recovery 86.95s
 and lost Core opening 5.31s. Original assertions/contexts and the existing 900s
 package limit remain unchanged. Full-module vet/build pass 6.198/7.956s.
-The whole ordinary 174-package selection has not been rerun for this protocol;
-its preceding-source pass below is not current qualification.
+The subsequent test-only slice's whole ordinary selection is recorded above;
+the frozen preceding-source pass below keeps its original scope.
 
 Current-source independent author archives use explicit unreleased
 `v0.0.0-unreleased.9f5a66d51` Runtime/localruntime versions, deleted source staging,
@@ -481,7 +502,8 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
   evidence. The corrected history scenario adds HTTP-process/model Run/executable
   CLI missing-review refusal and original-receipt recovery beyond 4,096 historical
   calls. The incorrect lifetime-quota outcome is removed rather than qualified.
-  The graphical entrance and actual CLI invocation conflict remain unqualified.
+  The graphical entrance and actual CLI projection of private `invocationConflict`
+  remain unqualified. Core binding-conflict proof is recorded above.
 - Paid live DeepSeek is not enabled (`FLAME_LIVE_DEEPSEEK` unset). Windows/Linux/
   alternate native execution and registry/deployment publication are not qualified.
 - Read-only npm audit exits 1 with eight alerts (four high/four low). All high
@@ -533,13 +555,15 @@ admission/Core callbacks. A bounded phase/CPU diagnostic does not reproduce them
 obtain a failing child/proxy snapshot before making a production repair.
 Do not substitute a later pass or build overlap for a cause of its failed gates.
 Keep graphical criteria and dependency/live/platform/publication limits explicit.
-Actual CLI invocation-conflict proof remains separate from SDK/Tool and current
-history/refusal recovery. The previous capacity contract is removed without
+Actual CLI projection of private `invocationConflict` remains separate from
+SDK/Tool evidence. The Core CLI binding conflict and original-receipt recovery
+are qualified above. The previous capacity contract is removed without
 compatibility; do not cite its old fresh-response proof as current behavior.
 Current independent Go authors, packed Usage, complete parallel race, normal
 bootstrap, full vet/build and native checks pass for `9f5a66d51`, as scoped above.
 The real installed numeric-input regression and complete typed admission repair
-are committed. The whole ordinary 174-package selection is not newly executed.
+are committed. The later test-only slice also completes the whole ordinary
+selection and strengthens actual CLI original-binding conflict/recovery proof.
 The `Invalid` audit now has a causal public regression and production writer/
 reader/admission repairs. Its exact qualification is recorded above; do not
 extend that evidence to actual rendered UI or every CLI refusal class.

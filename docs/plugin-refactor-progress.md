@@ -22,6 +22,35 @@ Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
 
+A following test-only slice adds
+`TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt`. The actual
+CLI/stdio-backend path accepts an update, repeatedly refuses valid changed input
+under that identity as `idempotency_conflict`, and agrees with the Go Endpoint.
+A fresh identity advances the private review from revision 2 to 3. Original-key
+CLI/Go redelivery still returns the complete revision-2 receipt while current
+private state stays at revision 3. Focused normal/race cases pass 14.60/10.92s
+(packages 53.520/29.347s; runners 93.233/82.050s); the race group also passes the
+typed-admission regression 10.91s. Bootstrap vet passes. The complete ordinary
+174-package selection passes in 346.527s: 159 tested packages pass, fifteen have
+no tests, 5,194 top-level tests pass and seven existing paid/helper tests skip.
+Execution/bootstrap/architecture/CLI pass 59.954/182.835/30.910/43.143s. All 151
+bootstrap top-level tests pass without skips/failures; identity admission 11.01s,
+typed admission 12.81s, history recovery 29.07s, lost Core opening 1.85s and all
+eight SIGKILL cuts (parent 44.94s) pass. No production implementation, protocol,
+generated contract, component resource or original assertion/deadline changes
+after `9f5a66d51`. Its complete parallel race and author/native gates below remain
+qualified for that unchanged production source; the new test has separate focused
+race evidence rather than an invented repeat of the entire race selection.
+After the complete normal run, the final identity assertions additionally check
+the client-visible `Problem().Type` and exclude `internal_error` in CLI stderr.
+That final case passes normal/race 8.66/11.79s (packages 14.492/19.916s). No
+existing assertion is removed or relaxed, and no other test action changes.
+
+This is the Core original-binding refusal. The private business
+`invocationConflict` value remains separately qualified by direct SDK/Tool
+tests; the new CLI case is not claimed as that different backend outcome. The
+review's rendered cross-scenario remains Partial.
+
 Production `9f5a66d51` passes the complete original `-race -p 2` selection over
 Runtime, localruntime, CLI and Reviews: 174 packages, 159 tested packages passing,
 fifteen without tests, 5,193 top-level passes and seven existing conditional skips
@@ -43,10 +72,9 @@ requiring exactly one validation, one typed update, one Tool and two receipt rea
 all original mutation/private-state/receipt assertions remain. The complete
 bootstrap rerun passes all 150 top-level tests without skips or failures (package
 178.324s; runner 183.667s), including history model/CLI refusal recovery 34.49s,
-typed admission 9.66s and lost Core opening 1.94s. The entire ordinary 174-package
-selection has not been rerun after this protocol change; its prior-source result
-below is not promoted to this source. The complete current race gate and normal
-bootstrap are the actual current executions.
+typed admission 9.66s and lost Core opening 1.94s. The later complete ordinary
+selection above includes the added identity test; its actual current execution
+is distinguished from the frozen preceding-source qualification below.
 
 Current independent author qualification uses checked Runtime/localruntime module
 archives `v0.0.0-unreleased.9f5a66d51`, an initially empty private module cache,
@@ -2780,8 +2808,9 @@ close the other criteria. Historical slice entries retain their original evidenc
 Current production `9f5a66d51` has complete parallel race, normal bootstrap,
 full vet/build, shared TS/Desktop typecheck, current isolated Go author, packed
 Usage and native qualification. Their exact scope and results are recorded in
-Current stage. The ordinary whole 174-package selection has not been rerun after
-this protocol change; preceding-source normal results remain labeled as such.
+Current stage. The following test-only slice adds actual CLI binding-conflict
+proof and a complete ordinary 174-package pass; preceding-source results retain
+their labels and the new test's race proof is separately scoped.
 Preserve the remaining acceptance gaps instead of reporting 100%:
 
 - Obtain actual deadline evidence for the historical post-SDK safe-steer timeout.
@@ -2795,7 +2824,8 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 - The `Invalid` audit now has causal public regressions, owner/reader and complete
   fresh typed-input admission repairs. Retain the distinction between unadmitted input and a stored business
   refusal. The actual CLI/Tool invalid-input proof does not qualify rendered UI
-  or the still separate actual CLI invocation-conflict case.
+  or the still separate actual CLI projection of the private `invocationConflict`
+  value. The actual CLI Core binding-conflict/recovery path now has its own proof.
 - P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 and the four review cross-scenarios need
   actual graphical interaction. The user prohibition stays in force; do not add
   or execute UI/E2E/screenshot tests or substitute source/native builds for them.
@@ -3103,7 +3133,7 @@ whole-proposal completion and public-contract freeze qualification.
 | Ordinary embedding access and Memory-specific limits | Public text embedding and Tool context replace private metadata/methods. Ordinary installed callbacks support multiple embedding exchanges; Memory's operation grant consumes one generated published caller policy. Absence, configured errors and storage failures retain distinct semantics. |
 | No-Run unknown commands and original receipts | Installed Reviews now also exercises Runtime response loss, cold store reopen, disable/reenable, pending update/configuration/uninstall holds, replacement-target conflict and exact private receipt recovery without a Run or mutation redispatch. Memory selection tests and shared-client replacement/journal tests remain separate proofs. The actual UI plus Runtime restart/update/uninstall/selection cross-scenario has not run. Host stores routing, never competing business success. |
 | One contract generation source and numeric parity | The review's explicit Go-owned alternative was selected in the decision ledger; Schema-first Go input was not implemented or claimed. Typed methods generate canonical Schema, Go projections and TS, with exact current regeneration. Feature JSON and the shared Go/TS corpus cover wide numbers through unary/stream/journal/point paths. This is feature JSON parity, not a universal arbitrary-precision conversion of every Core DTO. `9f5a66d51` completes pure typed admission before fresh route binding for Schema-valid decimal/exponent integer spellings, with real CLI RED/GREEN, unary/stream identity and unchanged receipt recovery proof. |
-| Typed refusal versus uncertainty | Real Tool/CLI query/revision-conflict facts agree. Current Reviews removes the incorrect lifetime receipt quota and its unrecorded refusal. Store/SDK and independent model Tool/CLI proofs retain new successful work and original known-refusal recovery beyond 4,096 historical receipts; errors without evidence remain unknown. SDK/Tool invocation conflict remains separate from actual CLI and rendered-UI proof. The cross-scenario remains Partial. |
+| Typed refusal versus uncertainty | Real Tool/CLI query/revision-conflict facts agree. Current Reviews removes the incorrect lifetime receipt quota and its unrecorded refusal. Store/SDK and independent model Tool/CLI proofs retain new successful work and original known-refusal recovery beyond 4,096 historical receipts; errors without evidence remain unknown. The real CLI original-binding conflict is `idempotency_conflict`, with exact Go classification and original-receipt preservation after later mutation. Private `invocationConflict` remains separate SDK/Tool evidence; rendered comparison is unexecuted. The cross-scenario remains Partial. |
 | Public components/shared modules/resources | Ordinary component ESM, relative/authenticated exact-release resources, host module maps and shared UI/React/context ownership are implemented and type/native built. The complete packed Usage feature builds outside the checkout with identical resource bytes; graphical identity/interaction is not executed. |
 | Management independent of failed optional UI | Partial: independent CLI and built-in metadata management exist; blocked-backend inspection/disable is tested. Recovery while module initialization blocks the actual renderer remains unexecuted. An error boundary or source separation does not complete that review scenario. |
 | Protocol and activation identity | Current protocol requirements, complete export sets and immutable same-release activation proofs are tested. SDK additions do not infer a new public wire epoch from internal build versions. Retired shapes are explicitly refused. |
@@ -3120,7 +3150,7 @@ The review's four extra cross-acceptance groups are independently tracked:
 | Review scenario | Status | Existing evidence | Missing proof |
 | --- | --- | --- | --- |
 | No-Run mutation loses reply; UI and Runtime restart; update/uninstall/provider change | Partial | Actual installed Reviews no-Run Runtime recovery across cold restart, disable/reenable, update/uninstall holds and replacement-target refusal; Memory selected-provider tests; shared TS journal | Actual Reviews UI/Runtime restart followed by all replacement attempts and provider selection, retaining original receipt or explicit unrecoverable binding |
-| Same refusal through Tool, CLI and UI | Partial | Complete typed/Tool revision/identity evidence; real Tool/CLI revision and missing-review refusal plus original-receipt recovery after 4,096 historical calls; incorrect lifetime-quota outcome removed without compatibility | Executed comparison including rendered UI; actual CLI invocation-conflict proof remains separate |
+| Same refusal through Tool, CLI and UI | Partial | Complete typed/Tool revision/identity evidence; real Tool/CLI revision and missing-review refusal plus original-receipt recovery after 4,096 historical calls; real CLI Core binding conflict with matching Go problem and immutable earlier receipt; incorrect lifetime-quota outcome removed without compatibility | Executed comparison including rendered UI; actual CLI projection of the private invocation-conflict value remains separate |
 | Remote multi-resource ESM in Web and Wails | Partial | Exact-release resource/auth implementation, shared import map, independent component build, native compilation | Actual remote resource/assets/module identity, auth and connection replacement in both graphical environments |
 | Module initialization blocks renderer startup; independent recovery disables it | Partial | Independent management code/CLI plus real blocked stdio-backend recovery | Actual failed graphical module startup and disabling it through a functioning independent entrance |
 
@@ -3172,7 +3202,7 @@ and unrun, so those requirements remain unverified rather than waived.
 | P20 | A model route is changed by a plugin | Evidenced | Backend verified by actual selected provider/model/options, independent routes, metering and durable endpoint evidence. |
 | P21 | A query is called through Tool, CLI, and UI | Partial | The installed Reviews case compares the complete real Tool/CLI query and revision-conflict results through authenticated HTTP, including same-command refusal redelivery and unchanged private state. The rendered UI entrance has not run; source counts do not prove it. |
 | P22 | Reviews mutation commits but reply is dropped | Evidenced | Public-SDK/private receipt and Run response-loss tests cover real committed reply loss, restart, original recovery and stale revision. `TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRestart` adds the installed Runtime no-Run path, exact read-only receipt, pending release holds and replacement-target conflict. The larger graphical review cross-scenario remains Partial. |
-| P23 | A command identity is reused with different input | Evidenced | Verified by private receipt, public binding and CLI/shared-client original-input conflict tests, including external public idempotency classification. |
+| P23 | A command identity is reused with different input | Evidenced | Private receipt/public binding/shared-client conflict tests and `TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt` verify the real executable CLI's known Core conflict, matching Go problem, new-key progress and unchanged original receipt after another command advances private state. SDK/Tool private `invocationConflict` is separately qualified. |
 | P24 | Schedule dispatch acknowledgement is lost | Evidenced | The complete product parallel gate includes lost-Core-opening reconciliation in bootstrap and the eight `TestScheduleCreateRecoversAcrossSIGKILLCuts` cuts whose parent is in execution. That parent passes separately again in the current slice (58.876s). Bootstrap alone does not execute it. Earlier repetitions remain historical runs. |
 | P25 | Schedule is edited after work is captured | Evidenced | Verified by retained Schedule input after definition edit/deletion and negative receipt/capture cuts. |
 | P26 | UI closes during an accepted Run | Partial | Independent accepted Run and observation lifetimes have backend/shared-client evidence. Closing an actual installed view during that Run has not been executed. |
@@ -4851,9 +4881,10 @@ Registry publication and external deployment are not authorized or claimed.
 ## Spillover risks
 
 - Complete typed structural input admission has its shared unary/stream repair,
-  public CLI RED/GREEN proof and current parallel/artifact/native qualification.
-  The entire ordinary 174-package selection has not been rerun after this cutover;
-  current actual executions are distinguished from frozen preceding-source gates.
+  public CLI RED/GREEN proof and current complete ordinary/parallel/artifact/native
+  qualification. The later test-only identity case passes focused race; it is not
+  added to the earlier full race's count. Current actual executions are kept
+  distinct from frozen preceding-source gates.
 - The native build's existing npm prepare wrote shared
   `core.hooksPath=desktop/.husky/_` without a captured prior value. That value is
   preserved rather than guessed away; future task-owned qualification sets

@@ -149,6 +149,15 @@ and structural overflow are rejected before command admission and cannot consume
 an identity. Runtime projects such schema rejection as `invalid_params` before
 binding/dispatch, for both unary and streaming commands.
 
+Runtime binds a human command key to its complete original operation before
+business dispatch. CLI or Go calls that reuse that key with different input get
+the typed `idempotency_conflict` problem, including when the changed input is
+otherwise valid. The original key and input still recover the original private
+receipt after another command advances the review; a new intent uses a new key.
+Direct SDK/Tool calls also check the private invocation binding and preserve the
+backend's `invocationConflict` outcome. These checks protect their respective
+owners and have separate evidence.
+
 The Store compiles the same Go-owned input schema at open and uses it for writes
 and receipt integrity checks. Receipt reads do not rerun business admission:
 an original `invalidUpdate` remains recoverable after restart or later work.
@@ -256,6 +265,14 @@ after an actual successful update beyond the old cutoff. Separate invalid-input
 cases verify exact recovery and changed-input conflict across private restart.
 These cases do not
 execute the board or invocation conflict through the actual CLI.
+
+`TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt` builds the real
+CLI and stdio backend and checks the human binding boundary through authenticated
+HTTP. A successful update is followed by repeated changed-input conflict and
+matching Go classification. A fresh key advances the review, while the original
+key/input still returns its complete earlier receipt without changing current
+state. This qualifies Core's `idempotency_conflict`; the backend's private
+`invocationConflict` value remains separately exercised by SDK/Tool tests.
 
 This package's MCP tools execute through Session-owned Runs and the existing
 approval path. Its ordinary Board calls the same published business operations
