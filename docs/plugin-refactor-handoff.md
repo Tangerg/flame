@@ -1,10 +1,11 @@
 # Unified plugin refactor handoff
 
-Closed after causal repairs on 2026-10-15 within the user's authorized scope.
-The earlier completion declaration based on serial reruns was premature and was
-withdrawn. The original full parallel race now passes all 174 packages on frozen
-`981c4c915` source. Current repository state is authoritative; detailed failures,
-measurements, 48 individual proposal rows and review reconciliation remain in
+Original-proposal acceptance is reopened by the 2026-10-15 audit: **29 Evidenced,
+18 Partial, 1 Open** across P01-P48. These are evidence counts, not implementation
+percentages. The whole-plugin-system 100% claim is withdrawn. The distinct causal
+parallel-race repair remains verified: the original full command passes all 174
+packages on frozen `981c4c915` source. Current repository state is authoritative;
+detailed failures, measurements, individual proposal rows and review reconciliation remain in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 
 ## Workspace and preservation
@@ -22,7 +23,7 @@ measurements, 48 individual proposal rows and review reconciliation remain in
 - Replies remain Chinese; code/comments/errors/docs remain English. Existing
   root/module instructions apply. No sub-agent delegation occurred.
 
-## Final implementation
+## Current implementation
 
 The original unavailable-source bootstrap failure is fixed in `8e32d9c35`.
 Captured receipt observation has its actual observer lifetime; source availability
@@ -103,7 +104,7 @@ invocations remain failures; no pre-existing cause is claimed. No separate cause
 is invented for the historical safe-steer timeout, whose current complete parallel
 and focused mode repetitions pass.
 
-## Final verification
+## Recorded verification
 
 - The original complete command passes, without exclusions or changed case limits:
 
@@ -161,8 +162,41 @@ external deployment, pushing/merging and user-data migration remain unauthorized
 - `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal.html`.
 - `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal-Review-2026-10-13.md`.
 
-Both original inputs are unchanged. No required implementation or authorized
-verification remains. Owned diagnostic scratch is removed and the original stash
-is verified. Keep reviewable Runtime/native outputs, confirm the final documentation
-commit leaves Git clean, and stop. Do not push, merge, edit the primary checkout
-or mutate user data.
+Both original inputs are unchanged. This audit inspected source/test bodies and
+recorded invocations; it ran no tests and changed no product code. Remaining work:
+
+- P13 has an implementation/proof gap: the local Tool rewrite regression does not
+  establish an ordinary installed author's public transformation boundary. The
+  installed transparent observer deliberately refuses transformation.
+- P12 proves frozen order and a remote callback to local Scope wrappers, but lacks
+  an observed before/after trace of two installed remote decorators.
+- P16 proves known inner model evidence under outer failure, not a durable private
+  mutation followed by outer decorator failure and original-receipt redelivery.
+- P18 proves simulated handler failure/EOF and original receipt-only recovery;
+  actual backend disconnection after output begins has not been demonstrated.
+- P41 proves CLI history, adapters and headless callbacks separately, without the
+  combined executable CLI business command -> installed backend -> host scenario.
+- P48 cleanup is incomplete: active Runtime/SDK READMEs retain obsolete open-stage
+  claims; Reviews still says "no review board" beside its actual board source.
+- P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 retain graphical proof gaps. Do not write
+  or execute UI/E2E/screenshot tests under the user's continuing prohibition.
+  Exclusion cannot count as completed acceptance.
+- All four extra review cross-scenarios remain Partial: actual UI/Runtime restart
+  with unknown no-Run commands and replacement; typed refusal across all entrances;
+  authenticated remote multi-resource ESM in real Web/Wails with connection change;
+  independent recovery from renderer-blocking module initialization.
+
+The complete current race/affected normal/vet/generation/static/build evidence
+stands. The full normal 174-package and shared TS/standalone artifacts are earlier
+runs; independent archives have not been requalified after the reopened SDK repair.
+Package summaries do not prove all conditional/platform cases executed. No other
+OS/architecture is qualified. The historical safe-steer timeout has no separately
+established cause despite current parallel/focused passes. Original assertions and
+10s limits remain unchanged. Raw diagnostic scratch was removed after recording;
+this audit cannot re-inspect its deleted logs.
+
+Finish authorized backend/public-boundary/proof/documentation omissions before
+another concentrated acceptance sweep, and leave forbidden graphical criteria
+explicitly unverified. Requalify affected independent public artifacts after SDK
+changes. Keep reviewable Runtime/native outputs and the original worktree/stash.
+Do not push, merge, edit the primary checkout or mutate user data.
