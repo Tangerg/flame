@@ -9,98 +9,141 @@ source/API/doc cleanup now have matching evidence. Thirteen graphical rows and
 all four additional review cross-scenarios remain Partial under the continuing
 UI/E2E/screenshot prohibition. The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
-The latest test-only qualification also retains unclassified MCP startup
+An earlier test-only qualification also retains unclassified MCP startup
 discovery deadlines; passing focused or complete reruns do not explain them.
 The user confirms no original safe-steer logs, goroutine dump or test data remain.
 The missing failure interval cannot be reconstructed from normal-path observations.
+A new SDK/MCP probe also reopens complete typed-input structural admission:
+decimal/exponent integer spellings pass Schema but fail before the business
+handler, leaving no receipt. Existing passing suites do not close that gap.
 
-The latest complete product qualification is frozen `b2dcbfbba`; it predates the
-current Reviews and admission repairs. `490bb1105` removes Reviews' incorrect
-lifetime receipt quota. The subsequent production slice now commits structurally
-admitted `invalidUpdate` decisions with their immutable receipt, uses the same
-Go-owned bounded schema for input and receipt integrity, and classifies fresh
-command schema rejection before binding as invalid parameters. Original-key
-recovery still precedes new-call discovery; no host result cache or replay is
-added. Current schema/TS/ESM consumers are regenerated without compatibility.
-The new Store/SDK/process proofs and exact verification scope are recorded below;
-earlier complete product/native/independent author gates do not cover this source.
-Earlier test-only slices add steer diagnostics, installed Reviews no-Run recovery
-and real Tool/CLI equivalence. The old first-capacity-result proof is superseded
-by the corrected history/recovery scenario, not called durable refusal recovery.
-The preceding fixture/CLI slice passes the complete execution/bootstrap parallel race on clean
-`6b3a175e8`: 385 top-level passes, zero failures/skips, package times
-240.475/328.931s, wall 334.225s. This run has no source overlay or changed test
-deadline. A read-only process observer finds no proxy/backend reaching its
-sampling threshold, so it takes no native sample and does not diagnose the
-earlier discovery deadlines recorded below. Earlier bootstrap race 408.052s, focused
-Reviews race 35.311s, eight-cut execution race 58.876s and architecture 31.663s
-predate this latest slice. The earlier complete CLI/root binding race remains
-recorded below. The following full-product result predates these test-only
-changes and is not a newly executed whole-product gate:
+Current concentrated qualification covers production source `5ff75fffc`, after
+both Reviews receipt repairs and fresh structural-refusal classification. With
+ordinary workspace discovery, both complete normal and `-race -p 2` commands
+finish all 174 selected packages: 159 tested packages pass and fifteen have no
+test files. Each reports 5,190 top-level passes and seven existing conditional
+skips: six explicitly opt-in paid DeepSeek scenarios and their subprocess-only
+helper. No assertion, original context, package exclusion or 900s package timeout
+is changed. Normal/race wall times are 448.909/931.384s. Execution/bootstrap pass
+104.751/177.064s normal and 374.387/435.073s race. All eight Schedule SIGKILL cuts
+pass (parents 75.55/54.87s); actual history model/CLI refusal recovery passes
+23.54/44.18s and lost Core-opening reconciliation 2.55/5.48s. Passing these suites
+does not diagnose either historical deadline or cover the new input-admission
+case below.
 
-```sh
-go test -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s
-```
+Full-module vet/build pass 1.552/8.657s. Shared Runtime TS check passes 30 files,
+355 tests, types/lint/format/dead-code checks; Desktop typecheck passes 2.402s.
+Runtime architecture passes normal/race 28.765/113.781s. Independent current Go
+author archives pass offline tidy/module verification/full race/vet/build, with
+workspace off and no replace, as detailed below. The earlier packed Usage proof
+remains unchanged-source evidence, not a newly executed archive build.
 
-All **174 selected packages** finish: **159 packages with tests pass; 15 have no
-test files**. Race execution/bootstrap/SDK/CLI/runtimebinding/terminal pass
-276.599/330.789/9.619/70.109/40.204/41.828s (total wall time 775.933s), including
-all eight Schedule SIGKILL cuts. Complete current normal has the same 159 passes
-and 15 no-test packages; execution/bootstrap/CLI/runtimebinding/terminal pass
-57.079/118.847/39.523/12.150/24.648s (wall time 292.538s). Full-module vet passes.
-Original recovery/steer assertions and 10s contexts remain unchanged. The steer
-test now adds failure-only phase/state/stack diagnostics; no stream is consumed
-ahead of its original loop.
-Conditional paid/live and platform cases are not inferred from package summaries.
-The SIGKILL parent test lives in execution and builds/invokes bootstrap's crash
-helper. Earlier shorthand saying bootstrap itself includes the eight cuts is
-inaccurate: the complete multi-package command includes both; bootstrap alone
-does not execute that parent or qualify those cuts.
+Current Runtime production/catalog build passes 13.747s, including all ten
+packages and both backend executables. A task-owned Wails CLI exactly matching
+project beta.29 builds outside the checkout (16.487s); the pre-existing global
+beta.25 binary's hash remains unchanged. The native package passes 12.519s,
+strict/deep signature verification, arm64 inspection and macOS 13.0 floor.
+First-party component resources rebuild; the unchanged frontend Vite output is
+reported up-to-date and reused. No application is launched or graphical scenario
+executed.
 
-Core/Memory/Schedules/API generation and complete architecture checks pass.
-Current shared TS check passes 30 files/355 tests, plus types/lint/format/dead-code
-checks. Desktop, component SDK, Reviews and portable component typechecks pass.
-Direct layer/published-boundary/context/port/API closure passes: 95/95 fact
-families, 112 typed sites, three sidecars, fourteen event types and four result
-readers. These are source/backend proofs, not graphical interaction.
+The package task also runs its existing frontend `npm ci` and Husky prepare.
+That prepare executes `git config core.hooksPath desktop/.husky/_` against shared
+Git metadata. No prior value was captured, so this slice cannot assert shared Git
+configuration was unchanged and does not guess a rollback. Future task-owned
+qualification must set `HUSKY=0`. Primary-checkout source files and the retained
+stash are untouched; no push, main merge, publication or user-data operation occurs.
 
-Current Runtime production build contains all ten ordinary packages and both
-backend executables. Current Wails native Go/CGo/package and strict/deep ad-hoc
-signature pass for arm64/macOS 13.0; its unchanged frontend build is reported
-up-to-date and reused, not a newly executed Vite build. No app is launched.
-Current independent Usage public archives reproduce package resources and pass
-clean offline reinstall/typecheck/build. Current external Reviews/Tool-proposal/
-command-next author passes offline tidy/race/vet/build with workspace off and no
-replace. Its Go artifacts contain the actual required internal implementation;
-author source imports only public APIs. No registry release is claimed.
+Fresh read-only npm audits still exit 1: full audit 4 high/4 low; production-only
+0 high/4 low. The reviewed braces advisory still has no patched version. Existing
+source/exposure triage stands; no dependency manifest, lockfile, override or audit
+suppression changes. The KaTeX low findings remain unremediated. Paid live tests,
+other native platforms/architectures, registry publication, graphical criteria
+and the new typed-input admission proof remain outside these passes. Core and
+backend protocol/storage cutover limits recorded below remain deliberate breaks.
 
-Safe restoration has additional causal evidence: fully pinned old source
-`366ffff6a` reproduces `configurationChanged` / exact Root Deployment mismatch /
-`interrupt_not_open` in 2.78s. Current pinned source passes eight safe/yolo rounds.
-This verifies the already repaired per-group MCP authority defect in safe mode;
-it is not a reproduction or explanation of the separate historical 10s timeout.
+### Requalify current independent Go author artifacts (2026-10-15)
 
-The read-only npm audit still exits 1 with **8 alerts (4 high, 4 low)**.
-The four high package entries share one unpatched braces advisory in the StyleX
-PostCSS development chain. Source tracing and a bounded dependency probe establish
-that the vulnerable parser is real, while its current inputs are fixed repository
-build globs. The production-only audit reports zero high and four low alerts;
-this does not close the full audit. Dependency manifests/locks are unchanged.
-The detailed triage below retains the upstream risk and its reopening conditions.
-The four low entries also share one advisory, in two transitive KaTeX 0.16.47
-copies. The direct KaTeX 0.19.0 used for CSS does not upgrade those renderers.
-This is a conditional read-side prototype-pollution vulnerability; its current
-exposure and unsupported automatic downgrade are recorded below, without a
-graphical test, dependency override or claim of remediation.
-Paid DeepSeek
-(`FLAME_LIVE_DEEPSEEK` unset), Windows/Linux/alternate native execution, registry
-publication and the excluded graphical scenarios remain unexecuted.
+Current production source `5ff75fffc` now passes an independent offline Reviews
+author qualification after both receipt repairs. The fixture copies the complete
+Reviews package outside the repository, includes the unchanged public Tool-proposal
+contributor source and executable command-decoration regression, and imports no
+Runtime internal package from authored code. Runtime and companion localruntime
+use checked Go module archives named `v0.0.0-unreleased.5ff75fffc`. Only temporary
+dependency metadata points to those explicit snapshots. No repository manifest,
+published version, shared module cache entry, local replace or compatibility path
+is substituted.
 
-The existing worktree/`codex/unified-plugins` branch and integrated main
-`7ba40c117` (Scope v0.50.0) are preserved. No push, main merge, primary-checkout
-edit, stash mutation or user-data conversion occurred. Required private checkpoint
-fields are a deliberate break: preserve old data and finish old waiting work with
-its original binary. No compatibility reader, dual writer or provider replay.
+The Runtime source staging directory is deleted before author verification.
+With workspace off, an initially empty isolated module cache and file proxies
+containing the snapshots plus previously cached third-party downloads, tidy
+passes 9.080s, module verification 3.364s, full race 92.984s, vet 32.775s and build
+5.324s. Backend/analyzer/command-decoration race packages pass
+12.138/4.136/4.330s; 21 top-level tests pass, zero fail or skip, and three command
+packages have no tests. The selected Runtime/localruntime directories resolve
+inside the isolated cache. The complete `.mod` dependency graph resolves offline.
+These archives include the actual internal implementation required by the public
+packages; copying only public source directories is insufficient.
+
+An additional `go list -m -json all` metadata inventory fails offline because the
+cache lacks `cloud.google.com/go/iam@v1.5.2.info`. That inventory is not counted as
+passed; the successful tidy/test/vet/build checks do not assert availability of
+every release-metadata endpoint. The actual declared old Runtime version still
+lacks the new SDK, so the earlier default released-graph tidy failure remains.
+No registry publication, rendered behavior or all-platform qualification follows
+from the source archives.
+
+The first concentrated normal runner explicitly exports the repository `GOWORK`
+to every child, which incorrectly forces gopls's independent temporary module
+into Flame's workspace. `TestMutationDiagnosticsAppendsProblems` fails after
+23.29s. A controlled probe establishes the environmental cause: the same temporary
+module's `go list ./...` is refused under the forced workspace, while ordinary
+discovery loads it and gopls reports `undefinedXYZ`. The unchanged original test
+passes 1.46s (package 2.241s) with normal discovery. This is a verification-runner
+correction, not a production fix or a historical safe-steer explanation. The
+invalid runner is stopped after 357.989s; no recorded owned descendant remains;
+it is not a completed full gate. The replacement runner leaves `GOWORK` unset,
+asserts that `go env GOWORK` resolves this worktree's file, and retains the same
+full package patterns, assertions and 900s package timeout. The terminal
+replacement results appear in Current stage; the invalid first run is retained as
+a failed/incomplete attempt rather than counted as qualification.
+
+### Reopened typed-input admission boundary (2026-10-15)
+
+A bounded current-source probe finds a concrete gap not exercised by the passing
+suites. Reviews' actual generated method Schema accepts `expectedRevision: 0.0`
+and `1e0`; JSON/v2 refuses both when decoding the Go `int64` field. A second probe
+uses the real Reviews Store/server, public SDK capability binding and in-memory
+MCP transports. Plain `0` returns and saves `invalidUpdate`, and the original
+receipt is found. Both decimal/exponent spellings instead return an operations.invoke
+protocol error before the business handler, and read-only receipt lookup returns
+not found without error. Their Tool calls return an error with no structured
+business result. No database row or altered assertion is used to create the case;
+the temporary source and private data are removed.
+
+Scope v0.50.0 `tool.Func` deliberately retains a strict typed InputValidator for
+constraints Schema cannot fully express. This is therefore a missing complete
+structural-admission boundary, not another known business-refusal writer defect.
+Fresh Core command routing currently schema-validates and records dispatch before
+that remote typed decoder runs. Its resulting unconfirmed original-route
+behavior is inferred from that production chain; the actual installed CLI case
+has not yet been executed. A permanent public regression and repair at the
+shared admission owner remain required, including unary/stream consumers,
+original identity reuse after definite structural refusal and unchanged receipt
+recovery. Do not coerce only Reviews, alter raw request identity, replay an
+uncertain mutation, cache business results in Core or weaken assertions. The
+correct classification and complete input-owner contract must be established
+before changing codec or wire semantics. This gap remains open alongside the
+historical safe-steer/MCP deadlines; successful compilation and existing numeric
+corpora do not close it.
+
+All qualification handles are terminal. Task-owned author copies, module archives,
+file proxies, private caches, probes, logs and pinned CLI are removed. Current
+Runtime/native product outputs remain for inspection. The invalid runner's
+recorded process tree has no remaining descendant, and its identified build/test
+directories are removed. The managed worktree, branch and retained user stash
+remain; the shared hooksPath side effect is disclosed above. No push, merge,
+registry publication or application launch occurs.
 
 ### Preserve admitted invalid-input decisions and classify structural refusal (2026-10-15)
 
@@ -2968,7 +3011,7 @@ whole-proposal completion and public-contract freeze qualification.
 | Model selection/context/input/counter admission | Primary/auxiliary/installed request tests preserve captured order/selection, authored input, final media/input/output capacity and counter failure/cancellation. Original sources remain evidence; providers are never automatically replayed. |
 | Ordinary embedding access and Memory-specific limits | Public text embedding and Tool context replace private metadata/methods. Ordinary installed callbacks support multiple embedding exchanges; Memory's operation grant consumes one generated published caller policy. Absence, configured errors and storage failures retain distinct semantics. |
 | No-Run unknown commands and original receipts | Installed Reviews now also exercises Runtime response loss, cold store reopen, disable/reenable, pending update/configuration/uninstall holds, replacement-target conflict and exact private receipt recovery without a Run or mutation redispatch. Memory selection tests and shared-client replacement/journal tests remain separate proofs. The actual UI plus Runtime restart/update/uninstall/selection cross-scenario has not run. Host stores routing, never competing business success. |
-| One contract generation source and numeric parity | The review's explicit Go-owned alternative was selected in the decision ledger; Schema-first Go input was not implemented or claimed. Typed methods generate canonical Schema, Go projections and TS, with exact current regeneration. Feature JSON and the earlier shared Go/TS corpus cover wide numbers through unary/stream/journal/point paths. This is feature JSON parity, not a universal arbitrary-precision conversion of every Core DTO. |
+| One contract generation source and numeric parity | The review's explicit Go-owned alternative was selected in the decision ledger; Schema-first Go input was not implemented or claimed. Typed methods generate canonical Schema, Go projections and TS, with exact current regeneration. Feature JSON and the earlier shared Go/TS corpus cover wide numbers through unary/stream/journal/point paths. This is feature JSON parity, not a universal arbitrary-precision conversion of every Core DTO. A new current-source SDK/MCP probe exposes Schema-versus-typed-decoder admission differences for decimal/exponent integer spellings; that public admission repair remains open. |
 | Typed refusal versus uncertainty | Real Tool/CLI query/revision-conflict facts agree. Current Reviews removes the incorrect lifetime receipt quota and its unrecorded refusal. Store/SDK and independent model Tool/CLI proofs retain new successful work and original known-refusal recovery beyond 4,096 historical receipts; errors without evidence remain unknown. SDK/Tool invocation conflict remains separate from actual CLI and rendered-UI proof. The cross-scenario remains Partial. |
 | Public components/shared modules/resources | Ordinary component ESM, relative/authenticated exact-release resources, host module maps and shared UI/React/context ownership are implemented and type/native built. The complete packed Usage feature builds outside the checkout with identical resource bytes; graphical identity/interaction is not executed. |
 | Management independent of failed optional UI | Partial: independent CLI and built-in metadata management exist; blocked-backend inspection/disable is tested. Recovery while module initialization blocks the actual renderer remains unexecuted. An error boundary or source separation does not complete that review scenario. |
@@ -2978,7 +3021,7 @@ whole-proposal completion and public-contract freeze qualification.
 | Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
 | Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
 | Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
-| Independent authors and current distributions | Packed Usage and offline independent Reviews/Tool-proposal/command-next author qualification pass before the latest Reviews quota/contract repair; the latter is not a fresh independent-artifact pass. The complete Go dependency artifact contains internal implementation; authored code has no private imports. Runtime/native builds pass at frozen `b2dcbfbba`; the native frontend task reuses an unchanged up-to-date build. No registry publication, all-platform execution or graphical qualification is claimed. |
+| Independent authors and current distributions | Current `5ff75fffc` independent Reviews/Tool-proposal/command-next author offline tidy/race/vet/build passes with workspace off, no replace and explicit unreleased module archives. Required internal implementation and companion localruntime are included; authored code has no private imports. Current Runtime/catalog/native packaging passes with pinned task-local beta.29; unchanged Vite output is reused. Earlier packed Usage evidence is unchanged-source proof. Registry publication, full offline release-metadata inventory, all-platform execution and graphical qualification remain absent. |
 | Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification and the separately unexecuted graphical criteria are not completed by P48 source closure. |
 
 The review's four extra cross-acceptance groups are independently tracked:
@@ -3007,9 +3050,10 @@ or test was checked in this audit. It does not mean a fresh invocation occurred
 in this audit. `Partial` means an original behavior is only partly demonstrated;
 `Open` identifies known unfinished work. The earlier full parallel race includes all
 174 selected packages at `981c4c915`. Current complete normal and original parallel race finish all 174 selected
-packages at frozen `b2dcbfbba`: 159 tested packages pass and fifteen have no tests.
-Current vet, shared TS, static, Runtime/native and independent Usage/Go author
-results are recorded in Current stage. Platform/conditional test execution is
+packages at production `5ff75fffc`: 159 tested packages pass and fifteen have no
+tests, with seven existing paid/subprocess conditional skips. Current vet, shared
+TS, architecture, Runtime/native and independent Go author results are recorded in
+Current stage; packed Usage evidence remains an earlier unchanged-source pass. Platform/conditional test execution is
 not inferred from package summaries. UI/E2E/screenshot execution remains forbidden
 and unrun, so those requirements remain unverified rather than waived.
 
@@ -4702,10 +4746,10 @@ universal Goal cost/step ceiling was inferred from silence.
 Graphical interaction remains unexecuted by user instruction. The earlier
 interrupted prohibited UI run is not current acceptance evidence and is not
 claimed resolved. Earlier public artifact qualification used branch-source archives
-and an offline external Go module. Current Usage artifacts and an independently
-compiled Reviews/Tool-proposal/command-next author pass qualification before the
-latest Reviews quota/contract repair; that source's new independent qualification
-is still pending.
+and an offline external Go module. The earlier packed Usage artifact remains
+unchanged-source evidence. Current `5ff75fffc` independent Reviews/Tool-proposal/
+command-next author tidy/verify/race/vet/build now passes after the receipt repairs;
+this does not close the newly reproduced typed-input admission gap.
 The current full Runtime module archive includes its internal implementation and
 companion localruntime artifact; author source imports only public APIs. An archive
 of public directories alone is insufficient for this current SDK and is not
@@ -4714,6 +4758,15 @@ Registry publication and external deployment are not authorized or claimed.
 
 ## Spillover risks
 
+- Complete typed structural input admission is not yet closed. Schema-valid
+  decimal/exponent integer spellings currently fail the remote typed decoder
+  before business entry and have no receipt. The real installed CLI regression
+  and shared unary/stream admission repair remain required; do not count existing
+  passing numeric corpora or the full module gate as proof of that missing case.
+- The native build's existing npm prepare wrote shared
+  `core.hooksPath=desktop/.husky/_` without a captured prior value. That value is
+  preserved rather than guessed away; future task-owned qualification sets
+  `HUSKY=0`. The primary checkout's source and user stash are untouched.
 - Current Core is `2026-10-15.2`, backend protocol is
   `io.github.tangerg.flame/backend/2026-10-14.2`, and trajectory export schema is 3.
   Rebuild affected Go/TS/component/backend consumers together. Old wire shapes,

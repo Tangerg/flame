@@ -11,6 +11,10 @@ The user confirms no original Runtime log, goroutine dump or test data remains.
 Passing repetitions do not close that item. An earlier test-only qualification
 also has unclassified MCP startup discovery deadlines; its failed gates remain
 recorded separately from the earlier complete product pass.
+Current SDK/MCP probes additionally expose incomplete typed-input structural
+admission for decimal/exponent integer spellings. The actual installed CLI
+regression and shared-owner repair remain open; do not treat the complete
+existing suites as coverage of that new case.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 
@@ -108,6 +112,64 @@ recorded in progress rather than duplicated here.
 
 ## Actual current qualification
 
+Concentrated qualification now covers production `5ff75fffc`. With ordinary
+workspace discovery, full normal and `-race -p 2` runs over Runtime, localruntime,
+CLI and Reviews finish all 174 selected packages: 159 tested packages pass,
+fifteen have no tests; each reports 5,190 top-level passes and seven existing
+conditional skips (six paid DeepSeek scenarios plus their subprocess-only helper).
+Wall times are 448.909/931.384s; execution/bootstrap pass 104.751/177.064s normal
+and 374.387/435.073s race. All eight SIGKILL cuts pass (parents 75.55/54.87s), as
+do actual history model/CLI recovery 23.54/44.18s and lost Core opening 2.55/5.48s.
+Full vet/build, shared TS (30 files/355 tests), Desktop typecheck and architecture
+pass. No original assertion/context, exclusion, overlay or 900s package limit is
+changed. These passes do not diagnose the historical deadlines.
+
+Current isolated Reviews/Tool-proposal/command-next author archives use explicit
+`v0.0.0-unreleased.5ff75fffc` versions and a private offline module cache. Runtime
+source staging is removed before workspace-off tidy/verify/full-race/vet/build
+pass (9.080/3.364/92.984/32.775/5.324s). Backend/analyzer/decorator race packages
+pass 12.138/4.136/4.330s: 21 top-level passes, no failures/skips, three command
+packages without tests. Authored code imports only public APIs; archives contain
+their actual implementation and companion localruntime. An additional complete
+release-metadata listing fails on uncached `cloud.google.com/go/iam@v1.5.2.info`;
+it is not a passed inventory or released-graph qualification. The actual old
+Runtime requirement remains unchanged and lacks the new SDK.
+
+Runtime/catalog production build passes 13.747s. A task-local Wails beta.29 CLI
+matching go.mod compiles in 16.487s; the global beta.25 binary remains byte-exact.
+Native package/signature/arm64/macOS-13.0 inspection passes; components rebuild
+and unchanged frontend Vite output is reused, with no app launch. The task's
+existing npm ci also executes Husky prepare and writes shared
+`core.hooksPath=desktop/.husky/_`. No before-value was recorded, so do not claim
+shared Git config was unchanged or guess a rollback. Set `HUSKY=0` in future
+task-owned build/qualification environments. No primary-checkout source or stash
+is changed. Fresh npm audits still exit 1: full 4 high/4 low, production 0 high/4
+low; advisory/source triage is unchanged and no manifest/lock suppression occurs.
+
+The first concentrated normal runner incorrectly exported repository GOWORK to
+gopls's independent temporary module and failed its mutation-diagnostics test
+(23.29s). A controlled go-list/gopls probe establishes that configuration cause;
+the unchanged original test passes 1.46s with normal discovery. That invalid
+runner is stopped at 357.989s; no recorded descendant remains. Its failed/incomplete
+attempt is not counted as a pass. The replacement asserts this worktree's
+automatically discovered workspace without exporting it to child workspaces.
+
+New public typed-input probe, still unresolved: the actual Reviews method Schema
+accepts `expectedRevision: 0.0` and `1e0`, while JSON/v2 rejects their int64
+projection. Through the real Store/server/public capability binding, ordinary
+`0` returns and recovers `invalidUpdate`; the other spellings return an invoke
+protocol error, no receipt, and a Tool error without structured business output.
+Scope Func explicitly supports additional pure typed InputValidator constraints
+that Schema cannot express. Core currently records dispatch after schema-only
+admission, before the remote typed check. The resulting installed-command
+uncertainty is inferred from the call chain, not yet an executed CLI regression.
+Establish complete public structural admission and its definite-refusal identity
+behavior at the shared owner; do not add a Reviews-specific coercion, rewrite raw
+identity or replay mutations. Preserve original receipt-only recovery and cover
+unary/stream consumers. All temporary probe source/data is removed.
+
+The preceding narrower qualification is retained below with its original scope:
+
 The invalid-input public regression first fails on old source (case 23.31s,
 package 33.101s): the CLI cannot recover its known refusal and private storage
 contains only 4,096 setup receipts. A subsequent public malformed-input assertion
@@ -132,8 +194,9 @@ Default `go mod tidy` fails against the unchanged declared old Runtime version:
 it lacks the already used capability/jsoninput/plugin/point packages. Existing
 `invopop/jsonschema v0.14.0` is promoted to direct for the public schema extension;
 no version or sum changes. Do not claim a passing tidy or released-graph check.
-Current isolated author artifacts, whole-product/native/shared-TS and graphical
-gates are not newly qualified by this slice. Published metadata is not spoofed
+The later concentrated/isolated qualification above supersedes this slice's
+unrun whole-product/native/shared-TS/archive gates. Graphical execution remains
+unqualified. Published metadata is not spoofed
 and no replace, ignored error or compatibility path is added.
 
 The preceding quota repair's qualification follows:
@@ -424,8 +487,9 @@ Keep graphical criteria and dependency/live/platform/publication limits explicit
 Actual CLI invocation-conflict proof remains separate from SDK/Tool and current
 history/refusal recovery. The previous capacity contract is removed without
 compatibility; do not cite its old fresh-response proof as current behavior.
-Current independent author artifacts must be requalified after that contract
-repair; the recorded whole-product/native/archive passes precede it.
+Current independent author and concentrated whole-product/native checks now pass
+for `5ff75fffc`, as scoped above. Next add the real installed numeric-input
+regression and repair complete typed structural admission before dispatch.
 The `Invalid` audit now has a causal public regression and production writer/
 reader/admission repairs. Its exact qualification is recorded above; do not
 extend that evidence to actual rendered UI or every CLI refusal class.

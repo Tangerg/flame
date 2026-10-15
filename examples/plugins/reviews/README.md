@@ -190,13 +190,27 @@ From `backend`, run `go test ./...`, `go vet ./...`, and `go build ./...`.
 ownership. Use `GOWORK=off` for the same checks against this module's independent
 released dependency graph once its Runtime dependency names a release containing
 the new public SDK. Current workspace checks use the branch's SDK. An isolated
-offline author build of the earlier source was verified with Runtime
+offline author build of current source `5ff75fffc` is verified with Runtime
 and companion localruntime module archives, `GOWORK=off`, and no local `replace`.
 The archives include the actual implementation required by their public packages,
 including internal directories; author source imports only public APIs. A
 public-directories-only archive does not contain that implementation closure.
-The temporary offline proxy is not a published release. That independent artifact
-qualification has not yet been repeated after removal of the lifetime quota.
+The checked archives use the explicit temporary version
+`v0.0.0-unreleased.5ff75fffc`. Their source staging directory is removed before
+workspace-off tidy, module verification, full race, vet and build pass through
+an isolated module cache, with no replace. The fixture also compiles the public
+Tool-proposal contributor and runs the unchanged executable command-decoration
+regression. The offline proxy is not a published release: this module's currently
+declared older Runtime version still lacks the new public SDK. An optional full
+release-metadata listing is not qualified because the offline third-party cache
+lacks an IAM `.info` entry.
+
+A current public SDK/MCP probe also identifies an unresolved admission gap:
+Schema accepts integer spellings such as `0.0` and `1e0`, but the typed Go
+decoder rejects them before Store entry, so no business receipt exists. The
+passing tests below do not cover that complete structural-admission boundary.
+Its shared-owner repair and actual installed CLI regression remain tracked in
+the [refactor handoff](../../../docs/plugin-refactor-handoff.md).
 
 `TestTypedAndToolEntrancesShareTheBusinessReceipt` compares complete canonical
 results and the Tool error flag for revision, invocation and invalid-input refusals.
