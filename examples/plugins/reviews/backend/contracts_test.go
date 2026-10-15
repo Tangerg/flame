@@ -84,12 +84,29 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, sample := range []string{`{}`, `{"id":"example-review","expectedRevision":1,"status":"open"}`, `{"id":"example-review","expectedRevision":1,"status":"unknown"}`, `{"type":"notFound"}`, `{"type":"unknown"}`, `{"reviews":[]}`} {
+			for _, sample := range []string{`{}`, `{"id":"example-review","expectedRevision":1,"status":"open"}`, `{"id":"example-review","expectedRevision":1,"status":"unknown"}`, `{"type":"notFound"}`, `{"type":"receiptCapacity"}`, `{"type":"unknown"}`, `{"reviews":[]}`} {
 				if (original.Validate([]byte(sample)) == nil) != (generated.Validate([]byte(sample)) == nil) {
 					t.Fatalf("artifact changed schema acceptance for %s: %s", descriptor.Name, sample)
 				}
 			}
 		}
+	}
+}
+
+func TestRetiredReceiptCapacityOutcomeIsRefused(t *testing.T) {
+	contracts, err := NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	method, found := contracts.Capability.Method(contracts.Update.Name())
+	if !found {
+		t.Fatal("update method is absent")
+	}
+	if err := method.ValidateOutput(jsontext.Value(`{"type":"receiptCapacity"}`)); err == nil {
+		t.Fatal("retired receipt quota still belongs to the operation contract")
+	}
+	if err := (UpdateResult{Type: Outcome("receiptCapacity")}).Validate(); err == nil {
+		t.Fatal("retired receipt quota still belongs to the business vocabulary")
 	}
 }
 

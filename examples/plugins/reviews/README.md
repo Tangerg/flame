@@ -134,9 +134,17 @@ transaction. The same identity and admitted arguments return the original result
 including after a backend restart. Reusing that identity with different arguments
 returns `invocationConflict`. A new call with an old revision returns
 `revisionConflict` with the current review; it never silently rebases the update.
-Inputs and identities are bounded before storage. At 4,096 receipts, new calls
-return `receiptCapacity`; existing receipts remain recoverable and are never
-expired or deleted to make space.
+Inputs and identities are bounded before storage. Historical receipts do not
+consume a permanent mutation quota and are never expired or deleted to make
+space. Valid new business decisions, including known refusals, retain their
+original receipts in the same transaction.
+
+The former 4,096-entry lifetime cap and `receiptCapacity` outcome are removed.
+That branch returned a known refusal without storing its receipt, so a later
+read-only reconciliation could only report uncertainty. The current operation
+contract, generated TS and component artifact omit that outcome; no alias or
+compatibility path accepts it. This contract change does not change the current
+private `input_json` storage format or bypass original-release retention.
 
 The public `commands.get` method reads an existing private receipt without
 entering the update use case. It checks the original update method and input
@@ -168,18 +176,19 @@ From `backend`, run `go test ./...`, `go vet ./...`, and `go build ./...`.
 ownership. Use `GOWORK=off` for the same checks against this module's independent
 released dependency graph once its Runtime dependency names a release containing
 the new public SDK. Current workspace checks use the branch's SDK. An isolated
-offline author build of this source has also been verified with current Runtime
+offline author build of the earlier source was verified with Runtime
 and companion localruntime module archives, `GOWORK=off`, and no local `replace`.
 The archives include the actual implementation required by their public packages,
 including internal directories; author source imports only public APIs. A
 public-directories-only archive does not contain that implementation closure.
-The temporary offline proxy is not a published release.
+The temporary offline proxy is not a published release. That independent artifact
+qualification has not yet been repeated after removal of the lifetime quota.
 
 `TestTypedAndToolEntrancesShareTheBusinessReceipt` compares complete canonical
-results and the Tool error flag for revision conflict, invocation conflict and
-receipt-capacity refusal. It fills the existing 4,096-receipt bound through real
-Store updates, then verifies that both entrances still recover the original
-success and that refusals leave the review unchanged. This SDK/MCP test uses
+results and the Tool error flag for revision and invocation conflicts. It retains
+4,096 receipts through real Store updates, admits another successful update and
+preserves new business refusals and original recovery beyond that history size.
+This SDK/MCP test uses
 in-memory transport; it does not execute the CLI or board.
 
 From `runtime`, `go test ./internal/bootstrap -run TestReviewBackend -count=1`
@@ -196,13 +205,16 @@ receipt does not enter the mutation handler. That test also verifies process ret
 and preserves the Run's original uncertainty after restart. Its model is scripted;
 the test needs no provider credentials or external service.
 
-`go test ./internal/bootstrap -run TestReviewReceiptCapacity -count=1` instead
-starts a separate HTTP backend fixture and fills all 4,096 receipts through real
-Store updates before Runtime connects. A model Run and the executable CLI receive
-the same complete capacity refusal; public reads and the child process's final
-private assertions retain the original Review and receipt count. This case does
-not execute the board, stdio capacity, duplicate-capacity-command recovery or
-invocation conflict through the actual CLI.
+`go test ./internal/bootstrap -run TestReviewReceiptHistory -count=1` instead
+starts a separate HTTP backend fixture with 4,096 real historical receipts before
+Runtime connects. A model Run and the executable CLI receive the same complete
+missing-review refusal. The CLI and public Endpoint recover the new refusal
+through the original read-only receipt query. Child-process counters prove one
+Tool dispatch, one typed update dispatch and two receipt reads; final private
+assertions retain the original Review and all 4,098 receipts. The Store regression
+also reopens the private database and reads original success/refusal receipts
+after an actual successful update beyond the old cutoff. These cases do not
+execute the board or invocation conflict through the actual CLI.
 
 This package's MCP tools execute through Session-owned Runs and the existing
 approval path. Its ordinary Board calls the same published business operations

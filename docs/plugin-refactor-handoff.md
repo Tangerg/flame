@@ -8,7 +8,7 @@ P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup are complete.
 Thirteen graphical rows and all four added review cross-scenarios remain Partial.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
 The user confirms no original Runtime log, goroutine dump or test data remains.
-Passing repetitions do not close that item. The latest test-only qualification
+Passing repetitions do not close that item. An earlier test-only qualification
 also has unclassified MCP startup discovery deadlines; its failed gates remain
 recorded separately from the earlier complete product pass.
 Detailed evidence and each row live in
@@ -31,24 +31,34 @@ Detailed evidence and each row live in
 
 ## Current product changes
 
-Production Go remains `b2dcbfbba`. Later test-only slices add steer failure
-diagnostics and actual installed Reviews no-Run recovery across restart,
-disable/reenable, retained update/uninstall holds and replacement-target refusal.
+Runtime production Go remains `b2dcbfbba`. The latest Reviews production slice
+removes its incorrect 4,096-entry lifetime receipt quota and `receiptCapacity`
+outcome, with regenerated schema/TS/component resources and no compatibility.
+The old branch returned a known refusal before saving its receipt; actual CLI
+redelivery and two read-only queries therefore retained unknown rather than the
+original refusal. The user authorizes this breaking owner repair. Existing
+private `input_json` storage and original-release retention are unchanged;
+unrecorded historical refusals remain absent, never reconstructed.
+
+Earlier test-only slices add steer failure diagnostics and actual installed
+Reviews no-Run recovery across restart, disable/reenable, retained update/uninstall
+holds and replacement-target refusal.
 The original private receipt recovers once; a second installation stays unchanged.
 The real CLI now compares installed query and revision-conflict results with the
 model Tool result through authenticated HTTP, including same-command redelivery.
 Plugin test Handlers and Endpoints now share the isolated store's namespace;
 the fixed conformance namespace remains confined to its matching test binding.
 There is no production timeout repair or completed graphical cross-scenario.
-Reviews' typed-operation/MCP Tool test now compares full canonical invocation-
-conflict and capacity outcomes as well as revision conflict. Setup fills the real
-4,096-receipt bound through the business owner; both entrances retain original
-recovery and unchanged private Review state. This is SDK/in-memory transport
-coverage. A subsequent test now compares capacity through an actual model Run
-and executable CLI against a separate Reviews HTTP process. It reaches the real
-bound through Store updates before endpoint publication and checks private Review
-and receipt-count invariants at child exit. This is not stdio-capacity, duplicate-
-capacity-command recovery, actual CLI invocation-conflict or graphical evidence.
+Reviews' SDK/Tool test now compares full revision/identity outcomes, admits new
+successful work beyond 4,096 real historical receipts and preserves new business
+refusals and original recovery. A separate HTTP-process/model Run/executable CLI
+case records matching missing-review refusals beyond that former cutoff. Same-key
+CLI and Endpoint redelivery read the original receipt; counters require one Tool,
+one typed dispatch and two receipt reads, with 4,098 receipts and an unchanged
+Review. A Store regression reopens and reads old/new success and new refusal
+receipts after actual post-cutoff business mutation. The former capacity tests
+and fixture are migrated, not kept as a parallel contract or accepted alias.
+Actual CLI invocation conflict and graphical cross-scenarios are not qualified.
 
 - `6a88bd45a`: public `ToolProposalContract`/`ToolProposalMethod` queries use the
   existing installed composition. Only arguments may transform; execution owns
@@ -87,7 +97,22 @@ recorded in progress rather than duplicated here.
 
 ## Actual current qualification
 
-The latest capacity test/doc-only slice passes its normal bootstrap case 26.590s
+The latest Reviews quota repair has a causal RED/GREEN regression: old source
+refuses the first post-cutoff mutation with `receiptCapacity` (case 1.65s, package
+10.492s); repaired source passes 2.500s. Current normal Reviews backend/analyzer
+pass 3.411/1.921s, history model/CLI case 26.630s; complete Reviews module race
+passes 13.936/3.250s, with two no-test command packages. The complete matching
+installed Reviews/P13/point race group passes 108.046s. Bootstrap/Reviews vet,
+Reviews build, owner generation, Reviews TS typecheck/component build and an
+isolated byte-identical component rebuild pass. Complete current Runtime
+architecture checks pass 57.317s. The independent HTTP child is
+not race-instrumented; parent/module race does not imply child instrumentation.
+No whole-product/full-bootstrap/shared-TS/native or independent author archive
+gate is newly executed after the production contract repair. Graphical tests and
+application launch remain forbidden and unrun.
+
+The preceding, now superseded capacity test/doc-only slice passes its normal
+bootstrap case 26.590s
 and both actual CLI cases together under bootstrap race 39.001s. Complete Reviews
 module race passes backend/analyzer 9.284/2.087s, with two no-test command packages;
 bootstrap/Reviews vet passes. The separate HTTP backend fixture executes under
@@ -302,9 +327,10 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
   ESM/module identity/connection replacement in Web and Wails; independent recovery
   while module initialization blocks the renderer.
   Real Tool/CLI query and revision-conflict equivalence has stdio backend process
-  evidence. Capacity now has separate HTTP-process/model Run/executable CLI
-  evidence at the actual bound. The graphical entrance, actual CLI invocation
-  conflict and duplicate-capacity-command recovery remain unqualified.
+  evidence. The corrected history scenario adds HTTP-process/model Run/executable
+  CLI missing-review refusal and original-receipt recovery beyond 4,096 historical
+  calls. The incorrect lifetime-quota outcome is removed rather than qualified.
+  The graphical entrance and actual CLI invocation conflict remain unqualified.
 - Paid live DeepSeek is not enabled (`FLAME_LIVE_DEEPSEEK` unset). Windows/Linux/
   alternate native execution and registry/deployment publication are not qualified.
 - Read-only npm audit exits 1 with eight alerts (four high/four low). All high
@@ -354,9 +380,15 @@ admission/Core callbacks. A bounded phase/CPU diagnostic does not reproduce them
 obtain a failing child/proxy snapshot before making a production repair.
 Do not substitute a later pass or build overlap for a cause of its failed gates.
 Keep graphical criteria and dependency/live/platform/publication limits explicit.
-Actual CLI invocation-conflict and duplicate-capacity-command recovery remain
-separate from the new fresh-capacity-command proof. Do not infer those cases from
-the SDK/Tool or actual CLI capacity results.
+Actual CLI invocation-conflict proof remains separate from SDK/Tool and current
+history/refusal recovery. The previous capacity contract is removed without
+compatibility; do not cite its old fresh-response proof as current behavior.
+Current independent author artifacts must be requalified after that contract
+repair; the recorded whole-product/native/archive passes precede it.
+The remaining `Store.Update` pre-transaction `Invalid` outcome also needs a
+separate public-admission/original-key audit. The direct malformed-input Store
+test alone does not prove that every public known-refusal class has a receipt;
+the current quota repair does not claim that broader guarantee.
 Do not declare the whole plugin system 100%.
 
 Read-only original inputs:

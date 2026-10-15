@@ -84,12 +84,11 @@ const (
 	NotFound          Outcome = "notFound"
 	Invalid           Outcome = "invalidUpdate"
 	IdentityConflict  Outcome = "invocationConflict"
-	Capacity          Outcome = "receiptCapacity"
 	RevisionExhausted Outcome = "revisionExhausted"
 )
 
 func (Outcome) JSONSchemaEnum() []string {
-	return []string{string(Updated), string(Conflict), string(NotFound), string(Invalid), string(IdentityConflict), string(Capacity), string(RevisionExhausted)}
+	return []string{string(Updated), string(Conflict), string(NotFound), string(Invalid), string(IdentityConflict), string(RevisionExhausted)}
 }
 
 type UpdateResult struct {
@@ -105,7 +104,7 @@ func (r UpdateResult) Validate() error {
 		}
 		_, err := Restore(*r.Review)
 		return err
-	case NotFound, Invalid, IdentityConflict, Capacity, RevisionExhausted:
+	case NotFound, Invalid, IdentityConflict, RevisionExhausted:
 		if r.Review == nil {
 			return nil
 		}

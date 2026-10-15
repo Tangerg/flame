@@ -14,14 +14,17 @@ discovery deadlines; passing focused or complete reruns do not explain them.
 The user confirms no original safe-steer logs, goroutine dump or test data remain.
 The missing failure interval cannot be reconstructed from normal-path observations.
 
-The latest complete product qualification is frozen `b2dcbfbba`. Production Go
-remains unchanged. Later test-only slices add failure-only steer diagnostics,
-installed Reviews no-Run recovery and real Tool/CLI equivalence. A subsequent
-capacity slice now compares an actual model Run and executable CLI against an
-independent Reviews HTTP process at its real 4,096-receipt bound. Its new case
-passes normal 26.590s; both actual CLI cases pass focused bootstrap race 39.001s,
-and the complete Reviews module race and affected-package vet pass. This is not
-a fresh whole-product, full-bootstrap, graphical or stdio-capacity qualification.
+The latest complete product qualification is frozen `b2dcbfbba`; it predates the
+current Reviews contract repair. Runtime production Go remains unchanged. Reviews
+now removes its incorrect 4,096-entry lifetime quota and `receiptCapacity`
+outcome. Real history beyond that former cutoff retains new mutations and known
+refusals in the original private receipt transaction. All current schema/TS/ESM
+consumers are regenerated without a compatibility path. The new Store/SDK/process
+proofs and their actual verification scope are recorded below; earlier complete
+product/native/independent author gates are not inferred to cover this change.
+Earlier test-only slices add steer diagnostics, installed Reviews no-Run recovery
+and real Tool/CLI equivalence. The old first-capacity-result proof is superseded
+by the corrected history/recovery scenario, not called durable refusal recovery.
 The preceding fixture/CLI slice passes the complete execution/bootstrap parallel race on clean
 `6b3a175e8`: 385 top-level passes, zero failures/skips, package times
 240.475/328.931s, wall 334.225s. This run has no source overlay or changed test
@@ -97,7 +100,78 @@ edit, stash mutation or user-data conversion occurred. Required private checkpoi
 fields are a deliberate break: preserve old data and finish old waiting work with
 its original binary. No compatibility reader, dual writer or provider replay.
 
-### Real CLI and model Tool capacity refusal (2026-10-15)
+### Remove the Reviews lifetime quota at its receipt owner (2026-10-15)
+
+Extending the previous fresh-capacity-call proof establishes a missing recovery
+boundary. Its first response is `receiptCapacity`, but actual executable CLI
+redelivery exits 1 with no result and the public Endpoint retains
+`ErrCommandUnconfirmed`. Child counters observe one typed update, one model Tool
+and two receipt reads, with no redispatch. This diagnostic passes normal 25.633s
+and the two CLI cases pass race 57.009s. The first observer incorrectly counts
+wire method names instead of the nested operation name (exit 1, package 20.495s);
+its correction initially calls `HasParams` as a method (compile failure, 6.794s).
+Both are diagnostic defects corrected before those passes, not product failures.
+
+The cause is the Reviews owner: after counting 4,096 historical receipts,
+`Store.Update` returns a known refusal before the transaction stores any receipt.
+Every later host attempt correctly reads the original owner only and therefore
+cannot recover that missing result. Enlarging the quota, caching the business
+result in Core, fabricating an absent receipt or redispatching cannot repair this
+ownership contradiction. The SDK's known-refusal receipt guarantee is retained.
+The user explicitly authorizes the breaking root repair and no compatibility.
+
+The production fix deletes `MaxReceipts`, its count query/admission branch and
+the `Capacity`/`receiptCapacity` business outcome. Current generated Schema,
+capability contract, TS and component ESM remove it in the same batch. A negative
+fixture proves both business validation and current output admission refuse the
+retired outcome; there is no alias. The current `input_json` private schema and
+its atomic transition/receipt transaction are unchanged. Historical unrecorded
+capacity responses stay absent; this fix invents no receipts or owner results.
+Existing waiting/original bindings retain their release and compatibility rules.
+
+The new regression first fails against the old owner with `receiptCapacity` at
+the first update beyond 4,096 real receipts (case 1.65s, package 10.492s). After
+the fix it passes 2.500s: the new update commits, a fresh stale-revision refusal
+commits with its evidence, the private database reopens, and read-only receipt
+queries recover the old success, new success and new refusal. All 4,098 receipts
+remain; reads do not advance the review. No fabricated history rows are used.
+The SDK/Tool case also admits new business work after 4,096 real receipts,
+compares complete revision/identity facts, retains 4,099 receipts and preserves
+unexpected storage failure as a protocol error.
+
+`TestReviewReceiptHistoryMatchesModelToolAndExecutableCLI` replaces the obsolete
+capacity fixture. Its independent HTTP backend prepares 4,096 actual historical
+receipts before publication. Model Tool and executable CLI return the same
+complete `notFound` business refusal for a missing review; CLI and public Endpoint
+redelivery recover that original result. Child counters require exactly one Tool,
+one typed mutation and two receipt reads. The Review is unchanged and all 4,098
+private receipts remain. This is a stronger history/recovery requirement, not a
+larger allowed quota or a relaxed assertion. Original deadlines are unchanged.
+
+Current normal passes: complete Reviews backend/analyzer 3.411/1.921s (two command
+packages have no tests), installed history case 26.630s. Complete Reviews race
+passes backend/analyzer 13.936/3.250s. Bootstrap/Reviews vet and Reviews build pass.
+All owner generation directives pass and eleven Reviews/analyzer artifacts
+reproduce byte-for-byte after regeneration/normalization. The current Reviews TS typecheck/build and
+an isolated component-resource byte-for-byte rebuild pass. The independent child
+is the ordinary non-race executable fixture; parent/module race instrumentation
+does not imply child race instrumentation. These are backend/build checks, with
+no rendered UI, frontend test, screenshot, aggregate Desktop check or app launch.
+The complete matching installed Reviews/P13/point race group passes 108.046s,
+including the stdio lifecycle/loss/recovery, proposal and consumer-point cases.
+Current complete Runtime architecture checks pass 57.317s.
+
+Full product/bootstrap, shared TS, native, independent author archives, live and
+alternate-platform gates are not rerun for this slice. The earlier independent
+author artifact qualification predates the Reviews contract repair. Original
+P01-P48 stays 35 Evidenced/13 Partial and all four added review groups stay Partial.
+The historical safe-steer and later initial-MCP-discovery deadlines remain
+unresolved; this production receipt repair diagnoses neither timeout.
+
+### Real CLI and model Tool capacity refusal (2026-10-15, superseded contract)
+
+The lifetime quota and its outcome in this historical slice are removed by the
+owner repair above. Its first-response equivalence did not prove durable recovery.
 
 `TestReviewReceiptCapacityMatchesModelToolAndExecutableCLI` builds a separate
 Reviews test executable. Before publishing its HTTP endpoint, that process fills
@@ -2483,10 +2557,12 @@ close the other criteria. Historical slice entries retain their original evidenc
 
 ## Next
 
-The production/source/backend/build baseline is qualified at `b2dcbfbba`.
-Later test-only slices have complete CLI/root binding race coverage, bootstrap
-race before final extra guard assertions, and focused race for that final Reviews
-scenario. Current-slice evidence and its exact freshness limits are recorded above.
+The complete product/source/backend/build baseline is qualified at `b2dcbfbba`
+before the current Reviews quota/contract repair. Later test-only slices retain
+the CLI/root binding and execution/bootstrap race results recorded above. The
+current production repair has complete Reviews module and installed Reviews/P13/
+point race evidence, generated artifacts and component build proof. Independent
+author archives and complete product/native gates have not been rerun after it.
 Preserve the remaining acceptance gaps instead of reporting 100%:
 
 - Obtain actual deadline evidence for the historical post-SDK safe-steer timeout.
@@ -2494,6 +2570,16 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
   post-Resume sequence. Fault controls prove the same caller timeout can follow
   already finished failed/lost Runs. Use retained failure phase/state/stack
   evidence to distinguish those from live blocking; the old cause is unresolved.
+- Requalify current independent author artifacts after the Reviews quota/contract
+  repair. Do not inherit the old source's archive or whole-product/native result.
+  The separate initial-MCP-discovery failures also retain no established cause;
+  a passing later gate does not close them.
+- Audit public input-admission versus the remaining `Invalid` outcome before
+  claiming every refusal class has original-key recovery. `Store.Update` still
+  returns that outcome before opening its receipt transaction. The existing
+  direct-Store malformed-input/nonconsumption test does not establish whether
+  public structural admission excludes every such request or how a public
+  same-command reconciliation behaves. This quota slice makes no such claim.
 - P21/P26/P29-P33/P35-P36/P39-P40/P45-P46 and the four review cross-scenarios need
   actual graphical interaction. The user prohibition stays in force; do not add
   or execute UI/E2E/screenshot tests or substitute source/native builds for them.
@@ -2507,6 +2593,7 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-15 | Remove Reviews' incorrect lifetime receipt quota and its outcome; migrate all contracts/consumers without compatibility | Actual original-key CLI recovery proved that the quota returned a known refusal with no private receipt. The user explicitly authorizes the breaking owner repair; historical evidence must not permanently exhaust normal business use | Increasing the quota, evicting identities, caching business results in Core, fabricating absent receipts, redispatching or preserving the obsolete outcome as an alias |
 | 2026-10-14 | Record embedding as a kind of the shared physical endpoint; keep its call budget/envelope Memory-owned | Embedding evidence/metering/recovery/reporting belong to the one physical endpoint owner, but the proposal states "Memory's optional embedding fallback and its own model-work limits remain Memory policy" | A general embedding host API with no second consumer (contradicts the proposal and YAGNI), a parallel embedding store (inconsistent query/recovery), or synthesizing a chat response from vectors |
 | 2026-10-14 | Pause this session for handoff; retain the existing managed branch and committed work | The user explicitly wants to continue in a fresh session after this long conversation | Continuing automatic development, recreating from main or leaving an uncompilable partial embedding draft |
 | 2026-10-14 | Withdraw carried-forward percentage estimates and report concrete completed/remaining requirements | The repeated 75% figure was not recalculated against P01-P48/review evidence and could not describe recent progress reliably | Repeating a stale estimate or inventing a higher percentage from commit counts |
@@ -2798,7 +2885,7 @@ whole-proposal completion and public-contract freeze qualification.
 | Ordinary embedding access and Memory-specific limits | Public text embedding and Tool context replace private metadata/methods. Ordinary installed callbacks support multiple embedding exchanges; Memory's operation grant consumes one generated published caller policy. Absence, configured errors and storage failures retain distinct semantics. |
 | No-Run unknown commands and original receipts | Installed Reviews now also exercises Runtime response loss, cold store reopen, disable/reenable, pending update/configuration/uninstall holds, replacement-target conflict and exact private receipt recovery without a Run or mutation redispatch. Memory selection tests and shared-client replacement/journal tests remain separate proofs. The actual UI plus Runtime restart/update/uninstall/selection cross-scenario has not run. Host stores routing, never competing business success. |
 | One contract generation source and numeric parity | The review's explicit Go-owned alternative was selected in the decision ledger; Schema-first Go input was not implemented or claimed. Typed methods generate canonical Schema, Go projections and TS, with exact current regeneration. Feature JSON and the earlier shared Go/TS corpus cover wide numbers through unary/stream/journal/point paths. This is feature JSON parity, not a universal arbitrary-precision conversion of every Core DTO. |
-| Typed refusal versus uncertainty | The real Tool/CLI case compares revision conflict. Reviews now also compares complete typed-operation/MCP Tool invocation-conflict and capacity results at its real 4,096-receipt bound, including recovery and unexpected storage-error classification. This SDK transport proof does not newly qualify those classes through CLI or rendered UI; the cross-scenario remains Partial. |
+| Typed refusal versus uncertainty | Real Tool/CLI query/revision-conflict facts agree. Current Reviews removes the incorrect lifetime receipt quota and its unrecorded refusal. Store/SDK and independent model Tool/CLI proofs retain new successful work and original known-refusal recovery beyond 4,096 historical receipts; errors without evidence remain unknown. SDK/Tool invocation conflict remains separate from actual CLI and rendered-UI proof. The cross-scenario remains Partial. |
 | Public components/shared modules/resources | Ordinary component ESM, relative/authenticated exact-release resources, host module maps and shared UI/React/context ownership are implemented and type/native built. The complete packed Usage feature builds outside the checkout with identical resource bytes; graphical identity/interaction is not executed. |
 | Management independent of failed optional UI | Partial: independent CLI and built-in metadata management exist; blocked-backend inspection/disable is tested. Recovery while module initialization blocks the actual renderer remains unexecuted. An error boundary or source separation does not complete that review scenario. |
 | Protocol and activation identity | Current protocol requirements, complete export sets and immutable same-release activation proofs are tested. SDK additions do not infer a new public wire epoch from internal build versions. Retired shapes are explicitly refused. |
@@ -2807,7 +2894,7 @@ whole-proposal completion and public-contract freeze qualification.
 | Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
 | Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
 | Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
-| Independent authors and current distributions | Current packed Usage and offline independent Reviews/Tool-proposal/command-next author qualification pass. The complete Go dependency artifact contains internal implementation; authored code has no private imports. Current Runtime/native builds pass at frozen `b2dcbfbba`; the native frontend task reuses an unchanged up-to-date build. No registry publication, all-platform execution or graphical qualification is claimed. |
+| Independent authors and current distributions | Packed Usage and offline independent Reviews/Tool-proposal/command-next author qualification pass before the latest Reviews quota/contract repair; the latter is not a fresh independent-artifact pass. The complete Go dependency artifact contains internal implementation; authored code has no private imports. Runtime/native builds pass at frozen `b2dcbfbba`; the native frontend task reuses an unchanged up-to-date build. No registry publication, all-platform execution or graphical qualification is claimed. |
 | Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification and the separately unexecuted graphical criteria are not completed by P48 source closure. |
 
 The review's four extra cross-acceptance groups are independently tracked:
@@ -2815,7 +2902,7 @@ The review's four extra cross-acceptance groups are independently tracked:
 | Review scenario | Status | Existing evidence | Missing proof |
 | --- | --- | --- | --- |
 | No-Run mutation loses reply; UI and Runtime restart; update/uninstall/provider change | Partial | Actual installed Reviews no-Run Runtime recovery across cold restart, disable/reenable, update/uninstall holds and replacement-target refusal; Memory selected-provider tests; shared TS journal | Actual Reviews UI/Runtime restart followed by all replacement attempts and provider selection, retaining original receipt or explicit unrecoverable binding |
-| Same refusal through Tool, CLI and UI | Partial | Reviews typed revision/identity/capacity results, Tool/typed operation shared owner, CLI error/result adapters and board source | Executed cross-entrance comparison including rendered UI and refusal evidence |
+| Same refusal through Tool, CLI and UI | Partial | Complete typed/Tool revision/identity evidence; real Tool/CLI revision and missing-review refusal plus original-receipt recovery after 4,096 historical calls; incorrect lifetime-quota outcome removed without compatibility | Executed comparison including rendered UI; actual CLI invocation-conflict proof remains separate |
 | Remote multi-resource ESM in Web and Wails | Partial | Exact-release resource/auth implementation, shared import map, independent component build, native compilation | Actual remote resource/assets/module identity, auth and connection replacement in both graphical environments |
 | Module initialization blocks renderer startup; independent recovery disables it | Partial | Independent management code/CLI plus real blocked stdio-backend recovery | Actual failed graphical module startup and disabling it through a functioning independent entrance |
 
@@ -4532,7 +4619,9 @@ Graphical interaction remains unexecuted by user instruction. The earlier
 interrupted prohibited UI run is not current acceptance evidence and is not
 claimed resolved. Earlier public artifact qualification used branch-source archives
 and an offline external Go module. Current Usage artifacts and an independently
-compiled Reviews/Tool-proposal/command-next author now pass fresh qualification.
+compiled Reviews/Tool-proposal/command-next author pass qualification before the
+latest Reviews quota/contract repair; that source's new independent qualification
+is still pending.
 The current full Runtime module archive includes its internal implementation and
 companion localruntime artifact; author source imports only public APIs. An archive
 of public directories alone is insufficient for this current SDK and is not

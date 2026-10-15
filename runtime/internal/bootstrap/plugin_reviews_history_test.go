@@ -24,14 +24,14 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
-func reviewCapacityBackend(t *testing.T) (string, func()) {
+func reviewHistoryBackend(t *testing.T) (string, func()) {
 	t.Helper()
 	directory := t.TempDir()
 	executable := filepath.Join(directory, "reviews.test")
 	build := exec.CommandContext(t.Context(), "go", "test", "-c", "-o", executable, ".")
 	build.Dir = filepath.Join("..", "..", "..", "examples", "plugins", "reviews", "backend")
 	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build capacity backend: %s, %v", output, err)
+		t.Fatalf("build history backend: %s, %v", output, err)
 	}
 	logPath := filepath.Join(directory, "backend.log")
 	log, err := os.Create(logPath)
@@ -39,9 +39,9 @@ func reviewCapacityBackend(t *testing.T) (string, func()) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = log.Close() })
-	command := exec.CommandContext(t.Context(), executable, "-test.run=^TestReceiptCapacityRuntimeFixture$", "-test.timeout=180s")
+	command := exec.CommandContext(t.Context(), executable, "-test.run=^TestReceiptHistoryRuntimeFixture$", "-test.timeout=180s")
 	command.Dir = directory
-	command.Env = append(os.Environ(), "FLAME_TEST_REVIEWS_CAPACITY_DATA="+filepath.Join(directory, "private"))
+	command.Env = append(os.Environ(), "FLAME_TEST_REVIEWS_HISTORY_DATA="+filepath.Join(directory, "private"))
 	command.Stderr = log
 	input, err := command.StdinPipe()
 	if err != nil {
@@ -73,19 +73,19 @@ func reviewCapacityBackend(t *testing.T) (string, func()) {
 		case err := <-done:
 			if err != nil {
 				output, _ := os.ReadFile(logPath)
-				t.Errorf("capacity backend failed: %s, %v", output, err)
+				t.Errorf("history backend failed: %s, %v", output, err)
 			}
 		case <-time.After(lifecycleWaitBudget(t)):
 			_ = command.Process.Kill()
 			<-done
-			t.Error("capacity backend did not finish its private-state assertions")
+			t.Error("history backend did not finish its private-state assertions")
 		}
 	})
 	t.Cleanup(closeBackend)
 	select {
 	case status := <-ready:
 		if status.err != nil || !strings.HasPrefix(status.url, "http://127.0.0.1:") {
-			t.Fatalf("capacity backend did not publish its endpoint: %s, %v", status.url, status.err)
+			t.Fatalf("history backend did not publish its endpoint: %s, %v", status.url, status.err)
 		}
 		return status.url, closeBackend
 	case <-t.Context().Done():
@@ -94,8 +94,8 @@ func reviewCapacityBackend(t *testing.T) (string, func()) {
 	}
 }
 
-func TestReviewReceiptCapacityMatchesModelToolAndExecutableCLI(t *testing.T) {
-	url, closeBackend := reviewCapacityBackend(t)
+func TestReviewReceiptHistoryMatchesModelToolAndExecutableCLI(t *testing.T) {
+	url, closeBackend := reviewHistoryBackend(t)
 	defer closeBackend()
 	source := reviewExamplePackage(t)
 	descriptor, err := json.Marshal(map[string]any{
@@ -109,18 +109,18 @@ func TestReviewReceiptCapacityMatchesModelToolAndExecutableCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	const toolName = "reviews_update_review"
-	const updateInput = `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
+	const updateInput = `{"id":"missing-history-review","expectedRevision":1,"status":"resolved"}`
 	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 		if len(request.Tools) == 0 {
-			return completedTextResponse("capacity refusal"), nil
+			return completedTextResponse("missing review"), nil
 		}
 		conversation := withoutDeferredCatalog(request)
 		for _, part := range conversation[len(conversation)-1].Parts {
 			if part.ToolResult != nil && part.ToolResult.Name == toolName {
-				return completedTextResponse("observed the capacity refusal"), nil
+				return completedTextResponse("observed the missing-review refusal"), nil
 			}
 		}
-		call := chat.ToolCall{ID: "capacity-call", Name: "search_tools", Arguments: `{"query":"select:` + toolName + `"}`}
+		call := chat.ToolCall{ID: "history-call", Name: "search_tools", Arguments: `{"query":"select:` + toolName + `"}`}
 		for _, definition := range request.Tools {
 			if definition.Name == toolName {
 				call.Name, call.Arguments = toolName, updateInput
@@ -153,15 +153,15 @@ func TestReviewReceiptCapacityMatchesModelToolAndExecutableCLI(t *testing.T) {
 	if err != nil || initial.Failure != nil {
 		t.Fatalf("initial review read: %+v, %v", initial, err)
 	}
-	session := runtime.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Receipt capacity"}, "session").(*protocol.Session)
-	started := runtime.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Resolve the inspected review"}}}, delivery.Options{IdempotencyKey: "capacity-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	session := runtime.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Receipt history"}, "session").(*protocol.Session)
+	started := runtime.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Resolve the inspected review"}}}, delivery.Options{IdempotencyKey: "history-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
 	}
 	events := iter.Seq2[protocol.RunEvent, error](func(yield func(protocol.RunEvent, error) bool) {
 		for event, err := range started.Events {
 			if err != nil {
-				t.Errorf("capacity Run event: %v", err)
+				t.Errorf("history Run event: %v", err)
 				return
 			}
 			if !yield(event.(protocol.RunEvent), nil) {
@@ -169,14 +169,14 @@ func TestReviewReceiptCapacityMatchesModelToolAndExecutableCLI(t *testing.T) {
 			}
 		}
 	})
-	waitForRunEvents(t, collectRunEvents(events), "review capacity")
+	waitForRunEvents(t, collectRunEvents(events), "review history")
 	runID := started.Value.(*protocol.StartRunResponse).RunID
 	finished := runtime.must(delivery.RunsGet, protocol.GetRunRequest{RunID: runID}, "").(*protocol.RunRef)
 	if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted {
-		t.Fatalf("known capacity refusal became uncertain execution: %+v", finished)
+		t.Fatalf("known history refusal became uncertain execution: %+v", finished)
 	}
 	items := runtime.must(delivery.ItemsList, protocol.ListItemsRequest{Scope: protocol.ItemListScope{Type: protocol.ItemScopeRun, RunID: runID}}, "").(*protocol.ListItemsResponse)
-	want, err := jsoninput.Parse([]byte(`{"type":"receiptCapacity"}`))
+	want, err := jsoninput.Parse([]byte(`{"type":"notFound"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,11 +188,11 @@ func TestReviewReceiptCapacityMatchesModelToolAndExecutableCLI(t *testing.T) {
 		calls++
 		actual, err := jsoninput.Encode(item.Tool.Result)
 		if err != nil || actual != want || item.Status != protocol.ItemStatusIncomplete || item.Error == nil || item.Error.Type != protocol.ProblemToolFailed {
-			t.Fatalf("Tool lost its capacity facts/classification: %+v, %v", item, err)
+			t.Fatalf("Tool lost its history facts/classification: %+v, %v", item, err)
 		}
 	}
 	if calls != 1 {
-		t.Fatalf("expected one original capacity-refused Tool, got %d", calls)
+		t.Fatalf("expected one original history-refused Tool, got %d", calls)
 	}
 	runCLI, closeCLI := reviewCLICommand(t, runtime)
 	defer closeCLI()
@@ -201,15 +201,24 @@ func TestReviewReceiptCapacityMatchesModelToolAndExecutableCLI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	output := runCLI("plugins", "call", "--request", string(encoded), "--command-id", "cli_"+strings.Repeat("d", 32))
-	var reply protocol.CallPluginResponse
-	if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil || reply.Failure != nil {
-		t.Fatalf("CLI lost the structured capacity result: %s, %v", output, err)
+	key := "cli_" + strings.Repeat("d", 32)
+	arguments := []string{"plugins", "call", "--request", string(encoded), "--command-id", key}
+	assertReply := func(reply *protocol.CallPluginResponse) {
+		t.Helper()
+		actual, err := jsoninput.Parse([]byte(reply.Output))
+		if err != nil || reply.Failure != nil || actual != want {
+			t.Fatalf("business refusal lost original facts: %+v, want %s, %v", reply, want.JSON(), err)
+		}
 	}
-	actual, err := jsoninput.Parse([]byte(reply.Output))
-	if err != nil || actual != want {
-		t.Fatalf("CLI capacity result = %s, want %s, %v", reply.Output, want.JSON(), err)
+	for range 2 {
+		output := runCLI(arguments...)
+		var reply protocol.CallPluginResponse
+		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil {
+			t.Fatalf("CLI lost the structured history result: %s, %v", output, err)
+		}
+		assertReply(&reply)
 	}
+	assertReply(runtime.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse))
 	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 	current := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 	after, err := jsoninput.Parse([]byte(current.Output))

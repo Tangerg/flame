@@ -20,8 +20,6 @@ import (
 // receipts. The review and its receipt commit together in the private database.
 type Store struct{ db *sql.DB }
 
-const MaxReceipts = 4096
-
 func validateInvocationID(id string) error {
 	if id == "" || len(id) > 256 || !utf8.ValidString(id) {
 		return errors.New("reviews: bounded invocation identity is required")
@@ -173,13 +171,6 @@ func (s *Store) Update(ctx context.Context, invocationID string, input Update, a
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return UpdateResult{}, err
-	}
-	var count int
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM invocations`).Scan(&count); err != nil {
-		return UpdateResult{}, err
-	}
-	if count >= MaxReceipts {
-		return UpdateResult{Type: Capacity}, nil
 	}
 	result, err := applyUpdate(ctx, tx, input)
 	if err != nil {

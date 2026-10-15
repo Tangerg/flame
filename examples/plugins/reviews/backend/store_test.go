@@ -3,11 +3,13 @@ package reviews
 import (
 	"context"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/jsoninput"
 	"reflect"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/jsoninput"
+	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 func openTestStore(t *testing.T, directory string) *Store {
@@ -100,24 +102,64 @@ func TestConcurrentDuplicateHasOneBusinessTransition(t *testing.T) {
 	}
 }
 
-func TestReceiptCapacityPreservesOriginalRecovery(t *testing.T) {
-	store := openTestStore(t, t.TempDir())
+func TestReceiptHistoryDoesNotExhaustMutationAdmission(t *testing.T) {
+	directory := t.TempDir()
+	store := openTestStore(t, directory)
 	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
 	accepted, err := testUpdate(t.Context(), store, "original", input)
+	if err != nil || accepted.Type != Updated || accepted.Review == nil {
+		t.Fatalf("original update = %+v, %v", accepted, err)
+	}
+	// Historical evidence cannot consume a permanent mutation quota. Reach the
+	// former cutoff through the owner, including actual refused-call receipts.
+	for index := range 4095 {
+		result, err := testUpdate(t.Context(), store, fmt.Sprintf("history-%d", index), Update{ID: "missing", ExpectedRevision: 1, Status: Open})
+		if err != nil || result.Type != NotFound {
+			t.Fatalf("historical refusal = %+v, %v", result, err)
+		}
+	}
+	changed := Update{ID: ExampleReviewID, ExpectedRevision: 2, Status: Open}
+	advanced, err := testUpdate(t.Context(), store, "after-history", changed)
+	if err != nil || advanced.Type != Updated || advanced.Review == nil || advanced.Review.Revision != 3 || advanced.Review.Status != Open {
+		t.Fatalf("history exhausted new business work: %+v, %v", advanced, err)
+	}
+	refused, err := testUpdate(t.Context(), store, "refused-after-history", changed)
+	if err != nil || refused.Type != Conflict || refused.Review == nil || *refused.Review != *advanced.Review {
+		t.Fatalf("business refusal lost evidence: %+v, %v", refused, err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store = openTestStore(t, directory)
+	contracts, err := NewContracts()
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = store.db.ExecContext(t.Context(), fmt.Sprintf(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i < %d) INSERT INTO invocations SELECT 'fill-' || i, '{"id":"missing","expectedRevision":1,"status":"open"}', '{"type":"notFound"}' FROM n`, MaxReceipts-1))
-	if err != nil {
-		t.Fatal(err)
+	for _, original := range []struct {
+		id    string
+		input Update
+		want  UpdateResult
+	}{{"original", input, accepted}, {"after-history", changed, advanced}, {"refused-after-history", changed, refused}} {
+		admitted, err := jsoninput.Encode(original.input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		receipt, err := store.Receipt(t.Context(), pluginsdk.ReceiptRequest{ID: original.id, Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
+		if err != nil || !receipt.Found {
+			t.Fatalf("missing original receipt %s: %+v, %v", original.id, receipt, err)
+		}
+		recovered, err := pluginsdk.DecodeReply[UpdateResult](receipt.Reply)
+		if err != nil || !reflect.DeepEqual(recovered, original.want) {
+			t.Fatalf("changed original receipt %s: %+v, %v", original.id, recovered, err)
+		}
 	}
-	refused, err := testUpdate(t.Context(), store, "new", Update{ID: ExampleReviewID, ExpectedRevision: 2, Status: Open})
-	if err != nil || refused.Type != Capacity {
-		t.Fatalf("capacity = %+v, %v", refused, err)
+	current, err := store.List(t.Context())
+	if err != nil || len(current) != 1 || current[0] != *advanced.Review {
+		t.Fatalf("receipt reads changed the review: %+v, %v", current, err)
 	}
-	recovered, err := testUpdate(t.Context(), store, "original", input)
-	if err != nil || !reflect.DeepEqual(recovered, accepted) {
-		t.Fatalf("recovery at capacity = %+v, %v", recovered, err)
+	var receipts int
+	if err := store.db.QueryRowContext(t.Context(), `SELECT count(*) FROM invocations`).Scan(&receipts); err != nil || receipts != 4098 {
+		t.Fatalf("history was lost or recovery wrote receipts: %d, %v", receipts, err)
 	}
 }
 

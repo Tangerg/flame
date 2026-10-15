@@ -264,7 +264,6 @@
                   "notFound",
                   "invalidUpdate",
                   "invocationConflict",
-                  "receiptCapacity",
                   "revisionExhausted"
                 ],
                 "type": "string"
@@ -287,7 +286,6 @@
               "notFound",
               "invalidUpdate",
               "invocationConflict",
-              "receiptCapacity",
               "revisionExhausted"
             ],
             "type": "string"
