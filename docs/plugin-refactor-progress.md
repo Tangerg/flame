@@ -9,12 +9,14 @@ actual matching evidence is obtained; authorization alone closes no criterion.
 Keep the primary checkout, daily Runtime/data, stash, original assertions and
 timeouts intact, with no push or main merge. New UI work uses isolated resources.
 
-Original-proposal acceptance remains **incomplete: 40 Evidenced / 8 Partial / 0 Open**.
+Original-proposal acceptance remains **incomplete: 41 Evidenced / 7 Partial / 0 Open**.
 These are evidence counts, not an implementation percentage. P13 public installed
 Tool proposal transformation, P12/P16/P18/P41 real-process scenarios and P48
 source/API/doc cleanup now have matching evidence. P45 now has actual synchronous
-renderer-blocking recovery evidence. Eight graphical rows and three additional
-review cross-scenarios remain Partial; the independent-recovery review is Evidenced.
+renderer-blocking recovery evidence. P40 now has the matching Web/Wails resource,
+auth and connection-retirement proof. Seven graphical rows and two additional
+review cross-scenarios remain Partial; independent renderer recovery and remote
+component-resource reviews are Evidenced.
 The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
 An earlier test-only qualification also retains unclassified MCP startup
@@ -29,6 +31,35 @@ canonical `0` still saves and recovers the business owner's `invalidUpdate` rece
 Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
+
+### Graphical acceptance: Web/Wails resource and connection ownership (2026-10-15)
+
+The current 695879a46 Web build completes the native resource/connection sequence
+already recorded below. With no token the actual settings page reports HTTP 401.
+After entering the task-only token, its independent installed component obtains
+entry.js and relative parts.js through real Runtime resource leases (both HTTP
+200), renders shared React identity true and increments Hook state 0 -> 1.
+Independent HTTP reads compare the served entry's exact bytes with the selected
+author resource. The trace stores only an authorization-present boolean and
+masked opaque resource paths; credentials and capability URLs are not published.
+
+After the real pending.js response is observed as 200, replace the connection's
+token with a syntactically valid wrong token. The UI reports 401 and the exact
+former resource capability changes from 200 to the specified HTTP 410. Restoring
+the valid token republishes the component entrance without waiting for the old
+top-level await, then preserves the explicit cross-generation reload boundary.
+Explicit reload clears the in-memory token; reentry obtains a different lease,
+renders shared React identity true and increments 0 -> 1 again. Closing the owned
+Web tab also retires that new capability to HTTP 410. Temporary capability URL
+files are deleted; sanitized network evidence and actual screenshots remain.
+
+Together with actual native relative ESM, token handling, address replacement,
+reload and shared-Hook interaction, this closes P40 and the third review group.
+The deployment is one task-owned standalone Runtime over HTTP on loopback, with
+separate Web/Wails clients; it is not evidence of a second physical machine, TLS
+deployment or registry publication. No production source, assertion or deadline
+changes occur. P21/P26/P31/P33/P36/P39/P46 and the two other review groups remain
+Partial. The historical safe-steer/MCP causes remain unestablished.
 
 ### Graphical acceptance: synchronous module blocking and independent recovery (2026-10-15)
 
@@ -3498,11 +3529,11 @@ The review's four extra cross-acceptance groups are independently tracked:
 | --- | --- | --- | --- |
 | No-Run mutation loses reply; UI and Runtime restart; update/uninstall/provider change | Partial | Actual installed Reviews no-Run Runtime recovery across cold restart, disable/reenable, update/uninstall holds and replacement-target refusal; Memory selected-provider tests; shared TS journal | Actual Reviews UI/Runtime restart followed by all replacement attempts and provider selection, retaining original receipt or explicit unrecoverable binding |
 | Same refusal through Tool, CLI and UI | Partial | Complete typed/Tool revision/identity evidence; real Tool/CLI revision and missing-review refusal plus original-receipt recovery after 4,096 historical calls; actual model/CLI private invocation conflict preserves original private receipts and refuses different-input recovery; real CLI Core binding conflict with matching Go problem and immutable earlier receipt; incorrect lifetime-quota outcome removed without compatibility | Executed comparison including rendered UI |
-| Remote multi-resource ESM in Web and Wails | Partial | Actual Web/Wails shared-React rendering plus current native relative-resource loading, authenticated connection replacement and pending-module retirement RED/GREEN; explicit reload and token reentry restore normal rendering. | The matching complete Web resource/auth/connection-replacement sequence remains unexecuted. |
+| Remote multi-resource ESM in Web and Wails | Evidenced | Actual Web/Wails relative ESM and shared-Hook state, native address replacement, Web wrong-token 401 and valid-token recovery with pending ESM, explicit reload/token reentry, fresh lease and exact selected-resource bytes. Web old/new leases become HTTP 410 after connection/window retirement. | No remaining proof for this scenario; one standalone loopback Runtime is tested, not a second physical host or TLS deployment. |
 | Module initialization blocks renderer startup; independent recovery disables it | Evidenced | Actual installed synchronous module loop in a separately identified Wails app; native WebContent samples remain in module evaluation while independent CLI disable/read confirms the retained fact in 0.229s. Bounded task-app termination and real native restart show disabled state, withdrawn command and working shared-React control. | No remaining proof for this scenario; automatic JavaScript interruption or sandboxing is not claimed. |
 
 Actual Web/Wails ESM execution and independent synchronous-block recovery now
-qualify those graphical feasibility paths; the three other review groups above
+qualify those graphical feasibility paths; the two other review groups above
 remain Partial. The real-process
 headless callback/streaming observer feasibility gate now also has P12's actual
 two-installed-layer trace and P16's durable inner-mutation/outer-failure proof.
@@ -3515,7 +3546,7 @@ Scope dependency cut `62431f987` and SQLite repair `c83f19ba7`; earlier focused
 CLI proof: `cae633a29`; source/API closure milestone: `b2dcbfbba`. Scenario titles
 and expected behaviors are rechecked against the original proposal and review,
 rather than substituted with easier checks.
-**40 Evidenced / 8 Partial / 0 Open** is a count of evidence coverage, not a
+**41 Evidenced / 7 Partial / 0 Open** is a count of evidence coverage, not a
 percentage of implementation or a claim of release readiness.
 
 `Evidenced` means matching executable evidence is recorded and the relevant source
@@ -3531,7 +3562,7 @@ retirement RED/GREEN. Earlier complete normal/race, shared-client and independen
 author results retain their exact source scope; fresh independent Go archives for
 the new Scope graph remain pending. Platform/conditional or paid execution is
 never inferred from package summaries. Actual graphical evidence closes
-P29/P30/P32/P35/P45, and the complete frontend/source cut closes reopened P48.
+P29/P30/P32/P35/P40/P45, and the complete frontend/source cut closes reopened P48.
 Other criteria retain their exact scope.
 
 | Requirement | Original scenario | Status | Evidence and remaining work |
@@ -3575,7 +3606,7 @@ Other criteria retain their exact scope.
 | P37 | Update is attempted with waiting execution dependencies | Evidenced | Backend waiting/checkpoint/pending-command dependencies retain exact activation/release identity and refuse unsafe replacement. |
 | P38 | Private data remains after disable/uninstall | Evidenced | Backend withdrawal/uninstall and private namespace admission tests preserve retained data and prevent another installation adopting it. |
 | P39 | Open old result without its renderer | Partial | Current generic history/renderer selection and retained canonical evidence have source/backend proof. Opening an old result with its renderer absent in the graphical client has not run. |
-| P40 | Use a remote Runtime from Desktop/Web | Partial | Actual native execution uses the task's standalone authenticated Runtime, relative ESM resources, shared React identity and Hook state. Pending-module connection replacement has native RED/GREEN and explicit reload/token reentry proof. Earlier Web shared modules render and mutate through HTTP; the matching complete Web resource/auth/connection-replacement sequence is still missing. This is one independent local Runtime over HTTP, not evidence from a second physical host. |
+| P40 | Use a remote Runtime from Desktop/Web | Evidenced | Both actual clients render relative ESM through the standalone authenticated Runtime with shared React identity and a 0 -> 1 Hook update. Native address replacement and Web wrong-token/valid-token replacement retire the pending module generation; explicit reload and token reentry obtain a fresh resource lease and restore rendering. Exact original entry bytes match; old/new Web leases return specified HTTP 410 after connection/window retirement. This proves one independent loopback Runtime over HTTP, not a second physical host or TLS deployment. |
 | P41 | Use plugin business commands from CLI without a page | Evidenced | `TestExecutableCLIPluginCommandCallsTheHostWithoutAPage` builds/runs the actual CLI through authenticated HTTP to installed Schedules, creates private work and invokes its host callback to Core Run acceptance. Same-command redelivery retains the same accepted handle; no page or browser relay is involved. |
 | P42 | Load a purely portable Skill/MCP package | Evidenced | Portable Skill/MCP admission, independent failure and source semantics pass in the full backend suites. |
 | P43 | Load an obsolete Flame declaration or old protocol | Evidenced | Exact backend/Core protocol, strict declaration and retired request refusal tests pass; no old reader/alias is introduced. |

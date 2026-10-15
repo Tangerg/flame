@@ -9,13 +9,14 @@ matching evidence exists. Use only isolated Runtime/data/browser/native resource
 preserve the primary checkout, daily Runtime, stash, assertions and time limits,
 with no push or main merge.
 
-The original P01-P48 audit is **40 Evidenced / 8 Partial / 0 Open**, not an
+The original P01-P48 audit is **41 Evidenced / 7 Partial / 0 Open**, not an
 implementation percentage or a 100% claim. P13 public installed Tool proposals,
 P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup now have matching
 evidence, including the newly authorized complete frontend gate.
-P45 now has actual synchronous renderer-blocking recovery evidence. Eight
-graphical rows and three review cross-scenarios remain Partial; independent
-renderer recovery is Evidenced.
+P45 now has actual synchronous renderer-blocking recovery evidence; P40 has the
+matching Web/Wails resource, authentication and connection-retirement sequence.
+Seven graphical rows and two review cross-scenarios remain Partial; independent
+renderer recovery and remote component resources are Evidenced.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
 The user confirms no original Runtime log, goroutine dump or test data remains.
 Passing repetitions do not close that item. An earlier test-only qualification
@@ -28,6 +29,19 @@ passes at `9f5a66d51`; these gates do not close the historical deadlines or
 other graphical scenarios. The following frontend change has its own qualification.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
+
+The matching current Web sequence now passes: actual entry/relative ESM responses
+are 200 and exact entry bytes match; shared React identity and Hook 0 -> 1 work.
+After pending.js returns 200, changing to a wrong token yields UI 401 and retires
+the exact old resource capability to specified HTTP 410. Correct-token recovery
+republishes the entry, preserves explicit reload, clears the token on reload and,
+after reentry, obtains a fresh lease and working shared-Hook state. Closing the
+owned Web tab retires that new lease to 410. Sanitized network records mask
+resource tokens and retain only authorization-present booleans. Actual native
+relative ESM/address replacement/reload evidence completes P40 and the third
+review group. This tests one standalone loopback Runtime through separate Web/
+Wails clients, not a second physical host or TLS deployment. No source or deadline
+changes occur; temporary capability URL files are removed.
 
 The latest acceptance slice executes an installed synchronous module loop in a
 separately identified task Wails app. A one-second WebContent sample captures 855
@@ -85,8 +99,8 @@ tests) and all source/resource/bundle gates; fresh beta.29 packaging/signature p
 This is not synchronous CPU-blocking recovery, pending business-operation
 replacement, active-Run shutdown or the complete Web/Wails review matrix. The
 preceding 39 Evidenced / 9 Partial audit and four Partial review groups are not
-advanced by that lifecycle repair alone. The later P45 execution above advances
-its own matching criterion and review scenario.
+advanced by that lifecycle repair alone. The later P45/P40 executions above
+advance their own matching criteria and review scenarios.
 
 A second actual Web failure is now causally fixed: an imported ESM dependency
 throws, but its resource close never settles because the HTTP transport suppresses
