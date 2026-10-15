@@ -31,6 +31,7 @@ import type {
   GetDiffRequest,
   GetFileHeadRequest,
   GetPlanRequest,
+  GetPluginCommandRequest,
   GetRunAcceptanceRequest,
   GetRunRequest,
   GetSessionRequest,
@@ -231,6 +232,7 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.getCommand",
   "plugins.stream",
   "plugins.notifyChange",
   "plugins.openResources",
@@ -348,6 +350,7 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.getCommand",
   "plugins.stream",
   "plugins.openResources",
   "plugins.readResource",
@@ -790,6 +793,13 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "mcp.authorizationAttempts.get": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.getCommand": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1267,6 +1277,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.getCommand": [
+    { requires: ["plugins"] },
+  ],
   "plugins.stream": [
     { requires: ["plugins"] },
   ],
@@ -1401,6 +1414,7 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.getCommand": { params: GetPluginCommandRequest; result: CallPluginRequest };
   "plugins.stream": { params: CallPluginRequest; result: Record<string, never> };
   "plugins.notifyChange": { params: PluginChangeNotice };
   "plugins.openResources": { params: OpenPluginResourcesRequest; result: PluginResourceLease };

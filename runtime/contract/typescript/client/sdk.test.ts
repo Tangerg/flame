@@ -81,6 +81,7 @@ describe("createFlameClient", () => {
     const client = createFlameClient(transport, {
       mutationJournal: {
         pendingCommands: () => [],
+        pendingPluginCommands: () => [],
         reserve: () => undefined,
         capturePluginCommand: async () => {
           throw new Error("unexpected plugin command capture");
@@ -104,6 +105,7 @@ describe("createFlameClient", () => {
           throw new Error("unexpected plugin command capture");
         },
         pendingCommands: () => [],
+        pendingPluginCommands: () => [],
         reserve: () => undefined,
         dispose: () => {
           throw failure;
@@ -130,6 +132,7 @@ describe("createFlameClient", () => {
           throw new Error("unexpected plugin command capture");
         },
         pendingCommands: () => [],
+        pendingPluginCommands: () => [],
         reserve: () => undefined,
         dispose: () => {
           throw journalFailure;
@@ -163,6 +166,7 @@ describe("createFlameClient", () => {
     const client = createFlameClient(transport, {
       mutationJournal: {
         pendingCommands: () => [],
+        pendingPluginCommands: () => [],
         reserve: () => undefined,
         capturePluginCommand: async () => {
           throw new Error("unexpected plugin command capture");

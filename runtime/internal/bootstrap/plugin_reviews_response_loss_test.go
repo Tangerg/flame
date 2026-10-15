@@ -106,6 +106,21 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	if err != nil || !found || !reflect.DeepEqual(restored.Snapshot(), original.Snapshot()) {
 		t.Fatalf("restart changed the original pending binding: %+v, %t, %v", restored, found, err)
 	}
+	lookup := protocol.GetPluginCommandRequest{Namespace: cfg.Stores.IdempotencyNamespace.String(), Key: options.IdempotencyKey}
+	routed := r.must(delivery.PluginsGetCommand, lookup, "").(*protocol.CallPluginRequest)
+	admittedRequest := request
+	admittedRequest.Input = string(original.Snapshot().Input.JSON())
+	if !reflect.DeepEqual(*routed, admittedRequest) {
+		t.Fatalf("public restart lookup changed original request: %+v", routed)
+	}
+	otherStore := lookup
+	otherStore.Namespace = "idp_00000000000000000000000000000000"
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsGetCommand, otherStore, delivery.Options{}); !errors.Is(result.Failure, protocol.ErrIdempotencyStoreMismatch) {
+		t.Fatalf("public route lookup crossed store identity: %+v", result)
+	}
+	if _, err := os.Stat(evidence); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("route read dispatched backend work: %v", err)
+	}
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
 		t.Fatalf("disabled owner settled an unconfirmed command: %+v", result)
 	}

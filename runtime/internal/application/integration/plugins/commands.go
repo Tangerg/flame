@@ -30,6 +30,25 @@ func NewCommands(store CommandStore, admission *Admission) (*Commands, error) {
 	return &Commands{store: store, admission: admission}, nil
 }
 
+func (c *Commands) Get(ctx context.Context, id string) (*plugin.Command, error) {
+	command, found, err := c.store.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, plugin.ErrNotFound
+	}
+	record := command.Snapshot()
+	if actor, managed := operation.ActorFrom(ctx); managed && !actor.Allows(record.Provider, record.Contribution, record.Contract) {
+		return nil, plugin.ErrInvalid
+	}
+	// A recovery read cannot turn a route saved before dispatch into execution.
+	if record.Phase == plugin.CommandPrepared {
+		return nil, plugin.ErrCommandUnconfirmed
+	}
+	return command, nil
+}
+
 // RestoreInvocation validates a private owner's retained caller against original
 // host routing, including the resource owner's original target. Only a fresh
 // automatic trigger needs the background contribution's own installation target.

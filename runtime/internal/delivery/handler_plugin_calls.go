@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
@@ -16,11 +17,32 @@ import (
 )
 
 type pluginCallUseCases interface {
+	Command(context.Context, string) (*plugin.Command, error)
 	NotifyChange(context.Context, plugin.ContributionID) error
 	Prepare(context.Context, plugins.CallRequest) (plugins.Call, error)
 	PrepareStream(context.Context, plugins.CallRequest) (plugins.StreamCall, error)
 	Resolve(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID) ([]plugins.Collaborator, error)
 	ResolvePoint(context.Context, *point.Contract, point.Context, []plugins.PointReference) ([]plugins.PointBinding, error)
+}
+
+func (s *Handler) GetPluginCommand(ctx context.Context, in protocol.GetPluginCommandRequest) (*protocol.CallPluginRequest, error) {
+	if in.Namespace != s.idempotency.Namespace {
+		return nil, protocol.ErrIdempotencyStoreMismatch
+	}
+	if s.pluginCalls == nil {
+		return nil, protocol.ErrPluginUnavailable
+	}
+	identity := operation.Identity(operation.Bind(ctx, s.idempotency.Namespace, operation.ScopedKey(ctx, in.Key)))
+	command, err := s.pluginCalls.Command(ctx, identity)
+	if err != nil {
+		return nil, wirePluginError(err)
+	}
+	record := command.Snapshot()
+	return &protocol.CallPluginRequest{
+		InstallationID: record.Provider.InstallationID.String(), Digest: record.Provider.Digest.String(),
+		Contribution: record.Contribution.String(), Contract: string(record.Contract.JSON()),
+		Method: record.Method, Input: string(record.Input.JSON()), Target: record.Invocation.Target,
+	}, nil
 }
 
 func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePluginPointRequest) (*protocol.Page[protocol.PluginPointBinding], error) {

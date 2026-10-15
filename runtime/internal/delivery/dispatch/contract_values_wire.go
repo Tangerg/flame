@@ -396,15 +396,17 @@ func registerRunValues(s *Shapes) {
 		Constraints: append(requiredResourceIdentity("runId"), requiredResourceIdentity("segmentId")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.GetRunRequest](), Constraints: requiredResourceIdentity("runId")})
-	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.GetRunAcceptanceRequest](),
-		Constraints: []FieldConstraint{
-			{Field: "namespace", Kind: ConstraintNonEmpty},
-			{Field: "namespace", Kind: ConstraintPattern, Value: runtimeidentity.IdempotencyNamespacePattern},
-			{Field: "key", Kind: ConstraintNonEmpty},
-			{Field: "key", Kind: ConstraintMaxLength, Limit: protocol.MaximumIdempotencyKeyCharacters},
-		},
-	})
+	for _, shape := range []reflect.Type{typeOf[protocol.GetRunAcceptanceRequest](), typeOf[protocol.GetPluginCommandRequest]()} {
+		s.valueConstraint(FieldConstraintSpec{
+			GoType: shape,
+			Constraints: []FieldConstraint{
+				{Field: "namespace", Kind: ConstraintNonEmpty},
+				{Field: "namespace", Kind: ConstraintPattern, Value: runtimeidentity.IdempotencyNamespacePattern},
+				{Field: "key", Kind: ConstraintNonEmpty},
+				{Field: "key", Kind: ConstraintMaxLength, Limit: protocol.MaximumIdempotencyKeyCharacters},
+			},
+		})
+	}
 	// The run identity is present only for the opened and retired variants; the
 	// union owns that requiredness, so these are identity-when-present guards.
 	runAcceptanceIdentity := resourceIdentity("runId")

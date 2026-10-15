@@ -40,6 +40,62 @@ Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
 
+### Recreated-client original command recovery (2026-10-16)
+
+The remaining graphical review exposes a real consumer gap before qualification:
+Reviews' original recovery control existed only on its mounted MutationPromise.
+A public-client/component regression retains one unresolved journal record,
+recreates both owners and reads revision 2, then fails because no original-outcome
+control exists (1.101s assertion; runner 3.47s). The new test does not infer
+response loss from a changed revision or submit a replacement command.
+
+The existing client journal now projects unresolved unary plugin commands with
+their original method/routing metadata and identity. It still stores neither
+authored plugin input nor business output. The new public plugins.getCommand
+query reads the original admitted request from Runtime's existing Commands owner,
+under its original store namespace and actor scope, without backend I/O. Missing
+or merely prepared routes cannot become a dispatch. The SDK verifies that request
+against the journal before entering the existing original-receipt call path; a
+known private result settles that journal identity. Missing, withdrawn, expired,
+conflicting or malformed evidence remains unresolved. No new result store,
+provider preparation, replay, schema reader or shutdown root is introduced.
+Go binding, registry, constraints and generated Go/TS/API artifacts migrate together.
+
+That integration also exposes a wrong journal invariant: Runtime's jsoninput.Input
+normalizes object order/string spelling while retaining numeric lexemes, but the
+client additionally hashed original wire text. The client now fingerprints its
+existing exact JSON projection, including the complete required contract, rather
+than a second wire-text identity. The old reordered-object rejection expectation
+is deliberately replaced by original-key recovery with the same options; changes
+such as 1.0 -> 1 still fail. This matches the existing Go owner and numeric corpus,
+not a coercion or relaxed business/input assertion.
+
+The client journal format now requires method metadata. Former records are kept
+and refused unchanged; reconcile with the original client before upgrading, and
+use a fresh client profile for this pre-release cut. There is no old-shape reader,
+automatic deletion or fallback fingerprint. Runtime/private SQL formats and the
+backend protocol remain unchanged. Reviews reads pending controls from that same
+journal and cannot replace them with a current draft or newly read revision.
+
+Passed: seven Reviews consumer regressions (2.29s), including recreated-client
+recovery through the public original-request query; complete shared TS checks
+(30 files/362 tests in 1.05s, typecheck/lint/format/knip); Desktop/SDK/author
+typechecks; author ESM and Desktop production build (3.58s). Application plugins,
+Delivery, pluginservices and architecture packages pass 0.578/11.435/9.979/26.074s.
+The exact public Go operation/binding surface test passes 6.430s.
+The real installed no-Run restart/replacement case passes 17.308s and now checks
+the public original-route read, namespace refusal and zero backend redispatch.
+Initial candidate failures from using an unscoped key, comparing normalized input
+with wire text and declaring an already-common problem are corrected at their
+responsible boundaries; no assertion or deadline is skipped or extended.
+
+The management entrance for a producer that cannot mount still needs the same
+journal projection, followed by actual reply-loss/UI/Runtime-restart and all
+update/uninstall/provider-selection interactions. That review remains Partial.
+Earlier full race/native/closure gates do not qualify this new API/journal source;
+historical safe-steer/MCP causes and dependency alerts remain open. No live Runtime
+or browser resources are started by this source slice; test-owned resources join.
+
 ### Graphical acceptance: active callback and component shutdown (2026-10-16)
 
 At 87719309c, install task-only Reviews and an ordinary analyzer through the
@@ -3509,6 +3565,10 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 - The released Scope v0.51.1 upgrade, complete parallel race and current standalone
   author qualification now pass within their recorded scopes. Preserve separate
   historical safe-steer/MCP uncertainty until causal evidence closes it.
+- Complete the generic management recovery entrance using the existing unary
+  journal projection, including unavailable/uninstalled producers. Reviews now
+  restores its own controls after client recreation, but that does not qualify
+  management or the full cross-scenario.
 - The no-Run recovery review still needs
   matching graphical interaction. The user has lifted the prohibition; use isolated
   resources and do not substitute source/native builds for matching interactions.
@@ -3522,6 +3582,7 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 
 | Date | Decision | Reason | Rejected alternative |
 | --- | --- | --- | --- |
+| 2026-10-16 | Recreated unary clients read original input/routing from Runtime Commands; expose the existing journal's unresolved identity, and align fingerprints with jsoninput.Input | A real component/client reconstruction loses its recovery control, and Core-normalized object order was rejected by a competing wire-text fingerprint | Another input/result cache, a new command/provider after lost acknowledgement, prepared-route dispatch, old journal readers or relaxing numeric lexeme checks |
 | 2026-10-15 | Ask the exact registered typed input owner for pure structural admission before binding fresh commands; migrate all backend consumers to protocol 2026-10-15.3 | An actual CLI regression proves Schema-valid decimal/exponent integer tokens can fail the Go decoder after Core has recorded dispatch, leaving no business receipt | Reviews-only numeric coercion, changing raw identity, post-dispatch blanket refusal classification, uncertain mutation replay, another result cache or an old-protocol fallback |
 | 2026-10-15 | Persist structurally admitted invalid-input business decisions in the original receipt transaction; classify fresh schema rejection before binding | Actual CLI original-key recovery failed for `expectedRevision: 0`; an additional public assertion exposed an unclassified pre-binding schema error. The 128-byte rule and original-route-first recovery are preserved | Leaving a known refusal unrecorded, revalidating its business decision on lookup, caching another result in Core, consuming a malformed request's identity, blanket reclassification after dispatch or widening the byte bound |
 | 2026-10-15 | Remove Reviews' incorrect lifetime receipt quota and its outcome; migrate all contracts/consumers without compatibility | Actual original-key CLI recovery proved that the quota returned a known refusal with no private receipt. The user explicitly authorizes the breaking owner repair; historical evidence must not permanently exhaust normal business use | Increasing the quota, evicting identities, caching business results in Core, fabricating absent receipts, redispatching or preserving the obsolete outcome as an alias |

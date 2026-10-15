@@ -15,7 +15,6 @@ import {
   mutationSettlementIsUnknown,
   type ComponentContext,
 } from "@flame/plugin-sdk";
-import type { MutationPromise } from "@flame/runtime-contract/client";
 import { ANALYZERS_JSON } from "./analyzers.generated";
 import {
   CAPABILITY_JSON,
@@ -70,7 +69,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
   const [analysis, setAnalysis] = useState<Analysis>();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string>();
-  const [unknown, setUnknown] = useState<MutationPromise<UpdateResult>>();
+  const unknown = operations.pendingCommands(updateMethod);
   const [status, setStatus] = useState<Status>("resolved");
   const lifetime = useRef<AbortController>(undefined);
   const reading = useRef<AbortController>(undefined);
@@ -156,16 +155,12 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
     return () => owner.abort();
   }, [refresh, context.signal]);
 
-  async function observe(
-    command: MutationPromise<UpdateResult>,
-    owner: AbortSignal,
-  ) {
+  async function observe(command: Promise<UpdateResult>, owner: AbortSignal) {
     setPending(true);
     setMessage(undefined);
     try {
       const result = await command;
       if (owner.aborted) return;
-      setUnknown(undefined);
       setAnalysis(undefined);
       setMessage(
         result.type === "updated"
@@ -178,7 +173,6 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
     } catch (error) {
       if (owner.aborted) return;
       if (mutationSettlementIsUnknown(error)) {
-        setUnknown(() => command);
         setMessage(
           "Confirmation is unknown. Preserve this command and check its original outcome before submitting another change.",
         );
@@ -190,7 +184,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
 
   function change(review: Review) {
     const owner = lifetime.current;
-    if (!owner || pending || unknown) return;
+    if (!owner || pending || unknown.length) return;
     const input = { id: review.id, expectedRevision: review.revision, status };
     try {
       const command = operations.command(updateMethod, input);
@@ -242,7 +236,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
         </Button>
         {analyzers?.type === "ready" && analyzers.available && (
           <Button
-            disabled={loading || pending || !!unknown}
+            disabled={loading || pending || unknown.length > 0}
             onClick={() => void analyze()}
           >
             Analyze
@@ -256,18 +250,18 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
           Analyzer actions could not be resolved: {analyzers.message}
         </p>
       )}
-      {unknown && (
-        <Toolbar label="Original command recovery">
-          <Metadata>Command: {unknown.idempotencyKey}</Metadata>
+      {unknown.map((command) => (
+        <Toolbar key={command.idempotencyKey} label="Original command recovery">
+          <Metadata>Command: {command.idempotencyKey}</Metadata>
           <Button
             disabled={pending}
             onClick={() => {
               const owner = lifetime.current;
               if (owner)
                 void observe(
-                  unknown.retry({
-                    signal: AbortSignal.any([owner.signal, context.signal]),
-                  }),
+                  command.recover(
+                    AbortSignal.any([owner.signal, context.signal]),
+                  ),
                   AbortSignal.any([owner.signal, context.signal]),
                 );
             }}
@@ -275,7 +269,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
             Check original outcome
           </Button>
         </Toolbar>
-      )}
+      ))}
       <RecordGroup aria-label="Current reviews">
         {!loading && !reviews.length && (
           <EmptyState
@@ -298,11 +292,14 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
                   { value: "open", label: "Open" },
                   { value: "resolved", label: "Resolved" },
                 ]}
-                disabled={pending || !!unknown}
+                disabled={pending || unknown.length > 0}
               />
               <Button
                 disabled={
-                  pending || loading || !!unknown || review.status === status
+                  pending ||
+                  loading ||
+                  unknown.length > 0 ||
+                  review.status === status
                 }
                 onClick={() => change(review)}
               >

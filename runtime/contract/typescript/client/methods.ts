@@ -1,4 +1,8 @@
-import { callPluginCommand } from "./pluginCommand";
+import {
+  callPluginCommand,
+  pendingPluginCommand,
+  type PluginCommandRecovery,
+} from "./pluginCommand";
 import { callPluginStream, queryPluginStream } from "./pluginStream";
 import type {
   OpenPluginResourcesRequest,
@@ -6,6 +10,7 @@ import type {
   ReadPluginResourceRequest,
   PluginResource,
   CallPluginRequest,
+  GetPluginCommandRequest,
   CallPluginResponse,
   ResolvePluginPointRequest,
   PluginPointBinding,
@@ -344,6 +349,11 @@ export interface Methods {
     };
   };
   plugins: {
+    getCommand: (
+      request: GetPluginCommandRequest,
+      signal?: AbortSignal,
+    ) => Promise<CallPluginRequest>;
+    pendingCommands: () => PluginCommandRecovery[];
     queryStream: <T>(
       request: CallPluginRequest,
       consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
@@ -840,6 +850,11 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       },
     },
     plugins: {
+      getCommand: (request, signal) => call("plugins.getCommand", request, { signal }),
+      pendingCommands: () =>
+        mutationJournal
+          .pendingPluginCommands()
+          .map((command) => pendingPluginCommand(command, { perform })),
       queryStream: (request, consume, decode, signal) =>
         queryPluginStream(client, { perform }, request, consume, decode, signal),
       stream: (intent, input, prepare, consume, decode, signal) =>

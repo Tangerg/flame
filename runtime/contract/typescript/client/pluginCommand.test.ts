@@ -50,6 +50,78 @@ const binding = {
 const intent = `memory-delete:${id}`;
 const journals: MutationJournal[] = [];
 
+it("recovers an unresolved unary call through its Runtime-owned request after client replacement", async () => {
+  const storage = new Storage();
+  const original = client(storage);
+  original.dispatch.mockRejectedValue(new RpcTransportError("reply lost"));
+  await expect(original.methods.plugins.call({ ...binding, ...input })).rejects.toBeInstanceOf(
+    RpcTransportError,
+  );
+  const [, request, options] = original.dispatch.mock.calls[0]!;
+  const key = options.idempotencyKey;
+  original.journal.dispose();
+  const successor = client(storage);
+  const [command] = successor.methods.plugins.pendingCommands();
+  expect(command!.idempotencyKey).toBe(key);
+  expect(command!.binding).toEqual({ ...binding, contract: input.contract, method: input.method });
+  expect(JSON.stringify([...storage.values.values()])).not.toContain(id);
+  const admittedRequest = {
+    ...request,
+    contract: stringifyJSON(parseJSON(request.contract), true),
+    input: stringifyJSON(parseJSON(request.input), true),
+  };
+  successor.dispatch.mockResolvedValueOnce(admittedRequest as unknown as CallPluginResponse);
+  successor.dispatch.mockResolvedValueOnce({ output: stringifyJSON({ known: true }) });
+  await expect(command!.recover((value) => value)).resolves.toEqual({ known: true });
+  expect(successor.dispatch.mock.calls.map(([method]) => method)).toEqual([
+    "plugins.getCommand",
+    "plugins.call",
+  ]);
+  expect(successor.dispatch.mock.calls[1]).toEqual(["plugins.call", admittedRequest, options]);
+  expect(storage.keys()).toEqual([]);
+});
+
+it.each(["missing", "different input", "unavailable", "invalid acknowledgement"])(
+  "keeps the original recovery identity when lookup is %s",
+  async (failure) => {
+    const storage = new Storage();
+    const original = client(storage);
+    original.dispatch.mockRejectedValue(new RpcTransportError("reply lost"));
+    await expect(original.methods.plugins.call({ ...binding, ...input })).rejects.toBeInstanceOf(
+      RpcTransportError,
+    );
+    const [, request, options] = original.dispatch.mock.calls[0]!;
+    original.journal.dispose();
+    const successor = client(storage);
+    const [command] = successor.methods.plugins.pendingCommands();
+    if (failure === "missing")
+      successor.dispatch.mockRejectedValueOnce(
+        new RpcError({ message: "missing", data: { type: "plugin_not_found" } }),
+      );
+    else
+      successor.dispatch.mockResolvedValueOnce({
+        ...request,
+        ...(failure === "different input" ? { input: stringifyJSON({ ID: "other" }) } : {}),
+      } as unknown as CallPluginResponse);
+    if (failure === "unavailable")
+      successor.dispatch.mockRejectedValueOnce(
+        new RpcError({ message: "withdrawn", data: { type: "plugin_unavailable" } }),
+      );
+    else if (failure === "invalid acknowledgement")
+      successor.dispatch.mockResolvedValueOnce({ output: "{" });
+    await expect(command!.recover((value) => value)).rejects.toBeInstanceOf(
+      failure === "different input" ? MutationJournalOwnershipError : MutationLookupError,
+    );
+    expect(storage.keys()).toHaveLength(1);
+    expect(successor.methods.plugins.pendingCommands()[0]!.idempotencyKey).toBe(
+      options.idempotencyKey,
+    );
+    expect(
+      successor.dispatch.mock.calls.filter(([method]) => method === "plugins.call"),
+    ).toHaveLength(failure === "missing" || failure === "different input" ? 0 : 1);
+  },
+);
+
 it("keeps the shared Go numeric corpus through lost-acknowledgement recovery and fences changed lexemes", async () => {
   const source = readFileSync(
     new URL("../../../testdata/plugin-values.json", import.meta.url),
@@ -308,9 +380,10 @@ it("does not persist authored input while retaining an unknown acknowledgement",
       prepare,
       () => undefined,
     ),
-  ).rejects.toBeInstanceOf(MutationJournalOwnershipError);
+  ).resolves.toBeUndefined();
   expect(prepare).not.toHaveBeenCalled();
-  expect(current.dispatch).toHaveBeenCalledTimes(1);
+  expect(current.dispatch).toHaveBeenCalledTimes(2);
+  expect(current.dispatch.mock.calls[0]![2]).toEqual(current.dispatch.mock.calls[1]![2]);
 });
 
 it("fences concurrent preparation and revoked client ownership before staging", async () => {

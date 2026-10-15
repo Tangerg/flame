@@ -11,6 +11,7 @@ export type { ItemId, RunId, SegmentId } from "./ids";
 export type { MutationAttemptOptions, MutationPromise } from "./mutation";
 export { MutationLookupError } from "./mutation";
 export { createMutationJournal } from "./mutationJournal";
+export type { PluginCommandRecovery } from "./pluginCommand";
 export type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
 export {
   createMutationSettler,

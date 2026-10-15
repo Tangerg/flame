@@ -10,6 +10,7 @@ const (
 	PluginsNotifyChange        Name = "plugins.notifyChange"
 	PluginsList                Name = "plugins.list"
 	PluginsCall                Name = "plugins.call"
+	PluginsGetCommand          Name = "plugins.getCommand"
 	PluginsStream              Name = "plugins.stream"
 	PluginsResolveRequirements Name = "plugins.resolveRequirements"
 	PluginsResolvePoint        Name = "plugins.resolvePoint"
@@ -41,6 +42,11 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.query(MethodMeta{Name: PluginsGetCommand, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		GetPluginCommand(context.Context, protocol.GetPluginCommandRequest) (*protocol.CallPluginRequest, error)
+	}, ctx context.Context, in protocol.GetPluginCommandRequest) (*protocol.CallPluginRequest, error) {
+		return s.GetPluginCommand(ctx, in)
+	})
 	r.streamExtension(MethodMeta{Name: PluginsStream, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, pluginCallOperation, func(s interface {
 		PreparePluginStream(context.Context, protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error)
 	}, ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {

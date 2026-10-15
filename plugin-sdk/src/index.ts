@@ -167,6 +167,33 @@ export function bindOperations<
     };
   }
   return {
+    pendingCommands: <K extends keyof Inputs & string>(method: K) => {
+      context.signal.throwIfAborted();
+      return context.runtime.plugins
+        .pendingCommands()
+        .filter(
+          ({ binding: original }) =>
+            original.installationId === binding.installationId &&
+            original.contribution === binding.contribution &&
+            original.method === method &&
+            original.target.scope === captured.scope &&
+            original.target.reference === captured.reference,
+        )
+        .map((command) => ({
+          idempotencyKey: command.idempotencyKey,
+          recover: (
+            signal: AbortSignal = context.signal,
+          ): Promise<Outputs[K]> => {
+            context.signal.throwIfAborted();
+            return context.track(
+              command.recover(
+                (value) => value as Outputs[K],
+                AbortSignal.any([context.signal, signal]),
+              ),
+            );
+          },
+        }));
+    },
     queryStream: <K extends keyof Inputs & keyof Chunks & string>(
       method: K,
       input: Inputs[K],

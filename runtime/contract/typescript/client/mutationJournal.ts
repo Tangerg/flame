@@ -35,6 +35,7 @@ export interface MutationReservation {
 }
 
 export interface MutationJournal {
+  pendingPluginCommands(): PendingPluginCommand[];
   capturePluginCommand(
     intent: string,
     input: PluginCommandInput,
@@ -48,6 +49,14 @@ export interface MutationJournal {
     requestMeta?: RequestMeta | null,
   ): MutationReservation | undefined;
   dispose(): void;
+}
+
+export interface PendingPluginCommand {
+  readonly idempotencyKey: string;
+  readonly namespace: string;
+  readonly binding: Omit<CallPluginRequest, "input">;
+  reserve(): MutationReservation;
+  validate(request: CallPluginRequest): void;
 }
 
 export type PendingRunCommand = RunCommand & {
@@ -128,6 +137,31 @@ class MutationAuthority implements MutationJournal {
 
   constructor(journal: DurableMutationJournal) {
     this.#journal = journal;
+  }
+
+  pendingPluginCommands(): PendingPluginCommand[] {
+    this.#assertCurrent();
+    return this.#journal
+      .pendingPluginCommands()
+      .filter((identity) => !this.#claims.has(identity.entry.idempotencyKey))
+      .map((identity) => ({
+        idempotencyKey: identity.entry.idempotencyKey,
+        namespace: this.#journal.lookupNamespace(identity),
+        binding: structuredClone(identity.entry.installed!.route),
+        reserve: () => {
+          this.#assertCurrent();
+          if (this.#claims.has(identity.entry.idempotencyKey))
+            throw new MutationJournalOwnershipError(
+              "plugin command is already owned by an active attempt",
+            );
+          this.#journal.retain(identity);
+          return this.#claim(identity);
+        },
+        validate: (request) => {
+          this.#assertClaim(identity);
+          this.#journal.validatePluginCommand(identity, request);
+        },
+      }));
   }
 
   async capturePluginCommand(

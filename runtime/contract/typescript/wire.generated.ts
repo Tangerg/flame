@@ -582,6 +582,11 @@ export interface GetPlanRequest {
   sessionId: string;
 }
 
+export interface GetPluginCommandRequest {
+  key: string;
+  namespace: string;
+}
+
 export interface GetRunAcceptanceRequest {
   key: string;
   namespace: string;

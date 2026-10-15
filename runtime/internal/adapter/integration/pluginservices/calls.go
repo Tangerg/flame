@@ -24,6 +24,10 @@ type installedCall struct {
 	method  *capability.Method
 }
 
+func (c *CommandCalls) Command(ctx context.Context, id string) (*plugin.Command, error) {
+	return c.routing.Get(ctx, id)
+}
+
 func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (plugins.Call, error) {
 	method, err := admitCallRequest(request, false)
 	if err != nil {

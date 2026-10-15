@@ -1,6 +1,11 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createFlameClient, parseJSON, stringifyJSON } from "@flame/runtime-contract/client";
+import {
+  createFlameClient,
+  createMutationJournal,
+  parseJSON,
+  stringifyJSON,
+} from "@flame/runtime-contract/client";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
@@ -9,7 +14,7 @@ import {
   waitForRequest,
 } from "@flame/runtime-contract/client/transports/memory.testkit";
 import type { ComponentContext } from "@flame/plugin-sdk";
-import type { ResolvePluginPointRequest } from "@flame/runtime-contract/wire";
+import type { ResolvePluginPointRequest, CallPluginRequest } from "@flame/runtime-contract/wire";
 import { Board } from "../../../../examples/plugins/reviews/client/board";
 import { CAPABILITY_JSON } from "../../../../examples/plugins/reviews/client/methods.generated";
 import { ANALYZERS_JSON } from "../../../../examples/plugins/reviews/client/analyzers.generated";
@@ -46,18 +51,100 @@ afterEach(async () => {
   await client.close();
 });
 
-async function readReview(status: "open" | "resolved") {
+async function readReview(status: "open" | "resolved", revision = 1) {
   const request = await waitForRequest(transport, "plugins.call");
   await act(async () => {
     respondSuccess(transport, request.id, {
       output: stringifyJSON({
-        reviews: [{ id: "example-review", title: "Owned review", status, revision: 1 }],
+        reviews: [{ id: "example-review", title: "Owned review", status, revision }],
       }),
     });
   });
 }
 
 describe("installed Reviews contextual actions", () => {
+  it("retains an original command recovery entrance after the component and client are recreated", async () => {
+    const records = new Map<string, unknown>();
+    const storage = {
+      get: (key: string) => structuredClone(records.get(key)),
+      set: (key: string, value: unknown) => records.set(key, structuredClone(value)),
+      remove: (key: string) => records.delete(key),
+      keys: () => [...records.keys()],
+    };
+    const openClient = () =>
+      createFlameClient(transport, {
+        mutationJournal: createMutationJournal({
+          storage,
+          scope: () => ({ namespace: "idp_" + "1".repeat(32), retentionSeconds: 3600 }),
+        }),
+      });
+    await client.close();
+    transport = createMemoryTransport();
+    client = openClient();
+    context = { ...context, runtime: client };
+    const view = render(<Board context={context} />);
+    await readReview("open");
+    const point = await waitForRequest(transport, "plugins.resolvePoint");
+    await act(async () => respondSuccess(transport, point.id, { data: [] }));
+    const save = screen.getByRole("button", { name: "Save status" });
+    await waitFor(() => expect((save as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(
+        transport.outbox().filter((request) => request.method === "plugins.call"),
+      ).toHaveLength(2),
+    );
+    expect(records.size).toBe(1);
+
+    const originalRequest = transport
+      .outbox()
+      .filter((request) => request.method === "plugins.call")[1]!;
+
+    await act(async () => {
+      view.unmount();
+      owner.abort();
+      await client.close();
+    });
+    expect(records.size).toBe(1);
+    transport = createMemoryTransport();
+    client = openClient();
+    owner = new AbortController();
+    context = { ...context, runtime: client, signal: owner.signal };
+    render(<Board context={context} />);
+    await readReview("resolved", 2);
+    const replacementPoint = await waitForRequest(transport, "plugins.resolvePoint");
+    await act(async () => respondSuccess(transport, replacementPoint.id, { data: [] }));
+
+    expect(await screen.findByRole("button", { name: "Check original outcome" })).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Save status" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(records.size).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: "Check original outcome" }));
+    const lookup = await waitForRequest(transport, "plugins.getCommand");
+    const admittedRequest = {
+      ...(originalRequest.params as CallPluginRequest),
+      input: stringifyJSON(parseJSON((originalRequest.params as CallPluginRequest).input), true),
+    };
+    await act(async () => respondSuccess(transport, lookup.id, admittedRequest));
+    const recovered = await waitFor(() => {
+      const requests = transport.outbox().filter((request) => request.method === "plugins.call");
+      expect(requests).toHaveLength(2);
+      return requests[1]!;
+    });
+    expect(recovered.params).toEqual(admittedRequest);
+    await act(async () =>
+      respondSuccess(transport, recovered.id, {
+        output: stringifyJSON({
+          type: "updated",
+          review: { id: "example-review", title: "Owned review", status: "resolved", revision: 2 },
+        }),
+      }),
+    );
+    await waitFor(() => expect(records.size).toBe(0));
+    expect(screen.queryByRole("button", { name: "Check original outcome" })).toBeNull();
+  });
+
   it("preserves the generated point contract through the public TypeScript boundary", () => {
     const source = readFileSync(
       path.resolve(

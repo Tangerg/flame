@@ -170,6 +170,17 @@ Direct SDK/Tool calls also check the private invocation binding and preserve the
 backend's `invocationConflict` outcome. These checks protect their respective
 owners and have separate evidence.
 
+The board's unresolved command controls are projections of the existing client
+journal, so recreating the component/client can recover the original identity.
+`plugins.getCommand` reads original admitted routing/input from Runtime without
+backend dispatch; only then does the existing call path query the original private
+receipt. The board never uses the newly read revision or current draft for that
+recovery. Multiple retained commands remain separately visible and block another
+status submission until their outcomes are established. Original-release absence
+or input conflict keeps its command unresolved rather than choosing another owner.
+The full graphical restart/update/uninstall/provider review retains its own
+qualification scope in the refactor progress record.
+
 The Store compiles the same Go-owned input schema at open and uses it for writes
 and receipt integrity checks. Receipt reads do not rerun business admission:
 an original `invalidUpdate` remains recoverable after restart or later work.

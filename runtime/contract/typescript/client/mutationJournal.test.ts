@@ -105,6 +105,7 @@ describe("mutation journal", () => {
       "expiresAt",
       "fingerprint",
       "idempotencyKey",
+      "method",
       "namespace",
       "salt",
       "steerItemId",
@@ -327,6 +328,21 @@ describe("mutation journal", () => {
       input: [{ type: "text", text: "hello" }],
     })!;
     expect(recovered.idempotencyKey).toBe(old.idempotencyKey);
+  });
+
+  it("retains and refuses the former journal shape instead of dropping unresolved identity", () => {
+    const storage = new MemoryStorage();
+    const current = journal(storage);
+    current.reserve("sessions.create", { title: "retained" });
+    current.dispose();
+    const key = storage.keys()[0]!;
+    const former = storage.get(key) as Record<string, unknown>;
+    delete former.method;
+    storage.set(key, former);
+    const successor = journal(storage);
+    expect(() => successor.pendingPluginCommands()).toThrow(MutationJournalStorageError);
+    expect(storage.keys()).toEqual([key]);
+    expect(storage.get(key)).toEqual(former);
   });
 
   it("fails closed on corrupted records, identity collisions, and capacity", () => {

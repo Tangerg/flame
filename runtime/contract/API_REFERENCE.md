@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-15.2` · 100 methods
+Protocol `2026-10-15.2` · 101 methods
 
 ## Methods
 
@@ -66,6 +66,7 @@ Protocol `2026-10-15.2` · 100 methods
 | `mcp.servers.reconnect` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.get` | query | unary | none | none | none | — | `mcp` | `mcp_authorization_attempt_not_found`, `capability_not_negotiated` |
+| `plugins.getCommand` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.stream` | extension | stream | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.notifyChange` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
 | `plugins.openResources` | subscription | stream | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `capability_not_negotiated` |
@@ -775,6 +776,10 @@ TypeScript validator from this single registry projection.
 | `GetRunAcceptanceRequest` | `namespace` | `pattern("^idp_[0-9a-f]{32}$")` |
 | `GetRunAcceptanceRequest` | `key` | `nonEmpty` |
 | `GetRunAcceptanceRequest` | `key` | `maxLength(255)` |
+| `GetPluginCommandRequest` | `namespace` | `nonEmpty` |
+| `GetPluginCommandRequest` | `namespace` | `pattern("^idp_[0-9a-f]{32}$")` |
+| `GetPluginCommandRequest` | `key` | `nonEmpty` |
+| `GetPluginCommandRequest` | `key` | `maxLength(255)` |
 | `RunAcceptance` | `runId` | `identity` |
 | `RunAcceptance` | `runId` | `maxLength(256)` |
 | `RunAcceptance` | `segmentId` | `identity` |
@@ -1248,6 +1253,7 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `mcp.servers.reconnect` | always | `mcp` |
 | `mcp.authorizationAttempts.create` | always | `mcp` |
 | `mcp.authorizationAttempts.get` | always | `mcp` |
+| `plugins.getCommand` | always | `plugins` |
 | `plugins.stream` | always | `plugins` |
 | `plugins.notifyChange` | always | `plugins` |
 | `plugins.openResources` | always | `plugins` |

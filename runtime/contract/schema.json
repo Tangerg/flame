@@ -2479,6 +2479,25 @@
         "sessionId"
       ]
     },
+    "GetPluginCommandRequest": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "namespace": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^idp_[0-9a-f]{32}$"
+        }
+      },
+      "required": [
+        "key",
+        "namespace"
+      ]
+    },
     "GetRunAcceptanceRequest": {
       "type": "object",
       "properties": {

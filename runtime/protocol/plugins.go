@@ -2,6 +2,13 @@ package protocol
 
 import "github.com/Tangerg/flame/runtime/capability"
 
+// GetPluginCommandRequest recovers original routing from its existing owner;
+// clients need not persist another copy of authored plugin input.
+type GetPluginCommandRequest struct {
+	Namespace string `json:"namespace"`
+	Key       string `json:"key"`
+}
+
 // CallPluginRequest binds an installed contribution to the consumer's complete
 // required contract. The implementation determines operation semantics.
 // Contracts and feature values cross Core as JSON text because their numeric

@@ -328,6 +328,15 @@ func (m MCPAuthorizationAttemptRequest) ValidateWire() error {
 	)
 }
 
+func (g GetPluginCommandRequest) ValidateWire() error {
+	return collectWireViolations("GetPluginCommandRequest",
+		requiredText("namespace", g.Namespace),
+		requiredTextPattern("namespace", g.Namespace, "^idp_[0-9a-f]{32}$"),
+		requiredText("key", g.Key),
+		maxLength("key", g.Key, 255),
+	)
+}
+
 func (c CallPluginRequest) ValidateWire() error {
 	return collectWireViolations("CallPluginRequest",
 		requiredText("contract", c.Contract),

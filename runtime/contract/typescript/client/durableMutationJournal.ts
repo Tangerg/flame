@@ -12,7 +12,7 @@ import { parseJSON, stringifyJSON } from "./json";
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
 const FINGERPRINT_FIELD_SEPARATOR = "\u0000";
-const JOURNAL_ENTRY_FIELD_COUNT = 8;
+const JOURNAL_ENTRY_FIELD_COUNT = 9;
 const MAX_IDENTITY_LENGTH = 255;
 const FINGERPRINT_HEX_LENGTH = 32;
 const MILLISECONDS_PER_SECOND = 1_000;
@@ -56,6 +56,7 @@ export type RunCommand =
   | { operation: "steer"; params: SteerRunRequest; requestMeta: RequestMeta | null };
 
 interface JournalEntry {
+  method: string;
   steerItemId: string | null;
   salt: string;
   namespace: string;
@@ -64,7 +65,7 @@ interface JournalEntry {
   createdAt: number;
   expiresAt: number;
   installed?: {
-    intentFingerprint: string;
+    intentFingerprint: string | null;
     route: Omit<CallPluginRequest, "input">;
   };
   command: RunCommand | null;
@@ -94,6 +95,8 @@ export interface DurableMutationJournal {
     claimed: (idempotencyKey: string) => boolean,
   ): CapturedPluginCommand;
   pendingCommands(): DurableMutationIdentity[];
+  pendingPluginCommands(): DurableMutationIdentity[];
+  validatePluginCommand(identity: DurableMutationIdentity, request: CallPluginRequest): void;
   reserve(
     method: string,
     params: unknown,
@@ -140,6 +143,7 @@ function validEntry(value: unknown): value is JournalEntry {
     (entry.steerItemId === null ||
       (validSteerItem(entry.steerItemId) && entry.command?.operation === "steer")) &&
     validText(entry.salt, MAX_IDENTITY_LENGTH) &&
+    validText(entry.method, MAX_IDENTITY_LENGTH) &&
     validText(entry.namespace, MAX_IDENTITY_LENGTH) &&
     typeof entry.fingerprint === "string" &&
     FINGERPRINT_PATTERN.test(entry.fingerprint) &&
@@ -149,7 +153,9 @@ function validEntry(value: unknown): value is JournalEntry {
     typeof entry.expiresAt === "number" &&
     Number.isFinite(entry.expiresAt) &&
     entry.expiresAt > entry.createdAt &&
-    (entry.installed === undefined || validInstalled(entry.installed)) &&
+    (entry.installed === undefined ||
+      (validInstalled(entry.installed) &&
+        entry.method === pluginDeliveryMethod(entry.installed.route))) &&
     validCommand(entry.command, entry as JournalEntry) &&
     (entry.command === null || entry.installed === undefined)
   );
@@ -161,8 +167,9 @@ function validInstalled(value: JournalEntry["installed"]): boolean {
     typeof value !== "object" ||
     Array.isArray(value) ||
     Object.keys(value).length !== 2 ||
-    typeof value.intentFingerprint !== "string" ||
-    !FINGERPRINT_PATTERN.test(value.intentFingerprint)
+    (value.intentFingerprint !== null &&
+      (typeof value.intentFingerprint !== "string" ||
+        !FINGERPRINT_PATTERN.test(value.intentFingerprint)))
   )
     return false;
   if (
@@ -334,19 +341,19 @@ function commandFingerprintInput(
   requestMeta: RequestMeta | null,
   installed: boolean,
 ): string {
-  // A transport representation cannot change the original intent's identity.
-  // Bind the semantic request and retain its exact source lexemes separately.
+  // jsoninput.Input ignores object spelling but preserves numeric lexemes.
+  // Ordinary JSON.parse would collapse receipt-relevant numbers here.
   const request = installed
-    ? { ...(params as CallPluginRequest), input: parseJSON((params as CallPluginRequest).input) }
+    ? {
+        ...(params as CallPluginRequest),
+        contract: parseJSON((params as CallPluginRequest).contract),
+        input: parseJSON((params as CallPluginRequest).input),
+      }
     : params;
-  const command = fingerprintFields(
+  return fingerprintFields(
     method,
     stringifyJSON(prepareCommand(method, params, requestMeta) ?? request, true),
   );
-  if (!installed) return command;
-  // Installed receipts bind original input bytes, beyond semantic JSON equality.
-  const input = (params as CallPluginRequest).input;
-  return fingerprintFields(command, input);
 }
 
 function matchesCommand(
@@ -367,6 +374,7 @@ function matchesCommand(
 function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
   return (
     left.steerItemId === right.steerItemId &&
+    left.method === right.method &&
     left.salt === right.salt &&
     left.namespace === right.namespace &&
     left.fingerprint === right.fingerprint &&
@@ -439,11 +447,12 @@ export function openDurableMutationJournal(
     scope: MutationJournalScope,
     idempotencyKey: string,
     requestMeta: RequestMeta | null,
-    installed?: { intent: string; route: Omit<CallPluginRequest, "input"> },
+    installed?: { intent: string | null; route: Omit<CallPluginRequest, "input"> },
   ) => {
     const createdAt = options.now();
     const salt = crypto.randomUUID();
     const entry: JournalEntry = {
+      method,
       steerItemId: null,
       salt,
       namespace: scope.namespace,
@@ -460,9 +469,10 @@ export function openDurableMutationJournal(
         ? {}
         : {
             installed: {
-              intentFingerprint: fingerprint(
-                fingerprintFields(salt, "plugins.call", installed.intent),
-              ),
+              intentFingerprint:
+                installed.intent === null
+                  ? null
+                  : fingerprint(fingerprintFields(salt, "plugins.call", installed.intent)),
               route: installed.route,
             },
           }),
@@ -488,12 +498,8 @@ export function openDurableMutationJournal(
       const entry = matches[0];
       if (!entry) return undefined;
       const route = entry.installed!.route;
-      const request = { ...structuredClone(route), input: structuredClone(input.input) };
-      if (
-        input.method !== route.method ||
-        input.contract !== route.contract ||
-        !matchesCommand(entry, pluginDeliveryMethod(request), request, null)
-      )
+      const request = { ...structuredClone(route), ...structuredClone(input) };
+      if (!matchesCommand(entry, pluginDeliveryMethod(request), request, null))
         throw new MutationJournalOwnershipError(
           "plugin command intent requires its original contract and input",
         );
@@ -525,6 +531,20 @@ export function openDurableMutationJournal(
         .filter((entry) => entry.command !== null)
         .map((entry) => ({ entry: structuredClone(entry) }));
     },
+    pendingPluginCommands() {
+      return loadEntries(options.storage)
+        .filter((entry) => entry.method === "plugins.call" && entry.installed !== undefined)
+        .map((entry) => ({ entry: structuredClone(entry) }));
+    },
+    validatePluginCommand(identity, request) {
+      validateIdentity(identity, currentScope());
+      readReservedEntry(identity);
+      if (!matchesCommand(identity.entry, "plugins.call", request, null)) {
+        throw new MutationJournalOwnershipError(
+          "original plugin command differs from retained identity",
+        );
+      }
+    },
     reserve(method, params, preferredKey, claimed, requestMeta) {
       const scope = options.scope();
       if (preferredKey !== undefined && !validText(preferredKey, MAX_IDENTITY_LENGTH)) {
@@ -534,7 +554,8 @@ export function openDurableMutationJournal(
       // Neither expiry nor replacement of the serving store settles their outcome.
       const entries = loadEntries(options.storage);
       const matches = (entry: JournalEntry) =>
-        entry.installed === undefined && matchesCommand(entry, method, params, requestMeta);
+        (entry.installed === undefined || entry.installed.intentFingerprint === null) &&
+        matchesCommand(entry, method, params, requestMeta);
       const preferred =
         preferredKey === undefined
           ? undefined
@@ -558,12 +579,20 @@ export function openDurableMutationJournal(
         if (entries.length >= MAX_ENTRIES) {
           throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
         }
+        const installed =
+          method === "plugins.call" || method === "plugins.stream"
+            ? (() => {
+                const { input: _, ...route } = structuredClone(params as CallPluginRequest);
+                return { intent: null, route };
+              })()
+            : undefined;
         entry = createEntry(
           method,
           params,
           scope,
           preferredKey ?? crypto.randomUUID(),
           requestMeta,
+          installed,
         );
       }
       const identity = { entry };

@@ -37,6 +37,31 @@ other graphical scenarios. The following frontend change has its own qualificati
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 
+The remaining no-Run review finds and repairs an actual client-recreation gap.
+Reviews' recovery control was tied to the mounted MutationPromise even though the
+existing journal retained its unresolved identity. A causal RED/GREEN component
+test now recreates both owners and recovers through the public original-request
+query. plugins.getCommand reads Runtime's existing saved route/input, with store
+and actor guards and no backend dispatch; missing/prepared routes cannot start
+work. The unary SDK handle verifies the same journal identity before querying the
+original private receipt. Neither journal nor Core stores a competing outcome.
+Client fingerprints now follow Go's admitted object/string meaning and exact
+numeric lexemes; the former extra wire-text identity is removed. Reordered input
+recovers the same key/options while changed numeric lexemes remain refused.
+
+The client journal now requires method metadata. Former records are preserved
+and refused, with no conversion/deletion/compatibility reader; reconcile them with
+the original client before a fresh-profile pre-release upgrade. Runtime/private
+SQL and backend protocol formats do not change. Public Go/TS/generated artifacts,
+SDK, Reviews and affected tests/docs migrate together. Shared TS full checks pass
+362 tests; seven component regressions, Desktop/SDK/author types, ESM/production
+builds, four Go owner/architecture packages and the actual installed no-Run
+restart/replacement test pass. Earlier global race/native/closure gates do not
+extend to this new source. Next add the same journal projection to management
+when a producer cannot mount, then execute the full actual UI/Runtime restart,
+update/uninstall/provider-selection review. That group remains Partial; historical
+timeouts, dependency alerts and final global qualification remain open.
+
 P46 executes the actual installed Reviews board against a task analyzer that
 enters the public selected-model callback and a held local provider stream before
 isolated Runtime shutdown. The complete network capture shows one plugins.call

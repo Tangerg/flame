@@ -90,6 +90,7 @@ export type WireTypeName =
   | "GetDiffRequest"
   | "GetFileHeadRequest"
   | "GetPlanRequest"
+  | "GetPluginCommandRequest"
   | "GetRunAcceptanceRequest"
   | "GetRunRequest"
   | "GetSessionRequest"
@@ -1184,6 +1185,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   GetPlanRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
+  GetPluginCommandRequest: object({
+    key: allOf([text(), minLength(1), maxLength(255)]),
+    namespace: allOf([text(), minLength(1), pattern("^idp_[0-9a-f]{32}$")]),
+  }, ["key", "namespace"]),
   GetRunAcceptanceRequest: object({
     key: allOf([text(), minLength(1), maxLength(255)]),
     namespace: allOf([text(), minLength(1), pattern("^idp_[0-9a-f]{32}$")]),
@@ -4460,6 +4465,7 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.reconnect": ref(() => CHECKS.MCPServerRequest),
   "mcp.authorizationAttempts.create": ref(() => CHECKS.CreateMCPAuthorizationAttemptRequest),
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttemptRequest),
+  "plugins.getCommand": ref(() => CHECKS.GetPluginCommandRequest),
   "plugins.stream": ref(() => CHECKS.CallPluginRequest),
   "plugins.notifyChange": ref(() => CHECKS.PluginChangeNotice),
   "plugins.openResources": ref(() => CHECKS.OpenPluginResourcesRequest),
@@ -4570,6 +4576,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.reconnect": object({}, []),
   "mcp.authorizationAttempts.create": ref(() => CHECKS.MCPAuthorizationAttempt),
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttempt),
+  "plugins.getCommand": ref(() => CHECKS.CallPluginRequest),
   "plugins.stream": object({}, []),
   "plugins.notifyChange": object({}, []),
   "plugins.openResources": ref(() => CHECKS.PluginResourceLease),

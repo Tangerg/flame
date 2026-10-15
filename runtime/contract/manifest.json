@@ -805,6 +805,25 @@
       ]
     },
     {
+      "name": "plugins.getCommand",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_disabled",
+        "plugin_stale",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ]
+    },
+    {
       "name": "plugins.stream",
       "kind": "stream",
       "operation": "extension",
@@ -1537,6 +1556,7 @@
           "plan.get",
           "plugins.call",
           "plugins.configure",
+          "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
@@ -1728,6 +1748,7 @@
         "methods": [
           "plugins.call",
           "plugins.configure",
+          "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
@@ -1753,6 +1774,7 @@
         "methods": [
           "plugins.call",
           "plugins.configure",
+          "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
@@ -1778,6 +1800,7 @@
         "methods": [
           "plugins.call",
           "plugins.configure",
+          "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
@@ -1803,6 +1826,7 @@
         "methods": [
           "plugins.call",
           "plugins.configure",
+          "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
@@ -1828,6 +1852,7 @@
         "methods": [
           "plugins.call",
           "plugins.configure",
+          "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
@@ -2492,6 +2517,16 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.getCommand",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
           ]
         }
       ]
@@ -7655,6 +7690,27 @@
     },
     {
       "type": "GetRunAcceptanceRequest",
+      "rules": [
+        {
+          "field": "namespace",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "namespace",
+          "constraint": "pattern(\"^idp_[0-9a-f]{32}$\")"
+        },
+        {
+          "field": "key",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "key",
+          "constraint": "maxLength(255)"
+        }
+      ]
+    },
+    {
+      "type": "GetPluginCommandRequest",
       "rules": [
         {
           "field": "namespace",

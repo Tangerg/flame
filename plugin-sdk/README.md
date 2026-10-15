@@ -78,12 +78,28 @@ logical command that must survive client/provider generation changes, use
 context.runtime.plugins.command with a stable intent, generated contract/method/input,
 a binding preparation callback and an output decoder. Recovery runs before the
 callback and retains the original route/key/retention guard. The caller supplies
-the original serialized input; changed input is refused. The decoder must validate
+the original input meaning and exact numeric lexemes; changed input is refused.
+Object order and string escape spelling follow Go's admitted JSON identity.
+The decoder must validate
 the publisher acknowledgement before settlement. Journal routing/fingerprints are
 durable; authored input and business results are not copied into it. Low-level
-calls and stable-intent commands share that journal; stable intents additionally
-retain their original route across client/provider generations. Neither owns the
-business outcome. The combined graphical command-reply-loss/restart scenario
+calls and stable-intent commands share that journal and retain routing metadata.
+For a recreated component, `bindOperations(...).pendingCommands(method)` projects
+unresolved unary commands for that original installation/contribution/target.
+Its recovery handle reads `plugins.getCommand` from Runtime's saved route before
+querying the original backend receipt under the same key. It does not reconstruct
+input from the current draft, prepare another provider or persist business output.
+Unavailable, missing, expired or conflicting evidence stays unresolved. Runtime
+refuses route recovery before dispatch admission, so this read cannot initiate work.
+`context.runtime.plugins.pendingCommands()` exposes the same unary journal
+projection for client management. Streaming commands retain their existing
+explicit original-input stream recovery contract.
+
+The client journal now requires method metadata. Former records are retained
+and refused unchanged; use their original client to reconcile pending work before
+upgrading, and a fresh client profile for this pre-release cut. There is no
+automatic conversion, deletion or fallback fingerprint. Neither client journal
+nor Runtime routing owns the business outcome. The combined graphical command-reply-loss/restart scenario
 remains separately unqualified; resource connection/reload qualification does not
 prove it.
 

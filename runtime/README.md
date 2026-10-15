@@ -234,6 +234,22 @@ artifacts together when public shapes change.
 
 ## Portable plugins
 
+`plugins.getCommand` reads an original dispatched command's admitted request by
+its retained key and Runtime store namespace. It performs no backend I/O and
+stores no business outcome. The existing command owner retains contract, input,
+installation/release, target and dispatch evidence even after observation.
+Recreated clients can verify that projection against their unresolved journal
+identity before querying the original receipt. A missing or merely prepared route
+does not authorize execution, and a changed namespace cannot expose another store.
+Managed callers retain their actor scope and captured dependency authority.
+The public Go binding and generated wire artifacts expose this same query.
+
+The TS client journal includes immutable method/routing metadata without copying
+authored plugin input or private results. Its former format is refused and kept
+unchanged; finish pending work with its original client before using a fresh
+profile for this pre-release journal cut. No automatic data conversion or cleanup
+interprets uncertainty as permission to replay.
+
 Current selection rows store contribution_id independently of server identity.
 Original command routes retain that ID, named export and complete capability
 contract alongside immutable provider/server/input evidence. Former host tables

@@ -36,6 +36,12 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 	if err := commands.Observe(t.Context(), "command"); !errors.Is(err, plugin.ErrInvalid) {
 		t.Fatalf("observation before dispatch = %v", err)
 	}
+	if _, err := commands.Get(t.Context(), "command"); !errors.Is(err, plugin.ErrCommandUnconfirmed) {
+		t.Fatalf("recovery exposed a route without dispatch admission: %v", err)
+	}
+	if _, err := commands.Get(t.Context(), "missing"); !errors.Is(err, plugin.ErrNotFound) {
+		t.Fatalf("missing route was invented: %v", err)
+	}
 	provider.Digest = testsupport.Digest("3")
 	replay, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) {
 		t.Fatal("same identity resolved a current provider")
@@ -68,6 +74,17 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 		return nil
 	}); !errors.Is(err, plugin.ErrCommandUnconfirmed) {
 		t.Fatalf("duplicate dispatch = %v", err)
+	}
+	original, err := commands.Get(t.Context(), "command")
+	if err != nil || original.Snapshot().Input != bound.Snapshot().Input || original.Snapshot().Provider != bound.Snapshot().Provider {
+		t.Fatalf("recovery lost original input or provider: %v, %v", original, err)
+	}
+	actor, err := operation.NewActor(testsupport.InstallationID(t).String(), testsupport.Digest("actor").String(), testsupport.Digest("authority").String(), "backend")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := commands.Get(operation.WithActor(t.Context(), actor), "command"); !errors.Is(err, plugin.ErrInvalid) {
+		t.Fatalf("an undeclared managed reader obtained another command's input: %v", err)
 	}
 	if err := commands.Observe(t.Context(), "command"); err != nil {
 		t.Fatal(err)

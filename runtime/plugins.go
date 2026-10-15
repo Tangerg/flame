@@ -7,6 +7,10 @@ import (
 	"iter"
 )
 
+func (r *binding) GetPluginCommand(ctx context.Context, request protocol.GetPluginCommandRequest, options CallOptions) (*protocol.CallPluginRequest, error) {
+	return r.invoke[protocol.GetPluginCommandRequest, *protocol.CallPluginRequest](ctx, delivery.PluginsGetCommand, request, callOptions(options))
+}
+
 func (r *binding) OpenPluginResources(ctx context.Context, request protocol.OpenPluginResourcesRequest, options SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error) {
 	return r.invokeStream[protocol.OpenPluginResourcesRequest, *protocol.PluginResourceLease, protocol.PluginResourceEvent](ctx, delivery.PluginsOpenResources, request, subscriptionOptions(options))
 }
