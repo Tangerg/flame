@@ -304,8 +304,10 @@ optional frozen Session/workspace targets without private store access; user sco
 remains available without a workspace. Local filters, drafts and accepted page/cursor
 state belong to the component. Unknown acknowledgement retains the original command
 and prevents new submission until reconciliation. The former Memory HTML/carrier and
-trusted private mutation controls are removed. Full graphical/cross-reload acceptance
-remains unclaimed in this refactor.
+trusted private mutation controls are removed. Actual installed Web writes and
+owner-backed refresh are qualified. Cross-restart original-command recovery uses
+generic management, retaining the original receipt or explicit unknown binding
+after provider replacement; local drafts remain component presentation.
 
 The installed Memory component owns its local drafts, filters, captured targets,
 paging and command observation. Its backend alone advances Memory facts and private

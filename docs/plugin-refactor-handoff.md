@@ -22,8 +22,9 @@ proves a UI-accepted Run survives window/component closure. P31/P36 now have rea
 in-flight navigation and release-replacement proof. P33 now uses the owner point
 for actual contextual action visibility without menu I/O. P46 now has actual
 shutdown with an active backend/model callback and component teardown, including
-one cooperative session-resource close. One review cross-scenario remains Partial;
-the three other review groups are Evidenced. Fresh final global gates are pending.
+one cooperative session-resource close. All four review cross-scenarios are now
+Evidenced, including the actual no-Run loss/restart/provider-replacement controls
+below. Fresh final global gates remain pending.
 The historical post-SDK **10s safe-steer timeout has no established cause**.
 The user confirms no original Runtime log, goroutine dump or test data remains.
 Passing repetitions do not close that item. An earlier test-only qualification
@@ -72,9 +73,28 @@ or unused members; all sixteen analyzer regressions retain the negative guards.
 Complete frontend npm run check passes 357 files/2,429 tests (78.02s), including
 architecture/API/locale/resource/bundle/module guards. The first two gate failures
 and their repairs are recorded in progress; no guard or assertion is weakened.
-The real same-role provider-selection scene
-still remains, so that review group stays Partial. Historical timeouts, dependency
-alerts and fresh global/native qualification remain open.
+The actual same-role Memory control now completes that review. At c44671017,
+A commits a User-memory item and loses its backend reply; its real page retains
+unknown. After UI and identical-binary/home Runtime restart, actual management
+selects B. Uninstall of pending A stays held; disabled A remains unknown. After
+explicit reenable and public confirmation that A is connected, original recovery
+returns the complete first private receipt while B stays selected and empty.
+An armed mutation-redispatch trap stays absent; A contains its one original item.
+An immediate check before connection remains unknown and is not reported as
+successful recovery. All original keys/routing/admitted numeric lexemes agree.
+
+A separate loopback proxy deliberately drops successful Core-to-UI replies for
+one real B add command. UI retains unknown despite rereading its one item. After
+another UI and same-binary Runtime restart, actual management selects an empty
+new Memory owner and uninstalls B successfully. Original recovery retains B's
+request/key and stays unknown; the new selected owner remains empty. The journal
+and private task evidence deliberately retain that unknown original binding.
+The complete 128/72-event captures, exact complete receipt comparison, zero
+Sessions/Runs/model POSTs and prior Reviews update/uninstall scene qualify the
+first review group. No product source, assertion or deadline changes. All task
+windows close, temporary installations/source copies are removed, Runtime/proxy
+lifetimes join at 0 and the quiet provider joins after SIGTERM. Historical
+timeouts, dependency alerts and fresh global/native qualification remain open.
 
 P46 executes the actual installed Reviews board against a task analyzer that
 enters the public selected-model callback and a held local provider stream before
@@ -88,7 +108,7 @@ later HTTP/Backend.Close joins return nil and the process exits 0 without anothe
 setup close. Bootstrap shutdown tests, public callback/setup tests and 38 frontend
 lifetime/generation/Reviews tests pass. Both installations and package copies are
 removed, windows close and all owned processes join. No production behavior,
-assertion, deadline or lifecycle owner changes. The no-Run restart review,
+assertion, deadline or lifecycle owner changes. The subsequent no-Run restart/provider-replacement review is qualified above;
 historical timeouts, dependency alerts and fresh final global gates stay open.
 
 P33 is now qualified with the real installed Reviews/analyzer pair. The Go-owned

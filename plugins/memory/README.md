@@ -164,8 +164,14 @@ original mutation handle/key, blocks new changes and exposes same-command reconc
 A failed read preserves the accepted page. No optimistic item or competing result
 owner is introduced. The former HTML/Memory-specific carrier/read API is removed.
 The shared client journal preserves the original binding across client generation
-changes. Backend/shared-client tests cover recovery and invalidation; rendered
-window-reload interaction is excluded from the current acceptance scope.
+changes. The generic management entry also exposes retained unary commands after
+the component/client is recreated or the producer is unavailable. Actual standalone
+Web controls lose committed backend replies, restart UI/Runtime, select another
+Memory provider and recover the complete original receipt without redispatch.
+A separate lost Core-to-UI confirmation followed by original uninstall stays
+unknown against the old binding and never writes into the newly selected owner.
+These controls qualify original-command recovery, not every graphical/native
+Memory workflow.
 
 ## Feature boundary
 

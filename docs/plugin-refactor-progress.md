@@ -23,8 +23,9 @@ proves a UI-accepted Run survives its initiating window and component teardown.
 P31/P36 now have actual in-flight navigation and release-replacement evidence.
 P33 now has an installed applicability read model and actual no-menu-I/O proof.
 P46 now has actual shutdown during a component-initiated backend/model callback,
-including cooperative session-resource closure. The no-Run recovery review remains
-Partial; the three other review cross-scenarios are Evidenced.
+including cooperative session-resource closure. All four review cross-scenarios
+are now Evidenced, including actual no-Run loss/restart/provider-replacement
+qualification below. Fresh final global qualification remains incomplete.
 The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
 An earlier test-only qualification also retains unclassified MCP startup
@@ -39,6 +40,55 @@ canonical `0` still saves and recovers the business owner's `invalidUpdate` rece
 Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
+
+### Graphical review: no-Run loss, restart and provider replacement (2026-10-16)
+
+At c44671017, use ordinary copies of the built Memory distribution, the actual
+installed Memory page and generic management. Frozen Runtime/Memory SHA-256
+values and all private request/outcome evidence are retained in task scratch.
+The backend-to-Core control uses the existing managed response-loss executable.
+The real User-memory Save commits one item in A, then loses the backend reply.
+Its actual page shows unknown with original UUID a7bc4329-4373-49bc-9aed-d3af9b781edf.
+Close that UI, join Runtime and restart the identical binary/home. The recreated
+management entry retains the original installation, digest, input and identity.
+
+Through the actual management selector, change the same memory role from A to B.
+Uninstalling unresolved A still returns plugin_in_use. Disable A; its original
+outcome stays unknown despite B being available and empty. Explicitly reenable A.
+An immediate check before reconnection still stays unknown; inspect the public
+MCP status, then check only after A is connected. The complete original private
+receipt is recovered while memory remains selected to B. A retains exactly its
+one original item; B has zero. The archived commit marker is removed before
+recovery to arm a mutation-redispatch trap, which stays absent. All three checks
+keep the exact original UUID/routing and Go-admitted input, including numeric
+lexemes. The final response equals the complete first private value. The 128-event
+post-switch network capture is complete and untruncated.
+
+A second actual control drops only Core-to-UI replies through an isolated loopback
+proxy. B commits one different item; Core returns two complete successful replies
+under the same original UUID 42f17c0f-9200-4869-bca3-ba26bf929fdb, both deliberately
+withheld from the UI. The page rereads its one recorded item yet correctly keeps
+command confirmation unknown. Close UI, disarm the response-loss control, join
+and restart the same Runtime again. The fresh UI retains B's original command.
+Use actual management to select the empty default Memory owner, then uninstall B.
+This uninstall succeeds because Core already observed the original receipt.
+Original recovery reads its retained request and remains unknown against removed
+B; it never retargets the new selected owner, which stays empty. The complete
+72-event capture contains exactly one original-key plugin call, with unchanged
+binding and admitted input. No competing success/result cache is introduced.
+
+Both controls retain zero Sessions/Runs and zero model/embedding POSTs. Together
+with the preceding actual Reviews loss/restart/disable/update/configure/uninstall
+sequence, these qualify the review's first cross-scenario; all four review groups
+are now Evidenced. This closes no historical timeout or final global gate. It is
+one task-only standalone Web Runtime, not a new claim about every Memory UI/native
+workflow. The original B binding deliberately remains unknown in its browser
+journal and private task evidence; cleanup does not erase it to manufacture green.
+Both temporary installations are absent, copied sources are removed and task
+windows close. Three Runtime lifetimes join at 0, the proxy joins at 0 and the
+quiet provider joins after SIGTERM. No product source, deadline or assertion is
+changed. Current shared/frontend gates remain scoped to c44671017; fresh global
+Go/race/vet/native/closure and historical safe-steer/MCP causes remain outstanding.
 
 ### Management recovery and actual no-Run restart (2026-10-16)
 
@@ -3592,8 +3642,8 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 ## In progress
 
 Overall acceptance remains incomplete despite matching evidence for all 48
-proposal rows: the no-Run recovery review cross-scenario and fresh final gates
-remain outstanding. The two reopened production defects and
+proposal rows and all four review cross-scenarios: historical timeout causes,
+dependency qualification and fresh final global gates remain outstanding. The two reopened production defects and
 original complete parallel-race gate are closed; that narrower result does not
 close the other criteria. Historical slice entries retain their original evidence.
 
@@ -3626,13 +3676,12 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
 - The released Scope v0.51.1 upgrade, complete parallel race and current standalone
   author qualification now pass within their recorded scopes. Preserve separate
   historical safe-steer/MCP uncertainty until causal evidence closes it.
-- Complete the generic management recovery entrance using the existing unary
-  journal projection, including unavailable/uninstalled producers. Reviews now
-  restores its own controls after client recreation, but that does not qualify
-  management or the full cross-scenario.
-- The no-Run recovery review still needs
-  matching graphical interaction. The user has lifted the prohibition; use isolated
-  resources and do not substitute source/native builds for matching interactions.
+- The generic management entrance and actual no-Run cross-review are qualified:
+  original private receipt recovery survives UI/Runtime restart and same-role
+  provider selection, while an uninstalled original binding stays explicitly
+  unknown without entering the new provider. Their detailed scopes and deliberate
+  retained unknown evidence are recorded in Current stage. Concentrate fresh
+  global Go/race/vet/native/closure gates on the current source.
 - The high and low dependency entries have source/exposure triage but remain
   unremediated. The high root is unpatched upstream; patched KaTeX is outside the
   current transitive integrations' supported range. Paid/live,
@@ -3935,7 +3984,7 @@ qualification.
 | --- | --- |
 | Accurate baseline and owner boundaries | Last integrated main `7ba40c117`, released Scope v0.50.0; Runtime/Scope and private backend facts retain their original authorities. Full package/architecture checks pass. |
 | Remove closed service/view and privileged feature paths | Generic declarations, capabilities, bindings and resources replace closed business enums/carriers. Public Runtime build closure contains no private feature implementation. `6b3a1d823`, `9f2bac554`, `2079ee06f`, `6d3728a0c`, `03fb6eeb6` delete the remaining private receipt/read/model/context/client dependencies. |
-| Shared Tool/CLI/UI/cross-plugin operations | Actual Reviews, Memory and Schedules consumers enter the same backend operations and private receipts. Source API closure is 95/95; complete backend/CLI and shared-client checks pass. Actual installed Web/Wails Reviews and Web Memory interactions pass. P21 now compares complete real Tool/CLI/UI query and revision-conflict results; the no-Run restart review remains separate. |
+| Shared Tool/CLI/UI/cross-plugin operations | Actual Reviews, Memory and Schedules consumers enter the same backend operations and private receipts. Source API closure is 96/96 at c44671017; complete backend/CLI and shared-client checks pass. Actual installed Web/Wails Reviews and Web Memory interactions pass. P21 now compares complete real Tool/CLI/UI query and revision-conflict results; the no-Run restart review remains separate. |
 | Origin, parent, target and lifetime | Installed operation, Tool preparation, background capture, model callback and active-member tests pass. Memory Search's detached embedding parent was RED/GREEN fixed in `6d3728a0c`; restored attribution never manufactures an execution publisher. |
 | Collection/selection/decoration and plugin points | Exact consumer contracts, immutable setup, cycle checks, explicit compositions and actual Reviews/analyzer process lifetimes pass. CLI `33696b3c2` adds real composition inspection/selection/resolution; transitive failures retain their complete consumer path. No second readiness ledger. |
 | Reentrant RPC, remote next and streams | Actual SDK/headless processes verify reentrancy, frozen remaining chains, lazy consumption, acknowledgement backpressure, cancellation, byte budgets and stale grant refusal. The first remote model observer is explicitly transparent; its once-through rule is not universal middleware policy. |
@@ -3943,7 +3992,7 @@ qualification.
 | Independent model work and accounting | Each physical exchange has its own identity, captured route, caller budget and durable source. Source/Run/Goal tests preserve known inner usage under outer failure and unknown consumption under restart/cancellation. Independent output cannot alter primary conversation/context. No invented universal Goal ceiling. |
 | Model selection/context/input/counter admission | Primary/auxiliary/installed request tests preserve captured order/selection, authored input, final media/input/output capacity and counter failure/cancellation. Original sources remain evidence; providers are never automatically replayed. |
 | Ordinary embedding access and Memory-specific limits | Public text embedding and Tool context replace private metadata/methods. Ordinary installed callbacks support multiple embedding exchanges; Memory's operation grant consumes one generated published caller policy. Absence, configured errors and storage failures retain distinct semantics. |
-| No-Run unknown commands and original receipts | Installed Reviews now also exercises Runtime response loss, cold store reopen, disable/reenable, pending update/configuration/uninstall holds, replacement-target conflict and exact private receipt recovery without a Run or mutation redispatch. Memory selection tests and shared-client replacement/journal tests remain separate proofs. The actual UI plus Runtime restart/update/uninstall/selection cross-scenario has not run. Host stores routing, never competing business success. |
+| No-Run unknown commands and original receipts | Installed Reviews now also exercises Runtime response loss, cold store reopen, disable/reenable, pending update/configuration/uninstall holds, replacement-target conflict and exact private receipt recovery without a Run or mutation redispatch. Actual Reviews UI/Runtime restart/disable/update/uninstall and Memory same-role provider replacement now qualify the combined review. Backend-to-Core loss recovers the complete original receipt while B remains selected; Core-to-UI loss followed by original uninstall retains unknown against its old binding while the new owner stays empty. Host stores routing, never competing business success. |
 | One contract generation source and numeric parity | The review's explicit Go-owned alternative was selected in the decision ledger; Schema-first Go input was not implemented or claimed. Typed methods generate canonical Schema, Go projections and TS, with exact current regeneration. Feature JSON and the shared Go/TS corpus cover wide numbers through unary/stream/journal/point paths. This is feature JSON parity, not a universal arbitrary-precision conversion of every Core DTO. `9f5a66d51` completes pure typed admission before fresh route binding for Schema-valid decimal/exponent integer spellings, with real CLI RED/GREEN, unary/stream identity and unchanged receipt recovery proof. |
 | Typed refusal versus uncertainty | Current Reviews removes the incorrect lifetime receipt quota and its unrecorded refusal. Store/SDK and independent Tool/CLI proofs retain successful work and original refusals beyond 4,096 historical receipts. Actual rendered UI, model Tool and executable CLI now return identical complete revisionConflict results. The Tool remains tool_failed while its Run completes; same-command refusal redelivery and unchanged private revision prove that known refusal is not uncertainty. Core idempotency_conflict and private invocationConflict remain separately tested. |
 | Public components/shared modules/resources | Ordinary component ESM, relative/authenticated exact-release resources, host module maps and shared UI/React/context ownership pass their type/native gates. Packed Usage builds outside the checkout with identical resource bytes. Actual Web/Wails multi-resource controls verify shared React identity, Hook interaction, pending-ESM connection retirement, explicit reload and fresh leases; exact old capabilities retire to HTTP 410. |
@@ -3954,21 +4003,21 @@ qualification.
 | Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
 | Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
 | Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
-| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures, the remaining graphical review and fresh global gates retain separate qualification gaps. |
-| Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification and the separately unexecuted graphical criteria are not completed by P48 source closure. The newly authorized complete frontend gate now passes after removing the unused workspace Memory path and migrating stale fixtures; actual installed Web Memory still writes and refreshes its owner-backed row. |
+| Independent authors and current distributions | Current Scope-v0.51.1 Reviews/Tool-proposal/command-next author passes offline tidy/verify/full metadata inventory/race/vet/build from b2f1da248 snapshots, with workspace off, no replace and fresh private module sources. Runtime implementation and localruntime artifacts are included; authored code has no private imports. Actual Web/Wails execution and beta.29 native packaging qualify their recorded scenarios. Packed Usage independently reproduces unchanged formal component bytes. Publication, other platforms/architectures and fresh global gates retain separate qualification gaps; all four actual review groups now have evidence. |
+| Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification is not completed by P48 source closure; the separate graphical review now has actual evidence. The newly authorized complete frontend gate now passes after removing the unused workspace Memory path and migrating stale fixtures; actual installed Web Memory still writes and refreshes its owner-backed row. |
 
 The review's four extra cross-acceptance groups are independently tracked:
 
 | Review scenario | Status | Existing evidence | Missing proof |
 | --- | --- | --- | --- |
-| No-Run mutation loses reply; UI and Runtime restart; update/uninstall/provider change | Partial | Actual installed Reviews no-Run Runtime recovery across cold restart, disable/reenable, update/uninstall holds and replacement-target refusal; Memory selected-provider tests; shared TS journal | Actual Reviews UI/Runtime restart followed by all replacement attempts and provider selection, retaining original receipt or explicit unrecoverable binding |
+| No-Run mutation loses reply; UI and Runtime restart; update/uninstall/provider change | Evidenced | Actual Reviews committed-reply loss, UI/same-binary Runtime restart, unavailable-producer management, held select/configure/uninstall and later release selection/uninstall. Actual Memory backend-to-Core loss survives both restarts and same-role A-to-B selection; disabled A remains unknown and connected A returns the complete original receipt with B empty and an armed redispatch trap absent. A separate Core-to-UI loss permits old B uninstall after restart and selection of a new empty owner; its original request/key remain explicitly unknown and never enter that owner. Complete network captures and zero Session/Run/model-request assertions qualify both paths. | No remaining proof for this scenario; historical timeout causes and fresh global gates remain separately open. |
 | Same refusal through Tool, CLI and UI | Evidenced | An actual model Tool, executable CLI and stale rendered Reviews board submit identical revision-1 input after the private owner reaches revision 2. Complete revisionConflict JSON values agree. UI explicitly reports the conflict and rereads revision 2; the Tool keeps tool_failed while its Run completes, and CLI same-identity redelivery preserves the original refusal. Final independent query confirms unchanged private state. Earlier identity/quota regressions remain separately valid. | No remaining proof for this scenario; no historical timeout diagnosis is claimed. |
 | Remote multi-resource ESM in Web and Wails | Evidenced | Actual Web/Wails relative ESM and shared-Hook state, native address replacement, Web wrong-token 401 and valid-token recovery with pending ESM, explicit reload/token reentry, fresh lease and exact selected-resource bytes. Web old/new leases become HTTP 410 after connection/window retirement. | No remaining proof for this scenario; one standalone loopback Runtime is tested, not a second physical host or TLS deployment. |
 | Module initialization blocks renderer startup; independent recovery disables it | Evidenced | Actual installed synchronous module loop in a separately identified Wails app; native WebContent samples remain in module evaluation while independent CLI disable/read confirms the retained fact in 0.229s. Bounded task-app termination and real native restart show disabled state, withdrawn command and working shared-React control. | No remaining proof for this scenario; automatic JavaScript interruption or sandboxing is not claimed. |
 
 Actual Web/Wails ESM execution, independent synchronous-block recovery and
-Tool/CLI/UI query/refusal comparison now qualify those scenarios; only the
-no-Run recovery review above remains Partial. The real-process
+Tool/CLI/UI query/refusal comparison and the actual no-Run loss/restart/provider
+replacement controls now qualify all four review scenarios. The real-process
 headless callback/streaming observer feasibility gate now also has P12's actual
 two-installed-layer trace and P16's durable inner-mutation/outer-failure proof.
 Those headless proofs do not substitute for the remaining graphical scenarios.
@@ -4025,7 +4074,7 @@ Other criteria retain their exact scope.
 | P19 | A slow stream consumer receives a large result | Evidenced | Verified at backend stream/transport boundaries for pull backpressure, captured byte budgets and explicit capacity failure. |
 | P20 | A model route is changed by a plugin | Evidenced | Backend verified by actual selected provider/model/options, independent routes, metering and durable endpoint evidence. |
 | P21 | A query is called through Tool, CLI, and UI | Evidenced | The independently installed Scope-v0.51.1 Reviews board, executable CLI and actual model Tool through authenticated HTTP return identical complete revision-1 query values. After CLI advances the private owner, all three entrances submit identical stale input and return identical revisionConflict values with current revision 2; UI renders the explicit refusal and rereads the owner. Same-command CLI redelivery and a final read preserve the original refusal and unchanged state. |
-| P22 | Reviews mutation commits but reply is dropped | Evidenced | Public-SDK/private receipt and Run response-loss tests cover real committed reply loss, restart, original recovery and stale revision. `TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRestart` adds the installed Runtime no-Run path, exact read-only receipt, pending release holds and replacement-target conflict. The larger graphical review cross-scenario remains Partial. |
+| P22 | Reviews mutation commits but reply is dropped | Evidenced | Public-SDK/private receipt and Run response-loss tests cover real committed reply loss, restart, original recovery and stale revision. `TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRestart` adds the installed Runtime no-Run path, exact read-only receipt, pending release holds and replacement-target conflict. Actual Reviews restart/management and Memory same-role replacement now qualify the larger graphical review cross-scenario; see Current stage. |
 | P23 | A command identity is reused with different input | Evidenced | Private receipt/public binding/shared-client conflict tests and `TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt` verify the real executable CLI's known Core conflict, matching Go problem, new-key progress and unchanged original receipt after another command advances private state. `TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI` separately qualifies the private outcome, unchanged prior receipts, explicit unconfirmed recovery and fresh-key progress. |
 | P24 | Schedule dispatch acknowledgement is lost | Evidenced | Current-production complete qualification includes lost-Core-opening reconciliation in bootstrap and all eight `TestScheduleCreateRecoversAcrossSIGKILLCuts` cuts whose parent is in execution. The recorded complete parallel-race parent passes 112.75s; the later complete ordinary selection's parent passes 44.94s. Bootstrap alone does not execute those cuts. Subsequent CLI test-only slices do not rerun or extend this gate. |
 | P25 | Schedule is edited after work is captured | Evidenced | Verified by retained Schedule input after definition edit/deletion and negative receipt/capture cuts. |

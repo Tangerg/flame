@@ -99,9 +99,12 @@ The client journal now requires method metadata. Former records are retained
 and refused unchanged; use their original client to reconcile pending work before
 upgrading, and a fresh client profile for this pre-release cut. There is no
 automatic conversion, deletion or fallback fingerprint. Neither client journal
-nor Runtime routing owns the business outcome. The combined graphical command-reply-loss/restart scenario
-remains separately unqualified; resource connection/reload qualification does not
-prove it.
+nor Runtime routing owns the business outcome. Actual standalone Web recovery
+now covers backend-to-Core reply loss across UI/Runtime restart and same-role
+provider replacement through generic management. A separate Core-to-UI loss
+followed by original uninstall keeps that old binding unknown and leaves the
+new provider unchanged. Resource connection/reload proof remains a distinct
+qualification; it is not the evidence for command recovery.
 
 Use `buildComponent` from `@flame/plugin-sdk/build` with a source entry, output
 directory and `compiler: rolldown` imported from the author toolchain's declared
