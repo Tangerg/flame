@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetime(t *testing.T) {
-	r := poMCPOpen(t, poMCPConfig(t))
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
 	activate := func(source, key string) *protocol.PluginInstallation {
 		t.Helper()
 		installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-"+key).(*protocol.PluginInstallation)
@@ -81,6 +83,24 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	read(1)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: analyzer.ID}, "disable-analyzer")
 	read(0)
+	mutation := request
+	mutation.Method = "io.github.tangerg.flame.examples/reviews.update"
+	mutation.Input = `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
+	calling := operation.Start(t.Context(), capability.Human, "point-lifecycle", "withdrawn-provider-update")
+	_, invoke, err := r.api.PreparePluginCall(calling, mutation)
+	if err == nil {
+		_, err = invoke(calling)
+	}
+	if !errors.Is(err, protocol.ErrPluginUnavailable) {
+		t.Fatalf("unavailable activation before command admission lost its definite refusal: %v", err)
+	}
+	if _, found, err := cfg.Stores.PluginCommands.Get(t.Context(), operation.Identity(calling)); err != nil || found {
+		t.Fatalf("unavailable activation admitted a command route: found=%t, %v", found, err)
+	}
+	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, mutation, delivery.Options{IdempotencyKey: "withdrawn-provider-update", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrPluginUnavailable) {
+		t.Fatalf("delivery turned a pre-admission refusal into uncertainty: %v", refused.Failure)
+	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: analyzer.ID, Enabled: true}, "reenable-analyzer")
 	wait(analyzer, "analyzer")
 	read(1)

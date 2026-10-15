@@ -35,6 +35,22 @@ other graphical scenarios. The following frontend change has its own qualificati
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 
+Actual graphical qualification exposes and repairs a pre-admission error-category
+defect. When a frozen optional collaborator is withdrawn, activation capture must
+still refuse the broken bound graph. Its infrastructure unavailable error was not
+translated to the plugin domain, so Delivery returned internal_error and the UI
+retained false uncertainty. The existing connection adapter now classifies this
+known capture failure. An installed Handler/Delivery RED/GREEN regression preserves
+the no-command-route fact and unchanged private revision. Broken bound optional
+members still do not become absence; after-dispatch uncertainty still wins.
+Four focused backend packages, the point lifecycle and no-Run restart/replacement
+case pass. A fresh Runtime reproduces the same actual UI sequence as definite
+plugin_unavailable, with no unknown control or private change. Explicit consumer
+reconnect admits genuine optional absence before a new explicit command succeeds.
+The old false-unknown command is reconciled under its original identity. Earlier
+complete race/native/closure gates are not extended to this new Go source; final
+global requalification is pending. P33 consumer work has a separate slice.
+
 P31/P36 use a second actual Reviews installation and one bounded task HTTP proxy.
 For P31, A commits revision 3 while its response is held; navigating to B renders
 B's own revision 1 and cancels A's old observation. Releasing that reply cannot

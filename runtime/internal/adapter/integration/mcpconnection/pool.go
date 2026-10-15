@@ -325,10 +325,16 @@ func (p *Pool) ServiceSession(ctx context.Context, id mcpserver.ID) (*sdk.Client
 
 func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (plugin.Activation, error) {
 	session, err := p.ServiceSession(ctx, id)
-	if err != nil {
-		return plugin.Activation{}, err
+	var activation plugin.Activation
+	if err == nil {
+		activation, err = p.inner.Activation(session)
 	}
-	return p.inner.Activation(session)
+	if errors.Is(err, mcp.ErrUnavailable) {
+		// Availability is known at this capture boundary. Callers still retain
+		// uncertainty when dispatch may already have occurred.
+		err = errors.Join(plugin.ErrUnavailable, err)
+	}
+	return activation, err
 }
 
 func (p *Pool) BoundServiceSession(ctx context.Context, id mcpserver.ID, authority fingerprint.Digest) (*sdk.ClientSession, error) {

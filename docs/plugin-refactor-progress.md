@@ -37,6 +37,43 @@ Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
 
+### Definite activation failure before command admission (2026-10-16)
+
+The actual installed Reviews control exposes a separate classification defect:
+disable an analyzer already present in the consumer's frozen optional setup,
+then submit a new review update. Capturing the complete activation graph correctly
+refuses its missing bound member. The infrastructure ErrUnavailable, however,
+crosses the connection adapter without the plugin-domain category. Delivery emits
+internal_error and the graphical client conservatively retains confirmation unknown.
+This is not a private mutation failure, a reason to pretend the bound member is
+absent, or an explanation of either historical timeout.
+
+The installed point-lifecycle regression now captures this sequence before command
+admission. Original source fails after 5.09s with the exact infrastructure cause.
+InstallationActivation now translates that known absence at its existing adapter
+boundary while retaining the cause. The same test passes after 13.400s, asserts
+plugin_unavailable through Handler and Delivery, and proves no original command
+route was saved. Its existing revision-1 checks remain unchanged. The infrastructure
+assertion that a broken bound optional member is not an empty collection also
+remains unchanged and passes. Dispatch/receipt owners still preserve uncertainty
+when work may already have occurred; no retry or graph rebasing is added.
+
+Focused mcpconnection/pluginservices/infrastructure-MCP/Delivery packages pass in
+0.560/6.344/13.794/11.601s. The installed no-Run response-loss/restart/replacement
+case also passes after 14.888s. With a freshly built Runtime, the same actual UI
+withdrawal sequence now returns plugin_unavailable (-32045), keeps private revision
+3, exposes no unknown-recovery control and allows a later explicit command. After
+explicit consumer reconnect captures genuine optional absence, that new command
+commits revision 4. The earlier false-unknown task command is reconciled using its
+original key after explicit consumer reconnect; it is not discarded or replaced.
+Original/fixed protocol frames, snapshots and actual screenshots remain private.
+
+These are focused current-source results. The earlier complete parallel race,
+native build and closure gates retain their original source scope; a fresh final
+global qualification is pending. P33's graphical consumer work is tracked in a
+separate slice; P46, the no-Run graphical restart review and historical
+safe-steer/MCP causes remain incomplete.
+
 ### Graphical acceptance: in-flight target and release replacement (2026-10-16)
 
 Create a second installation of the independently built Reviews package, with
