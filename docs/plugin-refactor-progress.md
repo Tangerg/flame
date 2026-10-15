@@ -22,19 +22,64 @@ Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
 
-The current slice passes SDK, installed-service and Reviews full-package race,
-affected vet, Runtime architecture/build, shared TS (30 files/355 tests), Desktop
-typecheck and component builds. All eight Schedule SIGKILL cuts pass unchanged
-(parent 44.53s; package 45.415s). The first complete bootstrap run fails its two
+Production `9f5a66d51` passes the complete original `-race -p 2` selection over
+Runtime, localruntime, CLI and Reviews: 174 packages, 159 tested packages passing,
+fifteen without tests, 5,193 top-level passes and seven existing conditional skips
+(six paid DeepSeek scenarios and their subprocess-only helper). No case assertion,
+context or existing 900s package limit changes. Wall time is 1,324.824s;
+execution/bootstrap pass 494.464/835.832s, architecture 146.001s and CLI 76.391s.
+All eight SIGKILL cuts pass (parent 112.75s), as do typed CLI admission 20.33s,
+history model/CLI recovery 86.95s and lost Core opening 5.31s. These passing gates
+do not explain either historical deadline.
+
+Full-module vet/build pass 6.198/7.956s. Shared TS check passes 30 files/355 tests
+and its type/lint/format/dead-code gates; Desktop typecheck and component builds
+pass. SDK, installed-service and Reviews full-package race also pass independently.
+The focused normal eight-cut gate passes (parent 44.53s; package 45.415s).
+The first complete normal bootstrap run fails its two
 history subcases because their transport counters also count the new read-only
 validation as mutation dispatch. The fixture now counts validation separately,
 requiring exactly one validation, one typed update, one Tool and two receipt reads;
 all original mutation/private-state/receipt assertions remain. The complete
 bootstrap rerun passes all 150 top-level tests without skips or failures (package
 178.324s; runner 183.667s), including history model/CLI refusal recovery 34.49s,
-typed admission 9.66s and lost Core opening 1.94s. A fresh complete 174-package
-parallel race gate is running. Native packaging and independent author archives
-have not been repeated; do not inherit the preceding source's gates below.
+typed admission 9.66s and lost Core opening 1.94s. The entire ordinary 174-package
+selection has not been rerun after this protocol change; its prior-source result
+below is not promoted to this source. The complete current race gate and normal
+bootstrap are the actual current executions.
+
+Current independent author qualification uses checked Runtime/localruntime module
+archives `v0.0.0-unreleased.9f5a66d51`, an initially empty private module cache,
+offline file proxies, workspace off and no replace. Source staging is removed
+before tidy/verify/full race/vet/build pass (4.927/2.086/119.404/52.875/4.339s).
+Backend/analyzer/command-next packages pass 20.644/2.472/2.712s: 21 top-level
+passes, no failed or skipped tests and three command packages without tests.
+Public Tool-proposal author code also compiles. Selected Runtime/localruntime
+resolve inside that cache. Thirteen Reviews/analyzer projection artifacts reproduce
+byte-for-byte after isolated generation/normalization (20.993s). Required internal
+implementation is included in the SDK archive; authored code imports only public
+APIs. No released version, repository manifest or shared published cache is changed.
+
+Current packed Usage, SDK/UI/icons/Runtime TS artifacts also pass outside the
+repository, including protocol 2026-10-15.3 metadata. Offline install/typecheck/build
+pass (3.481/1.004/0.591s), followed by clean offline ci/typecheck/build
+(1.494/1.496/0.512s). Both builds reproduce the formal component resources exactly.
+No component is rendered or UI test added/executed.
+
+Current Runtime/catalog build passes 12.345s. A task-local project-matching Wails
+beta.29 CLI builds in 15.352s; native packaging passes 39.809s and actually rebuilds
+the frontend (Vite 8.07s). Strict/deep signature, arm64 and macOS 13.0 floor checks
+pass without launching the app. HUSKY=0 is retained throughout; the captured shared
+hooksPath and global CLI hash stay unchanged in this qualification. The earlier
+shared hooksPath write remains disclosed below, without guessing its prior value.
+
+All current verification handles are terminal. Task-owned author copies, module
+archives/proxies/caches, portable kits, private build cache, logs and pinned CLI
+are removed after recording these results. Formal tracked artifacts and current
+ignored Runtime/native product outputs remain. The reused worktree and branch
+are retained; no push, main merge, publication, UI test or app launch occurs.
+
+### Frozen qualification before typed admission (`5ff75fffc`)
 
 The frozen concentrated qualification covers production source `5ff75fffc`, after
 both Reviews receipt repairs and fresh structural-refusal classification. With
@@ -82,9 +127,9 @@ remain outside these passes. Current typed-input and broader artifact freshness
 are distinguished above. Core and
 backend protocol/storage cutover limits recorded below remain deliberate breaks.
 
-### Requalify current independent Go author artifacts (2026-10-15)
+### Frozen independent Go author artifacts (`5ff75fffc`, 2026-10-15)
 
-Current production source `5ff75fffc` now passes an independent offline Reviews
+Frozen production source `5ff75fffc` passes an independent offline Reviews
 author qualification after both receipt repairs. The fixture copies the complete
 Reviews package outside the repository, includes the unchanged public Tool-proposal
 contributor source and executable command-decoration regression, and imports no
@@ -2732,11 +2777,11 @@ close the other criteria. Historical slice entries retain their original evidenc
 
 ## Next
 
-The complete normal/race product, native and independent-author baseline is
-qualified at `5ff75fffc` after the Reviews receipt repairs. The current typed-input
-admission slice changes the backend protocol and therefore does not inherit
-those artifact gates. Its exact focused passes and pending full gates are
-recorded in Current stage.
+Current production `9f5a66d51` has complete parallel race, normal bootstrap,
+full vet/build, shared TS/Desktop typecheck, current isolated Go author, packed
+Usage and native qualification. Their exact scope and results are recorded in
+Current stage. The ordinary whole 174-package selection has not been rerun after
+this protocol change; preceding-source normal results remain labeled as such.
 Preserve the remaining acceptance gaps instead of reporting 100%:
 
 - Obtain actual deadline evidence for the historical post-SDK safe-steer timeout.
@@ -2744,9 +2789,8 @@ Preserve the remaining acceptance gaps instead of reporting 100%:
   post-Resume sequence. Fault controls prove the same caller timeout can follow
   already finished failed/lost Runs. Use retained failure phase/state/stack
   evidence to distinguish those from live blocking; the old cause is unresolved.
-- Requalify complete product/native and independent author artifacts after the
-  typed-input admission protocol cutover. Do not inherit the old source's gates.
-  The separate initial-MCP-discovery failures also retain no established cause;
+- The typed-admission protocol cutover's fresh artifact and parallel gates now
+  pass. The separate initial-MCP-discovery failures retain no established cause;
   a passing later gate does not close them.
 - The `Invalid` audit now has causal public regressions, owner/reader and complete
   fresh typed-input admission repairs. Retain the distinction between unadmitted input and a stored business
@@ -3058,7 +3102,7 @@ whole-proposal completion and public-contract freeze qualification.
 | Model selection/context/input/counter admission | Primary/auxiliary/installed request tests preserve captured order/selection, authored input, final media/input/output capacity and counter failure/cancellation. Original sources remain evidence; providers are never automatically replayed. |
 | Ordinary embedding access and Memory-specific limits | Public text embedding and Tool context replace private metadata/methods. Ordinary installed callbacks support multiple embedding exchanges; Memory's operation grant consumes one generated published caller policy. Absence, configured errors and storage failures retain distinct semantics. |
 | No-Run unknown commands and original receipts | Installed Reviews now also exercises Runtime response loss, cold store reopen, disable/reenable, pending update/configuration/uninstall holds, replacement-target conflict and exact private receipt recovery without a Run or mutation redispatch. Memory selection tests and shared-client replacement/journal tests remain separate proofs. The actual UI plus Runtime restart/update/uninstall/selection cross-scenario has not run. Host stores routing, never competing business success. |
-| One contract generation source and numeric parity | The review's explicit Go-owned alternative was selected in the decision ledger; Schema-first Go input was not implemented or claimed. Typed methods generate canonical Schema, Go projections and TS, with exact current regeneration. Feature JSON and the earlier shared Go/TS corpus cover wide numbers through unary/stream/journal/point paths. This is feature JSON parity, not a universal arbitrary-precision conversion of every Core DTO. A new current-source SDK/MCP probe exposes Schema-versus-typed-decoder admission differences for decimal/exponent integer spellings; that public admission repair remains open. |
+| One contract generation source and numeric parity | The review's explicit Go-owned alternative was selected in the decision ledger; Schema-first Go input was not implemented or claimed. Typed methods generate canonical Schema, Go projections and TS, with exact current regeneration. Feature JSON and the shared Go/TS corpus cover wide numbers through unary/stream/journal/point paths. This is feature JSON parity, not a universal arbitrary-precision conversion of every Core DTO. `9f5a66d51` completes pure typed admission before fresh route binding for Schema-valid decimal/exponent integer spellings, with real CLI RED/GREEN, unary/stream identity and unchanged receipt recovery proof. |
 | Typed refusal versus uncertainty | Real Tool/CLI query/revision-conflict facts agree. Current Reviews removes the incorrect lifetime receipt quota and its unrecorded refusal. Store/SDK and independent model Tool/CLI proofs retain new successful work and original known-refusal recovery beyond 4,096 historical receipts; errors without evidence remain unknown. SDK/Tool invocation conflict remains separate from actual CLI and rendered-UI proof. The cross-scenario remains Partial. |
 | Public components/shared modules/resources | Ordinary component ESM, relative/authenticated exact-release resources, host module maps and shared UI/React/context ownership are implemented and type/native built. The complete packed Usage feature builds outside the checkout with identical resource bytes; graphical identity/interaction is not executed. |
 | Management independent of failed optional UI | Partial: independent CLI and built-in metadata management exist; blocked-backend inspection/disable is tested. Recovery while module initialization blocks the actual renderer remains unexecuted. An error boundary or source separation does not complete that review scenario. |
@@ -3068,7 +3112,7 @@ whole-proposal completion and public-contract freeze qualification.
 | Schedule wake/dispatch/Run acceptance | One declared backend lifetime owns scans, captured pending work and original callback attribution. Whole bootstrap and all eight crash cuts pass in normal and full Runtime race suites. Core Run acceptance survives unavailable source/observation loss; no host scheduler or provider replay remains. |
 | Evidence retention/pruning | Existing Run cascade and atomic Session deletion own cleanup, including rollback and unsettled-Run protection; unattached source evidence remains retained. No second ledger or unauthorized TTL. |
 | Install integrity/credentials/core protections | Complete package/archive/namespace/secret/source/Tool-authority/file/process tests remain in the backend suites. Deleted guest isolation tests do not replace or remove these sound protections. |
-| Independent authors and current distributions | Current `5ff75fffc` independent Reviews/Tool-proposal/command-next author offline tidy/race/vet/build passes with workspace off, no replace and explicit unreleased module archives. Required internal implementation and companion localruntime are included; authored code has no private imports. Current Runtime/catalog/native packaging passes with pinned task-local beta.29; unchanged Vite output is reused. Earlier packed Usage evidence is unchanged-source proof. Registry publication, full offline release-metadata inventory, all-platform execution and graphical qualification remain absent. |
+| Independent authors and current distributions | Current `9f5a66d51` independent Reviews/Tool-proposal/command-next author offline tidy/verify/race/vet/build passes with workspace off, no replace and explicit unreleased module archives. Required internal implementation and companion localruntime are included; authored code has no private imports. Current Runtime/catalog/native packaging passes with pinned task-local beta.29 and a fresh Vite build. Current packed Usage also reproduces formal component bytes outside the repository, including offline clean reinstall. Registry publication, full offline release-metadata inventory, all-platform execution and graphical qualification remain absent. |
 | Final deletion and documentation | `b2dcbfbba` closes source/API/doc cutover against the original replacement map; P13's public installed boundary, active guidance and generated inventory are present. Architecture/generation/static checks pass. Current global/native qualification and the separately unexecuted graphical criteria are not completed by P48 source closure. |
 
 The review's four extra cross-acceptance groups are independently tracked:
@@ -4794,9 +4838,10 @@ Graphical interaction remains unexecuted by user instruction. The earlier
 interrupted prohibited UI run is not current acceptance evidence and is not
 claimed resolved. Earlier public artifact qualification used branch-source archives
 and an offline external Go module. The earlier packed Usage artifact remains
-unchanged-source evidence. Current `5ff75fffc` independent Reviews/Tool-proposal/
-command-next author tidy/verify/race/vet/build now passes after the receipt repairs;
-this does not close the newly reproduced typed-input admission gap.
+unchanged-source evidence for its recorded snapshot. Current `9f5a66d51` packed
+Usage and independent Reviews/Tool-proposal/command-next author qualification
+pass after the typed-input admission repair. The public CLI RED/GREEN case closes
+that structural boundary; it does not explain either historical deadline.
 The current full Runtime module archive includes its internal implementation and
 companion localruntime artifact; author source imports only public APIs. An archive
 of public directories alone is insufficient for this current SDK and is not
@@ -4805,10 +4850,10 @@ Registry publication and external deployment are not authorized or claimed.
 
 ## Spillover risks
 
-- Complete typed structural input admission has its shared unary/stream repair
-  and public CLI RED/GREEN proof. This backend protocol cutover still needs fresh
-  complete product/native and independent-author qualification; preceding-source
-  artifacts do not qualify the new wire contract.
+- Complete typed structural input admission has its shared unary/stream repair,
+  public CLI RED/GREEN proof and current parallel/artifact/native qualification.
+  The entire ordinary 174-package selection has not been rerun after this cutover;
+  current actual executions are distinguished from frozen preceding-source gates.
 - The native build's existing npm prepare wrote shared
   `core.hooksPath=desktop/.husky/_` without a captured prior value. That value is
   preserved rather than guessed away; future task-owned qualification sets

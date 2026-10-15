@@ -13,8 +13,9 @@ also has unclassified MCP startup discovery deadlines; its failed gates remain
 recorded separately from the earlier complete product pass.
 Complete typed-input structural admission now has an actual installed CLI
 RED/GREEN regression and shared SDK/Runtime repair for unary and streaming
-consumers. Broader current-source qualification is still pending; do not count
-the preceding source's complete/native/independent-author gates as current.
+consumers. Current parallel race, native and independent-author qualification
+passes at `9f5a66d51`; these gates do not close the historical deadlines or
+prohibited graphical scenarios.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 
@@ -131,10 +132,34 @@ changed-input conflict. The first complete bootstrap attempt fails only its two
 history-fixture counters, which incorrectly include the new read-only validation
 in typed dispatch. Those counters now separately require exactly one validation,
 one typed update, one Tool and two receipt reads; all original assertions stay.
-The complete bootstrap rerun passes all 150 top-level tests (178.324s), zero
+The complete normal bootstrap rerun passes all 150 top-level tests (178.324s), zero
 failures/skips, with history refusal recovery 34.49s, typed admission 9.66s and
-lost Core opening 1.94s. A fresh full 174-package parallel race gate is running;
-native/independent-author qualification has not been repeated for this protocol.
+lost Core opening 1.94s. The complete original current `-race -p 2` selection
+passes all 174 packages: 159 tested, fifteen without tests, 5,193 top-level passes
+and seven existing conditional skips (six paid DeepSeek cases plus their helper).
+Wall time is 1,324.824s; execution/bootstrap pass 494.464/835.832s. All eight
+SIGKILL cuts pass (112.75s), as do typed admission 20.33s, history recovery 86.95s
+and lost Core opening 5.31s. Original assertions/contexts and the existing 900s
+package limit remain unchanged. Full-module vet/build pass 6.198/7.956s.
+The whole ordinary 174-package selection has not been rerun for this protocol;
+its preceding-source pass below is not current qualification.
+
+Current-source independent author archives use explicit unreleased
+`v0.0.0-unreleased.9f5a66d51` Runtime/localruntime versions, deleted source staging,
+offline proxies, an initially empty private module cache, workspace off and no replace.
+Tidy/verify/race/vet/build pass 4.927/2.086/119.404/52.875/4.339s; 21 top-level
+tests pass, zero fail/skip and three commands have no tests. Authored code imports
+only public APIs; the archives include their actual implementation. Thirteen
+generated projection artifacts reproduce exactly. A current packed Usage build
+also reproduces exact formal component bytes outside the repository, including
+after offline clean ci, using packed SDK/UI/icons/Runtime TS and current metadata.
+
+Current Runtime/catalog build passes 12.345s. A task-owned beta.29 CLI builds
+15.352s; native packaging passes 39.809s with a fresh frontend build (Vite 8.07s).
+Strict/deep signature, arm64 and macOS 13.0 floor checks pass. The captured shared
+hooksPath and global CLI hash remain unchanged with HUSKY=0. No application is
+launched or graphical criterion qualified. Registry publication, full offline
+release-metadata inventory, paid live and other-platform gates remain unexecuted.
 
 The frozen concentrated qualification covers production `5ff75fffc`. With ordinary
 workspace discovery, full normal and `-race -p 2` runs over Runtime, localruntime,
@@ -479,7 +504,7 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
   override, forced downgrade or manifest/lock change occurs. All eight alerts
   now have triage, and none is claimed remediated.
 - Core is `2026-10-15.2`, backend is
-  `io.github.tangerg.flame/backend/2026-10-14.2`, export schema is 3. Private
+  `io.github.tangerg.flame/backend/2026-10-15.3`, export schema is 3. Private
   checkpoints require per-group `mcp_manifests` and `tool_proposals`. Preserve old
   data and finish incompatible waiting work with its original binary. There is
   no compatibility reader, automatic migration, private copying or provider replay.
@@ -492,8 +517,10 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
 
 Temporary overlays, source snapshots, author archives/caches/kits and diagnostic
 resources are removed after inspection; formal code/docs and current ignored
-Runtime/native build outputs remain. All verification processes finish. Main and
-stash are preserved. No push, merge, external publication or user-data change.
+Runtime/native build outputs remain. All verification processes finish.
+Primary-checkout source and stash are preserved; the earlier shared hooksPath
+write is disclosed above and the current HUSKY=0 gate preserves its captured
+value. No push, merge, external publication or user-data change.
 
 Next substantive unresolved work is to capture a real historical-class safe-steer
 deadline with phase/state/stack evidence. Determine whether execution is still
@@ -509,9 +536,10 @@ Keep graphical criteria and dependency/live/platform/publication limits explicit
 Actual CLI invocation-conflict proof remains separate from SDK/Tool and current
 history/refusal recovery. The previous capacity contract is removed without
 compatibility; do not cite its old fresh-response proof as current behavior.
-Current independent author and concentrated whole-product/native checks now pass
-for `5ff75fffc`, as scoped above. Next add the real installed numeric-input
-regression and repair complete typed structural admission before dispatch.
+Current independent Go authors, packed Usage, complete parallel race, normal
+bootstrap, full vet/build and native checks pass for `9f5a66d51`, as scoped above.
+The real installed numeric-input regression and complete typed admission repair
+are committed. The whole ordinary 174-package selection is not newly executed.
 The `Invalid` audit now has a causal public regression and production writer/
 reader/admission repairs. Its exact qualification is recorded above; do not
 extend that evidence to actual rendered UI or every CLI refusal class.

@@ -190,20 +190,20 @@ From `backend`, run `go test ./...`, `go vet ./...`, and `go build ./...`.
 ownership. Use `GOWORK=off` for the same checks against this module's independent
 released dependency graph once its Runtime dependency names a release containing
 the new public SDK. Current workspace checks use the branch's SDK. An isolated
-offline author build of frozen source `5ff75fffc` is verified with Runtime
+offline author build of current source `9f5a66d51` is verified with Runtime
 and companion localruntime module archives, `GOWORK=off`, and no local `replace`.
 The archives include the actual implementation required by their public packages,
 including internal directories; author source imports only public APIs. A
 public-directories-only archive does not contain that implementation closure.
 The checked archives use the explicit temporary version
-`v0.0.0-unreleased.5ff75fffc`. Their source staging directory is removed before
+`v0.0.0-unreleased.9f5a66d51`. Their source staging directory is removed before
 workspace-off tidy, module verification, full race, vet and build pass through
 an isolated module cache, with no replace. The fixture also compiles the public
 Tool-proposal contributor and runs the unchanged executable command-decoration
 regression. The offline proxy is not a published release: this module's currently
-declared older Runtime version still lacks the new public SDK. An optional full
-release-metadata listing is not qualified because the offline third-party cache
-lacks an IAM `.info` entry.
+declared older Runtime version still lacks the new public SDK. The earlier optional
+full release-metadata listing fails on an uncached IAM `.info` entry; that
+inventory is not repeated for this source or claimed qualified.
 
 Schema accepts integer spellings such as `0.0` and `1e0`, while the typed Go
 decoder rejects them before Store entry. Runtime now asks that same registered
