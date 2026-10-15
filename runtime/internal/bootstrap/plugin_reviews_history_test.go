@@ -24,14 +24,14 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
-func reviewHistoryBackend(t *testing.T) (string, func()) {
+func reviewRuntimeBackend(t *testing.T, fixture string) (string, func()) {
 	t.Helper()
 	directory := t.TempDir()
 	executable := filepath.Join(directory, "reviews.test")
 	build := exec.CommandContext(t.Context(), "go", "test", "-c", "-o", executable, ".")
 	build.Dir = filepath.Join("..", "..", "..", "examples", "plugins", "reviews", "backend")
 	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build history backend: %s, %v", output, err)
+		t.Fatalf("build review backend: %s, %v", output, err)
 	}
 	logPath := filepath.Join(directory, "backend.log")
 	log, err := os.Create(logPath)
@@ -39,9 +39,9 @@ func reviewHistoryBackend(t *testing.T) (string, func()) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = log.Close() })
-	command := exec.CommandContext(t.Context(), executable, "-test.run=^TestReceiptHistoryRuntimeFixture$", "-test.timeout=180s")
+	command := exec.CommandContext(t.Context(), executable, "-test.run=^"+fixture+"$", "-test.timeout=180s")
 	command.Dir = directory
-	command.Env = append(os.Environ(), "FLAME_TEST_REVIEWS_HISTORY_DATA="+filepath.Join(directory, "private"))
+	command.Env = append(os.Environ(), "FLAME_TEST_REVIEWS_RUNTIME_DATA="+filepath.Join(directory, "private"))
 	command.Stderr = log
 	input, err := command.StdinPipe()
 	if err != nil {
@@ -73,19 +73,19 @@ func reviewHistoryBackend(t *testing.T) (string, func()) {
 		case err := <-done:
 			if err != nil {
 				output, _ := os.ReadFile(logPath)
-				t.Errorf("history backend failed: %s, %v", output, err)
+				t.Errorf("review backend failed: %s, %v", output, err)
 			}
 		case <-time.After(lifecycleWaitBudget(t)):
 			_ = command.Process.Kill()
 			<-done
-			t.Error("history backend did not finish its private-state assertions")
+			t.Error("review backend did not finish its private-state assertions")
 		}
 	})
 	t.Cleanup(closeBackend)
 	select {
 	case status := <-ready:
 		if status.err != nil || !strings.HasPrefix(status.url, "http://127.0.0.1:") {
-			t.Fatalf("history backend did not publish its endpoint: %s, %v", status.url, status.err)
+			t.Fatalf("review backend did not publish its endpoint: %s, %v", status.url, status.err)
 		}
 		return status.url, closeBackend
 	case <-t.Context().Done():
@@ -109,7 +109,7 @@ func TestReviewReceiptHistoryMatchesModelToolAndExecutableCLI(t *testing.T) {
 
 func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected string) {
 	t.Helper()
-	url, closeBackend := reviewHistoryBackend(t)
+	url, closeBackend := reviewRuntimeBackend(t, "TestReceiptHistoryRuntimeFixture")
 	defer closeBackend()
 	source := reviewExamplePackage(t)
 	descriptor, err := json.Marshal(map[string]any{
@@ -122,30 +122,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	if err := os.WriteFile(filepath.Join(source, "mcp.json"), descriptor, 0600); err != nil {
 		t.Fatal(err)
 	}
-	const toolName = "reviews_update_review"
-	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-		if len(request.Tools) == 0 {
-			return completedTextResponse("business refusal"), nil
-		}
-		conversation := withoutDeferredCatalog(request)
-		for _, part := range conversation[len(conversation)-1].Parts {
-			if part.ToolResult != nil && part.ToolResult.Name == toolName {
-				return completedTextResponse("observed the business refusal"), nil
-			}
-		}
-		call := chat.ToolCall{ID: "history-call", Name: "search_tools", Arguments: `{"query":"select:` + toolName + `"}`}
-		for _, definition := range request.Tools {
-			if definition.Name == toolName {
-				call.Name, call.Arguments = toolName, updateInput
-			}
-		}
-		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
-	})}
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := reviewRefusalChat(t, updateInput)
 	cfg := poMCPConfig(t)
 	cfg.ApprovalMode = approval.ModeYolo
 	cfg.ChatResolver = testChatResolver(client)
@@ -176,6 +153,75 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrInvalidParams) || refused.Value != nil {
 		t.Fatalf("malformed input entered command execution: %+v", refused)
 	}
+	assertReviewToolRefusal(t, runtime, expected)
+	want, err := jsoninput.Parse([]byte(expected))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runCLI, closeCLI := reviewCLICommand(t, runtime)
+	defer closeCLI()
+	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.update", updateInput
+	encoded, err := json.Marshal(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	arguments := []string{"plugins", "call", "--request", string(encoded), "--command-id", key}
+	assertReply := func(reply *protocol.CallPluginResponse) {
+		t.Helper()
+		actual, err := jsoninput.Parse([]byte(reply.Output))
+		if err != nil || reply.Failure != nil || actual != want {
+			t.Fatalf("business refusal lost original facts: %+v, want %s, %v", reply, want.JSON(), err)
+		}
+	}
+	for range 2 {
+		output := runCLI(arguments...)
+		var reply protocol.CallPluginResponse
+		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil {
+			t.Fatalf("CLI lost the structured history result: %s, %v", output, err)
+		}
+		assertReply(&reply)
+	}
+	assertReply(runtime.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse))
+	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
+	current := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
+	after, err := jsoninput.Parse([]byte(current.Output))
+	if err != nil || current.Failure != nil || after != before {
+		t.Fatalf("refused entrances changed the private review: %+v, %v", current, err)
+	}
+}
+
+func reviewRefusalChat(t *testing.T, updateInput string) chatclient.Client {
+	t.Helper()
+	const toolName = "reviews_update_review"
+	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
+		if len(request.Tools) == 0 {
+			return completedTextResponse("business refusal"), nil
+		}
+		conversation := withoutDeferredCatalog(request)
+		for _, part := range conversation[len(conversation)-1].Parts {
+			if part.ToolResult != nil && part.ToolResult.Name == toolName {
+				return completedTextResponse("observed the business refusal"), nil
+			}
+		}
+		call := chat.ToolCall{ID: "history-call", Name: "search_tools", Arguments: `{"query":"select:` + toolName + `"}`}
+		for _, definition := range request.Tools {
+			if definition.Name == toolName {
+				call.Name, call.Arguments = toolName, updateInput
+			}
+		}
+		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
+	})}
+	client, err := chatclient.New(model, chatclient.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return client
+}
+
+func assertReviewToolRefusal(t *testing.T, runtime *poMCPRuntime, expected string) {
+	t.Helper()
+	const toolName = "reviews_update_review"
 	session := runtime.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Receipt history"}, "session").(*protocol.Session)
 	started := runtime.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Resolve the inspected review"}}}, delivery.Options{IdempotencyKey: "history-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 	if started.Failure != nil {
@@ -216,35 +262,5 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	}
 	if calls != 1 {
 		t.Fatalf("expected one original history-refused Tool, got %d", calls)
-	}
-	runCLI, closeCLI := reviewCLICommand(t, runtime)
-	defer closeCLI()
-	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.update", updateInput
-	encoded, err := json.Marshal(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	arguments := []string{"plugins", "call", "--request", string(encoded), "--command-id", key}
-	assertReply := func(reply *protocol.CallPluginResponse) {
-		t.Helper()
-		actual, err := jsoninput.Parse([]byte(reply.Output))
-		if err != nil || reply.Failure != nil || actual != want {
-			t.Fatalf("business refusal lost original facts: %+v, want %s, %v", reply, want.JSON(), err)
-		}
-	}
-	for range 2 {
-		output := runCLI(arguments...)
-		var reply protocol.CallPluginResponse
-		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil {
-			t.Fatalf("CLI lost the structured history result: %s, %v", output, err)
-		}
-		assertReply(&reply)
-	}
-	assertReply(runtime.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse))
-	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
-	current := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
-	after, err := jsoninput.Parse([]byte(current.Output))
-	if err != nil || current.Failure != nil || after != before {
-		t.Fatalf("refused entrances changed the private review: %+v, %v", current, err)
 	}
 }

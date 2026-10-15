@@ -36,8 +36,28 @@ source; the added test's focused race is separately recorded.
 Final stronger assertions check the public Go problem type and exclude CLI
 `internal_error`; that final case passes normal/race 8.66/11.79s after the complete
 normal run. No assertion or limit is relaxed.
-This proves Core `idempotency_conflict`; private `invocationConflict` remains
-separate SDK/Tool evidence. Production source stays `9f5a66d51`.
+This proves Core `idempotency_conflict`. The subsequent test-only
+`TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI` also
+compares the distinct private `invocationConflict` value through a real model Run
+and executable CLI. Its independent HTTP backend makes controlled real prior
+Store calls before forwarding the unchanged public requests. CLI/Go recovery
+explicitly refuses a different-input receipt without replay or overwrite, and
+a fresh identity advances private state once. Original private outcomes remain
+unchanged; counters require one Tool, two typed dispatches, two pure validations,
+two receipt reads and exactly three receipts. This does not qualify graphical
+interaction or diagnose the historical deadlines. Production source stays
+`9f5a66d51`.
+
+The private-conflict slice's focused ordinary/race groups pass all four top-level
+cases without failures/skips (packages 130.472/61.621s; runners
+139.703/209.291s). The new case passes 22.40/9.89s. Complete Reviews backend
+module race passes its root and `cmd/review-analyzer` packages 13.097/3.010s,
+21 top-level passes, zero test skips/failures
+and two no-test command packages; affected vet passes 8.444s. The HTTP child is
+not race-instrumented. The initial helper return-type compilation error is
+corrected before these passes. No assertion or timeout is relaxed. Whole-product,
+TS, native and author archives are not newly rerun for this test-only slice;
+their unchanged-production qualification retains its exact earlier scope.
 
 ## Workspace and preservation
 
@@ -104,8 +124,9 @@ one typed dispatch and two receipt reads, with 4,098 receipts and an unchanged
 Review. A Store regression reopens and reads old/new success and new refusal
 receipts after actual post-cutoff business mutation. The former capacity tests
 and fixture are migrated, not kept as a parallel contract or accepted alias.
-The private `invocationConflict` value through the actual CLI and graphical
-cross-scenarios remain unqualified. Core binding-conflict proof is recorded above.
+The private `invocationConflict` and Core binding-conflict CLI proofs are recorded
+above with their different recovery contracts. Graphical cross-scenarios remain
+unqualified.
 
 - `6a88bd45a`: public `ToolProposalContract`/`ToolProposalMethod` queries use the
   existing installed composition. Only arguments may transform; execution owns
@@ -502,8 +523,8 @@ is still unavailable. Do not call the diagnosis or overall refactor complete.
   evidence. The corrected history scenario adds HTTP-process/model Run/executable
   CLI missing-review refusal and original-receipt recovery beyond 4,096 historical
   calls. The incorrect lifetime-quota outcome is removed rather than qualified.
-  The graphical entrance and actual CLI projection of private `invocationConflict`
-  remain unqualified. Core binding-conflict proof is recorded above.
+  The actual model/CLI private `invocationConflict` and Core binding-conflict
+  proofs are recorded above. The graphical entrance remains unqualified.
 - Paid live DeepSeek is not enabled (`FLAME_LIVE_DEEPSEEK` unset). Windows/Linux/
   alternate native execution and registry/deployment publication are not qualified.
 - Read-only npm audit exits 1 with eight alerts (four high/four low). All high
@@ -555,9 +576,9 @@ admission/Core callbacks. A bounded phase/CPU diagnostic does not reproduce them
 obtain a failing child/proxy snapshot before making a production repair.
 Do not substitute a later pass or build overlap for a cause of its failed gates.
 Keep graphical criteria and dependency/live/platform/publication limits explicit.
-Actual CLI projection of private `invocationConflict` remains separate from
-SDK/Tool evidence. The Core CLI binding conflict and original-receipt recovery
-are qualified above. The previous capacity contract is removed without
+Actual CLI private `invocationConflict` and Core binding-conflict/recovery have
+separate proof above. Different-input private receipts remain explicitly
+unconfirmed rather than adopted. The previous capacity contract is removed without
 compatibility; do not cite its old fresh-response proof as current behavior.
 Current independent Go authors, packed Usage, complete parallel race, normal
 bootstrap, full vet/build and native checks pass for `9f5a66d51`, as scoped above.

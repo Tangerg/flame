@@ -18,7 +18,7 @@ import (
 )
 
 func TestReceiptHistoryRuntimeFixture(t *testing.T) {
-	directory := os.Getenv("FLAME_TEST_REVIEWS_HISTORY_DATA")
+	directory := os.Getenv("FLAME_TEST_REVIEWS_RUNTIME_DATA")
 	if directory == "" {
 		return
 	}

@@ -263,16 +263,25 @@ assertions retain the original Review and all 4,098 receipts. The Store regressi
 also reopens the private database and reads original success/refusal receipts
 after an actual successful update beyond the old cutoff. Separate invalid-input
 cases verify exact recovery and changed-input conflict across private restart.
-These cases do not
-execute the board or invocation conflict through the actual CLI.
+These history cases do not execute the board.
 
 `TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt` builds the real
 CLI and stdio backend and checks the human binding boundary through authenticated
 HTTP. A successful update is followed by repeated changed-input conflict and
 matching Go classification. A fresh key advances the review, while the original
 key/input still returns its complete earlier receipt without changing current
-state. This qualifies Core's `idempotency_conflict`; the backend's private
-`invocationConflict` value remains separately exercised by SDK/Tool tests.
+state. This qualifies Core's `idempotency_conflict`.
+
+`TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI` separately
+compares private `invocationConflict` through a real model Run and executable CLI.
+A separate HTTP backend makes real prior private calls with captured identities
+before forwarding unchanged public requests to the production handlers. The
+controlled collision has original atomic `notFound` receipts, without fake replies
+or direct receipt writes. CLI/Go recovery explicitly refuses those different-input
+receipts instead of replacing them or replaying the requested mutations. A fresh
+CLI identity succeeds once. Child-process assertions preserve both original
+outcomes and require exactly three receipts, one Tool, two typed dispatches, two
+pure validations and two receipt reads. The graphical entrance remains unexecuted.
 
 This package's MCP tools execute through Session-owned Runs and the existing
 approval path. Its ordinary Board calls the same published business operations
