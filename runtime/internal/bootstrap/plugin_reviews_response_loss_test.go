@@ -16,7 +16,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -24,6 +26,133 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
+
+func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRestart(t *testing.T) {
+	source := reviewExamplePackage(t)
+	method := "io.github.tangerg.flame.examples/reviews.update"
+	evidence := filepath.Join(t.TempDir(), "committed.json")
+	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-ldflags=-s -w", "-o", filepath.Join(source, "bin", "response-loss"), "./testdata/managed-message-loss")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build response-loss fixture: %s, %v", output, err)
+	}
+	manifest, err := json.Marshal(map[string]any{
+		"$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+		"mcpServers": map[string]any{"reviews": map[string]any{
+			"type": "stdio", "command": "./bin/response-loss", "args": []string{evidence, "./bin/reviews", method, "", "response"},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "mcp.json"), manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	installed := poMCPActivate(r, source)
+	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
+	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	contribution := installed.Selected.Contributions[0]
+	request := protocol.CallPluginRequest{
+		InstallationID: installed.ID, Digest: installed.Selected.Digest,
+		Contribution: contribution.ID, Contract: contribution.Contract, Method: method,
+		Target: capability.Target{Scope: "installation", Reference: installed.ID},
+		Input:  `{"id":"example-review","expectedRevision":1,"status":"resolved"}`,
+	}
+	options := delivery.Options{IdempotencyKey: "original-review-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
+		t.Fatalf("lost response became a definite result: %+v", result)
+	}
+	encoded, err := os.ReadFile(evidence)
+	if err != nil {
+		t.Fatalf("backend did not commit before response loss: %v", err)
+	}
+	var captured struct {
+		Response struct {
+			Result jsontext.Value `json:"result"`
+		} `json:"response"`
+	}
+	if err := json.Unmarshal(encoded, &captured); err != nil {
+		t.Fatal(err)
+	}
+	committed, err := pluginsdk.DecodeReply[jsontext.Value](captured.Response.Result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected, err := jsoninput.Parse(committed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A redispatched mutation would recreate this evidence and lose its reply,
+	// so backend idempotency cannot hide an incorrect host replay.
+	if err := os.Remove(evidence); err != nil {
+		t.Fatal(err)
+	}
+	commandID := operation.Identity(operation.Bind(t.Context(), cfg.Stores.IdempotencyNamespace.String(), options.IdempotencyKey))
+	original, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
+	if err != nil || !found || original.Snapshot().Phase != plugin.CommandDispatched || original.Snapshot().Invocation.Origin != capability.Human {
+		t.Fatalf("human command lost its pending owner: %+v, %t, %v", original, found, err)
+	}
+	installed = stageCommandReplacement(t, r, installed, source)
+	assertUnresolvedInstallationIsHeld(t, r, installed)
+	replacement := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: reviewExamplePackage(t)}, "install-replacement").(*protocol.PluginInstallation)
+	replacement = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: replacement.ID, Enabled: true}, "enable-replacement").(*protocol.PluginInstallation)
+	replacementServer := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: replacement.ID}, Name: "reviews"}
+	r.poMCPTools(&replacementServer, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-original")
+	r = reopenCommandRuntime(t, r, &cfg)
+	assertUnresolvedInstallationIsHeld(t, r, installed)
+	restored, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
+	if err != nil || !found || !reflect.DeepEqual(restored.Snapshot(), original.Snapshot()) {
+		t.Fatalf("restart changed the original pending binding: %+v, %t, %v", restored, found, err)
+	}
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
+		t.Fatalf("disabled owner settled an unconfirmed command: %+v", result)
+	}
+	retargeted := request
+	retargeted.InstallationID, retargeted.Digest, retargeted.Target.Reference = replacement.ID, replacement.Selected.Digest, replacement.ID
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, retargeted, options); !errors.Is(result.Failure, protocol.ErrIdempotencyConflict) {
+		t.Fatalf("original identity adopted a replacement target: %+v", result)
+	}
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable-original")
+	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	recovered := r.must(delivery.PluginsCall, request, options.IdempotencyKey).(*protocol.CallPluginResponse)
+	actual, err := jsoninput.Parse([]byte(recovered.Output))
+	if err != nil || recovered.Failure != nil || actual != expected {
+		t.Fatalf("receipt differs from the committed private result: %+v, %v", recovered, err)
+	}
+	if _, err := os.Stat(evidence); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("receipt recovery redispatched the mutation: %v", err)
+	}
+	observed, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
+	if err != nil || !found || observed.Snapshot().Phase != plugin.CommandObserved {
+		t.Fatalf("original receipt did not settle its command: %+v, %t, %v", observed, found, err)
+	}
+	read := func(owner *protocol.PluginInstallation, revision int64, status string) {
+		t.Helper()
+		query := request
+		query.InstallationID, query.Digest, query.Target.Reference = owner.ID, owner.Selected.Digest, owner.ID
+		query.Method, query.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
+		reply := r.must(delivery.PluginsCall, query, "").(*protocol.CallPluginResponse)
+		var page struct {
+			Reviews []struct {
+				Revision int64  `json:"revision"`
+				Status   string `json:"status"`
+			} `json:"reviews"`
+		}
+		if err := json.Unmarshal([]byte(reply.Output), &page); err != nil || reply.Failure != nil || len(page.Reviews) != 1 || page.Reviews[0].Revision != revision || page.Reviews[0].Status != status {
+			t.Fatalf("private owner advanced unexpectedly: %+v, %v", reply, err)
+		}
+	}
+	read(installed, 2, "resolved")
+	r.poMCPTools(&replacementServer, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	read(replacement, 1, "open")
+	runs := r.must(delivery.RunsList, protocol.ListRunsRequest{}, "").(*protocol.Page[protocol.RunRef])
+	if len(runs.Data) != 0 {
+		t.Fatalf("human recovery manufactured a Run: %+v", runs.Data)
+	}
+	r.must(delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Staged.Digest}, "select-after-receipt")
+}
 
 func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResending(t *testing.T) {
 	source := reviewExamplePackage(t)

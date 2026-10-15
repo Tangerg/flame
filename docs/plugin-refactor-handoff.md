@@ -28,8 +28,11 @@ Detailed evidence and each row live in
 
 ## Current product changes
 
-Production Go remains `b2dcbfbba`. The latest slice changes only the steer test's
-failure diagnostics and documentation; it is not a production timeout repair.
+Production Go remains `b2dcbfbba`. Later test-only slices add steer failure
+diagnostics and actual installed Reviews no-Run recovery across restart,
+disable/reenable, retained update/uninstall holds and replacement-target refusal.
+The original private receipt recovers once; a second installation stays unchanged.
+There is no production timeout repair or completed graphical cross-scenario.
 
 - `6a88bd45a`: public `ToolProposalContract`/`ToolProposalMethod` queries use the
   existing installed composition. Only arguments may transform; execution owns
@@ -77,8 +80,10 @@ go test -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples
 
 - 174 selected packages finish: **159 tested packages pass; fifteen have no test
   files**. Race execution/bootstrap/SDK/CLI/runtimebinding/terminal pass
-  276.599/330.789/9.619/70.109/40.204/41.828s, wall time 775.933s. Whole bootstrap
-  includes all eight Schedule SIGKILL cuts and existing recovery/steer/schedule cases.
+  276.599/330.789/9.619/70.109/40.204/41.828s, wall time 775.933s. Bootstrap
+  covers its recovery/steer/schedule cases. The eight Schedule SIGKILL cuts have
+  their parent test in execution; it builds and invokes bootstrap's crash helper.
+  The complete command covers both packages. Bootstrap alone does not run those cuts.
 - Complete normal has the same 159 passes/fifteen no-test packages. Execution/
   bootstrap/CLI/runtimebinding/terminal pass 57.079/118.847/39.523/12.150/24.648s,
   wall time 292.538s. Full-module vet passes. At this qualification, original CLI
@@ -143,6 +148,29 @@ not every source was frozen. Successful-cancellation diagnostic stacks from that
 attempt are not timeout stacks. Failed iterations remain failed/inconclusive.
 
 ## Current stage-level investigation
+
+A full-module Go-pinned historical diagnostic now exits 1 in 835.888s: 158 tested
+packages pass, one architecture package fails, and fifteen have no tests. The
+two architecture failures are diagnostic source/artifact mismatches: a virtual
+helper has no physical file for the source reader, and the old API inventory
+differs from the current on-disk inventory. This is not acceptance. The original
+steer pair passes (safe 3.46s), with 72 stage entries and 72 returns, no deadline
+marker, and the second provider reached under the original 10s assertion. Normal
+post-Resume stage durations do not establish the missing historical failure.
+Current qualification jobs overlap part of this diagnostic; no artificial load
+or controlled contention conclusion is claimed. Detailed stage durations are
+recorded in progress. The historical timeout remains unresolved.
+
+Current new Reviews no-Run normal proof passes 12.755s; complete bootstrap race
+passes 408.052s. Final no-redispatch guard assertions then pass focused race in
+35.311s; the complete bootstrap result predates those extra assertions. All other
+cases and production source are unchanged. A temporary receipt-to-redispatch
+negative control fails as expected (exit 1, 27.621s); it is not an acceptance pass.
+All eight SIGKILL cuts pass through their execution
+parent (58.876s), and current complete architecture passes 31.663s. Direct static
+boundary/API checks also pass. These current checks have no historical overlay.
+Whole current Runtime/shared TS/native gates are not rerun for these test-only
+changes; the complete product qualification above stays tied to `b2dcbfbba`.
 
 A fully pinned `366ffff6a` overlay now observes background staging/activation,
 answer delivery/proof, resumed Processes, dispatch gates, Tool executable,

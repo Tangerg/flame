@@ -11,10 +11,13 @@ UI/E2E/screenshot prohibition. The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
 
 The latest complete product qualification is frozen `b2dcbfbba`. Production Go
-remains unchanged. The current slice adds failure-only steer test diagnostics;
-current complete CLI/root binding race qualification is recorded below. The
-following full-product result predates that test-only change and is not a newly
-executed whole-product gate:
+remains unchanged. Later test-only slices add failure-only steer diagnostics and
+the installed Reviews no-Run recovery scenario below. Current complete bootstrap
+race passes 408.052s before final no-redispatch assertions; that final case passes
+focused race in 35.311s. All eight SIGKILL cuts pass separately in execution
+(58.876s), and current architecture passes 31.663s. The earlier complete CLI/root
+binding race remains recorded below. The following full-product result predates
+these test-only changes and is not a newly executed whole-product gate:
 
 ```sh
 go test -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s
@@ -30,6 +33,10 @@ Original recovery/steer assertions and 10s contexts remain unchanged. The steer
 test now adds failure-only phase/state/stack diagnostics; no stream is consumed
 ahead of its original loop.
 Conditional paid/live and platform cases are not inferred from package summaries.
+The SIGKILL parent test lives in execution and builds/invokes bootstrap's crash
+helper. Earlier shorthand saying bootstrap itself includes the eight cuts is
+inaccurate: the complete multi-package command includes both; bootstrap alone
+does not execute that parent or qualify those cuts.
 
 Core/Memory/Schedules/API generation and complete architecture checks pass.
 Current shared TS check passes 30 files/355 tests, plus types/lint/format/dead-code
@@ -75,6 +82,76 @@ The existing worktree/`codex/unified-plugins` branch and integrated main
 edit, stash mutation or user-data conversion occurred. Required private checkpoint
 fields are a deliberate break: preserve old data and finish old waiting work with
 its original binary. No compatibility reader, dual writer or provider replay.
+
+### Installed Reviews no-Run recovery and full-module historical diagnosis (2026-10-15)
+
+`TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRestart`
+now calls the actual installed Reviews mutation through Runtime without creating
+a Session or Run. A real stdio proxy drops the committed reply. The test retains
+the exact private result and human caller binding, stages distinct replacement
+bytes, refuses update/configuration/uninstall while unknown, installs another
+independent Reviews owner, disables the original, and reopens Runtime and stores.
+Disabled original receipt lookup stays unconfirmed. Reusing the command identity
+with the replacement target returns `idempotency_conflict`. Reenabling the original
+recovers its exact receipt, advances only that owner to revision 2, leaves the
+other installation at revision 1, creates no Run, and releases the update hold
+only after observation. Host routing remains separate from the private result.
+
+The new scenario passes normally (12.755s). Complete bootstrap race passes
+408.052s without overlays, test exclusions or changed deadlines. Final review
+then strengthens the scenario by removing its first probe file: any mutation
+redispatch recreates that file and loses its reply, preventing backend
+idempotency from concealing host replay. The final scenario passes focused race
+in 35.311s. The complete bootstrap result predates those extra assertions; all
+other cases and production source are unchanged. A temporary one-file overlay
+replaces original receipt lookup with mutation dispatch; the scenario then fails
+at recovery with unconfirmed/EOF (exit 1, 27.621s). This is an expected failing
+negative control, not a product failure or an acceptance pass. The overlay never
+changes repository source. The eight
+`TestScheduleCreateRecoversAcrossSIGKILLCuts` subcases pass separately with a
+race-enabled execution parent (58.876s): commit, query, resolution, edited,
+absent, conflict, malformed and disabled. Its bootstrap helper is built as the
+existing parent specifies; bootstrap's package pass alone does not execute the
+parent. Current complete architecture passes 31.663s. Direct layer,
+published-boundary, builtin-context, port and API-consumer scripts pass again:
+95/95 operation families, 112 typed sites, three sidecars, fourteen event types
+and four result readers. These are source/backend checks, not rendered interaction.
+
+A separate Go-pinned `366ffff6a` diagnostic runs the complete original multi-module
+`go test -race -p 2 ... -count=1 -timeout=900s -v` selection once. The external
+overlay maps 2,428 paths: 2,415 historical Go files, eleven excluded later files
+and two temporary stage helpers. Original steer assertions, event-consumption
+order and 10s contexts remain unchanged. Healthy cases emit owner/phase entry
+and return timestamps; only a failed deadline emits Session/outcome/stack evidence.
+Current qualification jobs run during part of this diagnostic; no artificial
+delay/load is introduced, and it is not a controlled timing benchmark.
+
+The diagnostic exits **1** after 835.888s: **158 tested packages pass, one fails,
+and fifteen have no tests**. The failed architecture package contains two
+diagnostic mismatches: its source reader cannot open a virtual helper at its
+physical path, and the old public API generator differs from current on-disk
+`go-api.json`. No repository artifact is changed by that generator. This is a
+failed diagnostic, not current-product acceptance or a qualified historical tree.
+Execution/bootstrap/CLI/runtimebinding/terminal pass 298.433/317.519/67.856/
+42.350/45.971s within it. Current architecture's separate pass above has no overlay.
+
+The original steer pair passes 8.27s (yolo 4.80s, safe 3.46s), with no deadline
+marker. Safe has 72 stage entries and 72 returns. Its live continuation staging
+takes 0.157ms; BeginContinuation 39.244ms, answer delivery/proof/resume
+9.640/5.754/8.783ms, Shell executable 6.687ms, next context reduction 13.043ms,
+applied-steer commit 2.219ms and next Model begin 4.348ms. These are individual
+entry/return durations, not a critical-path sum or times relative to Resume's
+acknowledgement. The second provider is reached within the unchanged assertion.
+The historical failed interval is still absent; successful stage evidence does
+not identify its cause. **Safe-steer remains unresolved.**
+
+No Runtime production/API/schema/dependency change occurs. Whole current Runtime,
+shared TS and native gates are not rerun for these test-only additions; the
+earlier complete product gate stays tied to `b2dcbfbba`. No UI/E2E/screenshot or
+aggregate Desktop gate is added or run. Owned diagnostic sources/logs and commit
+message files are inspected and removed after the slice. The acceptance count
+stays 35 Evidenced / 13 Partial: this real backend cross-scenario does not complete
+the review's UI/Runtime-restart/provider-selection requirement.
 
 ### Stage-level safe-steer evidence and retained failure context (2026-10-15)
 
@@ -2144,8 +2221,10 @@ close the other criteria. Historical slice entries retain their original evidenc
 
 ## Next
 
-The production/source/backend/build baseline is qualified at `b2dcbfbba`; the
-subsequent test-only slice has complete current CLI/root binding race coverage.
+The production/source/backend/build baseline is qualified at `b2dcbfbba`.
+Later test-only slices have complete CLI/root binding race coverage, bootstrap
+race before final extra guard assertions, and focused race for that final Reviews
+scenario. Current-slice evidence and its exact freshness limits are recorded above.
 Preserve the remaining acceptance gaps instead of reporting 100%:
 
 - Obtain actual deadline evidence for the historical post-SDK safe-steer timeout.
@@ -2455,7 +2534,7 @@ whole-proposal completion and public-contract freeze qualification.
 | Independent model work and accounting | Each physical exchange has its own identity, captured route, caller budget and durable source. Source/Run/Goal tests preserve known inner usage under outer failure and unknown consumption under restart/cancellation. Independent output cannot alter primary conversation/context. No invented universal Goal ceiling. |
 | Model selection/context/input/counter admission | Primary/auxiliary/installed request tests preserve captured order/selection, authored input, final media/input/output capacity and counter failure/cancellation. Original sources remain evidence; providers are never automatically replayed. |
 | Ordinary embedding access and Memory-specific limits | Public text embedding and Tool context replace private metadata/methods. Ordinary installed callbacks support multiple embedding exchanges; Memory's operation grant consumes one generated published caller policy. Absence, configured errors and storage failures retain distinct semantics. |
-| No-Run unknown commands and original receipts | Backend original-owner tests cover response loss, reopen, selection/configuration/uninstall fencing, distinct installations and private refusal/identity conflicts. Shared-client replacement/journal tests are separate earlier proofs. The actual UI plus Runtime restart/update/uninstall/selection cross-scenario has not run. Host stores routing, never competing business success. |
+| No-Run unknown commands and original receipts | Installed Reviews now also exercises Runtime response loss, cold store reopen, disable/reenable, pending update/configuration/uninstall holds, replacement-target conflict and exact private receipt recovery without a Run or mutation redispatch. Memory selection tests and shared-client replacement/journal tests remain separate proofs. The actual UI plus Runtime restart/update/uninstall/selection cross-scenario has not run. Host stores routing, never competing business success. |
 | One contract generation source and numeric parity | The review's explicit Go-owned alternative was selected in the decision ledger; Schema-first Go input was not implemented or claimed. Typed methods generate canonical Schema, Go projections and TS, with exact current regeneration. Feature JSON and the earlier shared Go/TS corpus cover wide numbers through unary/stream/journal/point paths. This is feature JSON parity, not a universal arbitrary-precision conversion of every Core DTO. |
 | Typed refusal versus uncertainty | Public capability refusal and idempotency conflict owners work outside private import privilege; Tool, CLI and shared clients preserve known business failure versus absent/malformed/unreachable evidence. |
 | Public components/shared modules/resources | Ordinary component ESM, relative/authenticated exact-release resources, host module maps and shared UI/React/context ownership are implemented and type/native built. The complete packed Usage feature builds outside the checkout with identical resource bytes; graphical identity/interaction is not executed. |
@@ -2473,7 +2552,7 @@ The review's four extra cross-acceptance groups are independently tracked:
 
 | Review scenario | Status | Existing evidence | Missing proof |
 | --- | --- | --- | --- |
-| No-Run mutation loses reply; UI and Runtime restart; update/uninstall/provider change | Partial | Memory installed original-command recovery/selection/quiescence and Reviews private receipt tests; shared TS replacement journal | Actual Reviews UI/Runtime restart followed by all replacement attempts, retaining original receipt or explicit unrecoverable binding |
+| No-Run mutation loses reply; UI and Runtime restart; update/uninstall/provider change | Partial | Actual installed Reviews no-Run Runtime recovery across cold restart, disable/reenable, update/uninstall holds and replacement-target refusal; Memory selected-provider tests; shared TS journal | Actual Reviews UI/Runtime restart followed by all replacement attempts and provider selection, retaining original receipt or explicit unrecoverable binding |
 | Same refusal through Tool, CLI and UI | Partial | Reviews typed revision/identity/capacity results, Tool/typed operation shared owner, CLI error/result adapters and board source | Executed cross-entrance comparison including rendered UI and refusal evidence |
 | Remote multi-resource ESM in Web and Wails | Partial | Exact-release resource/auth implementation, shared import map, independent component build, native compilation | Actual remote resource/assets/module identity, auth and connection replacement in both graphical environments |
 | Module initialization blocks renderer startup; independent recovery disables it | Partial | Independent management code/CLI plus real blocked stdio-backend recovery | Actual failed graphical module startup and disabling it through a functioning independent entrance |
@@ -2524,9 +2603,9 @@ and unrun, so those requirements remain unverified rather than waived.
 | P19 | A slow stream consumer receives a large result | Evidenced | Verified at backend stream/transport boundaries for pull backpressure, captured byte budgets and explicit capacity failure. |
 | P20 | A model route is changed by a plugin | Evidenced | Backend verified by actual selected provider/model/options, independent routes, metering and durable endpoint evidence. |
 | P21 | A query is called through Tool, CLI, and UI | Partial | Backend Tool/typed operations, CLI projections/adapters and component source share the operation owner. Actual Tool -> CLI -> rendered UI query equivalence has not run. The 95/95 source-consumer count does not prove this interaction. |
-| P22 | Reviews mutation commits but reply is dropped | Evidenced | `TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResending`, private receipt tests and `TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt` cover real committed reply loss, restart, read-only original recovery and stale-revision conflict. The review adds a larger UI/replacement cross-scenario, still Partial below. |
+| P22 | Reviews mutation commits but reply is dropped | Evidenced | Public-SDK/private receipt and Run response-loss tests cover real committed reply loss, restart, original recovery and stale revision. `TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRestart` adds the installed Runtime no-Run path, exact read-only receipt, pending release holds and replacement-target conflict. The larger graphical review cross-scenario remains Partial. |
 | P23 | A command identity is reused with different input | Evidenced | Verified by private receipt, public binding and CLI/shared-client original-input conflict tests, including external public idempotency classification. |
-| P24 | Schedule dispatch acknowledgement is lost | Evidenced | The current complete bootstrap/full parallel race includes all eight `TestScheduleCreateRecoversAcrossSIGKILLCuts` cuts and lost-Core-opening reconciliation after `981c4c915`. Earlier repeated race invocations remain historical runs, not additional current-source repetitions. |
+| P24 | Schedule dispatch acknowledgement is lost | Evidenced | The complete product parallel gate includes lost-Core-opening reconciliation in bootstrap and the eight `TestScheduleCreateRecoversAcrossSIGKILLCuts` cuts whose parent is in execution. That parent passes separately again in the current slice (58.876s). Bootstrap alone does not execute it. Earlier repetitions remain historical runs. |
 | P25 | Schedule is edited after work is captured | Evidenced | Verified by retained Schedule input after definition edit/deletion and negative receipt/capture cuts. |
 | P26 | UI closes during an accepted Run | Partial | Independent accepted Run and observation lifetimes have backend/shared-client evidence. Closing an actual installed view during that Run has not been executed. |
 | P27 | Memory provider is absent versus enabled but broken | Evidenced | Backend absence versus operational failure tests pass. The complete Memory consumer migration preserves this distinction in real installed checks. |
