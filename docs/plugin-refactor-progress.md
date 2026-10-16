@@ -69,12 +69,16 @@ or vendored patch: the forced version is the patched one the app already shipped
 
 rehype-katex and micromark-extension-math call only `katex.renderToString` and
 `katex.ParseError`, both stable in 0.19.0 (confirmed against the 0.19.0 export
-set and both library sources). Qualified by: frontend typecheck (`tsc --noEmit`),
-`vite build`, the markdown vitest suite (10 files / 96 tests), a direct
-`katex.renderToString` render smoke for inline and display math, and an `npm ci`
-rebuild that reproduces the single-owner tree. Post-repair audit: overall four
-high / zero low; production-only audit reports zero vulnerabilities. No source
-file changed; only the manifest override and the lockfile dedup.
+set and both library sources). Qualified by: the full frontend `npm run check`
+gate (typecheck, lint, format, the complete vitest suite, knip, every
+architecture/boundary guard, and `check:bundle`/`check:plugin-modules`) passing
+with the deduped tree; the markdown vitest suite (10 files / 96 tests); a direct
+`katex.renderToString` render smoke for inline and display math; and an `npm ci`
+rebuild that reproduces the single-owner tree. The bundle gate reports the math
+stylesheet at 29.1 KB within its 97.7 KB budget, so no bundle regression.
+Post-repair audit: overall four high / zero low; production-only audit reports
+zero vulnerabilities. No source file changed; only the manifest override and the
+lockfile dedup.
 
 The braces chain remains unremediated and upstream-blocked: GHSA-vfj7-8cjw-p6xm
 affects braces `<= 3.0.3` (latest) with no patched release, and the fix is still
@@ -3935,10 +3939,17 @@ dependency/status/author lifecycle and full P01-P48/review/native acceptance.
 ## In progress
 
 Overall acceptance remains incomplete despite matching evidence for all 48
-proposal rows and all four review cross-scenarios: historical timeout causes,
-dependency qualification and fresh final global gates remain outstanding. The two reopened production defects and
-original complete parallel-race gate are closed; that narrower result does not
-close the other criteria. Historical slice entries retain their original evidence.
+proposal rows and all four review cross-scenarios. The 2026-10-16 session
+remediated the KaTeX dependency chain (production audit now zero; full frontend
+`npm run check` passes) and audited both historical-deadline paths without finding
+a reachable defect in current code. Still outstanding: the historical safe-steer
+and MCP timeout causes remain unreproduced and open; the braces advisory is
+upstream-blocked with no patched release; and no fresh whole-product backend,
+native or external-provider gate was run this session because the only change was
+a frontend-only dependency dedup, which does not touch those surfaces. The two
+reopened production defects and the original complete parallel-race gate are
+closed; that narrower result does not close the other criteria. Historical slice
+entries retain their original evidence. This is not an overall 100% claim.
 
 ## Next
 
