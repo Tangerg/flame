@@ -42,6 +42,23 @@ RED/GREEN regression and shared SDK/Runtime repair for unary and streaming
 consumers. The earlier `9f5a66d51` qualification retains its source scope; the
 current 6d5e2427d qualification is recorded next. Neither closes historical
 deadlines or extends to unexecuted scenarios.
+The next bounded deadline controls establish another safe-steer observation gap:
+an actual second HTTP arrival can be unclassified by the fixture while the Run
+completes; the unchanged 10s assertion still fails. Failure-only output now retains
+arrival shape/Tool-result IDs separately from classification. This controlled
+case is not a reconstruction of the historical failure. MCP large-frame and
+early-exit controls return prompt EOF, not the historical discover timeout. They
+also expose a separate message-loss fixture defect: its Scanner default rejects
+SDK-admitted frames. Both directions now use the SDK-owned frame budget, with an
+ordinary bootstrap real-process request/reply regression and inherited-overlay
+RED proof. Focused response-loss/steer/eight-cut parallel race passes. Final complete
+bootstrap/runtimebinding parallel race passes 417.252/40.909s with 235/342
+test/subtest passes and zero failures/skips; vet and formatting/diff checks pass.
+No new whole-product/frontend/native qualification is claimed. No production behavior,
+existing assertion/deadline, schema or dependency changes. Historical causes stay
+open. A separate bounded npm control confirms the actual old KaTeX adapter can
+emit an unsafe link under deliberately preexisting prototype pollution; no
+application polluter or browser exploit is proven. Four high/four low alerts remain.
 Detailed evidence and each row live in
 [plugin-refactor-progress.md](plugin-refactor-progress.md).
 

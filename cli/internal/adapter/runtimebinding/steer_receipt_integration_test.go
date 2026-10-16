@@ -30,6 +30,9 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 	firstEntered, secondEntered := make(chan struct{}), make(chan struct{})
 	releaseFirst, releaseSecond := make(chan struct{}), make(chan struct{})
 	var enterFirst, enterSecond, finishFirst, finishSecond sync.Once
+	var requestsMu sync.Mutex
+	var requests []string
+	providerStarted := time.Now()
 	release := func() {
 		finishFirst.Do(func() { close(releaseFirst) })
 		finishSecond.Do(func() { close(releaseSecond) })
@@ -46,9 +49,22 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 			Tools []jsontext.Value `json:"tools"`
 		}
 		if err := json.UnmarshalRead(request.Body, &body); err != nil {
+			requestsMu.Lock()
+			requests = append(requests, fmt.Sprintf("elapsed=%s decode_error=%v", time.Since(providerStarted), err))
+			requestsMu.Unlock()
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		var toolResults []string
+		for _, message := range body.Messages {
+			if message.Role == "tool" {
+				toolResults = append(toolResults, message.ToolCallID)
+			}
+		}
+		requestsMu.Lock()
+		requests = append(requests, fmt.Sprintf("elapsed=%s stream=%t tools=%d tool_result_ids=%q",
+			time.Since(providerStarted), body.Stream, len(body.Tools), toolResults))
+		requestsMu.Unlock()
 		toolCall := false
 		if len(body.Tools) != 0 {
 			second := false
@@ -111,6 +127,14 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 			default:
 				t.Logf("steer deadline: %s provider has not entered", name)
 			}
+		}
+		// Provider arrival and this fixture's classification are different facts:
+		// a request with missing Tools or changed result IDs must remain visible.
+		requestsMu.Lock()
+		requestSnapshot := slices.Clone(requests)
+		requestsMu.Unlock()
+		for index, request := range requestSnapshot {
+			t.Logf("steer deadline provider request: index=%d %s", index, request)
 		}
 		stack := make([]byte, 1<<20)
 		t.Logf("steer deadline goroutines:\n%s", stack[:runtime.Stack(stack, true)])

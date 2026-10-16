@@ -43,6 +43,75 @@ Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
 
+### Bounded deadline-boundary controls (2026-10-16)
+
+This test-only slice separates provider arrival from the safe-steer fixture's
+classification. A temporary control removes Tools only from the fixture's decoded
+second request, after the actual HTTP exchange has arrived. The unchanged 10s
+assertion fails (safe 11.02s; package 19.257s), while the retained Run is completed.
+The request inventory records its original steer_boundary Tool result with zero
+Tools. The existing channel still says the second provider has not entered. This
+proves another explanation for that bare waiter, not the historical cause. All
+Start/Resume/Tool/model transitions and both original event-consumption loops
+remain unchanged. Failure diagnostics now retain every provider arrival's elapsed
+time, stream flag, Tool count and Tool-result IDs, without prompt/auth content.
+
+Four isolated MCP controls use the actual SDK client and message-loss executable.
+Whole and fragmented valid discovery replies connect in 940.135/27.428ms. A reply
+above Scanner's unrelated 64 KiB default fails in 29.883ms; an exit-17 backend
+fails in 33.406ms. Both return EOF rather than exhausting the unchanged 10s
+client context. Normal retirement's existing hard-stop exit is retained separately.
+These controls do not reproduce the historical connecting/discover deadline.
+
+The oversized-frame control establishes a separate fixture defect: both proxy
+scanners reject SDK-admitted frames. The proxy now derives its frame budget from
+the SDK's existing 16 MiB constant. It adds no production limit, fallback, retry or
+compatibility path. A real-process bootstrap regression sends an 80 KiB discovery
+request and an 80 KiB reply, preserving complete response bytes. It lives in the
+ordinary bootstrap package, not an excluded testdata-only test package. A minimal
+TestMain branch serves only that explicitly identified test child before normal
+fixture setup; ordinary bootstrap and crash helpers keep their existing entry.
+Retirement must join the proxy within the new case's 5s bound; only its deliberate
+exit-1 hard stop is an accepted cleanup error.
+
+The final-form negative control restores only the old scanners through inherited
+GOFLAGS. Both unchanged regression cases fail with token-too-long/EOF (package
+8.831s). An earlier command-line-only overlay does not reach the nested go build,
+so its passing result is an invalid negative control and not RED evidence. The
+initial standalone testdata prototype also fails both directions, then passes
+with the correction, before the regression moves into the default bootstrap gate.
+
+Focused parallel race passes bootstrap/execution/runtimebinding in
+68.516/50.624/10.093s, including Memory/Schedule/Reviews response-loss recovery,
+lost Core-opening reconciliation, original safe/yolo steer and all eight SIGKILL
+cuts (parent 48.35s). This precedes only stricter assertions on the new regression's
+cleanup classification and deadline. The final no-overlay complete bootstrap and
+runtimebinding parallel race (-p 2, -count=1, unchanged 900s package bound) exits 0
+in 417.252/40.909s. Their 235/342 test/subtest passes include 153/204 top-level
+cases, with zero failures/skips. Bootstrap includes the final stricter new-case
+checks and all recovery/steer/schedule cases. All eight execution-owned cuts stay
+qualified by the focused command above. Vet passes bootstrap, runtimebinding and
+the actual proxy package. Gofmt and diff checks pass. No new whole-product,
+frontend, native or external-provider gate is claimed for this test-only slice.
+Product Go/TS, schemas, dependency manifests and locks remain unchanged. The prior
+whole-product qualification retains its exact source/test scope. The historical
+safe-steer and MCP causes remain unestablished; neither the new fixture repair nor
+passing current cases is substituted for a matching failed interval.
+
+Fresh npm audits still exit 1: four high/four low overall and zero high/four low
+production. Official registry metadata retains braces 3.0.3 and StyleX PostCSS
+0.19.1; the high advisory still has no patched version. Latest rehype-katex 7.0.1
+and micromark-extension-math 3.1.0 still require KaTeX ^0.16.0, outside the patched
+0.18.2 range. A bounded child-process control now proves the actual rehype-katex
+adapter emits a javascript link after deliberate Object.prototype.trust pollution;
+without pollution it does not. Its transitive KaTeX 0.16.47 behaves the same,
+while the direct 0.19.0 rejects inherited trust in both controls. No application
+pollution source or browser insertion/execution is demonstrated. The child restores
+the prototype, exits, and leaves source unchanged. The alerts remain unremediated;
+no override, vendored patch, suppressed advisory or unqualified renderer rewrite
+is counted as a fix. Sources: [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
+and [KaTeX advisory](https://github.com/advisories/GHSA-238p-pmpm-9mq7).
+
 ### MCP SDK provenance audit (2026-10-16)
 
 The retained failed connection stack names go-sdk v1.8.1-scope.1. Its expected

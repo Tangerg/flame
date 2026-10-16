@@ -11,6 +11,10 @@ import (
 var firstPartyPackages string
 
 func TestMain(tests *testing.M) {
+	if os.Getenv(messageLossProcessEnv) == "1" {
+		runMessageLossFrameServer()
+		return
+	}
 	executable, err := os.Executable()
 	if err != nil {
 		panic(err)

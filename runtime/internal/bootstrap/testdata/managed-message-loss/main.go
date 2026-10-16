@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func main() {
@@ -52,6 +53,8 @@ func run() (err error) {
 	forwarded := make(chan error, 1)
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
+		// A loss probe must not reject frames that its MCP peers admit.
+		scanner.Buffer(nil, sdk.DefaultMaxLineLength)
 		for scanner.Scan() {
 			line := append([]byte(nil), scanner.Bytes()...)
 			var request struct {
@@ -109,6 +112,7 @@ func run() (err error) {
 		}
 	}()
 	responses := bufio.NewScanner(output)
+	responses.Buffer(nil, sdk.DefaultMaxLineLength)
 	for responses.Scan() {
 		line := responses.Bytes()
 		var response struct {
