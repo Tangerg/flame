@@ -115,8 +115,13 @@ Resume acceptance precedes detached execution activation. Relevant current paths
 
 ### Next useful experiment
 
-Choose a new falsifiable ownership/order hypothesis from current code before
-running a bounded experiment. Correlate Resume acknowledgement with activation,
+A 2026-10-16 ownership audit (progress doc, "Deadline-path ownership audit") read
+the detached-activation receipt handshake and found it cancellation-bounded on
+three sides, with the pump completing every dequeued commit before it may stop and
+keeping consumption alive on a failed commit; no reachable orphan/deadlock was
+found in current code and the stall was not reproduced. Build on that: choose a
+further falsifiable ownership/order hypothesis from current code before running a
+bounded experiment. Correlate Resume acknowledgement with activation,
 Tool dispatch/result, durable commit receipt, physical model admission, actual HTTP
 arrival and fixture classification. Keep the production state and client observer
 separate. On failure, retain the live owning Run state and matched stage entries /
@@ -182,7 +187,15 @@ Relevant current paths:
 
 ### Next useful experiment
 
-Use one concrete hypothesis and a bounded, owned process graph. Correlate parent,
+A 2026-10-16 ownership audit (progress doc, "Deadline-path ownership audit")
+confirmed the child acquires its data lease and opens SQLite before serving stdio,
+and that a blocked pre-transport lease is the "held lease" shape. It also found
+reconnect cannot make two children contend: a superseding attempt waits on the
+outgoing session's retirement — which completes only after the old stdio child has
+exited and released its lease — before launching the new child. No reconnect lease
+race exists in current code; a pre-transport block would need external contention
+on an isolated data directory. Build on that with one concrete hypothesis and a
+bounded, owned process graph. Correlate parent,
 proxy and backend PID/session with spawn, pre-main, lease acquisition, schema /
 registration completion, stdio entry, discover receive, reply write and proxy
 forward. Capture metadata/byte counts, not private payloads or credentials. A

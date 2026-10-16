@@ -86,6 +86,53 @@ patch or advisory suppression is applied; the removal condition is an upstream
 braces/micromatch depth-limited release or `@stylexjs/postcss-plugin` dropping
 fast-glob.
 
+### Deadline-path ownership audit (2026-10-16)
+
+A fresh contract-against-implementation read of both historical-deadline paths,
+done without altering production code. It rules specific failure shapes out as
+latent in the current design; it does not reconstruct a missing historical
+interval and does not close either historical cause.
+
+safe-steer post-Resume second request. The second request is dispatched by the
+detached execution the Resume opens (`coordinator.go` `openSegment` with
+`DetachActivation`, then `activateExecutor` -> `BeginContinuation`). That path
+runs the approved tool, commits facts and awaits each durable receipt before the
+model turn. The receipt handshake is cancellation-bounded on three sides
+(`interaction_session.go` `commitFact`: the publication context, the
+execution/releasing owner, and the Segment observer; `execution_fact_commit.go`
+`Await`). The pump (`pump.go` `processEvent`) calls `Complete` on every
+`ExecutionFactCommit` it dequeues before it decides whether to stop, and a commit
+whose projection fails returns `true` (keep consuming) rather than stopping the
+pump; it stops only after completing a terminal commit or on a tree barrier. The
+only orphan shape — a receipt awaited after the pump stops — would require a
+commit the executor sends after the pump exited its range loop, which the
+sequential receipt await and the keep-consuming-on-error rule prevent on the
+normal second-request path. The activation gate (`run_tree_owner.go`
+`beginExecution`) closes `activation.done` on every resolution, so the pump's
+`finish` cannot block on it indefinitely. No reachable orphan/deadlock was found
+in current code; the historical 10s stall remains unreproduced and open.
+
+MCP initial discovery. The plugin child acquires an exclusive data-directory
+advisory lease and opens its SQLite store before it serves the stdio transport
+(`plugins/memory/main.go`, same shape in `schedules`), and on Unix
+`advisorylock.AcquireDirectory` retries `LOCK_EX|LOCK_NB` under the child's signal
+context until the lease frees. A child blocked there cannot answer the parent's
+first `server/discover` within the SDK's 10s bound — the exact "held lease delays
+pre-transport startup" shape the prior controls observed. The question was whether
+reconnect can make two children contend for one data lease. It cannot in current
+code: a superseding attempt captures the outgoing session's retirement
+(`attempt.go` `begin` -> `registry.go` `retireSessionLocked`) and waits on it in
+`connect` before it launches the new child; the retirement's `done` closes only
+after `closeSessionAttempt` -> `retireSession` has closed the session, waited for
+the stdio child's exit, and verified process-group termination — which is when the
+old child's `defer lease.Release()` has run. The new child therefore never starts
+until the old lease is free, so no reconnect lease race exists. A pre-transport
+block would require external contention on an isolated data directory. No
+reachable contention was found in current code; the historical discovery timeout
+remains unreproduced and open. No production change is made for either path: the
+hard constraint is to leave an unreproduced historical cause open rather than make
+a speculative repair.
+
 ### Bounded deadline-boundary controls (2026-10-16)
 
 This test-only slice separates provider arrival from the safe-steer fixture's
