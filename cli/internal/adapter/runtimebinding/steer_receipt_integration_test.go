@@ -158,8 +158,8 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 			capture("after deadline", inspection)
 		}
 	}()
-	// Cancellation can remove the blocked owner before the deadline handler runs.
-	// Observe it first without consuming events or extending the success window.
+	// The caller deadline ends observation without deciding the Runtime-owned Run's
+	// outcome. Capture live state before that boundary without consuming its events.
 	deadline, _ := ctx.Deadline()
 	inspected := make(chan struct{})
 	watchdog := time.AfterFunc(time.Until(deadline.Add(-time.Second)), func() {
