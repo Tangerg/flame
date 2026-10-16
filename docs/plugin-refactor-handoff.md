@@ -1,966 +1,327 @@
-# Unified plugin refactor handoff
+# Unified plugin refactor: next-session handoff
 
-## Current acceptance
+Updated 2026-10-16 (Asia/Shanghai). Latest code/test checkpoint: `4bb2481a3`.
+Continue from the current branch HEAD; later documentation commits are expected.
+Do not checkout/reset back to the checkpoint.
+This document replaces the long chronological handoff. Historical detail remains
+in `docs/plugin-refactor-progress.md` and Git history. The handoff update itself
+changes documentation only and does not extend any verification scope.
 
-On 2026-10-15 the user lifts the UI/E2E/screenshot test prohibition and authorizes
-actual graphical qualification. Earlier no-UI statements retain their historical
-scope. Graphical rows and review scenarios stay Partial until their
-matching evidence exists. Use only isolated Runtime/data/browser/native resources;
-preserve the primary checkout, daily Runtime, stash, assertions and time limits,
-with no push or main merge.
-
-The original P01-P48 audit is **48 Evidenced / 0 Partial / 0 Open**, not an
-implementation percentage or a 100% claim. P13 public installed Tool proposals,
-P12/P16/P18/P41 real-process proof and P48 source/API/doc cleanup now have matching
-evidence, including the newly authorized complete frontend gate.
-P45 now has actual synchronous renderer-blocking recovery evidence; P40 has the
-matching Web/Wails resource, authentication and connection-retirement sequence.
-P21 now has complete same-owner query and revision-refusal comparisons through
-the actual model Tool, executable CLI and rendered Reviews board. P39 now proves
-fresh-window historical inspection without renderer/producer modules. P26 now
-proves a UI-accepted Run survives window/component closure. P31/P36 now have real
-in-flight navigation and release-replacement proof. P33 now uses the owner point
-for actual contextual action visibility without menu I/O. P46 now has actual
-shutdown with an active backend/model callback and component teardown, including
-one cooperative session-resource close. All four review cross-scenarios are now
-Evidenced, including the actual no-Run loss/restart/provider-replacement controls
-below. Current-source global Go, independent-author/distribution, production
-package and actual native original-command recovery gates now pass as scoped
-below; historical causes and dependency risks remain unresolved.
-The historical post-SDK **10s safe-steer timeout has no established cause**.
-The user confirms no original Runtime log, goroutine dump or test data remains.
-Passing repetitions do not close that item. An earlier test-only qualification
-also has unclassified MCP startup discovery deadlines; its failed gates remain
-recorded separately from the earlier complete product pass.
-A current SDK provenance audit confirms the failed stack's go-sdk version and
-expected module checksum did not change across the historical/current references.
-The matching archive already contains the discovery metadata-before-session-lock
-correction. It cannot be credited as a new Scope-upgrade fix or used to explain
-the missing failed child interval; details are recorded in progress.
-Complete typed-input structural admission now has an actual installed CLI
-RED/GREEN regression and shared SDK/Runtime repair for unary and streaming
-consumers. The earlier `9f5a66d51` qualification retains its source scope; the
-current 6d5e2427d qualification is recorded next. Neither closes historical
-deadlines or extends to unexecuted scenarios.
-The next bounded deadline controls establish another safe-steer observation gap:
-an actual second HTTP arrival can be unclassified by the fixture while the Run
-completes; the unchanged 10s assertion still fails. Failure-only output now retains
-arrival shape/Tool-result IDs separately from classification. This controlled
-case is not a reconstruction of the historical failure. MCP large-frame and
-early-exit controls return prompt EOF, not the historical discover timeout. They
-also expose a separate message-loss fixture defect: its Scanner default rejects
-SDK-admitted frames. Both directions now use the SDK-owned frame budget, with an
-ordinary bootstrap real-process request/reply regression and inherited-overlay
-RED proof. Focused response-loss/steer/eight-cut parallel race passes. Final complete
-bootstrap/runtimebinding parallel race passes 417.252/40.909s with 235/342
-test/subtest passes and zero failures/skips; vet and formatting/diff checks pass.
-No new whole-product/frontend/native qualification is claimed. No production behavior,
-existing assertion/deadline, schema or dependency changes. Historical causes stay
-open. A separate bounded npm control confirms the actual old KaTeX adapter can
-emit an unsafe link under deliberately preexisting prototype pollution; no
-application polluter or browser exploit is proven. Four high/four low alerts remain.
-Detailed evidence and each row live in
-[plugin-refactor-progress.md](plugin-refactor-progress.md).
-
-The corrected original four-module -json -race -p 2 gate at 6d5e2427d exits 0:
-174 packages finish, 159 tested packages pass, fifteen have no tests and 9,187
-unique test/subtest results pass. Six paid cases and their helper retain seven
-conditional skips. Complete bootstrap passes 375.810s; lost Core opening 4.46s,
-CLI delegated approval 3.03s, safe/yolo steer 2.82/2.72s and all eight execution
-SIGKILL cuts (parent 43.39s) pass under unchanged bounds. All five modules pass
-dependency verification/vet/build, Desktop Go race passes forty tests, Runtime
-and Reviews regeneration plus the existing formatter reproduces tracked bytes,
-and the Runtime/first-party distribution builds. No passing result erases the
-original introduced inventory failure recorded below or explains old timeouts.
-
-Fresh GOWORK=off/no-replace Go authors resolve thirty Scope modules at v0.51.1
-through isolated archives/cache; offline metadata/tidy/verify/race/vet/build and
-executable packaging pass. Fresh packed public component artifacts independently
-build Usage and match its bytes, including clean offline ci/typecheck/build.
-Temporary author sources/proxies/caches/dependencies are removed. These artifacts
-are not registry publications. Earlier shared/frontend gates retain their exact
-unchanged c44671017 source scope, including 364 shared tests and 357 frontend
-files/2,429 tests.
-
-The pinned private beta.29 Wails tool packages the unmodified arm64 production
-.app; strict/deep signature and macOS 13.0 floor checks pass. That daily-ID bundle
-is not launched. A separately identified native control changes only bootstrap
-17171 -> 57324 through a task-only overlay. Actual User Memory Save commits one
-private item and loses its backend reply. After both app and identical-binary/home
-Runtime restart, management retains UUID e5631d75-f798-4bd5-80ba-8e507e5ff8bb and
-its original installation/digest even with the original producer disabled.
-Disabled checking stays unknown. Explicit native reenable/public MCP connected
-observation permits the original receipt query; every displayed field equals the
-first private value. Private storage has one item/one receipt; the armed mutation
-redispatch trap is absent, with zero Sessions/model POSTs. Three screenshots and
-private original evidence are retained. The additional return to the Memory list
-is not run because the Mac relocks after the successful recovery screenshot.
-The app and Runtime join at 0, provider joins after SIGTERM, the task installation
-is uninstalled, copied source removed and listeners released. No product guard,
-assertion/deadline, primary source, daily app/Runtime or stash changes.
-
-The first current-source complete four-module parallel race at a857d264a exits 1
-on the single CLI inventory omission GetPluginCommand. Its 174-package result
-contains 9,180 passes/seven unchanged helper skips; complete bootstrap passes
-384.822s, safe/yolo steer 2.76/2.58s, delegated approval 3.03s, lost-Core recovery
-4.60s and all eight crash cuts (parent 44.35s). These do not diagnose old timeouts
-or count as an all-green final gate. The CLI now has an actual get-command query,
-metadata-preserving public adapter and strict current inventory entry. Root
-RED/GREEN and focused plugin/inventory races pass; an actual new CLI executable
-reads the old uninstalled B request over authenticated HTTP and refuses another
-store namespace without output, mutation identity or provider/model execution.
-Its Runtime/provider lifetimes join and temporary CLI profile is removed. The
-corrected full/global/native/author qualification now passes as recorded above;
-historical timeout causes and dependency risks remain open.
-Fresh npm audits still exit 1: 4 high/4 low overall, 0 high/4 low production;
-all high fixes remain unavailable. Global Wails CLI beta.25 is preserved. A private
-beta.29 tool is built under task scratch. The separately qualified production
-package and actual native control are recorded above; only the control uses the
-bootstrap-address overlay, with product source unchanged.
-
-The remaining no-Run review finds and repairs an actual client-recreation gap.
-Reviews' recovery control was tied to the mounted MutationPromise even though the
-existing journal retained its unresolved identity. A causal RED/GREEN component
-test now recreates both owners and recovers through the public original-request
-query. plugins.getCommand reads Runtime's existing saved route/input, with store
-and actor guards and no backend dispatch; missing/prepared routes cannot start
-work. The unary SDK handle verifies the same journal identity before querying the
-original private receipt. Neither journal nor Core stores a competing outcome.
-Client fingerprints now follow Go's admitted object/string meaning and exact
-numeric lexemes; the former extra wire-text identity is removed. Reordered input
-recovers the same key/options while changed numeric lexemes remain refused.
-
-The client journal now requires method metadata. Former records are preserved
-and refused, with no conversion/deletion/compatibility reader; reconcile them with
-the original client before a fresh-profile pre-release upgrade. Runtime/private
-SQL and backend protocol formats do not change. Public Go/TS/generated artifacts,
-SDK, Reviews and affected tests/docs migrate together. Shared TS full checks pass
-362 tests; seven component regressions, Desktop/SDK/author types, ESM/production
-builds, four Go owner/architecture packages and the actual installed no-Run
-restart/replacement test pass. Earlier global race/native/closure gates do not
-extend to this new source. Management now exposes the same pending journal
-projection even when the producer cannot mount. An actual Reviews committed-reply
-loss survives UI and same-binary Runtime restart; disabled recovery remains
-unknown, then the original complete receipt settles after explicit re-enablement.
-Pending select/configure/uninstall are held; after confirmation, staged selection
-and uninstall succeed. An armed redispatch trap stays absent, the second Reviews
-owner stays at revision 1 and no Session/Run/model request is created. This
-sequence also reveals and repairs a journal matching defect: unrelated management
-mutations must be excluded by the stored method before plugin input decoding.
-Shared TS checks now pass 364 tests. The frontend consumer analyzer also recognizes
-actually called typed recovery members without crediting mere handle enumeration
-or unused members; all sixteen analyzer regressions retain the negative guards.
-Complete frontend npm run check passes 357 files/2,429 tests (78.02s), including
-architecture/API/locale/resource/bundle/module guards. The first two gate failures
-and their repairs are recorded in progress; no guard or assertion is weakened.
-The actual same-role Memory control now completes that review. At c44671017,
-A commits a User-memory item and loses its backend reply; its real page retains
-unknown. After UI and identical-binary/home Runtime restart, actual management
-selects B. Uninstall of pending A stays held; disabled A remains unknown. After
-explicit reenable and public confirmation that A is connected, original recovery
-returns the complete first private receipt while B stays selected and empty.
-An armed mutation-redispatch trap stays absent; A contains its one original item.
-An immediate check before connection remains unknown and is not reported as
-successful recovery. All original keys/routing/admitted numeric lexemes agree.
-
-A separate loopback proxy deliberately drops successful Core-to-UI replies for
-one real B add command. UI retains unknown despite rereading its one item. After
-another UI and same-binary Runtime restart, actual management selects an empty
-new Memory owner and uninstalls B successfully. Original recovery retains B's
-request/key and stays unknown; the new selected owner remains empty. The journal
-and private task evidence deliberately retain that unknown original binding.
-The complete 128/72-event captures, exact complete receipt comparison, zero
-Sessions/Runs/model POSTs and prior Reviews update/uninstall scene qualify the
-first review group. No product source, assertion or deadline changes. All task
-windows close, temporary installations/source copies are removed, Runtime/proxy
-lifetimes join at 0 and the quiet provider joins after SIGTERM. Historical
-timeouts, dependency alerts and fresh global/native qualification remain open.
-
-P46 executes the actual installed Reviews board against a task analyzer that
-enters the public selected-model callback and a held local provider stream before
-isolated Runtime shutdown. The complete network capture shows one plugins.call
-and one canceled terminal; the component retires and Runtime exits 0. The first
-stdio control follows the existing hard-stop policy, so it does not prove the
-plugin's in-process closer. A separate ordinary Streamable HTTP control directly
-observes model peer closure, canceled callback settlement and one setup-resource
-close at 0.494/1.271/4.649ms after shutdown. Its process survives session retirement;
-later HTTP/Backend.Close joins return nil and the process exits 0 without another
-setup close. Bootstrap shutdown tests, public callback/setup tests and 38 frontend
-lifetime/generation/Reviews tests pass. Both installations and package copies are
-removed, windows close and all owned processes join. No production behavior,
-assertion, deadline or lifecycle owner changes. The subsequent no-Run restart/provider-replacement review is qualified above;
-historical timeouts, dependency alerts and fresh final global gates stay open.
-
-P33 is now qualified with the real installed Reviews/analyzer pair. The Go-owned
-point emits one exact TS contract string; the board resolves metadata during its
-owned refresh and renders actions from that accepted read model. It copies no
-predicate. Open with a provider shows Analyze; Resolved and provider absence do
-not. Draft edits cannot change the accepted context, and status-menu interaction
-issues zero RPC requests. Only explicit Analyze returns actual findings; the model
-provider receives zero requests. Six consumer tests, generated point parity,
-Desktop/author typechecks, focused lint, ESM build and the Reviews backend module
-pass. Metadata errors remain explicit with accepted review data. Test-fixture
-matcher/quoting/filesystem mistakes are corrected without loosening assertions or
-Vite access. The separate actual withdrawal failure is fixed by 1ce03662a below.
-Owned windows close, both temporary installations are uninstalled and their source
-copies are removed. After the inspection-state lint repair, the final 11,828-byte
-component is byte-identical to its installed entry and repeats Open/Analyze,
-zero-RPC menu interaction and accepted Resolved revision 2 successfully; all six
-consumer tests pass in 2.06s. The final pair is also uninstalled and removed.
-P46, the no-Run graphical restart review, historical safe-steer/
-MCP causes and fresh final race/native/closure qualification remain pending.
-
-Actual graphical qualification exposes and repairs a pre-admission error-category
-defect. When a frozen optional collaborator is withdrawn, activation capture must
-still refuse the broken bound graph. Its infrastructure unavailable error was not
-translated to the plugin domain, so Delivery returned internal_error and the UI
-retained false uncertainty. The existing connection adapter now classifies this
-known capture failure. An installed Handler/Delivery RED/GREEN regression preserves
-the no-command-route fact and unchanged private revision. Broken bound optional
-members still do not become absence; after-dispatch uncertainty still wins.
-Four focused backend packages, the point lifecycle and no-Run restart/replacement
-case pass. A fresh Runtime reproduces the same actual UI sequence as definite
-plugin_unavailable, with no unknown control or private change. Explicit consumer
-reconnect admits genuine optional absence before a new explicit command succeeds.
-The old false-unknown command is reconciled under its original identity. Earlier
-complete race/native/closure gates are not extended to this new Go source; final
-global requalification is pending. P33 consumer work has a separate slice.
-
-P31/P36 use a second actual Reviews installation and one bounded task HTTP proxy.
-For P31, A commits revision 3 while its response is held; navigating to B renders
-B's own revision 1 and cancels A's old observation. Releasing that reply cannot
-retarget the update or publish A's message into B. Actual request capture and
-independent CLI reads retain A=3/B=1. For P36, hold B's revision-1 query, advance
-private state to revision 2 and select a staged package with a changed digest and
-visible replacement title. Old observation cancellation and the explicit reload
-boundary prevent the late result appearing. After ordinary reload/token reentry,
-the new title and revision 2 render. The gate never expires; cancellation is not
-claimed to execute the old callback. Close the window, uninstall B, remove its
-temporary sources and join the verified proxy at exit 0. Evidence and retained
-private data remain separate. No production assertion/deadline changes occur.
-Remaining criteria are P33/P46 and the no-Run UI/Runtime restart review; historical
-safe-steer/MCP causes remain unestablished.
-
-P26 now uses a Run actually started by the Web composer in the task workspace.
-While a bounded local provider gate holds its model exchange, the installed
-trajectory component displays the exact running Run. Closing the only task
-window retires its resource lease from 200 to 410; an independent public read
-still sees the same Run running. Releasing the gate completes it in 0.057s within
-the ten-second assertion. Cold CLI and reopened graphical trajectory show the
-same completed Run and reply. The primary model call remains one; the separately
-recorded title endpoint is auxiliary Session work. No production source or
-assertion/deadline changes occur. Temporary capability URL material and both
-windows are removed. Remaining rows: P31/P33/P36/P46, plus no-Run UI/Runtime
-restart and the unestablished historical safe-steer/MCP causes.
-
-P39 now has actual renderer-present and renderer-absent controls. The installed
-recorded-result filter mounts before independent CLI disables it and Reviews.
-A fresh window then displays the old search text and revision-1 Reviews JSON in
-the generic inspector. Its complete 21-request trace has no plugin resource or
-invocation request and no Run start/resume. Canonical transcript/Runs and provider
-request counters remain exactly unchanged. Both task installations are restored
-enabled after closing that window. Screenshots and comparison evidence remain
-private; no source or assertion/deadline change occurs. Remaining graphical rows
-are P26/P31/P33/P36/P46; no-Run restart and historical timeout gaps remain open.
-
-The fresh installed Reviews UI reads revision 1 while executable CLI and actual
-model Tool return the same complete query. CLI advances private state to revision
-2; Tool, CLI and that stale UI submit identical revision-1 input and return the
-same complete revisionConflict result. The rendered conflict rereads revision 2,
-Tool keeps tool_failed while its Run completes, and same-identity CLI refusal
-redelivery preserves the original outcome. A final independent query confirms no
-further mutation. Browser network evidence and canonical cold snapshots prove
-the comparison; no result injection, source change or weakened assertion occurs.
-The first model attempt's retained port-1 provider configuration and initial
-scratch shape/command-ID mistakes are recorded as fixture failures. An explicit
-ordinary provider update fixes the isolated fixture before creating new Runs;
-none of this explains the historical deadlines. Next graphical criteria are
-P26/P31/P33/P36/P39/P46 and the no-Run UI/Runtime restart review.
-
-Fresh independent Go qualification now passes against the Scope-v0.51.1 graph:
-explicit b2f1da248 Runtime/localruntime unpublished archives, workspace off,
-no replace, no authored internal imports and an initially source-empty private
-module cache with offline file proxies. Third-party checksum verification stays
-enabled. Tidy/verify/full metadata/race/vet/build pass; 22 tests pass without test
-skips/failures and the Tool-proposal command also builds. The full offline metadata
-inventory now succeeds. Temporary trees/proxies/caches are removed, and an
-installable stripped Reviews package is retained for the next actual UI scenarios.
-An initial pre-qualification cache-cleanup permission failure is preserved as a
-fixture failure; Go's private-cache cleanup corrects it. No published dependency
-or shared cache entry is overwritten. Ordinary released-graph CLI/Reviews tidy
-still needs a future published Runtime containing these APIs; no publication or
-paid/all-platform execution occurs. The SDK README's retired workspace Memory
-consumer reference is removed.
-
-The matching current Web sequence now passes: actual entry/relative ESM responses
-are 200 and exact entry bytes match; shared React identity and Hook 0 -> 1 work.
-After pending.js returns 200, changing to a wrong token yields UI 401 and retires
-the exact old resource capability to specified HTTP 410. Correct-token recovery
-republishes the entry, preserves explicit reload, clears the token on reload and,
-after reentry, obtains a fresh lease and working shared-Hook state. Closing the
-owned Web tab retires that new lease to 410. Sanitized network records mask
-resource tokens and retain only authorization-present booleans. Actual native
-relative ESM/address replacement/reload evidence completes P40 and the third
-review group. This tests one standalone loopback Runtime through separate Web/
-Wails clients, not a second physical host or TLS deployment. No source or deadline
-changes occur; temporary capability URL files are removed.
-
-The latest acceptance slice executes an installed synchronous module loop in a
-separately identified task Wails app. A one-second WebContent sample captures 855
-main-thread samples in module evaluation/JIT. Independent CLI disable confirms
-disabled/withheld in 0.229s while the app is alive, and an independent read agrees.
-The bounded task supervisor stops only the verified app after five seconds; the
-original WebContent exits. Real native restart retains the disabled card, removes
-its command and renders another multi-resource shared-React component with a real
-0 -> 1 update. This closes P45 and the fourth review scenario, with no production
-change, relaxed deadline or automatic JavaScript interruption. Evidence includes
-the controller JSON, native sample and restored native screenshot. Historical
-safe-steer/MCP causes and other graphical scenarios remain unresolved or
-unqualified; the later Scope-graph independent author pass is recorded above.
-
-The user-requested dependency cut now selects all 30 Scope modules at v0.51.1,
-without replace. Production builds and workspace synchronization pass. Runtime
-tidy passes; ordinary CLI/Reviews tidy still cannot resolve the unpublished Flame
-plugin APIs. Subsequent independent snapshots now pass as recorded above. The complete
-parallel race selection finishes all 174 packages but exits 1 on the existing
-concurrent SQLite initialization case (immediate SQLITE_BUSY before schema SQL).
-Every other tested package passes, including complete bootstrap, both steer modes,
-all eight SIGKILL cuts and the formerly timed-out discovery cases. Do not call this
-a passing whole gate or historical diagnosis. A bounded WAL-only probe and a new
-cancellation regression identify the SQLite opening boundary. Its working repair
-passes focused race and 100 original concurrent repetitions. The original
-five-second busy budget and existing test
-assertions remain intact. Current source, failed harness attempts and exact
-timings are recorded in Current stage of the progress document.
-The first expanded WAL repair candidate wrongly rejects existing :memory:
-consumers and is interrupted as failed. The corrected boundary retains explicit
-memory databases, requires WAL for files and preserves custom cancellation causes.
-All four focused SQLite/persistence/recovery/Segment race packages pass. Complete
-post-repair parallel race now exits 0 on the final frozen source: all 174 packages
-finish, 159 tested packages pass and fifteen have no tests; 5,198 top-level tests
-pass with seven unchanged opt-in paid/helper skips and no failures. Safe-steer
-passes 2.79s; delegated approval, all eight SIGKILL cuts and complete bootstrap
-(402.385s) pass. All four participating modules pass go mod verify. Workspace vet
-and production build pass, as does the real Go Runtime -> HTTP -> TypeScript suite
-(49 tests, 36.96s) with freshly built executables and first-party packages. Fresh
-native ESM/connection evidence follows; other graphical criteria remain pending,
-while independent archives have their own subsequent qualification. This current pass does not
-establish either historical timeout's cause.
-
-Fresh Scope/WAL Runtime and native builds actually render multi-resource ESM,
-shared React identity and a 0 -> 1 Hook state change. Dependency evaluation failure
-displays the explicit recovery boundary. A further native control exposes a real
-connection-lifecycle defect: a never-finishing top-level await is incorrectly
-joined by generation cleanup, so replacement package contributions never publish
-despite ready HTTP/CLI state. Removing that wrong join retains resource cancellation,
-late-export refusal and explicit cross-generation reload. The same native sequence
-now republishes Healthy, requires explicit reload and, after the expected token
-reentry, renders and increments normally. Actual native RED/GREEN screenshots are
-retained. Complete frontend qualification passes 355 files/2,418 tests (95.36s for
-tests) and all source/resource/bundle gates; fresh beta.29 packaging/signature pass.
-This is not synchronous CPU-blocking recovery, pending business-operation
-replacement, active-Run shutdown or the complete Web/Wails review matrix. The
-preceding 39 Evidenced / 9 Partial audit and four Partial review groups are not
-advanced by that lifecycle repair alone. The later P45/P40 executions above
-advance their own matching criteria and review scenarios.
-
-A second actual Web failure is now causally fixed: an imported ESM dependency
-throws, but its resource close never settles because the HTTP transport suppresses
-stream termination on cancellation. Publish the terminal notice from reader cleanup,
-including early withdrawal; do not patch the component or add a timeout. The real
-public-client regression fails before repair at its unchanged 5s limit and passes
-afterward; focused 80 tests and the complete 30-file/356-test shared-client check
-pass. The rebuilt production Web displays the existing explicit recovery boundary
-for the same dependency failure. Actual theme/font-scale interaction also passes.
-P30/P35 join P29/P32 as graphical evidence. P48 source cut is now evidenced:
-the unused workspace Memory path is deleted end to end, the dialog uses the atom
-boundary and management controls use the shared pending contract. Complete frontend
-check passes all 355 files/2,418 tests plus every source/resource/bundle gate. Actual
-rebuilt Web Memory adds and refreshes its owner-backed task-only row. The user
-unlocks the Mac; subsequent Scope/WAL native ESM/connection execution is recorded
-above. Earlier native results retain their exact source scope. The requested
-Scope v0.51.1 upgrade is complete; upgrade success is not either historical
-timeout diagnosis.
-Bounded MCP controls now distinguish whole/fragmented frames, lease release and
-pre-transport EOF/SIGTERM, with package init traces. They do not reproduce or explain
-the historical MCP deadline; safe-steer also remains unresolved. Full details and
-failed harness attempts are retained in Current stage of the progress document.
-
-Actual Web execution now exposes and repairs dropped CommonJS named exports in
-the production shared React facades. The Vite owner emits explicit installed React
-bindings and checks its output; a new author-consumer link gate uses actual built
-ESM. Web and an isolated Wails bundle render installed Reviews, save through its
-real backend and demonstrate stale-editor revision refusal (Web holds 3, Wails
-saves 4, Web refuses without overwriting 4). An executable CLI query agrees with
-revision 4. P29/P32 now have graphical evidence. Current native packaging and the
-public-module gate pass. The first full frontend gate was failed/unqualified:
-a clean focused run reproduced nine failures in five files (105 pass), including
-obsolete service/Skill-cache fixtures and Memory raw-input/cache expectations.
-The current migration and complete passing gate above supersede that failure
-without restoring old APIs or relaxing valid assertions. See the
-current graphical-acceptance section of the progress document for exact scope.
-
-The following test-only slice qualifies the actual CLI original-binding conflict:
-a successful update's key cannot accept otherwise-valid changed input, a fresh
-key can advance the review, and the original key/input still recovers its complete
-earlier receipt through CLI/Go while current private state remains advanced.
-Normal/race cases pass 14.60/10.92s; the race group also retains typed-admission
-proof (10.91s). Bootstrap vet passes. Complete ordinary qualification passes
-346.527s: all 174 packages finish (159 tested, fifteen without tests), 5,194
-top-level passes, seven existing paid/helper skips and zero failures. Execution/
-bootstrap/architecture/CLI pass 59.954/182.835/30.910/43.143s. Bootstrap has all
-151 top-level tests passing without skips/failures. The identity/typed/history/
-lost-Core-opening cases pass 11.01/12.81/29.07/1.85s, with all eight SIGKILL cuts
-passing (parent 44.94s). Existing assertions, contexts and the 900s package limit
-remain unchanged. The earlier complete parallel gate covers unchanged production
-source; the added test's focused race is separately recorded.
-Final stronger assertions check the public Go problem type and exclude CLI
-`internal_error`; that final case passes normal/race 8.66/11.79s after the complete
-normal run. No assertion or limit is relaxed.
-This proves Core `idempotency_conflict`. The subsequent test-only
-`TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI` also
-compares the distinct private `invocationConflict` value through a real model Run
-and executable CLI. Its independent HTTP backend makes controlled real prior
-Store calls before forwarding the unchanged public requests. CLI/Go recovery
-explicitly refuses a different-input receipt without replay or overwrite, and
-a fresh identity advances private state once. Original private outcomes remain
-unchanged; counters require one Tool, two typed dispatches, two pure validations,
-two receipt reads and exactly three receipts. This does not qualify graphical
-interaction or diagnose the historical deadlines. Production source stays
-`9f5a66d51`.
-
-The private-conflict slice's focused ordinary/race groups pass all four top-level
-cases without failures/skips (packages 130.472/61.621s; runners
-139.703/209.291s). The new case passes 22.40/9.89s. Complete Reviews backend
-module race passes its root and `cmd/review-analyzer` packages 13.097/3.010s,
-21 top-level passes, zero test skips/failures
-and two no-test command packages; affected vet passes 8.444s. The HTTP child is
-not race-instrumented. The initial helper return-type compilation error is
-corrected before these passes. No assertion or timeout is relaxed. Whole-product,
-TS, native and author archives are not newly rerun for this test-only slice;
-their unchanged-production qualification retains its exact earlier scope.
-
-## Workspace and preservation
+## Start here
 
 - Reuse `/Users/tangerg/.codex/worktrees/unified-plugins/flame`, branch
-  `codex/unified-plugins`; integrated main remains `7ba40c117` (Scope v0.50.0).
-- Do not edit the primary checkout `/Users/tangerg/Desktop/flame`, recreate from
-  main, push, merge main or mutate stash. The retained stash is
+  `codex/unified-plugins`. Always set the command working directory explicitly.
+  The desktop app may otherwise start in the primary checkout.
+- Do not modify `/Users/tangerg/Desktop/flame`, recreate this worktree from main,
+  push, merge into main, tag, publish, or change the daily Runtime/app.
+- The worktree is clean at the resume checkpoint. Preserve the existing stash:
   `WIP on main: c443a1a8 refactor(runtime): finish the json/v2 migration across delivery and tooling`.
-- No user/production data initialization, copying, conversion or deletion occurs.
-- UI/E2E/screenshot qualification is now authorized by the user. Source/type/native
-  build checks alone still do not qualify rendering. Keep each gate's actual scope.
-- Replies are Chinese; code/comments/errors/docs are English. Existing root/module
-  instructions apply. No sub-agent delegation occurs.
-- Stage explicit paths. Hooks run with `lint-staged --no-stash
-  --no-hide-partially-staged` and commitlint before HUSKY=0 commits; no bare stash.
-
-## Current product changes
-
-The latest Runtime delta classifies fresh command input rejection at its actual
-pre-binding boundary as invalid parameters, preserving original-route-first
-recovery. Reviews now saves structurally admitted `invalidUpdate` decisions in
-the existing transaction and validates receipt shape without redoing the
-business decision. Its compiled input schema derives from the same public Go
-type; a single 128-byte ID bound projects a conservative character bound without
-weakening the byte rule. Malformed public input keeps its identity available;
-an admitted invalid business decision owns its identity and original receipt.
-No post-dispatch error, provider replay, host business cache or old format is added.
-Current schema/TS/component consumers are regenerated together.
-
-The current slice completes structural admission against the exact registered
-backend's typed decoder before fresh command binding or dispatch. Schema-valid
-decimal/exponent integer spellings are definite `invalid_params`, leaving their
-identity unused. The same key can then admit canonical input, retain a business
-refusal and recover its original receipt. A read-only validation operation has
-no command identity and never enters the business handler. Transport/registry
-failures are not definite refusals. Original recovery stays receipt-only;
-the backend protocol, every declaration and generated consumer migrate together
-to `2026-10-15.3`, without compatibility, numeric coercion or another receipt owner.
-
-The preceding Reviews production slice `490bb1105`
-removes its incorrect 4,096-entry lifetime receipt quota and `receiptCapacity`
-outcome, with regenerated schema/TS/component resources and no compatibility.
-The old branch returned a known refusal before saving its receipt; actual CLI
-redelivery and two read-only queries therefore retained unknown rather than the
-original refusal. The user authorizes this breaking owner repair. Existing
-private `input_json` storage and original-release retention are unchanged;
-unrecorded historical refusals remain absent, never reconstructed.
-
-Earlier test-only slices add steer failure diagnostics and actual installed
-Reviews no-Run recovery across restart, disable/reenable, retained update/uninstall
-holds and replacement-target refusal.
-The original private receipt recovers once; a second installation stays unchanged.
-The real CLI now compares installed query and revision-conflict results with the
-model Tool result through authenticated HTTP, including same-command redelivery.
-Plugin test Handlers and Endpoints now share the isolated store's namespace;
-the fixed conformance namespace remains confined to its matching test binding.
-There is no production timeout repair or completed graphical cross-scenario.
-Reviews' SDK/Tool test now compares full revision/identity outcomes, admits new
-successful work beyond 4,096 real historical receipts and preserves new business
-refusals and original recovery. A separate HTTP-process/model Run/executable CLI
-case records matching missing-review refusals beyond that former cutoff. Same-key
-CLI and Endpoint redelivery read the original receipt; counters require one Tool,
-one typed dispatch and two receipt reads, with 4,098 receipts and an unchanged
-Review. A Store regression reopens and reads old/new success and new refusal
-receipts after actual post-cutoff business mutation. The former capacity tests
-and fixture are migrated, not kept as a parallel contract or accepted alias.
-The private `invocationConflict` and Core binding-conflict CLI proofs are recorded
-above with their different recovery contracts. Graphical cross-scenarios remain
-unqualified.
-
-- `6a88bd45a`: public `ToolProposalContract`/`ToolProposalMethod` queries use the
-  existing installed composition. Only arguments may transform; execution owns
-  Tool identity, schema and approval. Bindings, activation and transitive dependencies
-  freeze. Final approval/execution/history agree across actual stdio/Reviews restart,
-  with one transformation and no replay. Internal `CallComposition` replaces the
-  model-only name, without an alias. Waiting recovery also preserves unreported
-  provider usage and later known breakdowns without inventing reported zero/price.
-- `ef5a9a0f3`: P12 installs two stdio observers and observes exact nested order,
-  frozen in-flight configuration and a reversed next Run. P16 uses a real public-SDK
-  command decorator and SQLite receipt: inner mutation commits once, outer failure
-  stays unknown, original receipt survives redelivery/reopen and stale next fails.
-  P18 exits an installed process after acknowledged output, retaining a chunk and
-  uncertainty, with original-receipt-only recovery after explicit reconnect.
-  P41 builds/runs the real CLI over authenticated HTTP through installed Schedules
-  into Core Run acceptance and same-command redelivery, without a page.
-- The CLI path exposes a production metadata defect: absent nested HTTP headers
-  inherited parent command key/namespace/cursor. Every request now replaces those
-  values even when empty. Core error encoding also refuses to let a nested
-  transport error bypass the Delivery-owned problem vocabulary; RED/GREEN tests pass.
-- `ac5c3ece6`: actual disabled and failed stdio contributors across restart no
-  longer turn captured waiting probes into startup failure. Connecting sources
-  defer; definite unavailable/stale captures become explicit lost state; inconclusive
-  I/O remains an error without changing facts. Pre-engine discard closes only
-  acquired resources. No replacement chain or unapproved mutation executes.
-- `b2dcbfbba`: current Runtime/Reviews/CLI guidance replaces stale cutover claims,
-  the old design draft is labeled superseded, public API inventory includes P13,
-  and the process fixture uses JSON/v2. Strict architecture/generation/static closure
-  passes. Retired API strings remain only in explicit refusal tests/removal prose.
-
-Earlier product roots remain relevant: `366ffff6a` compiles immutable model
-contracts once; `981c4c915` captures/restores MCP authority separately for every
-Tool group, without discovering additional authority for a waiting Deployment.
-Other completed contract/dependency/retention/model/feature ownership work remains
-recorded in progress rather than duplicated here.
-
-## Actual current qualification
-
-The current typed-admission slice passes complete SDK/service/Reviews race,
-affected vet, architecture/Runtime build, shared TS 30 files/355 tests, Desktop
-typecheck, component rebuilds and all eight unchanged Schedule SIGKILL cuts
-(parent 44.53s). The real CLI reproduces the old uncertainty (9.99s) and passes
-after the repair (cold-cache 37.98s), including original-key reuse/recovery and
-changed-input conflict. The first complete bootstrap attempt fails only its two
-history-fixture counters, which incorrectly include the new read-only validation
-in typed dispatch. Those counters now separately require exactly one validation,
-one typed update, one Tool and two receipt reads; all original assertions stay.
-The complete normal bootstrap rerun passes all 150 top-level tests (178.324s), zero
-failures/skips, with history refusal recovery 34.49s, typed admission 9.66s and
-lost Core opening 1.94s. The complete original current `-race -p 2` selection
-passes all 174 packages: 159 tested, fifteen without tests, 5,193 top-level passes
-and seven existing conditional skips (six paid DeepSeek cases plus their helper).
-Wall time is 1,324.824s; execution/bootstrap pass 494.464/835.832s. All eight
-SIGKILL cuts pass (112.75s), as do typed admission 20.33s, history recovery 86.95s
-and lost Core opening 5.31s. Original assertions/contexts and the existing 900s
-package limit remain unchanged. Full-module vet/build pass 6.198/7.956s.
-The subsequent test-only slice's whole ordinary selection is recorded above;
-the frozen preceding-source pass below keeps its original scope.
-
-Current-source independent author archives use explicit unreleased
-`v0.0.0-unreleased.9f5a66d51` Runtime/localruntime versions, deleted source staging,
-offline proxies, an initially empty private module cache, workspace off and no replace.
-Tidy/verify/race/vet/build pass 4.927/2.086/119.404/52.875/4.339s; 21 top-level
-tests pass, zero fail/skip and three commands have no tests. Authored code imports
-only public APIs; the archives include their actual implementation. Thirteen
-generated projection artifacts reproduce exactly. A current packed Usage build
-also reproduces exact formal component bytes outside the repository, including
-after offline clean ci, using packed SDK/UI/icons/Runtime TS and current metadata.
-
-Current Runtime/catalog build passes 12.345s. A task-owned beta.29 CLI builds
-15.352s; native packaging passes 39.809s with a fresh frontend build (Vite 8.07s).
-Strict/deep signature, arm64 and macOS 13.0 floor checks pass. The captured shared
-hooksPath and global CLI hash remain unchanged with HUSKY=0. No application is
-launched or graphical criterion qualified. Registry publication, full offline
-release-metadata inventory, paid live and other-platform gates remain unexecuted.
-
-The frozen concentrated qualification covers production `5ff75fffc`. With ordinary
-workspace discovery, full normal and `-race -p 2` runs over Runtime, localruntime,
-CLI and Reviews finish all 174 selected packages: 159 tested packages pass,
-fifteen have no tests; each reports 5,190 top-level passes and seven existing
-conditional skips (six paid DeepSeek scenarios plus their subprocess-only helper).
-Wall times are 448.909/931.384s; execution/bootstrap pass 104.751/177.064s normal
-and 374.387/435.073s race. All eight SIGKILL cuts pass (parents 75.55/54.87s), as
-do actual history model/CLI recovery 23.54/44.18s and lost Core opening 2.55/5.48s.
-Full vet/build, shared TS (30 files/355 tests), Desktop typecheck and architecture
-pass. No original assertion/context, exclusion, overlay or 900s package limit is
-changed. These passes do not diagnose the historical deadlines.
-
-Current isolated Reviews/Tool-proposal/command-next author archives use explicit
-`v0.0.0-unreleased.5ff75fffc` versions and a private offline module cache. Runtime
-source staging is removed before workspace-off tidy/verify/full-race/vet/build
-pass (9.080/3.364/92.984/32.775/5.324s). Backend/analyzer/decorator race packages
-pass 12.138/4.136/4.330s: 21 top-level passes, no failures/skips, three command
-packages without tests. Authored code imports only public APIs; archives contain
-their actual implementation and companion localruntime. An additional complete
-release-metadata listing fails on uncached `cloud.google.com/go/iam@v1.5.2.info`;
-it is not a passed inventory or released-graph qualification. The actual old
-Runtime requirement remains unchanged and lacks the new SDK.
-
-Runtime/catalog production build passes 13.747s. A task-local Wails beta.29 CLI
-matching go.mod compiles in 16.487s; the global beta.25 binary remains byte-exact.
-Native package/signature/arm64/macOS-13.0 inspection passes; components rebuild
-and unchanged frontend Vite output is reused, with no app launch. The task's
-existing npm ci also executes Husky prepare and writes shared
-`core.hooksPath=desktop/.husky/_`. No before-value was recorded, so do not claim
-shared Git config was unchanged or guess a rollback. Set `HUSKY=0` in future
-task-owned build/qualification environments. No primary-checkout source or stash
-is changed. Fresh npm audits still exit 1: full 4 high/4 low, production 0 high/4
-low; advisory/source triage is unchanged and no manifest/lock suppression occurs.
-
-The first concentrated normal runner incorrectly exported repository GOWORK to
-gopls's independent temporary module and failed its mutation-diagnostics test
-(23.29s). A controlled go-list/gopls probe establishes that configuration cause;
-the unchanged original test passes 1.46s with normal discovery. That invalid
-runner is stopped at 357.989s; no recorded descendant remains. Its failed/incomplete
-attempt is not counted as a pass. The replacement asserts this worktree's
-automatically discovered workspace without exporting it to child workspaces.
-
-The original public typed-input probe establishes the repaired cause: Reviews' method Schema
-accepts `expectedRevision: 0.0` and `1e0`, while JSON/v2 rejects their int64
-projection. Through the real Store/server/public capability binding, ordinary
-`0` returns and recovers `invalidUpdate`; the other spellings return an invoke
-protocol error, no receipt, and a Tool error without structured business output.
-Scope Func explicitly supports additional pure typed InputValidator constraints
-that Schema cannot express. The old Core records dispatch after schema-only
-admission, before the remote typed check. The permanent real CLI regression and
-shared-owner repair above establish that causal boundary. Original receipt-only
-recovery, raw identity and all original deadlines remain intact. Temporary probe
-source/data is removed.
-
-The preceding narrower qualification is retained below with its original scope:
-
-The invalid-input public regression first fails on old source (case 23.31s,
-package 33.101s): the CLI cannot recover its known refusal and private storage
-contains only 4,096 setup receipts. A subsequent public malformed-input assertion
-fails the focused race group 113.281s by exposing `internal_error`; the local
-pre-binding classification repair resolves that path without changing assertions.
-Final actual missing-review/invalid-revision model/CLI cases pass normal 86.684s.
-Complete Reviews normal backend/analyzer pass 5.166/1.526s, race 10.668/3.062s;
-two command packages have no tests. Complete pluginservices race passes 145.790s
-before the additional malformed-stream case, which passes final focused race
-2.957s. Affected vet, Reviews build/typecheck/component build and an isolated
-byte-identical component rebuild pass. Current complete execution/bootstrap race
-at `-json -race -p 2 -count=1 -timeout=900s` passes 459.715/605.718s: 386 top-level
-passes, zero failures/skips, all eight SIGKILL cuts (parent 63.07s) and lost Core
-opening 4.29s. Both actual model/CLI cases pass (parent 47.39s). No source overlay,
-GOFLAGS, exclusion or original assertion/context change is used. This is not a
-new whole-product or historical-deadline diagnosis.
-Complete current Runtime architecture passes 30.155s; eleven Reviews/analyzer
-artifacts reproduce byte-for-byte after generation/normalization. Formatting and
-diff checks pass.
-
-Default `go mod tidy` fails against the unchanged declared old Runtime version:
-it lacks the already used capability/jsoninput/plugin/point packages. Existing
-`invopop/jsonschema v0.14.0` is promoted to direct for the public schema extension;
-no version or sum changes. Do not claim a passing tidy or released-graph check.
-The later concentrated/isolated qualification above supersedes this slice's
-unrun whole-product/native/shared-TS/archive gates. Graphical execution remains
-unqualified. Published metadata is not spoofed
-and no replace, ignored error or compatibility path is added.
-
-The preceding quota repair's qualification follows:
-
-The latest Reviews quota repair has a causal RED/GREEN regression: old source
-refuses the first post-cutoff mutation with `receiptCapacity` (case 1.65s, package
-10.492s); repaired source passes 2.500s. Current normal Reviews backend/analyzer
-pass 3.411/1.921s, history model/CLI case 26.630s; complete Reviews module race
-passes 13.936/3.250s, with two no-test command packages. The complete matching
-installed Reviews/P13/point race group passes 108.046s. Bootstrap/Reviews vet,
-Reviews build, owner generation, Reviews TS typecheck/component build and an
-isolated byte-identical component rebuild pass. Complete current Runtime
-architecture checks pass 57.317s. The independent HTTP child is
-not race-instrumented; parent/module race does not imply child instrumentation.
-No whole-product/full-bootstrap/shared-TS/native or independent author archive
-gate is newly executed after the production contract repair. Graphical tests and
-application launch remain forbidden and unrun.
-
-The preceding, now superseded capacity test/doc-only slice passes its normal
-bootstrap case 26.590s
-and both actual CLI cases together under bootstrap race 39.001s. Complete Reviews
-module race passes backend/analyzer 9.284/2.087s, with two no-test command packages;
-bootstrap/Reviews vet passes. The separate HTTP backend fixture executes under
-bootstrap, without child race instrumentation; ordinary backend tests are race
-instrumented. Full product/bootstrap, TS, native and author archives are not rerun.
-The initial unused-import compilation failure is corrected before those passes.
-
-The preceding Reviews test/doc-only slice passes focused race 6.412s and module vet.
-Complete module race passes backend/analyzer 7.294/3.290s, with two no-test command
-packages; it predates only the final retained-count assertion covered by that
-focused run. Runtime/shared TS/native and standalone author archives are not
-newly run for this slice. The active author README now correctly distinguishes
-public author imports from the internal implementation required in module archives.
-
-The latest fixture/CLI slice passes both complete participating packages on clean
-`6b3a175e8`, without an overlay or changed assertion/deadline:
+  Never use bare `git stash`.
+- Read `AGENTS.md`, `PROJECT_RULES.md`, `DESIGN_PHILOSOPHY.md`, `DEVELOPMENT.md`,
+  `REFACTORING.md` and the README of every module being changed. Then read this
+  document and the progress document's Current stage / Next / Proposal acceptance
+  coverage sections. Repository state wins over older session summaries.
+- Reply in Chinese. Keep source, comments, errors and repository documentation in
+  English. Comments explain why.
+- Root repairs only. Breaking changes are authorized; migrate all affected
+  consumers and delete the old path together. One fact, one owner. No compatibility
+  patches, dual writes, silent fallback, provider replay, weaker assertions or
+  longer success deadlines.
+- The user lifted the UI/E2E/screenshot prohibition on 2026-10-15 and authorized
+  Computer Use. Older no-UI instructions in historical notes/goal text are stale.
+  Use only isolated profiles, Runtime/data directories and identified app windows.
+- Do not touch daily Runtime port 17171 or launch the daily-ID production bundle
+  `com.tangerg.flame`. Global Wails beta.25 is preserved; Desktop pins beta.29.
+- Task npm/build/commit commands use `HUSKY=0`. Preserve shared hooks/configuration.
+  Stage explicit paths, run the actual manual hooks below, and commit each verified
+  slice. The user's no-push instruction overrides DEVELOPMENT.md's push step.
 
 ```sh
-go test -json -race -p 2 ./runtime/internal/adapter/run/execution ./runtime/internal/bootstrap -count=1 -timeout=900s
+cd /Users/tangerg/.codex/worktrees/unified-plugins/flame
+git status --short --branch
+git log -3 --oneline
 ```
 
-Execution/bootstrap pass 240.475/328.931s (wall 334.225s), with 385 top-level
-passes, zero failures/skips and all eight SIGKILL cuts passing (parent 47.73s).
-A read-only native observer follows only this command's message-loss proxies and
-their Memory/Schedules children. No pair reaches its 4s/8s sampling threshold;
-there are no native samples or sampled binary copies. No source, executable,
-deadline or assertion is modified. This verifies the current fixture slice; it
-does not explain the earlier failed gates or the historical safe-steer timeout,
-and is not a newly run whole-product/TS/native/graphical gate.
+## Actual completion boundary
 
-The preceding failed qualifications and bounded diagnostics remain relevant:
-After correcting every custom plugin fixture, a focused Reviews/Schedules-loss/
-cancel-restart race passes 29.250s; architecture passes 68.933s and bootstrap vet
-passes. A complete bootstrap race fails 523.661s (147 cases pass, one fails):
-`TestScheduleRunNowMissingReceiptRetainsUncertaintyWithoutCreatingRun` expires
-its unchanged 10s discovery prerequisite while the original server is `connecting`.
-A concurrent eight-cut execution invocation fails 152.600s: commit and malformed
-expire that same initial discovery prerequisite; the other six cuts pass.
-Those failures have no established cause. A temporary CPU/trace diagnostic of
-the two cuts passes 37.901s and does not explain the failures. The helper now logs
-public status and live goroutines after the original timeout, before cleanup.
-The no-overlay complete execution/bootstrap parallel race now records execution
-failure 392.755s: the edited cut expires initial discovery (helper 10.25s,
-cut 10.75s); the other seven cuts pass. Its live goroutines show SDK
-`Client.discover` awaiting the first `server/discover` response, before admission,
-setup or Core callbacks. The proxy/backend's missing reply is not yet explained.
-Bootstrap from that paired command fails 543.824s: four Memory/Schedules reply-loss
-cases reach the same `Client.discover` wait. The paired command exits 1 after
-551.760s (380 top-level passes, five failures, zero skips). The expanded Reviews
-Tool/CLI case passes 29.58s, cancellation/restart 1.52s and lost Core-opening
-recovery 5.42s; those cases do not qualify the failed packages. A temporary
-startup-phase/proxy-metadata/9s-stack-and-CPU overlay then passes after 454.684s:
-execution/bootstrap 333.208/435.734s, 385 top-level passes, zero skips, all eight
-cuts pass (parent 52.33s). It does not reproduce unanswered discovery. Its only
-9s snapshot belongs to an already-running backend, with no eligible blocked
-child for native sampling. Killed/unclosed profiles are not qualified. This is
-a diagnostic overlay, not a replacement for the failed unmodified-source gate;
-no startup cause or production repair is established.
-The representative live failure is consolidated in the progress document. Its
-complete normalized snapshot and candidate hashes remain reachable with
-`git show 6b3a175e8:docs/plugin-refactor-mcp-startup-evidence.md`; the temporary
-standalone report is removed from the current tree.
+Core functionality has matching implementation and scenario evidence. There is no
+currently identified unimplemented P01-P48 feature. The proposal audit is
+**48 Evidenced / 0 Partial / 0 Open**; all **four review groups are Evidenced**.
+Those are evidence counts, not an overall percentage or a 100% claim.
 
-The earlier namespace mismatch is a separate, established fixture defect:
-initial plugin startup advertised the conformance namespace but reopening and
-the Endpoint used the real store. A temporary negative control restoring the
-mixed binding fails with `mcp_configuration_failed`, rather than remaining
-`connecting`. A cancellation model stub also incorrectly treated an auxiliary
-title request as a repeated primary request; that stub now distinguishes it.
-Neither finding diagnoses the historical safe-steer deadline or the later
-connecting deadlines. No assertion or original case deadline is weakened.
+The remaining required work is, in priority order:
 
-The original complete command passes on frozen `b2dcbfbba`, with no overlay,
-exclusion or changed original case deadline:
+1. Establish the historical safe-steer post-Resume timeout cause, or preserve its
+   explicit unresolved status when a matching failure cannot be obtained.
+2. Establish the historical MCP initial-discovery timeout cause, with the same
+   evidence standard. Do not conflate it with safe-steer.
+3. Address the two npm advisory chains. All eight alerts have triage, but none is
+   remediated. Supported upstream upgrades or a justified complete integration
+   migration require actual verification; suppressions are not fixes.
+4. Reconcile final acceptance against changes actually made and retain explicit
+   unexecuted/risk boundaries. Do not rerun every old gate just to restate status,
+   or describe missing evidence as a pass.
+
+These are stability, security and acceptance tasks. They may require production
+code repairs. Current passing tests do not establish that only paperwork remains.
+
+## Priority 1: safe-steer
+
+### What actually failed
+
+Historical source reference: `366ffff6a`. The retained original output names
+`steer_receipt_integration_test.go:144`, safe 15.70s / outer 26.75s. This is the
+unchanged 10s wait for the second provider request **after Resume succeeds with a
+new Segment**. No failed-interval Runtime log, goroutine dump or test directory
+survives; the user explicitly confirms none is available. Do not ask again for
+those same artifacts.
+
+Resume acceptance precedes detached execution activation. Relevant current paths:
+
+- `cli/internal/adapter/runtimebinding/steer_receipt_integration_test.go`
+- `runtime/internal/application/agent/runs/resume.go`
+- `runtime/internal/application/agent/runs/coordinator.go`:
+  `segmentStartup.activate` / `beginExecution` / `activateExecutor`
+- `runtime/internal/adapter/run/execution/interaction_accepted_restore.go`
+- `runtime/internal/adapter/run/execution/interaction_continuation.go`
+- `runtime/internal/adapter/run/execution/interaction_dispatch.go`
+- `runtime/internal/adapter/run/execution/interaction_durability.go`
+
+### Already established; do not rediscover or mislabel
+
+- Immutable-schema compilation cost and exact Deployment reconstruction had
+  independently reproduced defects and repairs. The per-group MCP capture repair
+  is `981c4c915`. A historical safe control reproduces the Deployment refusal in
+  2.78s, not the unexplained 10s waiter. Neither explains the latter.
+- A fully pinned historical overlay traced activation, answer delivery/proof,
+  process resumption, actual Shell execution, commits/pump acknowledgement,
+  next-model context, applied steer, Model start and provider iteration. Normal
+  post-Resume timing reaches the second HTTP request in 173.4ms. Passing traces,
+  six-pair repetitions and parallel/full gates do not identify the failed interval.
+- Four targeted boundary failures (activation, Tool, steer commit, pre-dispatch)
+  yield the same caller timeout while the Run has already failed/lost in
+  0.44-1.05s. These are intentional failing controls, not historical reproductions.
+- `4bb2481a3` adds a fifth distinct observation: remove Tools only from the test
+  fixture's decoded second request, after HTTP arrival. The Run completes, but
+  the fixture does not classify the request as second and the original 10s
+  assertion fails. This demonstrates a classification blind spot, not a product
+  repair or proof that the historical request had that shape.
+- Current failure-only diagnostics retain client phases, every provider arrival's
+  elapsed time/stream flag/Tool count/Tool-result IDs, goroutines and authoritative
+  Run outcome. Failure inspection has its own 2s bound after the original failure;
+  it cannot extend the 10s success window. Original assertions and event loops
+  remain unchanged. Auxiliary title requests can have zero Tools.
+
+### Next useful experiment
+
+Choose a new falsifiable ownership/order hypothesis from current code before
+running a bounded experiment. Correlate Resume acknowledgement with activation,
+Tool dispatch/result, durable commit receipt, physical model admission, actual HTTP
+arrival and fixture classification. Keep the production state and client observer
+separate. On failure, retain the live owning Run state and matched stage entries /
+returns before teardown. A completed/failed/lost Run is not a live stalled Run.
+
+Do not replace the diagnosis with another successful repetition, synthetic delay,
+unmeasured build contention, Deployment drift or an injected failure. If no
+matching failure is captured, leave the historical cause open rather than making
+a speculative production change.
+
+## Priority 2: MCP startup discovery
+
+### Actual failure and boundary
+
+The retained no-overlay parallel execution/bootstrap gate based on `523b2e917`
+exits 1 after 551.760s: five failures, 380 top-level passes, no skips. One edited
+SIGKILL cut and four Memory/Schedules reply-loss cases project `connecting` beyond
+an existing 10s discovery prerequisite. Parent stacks show SDK `Client.discover` /
+`AsyncCall.Await` waiting for the first `server/discover` response. This is before
+Flame capability verification, admission, setup, activation and Core callbacks.
+The original child/backend interval is missing.
+
+The normalized actual failed stack and candidate hashes remain available with:
 
 ```sh
-go test -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s
+git show 6b3a175e8:docs/plugin-refactor-mcp-startup-evidence.md
 ```
 
-- 174 selected packages finish: **159 tested packages pass; fifteen have no test
-  files**. Race execution/bootstrap/SDK/CLI/runtimebinding/terminal pass
-  276.599/330.789/9.619/70.109/40.204/41.828s, wall time 775.933s. Bootstrap
-  covers its recovery/steer/schedule cases. The eight Schedule SIGKILL cuts have
-  their parent test in execution; it builds and invokes bootstrap's crash helper.
-  The complete command covers both packages. Bootstrap alone does not run those cuts.
-- Complete normal has the same 159 passes/fifteen no-test packages. Execution/
-  bootstrap/CLI/runtimebinding/terminal pass 57.079/118.847/39.523/12.150/24.648s,
-  wall time 292.538s. Full-module vet passes. At this qualification, original CLI
-  root/recovery/steer test files compare unchanged against `366ffff6a`; the later
-  steer change retains their assertions and adds failure-only diagnostics.
-- Core/Memory/Schedules/API regeneration and architecture pass. Shared TS check
-  passes 30 files/355 tests plus type/lint/format/dead-code checks. Desktop,
-  component SDK, Reviews and portable component types pass. Direct layer,
-  published-boundary, context, port and API checks pass: 95/95 fact families,
-  112 typed sites, three sidecars, fourteen events and four result readers.
-- Runtime `make build` ships ten manifests and both backend executables. Current
-  Wails native Go/CGo/package, strict/deep ad-hoc signature, arm64 and macOS 13.0
-  floor pass. Its frontend task is up-to-date and reused; this is not a newly run
-  Vite build. The duplicate `-lobjc` warning remains. No application is launched.
-- Current independent Usage public archives reproduce bundled resources and pass
-  clean offline reinstall/typecheck/build. Current independent Reviews plus the
-  Tool-proposal executable/command-next receipt case pass offline tidy/race/vet/build,
-  GOWORK=off, no replace and isolated module cache. Author source imports public
-  APIs only. The module archive includes required internal implementation and a
-  separate localruntime artifact; a public-directories-only archive is insufficient.
-  No published module cache is overwritten and no registry release is claimed.
+Relevant current paths:
 
-## Safe-steer findings and remaining limit
+- `runtime/internal/bootstrap/plugin_acceptance_mcp_test.go`: `poMCPTools`
+- `runtime/internal/bootstrap/managed_services_test.go`
+- `runtime/internal/bootstrap/testdata/managed-message-loss/main.go`
+- `runtime/internal/bootstrap/managed_message_loss_test.go`
+- `runtime/internal/adapter/run/execution/schedule_recovery_product_crash_test.go`
+- `runtime/internal/infra/integration/mcp/config.go`, `attempt.go`, `reconnect.go`
+- `runtime/internal/plugins/memory/main.go`, `schedules/main.go`
 
-The old delegated deadline has measured immutable-schema compilation evidence and
-an independent deterministic Deployment reconstruction repair. That does not by
-itself explain every later safe-steer timeout.
+### Already tested or ruled out as an explanation
 
-A fully pinned historical Go overlay at `366ffff6a` maps all 2,426 Go files;
-new Go files are excluded. SQL/module files have no diff through current source.
-Only timestamps and deadline-only inspection are added; original assertions and
-10s contexts stay unchanged. Eight repetitions reproduce one **safe** failure in
-2.78s: steer accepted at 0.815s, waiting snapshot at 1.020s, then
-`configurationChanged`, `exact root Deployment does not match` and
-`interrupt_not_open`. This proves safe restoration also suffers the original MCP
-catalog reconstruction defect. The identical current-source diagnostic passes
-eight safe/yolo repetitions (53.615s), matching the existing per-group repair.
+- Whole/fragmented frame, held directory lease/release and stdin EOF + SIGTERM
+  controls identify expected boundaries. A held lease delays pre-transport startup;
+  release yields a reply in about 16/13ms. EOF during that pre-stdio wait does not
+  itself cancel startup. This is not proof that a lease caused the old failure or
+  authorization for an unrelated lifecycle rewrite.
+- Cold pre-main and Go init traces show startup delay but no reproduced 10s stall.
+  A 454.684s startup/proxy/9s-snapshot overlay passes, with 39 normal discovery
+  traces and no eligible discovery-blocked child. It is not a failure explanation.
+- Expected go-sdk version/checksum is the same at historical/current references:
+  `v1.8.1-scope.1`, `h1:8V8k8aeqbEDgLlH3T4+DZnf0DM1dSOGofkAXb3dZjKM=`.
+  The archive already reads discovery metadata before acquiring the session state
+  mutex. Do not credit that existing lock-order fix to the Scope upgrade. This
+  audits expected source, not the old child's actual execution image.
+- New actual-client controls: oversized response returns EOF in 29.883ms; backend
+  exit 17 returns EOF in 33.406ms. Neither reaches the unchanged 10s client bound.
+  Whole/fragmented small replies connect in 940.135/27.428ms. Existing hard-stop
+  retirement errors are recorded separately, not claimed as clean exits.
+- A separate real defect is now fixed in `4bb2481a3`: the test proxy's Scanner
+  default rejected legitimate frames above 64 KiB. Both scanners derive their
+  budget from the SDK-owned 16 MiB constant. Default bootstrap regression proves
+  80 KiB discovery requests/replies preserve bytes; original scanners fail both
+  cases. This fixes the fixture, not the historical discover deadline.
 
-The current chat's retained original output now recovers the historical failure
-line: `steer_receipt_integration_test.go:144` (safe 15.70s, outer 26.75s). That
-select waits for the second provider request after Resume succeeds with a new
-Segment. Resume acceptance precedes detached activation, so this location alone
-does not identify a failed activation, stalled Tool/commit or missing dispatch.
-No original state/stack/profile survives for that interval.
+### Next useful experiment
 
-A further fully pinned historical diagnostic runs the complete CLI root and
-runtimebinding packages together at `-race -p 2 -count=6`. Overall exit is 1:
-CLI passes 409.513s; runtimebinding fails 200.863s on two known delegated
-Deployment refusals (2.59/2.82s). All six safe/yolo pairs pass, with safe's
-second provider 168-188ms after Resume and no deadline markers. This does not
-close the historical 10s failure. Retained command history shows a separate
-normal execution-package RED-test build/run overlapping the original safe case;
-without critical-interval scheduler/CPU evidence it is not a contention diagnosis.
-An initial malformed diagnostic string fails setup, is corrected, and is not
-counted as a product result. Production/tests/dependencies remain unchanged.
+Use one concrete hypothesis and a bounded, owned process graph. Correlate parent,
+proxy and backend PID/session with spawn, pre-main, lease acquisition, schema /
+registration completion, stdio entry, discover receive, reply write and proxy
+forward. Capture metadata/byte counts, not private payloads or credentials. A
+parent pipe-read stack alone cannot select the missing child phase. Inspect an
+eligible live child before teardown; do not qualify killed/unclosed CPU profiles.
 
-No deadline marker occurs in those runs. The historical post-SDK 10s timeout
-remains unclassified; do not relabel this faster refusal as that timeout or claim
-serial/current parallel success establishes its cause. An earlier full overlay
-attempt is inconclusive because source-scanning tests read the physical tree and
-not every source was frozen. Successful-cancellation diagnostic stacks from that
-attempt are not timeout stacks. Failed iterations remain failed/inconclusive.
+For diagnostic overlays, propagate GOFLAGS to nested go builds. A command-line-only
+`-overlay` does not modify the proxy built by its test helper; that already
+produced an invalid passing negative control. Never mutate the published module
+cache or copy Scope/SDK internals into Flame. Repair the proven owner only.
 
-## Current stage-level investigation
+## Priority 3: npm advisory chains
 
-A full-module Go-pinned historical diagnostic now exits 1 in 835.888s: 158 tested
-packages pass, one architecture package fails, and fifteen have no tests. The
-two architecture failures are diagnostic source/artifact mismatches: a virtual
-helper has no physical file for the source reader, and the old API inventory
-differs from the current on-disk inventory. This is not acceptance. The original
-steer pair passes (safe 3.46s), with 72 stage entries and 72 returns, no deadline
-marker, and the second provider reached under the original 10s assertion. Normal
-post-Resume stage durations do not establish the missing historical failure.
-Current qualification jobs overlap part of this diagnostic; no artificial load
-or controlled contention conclusion is claimed. Detailed stage durations are
-recorded in progress. The historical timeout remains unresolved.
+As checked on 2026-10-16, both audits exit 1: overall **4 high / 4 low**;
+production-only **0 high / 4 low**. Counts are dependency entries, not eight
+independent root vulnerabilities. No manifest/lock change, override, local patch,
+forced downgrade or audit suppression has been applied.
 
-Current new Reviews no-Run normal proof passes 12.755s; complete bootstrap race
-passes 408.052s. Final no-redispatch guard assertions then pass focused race in
-35.311s; the complete bootstrap result predates those extra assertions. All other
-cases and production source are unchanged. A temporary receipt-to-redispatch
-negative control fails as expected (exit 1, 27.621s); it is not an acceptance pass.
-All eight SIGKILL cuts pass through their execution
-parent (58.876s), and current complete architecture passes 31.663s. Direct static
-boundary/API checks also pass. These current checks have no historical overlay.
-Whole current Runtime/shared TS/native gates are not rerun for these test-only
-changes; the complete product qualification above stays tied to `b2dcbfbba`.
+| Chain | Established risk and next boundary |
+| --- | --- |
+| StyleX PostCSS 0.19.1 -> fast-glob 3.3.3 -> micromatch 4.0.8 -> braces 3.0.3 | GHSA-vfj7-8cjw-p6xm has no patched release at this checkpoint. A bounded nested-pattern probe reproduces stack exhaustion. Current StyleX consumers use two repository-owned globs; no untrusted-pattern ingress is demonstrated. Recheck official releases, then validate the actual supported dependency chain. Do not equate build-only exposure with remediation. |
+| rehype-katex / micromark-extension-math -> two KaTeX 0.16.47 copies | GHSA-238p-pmpm-9mq7 is fixed in 0.18.2. Latest checked integrations still require ^0.16.0. Direct KaTeX 0.19.0 supplies CSS and does not upgrade actual renderers. A child-process control proves inherited trust permits an unsafe link in the real rehype adapter, while direct 0.19.0 rejects it. No application pollution source or browser exploit is established. Any integration migration must qualify actual parsing/rendering/security behavior and remove superseded ownership/dependencies. |
 
-A fully pinned `366ffff6a` overlay now observes background staging/activation,
-answer delivery/proof, resumed Processes, dispatch gates, Tool executable,
-tree/fact commits plus pump acknowledgement, next-model context, applied-steer
-commit, Model start and the provider iterator, with Go runtime traces. Complete
-historical CLI/root binding race passes 75.242/39.575s. After Resume, activation
-finishes at 35.9ms, Shell executes 54.3-59.7ms, post-Tool tree commits settle by
-126.1ms, context reduction ends 142.1ms, steer/Model-start commits end 146.3/148.4ms,
-and the second HTTP request arrives 173.4ms after acknowledgement. All post-Resume
-stages return normally. These are baseline observations, not the old failure.
+Sources: [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm),
+[KaTeX advisory](https://github.com/advisories/GHSA-238p-pmpm-9mq7).
+Recheck upstream state before choosing a fix; these version observations are dated.
 
-Current test-only diagnostics retain phases from Start, provider-entry facts,
-goroutine stacks and authoritative Run outcome/explanation when the original 10s
-assertion fails. Failure inspection has its own bounded 2s read after failure;
-assertions, the 10s success window and both original event loops stay unchanged.
+## Verification already performed
 
-Four temporary owner-boundary fault controls (activation, Tool executable,
-steer commit and model pre-dispatch) all reproduce the same caller timeout while
-the Run has already ended in 0.44-1.05s as failed or lost. The diagnostic captures
-the exact retained outcome; all four commands intentionally exit 1. They prove
-that the old bare timeout could hide a completed backend failure, not that one of
-these injected causes occurred historically. No artificial timing/load, weaker
-assertion, retry, replay or compatibility path is introduced.
+Do not repeat these solely to restate status, and do not broaden their scope.
 
-Complete current CLI/root binding parallel race passes 74.927/40.261s without
-overlays or exclusions, including the final diagnostics. Whole Runtime/bootstrap,
-TS and native qualification is not rerun for this test-only slice. Temporary
-sources, traces, binaries and control resources are removed after inspection.
+| Source / scope | Actual result |
+| --- | --- |
+| Product source `6d5e2427d`; original four-module parallel race, -p 2, -count=1, package timeout 900s | 174 packages finished: 159 tested pass, 15 no-test. 9,187 test/subtest passes. Six paid DeepSeek cases plus helper conditionally skipped; not counted as passed. Bootstrap 375.810s, delegated 3.03s, safe/yolo 2.82/2.72s, lost Core opening 4.46s, all eight execution SIGKILL cuts pass. |
+| Same product source; five workspace modules | go mod verify, vet/build pass. Generation plus existing formatter reproduces tracked bytes. Desktop Go race 40 passes. Runtime/first-party distribution builds. |
+| Independent authors at `6d5e2427d` | Reviews/Tool-proposal author with GOWORK=off, no replace, isolated archives/cache, offline verify/race/vet/build passes. Public component archives independently build Usage and match emitted bytes; clean offline reinstall passes. These are not registry publications. |
+| Unchanged shared/frontend source `c44671017` | Shared full check 364 tests; Desktop complete check 357 files / 2,429 tests plus architecture/API/resource/bundle guards. These were actually run after UI authorization; not newly rerun at later Go/docs commits. |
+| Current native qualification | Matching private Wails beta.29 production arm64 package/signature/macOS 13 floor passes. Actual isolated native original-command recovery survives app + Runtime restart and disabled original producer, then recovers the exact private receipt after explicit reenable. One private item/receipt; replay trap absent; zero Sessions/model POSTs. Only the isolated control uses a bootstrap-address overlay. |
+| Latest slice `4bb2481a3`; complete bootstrap/runtimebinding parallel race | 417.252/40.909s, 235/342 test/subtest passes (153/204 top-level), zero failures/skips. All original bounds/assertions retained. |
+| Latest slice; focused bootstrap/execution/runtimebinding parallel race | 68.516/50.624/10.093s; response-loss recovery, safe/yolo, lost Core opening and all eight SIGKILL cuts pass (cut parent 48.35s). This precedes only stricter cleanup assertions in the new frame regression, which the complete bootstrap run then covers. |
+| Latest slice; local checks | Vet passes bootstrap/runtimebinding/proxy; gofmt, diff, manual lint-staged/commitlint pass. No new whole-product/frontend/native gate is claimed for this test-only slice. |
 
-The historical 10s root cause remains **unresolved**. Its exact phase/error/state
-is still unavailable. Do not call the diagnosis or overall refactor complete.
+Original full backend command, to use again when a relevant final change warrants it:
 
-## Unexecuted scenarios and risks
+```sh
+go test -json -race -p 2 ./runtime/... ./runtime/localruntime/... ./cli/... ./examples/plugins/reviews/backend/... -count=1 -timeout=900s
+```
 
-- All P01-P48 and review rows now have matching evidence with the scenario and
-  source scope recorded in progress. Current-source global Go, independent author,
-  production packaging and native original-command recovery are qualified; this
-  is not a percentage or a 100% claim.
-- Historical post-SDK safe-steer and initial MCP discovery deadlines remain
-  unclassified. The user has no original failed logs/dump/data. Later passing
-  parallel gates, Deployment repairs and normal phase traces do not establish
-  their historical cause. Keep failure-only diagnostics and unchanged limits.
-- Paid DeepSeek execution, other native platforms/architectures, registry/
-  deployment publication and real second-machine TLS are unqualified. The actual
-  native original receipt recovery passes; returning to the Memory list after
-  that success is not run because of a new lock screen. Do not infer additional
-  UI/refusal classes or platforms from another scenario.
-- Read-only npm audit exits 1 with eight alerts (four high/four low). All high
-  entries share one unpatched advisory, GHSA-vfj7-8cjw-p6xm: StyleX PostCSS
-  0.19.1 -> fast-glob 3.3.3 -> micromatch 4.0.8 -> braces 3.0.3. A bounded Node
-  probe confirms stack overflow for deeply nested patterns. Current consumers
-  accept only two repository-owned build globs; explicit includes disable StyleX
-  dependency auto-discovery. No current untrusted-pattern path is demonstrated.
-  Production-only audit reports zero high/four low and still exits 1. Retain the
-  upstream build dependency risk; reopen on external-pattern admission, dependency
-  changes or a fixed release. Detailed triage is in the progress document. No audit suppression,
-  override, local dependency patch, downgrade or manifest/lock change occurs.
-  The four low entries share GHSA-238p-pmpm-9mq7: two transitive KaTeX 0.16.47
-  renderers beneath rehype-katex/micromark-extension-math. Direct KaTeX 0.19.0
-  supplies CSS and does not upgrade those copies. Source tracing confirms the
-  message renderer uses the affected dependency; no actual prototype-pollution
-  source or rendered exploit is demonstrated. Fixed 0.18.2 is outside both latest
-  integrations' `^0.16.0` range. Keep the conditional risk open; audit's suggested
-  major downgrades are not a qualified fix. No UI rendering/test, dependency
-  override, forced downgrade or manifest/lock change occurs. All eight alerts
-  now have triage, and none is claimed remediated.
-- Core is `2026-10-15.2`, backend is
-  `io.github.tangerg.flame/backend/2026-10-15.3`, export schema is 3. Private
-  checkpoints require per-group `mcp_manifests` and `tool_proposals`. Preserve old
-  data and finish incompatible waiting work with its original binary. There is
-  no compatibility reader, automatic migration, private copying or provider replay.
-- Runtime owns accepted Runs, execution and accounting. Backends own private
-  Memory/Schedules/Reviews facts and receipts. Run-linked evidence follows its
-  Run, Session-only evidence follows atomic Session deletion, unattached evidence
-  remains retained. Pending unknown routes never expire into replay permission.
+The eight SIGKILL cuts belong to execution, which invokes bootstrap's crash helper.
+Bootstrap alone does not execute them. For a production change affecting recovery,
+run whole bootstrap, the relevant recovery/steer/schedule cases and those cuts;
+do not replace the original parallel gate with a serial pass. Frontend changes
+follow the repository's full check gate; native changes require native proof.
 
-## Cleanup and next
+## Evidence and resources
 
-All invoked qualification/process handles are terminal. Temporary author sources,
-file proxies, private module caches, external npm author dependencies and copied
-task installations are removed. Controlled Runtime/native/provider processes
-join, and private listeners are released. Retain formal ignored build outputs,
-private evidence/screenshots, the existing worktree/dependencies and the
-intentionally unknown uninstalled original Web command. Never delete unknown
-facts to manufacture a clean state. Primary-checkout source, daily app/Runtime,
-user stash and the captured shared hooksPath are preserved; task builds use
-HUSKY=0. No push, main merge, publication or user-data conversion occurs.
+Task evidence root (verified present at handoff, but OS temporary storage can be
+cleaned; check existence before depending on it):
 
-Product source 6d5e2427d now has its complete original parallel race, module/
-generation gates, independent Go/component archives and actual native original
-receipt recovery. This documentation-only reconciliation does not rerun or
-broaden those source-qualified gates. Historical timeout investigations and npm
-risks remain genuinely open. No original failure artifacts remain; the next useful
-causal input is an actual matching failed interval with stage/state/stack evidence,
-not another successful repeat or unrelated startup drift. A finished failed/lost
-Run can also yield the same caller timeout. Never relax limits or replay work.
-Keep paid/platform/publication/real-TLS and unexecuted navigation limits explicit.
-Do not declare the whole plugin system unconditionally 100%.
+```text
+/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-acceptance-81o3iszt/evidence
+```
+
+Important files under that root:
+
+- `steer-provider-classification-summary.json`, full intentionally failing
+  `steer-provider-classification-control.jsonl`.
+- `mcp-proxy-frame-controls.json`, `mcp-sdk-provenance-audit.json`.
+- `mcp-proxy-final-frame-red-inherited.jsonl`; command-line-only negative control
+  without inherited GOFLAGS is invalid and retained separately.
+- `deadline-boundary-gates-summary.json`,
+  `deadline-boundary-complete-packages-race.jsonl`,
+  `deadline-boundary-focused-race.jsonl`.
+- `deadline-control-*.txt`: retained temporary control/overlay source copies.
+  Executables and working overlays were removed; recreate owned files explicitly
+  before using any copied overlay's former absolute paths.
+- `npm-deadline-followup-summary.json`, both audit JSONs,
+  `npm-upstream-deadline-followup.json`, `npm-katex-prototype-control.json`.
+- `final-corrected-source-gates.json`, `final-source-core-gates.json`,
+  `final-source-independent-author.json`, `final-component-author.json`.
+- `final-native-original-command-recovery.json`,
+  `final-native-production-package.json`, `final-native-control-package.json`.
+
+Screenshots live under:
+`/Users/tangerg/.codex/visualizations/2026/10/14/01a13b1e-2bac-7272-9e13-68d9dde5283f`.
+The actual recovered native screenshot is `plugin-native-original-recovered.png`.
+Private evidence may contain expired credentials/callback references. Read only
+needed metadata; never print whole request packets or copy credentials into docs.
+
+All invoked jobs and task Runtime/native/provider handles are terminal. Task
+listeners were released. Latest temporary control executables/overlays/npm cache
+were removed. Author caches/proxies/dependencies and copied installations were
+cleaned. Retain the worktree, normal dependencies/build outputs, private evidence
+and intentionally unknown uninstalled Web command. Do not delete unknown facts
+or task data to manufacture a clean state. If reopening UI qualification, create
+new isolated lifetimes and verify the target before launch.
+
+## Breaking-data and unexecuted boundaries
+
+- Selected Scope graph: thirty modules at v0.51.1. This is the qualified version,
+  not a claim that it remains the latest available release.
+- Core protocol is `2026-10-15.2`; backend protocol is
+  `io.github.tangerg.flame/backend/2026-10-15.3`; export schema is 3.
+  Waiting checkpoints require per-group mcp_manifests and tool_proposals.
+- Existing journal records now require method metadata. Preserve former records
+  and reconcile with their original client/binary before a fresh-profile upgrade.
+  No compatibility reader, automatic conversion, receipt copying or replay exists.
+- Paid DeepSeek cases, other OS/architectures, real second-machine TLS and registry /
+  deployment publication are unqualified. Publication is outside current permission.
+- The dedicated graphical private invocationConflict entrance remains unexecuted;
+  actual Tool/CLI identity conflict and graphical revision-conflict evidence have
+  their own scopes in `examples/plugins/reviews/README.md`. Do not infer every
+  refusal class from them.
+- An additional native return to the Memory list after successful original recovery
+  was not executed because the Mac relocked. The successful recovery screenshot
+  and exact receipt comparison remain valid; do not infer the extra navigation.
+- Core owns Run/execution/accounting; backends own private business facts/receipts.
+  Pending unknown routes do not expire into permission to execute again.
+
+## Close each slice
+
+Inspect status and real callers -> state a falsifiable hypothesis -> implement the
+smallest complete owner repair -> focused verification -> proportionate final
+gates -> explicit-path commit -> update progress -> clean owned resources.
+Keep failed controls, failed gates, skips and unexecuted cases distinct from passes.
+If the historical interval remains unavailable and no causal reproduction exists,
+report that limit honestly; do not declare the overall refactor 100%.
+
+Manual hooks (run from desktop/frontend after explicit staging):
+
+```sh
+HUSKY=0 npx --no-install lint-staged --no-stash --no-hide-partially-staged
+HUSKY=0 npx --no-install commitlint --edit /absolute/path/to/owned-message.txt
+```
+
+Docs/Go-only paths can legitimately match no frontend lint-staged tasks. Still run
+Go formatting/diff checks appropriate to source changes. Do not alter hooks to
+make a check pass.
 
 Read-only original inputs:
 
-- `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal.html`.
-- `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal-Review-2026-10-13.md`.
-
-Both inputs remain outside the edited repository scope.
+- `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal.html`
+- `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal-Review-2026-10-13.md`

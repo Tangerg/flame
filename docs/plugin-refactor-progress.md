@@ -2,6 +2,12 @@
 
 ## Current stage
 
+The 2026-10-16 handoff refresh consolidates the next-session instructions in
+[plugin-refactor-handoff.md](plugin-refactor-handoff.md), using `4bb2481a3` as the
+latest code/test checkpoint. It replaces chronological duplication with ordered remaining
+work, source-qualified results, evidence paths, constraints and explicit unknowns.
+This documentation-only update runs no new product gate and closes no open risk.
+
 On 2026-10-15 the user lifts the UI/E2E/screenshot test prohibition and authorizes
 graphical qualification in the existing worktree. Prior no-UI statements record
 their historical verification scope. The graphical rows remain Partial until
