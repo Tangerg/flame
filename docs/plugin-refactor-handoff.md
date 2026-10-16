@@ -370,7 +370,12 @@ Docs/Go-only paths can legitimately match no frontend lint-staged tasks. Still r
 Go formatting/diff checks appropriate to source changes. Do not alter hooks to
 make a check pass.
 
-Read-only original inputs:
+Current assessment inputs:
 
-- `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal.html`
-- `/Users/tangerg/Desktop/docs/Flame-Unified-Plugin-Proposal-Review-2026-10-13.md`
+- [Flame remaining directions](/Users/tangerg/Desktop/docs/Flame-Remaining-Directions.md)
+- [Scope remaining directions](/Users/tangerg/Desktop/docs/Scope-Remaining-Directions.md)
+
+The user retired the earlier Desktop/docs proposals in favor of these two fresh
+assessment inputs. The P01-P48 and review counts above describe historical
+qualification; they are not the new remaining-work backlog. Current repository
+contracts and matched evidence remain authoritative.
