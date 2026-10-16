@@ -121,20 +121,26 @@ describe("composer", () => {
   });
 
   it("keeps an unmarked Enter that commits Latin text through a Chinese IME inside the composer", async () => {
-    await withEnterKeymap();
-    const onSend = vi.fn(() => true);
-    wrap(<Composer {...baseProps} value="中文 english" onChange={() => {}} onSend={onSend} />);
-    const textarea = screen.getByRole("textbox");
+    // Renderer work must not consume this test's immediate input-commit window.
+    const clock = vi.spyOn(performance, "now").mockReturnValue(0);
+    try {
+      await withEnterKeymap();
+      const onSend = vi.fn(() => true);
+      wrap(<Composer {...baseProps} value="中文 english" onChange={() => {}} onSend={onSend} />);
+      const textarea = screen.getByRole("textbox");
 
-    fireEvent.compositionStart(textarea, { data: "english" });
-    fireEvent.compositionEnd(textarea, { data: "english" });
-    fireEvent.keyDown(textarea, { key: "Enter", keyCode: 13, isComposing: false });
+      fireEvent.compositionStart(textarea, { data: "english" });
+      fireEvent.compositionEnd(textarea, { data: "english" });
+      fireEvent.keyDown(textarea, { key: "Enter", keyCode: 13, isComposing: false });
 
-    expect(onSend).not.toHaveBeenCalled();
+      expect(onSend).not.toHaveBeenCalled();
 
-    await act(async () => Promise.resolve());
-    fireEvent.keyDown(textarea, { key: "Enter", keyCode: 13, isComposing: false });
-    expect(onSend).toHaveBeenCalledOnce();
+      await act(async () => Promise.resolve());
+      fireEvent.keyDown(textarea, { key: "Enter", keyCode: 13, isComposing: false });
+      expect(onSend).toHaveBeenCalledOnce();
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it("recovers the same commit ownership when a browser drops compositionend", async () => {
