@@ -9,6 +9,8 @@ import {
 } from "react";
 import { useT } from "@/lib/i18n";
 import { Button } from "@flame/ui/button";
+import { FailureDetails } from "@/ui";
+import { failureDiagnostics } from "@/lib/diagnostics";
 import type {
   CapturedFile,
   CapturedSession,
@@ -28,17 +30,20 @@ import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 
 export class ComponentBoundary extends Component<
   { children: ReactNode; fallback?: ReactNode },
-  { failed: boolean }
+  { failure: { error: unknown } | null }
 > {
-  override state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
+  override state: { failure: { error: unknown } | null } = { failure: null };
+  static getDerivedStateFromError(error: unknown) {
+    return { failure: { error } };
   }
   override render() {
-    return this.state.failed ? (
+    return this.state.failure ? (
       <>
         {this.props.fallback}
         <ComponentRecovery failure="render" />
+        <FailureDetails
+          diagnostics={failureDiagnostics("installed component", this.state.failure.error)}
+        />
       </>
     ) : (
       this.props.children

@@ -1,6 +1,8 @@
 export function failureDiagnostics(scope: string, error: unknown): string {
   const detail =
-    error instanceof Error ? (error.stack ?? `${error.name}: ${error.message}`) : String(error);
+    error instanceof Error
+      ? [`${error.name}: ${error.message}`, error.stack].filter(Boolean).join("\n")
+      : String(error);
   return [
     `scope: ${scope}`,
     `time: ${new Date().toISOString()}`,
