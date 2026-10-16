@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "entry": ["visual/**/*.visual.spec.ts", "src/plugins/sdk/index.ts", "postcss.config.mjs"],
+  "entry": ["visual/**/*.visual.spec.ts", "src/plugins/sdk/index.ts"],
   "ignoreExportsUsedInFile": false,
   "ignoreDependencies": ["husky", "lint-staged", "@commitlint/cli"],
   "ignoreBinaries": ["go"]

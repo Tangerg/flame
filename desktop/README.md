@@ -46,7 +46,7 @@
 ## 2 · 技术栈（选择已定，别轻易换 —— 反向不变量见 §6.1）
 
 - **UI**：React + TypeScript。
-- **样式**：**StyleX（编译期原子 CSS）+ 语义标记**。令牌走 `@flame/ui/tokens.stylex`（它包住 `globals.css` 的变量，不内联数值）。Tailwind 已完全移除 —— 连同 `cva` 与 `tailwind-merge`，`cn()` 现在只是 `clsx`。**手写的 class 只能是 `globals.css` 定义的那些**（`check:classes` 强制）。**不写新 .css 文件**：`globals.css` 唯一，`markdown.css` / `overlays.css` 只承载 StyleX 表达不了的后代规则，`stylex.css` 是空表。
+- **样式**：**StyleX（编译期原子 CSS）+ 语义标记**。令牌走 `@flame/ui/tokens.stylex`（它包住 `globals.css` 的变量，不内联数值）。Tailwind 已完全移除 —— 连同 `cva` 与 `tailwind-merge`，`cn()` 现在只是 `clsx`。**手写的 class 只能是 `globals.css` 定义的那些**（`check:classes` 强制）。**不写新 .css 文件**：`globals.css` 唯一，`markdown.css` / `overlays.css` 只承载 StyleX 表达不了的后代规则。
 - **Headless 基件**：**Base UI primitives first**（带交互 / 焦点 / 键盘 / aria 的一律先用 Base UI，没有的才自写）。Base UI 只作为行为 primitive；视觉、主题 token、阴影、圆角、密度归 Flame 自己。
 - **状态 / 数据 / 路由**：Zustand（多小 store）/ TanStack React Query / TanStack Router。
 - **协议**：自研 Flame Runtime Protocol v2（JSON-RPC 2.0，已弃用 AG-UI），权威定义见 `../runtime/contract/`（`manifest.json` / `openrpc.json` / `schema.json` 是机器真值，`API_REFERENCE.md` 是它们生成的人读索引）。
@@ -297,6 +297,12 @@ Source checks and native packaging alone do not prove rendering or recovery.
 ## Shared presentation package
 
 Build `icons`, then `ui`, before installing the graphical client and the portable page toolchain. `@flame/ui` owns controls, record composition and StyleX token declarations; product composites stay in Desktop. First-party components are built from each package's `src/component.tsx` through the public SDK. The resource gate checks exact ESM reproduction. Components use shared React/UI provider context. Explicitly select changed resources through the existing installation workflow. Durable plugin data formats are unchanged.
+
+StyleX uses its official bundler integration. One shared configuration owns module
+resolution, class generation and CSS extraction for the app and visual fixtures.
+Vitest uses the official transform-only Rolldown entry without a dev CSS server.
+The integration replaces the former PostCSS scan, its glob dependency chain and stylesheet marker.
+Babel remains a direct dependency of the source-graph verification tools.
 
 The optional Memory package uses its generated typed contracts and public installed
 operation binding for reads and human add/edit/pin/delete/review. Client scope projects

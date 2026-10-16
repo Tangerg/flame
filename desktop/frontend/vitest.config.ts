@@ -1,7 +1,7 @@
 /// <reference types="vitest" />
 import { configDefaults, defineConfig } from "vitest/config";
 import path from "node:path";
-import { stylexBabel } from "./stylex.vite.mjs";
+import { stylexTransform } from "./stylex.vite.mjs";
 
 const runtimeLifecycleTest = "src/rpc/runtime-http.e2e.test.ts";
 
@@ -12,7 +12,7 @@ export default defineConfig({
   // Same transform the app and the fixtures get: without it `stylex.defineVars` reaches the
   // test runtime uncompiled and throws at import, taking every file that touches a migrated
   // component with it.
-  plugins: [stylexBabel()],
+  plugins: [stylexTransform()],
   resolve: {
     dedupe: ["react", "react-dom", "@base-ui/react"],
     alias: {

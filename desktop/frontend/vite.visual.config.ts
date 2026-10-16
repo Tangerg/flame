@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { stylexBabel } from "./stylex.vite.mjs";
+import { stylexPlugin } from "./stylex.vite.mjs";
 import path from "node:path";
 
 /**
@@ -12,7 +12,7 @@ import path from "node:path";
  * CSS and components, so a screenshot exercises the same visual implementation.
  */
 export default defineConfig({
-  plugins: [react(), stylexBabel()],
+  plugins: [react(), stylexPlugin()],
   resolve: {
     dedupe: ["react", "react-dom", "@base-ui/react"],
     alias: {

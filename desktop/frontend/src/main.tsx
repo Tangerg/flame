@@ -11,7 +11,6 @@ import { disposeOnHmr } from "./lib/hmr";
 import "./styles/markdown.css";
 import "./styles/overlays.css";
 import "./styles/globals.css";
-import "./styles/stylex.css";
 
 const host = createClientHost();
 const connection = createRuntimeConnection(host);
