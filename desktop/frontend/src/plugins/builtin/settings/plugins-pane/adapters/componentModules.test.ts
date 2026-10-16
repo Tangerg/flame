@@ -107,10 +107,18 @@ it("requires reload for a different evaluated release or generation", async () =
   };
   await expect(
     modules.component(scope, client, endpoint(), generation, replacement, entry),
-  ).rejects.toMatchObject({ name: "ModuleReloadRequired" });
+  ).rejects.toMatchObject({
+    name: "ModuleReloadRequired",
+    message: expect.stringContaining(
+      `The evaluated release ${installation.selected.digest} was replaced by ${replacement.selected.digest}.`,
+    ),
+  });
   await expect(
     modules.component(scope, client, endpoint(), {}, installation, entry),
-  ).rejects.toMatchObject({ name: "ModuleReloadRequired" });
+  ).rejects.toMatchObject({
+    name: "ModuleReloadRequired",
+    message: expect.stringContaining("The Runtime connection generation changed."),
+  });
   expect(openResources).toHaveBeenCalledOnce();
 });
 

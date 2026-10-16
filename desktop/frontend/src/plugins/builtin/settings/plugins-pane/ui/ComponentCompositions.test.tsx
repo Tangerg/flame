@@ -15,6 +15,7 @@ import { PACKAGES_KEY } from "../application/packages";
 import { ComponentModules } from "../adapters/componentModules";
 import { ComponentCompositions } from "./ComponentCompositions";
 import { RenderingComponent } from "./InstalledComponent";
+import { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
 
 let host: Host;
 let lifetime: ContributionLifetime;
@@ -30,6 +31,7 @@ const consumer = installation("consumer");
 const producer = installation("producer");
 const root = { installationId: consumer.id, digest: consumer.selected.digest, componentId: "root" };
 const client = { plugins: { resolvePoint } } as unknown as FlameClient;
+const generation = RuntimeConnectionGeneration.forProcess("composition-test");
 
 function installation(name: string, digest = "a".repeat(64)): PluginInstallation {
   return {
@@ -117,6 +119,7 @@ function mount(entry: PluginComponent = Root, strict = false) {
       <RenderingComponent
         entry={entry}
         component={root}
+        generation={generation}
         compose={composeHost.renderer(lifetime, [root])}
         runtime={client}
         binding={undefined}
@@ -150,7 +153,7 @@ beforeEach(async () => {
     }),
   ]);
   queryClient.setQueryData([PACKAGES_KEY], installations);
-  composeHost = new ComponentCompositions(client, modules, "http://isolated", {}, lifetime);
+  composeHost = new ComponentCompositions(client, modules, "http://isolated", generation, lifetime);
 });
 
 afterEach(async () => {
@@ -489,4 +492,10 @@ it("cancels failed rendering and contains the failure inside the contribution", 
   expect(contexts.at(-1)?.signal.aborted).toBe(true);
   expect(screen.getByText("Consumer content")).toBeTruthy();
   expect(parents.at(-1)!.signal.aborted).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Details" }));
+  const diagnostics = screen.getByText(/scope: installed component/).textContent;
+  expect(diagnostics).toContain(`installation: ${producer.id}`);
+  expect(diagnostics).toContain(`release: ${producer.selected.digest}`);
+  expect(diagnostics).toContain("component: panel");
+  expect(diagnostics).toContain(`runtime generation: ${generation.processGeneration}`);
 });

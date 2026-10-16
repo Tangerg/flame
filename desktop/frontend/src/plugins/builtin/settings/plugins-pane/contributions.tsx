@@ -6,6 +6,7 @@ import {
   InstalledToolResultComponent,
   InstalledSessionActionComponent,
   ComponentBoundary,
+  componentFailureScope,
   ComponentLoading,
 } from "./ui/InstalledComponent";
 import { asyncDisposeSymbol, isCancellationReason } from "dougong";
@@ -30,6 +31,7 @@ import {
   retainThemeSelection,
 } from "@/plugins/builtin/theme/public/appearance";
 import { trackContributionIO } from "@/plugins/sdk/contributionIO";
+import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
 import {
   packageOperations,
   PACKAGES_KEY,
@@ -47,7 +49,7 @@ function createPackageReconciler(
   scope: ContributionLifetime,
   client: FlameClient,
   modules: ComponentModules,
-  generation: object,
+  generation: RuntimeConnectionGeneration,
   moduleScope: ContributionLifetime,
   endpoint: string,
 ): (installations: PluginInstallation[]) => Promise<void> {
@@ -124,6 +126,7 @@ function createPackageReconciler(
                 <InstalledFileComponent
                   entry={loaded.component}
                   component={component}
+                  generation={generation}
                   compose={compose}
                   resources={loaded.signal}
                   runtime={client}
@@ -143,7 +146,10 @@ function createPackageReconciler(
               title: `${release.name} · ${entry.title}`,
               extension: entry.selector.name,
               component: (props) => (
-                <ComponentBoundary fallback={props.fallback}>
+                <ComponentBoundary
+                  scope={componentFailureScope(component, generation)}
+                  fallback={props.fallback}
+                >
                   <Suspense fallback={props.fallback}>
                     <RecordedFileComponent {...props} entry={File} />
                   </Suspense>
@@ -177,6 +183,7 @@ function createPackageReconciler(
                 <InstalledToolResultComponent
                   entry={loaded.component}
                   component={component}
+                  generation={generation}
                   compose={compose}
                   resources={loaded.signal}
                   runtime={client}
@@ -196,7 +203,10 @@ function createPackageReconciler(
               title: `${release.name} · ${entry.title}`,
               selector: { ...entry.selector },
               component: (props) => (
-                <ComponentBoundary fallback={props.fallback}>
+                <ComponentBoundary
+                  scope={componentFailureScope(component, generation)}
+                  fallback={props.fallback}
+                >
                   <Suspense fallback={props.fallback}>
                     <RecordedToolComponent {...props} entry={Result} />
                   </Suspense>
@@ -222,6 +232,7 @@ function createPackageReconciler(
                 <InstalledSessionActionComponent
                   entry={loaded.component}
                   component={component}
+                  generation={generation}
                   compose={compose}
                   resources={loaded.signal}
                   runtime={client}
@@ -258,6 +269,7 @@ function createPackageReconciler(
               <InstalledComponent
                 entry={loaded.component}
                 component={component}
+                generation={generation}
                 compose={compose}
                 scope={entry.scope}
                 resources={loaded.signal}
@@ -277,7 +289,7 @@ function createPackageReconciler(
             material: entry.material,
             dock: entry.scope === "session" ? "session" : undefined,
             component: () => (
-              <ComponentBoundary>
+              <ComponentBoundary scope={componentFailureScope(component, generation)}>
                 <Suspense fallback={<ComponentLoading />}>
                   <View />
                 </Suspense>
@@ -304,7 +316,7 @@ export function registerPackageContributions(
   scope: ContributionLifetime,
   client: FlameClient,
   modules: ComponentModules,
-  generation: object,
+  generation: RuntimeConnectionGeneration,
   endpoint: string,
 ): void {
   scope.cleanup(

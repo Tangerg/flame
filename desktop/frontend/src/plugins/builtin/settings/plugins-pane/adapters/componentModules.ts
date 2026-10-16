@@ -21,8 +21,8 @@ interface LoadingModule {
 }
 
 class ModuleReloadRequired extends Error {
-  constructor() {
-    super("Reload this window to establish a clean plugin module generation.");
+  constructor(reason: string) {
+    super(`Reload this window to establish a clean plugin module generation. ${reason}`);
     this.name = "ModuleReloadRequired";
   }
 }
@@ -36,12 +36,13 @@ export class ComponentModules {
   private readonly modules = new Map<string, LoadingModule>();
 
   private assertGeneration(generation: object, installation: PluginInstallation) {
-    if (
-      (this.evaluatedGeneration && this.evaluatedGeneration !== generation) ||
-      (this.evaluatedReleases.has(installation.id) &&
-        this.evaluatedReleases.get(installation.id) !== installation.selected.digest)
-    )
-      throw new ModuleReloadRequired();
+    if (this.evaluatedGeneration && this.evaluatedGeneration !== generation)
+      throw new ModuleReloadRequired("The Runtime connection generation changed.");
+    const evaluated = this.evaluatedReleases.get(installation.id);
+    if (evaluated && evaluated !== installation.selected.digest)
+      throw new ModuleReloadRequired(
+        `The evaluated release ${evaluated} was replaced by ${installation.selected.digest}.`,
+      );
   }
 
   private async retire(owner: ContributionLifetime, error: unknown): Promise<unknown> {
@@ -133,7 +134,8 @@ export class ComponentModules {
     }
     const loaded = await module.evaluation;
     scope.signal.throwIfAborted();
-    if (loaded.signal.aborted) throw new ModuleReloadRequired();
+    if (loaded.signal.aborted)
+      throw new ModuleReloadRequired("The evaluated module's resource lifetime ended.");
     if (!(entry.export in loaded.exports))
       throw new Error("The declared component export is unavailable.");
     return { component: loaded.exports[entry.export] as PluginComponent, signal: loaded.signal };

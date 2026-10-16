@@ -14,7 +14,13 @@ import { reportPluginError } from "@/plugins/sdk/errors";
 import { ASYNC_OWNERSHIP_RETIRED, settleBeforeAbort } from "@/lib/asyncOwnership";
 import { usePackages } from "../application/packages";
 import { ComponentModules, type LoadedComponent } from "../adapters/componentModules";
-import { ComponentBoundary, ComponentLoading, RenderingComponent } from "./InstalledComponent";
+import {
+  ComponentBoundary,
+  ComponentLoading,
+  RenderingComponent,
+  componentFailureScope,
+} from "./InstalledComponent";
+import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
 
 interface LoadedContribution extends LoadedComponent {
   valueSource: string;
@@ -44,7 +50,7 @@ export class ComponentCompositions {
     private readonly client: FlameClient,
     private readonly modules: ComponentModules,
     private readonly endpoint: string,
-    private readonly generation: object,
+    readonly generation: RuntimeConnectionGeneration,
     private readonly moduleScope: ContributionLifetime,
   ) {}
 
@@ -171,7 +177,10 @@ function ComposedComponents(props: CompositionProps) {
     [requestKey, packages.data],
   );
   return (
-    <ComponentBoundary resetKey={resetKey}>
+    <ComponentBoundary
+      scope={componentFailureScope(props.context.component, props.host.generation)}
+      resetKey={resetKey}
+    >
       <InstalledComposition
         {...props}
         rows={packages.data}
@@ -357,6 +366,7 @@ function InstalledComposition({
       binding={entry.binding}
       lifetime={result.lifetime}
       component={entry.reference}
+      generation={host.generation}
       compose={entry.compose}
       workspace={context.workspace}
       sessionId={context.sessionId}

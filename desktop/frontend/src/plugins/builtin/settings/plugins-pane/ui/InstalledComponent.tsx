@@ -1,5 +1,12 @@
 import { captureClientTelemetry } from "@/lib/observability/clientTelemetry";
-import { Component, Suspense, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import {
+  Component,
+  Suspense,
+  useMemo,
+  useSyncExternalStore,
+  type ErrorInfo,
+  type ReactNode,
+} from "react";
 import { useT } from "@/lib/i18n";
 import { Button } from "@flame/ui/button";
 import { FailureDetails } from "@/ui";
@@ -23,12 +30,28 @@ import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginOperationBinding } from "@flame/runtime-contract/wire";
 import { trackContributionIO } from "@/plugins/sdk/contributionIO";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
+import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
+
+export function componentFailureScope(
+  component: ComponentReference,
+  generation: RuntimeConnectionGeneration,
+): string {
+  return `installed component\ninstallation: ${component.installationId}\nrelease: ${component.digest}\ncomponent: ${component.componentId}\nruntime generation: ${generation.processGeneration}`;
+}
+
+type ComponentFailure = { error: unknown; diagnostics?: string };
 
 export class ComponentBoundary extends Component<
-  { children: ReactNode; fallback?: ReactNode; resetKey?: unknown; onFailure?: () => void },
-  { failure: { error: unknown } | null; resetKey: unknown }
+  {
+    children: ReactNode;
+    scope: string;
+    fallback?: ReactNode;
+    resetKey?: unknown;
+    onFailure?: () => void;
+  },
+  { failure: ComponentFailure | null; resetKey: unknown }
 > {
-  override state: { failure: { error: unknown } | null; resetKey: unknown } = {
+  override state: { failure: ComponentFailure | null; resetKey: unknown } = {
     failure: null,
     resetKey: this.props.resetKey,
   };
@@ -38,7 +61,16 @@ export class ComponentBoundary extends Component<
   static getDerivedStateFromError(error: unknown) {
     return { failure: { error } };
   }
-  override componentDidCatch() {
+  override componentDidCatch(error: unknown, info: ErrorInfo) {
+    this.setState({
+      failure: {
+        error,
+        diagnostics: [
+          failureDiagnostics(this.props.scope, error),
+          `react component stack: ${info.componentStack ?? "unavailable"}`,
+        ].join("\n"),
+      },
+    });
     this.props.onFailure?.();
   }
   override render() {
@@ -46,9 +78,9 @@ export class ComponentBoundary extends Component<
       <>
         {this.props.fallback}
         <ComponentRecovery failure="render" />
-        <FailureDetails
-          diagnostics={failureDiagnostics("installed component", this.state.failure.error)}
-        />
+        {this.state.failure.diagnostics && (
+          <FailureDetails diagnostics={this.state.failure.diagnostics} />
+        )}
       </>
     ) : (
       this.props.children
@@ -202,7 +234,12 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
     ],
   );
   return (
-    <ComponentBoundary fallback={props.fallback} resetKey={instance} onFailure={instance.retire}>
+    <ComponentBoundary
+      scope={componentFailureScope(component, props.generation)}
+      fallback={props.fallback}
+      resetKey={instance}
+      onFailure={instance.retire}
+    >
       <Suspense fallback={props.fallback ?? <ComponentLoading />}>
         <RenderingInstance {...props} instance={instance} />
       </Suspense>
@@ -214,6 +251,7 @@ type ComponentProps = {
   fallback?: ReactNode;
   entry: PluginComponent;
   component: ComponentReference;
+  generation: RuntimeConnectionGeneration;
   compose: (context: ComponentContext, composition: ComponentComposition) => ReactNode;
   input?: unknown;
   contribution?: unknown;

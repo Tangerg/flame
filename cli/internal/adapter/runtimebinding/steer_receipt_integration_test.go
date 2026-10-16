@@ -62,8 +62,8 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 			}
 		}
 		requestsMu.Lock()
-		requests = append(requests, fmt.Sprintf("elapsed=%s stream=%t tools=%d tool_result_ids=%q",
-			time.Since(providerStarted), body.Stream, len(body.Tools), toolResults))
+		requests = append(requests, fmt.Sprintf("time=%s elapsed=%s stream=%t tools=%d tool_result_ids=%q",
+			time.Now().UTC().Format(time.RFC3339Nano), time.Since(providerStarted), body.Stream, len(body.Tools), toolResults))
 		requestsMu.Unlock()
 		toolCall := false
 		if len(body.Tools) != 0 {
@@ -108,17 +108,23 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 	type stageObservation struct {
 		name    string
 		elapsed time.Duration
+		at      time.Time
 	}
+	var stagesMu sync.Mutex
 	var stages []stageObservation
 	mark := func(name string) {
-		stages = append(stages, stageObservation{name, time.Since(startedAt)})
+		stagesMu.Lock()
+		defer stagesMu.Unlock()
+		stages = append(stages, stageObservation{name, time.Since(startedAt), time.Now()})
 	}
-	defer func() {
-		if !t.Failed() || ctx.Err() != context.DeadlineExceeded {
-			return
-		}
-		for _, stage := range stages {
-			t.Logf("steer deadline: mode=%s stage=%s elapsed=%s", mode, stage.name, stage.elapsed)
+	capture := func(phase string, inspection context.Context) {
+		t.Logf("steer diagnostics: phase=%s mode=%s session=%s time=%s elapsed=%s context_error=%v",
+			phase, mode, session.ID, time.Now().UTC().Format(time.RFC3339Nano), time.Since(startedAt), ctx.Err())
+		stagesMu.Lock()
+		stageSnapshot := slices.Clone(stages)
+		stagesMu.Unlock()
+		for _, stage := range stageSnapshot {
+			t.Logf("steer deadline: mode=%s stage=%s elapsed=%s time=%s", mode, stage.name, stage.elapsed, stage.at.UTC().Format(time.RFC3339Nano))
 		}
 		for name, entered := range map[string]<-chan struct{}{"first": firstEntered, "second": secondEntered} {
 			select {
@@ -138,15 +144,33 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 		}
 		stack := make([]byte, 1<<20)
 		t.Logf("steer deadline goroutines:\n%s", stack[:runtime.Stack(stack, true)])
-		// Inspect after the original deadline fails; diagnostics never extend the
-		// success window or consume the stream that the model-boundary assertion tests.
-		inspection, stop := context.WithTimeout(context.WithoutCancel(t.Context()), 2*time.Second)
-		defer stop()
 		observed, err := connection.GetSession(inspection, session.ID)
 		t.Logf("steer deadline session: snapshot=%+v error=%v", observed, err)
 		for _, run := range observed.Runs {
 			t.Logf("steer deadline run: id=%s segment=%s status=%s outcome=%s explanation=%s",
 				run.ID, run.ActiveSegmentID, run.Status, run.Outcome.Status, run.Outcome.Explanation())
+		}
+	}
+	defer func() {
+		if t.Failed() && ctx.Err() == context.DeadlineExceeded {
+			inspection, stop := context.WithTimeout(context.WithoutCancel(t.Context()), 2*time.Second)
+			defer stop()
+			capture("after deadline", inspection)
+		}
+	}()
+	// Cancellation can remove the blocked owner before the deadline handler runs.
+	// Observe it first without consuming events or extending the success window.
+	deadline, _ := ctx.Deadline()
+	inspected := make(chan struct{})
+	watchdog := time.AfterFunc(time.Until(deadline.Add(-time.Second)), func() {
+		defer close(inspected)
+		inspection, stop := context.WithDeadline(context.WithoutCancel(t.Context()), deadline)
+		defer stop()
+		capture("before deadline", inspection)
+	})
+	defer func() {
+		if !watchdog.Stop() {
+			<-inspected
 		}
 	}()
 	mark("start requested")
@@ -155,6 +179,7 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 		t.Fatal(err)
 	}
 	mark("start acknowledged; waiting for first provider")
+	t.Logf("steer accepted start: session=%s run=%s segment=%s", session.ID, opened.RunID, opened.SegmentID)
 	select {
 	case <-firstEntered:
 	case <-ctx.Done():
@@ -170,6 +195,7 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 		t.Fatalf("accepted steer receipt = %+v, %v", receipt, err)
 	}
 	mark("steer acknowledged")
+	t.Logf("steer accepted input: session=%s run=%s segment=%s item=%s", session.ID, opened.RunID, opened.SegmentID, receipt.UserItemID)
 	accepted, err := connection.GetSession(ctx, session.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -206,6 +232,7 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 			t.Fatalf("resume after accepted steer: segment=%s err=%v", opened.SegmentID, err)
 		}
 		mark("resume acknowledged")
+		t.Logf("steer accepted resume: session=%s run=%s previous_segment=%s segment=%s", session.ID, opened.RunID, previousSegment, opened.SegmentID)
 	}
 	mark("waiting for second provider")
 	select {
