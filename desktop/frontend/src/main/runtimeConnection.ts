@@ -82,6 +82,10 @@ export function createRuntimeConnection(host: ClientHost) {
       sidecar = { endpoint, client };
       return client;
     },
+    endpoint: () => {
+      assertOpen();
+      return target().endpoint;
+    },
     bootstrap,
     localWorkspaceAvailable: () => {
       const local = hostBootstrap?.localFilesystemEndpoint;

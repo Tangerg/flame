@@ -13,7 +13,7 @@ const PluginsPane = lazy(() =>
   import("./ui/PluginsPane").then(({ PluginsPane }) => ({ default: PluginsPane })),
 );
 
-export function createPluginsPane(runtimeClient: () => FlameClient) {
+export function createPluginsPane(runtimeClient: () => FlameClient, runtimeEndpoint: () => string) {
   return definePlugin({
     name: "flame.builtin.plugins-pane",
     requires: { runtime: RUNTIME_STREAM },
@@ -44,6 +44,7 @@ export function createPluginsPane(runtimeClient: () => FlameClient) {
                 runtimeClient(),
                 modules,
                 ctx.runtime.connectionGeneration()!,
+                runtimeEndpoint(),
               );
               current = owned;
             } catch (error) {

@@ -42,6 +42,10 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", value.ID)
 	}
 	switch value.Placement {
+	case "export":
+		if value.Selector != nil || value.Material != "" {
+			return refuse(DiagnosticInvalidDeclaration, "exported component cannot declare host placement metadata")
+		}
 	case "workspaceView":
 		if (value.Scope == "file" || value.Scope == "toolResult") || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "workspace component has a renderer target")

@@ -73,6 +73,17 @@ not own the provider catalog.
 The workbench is product UI composition. The plugin platform remains in
 `plugins/host` and `plugins/sdk`; product layout does not become a second kernel.
 
+Installed components may consume their own Runtime point contracts through the
+public SDK's captured `compose` operation. Independently installed packages export
+components without host placements and contribute same-release references/data.
+Runtime owns membership, applicability and order; the existing graphical package
+adapter realizes exact bindings through the common module loader and render
+lifetime. Composed descendants inherit captured resources, receive their own
+identity/callable binding, and cancel/join on replacement. Window-owned ESM requires
+reload after evaluated resource retirement or version/generation replacement;
+retired exports cannot be reused. This introduces no parallel contribution store
+or client business authority.
+
 Workspace views are organized by the material they present:
 
 ```text

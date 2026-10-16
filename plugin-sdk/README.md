@@ -7,6 +7,58 @@ without its own callable contribution; `bindOperations` refuses such a context.
 Static content uses ordinary Hooks and shared UI controls without a backend. The
 SDK exposes no application alias, private state store or ambient service lookup.
 
+## Consumer-owned component composition
+
+An installed component can call `context.compose({ contract, target, attributes,
+order, input, children })`. The contract is the consumer's ordinary Runtime point
+declaration, published in `points`; independent packages contribute `pointValues`
+against that exact contract. Its value schema describes `{ component, props }`.
+`component` names a local component ID in the contributor's own release, declared
+with `placement: "export"`. Exports have no automatic host placement, navigation
+material or renderer selector. They use the same resource admission, shared ESM
+modules and cancellation as directly placed components.
+
+Runtime alone resolves applicability, current enabled membership, exact release
+and composition order. The host realizes those bindings without choosing another
+provider or changing their order. Collection renders the consumer's children then
+the contributions; selection renders its explicitly selected contribution (or
+children for an allowed empty selection); decoration nests the ordered components
+outermost first around children. A required absence, stale binding, invalid export,
+module failure or cycle is an explicit error, never an empty successful chain.
+Order entries identify point-value contributions, not callable exports.
+
+`PluginComponent<Input, Props>` receives `input` from the consumer, `contribution`
+from its point value's `props`, and React `children` for decoration. Each instance
+receives its own frozen `context.component` identity and its own optional callable
+binding. Captured workspace, file, Session and Tool-result data come from the parent;
+composition cannot retarget them using current navigation. An export requiring
+missing captured context is refused. Business commands still enter the existing
+Runtime/receipt owners through the contributor's binding.
+
+Installation notifications refresh the existing package projection. Membership
+changes cancel and join the old composition before publishing its replacement;
+staging and unrelated catalog changes preserve instances when the resolved exact
+bindings and values are unchanged. Query lifetimes do not own rendering lifetimes.
+Late resolution/import results cannot publish into it. Disable/uninstall of a
+consumer retires its descendants. Rendering exceptions retire the failed instance.
+Repeated component identities on one ancestry path report a cycle; independent
+sibling contributions may use the same component. No plugin-to-plugin import or
+second client registry is required.
+
+The browser window owns ESM evaluation. After an evaluated release's resource
+lease is retired, reenablement requires a reload; changing evaluated release bytes
+or Runtime generation also requires a reload. The loader refuses reuse of retired
+exports. Reloading creates the current resource graph; it does not replay business
+commands. A failure before evaluation remains distinct from a business outcome.
+
+See the independently installable [composition example](../examples/plugins/composition/README.md)
+for two-way contribution, collection, selection and actual decoration. The new
+`component` and `compose` fields are required on custom `ComponentContext` hosts;
+rebuild those hosts and this SDK together. Existing Runtime storage formats are
+unchanged. Packages using exported placement require the current Runtime/host.
+
+## Captured contexts and operations
+
 Workspace-scoped components receive `context.workspace`: a frozen public
 `WorkspaceRef` plus file-focus path and revision from the Host's existing owners.
 They use `context.runtime.workspace(ref)` for canonical workspace operations. The
@@ -134,7 +186,6 @@ Components must use this host module rather than bundling another RPC error clas
 class identity is part of the Runtime client's typed failure contract. Business
 operation refusals use the shared Runtime client's OperationFailure and code/message,
 which the SDK exports as the same class.
-
 
 Generated streaming methods publish a distinct chunk schema and final result.
 Supply the generated MethodChunks as bindOperations' third type map to use its

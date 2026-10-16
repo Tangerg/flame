@@ -1,0 +1,22 @@
+{
+  "name": "@flame/composition-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check:resources": "node build.mjs --check",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@flame/plugin-sdk": "file:../../../plugin-sdk",
+    "@flame/ui": "file:../../../ui",
+    "@flame/runtime-contract": "file:../../../runtime/contract/typescript",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "@types/react": "^19.3.0",
+    "rolldown": "^1.2.13"
+  }
+}

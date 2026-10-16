@@ -96,7 +96,7 @@ replace the retained binding.
 `namespace` and `key` to retire work only while Runtime can prove it was never
 dispatched. Retirement preserves the identity and releases captured executable
 dependencies. Dispatched unknown work cannot retire and remains receipt-only.
-This requires Core `2026-10-16.1`; retain former data directories separately and
+This requires Core `2026-10-16.2`; retain former data directories separately and
 use a fresh directory for the changed host phase constraints.
 
 Dynamic value completion loads the effective configuration before opening Runtime
@@ -260,7 +260,7 @@ retain their Runtime owners.
 Installed operation and point requests carry feature input/attributes and complete
 contracts as JSON strings. Returned feature output/values are JSON strings too.
 Typed Go readers decode the original source, preserving full-width integers and
-receipt lexemes. Rebuild CLI with Core `2026-10-16.1`; former inline payloads are
+receipt lexemes. Rebuild CLI with Core `2026-10-16.2`; former inline payloads are
 refused. Existing private receipts and local pending input records retain their
 original format and owner.
 

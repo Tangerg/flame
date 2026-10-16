@@ -100,6 +100,7 @@ export class ComponentModules {
     }
     const loaded = await module;
     scope.signal.throwIfAborted();
+    if (loaded.signal.aborted) throw new ModuleReloadRequired();
     if (!(entry.export in loaded.exports))
       throw new Error("The declared component export is unavailable.");
     return { component: loaded.exports[entry.export] as PluginComponent, signal: loaded.signal };

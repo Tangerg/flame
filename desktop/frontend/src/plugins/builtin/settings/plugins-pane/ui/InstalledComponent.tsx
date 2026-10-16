@@ -1,12 +1,5 @@
 import { captureClientTelemetry } from "@/lib/observability/clientTelemetry";
-import {
-  Component,
-  Suspense,
-  useMemo,
-  useSyncExternalStore,
-  type ComponentType,
-  type ReactNode,
-} from "react";
+import { Component, Suspense, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { useT } from "@/lib/i18n";
 import { Button } from "@flame/ui/button";
 import { FailureDetails } from "@/ui";
@@ -17,6 +10,9 @@ import type {
   CapturedToolResult,
   ComponentContext,
   WorkspaceContext,
+  ComponentComposition,
+  ComponentReference,
+  PluginComponent,
 } from "@flame/plugin-sdk";
 import {
   useActiveSessionId,
@@ -29,12 +25,21 @@ import { trackContributionIO } from "@/plugins/sdk/contributionIO";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 
 export class ComponentBoundary extends Component<
-  { children: ReactNode; fallback?: ReactNode },
-  { failure: { error: unknown } | null }
+  { children: ReactNode; fallback?: ReactNode; resetKey?: unknown; onFailure?: () => void },
+  { failure: { error: unknown } | null; resetKey: unknown }
 > {
-  override state: { failure: { error: unknown } | null } = { failure: null };
+  override state: { failure: { error: unknown } | null; resetKey: unknown } = {
+    failure: null,
+    resetKey: this.props.resetKey,
+  };
+  static getDerivedStateFromProps(props: { resetKey?: unknown }, state: { resetKey: unknown }) {
+    return props.resetKey !== state.resetKey ? { failure: null, resetKey: props.resetKey } : null;
+  }
   static getDerivedStateFromError(error: unknown) {
     return { failure: { error } };
+  }
+  override componentDidCatch() {
+    this.props.onFailure?.();
   }
   override render() {
     return this.state.failure ? (
@@ -81,6 +86,7 @@ class ComponentInstance {
     ]);
     return Object.freeze({
       runtime: this.sources.runtime,
+      component: Object.freeze({ ...this.sources.component }),
       sessionId: this.sources.sessionTarget?.id ?? this.sources.sessionId,
       sessionTarget: this.sources.sessionTarget
         ? Object.freeze({ ...this.sources.sessionTarget })
@@ -107,8 +113,13 @@ class ComponentInstance {
       telemetry: captureClientTelemetry(signal),
       track: <T,>(operation: Promise<T>): Promise<T> =>
         trackContributionIO(this.sources.lifetime, operation),
+      compose: (composition: ComponentComposition) => {
+        signal.throwIfAborted();
+        return this.sources.compose(this.context, composition);
+      },
     });
   }
+  retire = () => this.controller.abort();
   getSnapshot = () => (this.context.signal.aborted ? null : this.context);
   subscribe = (listener: () => void) => {
     if (this.controller.signal.aborted) {
@@ -126,19 +137,41 @@ class ComponentInstance {
   };
 }
 
-function RenderingComponent({
-  entry,
-  runtime,
-  binding,
-  lifetime,
-  resources,
-  workspace,
-  sessionId,
-  file,
-  toolResult,
-  sessionTarget,
+function RenderingInstance({
+  entry: Entry,
+  instance,
+  input,
+  contribution,
+  children,
   fallback,
-}: ComponentProps & ComponentSources) {
+}: ComponentProps & { instance: ComponentInstance }) {
+  const context = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
+  return context ? (
+    <Entry context={context} input={input} contribution={contribution}>
+      {children}
+    </Entry>
+  ) : (
+    <>
+      {fallback}
+      <ComponentRecovery failure="connection" />
+    </>
+  );
+}
+
+export function RenderingComponent(props: ComponentProps & ComponentSources) {
+  const {
+    runtime,
+    binding,
+    lifetime,
+    resources,
+    workspace,
+    sessionId,
+    file,
+    toolResult,
+    sessionTarget,
+    component,
+    compose,
+  } = props;
   const instance = useMemo(
     () =>
       new ComponentInstance({
@@ -151,22 +184,27 @@ function RenderingComponent({
         file,
         toolResult,
         sessionTarget,
+        component,
+        compose,
       }),
-    [runtime, binding, lifetime, resources, workspace, sessionId, file, toolResult, sessionTarget],
+    [
+      runtime,
+      binding,
+      lifetime,
+      resources,
+      workspace,
+      sessionId,
+      file,
+      toolResult,
+      sessionTarget,
+      component,
+      compose,
+    ],
   );
-  const context = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
-  const Entry = entry;
   return (
-    <ComponentBoundary fallback={fallback}>
-      <Suspense fallback={fallback ?? <ComponentLoading />}>
-        {context ? (
-          <Entry context={context} />
-        ) : (
-          <>
-            {fallback}
-            <ComponentRecovery failure="connection" />
-          </>
-        )}
+    <ComponentBoundary fallback={props.fallback} resetKey={instance} onFailure={instance.retire}>
+      <Suspense fallback={props.fallback ?? <ComponentLoading />}>
+        <RenderingInstance {...props} instance={instance} />
       </Suspense>
     </ComponentBoundary>
   );
@@ -174,14 +212,22 @@ function RenderingComponent({
 
 type ComponentProps = {
   fallback?: ReactNode;
-  entry: ComponentType<{ context: ComponentContext }>;
+  entry: PluginComponent;
+  component: ComponentReference;
+  compose: (context: ComponentContext, composition: ComponentComposition) => ReactNode;
+  input?: unknown;
+  contribution?: unknown;
+  children?: ReactNode;
   runtime: FlameClient;
   binding: PluginOperationBinding | undefined;
   lifetime: ContributionLifetime;
   resources: AbortSignal;
 };
 
-type ComponentSources = Pick<ComponentProps, "runtime" | "binding" | "lifetime" | "resources"> & {
+type ComponentSources = Pick<
+  ComponentProps,
+  "runtime" | "binding" | "lifetime" | "resources" | "component" | "compose"
+> & {
   workspace?: WorkspaceContext;
   sessionId?: string;
   file?: CapturedFile;

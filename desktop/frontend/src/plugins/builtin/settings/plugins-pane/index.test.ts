@@ -20,6 +20,9 @@ import {
   retainThemeSelection,
 } from "@/plugins/builtin/theme/public/appearance";
 
+const pluginsPane = (client: () => FlameClient) =>
+  createPluginsPane(client, () => "http://runtime.test");
+
 vi.mock("@/plugins/builtin/theme/public/appearance", () => ({
   retainThemeSelection: vi.fn(),
   contributePaletteTheme: vi.fn(
@@ -128,7 +131,7 @@ it("keeps package realization owned by its generation when the query cache is ca
   onTestFinished(() => pending.resolve({ data: [row] }));
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(list)),
+    pluginsPane(() => client(list)),
   );
   await vi.waitFor(() => expect(list).toHaveBeenCalledOnce());
 
@@ -170,7 +173,7 @@ it("joins the retired Runtime before publishing the latest package generation", 
   });
   await loadPluginsForTest(
     runtime,
-    createPluginsPane(() => selected),
+    pluginsPane(() => selected),
   );
   await vi.waitFor(() => expect(original).toHaveBeenCalledOnce());
   const retired = packageOperations.get();
@@ -209,7 +212,7 @@ it("keeps a failed realization local to this client and retries it on request", 
     }));
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(list, subscribe)),
+    pluginsPane(() => client(list, subscribe)),
   );
   await vi.waitFor(() =>
     expect(usePackageRealization.getState().failure?.reason).toBe("event stream refused"),
@@ -232,7 +235,7 @@ it("withdraws its realization failure when the owning generation retires", async
   const subscribe = vi.fn().mockRejectedValue(new Error("event stream refused"));
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(async () => ({ data: [] }), subscribe)),
+    pluginsPane(() => client(async () => ({ data: [] }), subscribe)),
   );
   await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
   await resetKernelForTest();
@@ -248,7 +251,7 @@ it("consumes a realization retry once and refuses it after retirement", async ()
     }));
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(async () => ({ data: [] }), subscribe)),
+    pluginsPane(() => client(async () => ({ data: [] }), subscribe)),
   );
   await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
   const failed = usePackageRealization.getState().failure!;
@@ -292,7 +295,7 @@ it("withdraws every contribution and reports failure when one cleanup rejects", 
   });
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() =>
+    pluginsPane(() =>
       client(
         async () => ({
           data: [
@@ -332,7 +335,7 @@ it("preserves a snapshot failure when closing its subscription also fails", asyn
   });
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() =>
+    pluginsPane(() =>
       client(async () => {
         throw new Error("snapshot refused");
       }, subscribe),
@@ -376,7 +379,7 @@ it.each(["resolve", "reject"] as const)(
     });
     await loadPluginsForTest(
       runtimePlugin(),
-      createPluginsPane(() => client(list, subscribe)),
+      pluginsPane(() => client(list, subscribe)),
     );
     await vi.waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
     let stopped = false;
@@ -442,7 +445,7 @@ it.each(["initial snapshot", "event refresh", "event stream"] as const)(
     });
     await loadPluginsForTest(
       runtimePlugin(),
-      createPluginsPane(() => client(list, subscribe)),
+      pluginsPane(() => client(list, subscribe)),
     );
     ready.resolve();
     await vi.waitFor(() =>
@@ -531,7 +534,7 @@ it("presents and retains only the contributions Runtime admits", async () => {
   );
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(async () => ({ data: [admitted, withheld] }))),
+    pluginsPane(() => client(async () => ({ data: [admitted, withheld] }))),
   );
   await vi.waitFor(() =>
     expect(contributionsTo(COLOR_THEME).map((entry) => entry.item.label)).toEqual([

@@ -1,0 +1,77 @@
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "components": [
+    {
+      "id": "panel",
+      "title": "Panel",
+      "scope": "installation",
+      "placement": "export",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Panel"
+    },
+    {
+      "id": "frame",
+      "title": "Frame",
+      "scope": "installation",
+      "placement": "export",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Frame"
+    },
+    {
+      "id": "summary",
+      "title": "Summary",
+      "scope": "installation",
+      "placement": "export",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Summary"
+    }
+  ],
+  "points": [
+    {
+      "id": "details",
+      "contract": "io.github.tangerg.flame/contracts/details.json"
+    }
+  ],
+  "pointValues": [
+    {
+      "id": "panel",
+      "contract": "io.github.tangerg.flame/contracts/panels.json",
+      "value": {
+        "component": "panel",
+        "props": {
+          "label": "Provider panel"
+        }
+      }
+    },
+    {
+      "id": "outer",
+      "contract": "io.github.tangerg.flame/contracts/frames.json",
+      "value": {
+        "component": "frame",
+        "props": {
+          "label": "Outer frame"
+        }
+      }
+    },
+    {
+      "id": "inner",
+      "contract": "io.github.tangerg.flame/contracts/frames.json",
+      "value": {
+        "component": "frame",
+        "props": {
+          "label": "Inner frame"
+        }
+      }
+    },
+    {
+      "id": "summary",
+      "contract": "io.github.tangerg.flame/contracts/summary.json",
+      "value": {
+        "component": "summary",
+        "props": {
+          "label": "Provider summary"
+        }
+      }
+    }
+  ]
+}

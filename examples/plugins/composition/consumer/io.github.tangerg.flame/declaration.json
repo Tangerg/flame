@@ -1,0 +1,47 @@
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "components": [
+    {
+      "id": "board",
+      "title": "CompositionBoard",
+      "scope": "installation",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "CompositionBoard"
+    },
+    {
+      "id": "inspector",
+      "title": "Inspector",
+      "scope": "installation",
+      "placement": "export",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Inspector"
+    }
+  ],
+  "points": [
+    {
+      "id": "panels",
+      "contract": "io.github.tangerg.flame/contracts/panels.json"
+    },
+    {
+      "id": "frames",
+      "contract": "io.github.tangerg.flame/contracts/frames.json"
+    },
+    {
+      "id": "summary",
+      "contract": "io.github.tangerg.flame/contracts/summary.json"
+    }
+  ],
+  "pointValues": [
+    {
+      "id": "inspector",
+      "contract": "io.github.tangerg.flame/contracts/details.json",
+      "value": {
+        "component": "inspector",
+        "props": {
+          "label": "Consumer inspector"
+        }
+      }
+    }
+  ]
+}

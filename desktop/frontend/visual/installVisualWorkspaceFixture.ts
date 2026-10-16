@@ -633,7 +633,7 @@ export async function installVisualWorkspaceFixture(
     createHooksPlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),
     personalizationSettings,
-    createPluginsPane(runtimeClient),
+    createPluginsPane(runtimeClient, () => "http://visual.test"),
     visualNotifier,
     visualShortcuts,
     workspaceDataPlugin(

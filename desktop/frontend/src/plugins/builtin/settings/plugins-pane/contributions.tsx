@@ -8,7 +8,6 @@ import {
   ComponentBoundary,
   ComponentLoading,
 } from "./ui/InstalledComponent";
-import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
 import { asyncDisposeSymbol, isCancellationReason } from "dougong";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
@@ -20,6 +19,7 @@ import {
   SESSION_ACTION,
   WORKSPACE_FILE_RENDERER,
 } from "@/plugins/sdk/kernelPoints";
+import { ComponentCompositions } from "./ui/ComponentCompositions";
 import { RecordedFileComponent } from "./ui/RecordedFileComponent";
 import { RecordedToolComponent } from "./ui/RecordedToolComponent";
 import type { CapturedFile, CapturedSession, CapturedToolResult } from "@flame/plugin-sdk";
@@ -49,7 +49,15 @@ function createPackageReconciler(
   modules: ComponentModules,
   generation: object,
   moduleScope: ContributionLifetime,
+  endpoint: string,
 ): (installations: PluginInstallation[]) => Promise<void> {
+  const compositions = new ComponentCompositions(
+    client,
+    modules,
+    endpoint,
+    generation,
+    moduleScope,
+  );
   const resources = new Map<string, { signature: string; lifetime: ContributionLifetime }>();
   return async (installations: PluginInstallation[]) => {
     const admitted = installations.filter((item) => item.presentation === "admitted");
@@ -80,6 +88,13 @@ function createPackageReconciler(
       const lifetime = scope.lifetime(installation.id);
       resources.set(installation.id, { signature, lifetime });
       for (const entry of release.components) {
+        if (entry.placement === "export") continue;
+        const component = {
+          installationId: installation.id,
+          digest: release.digest,
+          componentId: entry.id,
+        };
+        const compose = compositions.renderer(lifetime, [component]);
         const contribution = release.contributions.find((value) => value.id === entry.contribution);
         if (entry.contribution && !contribution)
           throw new Error("The component's declared callable contribution is unavailable.");
@@ -99,7 +114,7 @@ function createPackageReconciler(
             const loaded = await modules.component(
               moduleScope,
               client,
-              currentRuntimeEndpoint(),
+              endpoint,
               generation,
               installation,
               entry,
@@ -108,6 +123,8 @@ function createPackageReconciler(
               default: ({ file, fallback }: { file: CapturedFile; fallback: ReactNode }) => (
                 <InstalledFileComponent
                   entry={loaded.component}
+                  component={component}
+                  compose={compose}
                   resources={loaded.signal}
                   runtime={client}
                   binding={binding}
@@ -144,7 +161,7 @@ function createPackageReconciler(
             const loaded = await modules.component(
               moduleScope,
               client,
-              currentRuntimeEndpoint(),
+              endpoint,
               generation,
               installation,
               entry,
@@ -159,6 +176,8 @@ function createPackageReconciler(
               }) => (
                 <InstalledToolResultComponent
                   entry={loaded.component}
+                  component={component}
+                  compose={compose}
                   resources={loaded.signal}
                   runtime={client}
                   binding={binding}
@@ -193,7 +212,7 @@ function createPackageReconciler(
             const loaded = await modules.component(
               moduleScope,
               client,
-              currentRuntimeEndpoint(),
+              endpoint,
               generation,
               installation,
               entry,
@@ -202,6 +221,8 @@ function createPackageReconciler(
               default: ({ session }: { session: CapturedSession }) => (
                 <InstalledSessionActionComponent
                   entry={loaded.component}
+                  component={component}
+                  compose={compose}
                   resources={loaded.signal}
                   runtime={client}
                   binding={binding}
@@ -227,7 +248,7 @@ function createPackageReconciler(
           const loaded = await modules.component(
             moduleScope,
             client,
-            currentRuntimeEndpoint(),
+            endpoint,
             generation,
             installation,
             entry,
@@ -236,6 +257,8 @@ function createPackageReconciler(
             default: () => (
               <InstalledComponent
                 entry={loaded.component}
+                component={component}
+                compose={compose}
                 scope={entry.scope}
                 resources={loaded.signal}
                 runtime={client}
@@ -282,6 +305,7 @@ export function registerPackageContributions(
   client: FlameClient,
   modules: ComponentModules,
   generation: object,
+  endpoint: string,
 ): void {
   scope.cleanup(
     packageOperations.configure({
@@ -321,7 +345,14 @@ export function registerPackageContributions(
   const realize = () => {
     withdrawFailure();
     const contributions = scope.lifetime("package-realization");
-    const reconcile = createPackageReconciler(contributions, client, modules, generation, scope);
+    const reconcile = createPackageReconciler(
+      contributions,
+      client,
+      modules,
+      generation,
+      scope,
+      endpoint,
+    );
     // The generation owns the task so it can join its contribution scope on failure.
     scope.spawn(async (signal) => {
       const refresh = async () => {

@@ -4401,7 +4401,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-16.1\""
+          "value": "\"2026-10-16.2\""
         },
         {
           "name": "ProviderAPIKeyOptional",

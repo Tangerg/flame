@@ -496,6 +496,16 @@ immutable installation/release/value bindings through the ordinary Delivery
 Endpoint; `ResolvePointValues[T]` checks the consumer's typed schema before
 decoding them. Explicit order belongs to the consumer's composition owner.
 This value projection does not execute decorators or persist scoped composition.
+The public component SDK can realize these exact value bindings as independent
+component exports (`placement: "export"`). Its consumer-owned point schema names
+a same-release component and props; Runtime continues to own applicability,
+membership and order. The graphical host owns rendering and captured lifetimes,
+including explicit collection, selection and decoration. See the
+[composition example](../examples/plugins/composition/README.md). Export placement
+adds no backend or persisted business owner and requires the current host.
+Core `2026-10-16.2` requires the current component composition host and SDK.
+Rebuild Go/CLI/TypeScript/Desktop consumers together; older protocol metadata is
+refused. This change does not convert storage or pending command identities.
 The Reviews analyzer example interprets a value as a same-release callable
 contribution and invokes it through its declared optional capability dependency.
 

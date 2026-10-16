@@ -6,7 +6,7 @@ import {
 } from "@flame/runtime-contract/client";
 import { pluginMethod } from "@flame/runtime-contract/client/request";
 export { OperationFailure } from "@flame/runtime-contract/client";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type {
   FlameClient,
   MutationPromise,
@@ -17,6 +17,7 @@ import type {
   PluginOperationBinding,
   Target,
   WorkspaceRef,
+  PluginPointReference,
 } from "@flame/runtime-contract/wire";
 export type {
   ClientTelemetry,
@@ -81,6 +82,7 @@ export type CapturedSession = Readonly<
 >;
 
 export interface ComponentContext {
+  readonly component: Readonly<ComponentReference>;
   readonly file?: Readonly<CapturedFile>;
   readonly toolResult?: Readonly<CapturedToolResult>;
   readonly runtime: FlameClient;
@@ -91,9 +93,37 @@ export interface ComponentContext {
   readonly binding?: Readonly<PluginOperationBinding>;
   readonly signal: AbortSignal;
   track<T>(operation: Promise<T>): Promise<T>;
+  compose(composition: ComponentComposition): ReactNode;
 }
 
-export type PluginComponent = ComponentType<{ context: ComponentContext }>;
+export interface ComponentReference {
+  readonly installationId: string;
+  readonly digest: string;
+  readonly componentId: string;
+}
+
+export interface ComponentComposition {
+  readonly contract: string;
+  readonly target: Target;
+  readonly attributes: unknown;
+  readonly order?: readonly PluginPointReference[];
+  readonly input?: unknown;
+  readonly children?: ReactNode;
+}
+
+// The point's consumer owns the value schema, including props. The component
+// reference is local to the contributor's exact admitted release.
+export interface ComponentValue<Props = unknown> {
+  readonly component: string;
+  readonly props?: Props;
+}
+
+export type PluginComponent<Input = unknown, Props = unknown> = ComponentType<{
+  context: ComponentContext;
+  input?: Input;
+  contribution?: Props;
+  children?: ReactNode;
+}>;
 
 function output<R>(reply: CallPluginResponse): R {
   if (reply.failure)

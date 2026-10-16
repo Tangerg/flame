@@ -1,0 +1,37 @@
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "reference": "example.composition.panels",
+  "composition": "collection",
+  "scope": "installation",
+  "optional": true,
+  "ordering": "canonicalKeys",
+  "value": {
+    "type": "object",
+    "required": [
+      "component",
+      "props"
+    ],
+    "properties": {
+      "component": {
+        "type": "string",
+        "minLength": 1
+      },
+      "props": {
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false
+  },
+  "applicability": {
+    "type": "object"
+  }
+}

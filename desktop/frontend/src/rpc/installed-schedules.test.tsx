@@ -21,6 +21,14 @@ beforeEach(() => {
   client = createFlameClient(transport);
   owner = new AbortController();
   context = {
+    component: {
+      installationId: "e4407303-68e3-495d-86d6-9c3f575a51ed",
+      digest: "a".repeat(64),
+      componentId: "test",
+    },
+    compose() {
+      throw new Error("Composition is not used by this fixture");
+    },
     runtime: client,
     signal: owner.signal,
     binding: {

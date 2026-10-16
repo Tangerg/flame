@@ -29,12 +29,14 @@ afterEach(async () => {
 describe("Runtime connection ownership", () => {
   it("uses the injected host bootstrap and scopes local filesystem access to it", () => {
     expect(connection.bootstrap().runtime.endpoint).toBe(window.location.origin);
+    expect(connection.endpoint()).toBe(window.location.origin);
     expect(connection.localWorkspaceAvailable()).toBe(false);
   });
 
   it("requires each owner to finish its own bootstrap", async () => {
     const successor = createRuntimeConnection(createBrowserHost());
     expect(() => successor.client()).toThrow("client host has not completed bootstrap");
+    expect(() => successor.endpoint()).toThrow("client host has not completed bootstrap");
     await successor.initialize();
     expect(successor.client()).not.toBe(connection.client());
     await successor.dispose();
@@ -52,6 +54,7 @@ describe("Runtime connection ownership", () => {
     expect(connection.dispose()).toBe(closing);
     expect(() => connection.client()).toThrow("Runtime connection is closed");
     expect(() => connection.sidecar()).toThrow("Runtime connection is closed");
+    expect(() => connection.endpoint()).toThrow("Runtime connection is closed");
     await closing;
     expect(close).toHaveBeenCalledOnce();
     await expect(connection.initialize()).rejects.toThrow("Runtime connection is closed");
