@@ -33,7 +33,11 @@ func CallbackMetadata(ref CallbackRef) (sdk.ParamsBase, error) {
 	if err := ref.Validate(); err != nil {
 		return sdk.ParamsBase{}, err
 	}
-	return sdk.ParamsBase{Meta: sdk.Meta{callbackMetadataKey: ref}}, nil
+	var metadata sdk.ParamsBase
+	if err := metadata.Set(callbackMetadataKey, ref); err != nil {
+		return sdk.ParamsBase{}, err
+	}
+	return metadata, nil
 }
 
 func CallbackFromContext(ctx context.Context) (CallbackRef, error) {
@@ -49,12 +53,8 @@ func bindCallbackMetadata(ctx context.Context, metadata sdk.Meta) (context.Conte
 	if !present {
 		return ctx, nil
 	}
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		return nil, err
-	}
 	var ref CallbackRef
-	if err := json.Unmarshal(encoded, &ref, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(value, &ref, json.RejectUnknownMembers(true)); err != nil {
 		return nil, errors.New("plugin: callback metadata is invalid")
 	}
 	if err := ref.Validate(); err != nil {

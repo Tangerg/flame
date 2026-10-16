@@ -4,10 +4,10 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"maps"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	scopemetadata "github.com/Tangerg/scope/core/metadata"
 )
 
 const InvocationMetadataKey = "io.github.tangerg.flame/invocation"
@@ -35,20 +35,15 @@ func invocationMetadata(ctx context.Context, metadata sdk.ParamsBase) (sdk.Param
 		return metadata, nil
 	}
 	if supplied, present := metadata.Meta[InvocationMetadataKey]; present {
-		encoded, err := json.Marshal(supplied)
-		if err != nil {
-			return sdk.ParamsBase{}, err
-		}
 		var value capability.Invocation
-		if err := json.Unmarshal(encoded, &value, json.RejectUnknownMembers(true)); err != nil || value != invocation {
+		if err := json.Unmarshal(supplied, &value, json.RejectUnknownMembers(true)); err != nil || value != invocation {
 			return sdk.ParamsBase{}, errors.New("plugin: metadata cannot replace its calling-owner context")
 		}
 	}
-	metadata.Meta = maps.Clone(metadata.Meta)
-	if metadata.Meta == nil {
-		metadata.Meta = sdk.Meta{}
+	metadata.Meta = sdk.Meta(scopemetadata.Map(metadata.Meta).Clone())
+	if err := metadata.Set(InvocationMetadataKey, invocation); err != nil {
+		return sdk.ParamsBase{}, err
 	}
-	metadata.Meta[InvocationMetadataKey] = invocation
 	return metadata, nil
 }
 
@@ -57,12 +52,8 @@ func bindInvocationMetadata(ctx context.Context, metadata sdk.Meta, method *capa
 	if !found {
 		return ctx, nil
 	}
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		return nil, err
-	}
 	var invocation capability.Invocation
-	if err := json.Unmarshal(encoded, &invocation, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(value, &invocation, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
 	if owner, present := ctx.Value(invocationKey{}).(capability.Invocation); present {

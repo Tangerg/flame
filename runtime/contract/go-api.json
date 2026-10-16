@@ -2742,15 +2742,19 @@
           "methods": [
             {
               "name": "GetMeta",
-              "signature": "func() map[string]any"
+              "signature": "func() mcp.Meta"
             },
             {
               "name": "MarshalJSON",
               "signature": "func() ([]byte, error)"
             },
             {
+              "name": "Set",
+              "signature": "func(key string, value any) error"
+            },
+            {
               "name": "SetMeta",
-              "signature": "func(x map[string]any)"
+              "signature": "func(x mcp.Meta)"
             },
             {
               "name": "UnmarshalJSON",
@@ -2827,11 +2831,15 @@
           "methods": [
             {
               "name": "GetMeta",
-              "signature": "func() map[string]any"
+              "signature": "func() mcp.Meta"
+            },
+            {
+              "name": "Set",
+              "signature": "func(key string, value any) error"
             },
             {
               "name": "SetMeta",
-              "signature": "func(x map[string]any)"
+              "signature": "func(x mcp.Meta)"
             },
             {
               "name": "UnmarshalJSON",

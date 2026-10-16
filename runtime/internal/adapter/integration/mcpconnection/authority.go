@@ -3,7 +3,6 @@ package mcpconnection
 import (
 	"context"
 	"errors"
-	"maps"
 
 	"github.com/Tangerg/flame/runtime/capability"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
@@ -41,11 +40,10 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 		if err != nil {
 			return chat.ToolOutput{}, err
 		}
-		metadata := maps.Clone(scopemcp.RequestMetaFromContext(ctx))
-		if metadata == nil {
-			metadata = map[string]any{}
+		metadata := scopemcp.RequestMetaFromContext(ctx)
+		if err := metadata.Set(pluginsdk.InvocationMetadataKey, captured); err != nil {
+			return chat.ToolOutput{}, err
 		}
-		metadata[pluginsdk.InvocationMetadataKey] = captured
 		ctx = scopemcp.WithRequestMeta(ctx, metadata)
 		ctx, err = pluginsdk.WithInvocation(ctx, captured)
 		if err != nil {

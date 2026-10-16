@@ -4,7 +4,6 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"maps"
 	"strings"
 	"unicode/utf8"
 
@@ -31,19 +30,15 @@ func WithToolContext(ctx context.Context, captured ToolContext) (context.Context
 	if err := captured.Validate(); err != nil {
 		return nil, err
 	}
-	metadata := maps.Clone(scopemcp.RequestMetaFromContext(ctx))
-	if metadata == nil {
-		metadata = make(map[string]any)
+	metadata := scopemcp.RequestMetaFromContext(ctx)
+	if err := metadata.Set(ToolContextMetadataKey, captured); err != nil {
+		return nil, err
 	}
-	metadata[ToolContextMetadataKey] = captured
 	return scopemcp.WithRequestMeta(ctx, metadata), nil
 }
 
 func ToolContextFromContext(ctx context.Context) (ToolContext, error) {
-	encoded, err := json.Marshal(scopemcp.RequestMetaFromContext(ctx)[ToolContextMetadataKey])
-	if err != nil {
-		return ToolContext{}, err
-	}
+	encoded := scopemcp.RequestMetaFromContext(ctx)[ToolContextMetadataKey]
 	var captured ToolContext
 	if err := json.Unmarshal(encoded, &captured, json.RejectUnknownMembers(true)); err != nil {
 		return ToolContext{}, err

@@ -4,11 +4,11 @@ go 1.27.0
 
 require (
 	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20261014085258-14fca797560e
-	github.com/Tangerg/go-sdk v1.8.1-scope.1
-	github.com/Tangerg/scope/a2a v0.51.1
-	github.com/Tangerg/scope/agent v0.51.1
-	github.com/Tangerg/scope/core v0.51.1
-	github.com/Tangerg/scope/mcp v0.51.1
+	github.com/Tangerg/go-sdk v1.8.1-scope.3
+	github.com/Tangerg/scope/a2a v0.52.0
+	github.com/Tangerg/scope/agent v0.52.0
+	github.com/Tangerg/scope/core v0.52.0
+	github.com/Tangerg/scope/mcp v0.52.0
 	github.com/Tangerg/scope/models/alibaba v0.51.1
 	github.com/Tangerg/scope/models/anthropic v0.51.1
 	github.com/Tangerg/scope/models/azureopenai v0.51.1

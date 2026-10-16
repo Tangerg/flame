@@ -3,9 +3,9 @@ module github.com/Tangerg/flame/examples/plugins/reviews/backend
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime v0.0.0-20261008063147-97d0c5c7e56e
-	github.com/Tangerg/go-sdk v1.8.1-scope.1
-	github.com/Tangerg/scope/core v0.51.1
+	github.com/Tangerg/flame/runtime v0.0.0-20261016064408-3d4710bffd88
+	github.com/Tangerg/go-sdk v1.8.1-scope.3
+	github.com/Tangerg/scope/core v0.52.0
 	github.com/invopop/jsonschema v0.14.0
 	modernc.org/sqlite v1.60.1
 )
@@ -15,10 +15,10 @@ require (
 	cloud.google.com/go/auth v0.24.1 // indirect
 	cloud.google.com/go/compute/metadata v0.10.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260928062620-d1d16d98ad6e // indirect
-	github.com/Tangerg/scope/a2a v0.51.1 // indirect
-	github.com/Tangerg/scope/agent v0.51.1 // indirect
-	github.com/Tangerg/scope/mcp v0.51.1 // indirect
+	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20261014085258-14fca797560e // indirect
+	github.com/Tangerg/scope/a2a v0.52.0 // indirect
+	github.com/Tangerg/scope/agent v0.52.0 // indirect
+	github.com/Tangerg/scope/mcp v0.52.0 // indirect
 	github.com/Tangerg/scope/models/alibaba v0.51.1 // indirect
 	github.com/Tangerg/scope/models/anthropic v0.51.1 // indirect
 	github.com/Tangerg/scope/models/azureopenai v0.51.1 // indirect
@@ -66,21 +66,18 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
-	github.com/google/pprof v0.0.0-20261008003335-7bae8d8c4c9e // indirect
 	github.com/google/s2a-go v0.1.11 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.23 // indirect
 	github.com/googleapis/gax-go/v2 v2.26.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
-	github.com/modelcontextprotocol/go-sdk v1.6.1 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/openai/openai-go/v3 v3.78.0 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/samber/lo v1.53.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
@@ -116,7 +113,6 @@ require (
 	golang.org/x/time v0.16.0 // indirect
 	google.golang.org/api v0.304.0 // indirect
 	google.golang.org/genai v1.75.0 // indirect
-	google.golang.org/genproto v0.0.0-20261005182115-fad411399dd8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261012220534-4341edf3f941 // indirect
 	google.golang.org/grpc v1.84.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect

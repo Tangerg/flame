@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	scopemetadata "github.com/Tangerg/scope/core/metadata"
 	"github.com/google/uuid"
 )
 
@@ -33,12 +34,8 @@ func (m *StreamingMethod[P, C, R]) RegisterServer(backend *Backend, handler func
 }
 
 func invokeBackendStream(ctx context.Context, session *sdk.ServerSession, method boundMethod, wire *invokeParams) (*Result[jsontext.Value], error) {
-	encoded, err := json.Marshal(wire.Meta[streamMetadataKey])
-	if err != nil {
-		return nil, err
-	}
 	var ref CallbackRef
-	if err := json.Unmarshal(encoded, &ref, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(wire.Meta[streamMetadataKey], &ref, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
 	if err := ref.Validate(); err != nil {
@@ -90,7 +87,8 @@ type streamCompletion struct {
 // StreamWithMetadata retains the original MCP invocation while acknowledged
 // callback delivery keeps production behind actual consumer demand.
 func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, limits CallbackLimits, id string, input jsoninput.Input, metadata sdk.ParamsBase) iter.Seq2[StreamValue[jsontext.Value, jsontext.Value], error] {
-	frozenMetadata, metadataErr := json.Marshal(metadata)
+	frozen := scopemetadata.Map(metadata.Meta).Clone()
+	_, metadataErr := json.Marshal(sdk.ParamsBase{Meta: sdk.Meta(frozen)})
 	return func(yield func(StreamValue[jsontext.Value, jsontext.Value], error) bool) {
 		fail := func(err error) {
 			yield(StreamValue[jsontext.Value, jsontext.Value]{}, errors.Join(ErrStreamUnconfirmed, err, ctx.Err(), context.Cause(ctx)))
@@ -103,17 +101,7 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 			fail(metadataErr)
 			return
 		}
-		var frozen struct {
-			Meta map[string]jsontext.Value `json:"_meta,omitzero"`
-		}
-		if err := json.Unmarshal(frozenMetadata, &frozen, json.RejectUnknownMembers(true)); err != nil {
-			fail(err)
-			return
-		}
-		metadata.Meta = sdk.Meta{}
-		for key, value := range frozen.Meta {
-			metadata.Meta[key] = value
-		}
+		metadata := sdk.ParamsBase{Meta: sdk.Meta(frozen.Clone())}
 		if err := b.method.ValidateInput(input); err != nil {
 			fail(err)
 			return
@@ -170,12 +158,10 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 			return
 		}
 		defer release()
-		copied := sdk.Meta{}
-		for key, value := range metadata.Meta {
-			copied[key] = value
+		if err := metadata.Set(streamMetadataKey, ref); err != nil {
+			fail(err)
+			return
 		}
-		copied[streamMetadataKey] = ref
-		metadata.Meta = copied
 		done := make(chan struct{})
 		var completion streamCompletion
 		go func() {

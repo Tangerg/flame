@@ -156,7 +156,7 @@ func TestMethodWireRejectsUnknownInputAndOutputFields(t *testing.T) {
 		}
 	}
 	var params Params[input]
-	if err := json.Unmarshal([]byte(`{"_meta":{"caller":"retained"},"input":{"text":"a"},"commandId":"command"}`), &params); err != nil || params.GetMeta()["caller"] != "retained" || params.Input.Text != "a" || params.CommandID != "command" {
+	if err := json.Unmarshal([]byte(`{"_meta":{"caller":"retained"},"input":{"text":"a"},"commandId":"command"}`), &params); err != nil || string(params.GetMeta()["caller"]) != `"retained"` || params.Input.Text != "a" || params.CommandID != "command" {
 		t.Fatalf("admitted parameters lost identity, input or MCP metadata: %+v, %v", params, err)
 	}
 }

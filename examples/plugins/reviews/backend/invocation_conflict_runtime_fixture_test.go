@@ -64,12 +64,8 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 		return func(ctx context.Context, method string, request sdk.Request) (sdk.Result, error) {
 			if call, ok := request.(*sdk.CallToolRequest); ok && call.Params != nil && call.Params.Name == "update_review" {
 				if toolUpdates.Add(1) == 1 {
-					encoded, err := json.Marshal(call.Params.Meta[pluginsdk.InvocationMetadataKey])
-					if err != nil {
-						return nil, err
-					}
 					var invocation capability.Invocation
-					if err := json.Unmarshal(encoded, &invocation, json.RejectUnknownMembers(true)); err != nil {
+					if err := json.Unmarshal(call.Params.Meta[pluginsdk.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
 						return nil, err
 					}
 					if err := invocation.Validate(); err != nil {

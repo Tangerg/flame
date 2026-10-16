@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -46,7 +47,7 @@ func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref := CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 4096}
+	ref := CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 1<<53 + 1}
 	for _, call := range []string{strings.Repeat("b", 64), strings.Repeat("c", 64)} {
 		ref.Call = call
 		metadata, err := CallbackMetadata(ref)
@@ -60,16 +61,43 @@ func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.
 	if calls != 2 {
 		t.Fatalf("business calls=%d", calls)
 	}
-	invalid := sdk.ParamsBase{Meta: sdk.Meta{callbackMetadataKey: map[string]string{"endpoint": "https://example.test/"}}}
+	var invalid sdk.ParamsBase
+	if err := invalid.Set(callbackMetadataKey, map[string]string{"endpoint": "https://example.test/"}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := binding.InvokeWithMetadata(ctx, "original", input, invalid); err == nil || calls != 2 {
 		t.Fatalf("invalid metadata entered business execution: calls=%d error=%v", calls, err)
 	}
 	forged := invocation
 	forged.Origin = capability.Human
-	if _, err := binding.InvokeWithMetadata(ctx, "original", input, sdk.ParamsBase{Meta: sdk.Meta{InvocationMetadataKey: forged}}); err == nil || calls != 2 {
+	var supplied sdk.ParamsBase
+	if err := supplied.Set(InvocationMetadataKey, forged); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := binding.InvokeWithMetadata(ctx, "original", input, supplied); err == nil || calls != 2 {
 		t.Fatal("caller metadata replaced the model origin before dispatch")
 	}
 	if _, err := CallbackFromContext(t.Context()); err == nil {
 		t.Fatal("callback reference escaped its admitted context")
+	}
+}
+
+func TestCallbackMetadataRefusesMalformedAuthority(t *testing.T) {
+	for _, raw := range []string{
+		`{`,
+		`null`,
+		`{"endpoint":"https://example.test/","credential":%q,"call":%q,"maxResponseBytes":4096}`,
+		`{"endpoint":"http://127.0.0.1:1/","credential":%q,"call":%q,"maxResponseBytes":4096,"permission":"replacement"}`,
+		`{"endpoint":"http://127.0.0.1:1/","credential":%q,"call":%q,"maxResponseBytes":9223372036854775807}`,
+		`{"endpoint":"http://127.0.0.1:1/","credential":%q,"call":%q,"maxResponseBytes":9223372036854775808}`,
+	} {
+		t.Run(raw, func(t *testing.T) {
+			if strings.Contains(raw, "%q") {
+				raw = fmt.Sprintf(raw, strings.Repeat("a", 64), strings.Repeat("b", 64))
+			}
+			if _, err := bindCallbackMetadata(t.Context(), sdk.Meta{callbackMetadataKey: []byte(raw)}); err == nil {
+				t.Fatal("malformed callback authority was admitted")
+			}
+		})
 	}
 }

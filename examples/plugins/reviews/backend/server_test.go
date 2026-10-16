@@ -16,6 +16,17 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
+func modelToolMetadata(t *testing.T, id string) sdk.Meta {
+	t.Helper()
+	var meta sdk.Meta
+	if id != "" {
+		if err := meta.Set(pluginsdk.InvocationMetadataKey, capability.Invocation{ID: id, Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "reviews-owner"}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return meta
+}
+
 func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 	store := openTestStore(t, t.TempDir())
 	server, err := NewServer(store)
@@ -40,10 +51,7 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 	}
 	call := func(id string, args any) *sdk.CallToolResult {
 		t.Helper()
-		meta := sdk.Meta{}
-		if id != "" {
-			meta[pluginsdk.InvocationMetadataKey] = capability.Invocation{ID: id, Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "reviews-owner"}}
-		}
+		meta := modelToolMetadata(t, id)
 		result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: args, Meta: meta})
 		if err != nil {
 			t.Fatal(err)
@@ -147,7 +155,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err != nil || accepted.Type != Updated || accepted.Review == nil || accepted.Review.Revision != 2 {
 		t.Fatalf("typed update = %+v, %v", accepted, err)
 	}
-	replayed, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: input, Meta: sdk.Meta{pluginsdk.InvocationMetadataKey: capability.Invocation{ID: "shared-command", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "reviews-owner"}}}})
+	replayed, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: input, Meta: modelToolMetadata(t, "shared-command")})
 	if err != nil || replayed.IsError {
 		t.Fatalf("Tool replay = %+v, %v", replayed, err)
 	}
@@ -171,7 +179,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	}
 	assertToolOutcome := func(identity string, input Update, expected UpdateResult) {
 		t.Helper()
-		result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: input, Meta: sdk.Meta{pluginsdk.InvocationMetadataKey: capability.Invocation{ID: identity, Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "reviews-owner"}}}})
+		result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: input, Meta: modelToolMetadata(t, identity)})
 		if err != nil || result.IsError != (expected.Type != Updated) {
 			t.Fatalf("Tool refusal classification: %+v, %v", result, err)
 		}
@@ -279,7 +287,7 @@ func TestUnexpectedStoreFailureRemainsProtocolFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}, Meta: sdk.Meta{pluginsdk.InvocationMetadataKey: capability.Invocation{ID: "original", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "reviews-owner"}}}})
+	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}, Meta: modelToolMetadata(t, "original")})
 	if err == nil || result != nil {
 		t.Fatalf("unexpected store failure became a definite tool result: %+v, %v", result, err)
 	}

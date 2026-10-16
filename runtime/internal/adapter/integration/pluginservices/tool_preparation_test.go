@@ -105,15 +105,11 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			}
 			remote.AddTool(&sdk.Tool{Name: "search", InputSchema: jsontext.Value(`{"type":"object"}`)}, func(ctx context.Context, request *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 				calls.Add(1)
-				encodedInvocation, err := json.Marshal(request.Params.Meta[pluginsdk.InvocationMetadataKey])
-				if err != nil {
-					return nil, err
-				}
 				var invocation capability.Invocation
-				if err := json.Unmarshal(encodedInvocation, &invocation); err != nil {
+				if err := json.Unmarshal(request.Params.Meta[pluginsdk.InvocationMetadataKey], &invocation); err != nil {
 					return nil, err
 				}
-				if invocation.ID != "original-logical-call" || invocation.Origin != capability.Model || invocation.Parent != "run_owner" || invocation.Target.Reference != installation.ID().String() || request.Params.Meta["owner-meta"] != "retained" {
+				if invocation.ID != "original-logical-call" || invocation.Origin != capability.Model || invocation.Parent != "run_owner" || invocation.Target.Reference != installation.ID().String() || string(request.Params.Meta["owner-meta"]) != `"retained"` {
 					return nil, errors.New("original invocation metadata was lost")
 				}
 				if contract == memoryContracts.Capability {
@@ -122,11 +118,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 					if err != nil {
 						return nil, err
 					}
-					encoded, err := json.Marshal(request.Params.Meta[pluginsdk.ToolContextMetadataKey])
-					if err != nil {
-						return nil, err
-					}
-					if err := json.Unmarshal(encoded, &captured); err != nil {
+					if err := json.Unmarshal(request.Params.Meta[pluginsdk.ToolContextMetadataKey], &captured); err != nil {
 						return nil, err
 					}
 					if captured.CWD != "/captured/workspace" || captured.EmbeddingSpace != embedder.ID() {
@@ -185,7 +177,11 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			}
 			ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{WorkspaceCWD: "/captured/workspace"})
 			ctx = operation.Adopt(ctx, "original-logical-call", capability.Model, "run_owner")
-			ctx = scopemcp.WithRequestMeta(ctx, map[string]any{"owner-meta": "retained"})
+			var metadata sdk.Meta
+			if err := metadata.Set("owner-meta", "retained"); err != nil {
+				t.Fatal(err)
+			}
+			ctx = scopemcp.WithRequestMeta(ctx, metadata)
 			if _, err := bound.Call(ctx, invocation); err == nil || !strings.Contains(err.Error(), "response unavailable after dispatch") {
 				t.Fatalf("prepared metadata/callback did not reach the dispatch boundary: %v", err)
 			}

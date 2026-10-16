@@ -9,12 +9,15 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
-	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 func projectScoped(t *testing.T) context.Context {
 	t.Helper()
-	return scopemcp.WithRequestMeta(t.Context(), map[string]any{pluginsdk.ToolContextMetadataKey: pluginsdk.ToolContext{CWD: t.TempDir()}})
+	ctx, err := pluginsdk.WithToolContext(t.Context(), pluginsdk.ToolContext{CWD: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ctx
 }
 
 type failingMemorySearch struct{ err error }

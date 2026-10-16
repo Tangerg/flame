@@ -6,6 +6,21 @@ It lives in the existing Runtime module and imports no Runtime internal package.
 Use the ordinary MCP SDK server and transport; this package does not create a
 second process supervisor or lifecycle.
 
+## MCP metadata
+
+Scope's `core`, `agent`, `a2a` and `mcp` modules use v0.52.0 with
+`github.com/Tangerg/go-sdk` v1.8.1-scope.3. Other Scope modules retain their own
+published release versions. Native SDK `Meta` values are encoded JSON: write typed
+values with `Meta.Set`, check its error, and decode a consumed entry directly into
+its declared type. Do not round-trip metadata through `map[string]any`.
+
+Scope owns detached request metadata snapshots. Flame's invocation and callback
+bindings retain strict decoding, calling-owner identity, target and callback
+authority validation. Stream creation freezes native JSON bytes before observation;
+each iteration adds only its own captured delivery callback. Opaque values retain
+numeric lexemes, null and empty containers. Rebuild backends and Go consumers
+against the new SDK; Core/backend wire versions and durable storage are unchanged.
+
 The fixed published model observer, input, context and Tool proposal contracts are immutable
 process-wide values. Their schemas are compiled once by this package; checkpoint
 validation and callers share the admitted contract. `Descriptor` still returns

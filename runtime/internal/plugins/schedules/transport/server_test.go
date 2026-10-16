@@ -92,7 +92,11 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if result, err := lookup("original", string(arguments)); err != nil || result != nil {
 		t.Fatalf("absence: %+v,%v", result, err)
 	}
-	normal, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: sdk.Meta{pluginsdk.InvocationMetadataKey: capability.Invocation{ID: "original", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "schedules-owner"}}}, Name: "create_schedule", Arguments: input})
+	var metadata sdk.Meta
+	if err := metadata.Set(pluginsdk.InvocationMetadataKey, capability.Invocation{ID: "original", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+		t.Fatal(err)
+	}
+	normal, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: metadata, Name: "create_schedule", Arguments: input})
 	if err != nil || normal.IsError {
 		t.Fatalf("normal create: %+v,%v", normal, err)
 	}
@@ -127,7 +131,10 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	refusal, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: sdk.Meta{pluginsdk.InvocationMetadataKey: capability.Invocation{ID: "refused", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "schedules-owner"}}}, Name: "create_schedule", Arguments: refusedInput})
+	if err := metadata.Set(pluginsdk.InvocationMetadataKey, capability.Invocation{ID: "refused", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+		t.Fatal(err)
+	}
+	refusal, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: metadata, Name: "create_schedule", Arguments: refusedInput})
 	if err != nil || !refusal.IsError {
 		t.Fatalf("normal refusal: %+v, %v", refusal, err)
 	}

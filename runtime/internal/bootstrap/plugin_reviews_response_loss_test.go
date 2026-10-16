@@ -445,12 +445,8 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err := json.Unmarshal(encoded, &evidence); err != nil {
 		t.Fatal(err)
 	}
-	invocationData, err := json.Marshal(evidence.Request.Params.Meta[pluginsdk.InvocationMetadataKey])
-	if err != nil {
-		t.Fatal(err)
-	}
 	var invocation capability.Invocation
-	if err := json.Unmarshal(invocationData, &invocation); err != nil {
+	if err := json.Unmarshal(evidence.Request.Params.Meta[pluginsdk.InvocationMetadataKey], &invocation); err != nil {
 		t.Fatal(err)
 	}
 	identity := invocation.ID
@@ -523,7 +519,11 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if _, found, err := original.ReadReceipt(ctx, "never-dispatched", input); err != nil || found {
 		t.Fatalf("absent receipt became mutation evidence: %t, %v", found, err)
 	}
-	stale, err := backend.CallTool(ctx, &sdk.CallToolParams{Name: evidence.Request.Params.Name, Arguments: evidence.Request.Params.Arguments, Meta: sdk.Meta{pluginsdk.InvocationMetadataKey: capability.Invocation{ID: "new-inspected-call", Origin: capability.Model, Parent: invocation.Parent, Target: invocation.Target}}})
+	var inspectedMetadata sdk.Meta
+	if err := inspectedMetadata.Set(pluginsdk.InvocationMetadataKey, capability.Invocation{ID: "new-inspected-call", Origin: capability.Model, Parent: invocation.Parent, Target: invocation.Target}); err != nil {
+		t.Fatal(err)
+	}
+	stale, err := backend.CallTool(ctx, &sdk.CallToolParams{Name: evidence.Request.Params.Name, Arguments: evidence.Request.Params.Arguments, Meta: inspectedMetadata})
 	if err != nil || !stale.IsError {
 		t.Fatalf("a replacement call bypassed the original revision: %+v, %v", stale, err)
 	}

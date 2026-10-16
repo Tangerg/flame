@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
@@ -102,9 +103,9 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 		release()
 		return nil, nil, err
 	}
-	combined := maps.Clone(scopemcp.RequestMetaFromContext(ctx))
+	combined := scopemcp.RequestMetaFromContext(ctx)
 	if combined == nil {
-		combined = make(map[string]any)
+		combined = make(sdk.Meta)
 	}
 	maps.Copy(combined, metadata.Meta)
 	scoped, err := pluginsdk.WithToolContext(scopemcp.WithRequestMeta(ctx, combined), pluginsdk.ToolContext{CWD: cwd, EmbeddingSpace: space})

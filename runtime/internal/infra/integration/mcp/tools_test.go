@@ -59,20 +59,39 @@ func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *test
 		t.Fatal(err)
 	}
 	for _, id := range []string{"logical-first", "logical-second", ""} {
-		meta := map[string]any{}
+		meta := sdkmcp.Meta{
+			"test.example/numeric-evidence": []byte(`{"integer":9007199254740993,"decimal":1.2300e+100}`),
+			"test.example/null":             []byte(`null`),
+			"test.example/empty-array":      []byte(`[]`),
+			"test.example/empty-object":     []byte(`{}`),
+		}
 		if id != "" {
-			meta["test.example/opaque-context"] = id
+			if err := meta.Set("test.example/opaque-context", id); err != nil {
+				t.Fatal(err)
+			}
 		}
 		output, err := binding.Call(scopemcp.WithRequestMeta(t.Context(), meta), invocation)
 		if err != nil {
 			t.Fatal(err)
 		}
-		var received map[string]any
+		var received sdkmcp.Meta
 		if err := json.Unmarshal(output.Details, &received); err != nil {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(received["test.example/opaque-context"], meta["test.example/opaque-context"]) {
 			t.Fatalf("received invocation identity = %v, want %v", received, meta)
+		}
+		for _, key := range []string{"test.example/numeric-evidence", "test.example/null", "test.example/empty-array", "test.example/empty-object"} {
+			actual, expected := jsontext.Value(received[key]).Clone(), jsontext.Value(meta[key]).Clone()
+			if err := actual.Format(jsontext.ReorderRawObjects(true)); err != nil {
+				t.Fatal(err)
+			}
+			if err := expected.Format(jsontext.ReorderRawObjects(true)); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(actual, expected) {
+				t.Fatalf("metadata %q changed its JSON value: %s, want %s", key, received[key], meta[key])
+			}
 		}
 	}
 }
