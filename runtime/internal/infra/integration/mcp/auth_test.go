@@ -2,7 +2,8 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -49,10 +50,10 @@ func refusingInitializedServer(t *testing.T, refusal int) *httptest.Server {
 		switch r.Method {
 		case http.MethodPost:
 			var message struct {
-				ID     json.RawMessage `json:"id"`
-				Method string          `json:"method"`
+				ID     jsontext.Value `json:"id"`
+				Method string         `json:"method"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&message); err != nil {
+			if err := json.UnmarshalRead(r.Body, &message); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}

@@ -1,7 +1,7 @@
 package reviews
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -67,7 +67,7 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 	if accepted.IsError {
 		t.Fatalf("accepted = %+v", accepted)
 	}
-	encoded, err := json.Marshal(accepted.StructuredContent)
+	encoded, err := json.Marshal(accepted.StructuredContent, json.Deterministic(true))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 		t.Fatalf("result = %+v", result)
 	}
 	replayed := call("original", input)
-	encodedReplay, err := json.Marshal(replayed.StructuredContent)
+	encodedReplay, err := json.Marshal(replayed.StructuredContent, json.Deterministic(true))
 	if err != nil || string(encodedReplay) != string(encoded) || replayed.IsError {
 		t.Fatalf("replay = %+v, %v", replayed, err)
 	}

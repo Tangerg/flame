@@ -1,7 +1,7 @@
 package reviews
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	contractsdk "github.com/Tangerg/flame/runtime/capability"
 	"reflect"

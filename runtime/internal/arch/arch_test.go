@@ -2007,7 +2007,7 @@ func moduleRoot(t *testing.T) string {
 	}
 }
 
-// TestRuntimeUsesOneJSONVocabulary keeps encoding/json out of production code.
+// TestRuntimeUsesOneJSONVocabulary keeps the v1 codec out of Runtime and its tests.
 // encoding/json/v2 refuses duplicate members, trailing values, and unknown
 // members without a hand-written pass, and its options state the rules Runtime
 // depends on — deterministic member order where bytes are hashed, compared, or
@@ -2028,7 +2028,7 @@ func TestRuntimeUsesOneJSONVocabulary(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if entry.IsDir() || !strings.HasSuffix(path, ".go") {
 			return nil
 		}
 		parsed, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
@@ -2043,12 +2043,14 @@ func TestRuntimeUsesOneJSONVocabulary(t *testing.T) {
 			if relErr != nil {
 				return relErr
 			}
-			pkg := filepath.Dir(relative)
-			if _, allowed := exact[pkg]; !allowed {
-				t.Errorf("%s imports encoding/json; Runtime decodes with encoding/json/v2", relative)
-				continue
+			if !strings.HasSuffix(path, "_test.go") {
+				pkg := filepath.Dir(relative)
+				if _, allowed := exact[pkg]; !allowed {
+					t.Errorf("%s imports encoding/json; Runtime decodes with encoding/json/v2", relative)
+					continue
+				}
+				found[pkg] = true
 			}
-			found[pkg] = true
 			assertOnlyJSONNumberIsUsed(t, relative, path, imported)
 		}
 		return nil

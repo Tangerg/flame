@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -200,8 +200,8 @@ func TestTerminalConversationPreservesSparseResultsAcrossRestart(t *testing.T) {
 				t.Fatal(err)
 			}
 			exact := chat.ToolResult{ID: "second", Name: "write", Output: chat.ToolOutput{
-				Content: []chat.ToolContent{{Kind: chat.PartText, Text: "external write acknowledged", Metadata: metadata.Map{"evidence": json.RawMessage(`{"etag":"ack-1","rank":9007199254740993}`)}}, {Kind: chat.PartText, Text: "second exact block"}},
-				Details: json.RawMessage(`{"written":true,"bytes":42}`),
+				Content: []chat.ToolContent{{Kind: chat.PartText, Text: "external write acknowledged", Metadata: metadata.Map{"evidence": jsontext.Value(`{"etag":"ack-1","rank":9007199254740993}`)}}, {Kind: chat.PartText, Text: "second exact block"}},
+				Details: jsontext.Value(`{"written":true,"bytes":42}`),
 			}}
 			preview, err := tool.NewResult("UI preview is intentionally different")
 			if err != nil {
