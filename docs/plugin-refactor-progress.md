@@ -96,6 +96,40 @@ this checkpoint, rather than no conceivable code migration. Recheck upstream
 releases or qualify a justified complete integration migration before claiming
 remediation. No local patch, suppression or downgrade is a fix by itself.
 
+### Post-KaTeX native packaging and math rendering acceptance (2026-10-16)
+
+The two items the prior refresh left unexecuted for the KaTeX dependency change
+are now addressed, within the scopes stated here.
+
+Math rendering acceptance. The markdown suite previously tested only math
+delimiter preprocessing, never the rendered KaTeX output, so the forced 0.19.0
+resolution had no rendering coverage. `mathRendering.test.tsx` now renders inline
+and display math through the real `remark-math` -> `rehype-katex` pipeline and
+asserts the KaTeX markup and the `application/x-tex` source annotation, that
+malformed math degrades to a `.katex-error` instead of throwing, and that a
+polluted `Object.prototype.trust` cannot re-enable a `javascript:` `\href`
+(GHSA-238p-pmpm-9mq7 own-property fix). These run in the standard `npm run check`
+vitest gate under happy-dom. happy-dom validates markup and security, not browser
+layout; a real-engine visual check is the residual below.
+
+Native packaging. A fresh isolated `wails3 task package APP_NAME=flame-katexaccept`
+built the new frontend (production Vite build including the one KaTeX 0.19.0
+`katex-*.js` chunk) and embedded it into an arm64, macOS 13.0-floor, ad-hoc-signed
+`.app` via the Go `all:frontend/dist` embed. `strings` confirms the binary embeds
+`frontend/dist/assets/katex-DneLXh5C.js`; the built `dist` KaTeX chunk carries the
+0.19.0 marker and no 0.16.47. The isolated bundle used a distinct output name and
+its `CFBundleIdentifier` was reset to `com.tangerg.flame.katexaccept`, so it never
+collided with the daily `com.tangerg.flame`; the daily `build/bin/flame.app` was
+not clobbered and the isolated artifacts were removed after verification.
+
+Residual, not executed: a running-app visual math check in the native system
+WebKit (or playwright WebKit). It is a browser-layout acceptance distinct from the
+markup/security vitest. It was not run because displaying model-authored math in
+the launched client needs a provider/model and the default client points at the
+daily Runtime 17171, both out of scope here; KaTeX markup is engine-stable and the
+native binary embeds the verified chunk, so the residual risk is low but real.
+This is not an overall 100% claim.
+
 ### Deadline-path ownership audit (2026-10-16; scoped review finding)
 
 This records the earlier contract-against-implementation review, without changing

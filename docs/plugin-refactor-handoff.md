@@ -243,17 +243,20 @@ Do not repeat these solely to restate status, and do not broaden their scope.
 | Shared/frontend qualification at `c44671017`, before the KaTeX dependency change | Shared full check 364 tests; Desktop complete check 357 files / 2,429 tests plus architecture/API/resource/bundle guards. These historical results keep that source/dependency scope. |
 | Frontend dependency graph at `d06e02636` | Recorded complete npm run check passes, including full vitest and architecture/API/resource/bundle/module guards. Markdown subset: 10 files / 96 tests. npm ci reproduces one KaTeX 0.19.0; recorded production-only audit reports no known vulnerabilities. These were not rerun by this documentation refresh. |
 | Read-only follow-up at `dc7bdad65` | Lockfile/npm ls and three import paths confirm one 0.19.0. Six installed HAST math-pipeline cases (inline/display/trust gadget, with/without inherited trust) pass. This does not execute the React browser/native surface or replace the full frontend gate. |
-| Native artifacts qualified before `d06e02636` | Private Wails beta.29 arm64 packaging/signature/macOS 13 floor and actual isolated original-command recovery pass for the earlier built artifacts. They retain the original item/receipt, replay-trap and zero-Run/model evidence. The control alone uses a bootstrap-address overlay. The packaged frontend predates the KaTeX change: these results do not qualify a newly built post-upgrade native artifact. Fresh native packaging/targeted math rendering remains unexecuted. |
+| Native artifacts qualified before `d06e02636` | Private Wails beta.29 arm64 packaging/signature/macOS 13 floor and actual isolated original-command recovery pass for the earlier built artifacts. They retain the original item/receipt, replay-trap and zero-Run/model evidence. The control alone uses a bootstrap-address overlay. The packaged frontend predates the KaTeX change: these results do not qualify its original-command-recovery behavior on a post-upgrade artifact. |
+| Post-KaTeX native packaging and math rendering at `018777966` | Fresh isolated `wails3 task package APP_NAME=flame-katexaccept` builds the new frontend and embeds the one KaTeX 0.19.0 `katex-*.js` chunk into an arm64/macOS-13-floor/ad-hoc-signed `.app` (binary `strings` confirms the embed; `dist` chunk shows 0.19.0, no 0.16.47); isolated output name and `CFBundleIdentifier` `com.tangerg.flame.katexaccept`, daily bundle not clobbered, artifacts removed after. `mathRendering.test.tsx` adds durable in-gate vitest coverage of inline/display markup, source annotation, malformed-math error and the GHSA-238p-pmpm-9mq7 trust-gadget regression. Residual: a running-app/WebKit visual-layout math check is not run (model/daily-Runtime dependent); markup/security only, under happy-dom. |
 | Backend/CLI slice `4bb2481a3`; complete bootstrap/runtimebinding parallel race | 417.252/40.909s, 235/342 test/subtest passes (153/204 top-level), zero failures/skips. All original bounds/assertions retained. |
 | Same backend/CLI slice; focused bootstrap/execution/runtimebinding parallel race | 68.516/50.624/10.093s; response-loss recovery, safe/yolo, lost Core opening and all eight SIGKILL cuts pass (cut parent 48.35s). This precedes only stricter cleanup assertions in the new frame regression, which the complete bootstrap run then covers. |
 | Same backend/CLI slice; local checks | Vet passes bootstrap/runtimebinding/proxy; gofmt, diff, manual lint-staged/commitlint pass. No new whole-product/frontend/native gate is claimed for this test-only slice. |
 
 The frontend dependency change does not invalidate historical Go-only results,
-but it changes the packaged JavaScript payload. Before claiming current native
-acceptance, build an isolated artifact with the new graph and qualify its math
-rendering. Do not carry old native results forward as a fresh pass. Backend full
-race, paid providers and native gates were not rerun for the KaTeX slice; this
-refresh adds no new execution of them.
+but it changes the packaged JavaScript payload. A fresh isolated native package
+with the new graph is now built and its embedded KaTeX 0.19.0 chunk verified, and
+math markup/security has durable in-gate vitest coverage (both rows above). What
+remains unexecuted is the running-app/WebKit visual-layout math check and the
+earlier original-command-recovery scenario on a post-upgrade artifact. Backend
+full race and paid providers were not rerun for the KaTeX slice; this adds no new
+execution of them.
 
 Original full backend command, to use again when a relevant final change warrants it:
 
