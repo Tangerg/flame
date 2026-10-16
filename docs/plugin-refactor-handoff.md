@@ -1,8 +1,14 @@
 # Unified plugin refactor: next-session handoff
 
-Updated 2026-10-16 (Asia/Shanghai). Latest code/test checkpoint: `4bb2481a3`.
+Updated 2026-10-16 (Asia/Shanghai).
+
+- Latest frontend dependency change: `d06e02636` (KaTeX resolution/lockfile).
+- Latest backend/CLI test change: `4bb2481a3` (probe framing/steer diagnostics).
+- Reviewed branch HEAD before this documentation refresh: `dc7bdad65`.
+
 Continue from the current branch HEAD; later documentation commits are expected.
-Do not checkout/reset back to the checkpoint.
+Do not checkout/reset back to any checkpoint. Each verification below retains its
+own code, dependency and artifact scope.
 This document replaces the long chronological handoff. Historical detail remains
 in `docs/plugin-refactor-progress.md` and Git history. The handoff update itself
 changes documentation only and does not extend any verification scope.
@@ -14,7 +20,7 @@ changes documentation only and does not extend any verification scope.
   The desktop app may otherwise start in the primary checkout.
 - Do not modify `/Users/tangerg/Desktop/flame`, recreate this worktree from main,
   push, merge into main, tag, publish, or change the daily Runtime/app.
-- The worktree is clean at the resume checkpoint. Preserve the existing stash:
+- The worktree was clean at the reviewed HEAD before this refresh. Preserve the stash:
   `WIP on main: c443a1a8 refactor(runtime): finish the json/v2 migration across delivery and tooling`.
   Never use bare `git stash`.
 - Read `AGENTS.md`, `PROJECT_RULES.md`, `DESIGN_PHILOSOPHY.md`, `DEVELOPMENT.md`,
@@ -55,10 +61,11 @@ The remaining required work is, in priority order:
    explicit unresolved status when a matching failure cannot be obtained.
 2. Establish the historical MCP initial-discovery timeout cause, with the same
    evidence standard. Do not conflate it with safe-steer.
-3. The KaTeX advisory chain is now remediated (see Priority 3); the production
-   audit reports zero vulnerabilities. The braces chain remains unremediated
-   because no patched braces exists upstream. Keep its bounded, build-only status
-   explicit; suppressions are not fixes.
+3. The KaTeX advisory chain is remediated in the selected dependency tree (see
+   Priority 3). The recorded production-only npm audit reports no known dependency
+   vulnerabilities; it is not proof that the product has no vulnerabilities.
+   Braces remains open: no supported patched release was available at the last
+   check. Keep the audited build exposure and removal conditions explicit.
 4. Reconcile final acceptance against changes actually made and retain explicit
    unexecuted/risk boundaries. Do not rerun every old gate just to restate status,
    or describe missing evidence as a pass.
@@ -115,13 +122,13 @@ Resume acceptance precedes detached execution activation. Relevant current paths
 
 ### Next useful experiment
 
-A 2026-10-16 ownership audit (progress doc, "Deadline-path ownership audit") read
-the detached-activation receipt handshake and found it cancellation-bounded on
-three sides, with the pump completing every dequeued commit before it may stop and
-keeping consumption alive on a failed commit; no reachable orphan/deadlock was
-found in current code and the stall was not reproduced. Build on that: choose a
-further falsifiable ownership/order hypothesis from current code before running a
-bounded experiment. Correlate Resume acknowledgement with activation,
+The 2026-10-16 ownership audit (progress doc, "Deadline-path ownership audit")
+examined the receipt handshake's cancellation boundaries, pump acknowledgements
+and activation resolution. It found no reachable orphan/deadlock in the inspected
+normal path. This is a scoped code-review finding, not a proof covering all error,
+cancellation, panic or blocked-callback paths, and not a historical diagnosis.
+Choose a new falsifiable ownership/order hypothesis before running a bounded
+experiment. Correlate Resume acknowledgement with activation,
 Tool dispatch/result, durable commit receipt, physical model admission, actual HTTP
 arrival and fixture classification. Keep the production state and client observer
 separate. On failure, retain the live owning Run state and matched stage entries /
@@ -187,15 +194,15 @@ Relevant current paths:
 
 ### Next useful experiment
 
-A 2026-10-16 ownership audit (progress doc, "Deadline-path ownership audit")
-confirmed the child acquires its data lease and opens SQLite before serving stdio,
-and that a blocked pre-transport lease is the "held lease" shape. It also found
-reconnect cannot make two children contend: a superseding attempt waits on the
-outgoing session's retirement — which completes only after the old stdio child has
-exited and released its lease — before launching the new child. No reconnect lease
-race exists in current code; a pre-transport block would need external contention
-on an isolated data directory. Build on that with one concrete hypothesis and a
-bounded, owned process graph. Correlate parent,
+The 2026-10-16 ownership audit found that the child acquires its data lease and
+opens SQLite before serving stdio. In the inspected supersession path, a new
+attempt waits on the recorded outgoing-session retirement before launch. No lease
+overlap was found in that path. This does not prove every error/cancellation or
+process-descendant path safe, establish external contention, or recover the old
+child's execution interval. Process exit/join must not be described as proof that
+a Go defer executed. The historical 10s value is the captured test's readiness
+bound, not a universal SDK handshake default.
+Choose a concrete hypothesis and a bounded, owned process graph. Correlate parent,
 proxy and backend PID/session with spawn, pre-main, lease acquisition, schema /
 registration completion, stdio entry, discover receive, reply write and proxy
 forward. Capture metadata/byte counts, not private payloads or credentials. A
@@ -209,15 +216,16 @@ cache or copy Scope/SDK internals into Flame. Repair the proven owner only.
 
 ## Priority 3: npm advisory chains
 
-As checked on 2026-10-16 after the KaTeX repair (`d06e02636`): overall **4 high /
-0 low**; production-only audit reports **zero vulnerabilities**. The remaining four
-high entries are all the single braces chain, which is a `@stylexjs/postcss-plugin`
-devDependency and never enters the production tree.
+At the recorded post-repair check (`d06e02636`, 2026-10-16), npm audit reports
+**4 high / 0 low** overall and **no known vulnerabilities in the production-only
+dependency audit**. The remaining four entries represent one braces advisory
+chain. These are audit/database results for the selected graph, not a product-wide
+security guarantee. This documentation refresh does not rerun npm audit.
 
-| Chain | Status |
+| Chain | Status and verification boundary |
 | --- | --- |
-| rehype-katex / micromark-extension-math -> katex | **Remediated.** The app already declared `katex ^0.19.0` directly (its stylesheet), while both integrations declared `katex ^0.16.0` and resolved separate 0.16.47 copies, so the rendered markup and the stylesheet used two katex versions. GHSA-238p-pmpm-9mq7 affects 0.11.0-0.18.1 and is patched from 0.18.2, present in 0.19.0. A `desktop/frontend/package.json` `overrides: { "katex": "$katex" }` pins every katex to the declared direct version, collapsing the tree to one 0.19.0 owner that renders markup and supplies the stylesheet. rehype-katex and micromark-extension-math call only `katex.renderToString` and `katex.ParseError`, both stable in 0.19.0. Qualified by the full frontend `npm run check` gate passing with the deduped tree (typecheck, lint, format, full vitest, knip, every architecture guard, bundle and plugin-module checks; the math stylesheet stays within its bundle budget), a direct render smoke and `npm ci` reproduction. This is a one-owner repair, not a suppression. |
-| StyleX PostCSS 0.19.1 -> fast-glob 3.3.3 -> micromatch 4.0.8 -> braces 3.0.3 | **Unremediated; upstream-blocked.** GHSA-vfj7-8cjw-p6xm affects braces `<= 3.0.3` (latest) with **no patched version released**; the fix is still pending upstream. The attack vector requires attacker-controlled deeply nested brace patterns. Here fast-glob only receives two repository-owned globs with single-level `{ts,tsx}` braces, and the plugin is a build-only devDependency (production audit is clean). No code change can remove this without a vendored patch or dropping the load-bearing StyleX PostCSS chain. Removal condition: braces/micromatch publishes a depth-limited release, or `@stylexjs/postcss-plugin` drops fast-glob. Do not equate build-only exposure with remediation, and do not suppress the advisory. |
+| rehype-katex / micromark-extension-math -> katex | **Remediated in the selected graph.** `overrides: { "katex": "$katex" }` selects the app's declared KaTeX range; the lockfile and installed tree resolve one 0.19.0 for rendering and CSS, replacing both 0.16.47 copies. This explicitly overrides the integrations' declared `^0.16.0` ranges; upstream packages have not thereby declared 0.19 compatibility. The app owns compatibility verification and future maintenance of this resolution policy. The recorded full frontend check, markdown tests, render smoke and npm ci reproduction support the tested scope. An additional read-only check verified all three import paths resolve 0.19.0 and exercised the installed remark-parse -> remark-math -> remark-rehype -> rehype-katex HAST pipeline: inline, display and trust-gadget inputs, each with/without deliberate inherited trust, pass all six cases without unsafe links. That check executes no browser or native app. Version unification alone is not a compatibility proof; reconsider the override when upstream supported ranges change. |
+| StyleX PostCSS 0.19.1 -> fast-glob 3.3.3 -> micromatch 4.0.8 -> braces 3.0.3 | **Open; no supported patched release at the last check.** The audited path is a build devDependency using two repository-owned shallow globs; no attacker-controlled nested-pattern ingress was found in that path. This is scoped exposure analysis, not proof that untrusted input can never arrive. There is no verified supported direct upgrade for this chain at the checkpoint; it is not correct to claim that no code migration could remove it. Recheck upstream fixes and, if justified, evaluate a complete integration migration with its actual build consumers. Removal requires a qualified dependency chain without the vulnerable version. Build-only exposure, an ignored advisory or a forced downgrade does not remediate the vulnerability. |
 
 Sources: [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm),
 [KaTeX advisory](https://github.com/advisories/GHSA-238p-pmpm-9mq7).
@@ -232,11 +240,20 @@ Do not repeat these solely to restate status, and do not broaden their scope.
 | Product source `6d5e2427d`; original four-module parallel race, -p 2, -count=1, package timeout 900s | 174 packages finished: 159 tested pass, 15 no-test. 9,187 test/subtest passes. Six paid DeepSeek cases plus helper conditionally skipped; not counted as passed. Bootstrap 375.810s, delegated 3.03s, safe/yolo 2.82/2.72s, lost Core opening 4.46s, all eight execution SIGKILL cuts pass. |
 | Same product source; five workspace modules | go mod verify, vet/build pass. Generation plus existing formatter reproduces tracked bytes. Desktop Go race 40 passes. Runtime/first-party distribution builds. |
 | Independent authors at `6d5e2427d` | Reviews/Tool-proposal author with GOWORK=off, no replace, isolated archives/cache, offline verify/race/vet/build passes. Public component archives independently build Usage and match emitted bytes; clean offline reinstall passes. These are not registry publications. |
-| Unchanged shared/frontend source `c44671017` | Shared full check 364 tests; Desktop complete check 357 files / 2,429 tests plus architecture/API/resource/bundle guards. These were actually run after UI authorization; not newly rerun at later Go/docs commits. |
-| Current native qualification | Matching private Wails beta.29 production arm64 package/signature/macOS 13 floor passes. Actual isolated native original-command recovery survives app + Runtime restart and disabled original producer, then recovers the exact private receipt after explicit reenable. One private item/receipt; replay trap absent; zero Sessions/model POSTs. Only the isolated control uses a bootstrap-address overlay. |
-| Latest slice `4bb2481a3`; complete bootstrap/runtimebinding parallel race | 417.252/40.909s, 235/342 test/subtest passes (153/204 top-level), zero failures/skips. All original bounds/assertions retained. |
-| Latest slice; focused bootstrap/execution/runtimebinding parallel race | 68.516/50.624/10.093s; response-loss recovery, safe/yolo, lost Core opening and all eight SIGKILL cuts pass (cut parent 48.35s). This precedes only stricter cleanup assertions in the new frame regression, which the complete bootstrap run then covers. |
-| Latest slice; local checks | Vet passes bootstrap/runtimebinding/proxy; gofmt, diff, manual lint-staged/commitlint pass. No new whole-product/frontend/native gate is claimed for this test-only slice. |
+| Shared/frontend qualification at `c44671017`, before the KaTeX dependency change | Shared full check 364 tests; Desktop complete check 357 files / 2,429 tests plus architecture/API/resource/bundle guards. These historical results keep that source/dependency scope. |
+| Frontend dependency graph at `d06e02636` | Recorded complete npm run check passes, including full vitest and architecture/API/resource/bundle/module guards. Markdown subset: 10 files / 96 tests. npm ci reproduces one KaTeX 0.19.0; recorded production-only audit reports no known vulnerabilities. These were not rerun by this documentation refresh. |
+| Read-only follow-up at `dc7bdad65` | Lockfile/npm ls and three import paths confirm one 0.19.0. Six installed HAST math-pipeline cases (inline/display/trust gadget, with/without inherited trust) pass. This does not execute the React browser/native surface or replace the full frontend gate. |
+| Native artifacts qualified before `d06e02636` | Private Wails beta.29 arm64 packaging/signature/macOS 13 floor and actual isolated original-command recovery pass for the earlier built artifacts. They retain the original item/receipt, replay-trap and zero-Run/model evidence. The control alone uses a bootstrap-address overlay. The packaged frontend predates the KaTeX change: these results do not qualify a newly built post-upgrade native artifact. Fresh native packaging/targeted math rendering remains unexecuted. |
+| Backend/CLI slice `4bb2481a3`; complete bootstrap/runtimebinding parallel race | 417.252/40.909s, 235/342 test/subtest passes (153/204 top-level), zero failures/skips. All original bounds/assertions retained. |
+| Same backend/CLI slice; focused bootstrap/execution/runtimebinding parallel race | 68.516/50.624/10.093s; response-loss recovery, safe/yolo, lost Core opening and all eight SIGKILL cuts pass (cut parent 48.35s). This precedes only stricter cleanup assertions in the new frame regression, which the complete bootstrap run then covers. |
+| Same backend/CLI slice; local checks | Vet passes bootstrap/runtimebinding/proxy; gofmt, diff, manual lint-staged/commitlint pass. No new whole-product/frontend/native gate is claimed for this test-only slice. |
+
+The frontend dependency change does not invalidate historical Go-only results,
+but it changes the packaged JavaScript payload. Before claiming current native
+acceptance, build an isolated artifact with the new graph and qualify its math
+rendering. Do not carry old native results forward as a fresh pass. Backend full
+race, paid providers and native gates were not rerun for the KaTeX slice; this
+refresh adds no new execution of them.
 
 Original full backend command, to use again when a relevant final change warrants it:
 
@@ -309,6 +326,8 @@ new isolated lifetimes and verify the target before launch.
   actual Tool/CLI identity conflict and graphical revision-conflict evidence have
   their own scopes in `examples/plugins/reviews/README.md`. Do not infer every
   refusal class from them.
+- A post-KaTeX native package and targeted native math rendering have not been
+  qualified. Earlier native evidence belongs to the pre-upgrade artifacts.
 - An additional native return to the Memory list after successful original recovery
   was not executed because the Mac relocked. The successful recovery screenshot
   and exact receipt comparison remain valid; do not infer the extra navigation.

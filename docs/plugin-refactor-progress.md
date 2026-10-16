@@ -2,11 +2,12 @@
 
 ## Current stage
 
-The 2026-10-16 handoff refresh consolidates the next-session instructions in
-[plugin-refactor-handoff.md](plugin-refactor-handoff.md), using `4bb2481a3` as the
-latest code/test checkpoint. It replaces chronological duplication with ordered remaining
-work, source-qualified results, evidence paths, constraints and explicit unknowns.
-This documentation-only update runs no new product gate and closes no open risk.
+The current handoff is [plugin-refactor-handoff.md](plugin-refactor-handoff.md).
+Latest frontend dependency change: `d06e02636`; latest backend/CLI test change:
+`4bb2481a3`. This refresh reviews branch HEAD `dc7bdad65`; continue from the
+current HEAD, not by checking out either checkpoint. The refresh changes only
+handoff/progress wording and runs no new product gate. Safe-steer, MCP discovery
+and braces remain open; overall acceptance is not 100%.
 
 On 2026-10-15 the user lifts the UI/E2E/screenshot test prohibition and authorizes
 graphical qualification in the existing worktree. Prior no-UI statements record
@@ -32,8 +33,9 @@ P33 now has an installed applicability read model and actual no-menu-I/O proof.
 P46 now has actual shutdown during a component-initiated backend/model callback,
 including cooperative session-resource closure. All four review cross-scenarios
 are now Evidenced, including actual no-Run loss/restart/provider-replacement
-qualification below. Current-source global Go, author/distribution and native
-original-command recovery qualification now pass as scoped below.
+qualification below. Go, author/distribution and original-command recovery gates
+retain the exact scopes below. Native artifacts were qualified before the KaTeX
+dependency upgrade; they do not qualify a new post-upgrade native frontend.
 The historical post-SDK 10s safe-steer timeout
 still has no established cause and is not closed by passing reruns.
 An earlier test-only qualification also retains unclassified MCP startup
@@ -51,91 +53,75 @@ without coercion, replay, another result store or compatibility.
 
 ### KaTeX advisory remediation (2026-10-16, `d06e02636`)
 
-The KaTeX advisory chain is remediated by a one-owner repair, superseding the
-earlier "unremediated" npm status below. `desktop/frontend` declared `katex
-^0.19.0` directly for its stylesheet, while `rehype-katex` and
-`micromark-extension-math` declared `katex ^0.16.0` and each resolved a separate
-0.16.47 copy. The rendered math markup therefore came from 0.16.47 while the
-stylesheet came from 0.19.0 — two owners of one katex-version fact, and the
-0.16.47 renderers carried GHSA-238p-pmpm-9mq7 (trust-bypass prototype-pollution
-gadget, affecting 0.11.0-0.18.1, patched from 0.18.2 and present in 0.19.0).
+The selected dependency graph remediates the KaTeX advisory chain, superseding
+earlier unremediated npm records below. The app declared KaTeX `^0.19.0` for CSS,
+while rehype-katex and micromark-extension-math declared `^0.16.0` and resolved
+separate vulnerable 0.16.47 renderers. GHSA-238p-pmpm-9mq7 is patched from 0.18.2;
+the selected 0.19.0 includes the fix.
 
-A `desktop/frontend/package.json` `overrides: { "katex": "$katex" }` pins every
-katex to the app's declared direct version, collapsing the tree to a single
-0.19.0 that both renders the markup and supplies the stylesheet. This removes the
-two transitive 0.16.47 copies (and their bundled commander) from the lockfile.
-It is a dependency-resolution owner repair, not a suppression, override-as-bandaid
-or vendored patch: the forced version is the patched one the app already shipped.
+`overrides: { "katex": "$katex" }` makes the app's declared range authoritative
+for dependency selection. The lockfile and installed tree resolve one 0.19.0 for
+rendering and CSS. This removes both old copies and their bundled commander.
+It explicitly crosses the integrations' declared `^0.16.0` ranges. npm's ability
+to resolve this graph is not upstream compatibility certification or a semantic
+proof derived merely from one-version ownership. The app owns tested compatibility
+and maintenance of this resolution policy. Review its necessity when upstream
+supported ranges change; no source patch or advisory suppression is involved.
 
-rehype-katex and micromark-extension-math call only `katex.renderToString` and
-`katex.ParseError`, both stable in 0.19.0 (confirmed against the 0.19.0 export
-set and both library sources). Qualified by: the full frontend `npm run check`
-gate (typecheck, lint, format, the complete vitest suite, knip, every
-architecture/boundary guard, and `check:bundle`/`check:plugin-modules`) passing
-with the deduped tree; the markdown vitest suite (10 files / 96 tests); a direct
-`katex.renderToString` render smoke for inline and display math; and an `npm ci`
-rebuild that reproduces the single-owner tree. The bundle gate reports the math
-stylesheet at 29.1 KB within its 97.7 KB budget, so no bundle regression.
-Post-repair audit: overall four high / zero low; production-only audit reports
-zero vulnerabilities. No source file changed; only the manifest override and the
-lockfile dedup.
+The repair session recorded a passing complete frontend npm run check (including
+full vitest, architecture/boundary, bundle and module guards), the markdown subset
+of 10 files / 96 tests, direct inline/display smoke, and npm ci reproduction. The
+math stylesheet was 29.1 KB within its 97.7 KB budget. A later read-only check at
+`dc7bdad65` confirmed the lockfile, npm ls and three actual imports resolve 0.19.0.
+It also exercised the installed remark-parse -> remark-math -> remark-rehype ->
+rehype-katex HAST pipeline with inline/display/trust-gadget inputs, each with and
+without deliberately inherited trust: all six cases pass without unsafe links.
+This is HAST-level evidence, not a browser/React/native rendering check. This
+documentation refresh reruns none of those product checks.
 
-The braces chain remains unremediated and upstream-blocked: GHSA-vfj7-8cjw-p6xm
-affects braces `<= 3.0.3` (latest) with no patched release, and the fix is still
-pending upstream. It reaches the tree only through the `@stylexjs/postcss-plugin`
-build-time devDependency (production audit is clean), and fast-glob receives only
-two repository-owned globs with single-level `{ts,tsx}` braces, so the
-attacker-controlled deeply-nested-pattern vector has no ingress here. No vendored
-patch or advisory suppression is applied; the removal condition is an upstream
-braces/micromatch depth-limited release or `@stylexjs/postcss-plugin` dropping
-fast-glob.
+The recorded post-repair audit reports four high / zero low overall and no known
+vulnerabilities in the production-only dependency audit. This is a dated dependency
+advisory result, not a claim of a vulnerability-free product. No fresh backend
+race, native package/rendering or paid-provider gate ran for the repair. Earlier
+Go-only results retain their original scope; the packaged frontend changed, so
+earlier native artifacts do not qualify the post-upgrade payload. Fresh isolated
+native packaging and targeted math rendering remain unexecuted.
 
-### Deadline-path ownership audit (2026-10-16)
+Braces remains open. At the recorded check, GHSA-vfj7-8cjw-p6xm affects the selected
+3.0.3 and no patched release is available. The audited StyleX PostCSS build path
+uses two repository-owned shallow globs; no untrusted nested-pattern ingress was
+found in that path. Do not strengthen that finding into proof of no possible
+ingress. There is no verified supported direct upgrade for the current chain at
+this checkpoint, rather than no conceivable code migration. Recheck upstream
+releases or qualify a justified complete integration migration before claiming
+remediation. No local patch, suppression or downgrade is a fix by itself.
 
-A fresh contract-against-implementation read of both historical-deadline paths,
-done without altering production code. It rules specific failure shapes out as
-latent in the current design; it does not reconstruct a missing historical
-interval and does not close either historical cause.
+### Deadline-path ownership audit (2026-10-16; scoped review finding)
 
-safe-steer post-Resume second request. The second request is dispatched by the
-detached execution the Resume opens (`coordinator.go` `openSegment` with
-`DetachActivation`, then `activateExecutor` -> `BeginContinuation`). That path
-runs the approved tool, commits facts and awaits each durable receipt before the
-model turn. The receipt handshake is cancellation-bounded on three sides
-(`interaction_session.go` `commitFact`: the publication context, the
-execution/releasing owner, and the Segment observer; `execution_fact_commit.go`
-`Await`). The pump (`pump.go` `processEvent`) calls `Complete` on every
-`ExecutionFactCommit` it dequeues before it decides whether to stop, and a commit
-whose projection fails returns `true` (keep consuming) rather than stopping the
-pump; it stops only after completing a terminal commit or on a tree barrier. The
-only orphan shape — a receipt awaited after the pump stops — would require a
-commit the executor sends after the pump exited its range loop, which the
-sequential receipt await and the keep-consuming-on-error rule prevent on the
-normal second-request path. The activation gate (`run_tree_owner.go`
-`beginExecution`) closes `activation.done` on every resolution, so the pump's
-`finish` cannot block on it indefinitely. No reachable orphan/deadlock was found
-in current code; the historical 10s stall remains unreproduced and open.
+This records the earlier contract-against-implementation review, without changing
+production code. No reachable defect was found in the inspected paths. It does
+not prove all failure/cancellation/panic paths safe, reproduce either historical
+failure, or establish that only testing work remains. Both causes stay open.
 
-MCP initial discovery. The plugin child acquires an exclusive data-directory
-advisory lease and opens its SQLite store before it serves the stdio transport
-(`plugins/memory/main.go`, same shape in `schedules`), and on Unix
-`advisorylock.AcquireDirectory` retries `LOCK_EX|LOCK_NB` under the child's signal
-context until the lease frees. A child blocked there cannot answer the parent's
-first `server/discover` within the SDK's 10s bound — the exact "held lease delays
-pre-transport startup" shape the prior controls observed. The question was whether
-reconnect can make two children contend for one data lease. It cannot in current
-code: a superseding attempt captures the outgoing session's retirement
-(`attempt.go` `begin` -> `registry.go` `retireSessionLocked`) and waits on it in
-`connect` before it launches the new child; the retirement's `done` closes only
-after `closeSessionAttempt` -> `retireSession` has closed the session, waited for
-the stdio child's exit, and verified process-group termination — which is when the
-old child's `defer lease.Release()` has run. The new child therefore never starts
-until the old lease is free, so no reconnect lease race exists. A pre-transport
-block would require external contention on an isolated data directory. No
-reachable contention was found in current code; the historical discovery timeout
-remains unreproduced and open. No production change is made for either path: the
-hard constraint is to leave an unreproduced historical cause open rather than make
-a speculative repair.
+For safe-steer, the inspected detached activation enters BeginContinuation,
+executes the approved Tool, awaits durable fact receipts and then admits the next
+model call. The read identified publication/owner/observer cancellation boundaries,
+pump acknowledgement before its relevant stop decisions, continued consumption
+after a rejected authoritative commit, and explicit activation-gate resolution.
+These observations argue against the proposed orphaned-receipt shape in that
+inspected normal path. They do not prove that a callback always returns or rule
+out another abnormal ordering. Without a matching failed interval, no production
+repair or historical cause follows from this review.
+
+For MCP, the inspected child acquires its directory lease and opens SQLite before
+stdio service. A held lease can therefore delay discovery. The supersession path
+read by the audit waits for recorded outgoing-session retirement before launching
+the new child; no overlap was found in that inspected path. This is not proof
+covering all retirement failures, cancellation or process-descendant behavior, and
+it does not establish external contention in the old run. Exit/join is not proof
+that a Go defer executed. The captured 10s limit belongs to the test's readiness
+wait, not a universal SDK handshake default. The historical child interval is
+missing; the cause remains unclassified, with no speculative production change.
 
 ### Bounded deadline-boundary controls (2026-10-16)
 
@@ -222,7 +208,7 @@ It does not reconstruct the old failing child's actual execution or identify
 another blocked phase. Historical safe-steer/MCP causes remain unestablished;
 no product/dependency change or repeated full gate is substituted for evidence.
 
-### Final current-source gates and native original-command recovery (2026-10-16)
+### Qualification at 6d5e2427d before the KaTeX upgrade (2026-10-16)
 
 Freeze product source at 6d5e2427d. The original complete four-module command,
 go test -json -race -p 2 over Runtime, localruntime, CLI and Reviews with
@@ -3953,37 +3939,39 @@ entries retain their original evidence. This is not an overall 100% claim.
 
 ## Next
 
-Current product source 6d5e2427d now has the original complete parallel race,
-five-module dependency/vet/build checks, reproducible generated contracts,
-Desktop Go race, Runtime distribution, fresh independent Go/public-component
-author artifacts, production native packaging and actual native original-command
-recovery. Exact commands, source scopes and results are in Current stage.
-P01-P48 has 48 Evidenced rows and all four review scenarios have matching evidence;
-these counts do not erase the following limits or represent a percentage.
+P01-P48 has 48 Evidenced rows and all four review scenarios have matching evidence.
+These scoped evidence counts do not represent an overall percentage. Checkpoints
+are separated: `d06e02636` for frontend dependencies, `4bb2481a3` for backend/CLI
+tests, and `6d5e2427d` for the earlier full Go/author/distribution/native gates.
+The full frontend gate recorded after the KaTeX repair qualifies the selected
+frontend graph. The older native artifacts do not qualify its changed payload.
 
-- Historical safe-steer and MCP deadlines still have no established cause.
-  Existing stage observations establish the normal post-Resume sequence; bounded
-  fault controls show that distinct finished failed/lost Runs can yield the same
-  caller timeout. The user has no original failed logs/dump/data. A useful new
-  investigation requires an actual matching failed interval with phase/state/
-  stack evidence; repeated passing gates and Deployment drift are not causes.
-  Keep the existing failure-only diagnostics and unchanged assertions/deadlines.
-- The KaTeX advisory chain is remediated (`d06e02636`): every katex is pinned to
-  the app's declared 0.19.0 through a manifest override, so one owner renders the
-  markup and supplies the stylesheet. Overall audit is now four high / zero low,
-  and the production-only audit reports zero vulnerabilities. The remaining four
-  high are the single braces chain, which is upstream-blocked (no patched braces
-  exists) and reaches only the build-time StyleX PostCSS devDependency with
-  repository-owned shallow globs. No suppression/downgrade is substituted for
-  remediation; the braces removal condition is recorded in the handoff.
-- Paid live, other native platforms/architectures, registry publication and real
-  second-machine TLS remain unexecuted. Public source archives are not releases.
-  Native original receipt recovery is proved; the additional return to its Memory
-  list was interrupted by a later lock screen and is not counted.
-- Preserve the deliberately unknown uninstalled original Web command, retained
-  private evidence and old incompatible profiles. Missing receipts never authorize
-  replay, another provider or a competing result cache. Do not push, merge main,
-  change the primary checkout or alter retained user data.
+- Keep historical safe-steer and MCP discovery causes open. The scoped ownership
+  read found no defect in the paths it inspected; it is not proof that all failure
+  shapes are unreachable. A useful investigation needs a new falsifiable
+  hypothesis and a bounded matched phase/state/stack capture. The user has no
+  original failed artifacts. Preserve the diagnostics, assertions and deadlines;
+  do not substitute passing reruns, Deployment drift or synthetic fault controls
+  for a historical cause.
+- KaTeX's selected graph is remediated. The manifest override crosses upstream
+  `^0.16.0` declarations; the app owns compatibility verification. Retain the full
+  frontend gate and six-case HAST evidence without treating them as a native pass.
+  The recorded production-only audit reports no known dependency vulnerabilities.
+- Keep braces open. Four high entries refer to its one advisory chain; no patched
+  release was available at the recorded check. Exposure is limited to the audited
+  build path with no untrusted nested-pattern ingress found. Recheck upstream
+  state or qualify a justified full integration migration. Do not suppress the
+  advisory or describe an unverified migration as impossible.
+- Before claiming post-KaTeX native acceptance, build an isolated current artifact
+  and check its math rendering. This remains unexecuted. Paid providers, other
+  platforms/architectures, real second-machine TLS and registry/deployment
+  publication are also unqualified. Public author archives are not releases.
+  The earlier native original receipt recovery remains scoped to its built
+  artifact; the extra Memory-list return was interrupted by a later lock screen.
+- Preserve unknown original commands, private evidence and incompatible profiles.
+  Missing receipts never authorize replay, another provider or a second outcome
+  owner. Reuse the worktree; do not push, merge main or touch the primary checkout,
+  daily app/Runtime, stash or retained user data.
 
 ## Decision ledger
 
@@ -4321,8 +4309,10 @@ Headless proofs do not establish graphical behavior; the actual graphical contro
 
 ## Proposal acceptance coverage
 
-Audit date: 2026-10-16; latest product source is `6d5e2427d`, including original-request
-recovery `376f1d5a8`, generic management `c44671017` and its public CLI consumer.
+Audit date: 2026-10-16. The original full Go/artifact qualification freezes
+`6d5e2427d`, including original-request recovery `376f1d5a8`, generic management
+`c44671017` and its public CLI consumer. Later backend/CLI tests are `4bb2481a3`;
+latest frontend dependency change is `d06e02636`. Continue from current branch HEAD.
 Earlier source adds `1ce03662a` and the Reviews contextual
 point consumer `87719309c`, with the combined P46 shutdown proof above, after
 the `695879a46` frontend cut, Scope dependency cut
@@ -4341,10 +4331,15 @@ in this audit. `Partial` means an original behavior is only partly demonstrated;
 tests, 9,187 unique test/subtest results pass and seven unchanged paid-provider/
 helper tests skip. Five-module dependency/vet/build, generated-contract byte
 reproduction, Desktop Go race, fresh independent Go/component archives and
-production/native recovery gates pass as recorded in Current stage. The complete
-frontend gate retains its unchanged c44671017 scope (357 files/2,429 tests).
-Historical failed gates remain separate evidence. Platform/conditional/paid
-execution and missing historical causes are never inferred from package summaries.
+production/native recovery gates pass at that frozen scope. The earlier frontend
+gate at c44671017 (357 files/2,429 tests) is distinct from the passing complete
+frontend gate recorded after the KaTeX repair at d06e02636. The six-case installed
+HAST follow-up is narrower than browser/native acceptance. All Evidenced rows
+retain their recorded scenario and artifact scope: the pre-KaTeX native package
+and recovery proof do not qualify a new post-upgrade native frontend. Fresh
+isolated native packaging/targeted math rendering remains unexecuted. Historical
+failed gates remain separate evidence. Platform/conditional/paid execution and
+missing historical causes are never inferred from package summaries.
 
 | Requirement | Original scenario | Status | Evidence and remaining work |
 | --- | --- | --- | --- |
@@ -6063,11 +6058,13 @@ TLS remain unexecuted. Npm's four high/four low entries remain triaged but unfix
 - Registry/module publication is absent. Independent authors must use the
   qualified current-source artifacts until an authorized release provides them;
   older published application module metadata is not evidence of the new SDK.
-- Current native qualification includes an arm64 production package/strict signature
-  check with a macOS 13.0 floor and a separately identified, bootstrap-address-only
-  native control. Actual original Memory receipt recovery survives app/Runtime
-  restart and disabled/re-enabled producer; no claim extends it to unexecuted
-  navigation, every native workflow or another operating system.
+- Native qualification before d06e02636 includes an arm64 production package /
+  strict signature check with a macOS 13.0 floor and a separately identified,
+  bootstrap-address-only control. Its original Memory receipt recovery survives
+  app/Runtime restart and disabled/re-enabled producer. This proof stays with that
+  artifact: it does not qualify the post-KaTeX frontend, unexecuted navigation,
+  every native workflow or another operating system. Fresh current native
+  packaging and targeted math rendering remain unexecuted.
 
 ## Deliberately excluded scope
 
