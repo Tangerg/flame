@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import type { Model, Page } from "@flame/runtime-contract/wire";
 import { createFlameClient, stringifyJSON } from "@flame/runtime-contract/client";
 import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
 import {
@@ -39,18 +40,190 @@ afterEach(async () => {
   await client.close();
 });
 
-async function openEditor() {
+async function openEditor(rows: unknown[] = []) {
   render(<Schedules context={context} />);
   const read = await waitForRequest(transport, "plugins.call");
   await act(async () =>
-    respondSuccess(transport, read.id, { output: stringifyJSON({ Rows: [], NextCursor: "" }) }),
+    respondSuccess(transport, read.id, { output: stringifyJSON({ Rows: rows, NextCursor: "" }) }),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Add schedule" }));
+  fireEvent.click(screen.getByRole("button", { name: rows.length ? "Edit" : "Add schedule" }));
   fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
     target: { value: "Retained draft" },
   });
   return waitForRequest(transport, "providers.list");
 }
+
+async function providerModels() {
+  await waitFor(() =>
+    expect(transport.outbox().filter((request) => request.method === "models.list")).toHaveLength(
+      2,
+    ),
+  );
+  return transport.outbox().filter((request) => request.method === "models.list");
+}
+
+function refuse(id: string) {
+  transport.inject({
+    jsonrpc: "2.0",
+    id,
+    error: {
+      code: -32603,
+      message: "internal_error",
+      data: { type: "internal_error", detail: "catalog unavailable" },
+    },
+  });
+}
+
+function choose(label: string) {
+  const choice = screen.getByRole("option", { name: label });
+  fireEvent.pointerDown(choice, { pointerType: "mouse" });
+  fireEvent.click(choice);
+}
+
+it("preserves independent catalogs and known choices during failed refreshes", async () => {
+  const providers = await openEditor();
+  const configured = {
+    data: ["healthy", "failed"].map((id) => ({
+      id,
+      configured: true,
+      credentialRequirement: "apiKeyRequired",
+    })),
+  };
+  await act(async () => respondSuccess(transport, providers.id, configured));
+  const requests = await providerModels();
+  await act(async () => {
+    respondSuccess(transport, requests[0]!.id, { data: [{ id: "known", provider: "healthy" }] });
+    refuse(requests[1]!.id);
+  });
+  expect((await screen.findByRole("alert")).textContent).toContain("failed: internal_error");
+  fireEvent.click(screen.getByRole("combobox", { name: "Model" }));
+  expect(await screen.findByRole("option", { name: "healthy / known" })).toBeTruthy();
+  expect(screen.getByRole("option", { name: "Runtime default model" })).toBeTruthy();
+  choose("Runtime default model");
+  fireEvent.click(screen.getByRole("button", { name: "Refresh model choices" }));
+  await waitFor(() =>
+    expect(
+      transport.outbox().filter((request) => request.method === "providers.list"),
+    ).toHaveLength(2),
+  );
+  const again = transport
+    .outbox()
+    .filter((request) => request.method === "providers.list")
+    .at(-1)!;
+  await act(async () => respondSuccess(transport, again.id, configured));
+  await waitFor(() =>
+    expect(transport.outbox().filter((request) => request.method === "models.list")).toHaveLength(
+      4,
+    ),
+  );
+  const refreshed = transport
+    .outbox()
+    .filter((request) => request.method === "models.list")
+    .slice(-2);
+  await act(async () => {
+    refuse(refreshed[0]!.id);
+    respondSuccess(transport, refreshed[1]!.id, {
+      data: [{ id: "recovered", provider: "failed" }],
+    });
+  });
+  await waitFor(() =>
+    expect(screen.getByRole("alert").textContent).toContain("healthy: internal_error"),
+  );
+  fireEvent.click(screen.getByRole("combobox", { name: "Model" }));
+  expect(await screen.findByRole("option", { name: "healthy / known" })).toBeTruthy();
+  expect(screen.getByRole("option", { name: "failed / recovered" })).toBeTruthy();
+  expect((screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement).value).toBe(
+    "Retained draft",
+  );
+});
+
+it.each(["active", "missing", "deprecated"])(
+  "represents an existing %s selection without changing its identity",
+  async (state) => {
+    const item = {
+      ID: "schedule",
+      Revision: 1,
+      Title: "Original",
+      Instructions: "Read",
+      Cron: "0 9 * * *",
+      CWD: "",
+      NextRunAt: "0001-01-01T00:00:00Z",
+      LastRunAt: "0001-01-01T00:00:00Z",
+      CreatedAt: "2026-10-16T00:00:00Z",
+      ModelSelection: { provider: "original", model: "selected", reasoningEffort: "" },
+    };
+    const providers = await openEditor([item]);
+    await act(async () =>
+      respondSuccess(transport, providers.id, {
+        data: [{ id: "original", configured: true, credentialRequirement: "apiKeyRequired" }],
+      }),
+    );
+    const request = await waitForRequest(transport, "models.list");
+    await act(async () =>
+      respondSuccess(transport, request.id, {
+        data:
+          state === "missing"
+            ? []
+            : [{ id: "selected", provider: "original", deprecated: state === "deprecated" }],
+      }),
+    );
+    const label = `original / selected${state === "active" ? "" : state === "missing" ? " (unavailable)" : " (deprecated)"}`;
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Model" }).textContent).toBe(label),
+    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Model" }));
+    expect(await screen.findByRole("option", { name: label })).toBeTruthy();
+    choose("Runtime default model");
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Model" }).textContent).toBe(
+        "Runtime default model",
+      ),
+    );
+  },
+);
+
+it("ignores a retired context's late catalog after replacement", async () => {
+  const old = Promise.withResolvers<Page<Model>>();
+  const configured = vi.fn(async () => ({
+    data: [{ id: "provider", configured: true, credentialRequirement: "apiKeyRequired" as const }],
+  }));
+  const modelList = vi.fn(() => old.promise);
+  const captured = {
+    ...context,
+    runtime: {
+      ...client,
+      providers: { ...client.providers, list: configured },
+      models: { ...client.models, list: modelList },
+    },
+  };
+  const view = render(<Schedules context={captured} />);
+  const first = await waitForRequest(transport, "plugins.call");
+  await act(async () =>
+    respondSuccess(transport, first.id, { output: stringifyJSON({ Rows: [], NextCursor: "" }) }),
+  );
+  await waitFor(() => expect(modelList).toHaveBeenCalledTimes(1));
+  const replacement = {
+    ...captured,
+    runtime: {
+      ...captured.runtime,
+      models: {
+        ...client.models,
+        list: async () => ({ data: [{ id: "current", provider: "provider" }] }),
+      },
+    },
+  };
+  view.rerender(<Schedules context={replacement} />);
+  fireEvent.click(screen.getByRole("button", { name: "Add schedule" }));
+  await waitFor(() =>
+    expect(
+      (screen.getByRole("button", { name: "Refresh model choices" }) as HTMLButtonElement).disabled,
+    ).toBe(false),
+  );
+  await act(async () => old.resolve({ data: [{ id: "retired", provider: "provider" }] }));
+  fireEvent.click(screen.getByRole("combobox", { name: "Model" }));
+  expect(await screen.findByRole("option", { name: "provider / current" })).toBeTruthy();
+  expect(screen.queryByRole("option", { name: "provider / retired" })).toBeNull();
+});
 
 it("reads models for each configured provider and preserves a draft across catalog arrival", async () => {
   const providers = await openEditor();

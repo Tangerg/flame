@@ -24,6 +24,8 @@ export const zhTW: Record<string, string> = {
   "packages.commands.explanation":
     "插件頁面無法使用時，仍可核對原始結果。新提供者不能取代原命令的擁有者。",
   "packages.commands.none": "沒有待確認的插件命令。",
+  "packages.commands.retire": "退役尚未派發的命令",
+  "packages.commands.retired": "原命令已在派發前退役：{{id}}",
   "packages.commands.recover": "核對原命令結果",
   "packages.commands.checking": "正在核對原命令 {{id}}…",
   "packages.commands.confirmed": "已確認原始結果：{{id}}",

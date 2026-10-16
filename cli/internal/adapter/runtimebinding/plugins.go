@@ -10,7 +10,8 @@ import (
 )
 
 type pluginBinding interface {
-	GetPluginCommand(context.Context, protocol.GetPluginCommandRequest, flameruntime.CallOptions) (*protocol.CallPluginRequest, error)
+	GetPluginCommand(context.Context, protocol.PluginCommandRequest, flameruntime.CallOptions) (*protocol.CallPluginRequest, error)
+	RetirePluginCommand(context.Context, protocol.PluginCommandRequest, flameruntime.CommandOptions) error
 	ListPluginCompositions(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.PluginComposition], error)
 	SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest, flameruntime.CommandOptions) (*protocol.PluginComposition, error)
 	ResolvePluginComposition(context.Context, protocol.ResolvePluginCompositionRequest, flameruntime.CallOptions) (*protocol.Page[protocol.PluginOperationBinding], error)
@@ -29,7 +30,7 @@ type pluginBinding interface {
 }
 
 // Retained input remains evidence after producer withdrawal; inspection cannot re-admit or route it.
-func (r *Connection) GetPluginCommand(ctx context.Context, request protocol.GetPluginCommandRequest) (*protocol.CallPluginRequest, error) {
+func (r *Connection) GetPluginCommand(ctx context.Context, request protocol.PluginCommandRequest) (*protocol.CallPluginRequest, error) {
 	value, err := r.plugins.GetPluginCommand(ctx, request, r.callOptions())
 	if err != nil {
 		return nil, classifyError(err)
@@ -41,6 +42,14 @@ func (r *Connection) GetPluginCommand(ctx context.Context, request protocol.GetP
 		return nil, runtimeContractViolation("get plugin command returned invalid request: %v", err)
 	}
 	return value, nil
+}
+
+func (r *Connection) RetirePluginCommand(ctx context.Context, request protocol.PluginCommandRequest, commandID replay.CommandID) error {
+	options, err := r.commandOptionsFor(commandID)
+	if err != nil {
+		return err
+	}
+	return classifyError(r.plugins.RetirePluginCommand(ctx, request, options))
 }
 
 func (r *Connection) ListPluginCompositions(ctx context.Context) ([]protocol.PluginComposition, error) {

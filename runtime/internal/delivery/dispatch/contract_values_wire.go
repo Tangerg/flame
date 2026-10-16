@@ -396,7 +396,7 @@ func registerRunValues(s *Shapes) {
 		Constraints: append(requiredResourceIdentity("runId"), requiredResourceIdentity("segmentId")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.GetRunRequest](), Constraints: requiredResourceIdentity("runId")})
-	for _, shape := range []reflect.Type{typeOf[protocol.GetRunAcceptanceRequest](), typeOf[protocol.GetPluginCommandRequest]()} {
+	for _, shape := range []reflect.Type{typeOf[protocol.GetRunAcceptanceRequest](), typeOf[protocol.PluginCommandRequest]()} {
 		s.valueConstraint(FieldConstraintSpec{
 			GoType: shape,
 			Constraints: []FieldConstraint{

@@ -321,12 +321,13 @@ mutation cohort, read cache, DTOs and facade are removed with their exclusive te
 and visual data-provider registration. Existing installed operations, shared
 command-generation coverage and real HTTP recovery/cold-read checks remain.
 
-Plugin management exposes unresolved unary plugin commands from that same journal,
+Plugin management exposes unresolved plugin commands, including streams, from that same journal,
 even when the original producer is disabled or its component cannot mount. Checking
 an original result keeps its captured installation, release, method and identity;
 it cannot select the current provider or submit a replacement command. Confirmed
 results and definite business refusals settle only through the original receipt
-path. Unavailable owners and unreadable evidence remain explicit. Displayed
+path. Never-dispatched work can be explicitly retired by the Runtime command owner,
+releasing dependencies while retaining its identity. Unavailable owners and unreadable evidence remain explicit. Displayed
 results are view-local observations, and closing management cancels observation.
 
 Generated publisher snapshots own transport fields and schema-bound capacity.

@@ -534,13 +534,17 @@ export function openDurableMutationJournal(
     },
     pendingPluginCommands() {
       return loadEntries(options.storage)
-        .filter((entry) => entry.method === "plugins.call" && entry.installed !== undefined)
+        .filter(
+          (entry) =>
+            (entry.method === "plugins.call" || entry.method === "plugins.stream") &&
+            entry.installed !== undefined,
+        )
         .map((entry) => ({ entry: structuredClone(entry) }));
     },
     validatePluginCommand(identity, request) {
       validateIdentity(identity, currentScope());
       readReservedEntry(identity);
-      if (!matchesCommand(identity.entry, "plugins.call", request, null)) {
+      if (!matchesCommand(identity.entry, identity.entry.method, request, null)) {
         throw new MutationJournalOwnershipError(
           "original plugin command differs from retained identity",
         );

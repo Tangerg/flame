@@ -79,6 +79,33 @@ async function recoverOriginal() {
   return request;
 }
 
+it("retires never-dispatched work using only its original identity", async () => {
+  render(<PendingCommands operations={operations} />);
+  fireEvent.click(screen.getByRole("button", { name: "Retire if never dispatched" }));
+  const request = await waitForRequest(transport, "plugins.retireCommand");
+  expect(request.params).toEqual({ namespace: "idp_" + "1".repeat(32), key });
+  await act(async () => respondSuccess(transport, request.id, {}));
+  await waitFor(() => expect(records.size).toBe(0));
+  expect(screen.getByRole("status").textContent).toContain("retired before dispatch");
+  expect(transport.outbox().map((request) => request.method)).toEqual(["plugins.retireCommand"]);
+});
+
+it("keeps dispatched uncertainty after Runtime refuses retirement", async () => {
+  render(<PendingCommands operations={operations} />);
+  fireEvent.click(screen.getByRole("button", { name: "Retire if never dispatched" }));
+  const request = await waitForRequest(transport, "plugins.retireCommand");
+  await act(async () =>
+    transport.inject({
+      jsonrpc: "2.0",
+      id: request.id,
+      error: { code: -32603, message: "internal_error", data: { type: "internal_error" } },
+    }),
+  );
+  await waitFor(() => expect(screen.getByRole("status").textContent).toContain("still unknown"));
+  expect(records.size).toBe(1);
+  expect(screen.getByRole("button", { name: "Check original outcome" })).toBeTruthy();
+});
+
 it("recovers an original command without a catalog row, component or current provider", async () => {
   render(<PendingCommands operations={operations} />);
   expect(screen.getByText(key)).toBeTruthy();

@@ -28,6 +28,7 @@ var rpcCodeSpecs = mustRPCCodeSpecs([]rpcCodeSpec{
 	{protocol.ErrPluginInUse.Error(), codePluginInUse},
 	{protocol.ErrPluginDisabled.Error(), codePluginDisabled},
 	{protocol.ErrPluginStale.Error(), codePluginStale},
+	{protocol.ErrPluginCommandRetired.Error(), codePluginCommandRetired},
 	{protocol.ErrMCPOwnedByInstallation.Error(), codeMCPOwnedByInstallation},
 	{protocol.ErrMCPServerNotFound.Error(), codeMCPServerNotFound},
 	{protocol.ErrSkillNotFound.Error(), codeSkillNotFound},

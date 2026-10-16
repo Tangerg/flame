@@ -26,6 +26,8 @@ export const en: Record<string, string> = {
   "packages.commands.explanation":
     "Check the original outcome even when its plugin view is unavailable. A new provider cannot replace the original owner.",
   "packages.commands.none": "No unconfirmed plugin commands.",
+  "packages.commands.retire": "Retire if never dispatched",
+  "packages.commands.retired": "Original command retired before dispatch: {{id}}",
   "packages.commands.recover": "Check original outcome",
   "packages.commands.checking": "Checking original command {{id}}…",
   "packages.commands.confirmed": "Original outcome confirmed: {{id}}",

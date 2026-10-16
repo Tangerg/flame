@@ -92,6 +92,13 @@ the plugin. The original backend receipt remains the owner of the business
 outcome. A different store namespace is refused; selection of a new provider cannot
 replace the retained binding.
 
+`flame plugins retire-command --request '<JSON>'` uses that same original
+`namespace` and `key` to retire work only while Runtime can prove it was never
+dispatched. Retirement preserves the identity and releases captured executable
+dependencies. Dispatched unknown work cannot retire and remains receipt-only.
+This requires Core `2026-10-16.1`; retain former data directories separately and
+use a fresh directory for the changed host phase constraints.
+
 Dynamic value completion loads the effective configuration before opening Runtime
 so it cannot silently query another target. Completion-script generation and help
 remain independent of Runtime startup.
@@ -253,7 +260,7 @@ retain their Runtime owners.
 Installed operation and point requests carry feature input/attributes and complete
 contracts as JSON strings. Returned feature output/values are JSON strings too.
 Typed Go readers decode the original source, preserving full-width integers and
-receipt lexemes. Rebuild CLI with Core `2026-10-15.2`; former inline payloads are
+receipt lexemes. Rebuild CLI with Core `2026-10-16.1`; former inline payloads are
 refused. Existing private receipts and local pending input records retain their
 original format and owner.
 

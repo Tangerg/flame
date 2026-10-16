@@ -54,6 +54,12 @@ type Read = {
   error?: string;
 };
 type Edit = { basis?: Schedule; draft: Draft };
+type ModelRead = {
+  context: ComponentContext;
+  catalogs: Map<string, Model[]>;
+  loading: boolean;
+  error?: string;
+};
 const hasTime = (value: string) => value !== "0001-01-01T00:00:00Z";
 const enabled = (item: Schedule) => hasTime(item.NextRunAt);
 const failure = (error: unknown) =>
@@ -80,8 +86,10 @@ export function Schedules({ context }: { context: ComponentContext }) {
   const reading = useRef<AbortController>(undefined);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
-  const [models, setModels] = useState<Model[]>([]);
-  const [modelError, setModelError] = useState<string>();
+  const [modelRead, setModelRead] = useState<ModelRead>();
+  const [modelRefresh, setModelRefresh] = useState(0);
+  const currentModels = modelRead?.context === context ? modelRead : undefined;
+  const models = [...(currentModels?.catalogs.values() ?? [])].flat();
   const [edit, setEdit] = useState<Edit>();
   const [deleting, setDeleting] = useState<Schedule>();
   const [command, setCommand] = useState<Command>();
@@ -143,24 +151,64 @@ export function Schedules({ context }: { context: ComponentContext }) {
       }
     };
     void context.track(watch());
+    return () => controller.abort();
+  }, [context, refresh]);
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = AbortSignal.any([context.signal, controller.signal]);
+    setModelRead((previous) => ({
+      context,
+      catalogs: previous?.context === context ? previous.catalogs : new Map(),
+      loading: true,
+    }));
     const readModels = async () => {
       try {
-        const providers = await context.runtime.providers.list(signal);
-        const pages = await Promise.all(
-          providers.data
-            .filter((provider) => provider.configured)
-            .map((provider) =>
-              context.runtime.models.list(provider.id, signal),
-            ),
+        const page = await context.runtime.providers.list(signal);
+        if (signal.aborted) return;
+        const providers = page.data.filter((provider) => provider.configured);
+        const results = await Promise.allSettled(
+          providers.map((provider) =>
+            context.runtime.models.list(provider.id, signal),
+          ),
         );
-        if (!signal.aborted) setModels(pages.flatMap((page) => page.data));
+        if (signal.aborted) return;
+        setModelRead((previous) => {
+          const catalogs = new Map<string, Model[]>();
+          const errors: string[] = [];
+          for (const [index, provider] of providers.entries()) {
+            const result = results[index]!;
+            if (result.status === "fulfilled")
+              catalogs.set(provider.id, result.value.data);
+            else {
+              const retained =
+                previous?.context === context
+                  ? previous.catalogs.get(provider.id)
+                  : undefined;
+              if (retained) catalogs.set(provider.id, retained);
+              errors.push(`${provider.id}: ${failure(result.reason)}`);
+            }
+          }
+          return {
+            context,
+            catalogs,
+            loading: false,
+            error: errors.join("; ") || undefined,
+          };
+        });
       } catch (error) {
-        if (!signal.aborted) setModelError(failure(error));
+        if (!signal.aborted)
+          setModelRead((previous) => ({
+            context,
+            catalogs:
+              previous?.context === context ? previous.catalogs : new Map(),
+            loading: false,
+            error: failure(error),
+          }));
       }
     };
     void context.track(readModels());
     return () => controller.abort();
-  }, [context, refresh]);
+  }, [context, modelRefresh]);
 
   async function observe(captured: Command) {
     try {
@@ -429,11 +477,12 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   value: JSON.stringify([model.provider, model.id]),
                   label: `${model.provider} / ${model.displayName ?? model.id}`,
                 })),
-              ...(selectedKey !== "default" && !selectedModel
+              ...(selectedKey !== "default" &&
+              (!selectedModel || selectedModel.deprecated)
                 ? [
                     {
                       value: selectedKey,
-                      label: `${edit.draft.ModelSelection.provider} / ${edit.draft.ModelSelection.model} (unavailable)`,
+                      label: `${edit.draft.ModelSelection.provider} / ${edit.draft.ModelSelection.model} (${selectedModel?.deprecated ? "deprecated" : "unavailable"})`,
                     },
                   ]
                 : []),
@@ -481,9 +530,17 @@ export function Schedules({ context }: { context: ComponentContext }) {
               })
             }
           />
-          {modelError && (
-            <p role="alert">Model choices could not be read: {modelError}</p>
+          {currentModels?.error && (
+            <p role="alert">
+              Model choices could not be read: {currentModels.error}
+            </p>
           )}
+          <Button
+            disabled={busy || currentModels?.loading}
+            onClick={() => setModelRefresh((value) => value + 1)}
+          >
+            Refresh model choices
+          </Button>
           <Checkbox
             label="Enabled"
             checked={edit.draft.Enabled}

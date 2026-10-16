@@ -90,7 +90,6 @@ export type WireTypeName =
   | "GetDiffRequest"
   | "GetFileHeadRequest"
   | "GetPlanRequest"
-  | "GetPluginCommandRequest"
   | "GetRunAcceptanceRequest"
   | "GetRunRequest"
   | "GetSessionRequest"
@@ -223,6 +222,7 @@ export type WireTypeName =
   | "PluginChangeNotice"
   | "PluginClientComponent"
   | "PluginCollaborator"
+  | "PluginCommandRequest"
   | "PluginComponent"
   | "PluginComponentChange"
   | "PluginComponentType"
@@ -1185,10 +1185,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   GetPlanRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
-  GetPluginCommandRequest: object({
-    key: allOf([text(), minLength(1), maxLength(255)]),
-    namespace: allOf([text(), minLength(1), pattern("^idp_[0-9a-f]{32}$")]),
-  }, ["key", "namespace"]),
   GetRunAcceptanceRequest: object({
     key: allOf([text(), minLength(1), maxLength(255)]),
     namespace: allOf([text(), minLength(1), pattern("^idp_[0-9a-f]{32}$")]),
@@ -2421,6 +2417,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     bindings: array(ref(() => CHECKS.PluginOperationBinding)),
     id: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
   }, ["bindings", "id"]),
+  PluginCommandRequest: object({
+    key: allOf([text(), minLength(1), maxLength(255)]),
+    namespace: allOf([text(), minLength(1), pattern("^idp_[0-9a-f]{32}$")]),
+  }, ["key", "namespace"]),
   PluginComponent: allOf([
     object({
       name: text(),
@@ -2904,6 +2904,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
         type: literal("plugin_changed"),
+      }, ["type"]),
+      fields({
+        activeRun: absent(),
+        errors: absent(),
+        requiredCapabilities: absent(),
+        retryAfterSeconds: absent(),
+        type: literal("plugin_command_retired"),
       }, ["type"]),
       fields({
         activeRun: absent(),
@@ -4465,7 +4472,8 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.reconnect": ref(() => CHECKS.MCPServerRequest),
   "mcp.authorizationAttempts.create": ref(() => CHECKS.CreateMCPAuthorizationAttemptRequest),
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttemptRequest),
-  "plugins.getCommand": ref(() => CHECKS.GetPluginCommandRequest),
+  "plugins.getCommand": ref(() => CHECKS.PluginCommandRequest),
+  "plugins.retireCommand": ref(() => CHECKS.PluginCommandRequest),
   "plugins.stream": ref(() => CHECKS.CallPluginRequest),
   "plugins.notifyChange": ref(() => CHECKS.PluginChangeNotice),
   "plugins.openResources": ref(() => CHECKS.OpenPluginResourcesRequest),
@@ -4577,6 +4585,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "mcp.authorizationAttempts.create": ref(() => CHECKS.MCPAuthorizationAttempt),
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttempt),
   "plugins.getCommand": ref(() => CHECKS.CallPluginRequest),
+  "plugins.retireCommand": object({}, []),
   "plugins.stream": object({}, []),
   "plugins.notifyChange": object({}, []),
   "plugins.openResources": ref(() => CHECKS.PluginResourceLease),

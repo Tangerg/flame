@@ -18,6 +18,7 @@ import (
 
 type pluginCallUseCases interface {
 	Command(context.Context, string) (*plugin.Command, error)
+	RetireCommand(context.Context, string) error
 	NotifyChange(context.Context, plugin.ContributionID) error
 	Prepare(context.Context, plugins.CallRequest) (plugins.Call, error)
 	PrepareStream(context.Context, plugins.CallRequest) (plugins.StreamCall, error)
@@ -25,7 +26,7 @@ type pluginCallUseCases interface {
 	ResolvePoint(context.Context, *point.Contract, point.Context, []plugins.PointReference) ([]plugins.PointBinding, error)
 }
 
-func (s *Handler) GetPluginCommand(ctx context.Context, in protocol.GetPluginCommandRequest) (*protocol.CallPluginRequest, error) {
+func (s *Handler) GetPluginCommand(ctx context.Context, in protocol.PluginCommandRequest) (*protocol.CallPluginRequest, error) {
 	if in.Namespace != s.idempotency.Namespace {
 		return nil, protocol.ErrIdempotencyStoreMismatch
 	}
@@ -43,6 +44,17 @@ func (s *Handler) GetPluginCommand(ctx context.Context, in protocol.GetPluginCom
 		Contribution: record.Contribution.String(), Contract: string(record.Contract.JSON()),
 		Method: record.Method, Input: string(record.Input.JSON()), Target: record.Invocation.Target,
 	}, nil
+}
+
+func (s *Handler) RetirePluginCommand(ctx context.Context, in protocol.PluginCommandRequest) error {
+	if in.Namespace != s.idempotency.Namespace {
+		return protocol.ErrIdempotencyStoreMismatch
+	}
+	if s.pluginCalls == nil {
+		return protocol.ErrPluginUnavailable
+	}
+	identity := operation.Identity(operation.Bind(ctx, s.idempotency.Namespace, operation.ScopedKey(ctx, in.Key)))
+	return wirePluginError(s.pluginCalls.RetireCommand(ctx, identity))
 }
 
 func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePluginPointRequest) (*protocol.Page[protocol.PluginPointBinding], error) {

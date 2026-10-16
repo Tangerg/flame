@@ -27,6 +27,8 @@ export const fr: Record<string, string> = {
   "packages.commands.explanation":
     "Vérifiez le résultat initial même si la vue du plugin est indisponible. Un nouveau fournisseur ne peut pas remplacer le propriétaire initial.",
   "packages.commands.none": "Aucune commande de plugin non confirmée.",
+  "packages.commands.retire": "Retirer si jamais envoyé",
+  "packages.commands.retired": "Commande initiale retirée avant envoi : {{id}}",
   "packages.commands.recover": "Vérifier le résultat initial",
   "packages.commands.checking": "Vérification de la commande initiale {{id}}…",
   "packages.commands.confirmed": "Résultat initial confirmé : {{id}}",

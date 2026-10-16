@@ -97,6 +97,8 @@ func parseInstallationRelease(id, digest string) (resourceid.InstallationID, fin
 
 func wirePluginError(err error) error {
 	switch {
+	case errors.Is(err, plugin.ErrCommandRetired):
+		return NewFailure(errors.Join(protocol.ErrPluginCommandRetired, err), err.Error())
 	case errors.Is(err, plugin.ErrCommandUnconfirmed):
 		// A lost acknowledgement leaves the command's outcome unknown: it must not be
 		// resubmitted or retargeted, so the category stays the non-retryable internal

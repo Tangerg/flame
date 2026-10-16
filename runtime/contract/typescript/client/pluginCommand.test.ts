@@ -50,6 +50,66 @@ const binding = {
 const intent = `memory-delete:${id}`;
 const journals: MutationJournal[] = [];
 
+it("retires only the original command and clears its journal after confirmed retirement", async () => {
+  const storage = new Storage();
+  const original = client(storage);
+  original.dispatch.mockRejectedValue(new RpcTransportError("reply lost"));
+  await expect(original.methods.plugins.call({ ...binding, ...input })).rejects.toBeInstanceOf(
+    RpcTransportError,
+  );
+  const key = original.dispatch.mock.calls[0]![2].idempotencyKey;
+  original.journal.dispose();
+  const successor = client(storage);
+  successor.dispatch.mockResolvedValue({});
+  await successor.methods.plugins.pendingCommands()[0]!.retire();
+  expect(successor.dispatch.mock.calls).toEqual([
+    ["plugins.retireCommand", { namespace: "original-store", key }, { signal: undefined }],
+  ]);
+  expect(storage.keys()).toEqual([]);
+});
+
+it.each(["internal_error", "plugin_not_found", "idempotency_store_mismatch"] as const)(
+  "retains the original journal after retirement fails with %s",
+  async (type) => {
+    const storage = new Storage();
+    const current = client(storage);
+    current.dispatch.mockRejectedValue(new RpcTransportError("reply lost"));
+    await expect(current.methods.plugins.call({ ...binding, ...input })).rejects.toBeInstanceOf(
+      RpcTransportError,
+    );
+    current.dispatch.mockClear();
+    current.dispatch.mockRejectedValue(new RpcError({ message: type, data: { type } }));
+    await expect(current.methods.plugins.pendingCommands()[0]!.retire()).rejects.toBeInstanceOf(
+      MutationLookupError,
+    );
+    expect(storage.keys()).toHaveLength(1);
+    expect(current.dispatch.mock.calls.map(([method]) => method)).toEqual([
+      "plugins.retireCommand",
+    ]);
+  },
+);
+
+it("observes a retired command after a lost retirement reply without executing its draft", async () => {
+  const storage = new Storage();
+  const current = client(storage);
+  current.dispatch.mockRejectedValue(new RpcTransportError("reply lost"));
+  await expect(current.methods.plugins.call({ ...binding, ...input })).rejects.toBeInstanceOf(
+    RpcTransportError,
+  );
+  await expect(current.methods.plugins.pendingCommands()[0]!.retire()).rejects.toBeInstanceOf(
+    MutationLookupError,
+  );
+  current.dispatch.mockClear();
+  current.dispatch.mockRejectedValue(
+    new RpcError({ message: "retired", data: { type: "plugin_command_retired" } }),
+  );
+  await expect(
+    current.methods.plugins.pendingCommands()[0]!.recover((value) => value),
+  ).rejects.toMatchObject({ data: { type: "plugin_command_retired" } });
+  expect(current.dispatch.mock.calls.map(([method]) => method)).toEqual(["plugins.getCommand"]);
+  expect(storage.keys()).toEqual([]);
+});
+
 it.each(["direct", "stable intent"])(
   "keeps an unresolved %s plugin command independent of management mutations",
   async (kind) => {

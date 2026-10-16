@@ -175,7 +175,7 @@
             },
             {
               "name": "GetPluginCommand",
-              "signature": "func(ctx context.Context, request protocol.GetPluginCommandRequest, options CallOptions) (*protocol.CallPluginRequest, error)"
+              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options CallOptions) (*protocol.CallPluginRequest, error)"
             },
             {
               "name": "GetRun",
@@ -372,6 +372,10 @@
             {
               "name": "ResumeRun",
               "signature": "func(ctx context.Context, request protocol.ResumeRunRequest, options RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
+            },
+            {
+              "name": "RetirePluginCommand",
+              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options CommandOptions) error"
             },
             {
               "name": "RollbackSession",
@@ -813,7 +817,7 @@
             },
             {
               "name": "GetPluginCommand",
-              "signature": "func(ctx context.Context, request protocol.GetPluginCommandRequest, options CallOptions) (*protocol.CallPluginRequest, error)"
+              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options CallOptions) (*protocol.CallPluginRequest, error)"
             },
             {
               "name": "GetRun",
@@ -1010,6 +1014,10 @@
             {
               "name": "ResumeRun",
               "signature": "func(ctx context.Context, request protocol.ResumeRunRequest, options RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
+            },
+            {
+              "name": "RetirePluginCommand",
+              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options CommandOptions) error"
             },
             {
               "name": "RollbackSession",
@@ -4393,7 +4401,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-15.2\""
+          "value": "\"2026-10-16.1\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -5013,6 +5021,10 @@
         },
         {
           "name": "ErrPluginChanged",
+          "type": "error"
+        },
+        {
+          "name": "ErrPluginCommandRetired",
           "type": "error"
         },
         {
@@ -6812,28 +6824,6 @@
               "name": "SessionID",
               "type": "string",
               "tag": "json:\"sessionId\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "GetPluginCommandRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Namespace",
-              "type": "string",
-              "tag": "json:\"namespace\""
-            },
-            {
-              "name": "Key",
-              "type": "string",
-              "tag": "json:\"key\""
             }
           ],
           "methods": [
@@ -9281,6 +9271,28 @@
               "name": "Bindings",
               "type": "[]PluginOperationBinding",
               "tag": "json:\"bindings\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginCommandRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Namespace",
+              "type": "string",
+              "tag": "json:\"namespace\""
+            },
+            {
+              "name": "Key",
+              "type": "string",
+              "tag": "json:\"key\""
             }
           ],
           "methods": [

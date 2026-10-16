@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import {
   OperationFailure,
+  isErrorType,
   stringifyJSON,
   type PluginCommandRecovery,
 } from "@flame/runtime-contract/client";
@@ -19,6 +20,7 @@ const styles = stylex.create({
 
 type Outcome =
   | { type: "confirmed"; key: string; output: string }
+  | { type: "retired"; key: string }
   | { type: "refused" | "unknown"; key: string; reason: string };
 
 export function PendingCommands({ operations }: { operations: PackageOperations }) {
@@ -45,7 +47,7 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
     read = { type: "failed", reason: failureText(error, t("packages.commands.failed")) };
   }
 
-  async function recover(command: PluginCommandRecovery) {
+  async function observe(command: PluginCommandRecovery, action: "recover" | "retire") {
     if (current?.checking || operations.signal.aborted) return;
     controller.current?.value.abort();
     const owned = new AbortController();
@@ -53,23 +55,32 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
     const signal = AbortSignal.any([operations.signal, owned.signal]);
     setObservation({ operations, checking: command.idempotencyKey });
     try {
-      const output = await operations.track(
-        command.recover((value) => stringifyJSON(value), signal),
-      );
+      let outcome: Outcome;
+      if (action === "retire") {
+        await operations.track(command.retire(signal));
+        outcome = { type: "retired", key: command.idempotencyKey };
+      } else {
+        const output = await operations.track(
+          command.recover((value) => stringifyJSON(value), signal),
+        );
+        outcome = { type: "confirmed", key: command.idempotencyKey, output };
+      }
       if (!signal.aborted)
         setObservation({
           operations,
-          outcome: { type: "confirmed", key: command.idempotencyKey, output },
+          outcome,
         });
     } catch (error) {
       if (!signal.aborted)
         setObservation({
           operations,
-          outcome: {
-            type: error instanceof OperationFailure ? "refused" : "unknown",
-            key: command.idempotencyKey,
-            reason: failureText(error, t("packages.commands.failed")),
-          },
+          outcome: isErrorType(error, "plugin_command_retired")
+            ? { type: "retired", key: command.idempotencyKey }
+            : {
+                type: error instanceof OperationFailure ? "refused" : "unknown",
+                key: command.idempotencyKey,
+                reason: failureText(error, t("packages.commands.failed")),
+              },
         });
     }
   }
@@ -105,9 +116,15 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
               </Metadata>
               <Button
                 disabled={!!current?.checking || operations.signal.aborted}
-                onClick={() => void recover(command)}
+                onClick={() => void observe(command, "recover")}
               >
                 {t("packages.commands.recover")}
+              </Button>
+              <Button
+                disabled={!!current?.checking || operations.signal.aborted}
+                onClick={() => void observe(command, "retire")}
+              >
+                {t("packages.commands.retire")}
               </Button>
             </div>
           ))}
@@ -120,9 +137,9 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
           </p>
           {current.outcome.type === "confirmed" ? (
             <pre {...stylex.props(styles.output)}>{current.outcome.output}</pre>
-          ) : (
+          ) : current.outcome.type !== "retired" ? (
             <SystemMessage variant="warning">{current.outcome.reason}</SystemMessage>
-          )}
+          ) : null}
         </div>
       )}
     </section>

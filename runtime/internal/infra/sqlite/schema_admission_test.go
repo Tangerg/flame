@@ -29,6 +29,7 @@ func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 		{"former command without calling-owner evidence", `ALTER TABLE plugin_commands RENAME COLUMN invocation_json TO former_invocation`},
 		{"former command without activation dependencies", `ALTER TABLE plugin_commands RENAME COLUMN activation_json TO former_activation`},
 		{"former command without export", `ALTER TABLE plugin_commands RENAME COLUMN export_name TO former_export`},
+		{"former command without retirement", `DROP TRIGGER plugin_command_phase; CREATE TRIGGER plugin_command_phase BEFORE UPDATE OF phase ON plugin_commands WHEN NOT (NEW.phase=OLD.phase OR (OLD.phase='prepared' AND NEW.phase='dispatched') OR (OLD.phase='dispatched' AND NEW.phase='observed')) BEGIN SELECT RAISE(ABORT,'command phase cannot regress'); END`},
 		{"former Tool result time unit", `ALTER TABLE tool_result_blobs RENAME COLUMN created_at_ns TO created_at`},
 		{"former feedback time unit", `ALTER TABLE feedback_entries RENAME COLUMN created_at_ns TO created_at`},
 	} {

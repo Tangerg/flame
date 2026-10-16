@@ -14,7 +14,8 @@ import (
 )
 
 type pluginRuntime interface {
-	GetPluginCommand(context.Context, protocol.GetPluginCommandRequest) (*protocol.CallPluginRequest, error)
+	GetPluginCommand(context.Context, protocol.PluginCommandRequest) (*protocol.CallPluginRequest, error)
+	RetirePluginCommand(context.Context, protocol.PluginCommandRequest, replay.CommandID) error
 	ListPluginCompositions(context.Context) ([]protocol.PluginComposition, error)
 	SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest, replay.CommandID) (*protocol.PluginComposition, error)
 	ResolvePluginComposition(context.Context, protocol.ResolvePluginCompositionRequest) ([]protocol.PluginOperationBinding, error)
@@ -50,6 +51,9 @@ func requirePluginRuntime(cmd *cobra.Command, provider runtimeProvider) (pluginR
 func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 	root := &cobra.Command{Use: "plugins", Short: "Manage Runtime-owned portable plugins"}
 	root.AddCommand(newPluginGetCommand(provider))
+	root.AddCommand(pluginCommand(provider, "retire-command", "Retire an original command only if it was never dispatched", func(runtime pluginRuntime, cmd *cobra.Command, request protocol.PluginCommandRequest, commandID replay.CommandID) error {
+		return runtime.RetirePluginCommand(cmd.Context(), request, commandID)
+	}))
 	root.AddCommand(newPluginCallCommand(provider))
 	root.AddCommand(newPluginRequirementsCommand(provider))
 	root.AddCommand(newPluginPointCommand(provider))
@@ -117,7 +121,7 @@ func newPluginGetCommand(provider runtimeProvider) *cobra.Command {
 		if len(input) > 1<<20 {
 			return errors.New("plugin input exceeds 1 MiB")
 		}
-		var request protocol.GetPluginCommandRequest
+		var request protocol.PluginCommandRequest
 		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
 			return err
 		}

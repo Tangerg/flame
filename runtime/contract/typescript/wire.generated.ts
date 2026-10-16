@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-15.2";
+export const PROTOCOL_VERSION = "2026-10-16.1";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -107,6 +107,7 @@ export const PROBLEM_CODES = {
   "method_not_found": -32601,
   "path_outside_root": -32013,
   "plugin_changed": -32046,
+  "plugin_command_retired": -32047,
   "plugin_disabled": -32042,
   "plugin_in_use": -32041,
   "plugin_not_found": -32040,
@@ -158,6 +159,7 @@ export const PROBLEM_RECOVERY = {
   "method_not_found": "stop",
   "path_outside_root": "promptUser",
   "plugin_changed": "promptUser",
+  "plugin_command_retired": "stop",
   "plugin_disabled": "promptUser",
   "plugin_in_use": "promptUser",
   "plugin_not_found": "promptUser",
@@ -580,11 +582,6 @@ export interface GetFileHeadRequest {
 
 export interface GetPlanRequest {
   sessionId: string;
-}
-
-export interface GetPluginCommandRequest {
-  key: string;
-  namespace: string;
 }
 
 export interface GetRunAcceptanceRequest {
@@ -1191,6 +1188,11 @@ export interface PluginCollaborator {
   id: string;
 }
 
+export interface PluginCommandRequest {
+  key: string;
+  namespace: string;
+}
+
 export type PluginComponent =
   | { type: "manifestField"; name: string }
   | { type: "flameExtension" }
@@ -1423,6 +1425,7 @@ export type ProblemData =
   | { type: "method_not_found"; detail?: string; docUrl?: string }
   | { type: "path_outside_root"; detail?: string; docUrl?: string }
   | { type: "plugin_changed"; detail?: string; docUrl?: string }
+  | { type: "plugin_command_retired"; detail?: string; docUrl?: string }
   | { type: "plugin_disabled"; detail?: string; docUrl?: string }
   | { type: "plugin_in_use"; detail?: string; docUrl?: string }
   | { type: "plugin_not_found"; detail?: string; docUrl?: string }

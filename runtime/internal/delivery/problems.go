@@ -32,6 +32,7 @@ var problemSpecs = mustProblemSpecs([]problemSpec{
 	declaredProblem(protocol.ErrPluginInUse, protocol.RecoveryPromptUser),
 	declaredProblem(protocol.ErrPluginDisabled, protocol.RecoveryPromptUser),
 	declaredProblem(protocol.ErrPluginStale, protocol.RecoveryPromptUser),
+	declaredProblem(protocol.ErrPluginCommandRetired, protocol.RecoveryStop),
 	declaredProblem(protocol.ErrPluginChanged, protocol.RecoveryPromptUser),
 	declaredProblem(protocol.ErrMCPOwnedByInstallation, protocol.RecoveryPromptUser),
 	declaredProblem(protocol.ErrMCPServerNotFound, protocol.RecoveryRefetch),

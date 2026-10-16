@@ -27,6 +27,8 @@ export const ja: Record<string, string> = {
   "packages.commands.explanation":
     "プラグインのビューが利用できなくても元の結果を確認できます。新しいプロバイダーが元の所有者を置き換えることはありません。",
   "packages.commands.none": "未確認のプラグインコマンドはありません。",
+  "packages.commands.retire": "未送信の場合に終了",
+  "packages.commands.retired": "元のコマンドは送信前に終了しました: {{id}}",
   "packages.commands.recover": "元の結果を確認",
   "packages.commands.checking": "元のコマンド {{id}} を確認中…",
   "packages.commands.confirmed": "元の結果を確認しました：{{id}}",

@@ -26,6 +26,8 @@ export const ko: Record<string, string> = {
   "packages.commands.explanation":
     "플러그인 보기를 사용할 수 없어도 원래 결과를 확인할 수 있습니다. 새 제공자는 원래 소유자를 대체할 수 없습니다.",
   "packages.commands.none": "미확인 플러그인 명령이 없습니다.",
+  "packages.commands.retire": "전송되지 않은 명령 종료",
+  "packages.commands.retired": "원래 명령이 전송 전에 종료되었습니다: {{id}}",
   "packages.commands.recover": "원래 결과 확인",
   "packages.commands.checking": "원래 명령 {{id}} 확인 중…",
   "packages.commands.confirmed": "원래 결과 확인됨: {{id}}",

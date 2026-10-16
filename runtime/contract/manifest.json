@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-15.2",
+  "protocolVersion": "2026-10-16.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -817,6 +817,27 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ]
+    },
+    {
+      "name": "plugins.retireCommand",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "ownerResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_disabled",
+        "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -836,6 +857,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -869,6 +891,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -888,6 +911,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -907,6 +931,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -926,6 +951,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -945,6 +971,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -964,6 +991,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -983,6 +1011,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1002,6 +1031,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1021,6 +1051,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1040,6 +1071,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1059,6 +1091,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1078,6 +1111,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1097,6 +1131,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1116,6 +1151,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1135,6 +1171,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1154,6 +1191,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1173,6 +1211,7 @@
         "plugin_in_use",
         "plugin_disabled",
         "plugin_stale",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1567,6 +1606,7 @@
           "plugins.resolveComposition",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
+          "plugins.retireCommand",
           "plugins.select",
           "plugins.selectProvider",
           "plugins.setComposition",
@@ -1742,6 +1782,33 @@
         ]
       },
       {
+        "type": "plugin_command_retired",
+        "code": -32047,
+        "recoveryAction": "stop",
+        "methods": [
+          "plugins.call",
+          "plugins.configure",
+          "plugins.getCommand",
+          "plugins.install",
+          "plugins.list",
+          "plugins.listCompositions",
+          "plugins.listProviders",
+          "plugins.openResources",
+          "plugins.readResource",
+          "plugins.resolveComposition",
+          "plugins.resolvePoint",
+          "plugins.resolveRequirements",
+          "plugins.retireCommand",
+          "plugins.select",
+          "plugins.selectProvider",
+          "plugins.setComposition",
+          "plugins.setEnablement",
+          "plugins.stage",
+          "plugins.stream",
+          "plugins.uninstall"
+        ]
+      },
+      {
         "type": "plugin_disabled",
         "code": -32042,
         "recoveryAction": "promptUser",
@@ -1758,6 +1825,7 @@
           "plugins.resolveComposition",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
+          "plugins.retireCommand",
           "plugins.select",
           "plugins.selectProvider",
           "plugins.setComposition",
@@ -1784,6 +1852,7 @@
           "plugins.resolveComposition",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
+          "plugins.retireCommand",
           "plugins.select",
           "plugins.selectProvider",
           "plugins.setComposition",
@@ -1810,6 +1879,7 @@
           "plugins.resolveComposition",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
+          "plugins.retireCommand",
           "plugins.select",
           "plugins.selectProvider",
           "plugins.setComposition",
@@ -1836,6 +1906,7 @@
           "plugins.resolveComposition",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
+          "plugins.retireCommand",
           "plugins.select",
           "plugins.selectProvider",
           "plugins.setComposition",
@@ -1862,6 +1933,7 @@
           "plugins.resolveComposition",
           "plugins.resolvePoint",
           "plugins.resolveRequirements",
+          "plugins.retireCommand",
           "plugins.select",
           "plugins.selectProvider",
           "plugins.setComposition",
@@ -2532,6 +2604,16 @@
       ]
     },
     {
+      "method": "plugins.retireCommand",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ]
+    },
+    {
       "method": "plugins.stream",
       "rules": [
         {
@@ -3086,6 +3168,13 @@
         },
         {
           "tag": "plugin_changed",
+          "optional": [
+            "detail",
+            "docUrl"
+          ]
+        },
+        {
+          "tag": "plugin_command_retired",
           "optional": [
             "detail",
             "docUrl"
@@ -7710,7 +7799,7 @@
       ]
     },
     {
-      "type": "GetPluginCommandRequest",
+      "type": "PluginCommandRequest",
       "rules": [
         {
           "field": "namespace",

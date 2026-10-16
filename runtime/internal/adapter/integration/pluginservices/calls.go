@@ -28,6 +28,10 @@ func (c *CommandCalls) Command(ctx context.Context, id string) (*plugin.Command,
 	return c.routing.Get(ctx, id)
 }
 
+func (c *CommandCalls) RetireCommand(ctx context.Context, id string) error {
+	return c.routing.Retire(ctx, id)
+}
+
 func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (plugins.Call, error) {
 	method, err := admitCallRequest(request, false)
 	if err != nil {

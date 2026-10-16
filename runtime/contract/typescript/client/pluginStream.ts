@@ -1,9 +1,14 @@
 import type { RpcClient } from "./client";
 import type { RpcId } from "./types";
-import { OperationFailure } from "./errors";
+import { isErrorType, OperationFailure } from "./errors";
 import { MutationLookupError, mutationSettlementIsUnknown } from "./mutation";
 import { MutationJournalError } from "./durableMutationJournal";
-import type { MutationJournal, PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
+import type {
+  MutationJournal,
+  MutationReservation,
+  PluginCommandInput,
+  PluginCommandBinding,
+} from "./mutationJournal";
 import type { WireCallPath } from "./wireCallPath";
 import { pluginDeliveryMethod, pluginOperationKind } from "./request";
 import { parseJSON } from "./json";
@@ -120,49 +125,71 @@ export async function callPluginStream<T>(
     wire.openMutation(
       "plugins.stream",
       request,
-      async (key, attempt, prepared) => {
-        const stream = observePluginStream(
+      (key, attempt, prepared) =>
+        deliverPluginStream(
           client,
+          wire,
+          prepared,
+          reservation,
+          key,
           consume,
+          decode,
           attempt.signal,
-          (cause) => new MutationLookupError(cause),
-        );
-        // The response can fail before a notification arrives; retain the same
-        // observation rejection without allowing an orphan unhandled promise.
-        const outcome = stream.result.then(
-          (value) => ({ value }),
-          (error: unknown) => ({ error }),
-        );
-        try {
-          await wire.perform("plugins.stream", prepared, {
-            signal: stream.signal,
-            onRequestRpcId: stream.bindRequest,
-            idempotencyKey: key,
-            idempotencyNamespace: reservation.authorizeDispatch(),
-          });
-          const final = await outcome;
-          if ("error" in final) throw final.error;
-          try {
-            return decode(final.value);
-          } catch (error) {
-            throw new MutationLookupError(error);
-          }
-        } catch (error) {
-          if (
-            error instanceof MutationJournalError ||
-            error instanceof OperationFailure ||
-            mutationSettlementIsUnknown(error)
-          )
-            throw error;
-          throw new MutationLookupError(error);
-        } finally {
-          stream.cleanup();
-        }
-      },
+        ),
       signal,
       reservation.idempotencyKey,
     ),
   );
+}
+
+export async function deliverPluginStream<T>(
+  client: RpcClient,
+  wire: Pick<WireCallPath, "perform">,
+  request: CallPluginRequest,
+  reservation: MutationReservation,
+  key: string,
+  consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
+  decode: (output: unknown) => T,
+  signal?: AbortSignal,
+): Promise<T> {
+  const stream = observePluginStream(
+    client,
+    consume,
+    signal,
+    (cause) => new MutationLookupError(cause),
+  );
+  // The response can fail before a notification arrives; retain the same
+  // observation rejection without allowing an orphan unhandled promise.
+  const outcome = stream.result.then(
+    (value) => ({ value }),
+    (error: unknown) => ({ error }),
+  );
+  try {
+    await wire.perform("plugins.stream", request, {
+      signal: stream.signal,
+      onRequestRpcId: stream.bindRequest,
+      idempotencyKey: key,
+      idempotencyNamespace: reservation.authorizeDispatch(),
+    });
+    const final = await outcome;
+    if ("error" in final) throw final.error;
+    try {
+      return decode(final.value);
+    } catch (error) {
+      throw new MutationLookupError(error);
+    }
+  } catch (error) {
+    if (
+      isErrorType(error, "plugin_command_retired") ||
+      error instanceof MutationJournalError ||
+      error instanceof OperationFailure ||
+      mutationSettlementIsUnknown(error)
+    )
+      throw error;
+    throw new MutationLookupError(error);
+  } finally {
+    stream.cleanup();
+  }
 }
 
 export async function queryPluginStream<T>(

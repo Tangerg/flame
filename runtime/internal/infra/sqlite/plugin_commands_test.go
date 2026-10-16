@@ -31,7 +31,9 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	if err := store.Save(t.Context(), command); err != nil {
 		t.Fatal(err)
 	}
-	command.Dispatch()
+	if err := command.Dispatch(); err != nil {
+		t.Fatal(err)
+	}
 	if err := store.Save(t.Context(), command); err != nil {
 		t.Fatal(err)
 	}

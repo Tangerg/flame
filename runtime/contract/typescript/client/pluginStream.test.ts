@@ -1,4 +1,4 @@
-import { stringifyJSON } from "./json";
+import { parseJSON, stringifyJSON } from "./json";
 import { expect, it, vi } from "vitest";
 import { createFlameClient } from "./sdk";
 import { createHttpTransport } from "./transports/http";
@@ -6,7 +6,7 @@ import { createMutationJournal, type MutationJournalStorage } from "./mutationJo
 import { MutationLookupError } from "./mutation";
 import type { ServerCapabilities } from "@flame/runtime-contract/wire";
 
-const contract = JSON.stringify({
+const descriptor = {
   protocol: "io.github.tangerg.flame/backend/2026-10-15.3",
   reference: "records",
   composition: "selection",
@@ -22,7 +22,8 @@ const contract = JSON.stringify({
       stream: { type: "string" },
     },
   ],
-});
+};
+const contract = stringifyJSON(descriptor);
 const input = { contract, method: "records.stream", input: stringifyJSON({}) };
 const binding = {
   installationId: "12345678-1234-1234-1234-123456789abc",
@@ -53,7 +54,7 @@ function notification(kind: string, value: unknown): string {
 }
 
 function open(store: MutationJournalStorage, events: string) {
-  const scope = { namespace: "original-store", retentionSeconds: 3600 };
+  const scope = { namespace: "idp_" + "1".repeat(32), retentionSeconds: 3600 };
   const journal = createMutationJournal({ storage: store, scope: () => scope });
   const requests: { params: typeof binding; key: string | null }[] = [];
   const fetch = vi.fn<typeof globalThis.fetch>(async (_url, init) => {
@@ -62,6 +63,8 @@ function open(store: MutationJournalStorage, events: string) {
       method: string;
       params: typeof binding;
     };
+    if (request.method === "plugins.getCommand")
+      return Response.json({ jsonrpc: "2.0", id: request.id, result: { ...binding, ...input } });
     if (request.method !== "plugins.stream")
       return Response.json({ jsonrpc: "2.0", id: request.id, result: { data: [] } });
     requests.push({
@@ -89,6 +92,34 @@ function open(store: MutationJournalStorage, events: string) {
   });
   return { client, requests };
 }
+
+it("discovers and recovers an original stream after its producer and client are replaced", async () => {
+  const store = storage();
+  const first = open(store, notification("chunk", "partial"));
+  await expect(
+    first.client.plugins.stream(
+      "original",
+      input,
+      async () => binding,
+      () => undefined,
+      (value) => value,
+    ),
+  ).rejects.toBeInstanceOf(MutationLookupError);
+  const key = first.requests[0]!.key;
+  await first.client.close();
+  const next = open(store, notification("result", true));
+  try {
+    const [pending] = next.client.plugins.pendingCommands();
+    expect(pending!.idempotencyKey).toBe(key);
+    expect(pending!.binding.method).toBe("records.stream");
+    await expect(pending!.recover((value) => value)).resolves.toBe(true);
+    expect(next.requests).toHaveLength(1);
+    expect(next.requests[0]!.key).toBe(key);
+    expect(store.keys()).toHaveLength(0);
+  } finally {
+    await next.client.close();
+  }
+});
 
 it("awaits chunk consumption without blocking a nested RPC or settling the original journal early", async () => {
   const store = storage();
@@ -250,10 +281,13 @@ it.each(["query", "command"] as const)(
       store,
       notification("chunk", 18446744073709551615n) + notification("result", -9223372036854775808n),
     );
-    const declaration = contract
-      .replace('"kind":"command"', `"kind":"${kind}"`)
-      .replace('"output":{"type":"boolean"}', '"output":{"type":"integer"}')
-      .replace('"stream":{"type":"string"}', '"stream":{"type":"integer"}');
+    const numeric = structuredClone(descriptor);
+    numeric.methods[0]!.kind = kind;
+    numeric.methods[0]!.output = stringifyJSON({ type: "integer" });
+    numeric.methods[0]!.stream = { type: "integer" };
+    const declaration = stringifyJSON(numeric);
+    const decoded = parseJSON(declaration) as typeof numeric;
+    expect(parseJSON(decoded.methods[0]!.output)).toEqual({ type: "integer" });
     const input = {
       contract: declaration,
       method: "records.stream",

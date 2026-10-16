@@ -61,6 +61,29 @@ The shared TS client and component SDK expose `queryStream` for reads and
 retain `stream` for durable commands. Early consumer withdrawal cancels and joins
 the original stream; missing final evidence never synthesizes completion.
 
+## Never-dispatched command retirement
+
+Core `2026-10-16.1` exposes `plugins.retireCommand` and Go `RetirePluginCommand`
+using the original `PluginCommandRequest` namespace and key. Commands owns the
+`prepared -> retired` transition under the same Admission boundary as dispatch.
+Only a never-dispatched route can retire. Retirement retains the original identity
+and routing evidence permanently while releasing its executable dependencies;
+it is not a backend business result. Repeated retirement is idempotent.
+`plugins.getCommand`, unary calls and streams report `plugin_command_retired`
+without contacting the backend. Dispatched work remains receipt-only and cannot
+retire even when no receipt is available.
+
+The public TS pending-command handle exposes `retire()`, including after client
+replacement. Plugin management offers the same operation without requiring the
+original component or draft. Failed retirement preserves the client journal;
+only a confirmed retirement or original result settles it. Retirement does not
+authorize execution and does not renew an expired delivery deadline.
+
+The host SQLite phase constraints changed. Retain previous data directories and
+use a fresh directory; Runtime refuses the former schema without conversion.
+Rebuild Go, TypeScript, CLI and Desktop consumers together. Backend business
+receipts and the backend protocol are unchanged.
+
 ## Feature JSON source
 
 Core carries installed call input/output, stream chunk/final values, point values

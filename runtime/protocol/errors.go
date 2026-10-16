@@ -225,6 +225,7 @@ var (
 	ErrPluginInUse            = errors.New("plugin_in_use")
 	ErrPluginDisabled         = errors.New("plugin_disabled")
 	ErrPluginStale            = errors.New("plugin_stale")
+	ErrPluginCommandRetired   = errors.New("plugin_command_retired")
 	ErrMCPOwnedByInstallation = errors.New("mcp_owned_by_installation")
 	// ErrPluginChanged: runs.start or runs.resume assembled its execution while
 	// a plugin installation it depends on changed. Nothing was started and no

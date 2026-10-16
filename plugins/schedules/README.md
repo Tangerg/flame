@@ -145,6 +145,12 @@ revision, and model choices query each configured Provider through the public Ru
 catalog; no empty Provider stands for an aggregate model catalog. Same-key retry is
 retained after unknown acknowledgement; new commands are blocked until reconciliation.
 
+Each configured Provider's model catalog is read independently. Named failures
+remain visible while successful catalogs stay selectable; a failed refresh retains
+that Provider's last accepted catalog within the captured component context. A
+refresh never replaces a saved selection. Missing and deprecated selections retain
+their exact Provider/Model as labeled items until the user chooses another model.
+
 Templates live in src/templates.ts as authoring content copied into a new draft.
 The generic Domain/loader/Protocol owns no Schedule template or closed view kind.
 The component consumes existing schedule notices and cancels/joins its I/O on

@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-10-15.2",
+    "version": "2026-10-16.1",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -4411,6 +4411,10 @@
           "message": "plugin_stale"
         },
         {
+          "code": -32047,
+          "message": "plugin_command_retired"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -4441,7 +4445,103 @@
         "unevaluatedProperties": false,
         "allOf": [
           {
-            "$ref": "schema.json#/$defs/GetPluginCommandRequest"
+            "$ref": "schema.json#/$defs/PluginCommandRequest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "plugins.retireCommand",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "namespace",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^idp_[0-9a-f]{32}$"
+          }
+        },
+        {
+          "name": "key",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object"
+        }
+      },
+      "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32040,
+          "message": "plugin_not_found"
+        },
+        {
+          "code": -32041,
+          "message": "plugin_in_use"
+        },
+        {
+          "code": -32042,
+          "message": "plugin_disabled"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
+        {
+          "code": -32047,
+          "message": "plugin_command_retired"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "ownerResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "plugins"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "key": {},
+          "namespace": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/PluginCommandRequest"
           }
         ]
       }
@@ -4540,6 +4640,10 @@
         {
           "code": -32043,
           "message": "plugin_stale"
+        },
+        {
+          "code": -32047,
+          "message": "plugin_command_retired"
         },
         {
           "code": -32006,
@@ -4711,6 +4815,10 @@
           "message": "plugin_stale"
         },
         {
+          "code": -32047,
+          "message": "plugin_command_retired"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -4818,6 +4926,10 @@
         {
           "code": -32043,
           "message": "plugin_stale"
+        },
+        {
+          "code": -32047,
+          "message": "plugin_command_retired"
         },
         {
           "code": -32006,
@@ -4936,6 +5048,10 @@
           "message": "plugin_stale"
         },
         {
+          "code": -32047,
+          "message": "plugin_command_retired"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -5040,6 +5156,10 @@
         {
           "code": -32043,
           "message": "plugin_stale"
+        },
+        {
+          "code": -32047,
+          "message": "plugin_command_retired"
         },
         {
           "code": -32006,
@@ -5174,6 +5294,10 @@
           "message": "plugin_stale"
         },
         {
+          "code": -32047,
+          "message": "plugin_command_retired"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -5253,6 +5377,10 @@
         {
           "code": -32043,
           "message": "plugin_stale"
+        },
+        {
+          "code": -32047,
+          "message": "plugin_command_retired"
         },
         {
           "code": -32006,
@@ -5352,6 +5480,10 @@
           "message": "plugin_stale"
         },
         {
+          "code": -32047,
+          "message": "plugin_command_retired"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -5425,6 +5557,10 @@
         {
           "code": -32043,
           "message": "plugin_stale"
+        },
+        {
+          "code": -32047,
+          "message": "plugin_command_retired"
         },
         {
           "code": -32006,
@@ -5525,6 +5661,10 @@
           "message": "plugin_stale"
         },
         {
+          "code": -32047,
+          "message": "plugin_command_retired"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -5611,6 +5751,10 @@
           "message": "plugin_stale"
         },
         {
+          "code": -32047,
+          "message": "plugin_command_retired"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -5682,6 +5826,10 @@
         {
           "code": -32043,
           "message": "plugin_stale"
+        },
+        {
+          "code": -32047,
+          "message": "plugin_command_retired"
         },
         {
           "code": -32006,
@@ -5763,6 +5911,10 @@
         {
           "code": -32043,
           "message": "plugin_stale"
+        },
+        {
+          "code": -32047,
+          "message": "plugin_command_retired"
         },
         {
           "code": -32006,
@@ -5855,6 +6007,10 @@
           "message": "plugin_stale"
         },
         {
+          "code": -32047,
+          "message": "plugin_command_retired"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -5943,6 +6099,10 @@
         {
           "code": -32043,
           "message": "plugin_stale"
+        },
+        {
+          "code": -32047,
+          "message": "plugin_command_retired"
         },
         {
           "code": -32006,
@@ -6082,6 +6242,10 @@
           "message": "plugin_stale"
         },
         {
+          "code": -32047,
+          "message": "plugin_command_retired"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -6182,6 +6346,10 @@
           "message": "plugin_stale"
         },
         {
+          "code": -32047,
+          "message": "plugin_command_retired"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -6262,6 +6430,10 @@
         {
           "code": -32043,
           "message": "plugin_stale"
+        },
+        {
+          "code": -32047,
+          "message": "plugin_command_retired"
         },
         {
           "code": -32006,

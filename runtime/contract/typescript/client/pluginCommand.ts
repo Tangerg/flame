@@ -1,4 +1,4 @@
-import { OperationFailure } from "./errors";
+import { isErrorType, OperationFailure } from "./errors";
 import {
   createMutationPromise,
   MutationLookupError,
@@ -14,6 +14,8 @@ import type {
 } from "./mutationJournal";
 import type { CallPluginRequest } from "@flame/runtime-contract/wire";
 import type { WireCallPath } from "./wireCallPath";
+import type { RpcClient } from "./client";
+import { deliverPluginStream } from "./pluginStream";
 import { pluginDeliveryMethod } from "./request";
 import { parseJSON } from "./json";
 
@@ -21,10 +23,12 @@ export interface PluginCommandRecovery {
   readonly idempotencyKey: string;
   readonly binding: Omit<CallPluginRequest, "input">;
   recover<T>(decode: (output: unknown) => T, signal?: AbortSignal): Promise<T>;
+  retire(signal?: AbortSignal): Promise<void>;
 }
 
 export function pendingPluginCommand(
   command: PendingPluginCommand,
+  client: RpcClient,
   wire: Pick<WireCallPath, "perform">,
 ): PluginCommandRecovery {
   return {
@@ -48,11 +52,49 @@ export function pendingPluginCommand(
               );
               command.validate(request);
             } catch (error) {
-              if (error instanceof MutationJournalError || mutationSettlementIsUnknown(error))
+              if (
+                isErrorType(error, "plugin_command_retired") ||
+                error instanceof MutationJournalError ||
+                mutationSettlementIsUnknown(error)
+              )
                 throw error;
               throw new MutationLookupError(error);
             }
+            if (pluginDeliveryMethod(request) === "plugins.stream")
+              return deliverPluginStream(
+                client,
+                wire,
+                request,
+                reservation,
+                key,
+                () => undefined,
+                decode,
+                attempt.signal,
+              );
             return deliverPluginCommand(wire, request, reservation, key, decode, attempt.signal);
+          },
+          command.idempotencyKey,
+          { signal },
+        ),
+      );
+    },
+    retire: (signal) => {
+      const reservation = command.reserve();
+      return reservation.track(() =>
+        createMutationPromise<void>(
+          async (key, attempt) => {
+            try {
+              await wire.perform(
+                "plugins.retireCommand",
+                {
+                  namespace: reservation.lookupNamespace(),
+                  key,
+                },
+                { signal: attempt.signal },
+              );
+            } catch (error) {
+              throw new MutationLookupError(error);
+            }
           },
           command.idempotencyKey,
           { signal },
@@ -103,7 +145,12 @@ async function deliverPluginCommand<T>(
       idempotencyNamespace: reservation.authorizeDispatch(),
     });
   } catch (error) {
-    if (error instanceof MutationJournalError || mutationSettlementIsUnknown(error)) throw error;
+    if (
+      isErrorType(error, "plugin_command_retired") ||
+      error instanceof MutationJournalError ||
+      mutationSettlementIsUnknown(error)
+    )
+      throw error;
     throw new MutationLookupError(error);
   }
   if (reply.failure) throw new OperationFailure(reply.failure.code, reply.failure.message);

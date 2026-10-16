@@ -27,6 +27,8 @@ export const de: Record<string, string> = {
   "packages.commands.explanation":
     "Prüfen Sie das ursprüngliche Ergebnis auch bei nicht verfügbarer Plugin-Ansicht. Ein neuer Anbieter kann den ursprünglichen Eigentümer nicht ersetzen.",
   "packages.commands.none": "Keine unbestätigten Plugin-Befehle.",
+  "packages.commands.retire": "Falls nie gesendet, zurückziehen",
+  "packages.commands.retired": "Ursprünglicher Befehl vor dem Senden zurückgezogen: {{id}}",
   "packages.commands.recover": "Ursprüngliches Ergebnis prüfen",
   "packages.commands.checking": "Ursprünglicher Befehl {{id}} wird geprüft…",
   "packages.commands.confirmed": "Ursprüngliches Ergebnis bestätigt: {{id}}",

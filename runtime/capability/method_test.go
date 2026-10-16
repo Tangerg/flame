@@ -102,3 +102,20 @@ func TestMethodRefusesInvalidLocalMetadata(t *testing.T) {
 		})
 	}
 }
+
+func TestBooleanOutputContractRejectsIntegerEvidence(t *testing.T) {
+	descriptor := testMethod("acme/read", capability.Query)
+	descriptor.Output = []byte(`{"type":"boolean"}`)
+	method, err := capability.AdmitMethod(descriptor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := method.ValidateOutput([]byte(`true`)); err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []string{`1`, `18446744073709551615`, `-9223372036854775808`} {
+		if err := method.ValidateOutput([]byte(value)); err == nil {
+			t.Fatalf("boolean contract admitted integer %s", value)
+		}
+	}
+}

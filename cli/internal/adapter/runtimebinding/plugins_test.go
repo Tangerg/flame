@@ -22,7 +22,7 @@ type pluginBindingStub struct {
 	selected    *protocol.PluginInstallation
 	provider    *protocol.PluginProviderSelection
 	composition *protocol.PluginComposition
-	lookup      func(context.Context, protocol.GetPluginCommandRequest, flameruntime.CallOptions) (*protocol.CallPluginRequest, error)
+	lookup      func(context.Context, protocol.PluginCommandRequest, flameruntime.CallOptions) (*protocol.CallPluginRequest, error)
 }
 
 func (s pluginBindingStub) SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest, flameruntime.CommandOptions) (*protocol.PluginComposition, error) {
@@ -105,7 +105,7 @@ func TestPluginMutationRefusesAnotherInstallationsResult(t *testing.T) {
 	}
 }
 
-func (s pluginBindingStub) GetPluginCommand(ctx context.Context, query protocol.GetPluginCommandRequest, options flameruntime.CallOptions) (*protocol.CallPluginRequest, error) {
+func (s pluginBindingStub) GetPluginCommand(ctx context.Context, query protocol.PluginCommandRequest, options flameruntime.CallOptions) (*protocol.CallPluginRequest, error) {
 	return s.lookup(ctx, query, options)
 }
 
@@ -115,7 +115,7 @@ func TestPluginCommandLookupPreservesScopeInputAndFailure(t *testing.T) {
 	invalid := original
 	invalid.Digest = "changed"
 	upstream := errors.New("original route unavailable")
-	query := protocol.GetPluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "original-command"}
+	query := protocol.PluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "original-command"}
 	for _, test := range []struct {
 		name    string
 		value   *protocol.CallPluginRequest
@@ -130,7 +130,7 @@ func TestPluginCommandLookupPreservesScopeInputAndFailure(t *testing.T) {
 			ctx := t.Context()
 			var connection *Connection
 			calls := 0
-			stub := pluginBindingStub{lookup: func(gotContext context.Context, got protocol.GetPluginCommandRequest, options flameruntime.CallOptions) (*protocol.CallPluginRequest, error) {
+			stub := pluginBindingStub{lookup: func(gotContext context.Context, got protocol.PluginCommandRequest, options flameruntime.CallOptions) (*protocol.CallPluginRequest, error) {
 				calls++
 				if gotContext != ctx || got != query || !reflect.DeepEqual(options, connection.callOptions()) {
 					t.Fatalf("lookup changed its caller scope: %+v %+v", got, options)

@@ -10,7 +10,7 @@ import type {
   ReadPluginResourceRequest,
   PluginResource,
   CallPluginRequest,
-  GetPluginCommandRequest,
+  PluginCommandRequest,
   CallPluginResponse,
   ResolvePluginPointRequest,
   PluginPointBinding,
@@ -349,10 +349,8 @@ export interface Methods {
     };
   };
   plugins: {
-    getCommand: (
-      request: GetPluginCommandRequest,
-      signal?: AbortSignal,
-    ) => Promise<CallPluginRequest>;
+    getCommand: (request: PluginCommandRequest, signal?: AbortSignal) => Promise<CallPluginRequest>;
+    retireCommand: (request: PluginCommandRequest, signal?: AbortSignal) => MutationPromise<void>;
     pendingCommands: () => PluginCommandRecovery[];
     queryStream: <T>(
       request: CallPluginRequest,
@@ -851,10 +849,11 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     },
     plugins: {
       getCommand: (request, signal) => call("plugins.getCommand", request, { signal }),
+      retireCommand: (request, signal) => call("plugins.retireCommand", request, { signal }),
       pendingCommands: () =>
         mutationJournal
           .pendingPluginCommands()
-          .map((command) => pendingPluginCommand(command, { perform })),
+          .map((command) => pendingPluginCommand(command, client, { perform })),
       queryStream: (request, consume, decode, signal) =>
         queryPluginStream(client, { perform }, request, consume, decode, signal),
       stream: (intent, input, prepare, consume, decode, signal) =>

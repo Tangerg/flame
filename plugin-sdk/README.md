@@ -85,15 +85,17 @@ the publisher acknowledgement before settlement. Journal routing/fingerprints ar
 durable; authored input and business results are not copied into it. Low-level
 calls and stable-intent commands share that journal and retain routing metadata.
 For a recreated component, `bindOperations(...).pendingCommands(method)` projects
-unresolved unary commands for that original installation/contribution/target.
+unresolved commands, including streams, for that original installation/contribution/target.
 Its recovery handle reads `plugins.getCommand` from Runtime's saved route before
 querying the original backend receipt under the same key. It does not reconstruct
 input from the current draft, prepare another provider or persist business output.
 Unavailable, missing, expired or conflicting evidence stays unresolved. Runtime
 refuses route recovery before dispatch admission, so this read cannot initiate work.
-`context.runtime.plugins.pendingCommands()` exposes the same unary journal
-projection for client management. Streaming commands retain their existing
-explicit original-input stream recovery contract.
+`context.runtime.plugins.pendingCommands()` exposes the same journal projection
+for client management. Stream recovery reads the original final receipt without
+replaying chunks. Both handles expose `retire()` for Runtime-confirmed
+never-dispatched work; a failed retirement preserves the original journal and
+cannot authorize a replacement command.
 
 The client journal now requires method metadata. Former records are retained
 and refused unchanged; use their original client to reconcile pending work before

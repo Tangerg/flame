@@ -12,6 +12,7 @@ import (
 )
 
 type CommandStore interface {
+	// Get returns a caller-owned aggregate; only Save advances durable routing.
 	Get(context.Context, string) (*plugin.Command, bool, error)
 	Save(context.Context, *plugin.Command) error
 }
@@ -31,6 +32,20 @@ func NewCommands(store CommandStore, admission *Admission) (*Commands, error) {
 }
 
 func (c *Commands) Get(ctx context.Context, id string) (*plugin.Command, error) {
+	command, err := c.authorized(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	switch command.Snapshot().Phase {
+	case plugin.CommandPrepared:
+		return nil, plugin.ErrCommandUnconfirmed
+	case plugin.CommandRetired:
+		return nil, plugin.ErrCommandRetired
+	}
+	return command, nil
+}
+
+func (c *Commands) authorized(ctx context.Context, id string) (*plugin.Command, error) {
 	command, found, err := c.store.Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -42,11 +57,22 @@ func (c *Commands) Get(ctx context.Context, id string) (*plugin.Command, error) 
 	if actor, managed := operation.ActorFrom(ctx); managed && !actor.Allows(record.Provider, record.Contribution, record.Contract) {
 		return nil, plugin.ErrInvalid
 	}
-	// A recovery read cannot turn a route saved before dispatch into execution.
-	if record.Phase == plugin.CommandPrepared {
-		return nil, plugin.ErrCommandUnconfirmed
-	}
 	return command, nil
+}
+
+// Retirement and dispatch compete under the same admission boundary. The retained
+// route prevents a retired identity from ever being admitted as new work.
+func (c *Commands) Retire(ctx context.Context, id string) error {
+	return c.admission.Under(ctx, func() error {
+		command, err := c.authorized(ctx, id)
+		if err != nil {
+			return err
+		}
+		if err := command.Retire(); err != nil {
+			return err
+		}
+		return c.store.Save(ctx, command)
+	})
 }
 
 // RestoreInvocation validates a private owner's retained caller against original
@@ -66,7 +92,7 @@ func (c *Commands) RestoreInvocation(ctx context.Context, invocation capability.
 	}
 	if found {
 		record := command.Snapshot()
-		if record.Invocation != invocation || record.Provider.InstallationID != actor.InstallationID() || record.Provider.Digest != actor.Release() || record.Server != actor.Server() || record.Phase == plugin.CommandPrepared {
+		if record.Invocation != invocation || record.Provider.InstallationID != actor.InstallationID() || record.Provider.Digest != actor.Release() || record.Server != actor.Server() || !command.WasDispatched() {
 			return nil, plugin.ErrCommandConflict
 		}
 	} else if invocation.Origin != capability.Automatic || invocation.Parent != "" || invocation.Target.Scope != "installation" || invocation.Target.Reference != actor.InstallationID().String() {
@@ -137,13 +163,13 @@ func (c *Commands) Dispatch(ctx context.Context, id string, admit func(context.C
 		if !found {
 			return plugin.ErrNotFound
 		}
-		if command.Snapshot().Phase != plugin.CommandPrepared {
-			return plugin.ErrCommandUnconfirmed
-		}
-		if err := admit(ctx, command.Snapshot()); err != nil {
+		record := command.Snapshot()
+		if err := command.Dispatch(); err != nil {
 			return err
 		}
-		command.Dispatch()
+		if err := admit(ctx, record); err != nil {
+			return err
+		}
 		return c.store.Save(ctx, command)
 	})
 }

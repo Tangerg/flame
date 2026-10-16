@@ -181,6 +181,12 @@ export function bindOperations<
         )
         .map((command) => ({
           idempotencyKey: command.idempotencyKey,
+          retire: (signal: AbortSignal = context.signal): Promise<void> => {
+            context.signal.throwIfAborted();
+            return context.track(
+              command.retire(AbortSignal.any([context.signal, signal])),
+            );
+          },
           recover: (
             signal: AbortSignal = context.signal,
           ): Promise<Outputs[K]> => {

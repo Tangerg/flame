@@ -106,7 +106,11 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	if err != nil || !found || !reflect.DeepEqual(restored.Snapshot(), original.Snapshot()) {
 		t.Fatalf("restart changed the original pending binding: %+v, %t, %v", restored, found, err)
 	}
-	lookup := protocol.GetPluginCommandRequest{Namespace: cfg.Stores.IdempotencyNamespace.String(), Key: options.IdempotencyKey}
+	lookup := protocol.PluginCommandRequest{Namespace: cfg.Stores.IdempotencyNamespace.String(), Key: options.IdempotencyKey}
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsRetireCommand, lookup, delivery.Options{}); !errors.Is(result.Failure, protocol.ErrInternalError) {
+		t.Fatalf("dispatched command became eligible for retirement: %+v", result)
+	}
+	assertUnresolvedInstallationIsHeld(t, r, installed)
 	routed := r.must(delivery.PluginsGetCommand, lookup, "").(*protocol.CallPluginRequest)
 	admittedRequest := request
 	admittedRequest.Input = string(original.Snapshot().Input.JSON())

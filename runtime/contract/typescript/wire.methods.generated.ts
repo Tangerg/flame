@@ -31,7 +31,6 @@ import type {
   GetDiffRequest,
   GetFileHeadRequest,
   GetPlanRequest,
-  GetPluginCommandRequest,
   GetRunAcceptanceRequest,
   GetRunRequest,
   GetSessionRequest,
@@ -92,6 +91,7 @@ import type {
   PageOfWorkspaceSummary,
   Plan,
   PluginChangeNotice,
+  PluginCommandRequest,
   PluginComposition,
   PluginInstallation,
   PluginProviderSelection,
@@ -233,6 +233,7 @@ const METHOD_NAMES = [
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
   "plugins.getCommand",
+  "plugins.retireCommand",
   "plugins.stream",
   "plugins.notifyChange",
   "plugins.openResources",
@@ -806,6 +807,13 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
+  "plugins.retireCommand": {
+    operation: "command",
+    response: "unary",
+    idempotency: "ownerResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
   "plugins.stream": {
     operation: "extension",
     response: "stream",
@@ -1280,6 +1288,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.getCommand": [
     { requires: ["plugins"] },
   ],
+  "plugins.retireCommand": [
+    { requires: ["plugins"] },
+  ],
   "plugins.stream": [
     { requires: ["plugins"] },
   ],
@@ -1414,7 +1425,8 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
-  "plugins.getCommand": { params: GetPluginCommandRequest; result: CallPluginRequest };
+  "plugins.getCommand": { params: PluginCommandRequest; result: CallPluginRequest };
+  "plugins.retireCommand": { params: PluginCommandRequest };
   "plugins.stream": { params: CallPluginRequest; result: Record<string, never> };
   "plugins.notifyChange": { params: PluginChangeNotice };
   "plugins.openResources": { params: OpenPluginResourcesRequest; result: PluginResourceLease };

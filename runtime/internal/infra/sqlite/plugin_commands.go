@@ -92,7 +92,7 @@ func (s *PluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 }
 
 func (s *PluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]plugin.Dependency, error) {
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase != 'observed'`)
+	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase IN (?,?)`, plugin.CommandPrepared, plugin.CommandDispatched)
 	if err != nil {
 		return nil, err
 	}

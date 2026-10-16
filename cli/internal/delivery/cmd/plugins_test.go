@@ -22,7 +22,7 @@ type pluginCommandFixture struct {
 	command     replay.CommandID
 	provider    protocol.SelectPluginProviderRequest
 	composition protocol.SetPluginCompositionRequest
-	lookup      protocol.GetPluginCommandRequest
+	lookup      protocol.PluginCommandRequest
 	original    protocol.CallPluginRequest
 }
 
@@ -223,10 +223,29 @@ func TestPluginUninstallIsAnAcknowledgementWithoutResult(t *testing.T) {
 	}
 }
 
-func (f *pluginCommandFixture) GetPluginCommand(_ context.Context, query protocol.GetPluginCommandRequest) (*protocol.CallPluginRequest, error) {
+func (f *pluginCommandFixture) GetPluginCommand(_ context.Context, query protocol.PluginCommandRequest) (*protocol.CallPluginRequest, error) {
 	f.calls++
 	f.lookup = query
 	return &f.original, nil
+}
+
+func (f *pluginCommandFixture) RetirePluginCommand(_ context.Context, query protocol.PluginCommandRequest, id replay.CommandID) error {
+	f.calls++
+	f.lookup, f.command = query, id
+	return nil
+}
+
+func TestPluginRetirementKeepsTheOriginalNamespaceAndKey(t *testing.T) {
+	fixture := &pluginCommandFixture{Runtime: runtimefixture.New()}
+	query := protocol.PluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "original-command"}
+	encoded, err := json.Marshal(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := executeCommand(t, fixture, "", "plugins", "retire-command", "--request", string(encoded))
+	if err != nil || fixture.calls != 1 || fixture.lookup != query || out != "" {
+		t.Fatalf("retirement=%q, %+v, %v", out, fixture.lookup, err)
+	}
 }
 
 func TestPluginGetCommandReadsOriginalIdentityWithoutMutation(t *testing.T) {
@@ -245,7 +264,7 @@ func TestPluginGetCommandReadsOriginalIdentityWithoutMutation(t *testing.T) {
 	}
 	const installation = "12345678-1234-1234-1234-123456789abc"
 	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: string(contract.Identity().JSON()), Method: method.Name(), Input: `{"scale":1.0,"value":18446744073709551615}`, Target: capability.Target{Scope: "installation", Reference: installation}}
-	query := protocol.GetPluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "retained-web-command"}
+	query := protocol.PluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "retained-web-command"}
 	encoded, err := json.Marshal(query)
 	if err != nil {
 		t.Fatal(err)

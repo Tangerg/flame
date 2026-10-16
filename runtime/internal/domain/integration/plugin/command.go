@@ -14,6 +14,7 @@ import (
 var (
 	ErrCommandConflict    = errors.New("plugin: command binding conflicts")
 	ErrCommandUnconfirmed = errors.New("plugin: command outcome is unconfirmed")
+	ErrCommandRetired     = errors.New("plugin: command retired before dispatch")
 )
 
 type CommandPhase string
@@ -22,6 +23,7 @@ const (
 	CommandPrepared   CommandPhase = "prepared"
 	CommandDispatched CommandPhase = "dispatched"
 	CommandObserved   CommandPhase = "observed"
+	CommandRetired    CommandPhase = "retired"
 )
 
 // CommandBinding is immutable routing evidence, not a business result. Keeping
@@ -92,7 +94,7 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 		return nil, err
 	}
 	switch record.Phase {
-	case CommandPrepared, CommandDispatched, CommandObserved:
+	case CommandPrepared, CommandDispatched, CommandObserved, CommandRetired:
 	default:
 		return nil, fmt.Errorf("%w: command phase", ErrInvalid)
 	}
@@ -107,14 +109,33 @@ func (c *Command) Snapshot() CommandBinding {
 func (c *Command) Matches(method string, input jsoninput.Input) bool {
 	return c.record.Method == method && c.record.Input == input
 }
-func (c *Command) Pending() bool { return c.record.Phase != CommandObserved }
-func (c *Command) Dispatch() {
-	if c.record.Phase == CommandPrepared {
-		c.record.Phase = CommandDispatched
+func (c *Command) Pending() bool {
+	return c.record.Phase == CommandPrepared || c.record.Phase == CommandDispatched
+}
+func (c *Command) WasDispatched() bool {
+	return c.record.Phase == CommandDispatched || c.record.Phase == CommandObserved
+}
+func (c *Command) Dispatch() error {
+	if c.record.Phase == CommandRetired {
+		return ErrCommandRetired
+	}
+	if c.record.Phase != CommandPrepared {
+		return ErrCommandUnconfirmed
+	}
+	c.record.Phase = CommandDispatched
+	return nil
+}
+func (c *Command) Retire() error {
+	switch c.record.Phase {
+	case CommandPrepared, CommandRetired:
+		c.record.Phase = CommandRetired
+		return nil
+	default:
+		return ErrCommandUnconfirmed
 	}
 }
 func (c *Command) Observe() error {
-	if c.record.Phase == CommandPrepared {
+	if !c.WasDispatched() {
 		return fmt.Errorf("%w: command has no dispatch admission", ErrInvalid)
 	}
 	c.record.Phase = CommandObserved

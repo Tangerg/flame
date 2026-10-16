@@ -24,6 +24,8 @@ export const zh: Record<string, string> = {
   "packages.commands.explanation":
     "插件页面不可用时，仍可核对原始结果。新提供者不能替代原命令的所有者。",
   "packages.commands.none": "没有待确认的插件命令。",
+  "packages.commands.retire": "退役尚未派发的命令",
+  "packages.commands.retired": "原命令已在派发前退役：{{id}}",
   "packages.commands.recover": "核对原命令结果",
   "packages.commands.checking": "正在核对原命令 {{id}}…",
   "packages.commands.confirmed": "已确认原始结果：{{id}}",
