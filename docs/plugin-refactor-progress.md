@@ -3,18 +3,70 @@
 ## Current stage
 
 The current handoff is [plugin-refactor-handoff.md](plugin-refactor-handoff.md).
-Latest frontend dependency change: `d06e02636`; latest backend/CLI test change:
-`4bb2481a3`. This refresh reviews branch HEAD `dc7bdad65`; continue from the
-current HEAD, not by checking out either checkpoint. The refresh changes only
-handoff/progress wording and runs no new product gate. Safe-steer, MCP discovery
-and braces remain open; overall acceptance is not 100%.
+Latest native follow-up source checkpoint: `6d9993355`, following the merged
+`c33106ecb` baseline. Continue from current HEAD, not by checking out a checkpoint.
+The earlier dependency (`d06e02636`) and backend/CLI (`4bb2481a3`) qualifications
+retain their recorded scopes. Safe-steer, MCP discovery and braces remain open;
+overall acceptance is not 100%.
+
+### Native plugin follow-up (2026-10-16)
+
+The user subsequently authorized the main fast-forward, branch/worktree cleanup,
+stash removal and push through `c33106ecb`. The only checkout is now
+`/Users/tangerg/Desktop/flame` on `main`; the former worktree no longer exists.
+This follow-up commits locally without pushing. Computer Use targets only
+`com.tangerg.flame.preview` with profile
+`/Users/tangerg/.codex/tmp/flame-preview-20261016-e9e2hbfa` and its owned Runtime
+on port 17171. The user's `pkg` conversation is retained.
+
+- `103eceea8` fixes Schedules model choices by reading configured Providers and
+  querying each exact Provider catalog. Runtime already rejected empty Provider;
+  the Go request, generated schemas/TS and public TS convenience method now require
+  it. The visual transport consumer migrates too; no aggregate/default alias exists.
+- `54da57894` preserves installed component exceptions in the existing diagnostic
+  control. Shared formatting includes name/message independently of stack because
+  WebKit stacks can contain frames only. Native inspection confirms the exact
+  `ModuleReloadRequired` message and stack after Runtime generation replacement;
+  reload recovers. The existing clean-generation guarantee is preserved.
+- `6d9993355` controls the IME integration test's performance clock. The complete
+  suite exposed its real-clock dependence at the first Enter assertion; renderer
+  work could consume the existing 100ms window. Assertions and production bounds
+  are unchanged; focused composition tests and the full suite pass.
+
+Actual native flows: plugin inspection/configuration entry, Schedules stage/select,
+Usage uninstall/install/default-disabled/enable/read; Memory create/edit/pin/filter,
+project/User separation, disable/enable withdrawal and data retention, plus read
+after app/Runtime restarts; Schedules invalid-Cron refusal preserving its editor,
+create with explicit model, revision edit, disable, manual Run and one bounded cron
+occurrence. Manual and automatic Sessions both return `PLUGIN_DESKTOP_QA_OK` through
+the configured DeepSeek provider. Automatic acceptance is recorded at
+`2026-10-16T06:18:58.961Z`; its Session is
+`ses_cd4cd137-9bc7-4a42-a199-5c3478e6ca30`. The QA definition is disabled at revision 8.
+
+Verification: complete Desktop check passes (361 files / 2,438 tests plus all
+architecture/resource/bundle/module guards); public TS contract check passes
+(30 files / 365 tests); plugins check passes; Go protocol, contractgen and complete
+delivery tests pass; Runtime and production arm64 Wails build/signature checks
+pass. A preceding full check failed the IME test, and an intermediate typecheck
+found the visual fixture's omitted Provider; both are repaired, not skipped.
+The five-file focused UI set passes 27 tests; visual transport passes four tests.
+No new full backend/race/vet matrix, multi-provider live qualification, Memory
+pending-review/deletion, Schedule deletion or exhaustive pagination is claimed.
+
+The first pre-diagnostics Schedules page failure remains unclassified: it occurred
+while filling an invalid-Cron draft, before a confirmed Save, and retained no
+exception. Controlled release/restart cases now identify `ModuleReloadRequired`;
+that does not prove the earlier failure had the same cause. Invalid-Cron submission
+itself was subsequently verified to produce a normal refusal. Historical safe-steer,
+MCP discovery and braces stay open; this native follow-up closes none of them.
 
 On 2026-10-15 the user lifts the UI/E2E/screenshot test prohibition and authorizes
 graphical qualification in the existing worktree. Prior no-UI statements record
 their historical verification scope. The graphical rows remain Partial until
 actual matching evidence is obtained; authorization alone closes no criterion.
-Keep the primary checkout, daily Runtime/data, stash, original assertions and
-timeouts intact, with no push or main merge. New UI work uses isolated resources.
+That session preserved the primary checkout, daily Runtime/data and stash, with
+no push or main merge. Later user-authorized cleanup is recorded above. New UI
+work continues to use isolated resources and preserves assertions and timeouts.
 
 Original-proposal rows now have **48 Evidenced / 0 Partial / 0 Open**; overall
 acceptance retains the unresolved historical deadline investigations and dependency
@@ -3977,8 +4029,8 @@ P01-P48 has 48 Evidenced rows and all four review scenarios have matching eviden
 These scoped evidence counts do not represent an overall percentage. Checkpoints
 are separated: `d06e02636` for frontend dependencies, `4bb2481a3` for backend/CLI
 tests, and `6d5e2427d` for the earlier full Go/author/distribution/native gates.
-The full frontend gate recorded after the KaTeX repair qualifies the selected
-frontend graph. The older native artifacts do not qualify its changed payload.
+The current native follow-up at `6d9993355` adds only the exact flows and gates
+recorded above; earlier native artifacts keep their original scope.
 
 - Keep historical safe-steer and MCP discovery causes open. The scoped ownership
   read found no defect in the paths it inspected; it is not proof that all failure
@@ -3996,16 +4048,20 @@ frontend graph. The older native artifacts do not qualify its changed payload.
   build path with no untrusted nested-pattern ingress found. Recheck upstream
   state or qualify a justified full integration migration. Do not suppress the
   advisory or describe an unverified migration as impossible.
-- Before claiming post-KaTeX native acceptance, build an isolated current artifact
-  and check its math rendering. This remains unexecuted. Paid providers, other
-  platforms/architectures, real second-machine TLS and registry/deployment
-  publication are also unqualified. Public author archives are not releases.
+- The current native plugin flows have an isolated production artifact. Targeted
+  WebKit math-layout qualification remains unexecuted. The complete paid-provider
+  suite, other platforms/architectures, real second-machine TLS and registry/
+  deployment publication are also unqualified; two DeepSeek smoke calls are not
+  that complete suite. Public author archives are not releases.
   The earlier native original receipt recovery remains scoped to its built
   artifact; the extra Memory-list return was interrupted by a later lock screen.
 - Preserve unknown original commands, private evidence and incompatible profiles.
   Missing receipts never authorize replay, another provider or a second outcome
-  owner. Reuse the worktree; do not push, merge main or touch the primary checkout,
-  daily app/Runtime, stash or retained user data.
+  owner. Use the current primary checkout recorded above, preserve unrelated work,
+  and do not push, publish, touch daily app/Runtime or delete retained user data.
+- Keep the first unclassified native Schedules failure open. The new diagnostic
+  control preserves its next occurrence; do not infer its cause from the separate,
+  controlled `ModuleReloadRequired` cases or a passing invalid-Cron submission.
 
 ## Decision ledger
 

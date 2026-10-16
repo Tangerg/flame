@@ -4,7 +4,8 @@ Updated 2026-10-16 (Asia/Shanghai).
 
 - Latest frontend dependency change: `d06e02636` (KaTeX resolution/lockfile).
 - Latest backend/CLI test change: `4bb2481a3` (probe framing/steer diagnostics).
-- Reviewed branch HEAD before this documentation refresh: `dc7bdad65`.
+- Latest native/contract follow-up source checkpoint: `6d9993355`, after merged
+  baseline `c33106ecb`; local commits `103eceea8`, `54da57894`, `6d9993355` are unpushed.
 
 Continue from the current branch HEAD; later documentation commits are expected.
 Do not checkout/reset back to any checkpoint. Each verification below retains its
@@ -15,14 +16,13 @@ changes documentation only and does not extend any verification scope.
 
 ## Start here
 
-- Reuse `/Users/tangerg/.codex/worktrees/unified-plugins/flame`, branch
-  `codex/unified-plugins`. Always set the command working directory explicitly.
-  The desktop app may otherwise start in the primary checkout.
-- Do not modify `/Users/tangerg/Desktop/flame`, recreate this worktree from main,
-  push, merge into main, tag, publish, or change the daily Runtime/app.
-- The worktree was clean at the reviewed HEAD before this refresh. Preserve the stash:
-  `WIP on main: c443a1a8 refactor(runtime): finish the json/v2 migration across delivery and tooling`.
-  Never use bare `git stash`.
+- Work from `/Users/tangerg/Desktop/flame` on `main`, the only remaining checkout.
+  The user subsequently authorized the fast-forward merge, worktree/branch cleanup,
+  stash deletion and push through `c33106ecb`. Do not recreate the removed worktree
+  or restore its obsolete constraints. Always set the working directory explicitly.
+- Preserve unrelated work. Do not push newer commits, tag, publish, or change the
+  daily Runtime/app without authorization. No stash remains at this checkpoint;
+  do not use bare `git stash` or delete any subsequently created stash.
 - Read `AGENTS.md`, `PROJECT_RULES.md`, `DESIGN_PHILOSOPHY.md`, `DEVELOPMENT.md`,
   `REFACTORING.md` and the README of every module being changed. Then read this
   document and the progress document's Current stage / Next / Proposal acceptance
@@ -36,19 +36,29 @@ changes documentation only and does not extend any verification scope.
 - The user lifted the UI/E2E/screenshot prohibition on 2026-10-15 and authorized
   Computer Use. Older no-UI instructions in historical notes/goal text are stale.
   Use only isolated profiles, Runtime/data directories and identified app windows.
-- Do not touch daily Runtime port 17171 or launch the daily-ID production bundle
-  `com.tangerg.flame`. Global Wails beta.25 is preserved; Desktop pins beta.29.
-- Task npm/build/commit commands use `HUSKY=0`. Preserve shared hooks/configuration.
-  Stage explicit paths, run the actual manual hooks below, and commit each verified
-  slice. The user's no-push instruction overrides DEVELOPMENT.md's push step.
+- The current owned preview uses port 17171, profile
+  `/Users/tangerg/.codex/tmp/flame-preview-20261016-e9e2hbfa`, and app identifier
+  `com.tangerg.flame.preview`. Verify process/profile ownership before acting;
+  a port alone proves nothing. Do not launch the daily-ID bundle `com.tangerg.flame`.
+  Desktop pins Wails beta.29; do not replace the shared global toolchain.
+- Task npm/build commands use `HUSKY=0` to avoid rewriting shared hook configuration.
+  Commits use the existing lint-staged/commitlint hooks; stage explicit paths only.
+  The user's no-push instruction overrides DEVELOPMENT.md's push step.
 
 ```sh
-cd /Users/tangerg/.codex/worktrees/unified-plugins/flame
+cd /Users/tangerg/Desktop/flame
 git status --short --branch
 git log -3 --oneline
 ```
 
 ## Actual completion boundary
+
+The [latest native follow-up](plugin-refactor-progress.md#native-plugin-follow-up-2026-10-16)
+records current fixes, exact graphical scenarios and verification limits. The first
+pre-diagnostics Schedules page failure is additionally unclassified; later controlled
+generation/release failures have explicit `ModuleReloadRequired` evidence, which
+must not be substituted for the missing first exception. The new diagnostic UI
+retains the next failure for inspection. Overall acceptance remains below 100%.
 
 Core functionality has matching implementation and scenario evidence. There is no
 currently identified unimplemented P01-P48 feature. The proposal audit is
@@ -323,14 +333,17 @@ new isolated lifetimes and verify the target before launch.
 - Existing journal records now require method metadata. Preserve former records
   and reconcile with their original client/binary before a fresh-profile upgrade.
   No compatibility reader, automatic conversion, receipt copying or replay exists.
-- Paid DeepSeek cases, other OS/architectures, real second-machine TLS and registry /
-  deployment publication are unqualified. Publication is outside current permission.
+- The complete paid DeepSeek suite, other OS/architectures, real second-machine
+  TLS and registry/deployment publication are unqualified. The native follow-up's
+  two DeepSeek smoke calls do not qualify that whole suite. Publication is outside
+  current permission.
 - The dedicated graphical private invocationConflict entrance remains unexecuted;
   actual Tool/CLI identity conflict and graphical revision-conflict evidence have
   their own scopes in `examples/plugins/reviews/README.md`. Do not infer every
   refusal class from them.
-- A post-KaTeX native package and targeted native math rendering have not been
-  qualified. Earlier native evidence belongs to the pre-upgrade artifacts.
+- Current post-KaTeX native packaging and the plugin flows above are qualified.
+  Targeted WebKit math-layout rendering remains unexecuted. Earlier native
+  original-command recovery keeps its original artifact scope.
 - An additional native return to the Memory list after successful original recovery
   was not executed because the Mac relocked. The successful recovery screenshot
   and exact receipt comparison remain valid; do not infer the extra navigation.
