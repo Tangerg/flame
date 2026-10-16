@@ -83,6 +83,11 @@ identity/callable binding, and cancel/join on replacement. Window-owned ESM requ
 reload after evaluated resource retirement or version/generation replacement;
 retired exports cannot be reused. This introduces no parallel contribution store
 or client business authority.
+Composition observation follows captured context and child lifetimes, including
+effect teardown and replay. Module acquisition is joined before a connection
+generation retires; only ESM evaluation escapes that join. Evaluation admission
+atomically captures its generation/release, and acquisition failures do not enter
+the window's permanent evaluation cache.
 
 Workspace views are organized by the material they present:
 

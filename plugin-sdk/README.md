@@ -50,6 +50,9 @@ lease is retired, reenablement requires a reload; changing evaluated release byt
 or Runtime generation also requires a reload. The loader refuses reuse of retired
 exports. Reloading creates the current resource graph; it does not replay business
 commands. A failure before evaluation remains distinct from a business outcome.
+Resource acquisition is joined by the connection generation; a late lease is
+closed before retirement completes. Failed acquisition can be requested again,
+while an attempted ESM evaluation stays window-owned even when it fails.
 
 See the independently installable [composition example](../examples/plugins/composition/README.md)
 for two-way contribution, collection, selection and actual decoration. The new

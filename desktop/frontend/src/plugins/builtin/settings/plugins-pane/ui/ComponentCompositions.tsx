@@ -197,7 +197,6 @@ class CompositionInstance {
   private readonly listeners = new Set<() => void>();
   private readonly reads = new Map<ContributionLifetime, Promise<void>>();
   private retiring = Promise.resolve();
-  private closed = false;
 
   constructor(
     private readonly host: ComponentCompositions,
@@ -231,7 +230,7 @@ class CompositionInstance {
   }
 
   refresh(rows: PluginInstallation[], predecessor: Promise<void>): () => void {
-    if (this.closed || this.lifetime.signal.aborted || this.context.signal.aborted) return () => {};
+    if (this.lifetime.signal.aborted || this.context.signal.aborted) return () => {};
     const read = this.lifetime.lifetime("component-point-read");
     const signal = AbortSignal.any([this.context.signal, read.signal]);
     if (
@@ -267,7 +266,6 @@ class CompositionInstance {
         if (this.snapshot.status === "ready" && this.snapshot.signature === signature) return;
         await this.retireRendering();
         signal.throwIfAborted();
-        if (this.closed) return;
         const rendering = this.lifetime.lifetime("component-composition");
         const entries = contributions.map((entry) => ({
           ...entry,
@@ -275,7 +273,7 @@ class CompositionInstance {
         }));
         this.publish({ status: "ready", signature, entries, lifetime: rendering });
       } catch (error) {
-        if (!signal.aborted && !this.closed) {
+        if (!signal.aborted) {
           let reason = error;
           try {
             await this.retireRendering();
@@ -285,7 +283,7 @@ class CompositionInstance {
               "Component composition failed to retire",
             );
           }
-          if (!signal.aborted && !this.closed) this.publish({ status: "failed", error: reason });
+          if (!signal.aborted) this.publish({ status: "failed", error: reason });
         }
       } finally {
         try {
@@ -308,7 +306,6 @@ class CompositionInstance {
   }
 
   async dispose(): Promise<void> {
-    this.closed = true;
     const rendering = this.retireRendering();
     const reads = [...this.reads].map(async ([scope, work]) => {
       await Promise.all([scope[asyncDisposeSymbol](), work]);

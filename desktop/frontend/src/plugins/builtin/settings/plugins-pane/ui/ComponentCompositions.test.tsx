@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Host } from "dougong";
-import { useEffect, useState, type ComponentProps } from "react";
+import { StrictMode, useEffect, useState, type ComponentProps } from "react";
 import type { ComponentContext, PluginComponent } from "@flame/plugin-sdk";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation, PluginPointBinding } from "@flame/runtime-contract/wire";
@@ -111,8 +111,8 @@ async function publish(rows: PluginInstallation[], bindings: PluginPointBinding[
   });
 }
 
-function mount(entry: PluginComponent = Root) {
-  render(
+function mount(entry: PluginComponent = Root, strict = false) {
+  const scene = (
     <QueryClientProvider client={queryClient}>
       <RenderingComponent
         entry={entry}
@@ -125,8 +125,9 @@ function mount(entry: PluginComponent = Root) {
         sessionId="captured-session"
         workspace={{ ref: { path: "/captured" } }}
       />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+  return render(strict ? <StrictMode>{scene}</StrictMode> : scene);
 }
 
 beforeEach(async () => {
@@ -159,6 +160,33 @@ afterEach(async () => {
   vi.restoreAllMocks();
   resolvePoint.mockReset();
   usePluginErrorStore.getState().clearAll();
+});
+
+it("composes after StrictMode replays mount effects and retires the final captured contexts", async () => {
+  const scene = mount(Root, true);
+  await screen.findByRole("button", { name: "Extension:inspected:0" });
+  const parent = parents.at(-1)!;
+  const child = contexts.at(-1)!;
+  expect(parent.signal.aborted).toBe(false);
+  expect(child.signal.aborted).toBe(false);
+  scene.unmount();
+  await waitFor(() => expect(child.signal.aborted).toBe(true));
+  expect(parent.signal.aborted).toBe(true);
+});
+
+it("opens a composition after its parent has committed under StrictMode", async () => {
+  function Scene({ context }: { context: ComponentContext }) {
+    const [open, setOpen] = useState(false);
+    return (
+      <>
+        <button onClick={() => setOpen(true)}>Open composition</button>
+        {open && <Root context={context} />}
+      </>
+    );
+  }
+  mount(Scene, true);
+  fireEvent.click(screen.getByRole("button", { name: "Open composition" }));
+  expect(await screen.findByRole("button", { name: "Extension:inspected:0" })).toBeTruthy();
 });
 
 it.each(["consumer", "producer"])(
