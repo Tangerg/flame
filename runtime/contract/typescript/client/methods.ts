@@ -423,7 +423,7 @@ export interface Methods {
     test: (provider: string, signal?: AbortSignal) => Promise<ProviderTestResult>;
   };
   models: {
-    list: (provider?: string, signal?: AbortSignal) => Promise<Page<Model>>;
+    list: (provider: string, signal?: AbortSignal) => Promise<Page<Model>>;
     getUtilityRole: (signal?: AbortSignal) => Promise<UtilityRole>;
     setUtilityRole: (params: UtilityRole) => MutationPromise<UtilityRole>;
     getEmbeddingRole: (signal?: AbortSignal) => Promise<EmbeddingRole>;
@@ -905,7 +905,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       test: (provider, signal) => call("providers.test", { provider }, { signal }),
     },
     models: {
-      list: (provider, signal) => call("models.list", provider ? { provider } : {}, { signal }),
+      list: (provider, signal) => call("models.list", { provider }, { signal }),
       getUtilityRole: (signal) => call("models.getUtilityRole", {}, { signal }),
       setUtilityRole: (params) => call("models.setUtilityRole", params),
       getEmbeddingRole: (signal) => call("models.getEmbeddingRole", {}, { signal }),

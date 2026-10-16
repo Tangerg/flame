@@ -11,7 +11,9 @@ describe("visual Runtime transport", () => {
       expect((await client.models.list("openai")).data).toEqual(
         VISUAL_MODELS.filter((model) => model.provider === "openai"),
       );
-      expect((await client.models.list()).data).toEqual(VISUAL_MODELS);
+      expect((await client.models.list("alibaba")).data).toEqual(
+        VISUAL_MODELS.filter((model) => model.provider === "alibaba"),
+      );
       expect(await client.models.getUtilityRole()).toEqual({
         provider: VISUAL_MODELS[0]!.provider,
         model: VISUAL_MODELS[0]!.id,

@@ -200,12 +200,16 @@ func TestListModelsMapsUnsupportedProviderToInvalidParams(t *testing.T) {
 		new(stubLister),
 	)
 
-	page, err := server.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "missing"})
-	if !errors.Is(err, protocol.ErrInvalidParams) {
-		t.Fatalf("ListModels error = %v, want invalid params", err)
-	}
-	if page != nil {
-		t.Fatalf("ListModels page = %+v, want nil", page)
+	for _, providerID := range []string{"", "missing"} {
+		t.Run(providerID, func(t *testing.T) {
+			page, err := server.ListModels(t.Context(), protocol.ListModelsRequest{Provider: providerID})
+			if !errors.Is(err, protocol.ErrInvalidParams) {
+				t.Fatalf("ListModels error = %v, want invalid params", err)
+			}
+			if page != nil {
+				t.Fatalf("ListModels page = %+v, want nil", page)
+			}
+		})
 	}
 }
 

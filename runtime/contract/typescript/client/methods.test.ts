@@ -22,6 +22,7 @@ import {
 } from "@flame/runtime-contract/client/errors";
 import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-contract/client/ids";
 import { createMethods } from "@flame/runtime-contract/client/methods";
+import { checkRequest } from "@flame/runtime-contract/client/request";
 import {
   createMutationJournal,
   MutationJournalOwnershipError,
@@ -77,6 +78,20 @@ function agentMessageItem(
 afterEach(() => vi.useRealTimers());
 
 describe("methods factory", () => {
+  it("requires the model catalog's provider and transmits its exact identity", async () => {
+    expect(() => checkRequest("models.list", {})).toThrow(RpcProtocolError);
+    const transport = createMemoryTransport();
+    const client = createRpcClient(transport);
+    try {
+      const result = createMethods(client).models.list("openai");
+      const request = await waitForRequest(transport, "models.list");
+      expect(request.params).toEqual({ provider: "openai" });
+      transport.inject({ jsonrpc: JSONRPC_VERSION, id: request.id, result: { data: [] } });
+      await expect(result).resolves.toEqual({ data: [] });
+    } finally {
+      await client.close();
+    }
+  });
   it.each(["run_finished", "internal_error"] as const)(
     "preserves a %s cancel refusal without manufacturing cancellation or replay",
     async (type) => {

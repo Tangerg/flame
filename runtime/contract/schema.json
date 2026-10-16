@@ -4258,7 +4258,10 @@
           "maxLength": 64,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         }
-      }
+      },
+      "required": [
+        "provider"
+      ]
     },
     "ListRunsRequest": {
       "type": "object",

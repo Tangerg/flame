@@ -1,5 +1,6 @@
 import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
 import type { Transport, TransportRequest } from "@flame/runtime-contract/client/transport";
+import type { ListModelsRequest } from "@flame/runtime-contract/wire";
 import { VISUAL_MODELS, VISUAL_PROVIDERS } from "./runtimeSnapshots";
 
 function resultFor(request: TransportRequest): unknown {
@@ -7,8 +8,8 @@ function resultFor(request: TransportRequest): unknown {
     case "providers.list":
       return { data: VISUAL_PROVIDERS };
     case "models.list": {
-      const { provider } = request.params as { provider?: string };
-      return { data: VISUAL_MODELS.filter((model) => !provider || model.provider === provider) };
+      const { provider } = request.params as ListModelsRequest;
+      return { data: VISUAL_MODELS.filter((model) => model.provider === provider) };
     }
     case "models.getUtilityRole":
       return { provider: VISUAL_MODELS[0]!.provider, model: VISUAL_MODELS[0]!.id };

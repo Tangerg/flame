@@ -7268,6 +7268,7 @@
       "params": [
         {
           "name": "provider",
+          "required": true,
           "schema": {
             "type": "string",
             "maxLength": 64,

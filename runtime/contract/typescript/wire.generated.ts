@@ -818,7 +818,7 @@ export interface ListModelInvocationsRequest {
 }
 
 export interface ListModelsRequest {
-  provider?: string;
+  provider: string;
 }
 
 export interface ListRunsRequest {

@@ -25,10 +25,9 @@ type EmbeddingRole struct {
 	Model    string `json:"model,omitempty"`
 }
 
-// ListModelsRequest is the models.list body. Provider is optional
-// (models are organized by provider; omitted → empty page).
+// ListModelsRequest selects the provider that owns the model catalog.
 type ListModelsRequest struct {
-	Provider string `json:"provider,omitempty"`
+	Provider string `json:"provider"`
 }
 
 // Model is one entry in models.list. A provider's complete page contains each

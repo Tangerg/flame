@@ -1776,7 +1776,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["runId"]),
   ListModelsRequest: object({
     provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
-  }, []),
+  }, ["provider"]),
   ListRunsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
     includeDescendants: flag(),

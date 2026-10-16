@@ -145,8 +145,15 @@ export function Schedules({ context }: { context: ComponentContext }) {
     void context.track(watch());
     const readModels = async () => {
       try {
-        const page = await context.runtime.models.list(undefined, signal);
-        if (!signal.aborted) setModels(page.data);
+        const providers = await context.runtime.providers.list(signal);
+        const pages = await Promise.all(
+          providers.data
+            .filter((provider) => provider.configured)
+            .map((provider) =>
+              context.runtime.models.list(provider.id, signal),
+            ),
+        );
+        if (!signal.aborted) setModels(pages.flatMap((page) => page.data));
       } catch (error) {
         if (!signal.aborted) setModelError(failure(error));
       }

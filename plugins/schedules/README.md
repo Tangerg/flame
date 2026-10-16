@@ -141,7 +141,8 @@ The client-scoped public component binds its own schedules-provider contribution
 and generated capability. Reads use actual Rows/NextCursor/private Snapshot shapes;
 NextRunAt is the existing enabled projection, not a separate flag. Add/edit/toggle/
 delete and manual Run commands use the same private owner. Edits preserve the captured
-revision, and model choices come from the public Runtime catalog. Same-key retry is
+revision, and model choices query each configured Provider through the public Runtime
+catalog; no empty Provider stands for an aggregate model catalog. Same-key retry is
 retained after unknown acknowledgement; new commands are blocked until reconciliation.
 
 Templates live in src/templates.ts as authoring content copied into a new draft.
