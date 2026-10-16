@@ -55,9 +55,10 @@ The remaining required work is, in priority order:
    explicit unresolved status when a matching failure cannot be obtained.
 2. Establish the historical MCP initial-discovery timeout cause, with the same
    evidence standard. Do not conflate it with safe-steer.
-3. Address the two npm advisory chains. All eight alerts have triage, but none is
-   remediated. Supported upstream upgrades or a justified complete integration
-   migration require actual verification; suppressions are not fixes.
+3. The KaTeX advisory chain is now remediated (see Priority 3); the production
+   audit reports zero vulnerabilities. The braces chain remains unremediated
+   because no patched braces exists upstream. Keep its bounded, build-only status
+   explicit; suppressions are not fixes.
 4. Reconcile final acceptance against changes actually made and retain explicit
    unexecuted/risk boundaries. Do not rerun every old gate just to restate status,
    or describe missing evidence as a pass.
@@ -195,19 +196,19 @@ cache or copy Scope/SDK internals into Flame. Repair the proven owner only.
 
 ## Priority 3: npm advisory chains
 
-As checked on 2026-10-16, both audits exit 1: overall **4 high / 4 low**;
-production-only **0 high / 4 low**. Counts are dependency entries, not eight
-independent root vulnerabilities. No manifest/lock change, override, local patch,
-forced downgrade or audit suppression has been applied.
+As checked on 2026-10-16 after the KaTeX repair (`d06e02636`): overall **4 high /
+0 low**; production-only audit reports **zero vulnerabilities**. The remaining four
+high entries are all the single braces chain, which is a `@stylexjs/postcss-plugin`
+devDependency and never enters the production tree.
 
-| Chain | Established risk and next boundary |
+| Chain | Status |
 | --- | --- |
-| StyleX PostCSS 0.19.1 -> fast-glob 3.3.3 -> micromatch 4.0.8 -> braces 3.0.3 | GHSA-vfj7-8cjw-p6xm has no patched release at this checkpoint. A bounded nested-pattern probe reproduces stack exhaustion. Current StyleX consumers use two repository-owned globs; no untrusted-pattern ingress is demonstrated. Recheck official releases, then validate the actual supported dependency chain. Do not equate build-only exposure with remediation. |
-| rehype-katex / micromark-extension-math -> two KaTeX 0.16.47 copies | GHSA-238p-pmpm-9mq7 is fixed in 0.18.2. Latest checked integrations still require ^0.16.0. Direct KaTeX 0.19.0 supplies CSS and does not upgrade actual renderers. A child-process control proves inherited trust permits an unsafe link in the real rehype adapter, while direct 0.19.0 rejects it. No application pollution source or browser exploit is established. Any integration migration must qualify actual parsing/rendering/security behavior and remove superseded ownership/dependencies. |
+| rehype-katex / micromark-extension-math -> katex | **Remediated.** The app already declared `katex ^0.19.0` directly (its stylesheet), while both integrations declared `katex ^0.16.0` and resolved separate 0.16.47 copies, so the rendered markup and the stylesheet used two katex versions. GHSA-238p-pmpm-9mq7 affects 0.11.0-0.18.1 and is patched from 0.18.2, present in 0.19.0. A `desktop/frontend/package.json` `overrides: { "katex": "$katex" }` pins every katex to the declared direct version, collapsing the tree to one 0.19.0 owner that renders markup and supplies the stylesheet. rehype-katex and micromark-extension-math call only `katex.renderToString` and `katex.ParseError`, both stable in 0.19.0. Qualified by typecheck, `vite build`, the markdown vitest suite, a direct render smoke and `npm ci` reproduction. This is a one-owner repair, not a suppression. |
+| StyleX PostCSS 0.19.1 -> fast-glob 3.3.3 -> micromatch 4.0.8 -> braces 3.0.3 | **Unremediated; upstream-blocked.** GHSA-vfj7-8cjw-p6xm affects braces `<= 3.0.3` (latest) with **no patched version released**; the fix is still pending upstream. The attack vector requires attacker-controlled deeply nested brace patterns. Here fast-glob only receives two repository-owned globs with single-level `{ts,tsx}` braces, and the plugin is a build-only devDependency (production audit is clean). No code change can remove this without a vendored patch or dropping the load-bearing StyleX PostCSS chain. Removal condition: braces/micromatch publishes a depth-limited release, or `@stylexjs/postcss-plugin` drops fast-glob. Do not equate build-only exposure with remediation, and do not suppress the advisory. |
 
 Sources: [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm),
 [KaTeX advisory](https://github.com/advisories/GHSA-238p-pmpm-9mq7).
-Recheck upstream state before choosing a fix; these version observations are dated.
+Recheck upstream braces state before each session; this observation is dated.
 
 ## Verification already performed
 

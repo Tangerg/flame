@@ -49,6 +49,43 @@ Original recovery remains receipt-only. Backend protocol `2026-10-15.3`, all
 declarations, generated Go/TS contracts and component resources migrate together,
 without coercion, replay, another result store or compatibility.
 
+### KaTeX advisory remediation (2026-10-16, `d06e02636`)
+
+The KaTeX advisory chain is remediated by a one-owner repair, superseding the
+earlier "unremediated" npm status below. `desktop/frontend` declared `katex
+^0.19.0` directly for its stylesheet, while `rehype-katex` and
+`micromark-extension-math` declared `katex ^0.16.0` and each resolved a separate
+0.16.47 copy. The rendered math markup therefore came from 0.16.47 while the
+stylesheet came from 0.19.0 — two owners of one katex-version fact, and the
+0.16.47 renderers carried GHSA-238p-pmpm-9mq7 (trust-bypass prototype-pollution
+gadget, affecting 0.11.0-0.18.1, patched from 0.18.2 and present in 0.19.0).
+
+A `desktop/frontend/package.json` `overrides: { "katex": "$katex" }` pins every
+katex to the app's declared direct version, collapsing the tree to a single
+0.19.0 that both renders the markup and supplies the stylesheet. This removes the
+two transitive 0.16.47 copies (and their bundled commander) from the lockfile.
+It is a dependency-resolution owner repair, not a suppression, override-as-bandaid
+or vendored patch: the forced version is the patched one the app already shipped.
+
+rehype-katex and micromark-extension-math call only `katex.renderToString` and
+`katex.ParseError`, both stable in 0.19.0 (confirmed against the 0.19.0 export
+set and both library sources). Qualified by: frontend typecheck (`tsc --noEmit`),
+`vite build`, the markdown vitest suite (10 files / 96 tests), a direct
+`katex.renderToString` render smoke for inline and display math, and an `npm ci`
+rebuild that reproduces the single-owner tree. Post-repair audit: overall four
+high / zero low; production-only audit reports zero vulnerabilities. No source
+file changed; only the manifest override and the lockfile dedup.
+
+The braces chain remains unremediated and upstream-blocked: GHSA-vfj7-8cjw-p6xm
+affects braces `<= 3.0.3` (latest) with no patched release, and the fix is still
+pending upstream. It reaches the tree only through the `@stylexjs/postcss-plugin`
+build-time devDependency (production audit is clean), and fast-glob receives only
+two repository-owned globs with single-level `{ts,tsx}` braces, so the
+attacker-controlled deeply-nested-pattern vector has no ingress here. No vendored
+patch or advisory suppression is applied; the removal condition is an upstream
+braces/micromatch depth-limited release or `@stylexjs/postcss-plugin` dropping
+fast-glob.
+
 ### Bounded deadline-boundary controls (2026-10-16)
 
 This test-only slice separates provider arrival from the safe-steer fixture's
@@ -3873,11 +3910,14 @@ these counts do not erase the following limits or represent a percentage.
   investigation requires an actual matching failed interval with phase/state/
   stack evidence; repeated passing gates and Deployment drift are not causes.
   Keep the existing failure-only diagnostics and unchanged assertions/deadlines.
-- Dependency alerts have complete source/exposure triage and remain unremediated:
-  four high/four low overall, zero high/four low in production-only audit. The
-  high root remains unpatched upstream; fixed KaTeX remains outside the current
-  transitive integrations' supported range. No suppression/override/downgrade is
-  substituted for remediation.
+- The KaTeX advisory chain is remediated (`d06e02636`): every katex is pinned to
+  the app's declared 0.19.0 through a manifest override, so one owner renders the
+  markup and supplies the stylesheet. Overall audit is now four high / zero low,
+  and the production-only audit reports zero vulnerabilities. The remaining four
+  high are the single braces chain, which is upstream-blocked (no patched braces
+  exists) and reaches only the build-time StyleX PostCSS devDependency with
+  repository-owned shallow globs. No suppression/downgrade is substituted for
+  remediation; the braces removal condition is recorded in the handoff.
 - Paid live, other native platforms/architectures, registry publication and real
   second-machine TLS remain unexecuted. Public source archives are not releases.
   Native original receipt recovery is proved; the additional return to its Memory
