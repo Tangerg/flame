@@ -526,8 +526,6 @@ export const zhTW: Record<string, string> = {
     "由內建和使用者外掛註冊的每一個按鍵繫結。在應用中任意位置按下組合鍵即可觸發；繫結衝突始終以最後一次註冊為準。",
   "shortcuts.filter": "按操作或組合鍵篩選…",
   "shortcuts.filterAria": "篩選快速鍵",
-  "shortcuts.action": "操作",
-  "shortcuts.shortcut": "快速鍵",
   "shortcuts.empty": "無符合的快速鍵",
 
   "agentSource.rpc": "執行時協定 (JSON-RPC)",

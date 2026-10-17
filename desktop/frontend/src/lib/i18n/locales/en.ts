@@ -692,8 +692,6 @@ export const en: Record<string, string> = {
     "Every keybinding registered by built-in and user plugins. Press a combo anywhere in the app to fire it; binding conflicts always resolve to the last registration.",
   "shortcuts.filter": "Filter by action or combo…",
   "shortcuts.filterAria": "Filter shortcuts",
-  "shortcuts.action": "Action",
-  "shortcuts.shortcut": "Shortcut",
   "shortcuts.empty": "No shortcuts match",
 
   "agentSource.rpc": "Runtime Protocol (JSON-RPC)",

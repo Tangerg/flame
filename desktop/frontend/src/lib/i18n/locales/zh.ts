@@ -653,8 +653,6 @@ export const zh: Record<string, string> = {
     "由内置和用户插件注册的每一个按键绑定。在应用中任意位置按下组合键即可触发；绑定冲突始终以最后一次注册为准。",
   "shortcuts.filter": "按操作或组合键筛选…",
   "shortcuts.filterAria": "筛选快捷键",
-  "shortcuts.action": "操作",
-  "shortcuts.shortcut": "快捷键",
   "shortcuts.empty": "无匹配的快捷键",
 
   "agentSource.rpc": "运行时协议 (JSON-RPC)",

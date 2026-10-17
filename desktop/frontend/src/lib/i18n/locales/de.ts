@@ -551,8 +551,6 @@ export const de: Record<string, string> = {
     "Jede von integrierten und Benutzer-Plugins registrierte Tastenkombination. Drücke eine Kombination irgendwo in der App, um sie auszulösen; Bindungskonflikte werden immer zugunsten der letzten Registrierung gelöst.",
   "shortcuts.filter": "Nach Aktion oder Kombi filtern…",
   "shortcuts.filterAria": "Kürzel filtern",
-  "shortcuts.action": "Aktion",
-  "shortcuts.shortcut": "Kürzel",
   "shortcuts.empty": "Keine Kürzel gefunden",
 
   "agentSource.rpc": "Runtime-Protokoll (JSON-RPC)",

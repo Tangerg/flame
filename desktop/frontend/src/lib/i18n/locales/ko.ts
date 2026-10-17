@@ -532,8 +532,6 @@ export const ko: Record<string, string> = {
     "내장 및 사용자 플러그인이 등록한 모든 키 바인딩. 앱 내 어디서든 조합 키를 눌러 실행할 수 있습니다. 바인딩 충돌은 항상 마지막 등록으로 해결됩니다.",
   "shortcuts.filter": "동작 또는 조합 키로 필터…",
   "shortcuts.filterAria": "단축키 필터",
-  "shortcuts.action": "동작",
-  "shortcuts.shortcut": "단축키",
   "shortcuts.empty": "일치하는 단축키가 없습니다",
 
   "agentSource.rpc": "런타임 프로토콜 (JSON-RPC)",

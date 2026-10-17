@@ -535,8 +535,6 @@ export const ja: Record<string, string> = {
     "組み込みおよびユーザープラグインによって登録されたすべてのキーバインド。アプリ内のどこでもコンボを押して発動できます。バインドの競合は常に最後の登録に解決されます。",
   "shortcuts.filter": "アクションまたはコンボで絞り込み…",
   "shortcuts.filterAria": "ショートカットを絞り込む",
-  "shortcuts.action": "アクション",
-  "shortcuts.shortcut": "ショートカット",
   "shortcuts.empty": "一致するショートカットはありません",
 
   "agentSource.rpc": "ランタイムプロトコル (JSON-RPC)",

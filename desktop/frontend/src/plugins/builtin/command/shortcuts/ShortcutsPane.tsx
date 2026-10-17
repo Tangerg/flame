@@ -1,64 +1,36 @@
 import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { Kbd, TextButton } from "@/ui";
-import { Button, EmptyState, SearchField, vocab } from "@flame/ui";
+import { Button, EmptyState, SearchField, TextField } from "@flame/ui";
 import { useT } from "@/lib/i18n";
-import { comboFromEvent, normalizeCombo, splitCombo } from "@/lib/combo";
+import { comboFromEvent, comboGlyph, normalizeCombo, splitCombo } from "@/lib/combo";
 import {
   SHORTCUT,
   useEffectiveCommands,
   useExtensionPoint,
   useShortcutOverrides,
 } from "@/plugins/sdk";
-import {
-  color,
-  layout,
-  motion,
-  space,
-  surface,
-  type as typeStep,
-  weight,
-} from "@flame/ui/tokens.stylex";
-import { SettingsGroup } from "@/plugins/builtin/settings/kit";
+import { color, layout, space } from "@flame/ui/tokens.stylex";
+import { SettingRow, SettingsGroup } from "@/plugins/builtin/settings/kit";
 
 const sc = stylex.create({
   pane: { display: "flex", flexDirection: "column", gap: layout.contentGap },
   toolbar: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: layout.controlGap },
-  table: { width: "100%", borderCollapse: "collapse", textAlign: "start" },
-  head: {
-    backgroundColor: surface.sunken,
-    color: color.fgFaint,
-    fontWeight: weight.semibold,
-  },
-  cell: {
-    textAlign: "start",
-    paddingInline: layout.cardPadding,
-    paddingBlock: layout.rowPadding,
-    overflowWrap: "anywhere",
-  },
-  keyColumn: { width: "40%", textAlign: "end" },
-  right: { textAlign: "end" },
-  row: {
-    backgroundColor: { default: null, ":hover": surface.hover },
-    transitionProperty: "background-color",
-    transitionTimingFunction: motion.easeState,
-  },
   keys: {
     display: "inline-flex",
     flexWrap: "wrap",
     alignItems: "center",
-    justifyContent: "flex-end",
     gap: space.s1,
   },
   controls: {
-    display: "inline-flex",
+    display: "flex",
     flexWrap: "wrap",
     alignItems: "center",
-    justifyContent: "flex-end",
     gap: layout.controlGap,
   },
-  note: { color: color.fgMuted },
+  recorder: { width: "12em", maxWidth: "100%" },
   warn: { color: color.warning },
 });
 
@@ -84,14 +56,157 @@ function Keys({ combo }: { combo: string }) {
   );
 }
 
+function ShortcutRow({
+  row,
+  rows,
+  recording,
+  onRecordingChange,
+  onReturnFocus,
+}: {
+  row: Row;
+  rows: readonly Row[];
+  recording: Recording | null;
+  onRecordingChange(recording: Recording | null): void;
+  onReturnFocus(trigger: HTMLButtonElement | null): void;
+}) {
+  const t = useT();
+  const change = useRef<HTMLButtonElement>(null);
+  const { rebind, reset } = useShortcutOverrides.getState();
+  const mine = recording?.commandId === row.id ? recording : null;
+  const conflict = mine?.conflict;
+  const locked = recording !== null && mine === null;
+
+  function closeRecorder(apply?: () => void) {
+    onReturnFocus(change.current);
+    apply?.();
+    onRecordingChange(null);
+  }
+
+  function capture(event: KeyboardEvent<HTMLInputElement>) {
+    if (!mine) return;
+    // Tab must leave the recorder so its cancellation control stays reachable.
+    if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (mine.conflict) return;
+    const combo = comboFromEvent(event);
+    if (!combo) return;
+    const holder = rows.find(
+      (other) =>
+        other.id !== row.id && other.combo !== undefined && normalizeCombo(other.combo) === combo,
+    );
+    if (holder) {
+      onRecordingChange({ commandId: row.id, conflict: { combo, with: holder } });
+      return;
+    }
+    closeRecorder(() => rebind(row.id, combo));
+  }
+
+  return (
+    <SettingRow
+      label={row.label}
+      sub={
+        conflict ? (
+          <span role="alert" {...stylex.props(sc.warn)}>
+            {t("shortcuts.conflict", { action: conflict.with.label })}
+          </span>
+        ) : mine ? (
+          <span role="status">{t("shortcuts.recording")}</span>
+        ) : row.combo ? (
+          <Keys combo={row.combo} />
+        ) : (
+          t("shortcuts.unbound")
+        )
+      }
+    >
+      {row.editable ? (
+        <div
+          role="group"
+          aria-label={row.label}
+          onKeyDownCapture={(event) => {
+            if (!mine || event.key !== "Escape") return;
+            event.preventDefault();
+            event.stopPropagation();
+            closeRecorder();
+          }}
+          {...stylex.props(sc.controls)}
+        >
+          {mine && (
+            <TextField
+              readOnly
+              // oxlint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+              aria-label={t("shortcuts.editAria", { action: row.label })}
+              value={comboGlyph(conflict?.combo ?? row.combo ?? "")}
+              onKeyDown={capture}
+              styles={sc.recorder}
+            />
+          )}
+          {conflict?.with.editable && (
+            <TextButton
+              tone="accent"
+              size="sm"
+              onClick={() =>
+                closeRecorder(() => {
+                  rebind(conflict.with.id, null);
+                  rebind(row.id, conflict.combo);
+                })
+              }
+            >
+              {t("shortcuts.replace")}
+            </TextButton>
+          )}
+          <TextButton
+            ref={change}
+            tone="muted"
+            size="sm"
+            disabled={locked}
+            aria-label={mine ? t("common.cancel") : t("shortcuts.editAria", { action: row.label })}
+            onClick={() =>
+              mine ? closeRecorder() : onRecordingChange({ commandId: row.id, conflict: null })
+            }
+          >
+            {mine ? t("common.cancel") : t("shortcuts.edit")}
+          </TextButton>
+          {!mine && row.overridden && (
+            <TextButton
+              tone="muted"
+              size="sm"
+              disabled={locked}
+              onClick={() => {
+                onReturnFocus(change.current);
+                reset(row.id);
+              }}
+            >
+              {t("shortcuts.reset")}
+            </TextButton>
+          )}
+        </div>
+      ) : undefined}
+    </SettingRow>
+  );
+}
+
 export function ShortcutsPane() {
   const t = useT();
   const commands = useEffectiveCommands();
   const fixed = useExtensionPoint(SHORTCUT);
   const overrides = useShortcutOverrides((state) => state.overrides);
-  const { rebind, reset, resetAll, setRecording } = useShortcutOverrides.getState();
+  const { resetAll, setRecording } = useShortcutOverrides.getState();
+  const filter = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [recording, setRecordingFor] = useState<Recording | null>(null);
+  const recordingActive = recording !== null;
+  const focusReturn = useRef<{ trigger: HTMLButtonElement | null } | undefined>(undefined);
+
+  useLayoutEffect(() => {
+    const request = focusReturn.current;
+    focusReturn.current = undefined;
+    if (!request) return;
+    // The update following a request can remove its trigger from combo-filtered results.
+    const target = request.trigger?.isConnected ? request.trigger : filter.current;
+    target?.focus();
+  });
 
   const rows = useMemo<Row[]>(
     () =>
@@ -125,50 +240,31 @@ export function ShortcutsPane() {
   }, [rows, query]);
 
   useEffect(() => {
-    setRecording(recording !== null && recording.conflict === null);
+    setRecording(recordingActive);
     return () => setRecording(false);
-  }, [recording, setRecording]);
-
-  useEffect(() => {
-    if (!recording || recording.conflict) return;
-    const onKey = (event: KeyboardEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (event.key === "Escape") {
-        setRecordingFor(null);
-        return;
-      }
-      const combo = comboFromEvent(event);
-      if (!combo) return;
-      const holder = rows.find(
-        (row) =>
-          row.id !== recording.commandId &&
-          row.combo !== undefined &&
-          normalizeCombo(row.combo) === combo,
-      );
-      if (holder) {
-        setRecordingFor({ commandId: recording.commandId, conflict: { combo, with: holder } });
-        return;
-      }
-      rebind(recording.commandId, combo);
-      setRecordingFor(null);
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [recording, rows, rebind]);
+  }, [recordingActive, setRecording]);
 
   return (
     <div {...stylex.props(sc.pane)}>
       <div {...stylex.props(sc.toolbar)}>
         <SearchField
+          ref={filter}
           size="lg"
+          disabled={recordingActive}
           value={query}
           onValueChange={setQuery}
           placeholder={t("shortcuts.filter")}
           aria-label={t("shortcuts.filterAria")}
         />
         {Object.keys(overrides).length > 0 && (
-          <Button variant="ghost" onClick={resetAll}>
+          <Button
+            variant="ghost"
+            disabled={recordingActive}
+            onClick={() => {
+              focusReturn.current = { trigger: null };
+              resetAll();
+            }}
+          >
             {t("shortcuts.resetAll")}
           </Button>
         )}
@@ -178,77 +274,18 @@ export function ShortcutsPane() {
         {shown.length === 0 ? (
           <EmptyState icon={iconGlyph("search")} title={t("shortcuts.empty")} />
         ) : (
-          <table {...stylex.props(sc.table, typeStep.uiMd)}>
-            <thead {...stylex.props(sc.head, typeStep.uiSm)}>
-              <tr>
-                <th {...stylex.props(sc.cell)}>{t("shortcuts.action")}</th>
-                <th {...stylex.props(sc.cell, sc.keyColumn)}>{t("shortcuts.shortcut")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((row) => {
-                const mine = recording?.commandId === row.id ? recording : null;
-                return (
-                  <tr key={row.id} {...stylex.props(sc.row)}>
-                    <td {...stylex.props(sc.cell, vocab.ink)}>{row.label}</td>
-                    <td {...stylex.props(sc.cell, sc.right)}>
-                      {mine?.conflict ? (
-                        <span role="alert" {...stylex.props(sc.controls, typeStep.uiSm)}>
-                          <span {...stylex.props(sc.warn)}>
-                            {t("shortcuts.conflict", { action: mine.conflict.with.label })}
-                          </span>
-                          {mine.conflict.with.editable ? (
-                            <TextButton
-                              tone="accent"
-                              onClick={() => {
-                                rebind(mine.conflict.with.id, null);
-                                rebind(row.id, mine.conflict.combo);
-                                setRecordingFor(null);
-                              }}
-                            >
-                              {t("shortcuts.replace")}
-                            </TextButton>
-                          ) : null}
-                          <TextButton tone="muted" onClick={() => setRecordingFor(null)}>
-                            {t("common.cancel")}
-                          </TextButton>
-                        </span>
-                      ) : mine ? (
-                        <span role="status" {...stylex.props(sc.controls, sc.note, typeStep.uiSm)}>
-                          {t("shortcuts.recording")}
-                        </span>
-                      ) : (
-                        <span {...stylex.props(sc.controls)}>
-                          {row.combo ? (
-                            <Keys combo={row.combo} />
-                          ) : (
-                            <span {...stylex.props(sc.note, typeStep.uiSm)}>
-                              {t("shortcuts.unbound")}
-                            </span>
-                          )}
-                          {row.editable && (
-                            <TextButton
-                              tone="muted"
-                              size="sm"
-                              aria-label={t("shortcuts.editAria", { action: row.label })}
-                              onClick={() => setRecordingFor({ commandId: row.id, conflict: null })}
-                            >
-                              {t("shortcuts.edit")}
-                            </TextButton>
-                          )}
-                          {row.overridden && (
-                            <TextButton tone="muted" size="sm" onClick={() => reset(row.id)}>
-                              {t("shortcuts.reset")}
-                            </TextButton>
-                          )}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          shown.map((row) => (
+            <ShortcutRow
+              key={row.id}
+              row={row}
+              rows={rows}
+              recording={recording}
+              onRecordingChange={setRecordingFor}
+              onReturnFocus={(trigger) => {
+                focusReturn.current = { trigger };
+              }}
+            />
+          ))
         )}
       </SettingsGroup>
     </div>

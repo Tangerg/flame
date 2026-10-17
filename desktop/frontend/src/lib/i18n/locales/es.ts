@@ -558,8 +558,6 @@ export const es: Record<string, string> = {
     "Cada combinación de teclas registrada por los plugins integrados y de usuario. Pulsa una combinación en cualquier parte de la app para activarla; los conflictos se resuelven siempre a favor del último registro.",
   "shortcuts.filter": "Filtrar por acción o combinación…",
   "shortcuts.filterAria": "Filtrar atajos",
-  "shortcuts.action": "Acción",
-  "shortcuts.shortcut": "Atajo",
   "shortcuts.empty": "Sin atajos coincidentes",
 
   "agentSource.rpc": "Protocolo de ejecución (JSON-RPC)",

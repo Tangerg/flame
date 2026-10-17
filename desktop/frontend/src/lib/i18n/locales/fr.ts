@@ -559,8 +559,6 @@ export const fr: Record<string, string> = {
     "Chaque raccourci enregistré par les plugins intégrés et utilisateur. Appuyez sur une combinaison n'importe où dans l'application pour l'activer ; les conflits de liaison sont toujours résolus en faveur du dernier enregistrement.",
   "shortcuts.filter": "Filtrer par action ou combinaison…",
   "shortcuts.filterAria": "Filtrer les raccourcis",
-  "shortcuts.action": "Action",
-  "shortcuts.shortcut": "Raccourci",
   "shortcuts.empty": "Aucun raccourci trouvé",
 
   "agentSource.rpc": "Protocole d'exécution (JSON-RPC)",

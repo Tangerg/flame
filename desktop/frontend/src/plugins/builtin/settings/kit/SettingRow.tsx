@@ -42,7 +42,7 @@ export function SettingRow({
   labelId?: string;
   sub: ReactNode;
   align?: "start" | "center" | "stacked";
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   const stacked = align === "stacked";
   return (
@@ -61,7 +61,7 @@ export function SettingRow({
         </div>
         <div {...stylex.props(ss.hintSpaced, typeStep.uiSm)}>{sub}</div>
       </div>
-      <div {...stylex.props(!stacked && styles.control)}>{children}</div>
+      {children != null && <div {...stylex.props(!stacked && styles.control)}>{children}</div>}
     </div>
   );
 }
