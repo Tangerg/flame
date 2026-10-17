@@ -1,13 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { DataView, SectionLabel, Surface, SystemMessage } from "@/ui";
-import { gap, vocab } from "@flame/ui";
+import { DataView, SectionLabel, SystemMessage } from "@/ui";
+import { gap, RecordGroup, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { useProviderConfigs } from "../application/providerConfig";
 import { needsProviderSetup } from "../application/providerSetup";
 import { ProviderRow } from "./ProviderRow";
 import { EmbeddingModelSection, UtilityModelSection } from "./RoleSections";
-import { SettingsGroup } from "../../settings/kit";
 
 export function ProvidersPane() {
   const t = useT();
@@ -36,23 +35,19 @@ export function ProvidersPane() {
         }}
       >
         {(rows) => (
-          <Surface
-            variant="group"
-            inset="xs"
-            className={stylex.props(vocab.column, gap.s1).className}
-          >
+          <RecordGroup variant="list">
             {rows.map((p) => (
               <ProviderRow key={p.id} p={p} />
             ))}
-          </Surface>
+          </RecordGroup>
         )}
       </DataView>
       <div {...stylex.props(vocab.column, gap.s2)}>
         <SectionLabel>{t("providers.roles.heading")}</SectionLabel>
-        <SettingsGroup>
+        <RecordGroup variant="list">
           <UtilityModelSection />
           <EmbeddingModelSection />
-        </SettingsGroup>
+        </RecordGroup>
       </div>
     </div>
   );

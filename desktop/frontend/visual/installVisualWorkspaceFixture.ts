@@ -1,19 +1,20 @@
+import { InstalledComponent } from "@/plugins/builtin/settings/plugins-pane/ui/InstalledComponent";
+import { Schedules } from "../../../plugins/schedules/src/component";
+import { visualComponentProps } from "./installedComponentProps";
+import { visualFileRenderers } from "./visualFileRenderers";
 import { Gallery } from "../../../plugins/icon-gallery/src/component";
-import { DiagnosticsReport } from "../../../plugins/diagnostics/src/component";
-import { captureClientTelemetry } from "@/lib/observability/clientTelemetry";
-import { DiffReport } from "../../../plugins/diff/src/component";
+import { Diagnostics } from "../../../plugins/diagnostics/src/component";
+import { WorkspaceDiff } from "../../../plugins/diff/src/component";
 import type { Diff } from "@flame/runtime-contract/wire";
-import { UsageReport } from "../../../plugins/usage/src/component";
-import { MemoryReport } from "../../../plugins/memory/src/component";
-import { TrajectoryReport } from "../../../plugins/trajectory/src/component";
-import { createElement, type ComponentProps } from "react";
-import type { TrajectoryEntry, UsageSummary } from "@flame/runtime-contract/wire";
+import { Usage } from "../../../plugins/usage/src/component";
+import { Memory } from "../../../plugins/memory/src/component";
+import { Trajectory } from "../../../plugins/trajectory/src/component";
+import { createElement } from "react";
 import { createBrowserHost } from "@/platform/browserHost";
 import { installLocalWorkspaceActions } from "@/plugins/builtin/workspace/adapters/localWorkspaceActions";
 import { WORKSPACE_DOCK_CATALOG } from "@/plugins/builtin/workspace/public/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import shortcutsSettings from "@/plugins/builtin/command/shortcuts";
-import { useRuntimeConnectionStore } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
 import { workbenchSettings } from "@/plugins/builtin/shell/workbench";
 import appearanceSettings from "@/plugins/builtin/settings/appearance";
 import { createProvidersPlugin } from "@/plugins/builtin/providers";
@@ -23,7 +24,6 @@ import { createHooksPlugin } from "@/plugins/builtin/settings/hooks";
 import { createMCPServersPlugin } from "@/plugins/builtin/settings/mcp-servers";
 import personalizationSettings from "@/plugins/builtin/settings/personalization";
 import { createPluginsPane } from "@/plugins/builtin/settings/plugins-pane";
-import { localePlugins } from "@/plugins/builtin/i18n";
 import { installWorkspaceErrorClassifier } from "@/plugins/builtin/workspace/adapters/runtimeWorkspaceErrorClassifier";
 import { installNotificationCentre } from "@/plugins/builtin/shell/status/adapters/systemNotifier";
 import {
@@ -33,16 +33,16 @@ import {
   type WorkspaceFileChange,
   type WorkspaceFileContent,
   type WorkspaceFileEntry,
+  type WorkspaceReadFileQuery,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
-import { visualFeatureCapabilities } from "./agentFixtureFacts";
+import { REVIEW_DIFF, scaledReview, ACTIVE_DIFF_FILE } from "./diffSnapshot";
+import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
+import { VISUAL_MEMORY_BINDING, VISUAL_SCHEDULES_BINDING } from "./componentSnapshots";
+import { Skills } from "../../../plugins/skills/src/component";
 import { fileView } from "@/plugins/builtin/workspace/views";
 import { DATA_PROVIDER, SHORTCUT, WORKSPACE_VIEW, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
-import type {
-  FlameClient,
-  FeatureCapability,
-  ServerCapabilities,
-} from "@flame/runtime-contract/client";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import {
   useContextDockStore,
   WorkspaceFileFocus,
@@ -66,87 +66,6 @@ import {
   DOCK_VIEW_BY_STATE,
 } from "./workspaceFixtureStates";
 
-const ACTIVE_DIFF_FILE =
-  "desktop/frontend/src/plugins/builtin/shell/workbench/panel/DockResizer.tsx";
-
-const REVIEW_DIFF: Diff = {
-  baseline: { type: "head", commit: "1234567890abcdef1234567890abcdef12345678" },
-  files: [
-    {
-      path: ACTIVE_DIFF_FILE,
-      status: "modified",
-      added: 18,
-      removed: 6,
-      rows: [
-        { type: "hunk", text: "@@ -104,8 +104,16 @@ export function DockResizer" },
-        {
-          type: "context",
-          leftLine: 104,
-          rightLine: 104,
-          code: "const rail = railRef.current;",
-        },
-        {
-          type: "deleted",
-          leftLine: 105,
-          code: "const width = clampDockWidth(persistedWidth, row.clientWidth);",
-        },
-        {
-          type: "added",
-          rightLine: 105,
-          code: "const currentWidth = readDockWidth(row);",
-        },
-        {
-          type: "added",
-          rightLine: 106,
-          code: "const nextWidth = clampDockWidth(currentWidth + delta, row.clientWidth);",
-        },
-        {
-          type: "context",
-          leftLine: 106,
-          rightLine: 107,
-          code: "row.style.setProperty(DOCK_WIDTH_PROPERTY, `${nextWidth}px`);",
-        },
-        {
-          type: "added",
-          rightLine: 108,
-          code: 'rail.setAttribute("aria-valuenow", String(nextWidth));',
-        },
-      ],
-    },
-    {
-      path: "runtime/protocol/session.go",
-      status: "modified",
-      added: 7,
-      removed: 3,
-      rows: [
-        { type: "hunk", text: "@@ -48,5 +48,7 @@ func (session *Session) Commit" },
-        {
-          type: "context",
-          leftLine: 48,
-          rightLine: 48,
-          code: "func (session *Session) Commit(ctx context.Context) error {",
-        },
-        {
-          type: "deleted",
-          leftLine: 49,
-          code: "\treturn session.store.Save(ctx, session)",
-        },
-        {
-          type: "added",
-          rightLine: 49,
-          code: "\tsnapshot := session.snapshot()",
-        },
-        {
-          type: "added",
-          rightLine: 50,
-          code: "\treturn session.records.Commit(ctx, snapshot)",
-        },
-        { type: "context", leftLine: 50, rightLine: 51, code: "}" },
-      ],
-    },
-  ],
-};
-
 const RESIZER_SOURCE: WorkspaceFileContent = {
   startLine: 1,
   totalLines: 8,
@@ -162,148 +81,59 @@ const RESIZER_SOURCE: WorkspaceFileContent = {
   ].join("\n"),
 };
 
-function feature(enabled: boolean): FeatureCapability {
-  return { enabled, clientOptIn: false, requiredByRunProtocol: false };
-}
-
-const VISUAL_CAPABILITIES: ServerCapabilities = {
-  runEvents: [],
-  runtimeTopics: [],
-  features: visualFeatureCapabilities(),
-  streamingMethods: [],
-  limits: {
-    runReplay: { scope: "runtimeInstanceRootSegment", maxEvents: 2_048, maxBytes: 16_777_216 },
-    runtimeSubscription: {
-      maxTopics: 32,
-      maxWatches: 32,
-      maxPaths: 256,
-      maxDirectoryEntries: 10000,
-      maxFileBytes: 1048576,
-    },
-    idempotency: { namespace: "idp_visual_fixture", retentionSeconds: 86_400 },
-    mcpAuthorizationAttempts: { retentionSeconds: 600 },
-  },
+const README_CONTENT = [
+  "# Workspace notes",
+  "",
+  "Keep the application boundary clear. **Runtime owns execution**; the interface presents the recorded work.",
+  "",
+  "## Review checklist",
+  "",
+  "- Inspect the riskiest change first.",
+  "- Verify the public contract and its callers.",
+  "- Keep every fact with one owner.",
+  "",
+  "> Preserve the original evidence when investigating a failure.",
+  "",
+  "### Verification",
+  "",
+  "Run `npm run check` before reviewing the visual changes.",
+  "",
+  "```ts",
+  'const outcome = "recorded";',
+  "```",
+  "",
+  "| Surface | Check |",
+  "| --- | --- |",
+  "| Memory | Review and edit |",
+  "| Schedules | Create and inspect |",
+].join("\n");
+const README_SOURCE: WorkspaceFileContent = {
+  content: README_CONTENT,
+  startLine: 1,
+  totalLines: README_CONTENT.split("\n").length,
 };
 
-function pending<T>(): Promise<T> {
-  return new Promise<T>(() => {});
-}
-
-function scaledReview(fileCount: number): Diff {
-  const files = Array.from({ length: fileCount }, (_, index) => {
-    const long = index % 10 === 0;
-    const rows: NonNullable<Diff["files"]>[number]["rows"] = [
-      { type: "hunk", text: `@@ -1,24 +1,30 @@ export function module${index}` },
-    ];
-    for (let line = 1; line <= 24; line++) {
-      const code = long
-        ? `export const value${line} = ${JSON.stringify("x".repeat(320))};`
-        : `export const value${line} = compute(${index}, ${line});`;
-      rows.push({ type: "context", leftLine: line, rightLine: line, code });
-      if (line % 4 === 0) {
-        rows.push({ type: "deleted", leftLine: line, code: `${code} // before` });
-        rows.push({ type: "added", rightLine: line, code: `${code} // after` });
-      }
-    }
-    return {
-      path: `src/generated/module-${String(index).padStart(3, "0")}.ts`,
-      status: "modified" as const,
-      added: 6,
-      removed: 6,
-      rows,
-    };
+function pending<T>(signal?: AbortSignal): Promise<T> {
+  signal?.throwIfAborted();
+  return new Promise<T>((_, reject) => {
+    signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
   });
-  return { baseline: REVIEW_DIFF.baseline, files };
 }
-
-function visualTrajectory(
-  snapshot: typeof RUNTIME_AGENT_SESSION_SNAPSHOTS.idle,
-): TrajectoryEntry[] {
-  const run = snapshot.runs[0]!;
-  const entries: TrajectoryEntry[] = [
-    ...snapshot.runs.map((value): TrajectoryEntry => ({
-      type: "run",
-      occurredAt: value.createdAt,
-      run: value,
-    })),
-    ...snapshot.items.map((item): TrajectoryEntry => ({
-      type: "item",
-      occurredAt: item.type === "toolCall" ? item.startedAt : item.createdAt,
-      item,
-    })),
-    {
-      type: "model",
-      occurredAt: "2026-07-31T08:00:01.000Z",
-      model: {
-        callId: "call_visual_inspect",
-        runId: run.id,
-        segmentId: "segment_visual",
-        state: "completed",
-        startedAt: "2026-07-31T08:00:01.000Z",
-        settledAt: "2026-07-31T08:00:02.420Z",
-        firstOutputLatencyMillis: 320,
-        usage: { inputTokens: 24_000, outputTokens: 310, cacheReadTokens: 18_000 },
-      },
-    },
-    {
-      type: "model",
-      occurredAt: "2026-07-31T08:00:06.000Z",
-      model: {
-        callId: "call_visual_recovered",
-        runId: run.id,
-        segmentId: "segment_visual",
-        state: "unknown",
-        startedAt: "2026-07-31T08:00:06.000Z",
-        settledAt: "2026-07-31T08:01:00.000Z",
-      },
-    },
-  ];
-  return entries.sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt));
-}
-
-const visualMemory: ComponentProps<typeof MemoryReport>["page"]["Rows"] = [
-  {
-    ID: "mem_00000000000000000000000000000002",
-    Scope: "project",
-    Day: "",
-    Project: "",
-    Embedding: [],
-    EmbeddingSpace: "",
-    Content: "Prefers the diff read worst-risk-first.",
-    Origin: "auto",
-    Status: "pending",
-    Pinned: false,
-    SessionID: VISUAL_SESSION_ID,
-    CreatedAt: "2026-07-30T16:20:00Z",
-    UpdatedAt: "2026-07-30T16:20:00Z",
-  },
-  {
-    ID: "mem_00000000000000000000000000000001",
-    Scope: "project",
-    Day: "",
-    Project: "",
-    Embedding: [],
-    EmbeddingSpace: "",
-    Content: "The compaction cutpoint is chosen by the Runtime, never by the client.",
-    Origin: "auto",
-    Status: "active",
-    Pinned: true,
-    SessionID: VISUAL_SESSION_ID,
-    CreatedAt: "2026-07-31T10:00:00Z",
-    UpdatedAt: "2026-07-31T10:00:00Z",
-  },
-];
 
 function workspaceDataPlugin(
-  state: VisualWorkspaceState,
-  review: Diff,
-  snapshot: typeof RUNTIME_AGENT_SESSION_SNAPSHOTS.idle,
+  readDiff: (signal?: AbortSignal) => Promise<Diff>,
+  runtimeClient: () => FlameClient,
 ): AnyPlugin {
   return definePlugin({
     name: "flame.visual.workspace-data",
     setup(ctx) {
       ctx.cleanup(installLocalWorkspaceActions(createBrowserHost(), () => false));
       const diagnosticsLifetime = ctx.lifetime("visual-diagnostics");
+      const diagnosticsSources = visualComponentProps(
+        runtimeClient(),
+        diagnosticsLifetime,
+        "diagnostics",
+      );
       diagnosticsLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:diagnostics",
         title: "Diagnostics",
@@ -311,26 +141,33 @@ function workspaceDataPlugin(
         dock: "workspace",
         material: "diagnostics",
         component: () =>
-          createElement(DiagnosticsReport, {
-            snapshot: captureClientTelemetry(diagnosticsLifetime.signal).read(),
+          createElement(InstalledComponent, {
+            ...diagnosticsSources,
+            scope: "installation",
+            entry: Diagnostics,
           }),
       });
       const galleryLifetime = ctx.lifetime("visual-icon-gallery");
       galleryLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:icon-gallery",
         title: "Icon gallery",
-        dock: "workspace",
         component: Gallery,
       });
       const lifetime = ctx.lifetime("visual-trajectory");
+      const trajectorySources = visualComponentProps(runtimeClient(), lifetime, "trajectory");
       lifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:trajectory",
         title: "Session trajectory",
         dock: "session",
         component: () =>
-          createElement(TrajectoryReport, { page: { data: visualTrajectory(snapshot) } }),
+          createElement(InstalledComponent, {
+            ...trajectorySources,
+            scope: "session",
+            entry: Trajectory,
+          }),
       });
       const diffLifetime = ctx.lifetime("visual-diff");
+      const diffSources = visualComponentProps(runtimeClient(), diffLifetime, "diff");
       diffLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:diff",
         title: "Workspace diff",
@@ -338,65 +175,87 @@ function workspaceDataPlugin(
         dock: "workspace",
         material: "diff",
         component: () =>
-          state === "dock-loading"
-            ? createElement("p", { role: "status" }, "Reading workspace diff…")
-            : state === "dock-error"
-              ? createElement(
-                  "p",
-                  { role: "alert" },
-                  "Visual fixture could not load the workspace diff",
-                )
-              : createElement(DiffReport, {
-                  snapshot: {
-                    diff: state === "dock-empty" ? { baseline: review.baseline } : review,
-                    focusPath: review.files?.[0]?.path,
-                  },
-                }),
+          createElement(InstalledComponent, {
+            ...diffSources,
+            scope: "workspace",
+            entry: WorkspaceDiff,
+          }),
       });
       const usageLifetime = ctx.lifetime("visual-usage");
+      const usageSources = visualComponentProps(runtimeClient(), usageLifetime, "usage");
       usageLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:usage",
         title: "Usage",
         icon: "chart",
         dock: "workspace",
-        component: () => createElement(UsageReport, { report: VISUAL_USAGE }),
+        component: () =>
+          createElement(InstalledComponent, { ...usageSources, scope: "client", entry: Usage }),
       });
       const memoryLifetime = ctx.lifetime("visual-memory");
+      const memorySources = visualComponentProps(
+        runtimeClient(),
+        memoryLifetime,
+        "memory",
+        VISUAL_MEMORY_BINDING,
+      );
       memoryLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:memory",
         title: "Agent memory",
         icon: "brain",
         dock: "workspace",
         component: () =>
-          createElement(MemoryReport, {
-            page: {
-              Rows: visualMemory,
-              NextCursor: "",
-              Capacity: 512,
-            },
-            disabled: true,
-            edit: () => {},
-            command: () => {},
+          createElement(InstalledComponent, {
+            ...memorySources,
+            scope: "client",
+            entry: Memory,
+          }),
+      });
+
+      const schedulesLifetime = ctx.lifetime("visual-schedules");
+      const schedulesSources = visualComponentProps(
+        runtimeClient(),
+        schedulesLifetime,
+        "schedules",
+        VISUAL_SCHEDULES_BINDING,
+      );
+      schedulesLifetime.contribute(WORKSPACE_VIEW, {
+        id: "package:visual:schedules",
+        title: "Schedules",
+        icon: "calendar",
+        dock: "workspace",
+        component: () =>
+          createElement(InstalledComponent, {
+            ...schedulesSources,
+            scope: "client",
+            entry: Schedules,
+          }),
+      });
+
+      const skillsLifetime = ctx.lifetime("visual-skills");
+      const skillsSources = visualComponentProps(runtimeClient(), skillsLifetime, "skills");
+      skillsLifetime.contribute(WORKSPACE_VIEW, {
+        id: "package:visual:skills",
+        title: "Skills",
+        icon: "book",
+        dock: "workspace",
+        component: () =>
+          createElement(InstalledComponent, {
+            ...skillsSources,
+            scope: "workspace",
+            entry: Skills,
           }),
       });
 
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_FILES_CHANGED_KEY,
-        fetcher: async () => {
-          if (state === "dock-loading") return pending<WorkspaceFileChange[]>();
-          if (state === "dock-error") {
-            throw new Error("Visual fixture could not load the workspace file changes");
-          }
-          if (state === "dock-empty") return [];
-          return [
-            {
-              path: "desktop/frontend/src/plugins/DockResizer.tsx",
-              change: "mod",
-              added: 18,
-              removed: 6,
-            },
-            { path: "runtime/protocol/session.go", change: "mod", added: 7, removed: 3 },
-          ] satisfies WorkspaceFileChange[];
+        fetcher: async (_, signal) => {
+          const diff = await readDiff(signal);
+          return (diff.files ?? []).map((file): WorkspaceFileChange => ({
+            path: file.path,
+            change: "mod",
+            added: file.added,
+            removed: file.removed,
+          }));
         },
       });
       ctx.contribute(DATA_PROVIDER, {
@@ -413,7 +272,8 @@ function workspaceDataPlugin(
 
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_READ_FILE_KEY,
-        fetcher: async () => RESIZER_SOURCE,
+        fetcher: async (params) =>
+          (params as WorkspaceReadFileQuery).path === "README.md" ? README_SOURCE : RESIZER_SOURCE,
       });
     },
   });
@@ -452,90 +312,13 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
   await loadPluginsForTest(...plugins);
 }
 
-const VISUAL_USAGE: UsageSummary = {
-  total: { inputTokens: 128_400, outputTokens: 41_900, costUsd: 4.12 },
-  recordedCostUsd: 4.12,
-  coverage: {
-    calls: 24,
-    reportedCalls: 24,
-    pricedCalls: 24,
-    startedCalls: 0,
-    completedCalls: 24,
-    failedCalls: 0,
-    unknownCalls: 0,
-  },
-  byProvider: [
-    {
-      key: "openai",
-      total: { inputTokens: 96_300, outputTokens: 31_200, costUsd: 3.04 },
-      recordedCostUsd: 3.04,
-      coverage: {
-        calls: 18,
-        reportedCalls: 18,
-        pricedCalls: 18,
-        startedCalls: 0,
-        completedCalls: 18,
-        failedCalls: 0,
-        unknownCalls: 0,
-      },
-    },
-    {
-      key: "anthropic",
-      total: { inputTokens: 32_100, outputTokens: 10_700, costUsd: 1.08 },
-      recordedCostUsd: 1.08,
-      coverage: {
-        calls: 6,
-        reportedCalls: 6,
-        pricedCalls: 6,
-        startedCalls: 0,
-        completedCalls: 6,
-        failedCalls: 0,
-        unknownCalls: 0,
-      },
-    },
-  ],
-  byModel: [
-    {
-      key: "openai/gpt-5.6-sol",
-      total: { inputTokens: 96_300, outputTokens: 31_200, costUsd: 3.04 },
-      recordedCostUsd: 3.04,
-      coverage: {
-        calls: 18,
-        reportedCalls: 18,
-        pricedCalls: 18,
-        startedCalls: 0,
-        completedCalls: 18,
-        failedCalls: 0,
-        unknownCalls: 0,
-      },
-    },
-    {
-      key: "anthropic/claude-opus-5",
-      total: { inputTokens: 32_100, outputTokens: 10_700, costUsd: 1.08 },
-      recordedCostUsd: 1.08,
-      coverage: {
-        calls: 6,
-        reportedCalls: 6,
-        pricedCalls: 6,
-        startedCalls: 0,
-        completedCalls: 6,
-        failedCalls: 0,
-        unknownCalls: 0,
-      },
-    },
-  ],
-  byDay: [],
-  byOrigin: [],
-  byScope: [],
-  sessions: 7,
-  runs: 24,
-};
-
 const OPENED_BY_ITS_OWN_STATE = new Set([
   "subagents",
   "package:visual:diagnostics",
   "package:visual:memory",
   "package:visual:usage",
+  "package:visual:schedules",
+  "package:visual:skills",
 ]);
 
 const FULL_VIEW_ID = "file";
@@ -543,21 +326,13 @@ const FULL_VIEW_ID = "file";
 export interface VisualWorkspaceConfig {
   pane?: VisualSettingsPane;
   fullViewId?: string;
-  reviewFiles?: number;
-  agentState?: VisualAgentState;
 }
 
-export async function installVisualWorkspaceFixture(
-  runtimeClient: () => FlameClient,
+export function visualWorkspaceRuntime(
   state: VisualWorkspaceState,
-  theme: VisualWorkspaceTheme,
-  {
-    pane = "appearance",
-    fullViewId = FULL_VIEW_ID,
-    reviewFiles,
-    agentState: requestedAgentState,
-  }: VisualWorkspaceConfig = {},
-): Promise<void> {
+  requestedAgentState?: VisualAgentState,
+  reviewFiles?: number,
+) {
   const agentState =
     requestedAgentState ??
     (state === "dock-light"
@@ -568,16 +343,30 @@ export async function installVisualWorkspaceFixture(
           ? "tool-shells"
           : "idle");
   const snapshot = structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS[agentState]);
-  await installVisualAgentFixture(runtimeClient, agentState, undefined, snapshot);
+  const capabilities =
+    state === "dock-feature-off"
+      ? { ...VISUAL_CAPABILITIES, features: { git: VISUAL_CAPABILITIES.features!.git! } }
+      : VISUAL_CAPABILITIES;
+  const review = reviewFiles === undefined ? REVIEW_DIFF : scaledReview(reviewFiles);
+  const readDiff = async (signal?: AbortSignal): Promise<Diff> => {
+    if (state === "dock-loading") return pending<Diff>(signal);
+    if (state === "dock-error") throw new Error("Visual fixture could not load the workspace diff");
+    return state === "dock-empty" ? { baseline: review.baseline } : review;
+  };
+  return { agentState, snapshot, capabilities, readDiff };
+}
+
+export async function installVisualWorkspaceFixture(
+  runtimeClient: () => FlameClient,
+  state: VisualWorkspaceState,
+  theme: VisualWorkspaceTheme,
+  { agentState, snapshot, capabilities, readDiff }: ReturnType<typeof visualWorkspaceRuntime>,
+  { pane = "appearance", fullViewId = FULL_VIEW_ID }: VisualWorkspaceConfig = {},
+): Promise<void> {
+  await installVisualAgentFixture(runtimeClient, agentState, undefined, snapshot, capabilities);
 
   installWorkspaceErrorClassifier();
   installNotificationCentre(createBrowserHost());
-  useRuntimeConnectionStore.setState({
-    capabilities:
-      state === "dock-feature-off"
-        ? { ...VISUAL_CAPABILITIES, features: { git: feature(true) } }
-        : VISUAL_CAPABILITIES,
-  });
 
   const dockViewId =
     state === "dock-catalog"
@@ -609,7 +398,7 @@ export async function installVisualWorkspaceFixture(
     view: state === "settings" ? "settings" : state === "full-view" ? fullViewId : null,
     settings: state === "settings" ? pane : null,
   });
-  useAppearanceStore.setState({ theme, visualStyle: "flame", motionScale: 0 });
+  useAppearanceStore.setState({ theme, visualStyle: "flame" });
   useShellLayoutStore.setState({
     sidebarCollapsed: false,
     sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
@@ -624,7 +413,6 @@ export async function installVisualWorkspaceFixture(
   await loadVisualPlugins([
     fileView,
     workbenchSettings,
-    ...localePlugins,
     appearanceSettings,
     createProvidersPlugin(runtimeClient),
     shortcutsSettings,
@@ -636,11 +424,8 @@ export async function installVisualWorkspaceFixture(
     createPluginsPane(runtimeClient, () => "http://visual.test"),
     visualNotifier,
     visualShortcuts,
-    workspaceDataPlugin(
-      state,
-      reviewFiles === undefined ? REVIEW_DIFF : scaledReview(reviewFiles),
-      snapshot,
-    ),
+    workspaceDataPlugin(readDiff, runtimeClient),
+    visualFileRenderers(runtimeClient),
   ]);
 
   const root = document.documentElement;

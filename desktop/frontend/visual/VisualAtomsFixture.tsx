@@ -12,7 +12,6 @@ import {
   Gauge,
   Kbd,
   Loader,
-  PillButton,
   ProgressBar,
   SectionLabel,
   Segmented,
@@ -29,8 +28,10 @@ import {
 } from "@/ui";
 import {
   Panel,
-  Toolbar,
-  PanelTitle,
+  PanelHeader,
+  FilterBar,
+  FormField,
+  FormRow,
   ListRow,
   Metadata,
   Select,
@@ -121,16 +122,26 @@ function ChoiceSpecimen({ multiple }: { multiple: boolean }) {
 
 export function VisualAtomsFixture() {
   const [status, setStatus] = useState("pending");
+  const [search, setSearch] = useState("");
   return (
     <main data-slot="atoms-gallery" {...stylex.props(styles.page)}>
       <Specimen name="shared-panel">
         <Panel label="Shared Memory controls">
-          <Toolbar label="Memory overview">
-            <PanelTitle>Agent memory</PanelTitle>
-            <Badge tone="accent">Pending review</Badge>
-          </Toolbar>
-          <Toolbar label="Memory filters">
+          <PanelHeader title="Agent memory" description="Facts and preferences for future work." />
+          <FilterBar
+            label="Memory filters"
+            search={
+              <SearchField
+                size="lg"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                aria-label="Search memory"
+                placeholder="Recorded text or ID"
+              />
+            }
+          >
             <Select
+              size="lg"
               label="Memory status"
               value={status}
               onValueChange={setStatus}
@@ -139,12 +150,22 @@ export function VisualAtomsFixture() {
                 { value: "active", label: "Active" },
               ]}
             />
-          </Toolbar>
+          </FilterBar>
           <ListRow>
             <p>Keep the durable fact with its owner.</p>
             <Metadata>Project · User authored · Pinned</Metadata>
           </ListRow>
         </Panel>
+      </Specimen>
+      <Specimen name="form-alignment">
+        <FormRow>
+          <FormField label="Short label">
+            <TextField aria-label="Short form value" defaultValue="One line" />
+          </FormField>
+          <FormField label="A longer translated field label that wraps onto several lines">
+            <TextField aria-label="Long form value" defaultValue="One line" />
+          </FormField>
+        </FormRow>
       </Specimen>
       <Specimen name="button">
         <div {...stylex.props(styles.row)}>
@@ -167,13 +188,6 @@ export function VisualAtomsFixture() {
           <IconButton icon={iconGlyph("settings")} size="md" aria-label="Settings" />
           <IconButton icon={iconGlyph("bell")} size="md" badge={3} aria-label="Notifications" />
           <IconButton icon={iconGlyph("trash")} size="sm" disabled aria-label="Delete" />
-        </div>
-      </Specimen>
-      <Specimen name="pill-button">
-        <div {...stylex.props(styles.row)}>
-          <PillButton variant="outlined">Outlined</PillButton>
-          <PillButton variant="solid">Solid</PillButton>
-          <PillButton variant="danger">Danger</PillButton>
         </div>
       </Specimen>
       <Specimen name="text-button">
@@ -220,7 +234,12 @@ export function VisualAtomsFixture() {
           <TextField defaultValue="Filled value" aria-label="Filled" />
           <TextField defaultValue="Invalid value" invalid aria-label="Invalid" />
           <TextField defaultValue="Disabled" disabled aria-label="Disabled" />
-          <SearchField placeholder="Search…" aria-label="Search" />
+          <SearchField
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search…"
+            aria-label="Search"
+          />
           <TextArea placeholder="Write a note" aria-label="Note" />
         </div>
       </Specimen>
@@ -310,6 +329,74 @@ export function VisualAtomsFixture() {
           <SkeletonList count={2} label="Loading" />
         </div>
       </Specimen>
+    </main>
+  );
+}
+
+export function VisualInputContractFixture() {
+  const initial = "A short note";
+  const [value, setValue] = useState(initial);
+  const [search, setSearch] = useState("match");
+  const [visible, setVisible] = useState(false);
+  const [narrow, setNarrow] = useState(false);
+  const [fontSize, setFontSize] = useState(14);
+  return (
+    <main {...stylex.props(styles.page)}>
+      <section {...stylex.props(styles.column)} style={{ width: narrow ? 180 : 440 }}>
+        <Button variant="outline" onClick={() => setVisible(!visible)}>
+          {visible ? "Hide notes" : "Show notes"}
+        </Button>
+        <Button variant="outline" onClick={() => setNarrow(!narrow)}>
+          Toggle note width
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setFontSize((current) => (current === 14 ? 24 : 14))}
+        >
+          Toggle note font
+        </Button>
+        <form onReset={() => setValue(initial)}>
+          <div hidden={!visible}>
+            <TextArea
+              autosize
+              rows={1}
+              aria-label="Controlled note"
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              style={{ maxHeight: 160, fontSize }}
+            />
+            <TextArea
+              autosize
+              rows={1}
+              aria-label="Uncontrolled note"
+              defaultValue={initial}
+              style={{ maxHeight: 160 }}
+            />
+          </div>
+          <Button variant="outline" type="reset">
+            Reset notes
+          </Button>
+        </form>
+        <SearchField
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          onClear={() => setSearch("")}
+          aria-label="Editable search"
+          clearLabel="Clear editable search"
+        />
+        {(["disabled", "readOnly", "pending"] as const).map((state) => (
+          <SearchField
+            key={state}
+            value="fixed"
+            {...{ [state]: true }}
+            onClear={() => {
+              throw new Error("Immutable search cleared");
+            }}
+            aria-label={`${state} search`}
+            clearLabel={`Clear ${state} search`}
+          />
+        ))}
+      </section>
     </main>
   );
 }

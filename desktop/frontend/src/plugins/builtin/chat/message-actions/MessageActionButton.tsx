@@ -8,7 +8,7 @@ interface MessageActionButtonProps {
   onClick?: () => void;
   tone?: ButtonTone;
   className?: string;
-  "aria-label"?: string;
+  "aria-label": string;
   "aria-pressed"?: boolean;
 }
 

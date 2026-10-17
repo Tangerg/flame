@@ -14,13 +14,14 @@ const STEPS: Readonly<
   >
 > = {
   "ui-2xs": { ratio: 0.714, floorPx: 9 },
-  "ui-xs": { ratio: 0.786, floorPx: 9 },
-  "ui-sm": { ratio: 0.857, floorPx: 10 },
+  "ui-xs": { ratio: 0.857, floorPx: 9 },
+  "ui-sm": { ratio: 0.929, floorPx: 10 },
   "ui-md": { ratio: 1, floorPx: UI_FONT_SIZE_MIN_PX },
   prose: { ratio: 1, floorPx: 0 },
   code: { ratio: 0.857, floorPx: 10 },
-  "display-sm": { aboveProse: true, ratio: 1.286, floorPx: 0 },
-  "display-md": { aboveProse: true, ratio: 1.429, floorPx: 0 },
+  "display-sm": { aboveProse: true, ratio: 1.143, floorPx: 0 },
+  "display-md": { aboveProse: true, ratio: 1.286, floorPx: 0 },
+  "display-lg": { aboveProse: true, ratio: 1.714, floorPx: 0 },
 };
 
 export function uiTypeLadder(basePx: number | null | undefined): UiTypeLadder {
@@ -52,5 +53,6 @@ export function uiTypeLadderCssVariables(
     "--fs-code": `${ladder.code}px`,
     "--fs-display-sm": `${ladder["display-sm"]}px`,
     "--fs-display-md": `${ladder["display-md"]}px`,
+    "--fs-display-lg": `${ladder["display-lg"]}px`,
   };
 }

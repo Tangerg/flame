@@ -1,4 +1,11 @@
 export const ko: Record<string, string> = {
+  "packages.installTitle": "플러그인 설치",
+  "packages.installedTitle": "설치된 패키지",
+  "packages.details": "릴리스 세부 정보",
+  "packages.actions": "패키지 작업",
+  "packages.digest": "릴리스 다이제스트",
+  "plugins.loadedTitle": "클라이언트에 로드된 플러그인",
+
   "packages.module.loading": "플러그인 화면 로딩 중…",
   "packages.module.failed": "플러그인 화면을 불러오거나 표시할 수 없습니다.",
   "packages.module.unavailable": "플러그인을 사용할 수 없습니다.",
@@ -126,6 +133,8 @@ export const ko: Record<string, string> = {
   "dock.tabs.label": "오른쪽 작업 영역 패널",
   "dock.tabs.closeAll": "모든 패널 닫기",
   "dock.tabs.closeOthers": "다른 패널 닫기",
+  "dock.tabs.moveLeft": "패널을 왼쪽으로 이동",
+  "dock.tabs.moveRight": "패널을 오른쪽으로 이동",
   "workspace.view.openBeside": "컨텍스트 독에서 열기",
   "workspace.view.unavailable.title": "뷰를 사용할 수 없음",
   "workspace.view.unavailable.body":
@@ -314,7 +323,7 @@ export const ko: Record<string, string> = {
   "providers.empty": "공급자 없음",
   "providers.empty.sub": "런타임이 지원되는 LLM 공급자를 보고하지 않습니다.",
   "plugins.hero":
-    "이 빌드가 로드하는 모든 플러그인. 실패한 플러그인은 발생한 오류와 함께 목록에 남아, 손상된 기여가 사라지지 않고 드러납니다.",
+    "플러그인 패키지를 설치·관리하고 공급자를 선택하며 로드된 클라이언트 플러그인을 확인하세요.",
   "plugins.errorDetail.show": "오류 세부 정보 표시",
   "plugins.errorDetail.hide": "오류 세부 정보 숨기기",
   "plugins.errors_other": "오류 {{count}}건",
@@ -716,7 +725,6 @@ export const ko: Record<string, string> = {
   "mcp.import.renamed": "런타임이 허용하는 형식으로 이름을 변경했습니다: {{names}}",
   "mcp.import.error": "해당 설정을 가져올 수 없습니다.",
   "mcp.tools.manage": "도구 관리",
-  "mcp.tools.tool": "도구",
   "mcp.tools.enabled": "사용",
   "mcp.tools.autoApprove": "자동 승인",
   "mcp.tools.empty": "이 서버는 도구를 제공하지 않습니다",
@@ -743,6 +751,7 @@ export const ko: Record<string, string> = {
   "file.error.sub": "이동되었거나 워크스페이스 밖에 있을 수 있습니다.",
   "composer.key.historyPrevDesc": "이전 메시지 불러오기",
   "composer.key.historyNextDesc": "다음 메시지 불러오기",
+  "mcp.import.config": "JSON 구성",
   "mcp.import.hint":
     'MCP 클라이언트 설정 블록을 붙여넣으세요 — "mcpServers" 아래의 서버 하나 이상.',
 

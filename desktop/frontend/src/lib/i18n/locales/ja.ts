@@ -1,4 +1,11 @@
 export const ja: Record<string, string> = {
+  "packages.installTitle": "プラグインをインストール",
+  "packages.installedTitle": "インストール済みパッケージ",
+  "packages.details": "リリースの詳細",
+  "packages.actions": "パッケージの操作",
+  "packages.digest": "リリースのダイジェスト",
+  "plugins.loadedTitle": "読み込まれたクライアントプラグイン",
+
   "packages.module.loading": "プラグインのビューを読み込み中…",
   "packages.module.failed": "プラグインのビューを読み込みまたは表示できません。",
   "packages.module.unavailable": "プラグインは利用できません。",
@@ -127,6 +134,8 @@ export const ja: Record<string, string> = {
   "dock.tabs.label": "右ワークスペースのパネル",
   "dock.tabs.closeAll": "すべてのパネルを閉じる",
   "dock.tabs.closeOthers": "他のパネルを閉じる",
+  "dock.tabs.moveLeft": "パネルを左に移動",
+  "dock.tabs.moveRight": "パネルを右に移動",
   "workspace.view.openBeside": "コンテキストドックで開く",
   "workspace.view.unavailable.title": "ビューを利用できません",
   "workspace.view.unavailable.body":
@@ -316,7 +325,7 @@ export const ja: Record<string, string> = {
   "providers.empty": "プロバイダーがありません",
   "providers.empty.sub": "ランタイムはサポートされている LLM プロバイダーを報告していません。",
   "plugins.hero":
-    "このビルドが読み込むすべてのプラグイン。失敗したものは発生したエラーとともに一覧に残るため、壊れた拡張は消えるのではなく見える形になります。",
+    "プラグインパッケージの管理、プロバイダーの選択、読み込まれたクライアントプラグインの確認を行います。",
   "plugins.errorDetail.show": "エラー詳細を表示",
   "plugins.errorDetail.hide": "エラー詳細を非表示",
   "plugins.errors_other": "{{count}} 件のエラー",
@@ -721,7 +730,6 @@ export const ja: Record<string, string> = {
   "mcp.import.renamed": "ランタイムが受け付ける形式に改名しました: {{names}}",
   "mcp.import.error": "その設定をインポートできませんでした。",
   "mcp.tools.manage": "ツールを管理",
-  "mcp.tools.tool": "ツール",
   "mcp.tools.enabled": "有効",
   "mcp.tools.autoApprove": "自動承認",
   "mcp.tools.empty": "このサーバーはツールを公開していません",
@@ -748,6 +756,7 @@ export const ja: Record<string, string> = {
   "file.error.sub": "移動されたか、ワークスペース外にある可能性があります。",
   "composer.key.historyPrevDesc": "前のメッセージを呼び出す",
   "composer.key.historyNextDesc": "次のメッセージを呼び出す",
+  "mcp.import.config": "JSON 設定",
   "mcp.import.hint":
     'MCP クライアントの設定ブロックを貼り付けてください — "mcpServers" 配下の1つ以上のサーバー。',
 

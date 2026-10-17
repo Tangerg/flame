@@ -6,14 +6,20 @@ import { Button, type ButtonProps, type ButtonSize } from "./button";
 import { GlyphSwap } from "./glyph-swap";
 import { Tooltip } from "./tooltip";
 
-interface IconButtonProps extends Omit<ButtonProps, "children" | "size"> {
+type IconButtonProps = Omit<
+  ButtonProps,
+  "children" | "size" | "aria-label" | "aria-labelledby"
+> & {
   icon: IconGlyph;
   hoverIcon?: IconGlyph;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   iconSize?: IconSize | number;
   title?: string;
   badge?: string | number;
-}
+} & (
+    | { "aria-label": string; "aria-labelledby"?: never }
+    | { "aria-label"?: never; "aria-labelledby": string }
+  );
 
 const BOX: Record<NonNullable<IconButtonProps["size"]>, ButtonSize> = {
   xs: "icon-xs",
@@ -62,10 +68,9 @@ export function IconButton({
 }: IconButtonProps) {
   const hasBadge = badge !== undefined && badge !== "" && badge !== 0;
   return (
-    <Tooltip label={title}>
+    <Tooltip label={title ?? props["aria-label"]}>
       <Button
         {...props}
-        aria-label={props["aria-label"] ?? title}
         size={BOX[size]}
         className={className}
         styles={[hasBadge && styles.host, extra]}

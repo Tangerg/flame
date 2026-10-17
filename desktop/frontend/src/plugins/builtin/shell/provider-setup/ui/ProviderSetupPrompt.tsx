@@ -1,6 +1,7 @@
+import { Button } from "@flame/ui";
 import * as stylex from "@stylexjs/stylex";
 import { PROVIDERS_PANE } from "@/plugins/builtin/settings/kit/panes";
-import { Icon, PillButton, Surface } from "@/ui";
+import { Icon, Surface } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
 import { needsProviderSetup, useProviders } from "@/plugins/builtin/providers/public/queries";
@@ -28,14 +29,14 @@ export function ProviderSetupPrompt() {
         <div {...stylex.props(ps.stack)}>
           <div {...stylex.props(ps.title, typeStep.uiMd)}>{t("providers.setup.title")}</div>
           <p {...stylex.props(ps.body, typeStep.uiMd)}>{t("providers.setup.sub")}</p>
-          <PillButton
-            variant="solid"
+          <Button
+            variant="primary"
             onClick={() => openWorkspaceSettingsPane(PROVIDERS_PANE)}
             className={stylex.props(ps.action).className}
           >
             <Icon name="settings" size="sm" />
             {t("providers.setup.action")}
-          </PillButton>
+          </Button>
         </div>
       </div>
     </Surface>

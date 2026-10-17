@@ -1,15 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComponentContext } from "@flame/plugin-sdk";
-import { ChartColumn } from "@flame/icons/react";
-import type { UsageBucket, UsageSummary } from "@flame/runtime-contract/wire";
+import { ChartColumn, Refresh } from "@flame/icons/react";
+import type { UsageSummary } from "@flame/runtime-contract/wire";
 import {
-  Button,
   Panel,
-  PanelTitle,
-  DataTable,
+  PanelHeader,
+  PanelSection,
+  ListRow,
+  RecordHeading,
+  RecordMeta,
+  Facts,
+  ShareBar,
+  MetricValue,
+  IconButton,
+  Disclosure,
+  RecordGroup,
   EmptyState,
   Metadata,
   SearchField,
+  FilterBar,
   Select,
   Stats,
   Toolbar,
@@ -46,43 +55,66 @@ export function UsageReport({ report }: { report: UsageSummary }) {
   const matching = buckets.filter((bucket) =>
     bucket.key.toLocaleLowerCase().includes(filter.toLocaleLowerCase()),
   );
-  const rows = matching.map((bucket: UsageBucket) => [
-    bucket.key,
-    cost(bucket.recordedCostUsd),
-    `${bucket.coverage.reportedCalls}/${bucket.coverage.calls}`,
-    `${bucket.coverage.pricedCalls}/${bucket.coverage.calls}`,
-    ...fields.map(([, key]) => number.format(bucket.total[key] ?? 0)),
-  ]);
   return (
     <>
-      <Stats
-        id="totals"
-        aria-label="Recorded usage totals"
-        values={[
-          ["Known price subtotal (USD)", cost(report.recordedCostUsd)],
-          ["Total cost (USD)", cost(report.total.costUsd)],
-          ...fields.map(
-            ([label, key]) =>
+      <PanelSection
+        title="Overview"
+        description={`${number.format(report.coverage.calls)} model attempts · ${number.format(report.coverage.reportedCalls)} with usage · ${number.format(report.coverage.pricedCalls)} priced`}
+      >
+        <Stats
+          id="totals"
+          aria-label="Recorded usage totals"
+          values={[
+            report.total.costUsd === undefined
+              ? ["Known price subtotal (USD)", cost(report.recordedCostUsd)]
+              : ["Total cost (USD)", cost(report.total.costUsd)],
+            [
+              "Known input tokens",
+              number.format(report.total.inputTokens ?? 0),
+            ],
+            [
+              "Known output tokens",
+              number.format(report.total.outputTokens ?? 0),
+            ],
+          ]}
+        />
+        <Disclosure title="Accounting details">
+          <Facts
+            values={[
+              ["Known price subtotal (USD)", cost(report.recordedCostUsd)],
+              ["Total cost (USD)", cost(report.total.costUsd)],
+              ...fields.map(
+                ([label, key]) =>
+                  [
+                    `Known ${label.toLowerCase()}`,
+                    number.format(report.total[key] ?? 0),
+                  ] as const,
+              ),
+              ["Model attempts", number.format(report.coverage.calls)],
               [
-                `Known ${label.toLowerCase()}`,
-                number.format(report.total[key] ?? 0),
-              ] as const,
-          ),
-          ["Model attempts", number.format(report.coverage.calls)],
-          [
-            "Usage recorded",
-            `${report.coverage.reportedCalls}/${report.coverage.calls}`,
-          ],
-          [
-            "Priced attempts",
-            `${report.coverage.pricedCalls}/${report.coverage.calls}`,
-          ],
-          ["In progress", number.format(report.coverage.startedCalls)],
-          ["Outcome unknown", number.format(report.coverage.unknownCalls)],
-          ["Associated Sessions", number.format(report.sessions)],
-          ["Associated Runs", number.format(report.runs)],
-        ]}
-      />
+                "Usage recorded",
+                `${report.coverage.reportedCalls}/${report.coverage.calls}`,
+              ],
+              [
+                "Priced attempts",
+                `${report.coverage.pricedCalls}/${report.coverage.calls}`,
+              ],
+              ["In progress", number.format(report.coverage.startedCalls)],
+              ["Outcome unknown", number.format(report.coverage.unknownCalls)],
+              ["Associated Sessions", number.format(report.sessions)],
+              ["Associated Runs", number.format(report.runs)],
+            ]}
+          />
+          <Metadata>
+            Token totals include reported usage only. Unknown outcomes and
+            unreported usage may add consumption. The known price subtotal
+            includes priced attempts only; total cost requires every attempt to
+            be priced. Deleted or never recorded calls cannot be reconstructed.
+            Zero tokens are recorded values. “Not reported” means there is no
+            complete price for that total or bucket.
+          </Metadata>
+        </Disclosure>
+      </PanelSection>
       <div id="empty" hidden={report.coverage.calls !== 0}>
         <EmptyState
           icon={ChartColumn}
@@ -91,64 +123,97 @@ export function UsageReport({ report }: { report: UsageSummary }) {
           sub="Choose another period above or refresh after model activity."
         />
       </div>
-      <section
+      <PanelSection
         id="breakdown"
         aria-label="Usage breakdown"
         hidden={report.coverage.calls === 0}
+        title="Usage breakdown"
+        description={`Recorded costs by ${options.find((option) => option.value === group)!.label.toLowerCase()}`}
       >
-        <Toolbar label="Usage filters">
+        <FilterBar
+          label="Usage filters"
+          search={
+            <SearchField
+              size="lg"
+              id="filter"
+              aria-label="Filter"
+              placeholder="Find a source"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+            />
+          }
+        >
           <Select
+            size="lg"
             label="Group by"
             value={group}
             onValueChange={setGroup}
             options={options}
           />
-          <SearchField
-            id="filter"
-            aria-label="Filter"
-            placeholder="Provider or model"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-          />
-        </Toolbar>
-        <DataTable
-          regionLabel="Scrollable usage breakdown"
-          caption={`Reported usage by ${options.find((option) => option.value === group)!.label.toLowerCase()}`}
-          columns={[
-            { label: "Source" },
-            ...[
-              "Known cost (USD)",
-              "Usage / attempts",
-              "Priced / attempts",
-              "Input",
-              "Output",
-              "Cache read",
-              "Cache write",
-              "Reasoning",
-            ].map((label) => ({ label, numeric: true })),
-          ]}
-          rows={rows}
-        />
-        {!matching.length && (
-          <EmptyState
-            size="compact"
-            title="No matching rows."
-            sub="Clear the filter to show recorded usage."
-          />
-        )}
-        <Metadata>
-          Token totals include reported usage only. Unknown outcomes and
-          unreported usage may add consumption. The known price subtotal
-          includes priced attempts only; total cost requires every attempt to be
-          priced. Filtering rows does not change the report. Deleted or never
-          recorded calls cannot be reconstructed.
-        </Metadata>
-      </section>
-      <Metadata>
-        Zero tokens are recorded values. “Not reported” means Runtime has no
-        complete price for that total or bucket. Child execution is counted
-        through its owning Run; detached utility-model work is excluded.
-      </Metadata>
+        </FilterBar>
+        <RecordGroup variant="list" aria-label="Recorded usage by source">
+          {matching.map((bucket) => (
+            <ListRow key={bucket.key}>
+              <RecordHeading
+                title={bucket.key}
+                actions={
+                  <MetricValue>{cost(bucket.recordedCostUsd)} USD</MetricValue>
+                }
+                description={
+                  <RecordMeta>
+                    <span>{number.format(bucket.coverage.calls)} attempts</span>
+                    <span>
+                      {number.format(bucket.total.inputTokens ?? 0)} known input
+                    </span>
+                    <span>
+                      {number.format(bucket.total.outputTokens ?? 0)} known
+                      output tokens
+                    </span>
+                  </RecordMeta>
+                }
+              />
+              {bucket.recordedCostUsd !== undefined &&
+                report.recordedCostUsd !== undefined &&
+                report.recordedCostUsd > 0 && (
+                  <ShareBar
+                    value={bucket.recordedCostUsd}
+                    total={report.recordedCostUsd}
+                  />
+                )}
+              <Disclosure title="Token and coverage details">
+                <Facts
+                  values={[
+                    ["Known cost (USD)", cost(bucket.recordedCostUsd)],
+                    [
+                      "Usage / attempts",
+                      `${bucket.coverage.reportedCalls}/${bucket.coverage.calls}`,
+                    ],
+                    [
+                      "Priced / attempts",
+                      `${bucket.coverage.pricedCalls}/${bucket.coverage.calls}`,
+                    ],
+                    ...fields.map(
+                      ([label, key]) =>
+                        [
+                          `Known ${label.toLowerCase()}`,
+                          number.format(bucket.total[key] ?? 0),
+                        ] as const,
+                    ),
+                  ]}
+                />
+              </Disclosure>
+            </ListRow>
+          ))}
+          {!matching.length && (
+            <EmptyState
+              size="compact"
+              title="No matching rows."
+              sub="Clear the filter to show recorded usage."
+            />
+          )}
+        </RecordGroup>
+        <Metadata>Filtering rows does not change the report totals.</Metadata>
+      </PanelSection>
     </>
   );
 }
@@ -199,35 +264,46 @@ export function Usage({ context }: { context: ComponentContext }) {
   }, [refresh]);
   return (
     <Panel label="Usage">
-      <Toolbar label="Usage report actions">
-        <PanelTitle>Usage</PanelTitle>
-        <Select
-          label="Period"
-          value={period.value}
-          options={periods.map(({ value, label }) => ({ value, label }))}
-          onValueChange={(value) =>
-            setPeriod(periods.find((item) => item.value === value)!)
-          }
-        />
-        <Button disabled={read.loading} onClick={() => void refresh()}>
-          Refresh
-        </Button>
-      </Toolbar>
-      <Metadata>
-        Retained model attempts in the selected period, including auxiliary and
-        unattached calls.
-      </Metadata>
+      <PanelHeader
+        title="Usage"
+        description="Recorded model usage and cost."
+        actions={
+          <>
+            <Toolbar label="Usage report actions">
+              <Select
+                label="Period"
+                value={period.value}
+                options={periods.map(({ value, label }) => ({ value, label }))}
+                onValueChange={(value) =>
+                  setPeriod(periods.find((item) => item.value === value)!)
+                }
+              />
+            </Toolbar>
+            <IconButton
+              icon={Refresh}
+              aria-label="Refresh"
+              size="md"
+              disabled={read.loading}
+              onClick={() => void refresh()}
+            />
+          </>
+        }
+      />
+
       {read.loading && <p role="status">Reading usage…</p>}
       {read.error && (
         <p role="alert">The current report could not be read: {read.error}</p>
       )}
       {read.accepted && (
         <>
-          <p role="status">
+          <Metadata
+            role="status"
+            className={read.accepted.period === period ? "sr-only" : undefined}
+          >
             Recorded usage loaded. {read.accepted.period.label}.
             {read.accepted.period !== period &&
               " Showing the last accepted period while the selected period is unavailable."}
-          </p>
+          </Metadata>
           <UsageReport report={read.accepted.report} />
         </>
       )}

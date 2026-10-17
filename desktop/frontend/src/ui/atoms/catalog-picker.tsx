@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
+import { FIELD_SURFACE } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { color, motion, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { ComboboxPrimitive } from "@/ui/primitives";
@@ -20,12 +21,7 @@ const styles = stylex.create({
     flexShrink: 0,
     alignItems: "center",
     gap: space.s2,
-    borderRadius: radius.field,
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    backgroundColor: surface.canvas,
     paddingInline: "calc(var(--spacing) * 2 - var(--control-edge-width))",
-    borderColor: { default: surface.field, ":focus-within": surface.fieldFocus },
     color: { default: color.fgMuted, ":focus-within": color.fg },
   },
   glyph: { flexShrink: 0 },
@@ -228,11 +224,12 @@ function CatalogTrigger({
 
 function CatalogSearch({ placeholder, ref }: { placeholder: string; ref?: Ref<HTMLInputElement> }) {
   return (
-    <div {...stylex.props(styles.searchBox)}>
+    <div {...stylex.props(FIELD_SURFACE.face, styles.searchBox)}>
       <Icon name="search" size="sm" {...stylex.props(styles.glyph)} />
       <ComboboxPrimitive.Input
         ref={ref}
         aria-label={placeholder}
+        data-chrome-focus=""
         placeholder={placeholder}
         {...stylex.props(styles.input, type.uiMd)}
       />
@@ -457,7 +454,6 @@ export function RailCatalogPicker({
                     aria-pressed={group.id === active?.id}
                     aria-label={group.label}
                     title={group.label}
-                    data-chrome-focus=""
                     onClick={() => {
                       setGroupId(group.id);
                     }}

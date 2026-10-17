@@ -34,13 +34,17 @@ export function Icon({
   glyph: IconGlyph;
   size?: IconSize | number;
 }) {
-  const fontSize = useContext(FontScale);
+  const fontSize = useFontSize();
   return (
     <Glyph
       {...props}
       size={typeof size === "number" ? size : iconSizePx(size, fontSize)}
     />
   );
+}
+
+export function useFontSize(): number {
+  return useContext(FontScale);
 }
 
 function subscribe(callback: () => void) {

@@ -1,4 +1,11 @@
 export const de: Record<string, string> = {
+  "packages.installTitle": "Plugin installieren",
+  "packages.installedTitle": "Installierte Pakete",
+  "packages.details": "Versionsdetails",
+  "packages.actions": "Paketaktionen",
+  "packages.digest": "Versionsprüfsumme",
+  "plugins.loadedTitle": "Geladene Client-Plugins",
+
   "packages.module.loading": "Plugin-Ansicht wird geladen…",
   "packages.module.failed": "Die Plugin-Ansicht konnte nicht geladen oder angezeigt werden.",
   "packages.module.unavailable": "Das Plugin ist nicht verfügbar.",
@@ -129,6 +136,8 @@ export const de: Record<string, string> = {
   "dock.tabs.label": "Bereiche im rechten Arbeitsbereich",
   "dock.tabs.closeAll": "Alle Bereiche schließen",
   "dock.tabs.closeOthers": "Andere Bereiche schließen",
+  "dock.tabs.moveLeft": "Bereich nach links verschieben",
+  "dock.tabs.moveRight": "Bereich nach rechts verschieben",
   "workspace.view.openBeside": "Im Kontext-Dock öffnen",
   "workspace.view.unavailable.title": "Ansicht nicht verfügbar",
   "workspace.view.unavailable.body":
@@ -323,7 +332,7 @@ export const de: Record<string, string> = {
   "providers.empty": "Keine Anbieter",
   "providers.empty.sub": "Die Runtime meldet keine unterstützten LLM-Anbieter.",
   "plugins.hero":
-    "Jedes Plugin, das dieser Build lädt. Ein fehlgeschlagenes behält seinen Platz samt ausgelöstem Fehler, damit ein defekter Beitrag sichtbar bleibt statt einfach zu fehlen.",
+    "Plugin-Pakete installieren und verwalten, Anbieter auswählen und geladene Client-Plugins prüfen.",
   "plugins.errorDetail.show": "Fehlerdetails anzeigen",
   "plugins.errorDetail.hide": "Fehlerdetails ausblenden",
   "plugins.errors_one": "{{count}} Fehler",
@@ -744,7 +753,6 @@ export const de: Record<string, string> = {
   "mcp.import.renamed": "Umbenannt, damit die Runtime sie akzeptiert: {{names}}",
   "mcp.import.error": "Diese Konfiguration konnte nicht importiert werden.",
   "mcp.tools.manage": "Tools verwalten",
-  "mcp.tools.tool": "Tool",
   "mcp.tools.enabled": "Aktiviert",
   "mcp.tools.autoApprove": "Automatisch genehmigen",
   "mcp.tools.empty": "Dieser Server stellt keine Tools bereit",
@@ -772,6 +780,7 @@ export const de: Record<string, string> = {
   "file.error.sub": "Sie wurde möglicherweise verschoben oder liegt außerhalb des Arbeitsbereichs.",
   "composer.key.historyPrevDesc": "Vorherige Nachricht abrufen",
   "composer.key.historyNextDesc": "Nächste Nachricht abrufen",
+  "mcp.import.config": "JSON-Konfiguration",
   "mcp.import.hint":
     'Füge einen MCP-Client-Konfigurationsblock ein — einen oder mehrere Server unter "mcpServers".',
 

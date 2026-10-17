@@ -75,6 +75,8 @@ export const radius = stylex.defineVars({
   sm: "var(--shape-sm)",
   lg: "var(--shape-lg)",
   field: "var(--field-radius)",
+  mark: "var(--mark-radius)",
+  menu: "var(--menu-item-radius)",
   segmented: "var(--segmented-radius)",
   segment: "var(--segment-radius)",
   row: "var(--row-radius)",
@@ -144,6 +146,11 @@ export const type = stylex.create({
     letterSpacing: "var(--tracking-display)",
     lineHeight: "var(--text-display-md--line-height)",
   },
+  displayLg: {
+    fontSize: "var(--fs-display-lg)",
+    letterSpacing: "var(--tracking-display)",
+    lineHeight: "var(--leading-snug)",
+  },
   code: {
     fontSize: "var(--fs-code)",
     letterSpacing: "var(--text-code--letter-spacing)",
@@ -154,4 +161,19 @@ export const type = stylex.create({
 export const face = stylex.create({
   text: { fontFamily: "var(--font-sans)" },
   mono: { fontFamily: "var(--font-mono)", letterSpacing: 0 },
+});
+
+export const layout = stylex.defineVars({
+  pageWidth: "var(--layout-page-width)",
+  pageGutter: "var(--layout-page-gutter)",
+  pageBlock: "var(--layout-page-block)",
+  compactGutter: "var(--layout-compact-gutter)",
+  contentGap: "var(--layout-content-gap)",
+  labelGap: "var(--layout-label-gap)",
+  rowPadding: "var(--layout-row-padding)",
+  sectionGap: "var(--layout-section-gap)",
+  cardPadding: "var(--layout-card-padding)",
+  fieldGap: "var(--layout-field-gap)",
+  controlGap: "var(--layout-control-gap)",
+  menuInset: "var(--layout-menu-inset)",
 });

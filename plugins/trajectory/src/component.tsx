@@ -5,7 +5,14 @@ import {
 } from "@flame/plugin-sdk";
 import type { MutationPromise } from "@flame/runtime-contract/client";
 import type { ReactNode } from "react";
-import { Activity } from "@flame/icons/react";
+import {
+  Activity,
+  Refresh,
+  Cpu,
+  Terminal,
+  FileText,
+  Server,
+} from "@flame/icons/react";
 import type {
   Page,
   Session,
@@ -13,8 +20,16 @@ import type {
 } from "@flame/runtime-contract/wire";
 import {
   Button,
+  Badge,
   Panel,
-  PanelTitle,
+  PanelHeader,
+  PanelSection,
+  PanelFooter,
+  IconButton,
+  Form,
+  FormField,
+  FormSection,
+  FormActions,
   CodeBlock,
   Disclosure,
   EmptyState,
@@ -22,7 +37,9 @@ import {
   Facts,
   Metadata,
   RecordGroup,
+  RecordSummary,
   SearchField,
+  FilterBar,
   Select,
   Stats,
   Toolbar,
@@ -64,18 +81,80 @@ function evidence(row: TrajectoryEntry): TrajectoryEntry {
   const { text: _redacted, ...item } = row.item;
   return { ...row, item };
 }
-function title(row: TrajectoryEntry): string {
-  if (row.type === "run")
-    return `Run · ${row.run.id} · ${row.run.provider}/${row.run.model} · ${row.run.outcome?.type ?? row.run.status}`;
-  if (row.type === "model")
-    return `Model call · ${row.model.callId} · ${row.model.state}`;
-  if (row.type === "endpoint")
-    return `Model endpoint · ${row.endpoint.id} · ${row.endpoint.provider}/${row.endpoint.model} · ${row.endpoint.state}`;
-  const item = row.item;
-  return `${item.type} · ${item.id} · ${item.type === "toolCall" ? item.tool.name : item.status}${item.type === "toolCall" && item.approvalDecision ? ` · ${item.approvalDecision}` : ""}`;
+function identity(row: TrajectoryEntry): string {
+  return row.type === "run"
+    ? row.run.id
+    : row.type === "model"
+      ? row.model.callId
+      : row.type === "endpoint"
+        ? row.endpoint.id
+        : row.item.id;
+}
+const ITEM_TITLE = {
+  agentMessage: "Agent response",
+  userMessage: "User message",
+  reasoning: "Reasoning",
+  question: "Question",
+  compaction: "Context compaction",
+};
+function title(row: TrajectoryEntry) {
+  let title: string;
+  let state: string;
+  let decision: string | undefined;
+  if (row.type === "run") {
+    title = `Run · ${row.run.provider}/${row.run.model}`;
+    state = row.run.outcome?.type ?? row.run.status;
+  } else if (row.type === "model") {
+    title = "Model call";
+    state = row.model.state;
+  } else if (row.type === "endpoint") {
+    title = `Model endpoint · ${row.endpoint.provider}/${row.endpoint.model}`;
+    state = row.endpoint.state;
+  } else {
+    const item = row.item;
+    title = item.type === "toolCall" ? item.tool.name : ITEM_TITLE[item.type];
+    state = item.status;
+    if (item.type === "toolCall") decision = item.approvalDecision;
+  }
+  return (
+    <RecordSummary
+      icon={
+        row.type === "run"
+          ? Activity
+          : row.type === "model"
+            ? Cpu
+            : row.type === "endpoint"
+              ? Server
+              : row.item.type === "toolCall"
+                ? Terminal
+                : FileText
+      }
+      title={title}
+      description={
+        <>
+          <time dateTime={row.occurredAt}>
+            {new Intl.DateTimeFormat(navigator.language, {
+              hour: "numeric",
+              minute: "2-digit",
+              second: "2-digit",
+            }).format(new Date(row.occurredAt))}
+          </time>
+          {decision && ` · Approval: ${decision}`}
+        </>
+      }
+      status={
+        <Badge tone={needsAttention(row) ? "warning" : "neutral"}>
+          {state}
+        </Badge>
+      }
+    />
+  );
 }
 function Observation({ row }: { row: TrajectoryEntry }) {
-  const facts: Fact[] = [["Run ID", runId(row) || "Session only"]];
+  const facts: Fact[] = [
+    ["Record ID", identity(row)],
+    ["Run ID", runId(row) || "Session only"],
+  ];
   const notes: ReactNode[] = [];
   if (row.type === "model") {
     const source = row.model;
@@ -198,14 +277,6 @@ export function TrajectoryReport({ page }: { page: Page<TrajectoryEntry> }) {
         values={[
           ["Page records", rows.length],
           [
-            "Logical model calls",
-            rows.filter((row) => row.type === "model").length,
-          ],
-          [
-            "Model endpoints",
-            rows.filter((row) => row.type === "endpoint").length,
-          ],
-          [
             "Tool calls",
             rows.filter(
               (row) => row.type === "item" && row.item.type === "toolCall",
@@ -214,80 +285,114 @@ export function TrajectoryReport({ page }: { page: Page<TrajectoryEntry> }) {
           ["Needs attention", rows.filter(needsAttention).length],
         ]}
       />
-      <Toolbar label="Observation filters">
-        <Select
-          id="kind"
-          label="Observation type"
-          value={kind}
-          onValueChange={setKind}
-          options={[
-            { value: "all", label: "All observations" },
-            { value: "run", label: "Runs" },
-            { value: "model", label: "Logical model calls" },
-            { value: "endpoint", label: "Model endpoints" },
-            { value: "toolCall", label: "Tool calls" },
-            { value: "message", label: "Messages" },
-            { value: "attention", label: "Needs attention" },
-          ]}
-        />
-        <Select
-          id="run"
-          label="Run filter"
-          value={selectedRun}
-          onValueChange={setRun}
-          options={runOptions}
-        />
-        <SearchField
-          id="search"
-          aria-label="Filter this page"
-          placeholder="Recorded text or ID"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      </Toolbar>
-      <RecordGroup id="records" aria-label="Trajectory observations">
-        {matching.map((row) => (
-          <Disclosure
-            key={`${row.type}:${row.type === "model" ? row.model.callId : row.type === "run" ? row.run.id : row.type === "endpoint" ? row.endpoint.id : row.item.id}`}
-            data-trajectory-record={`${row.type}:${row.type === "model" ? row.model.callId : row.type === "run" ? row.run.id : row.type === "endpoint" ? row.endpoint.id : row.item.id}`}
-            data-trajectory-kind={
-              row.type === "item" ? row.item.type : row.type
-            }
-            title={title(row)}
-          >
-            <Metadata>
-              <time dateTime={row.occurredAt}>
-                {new Intl.DateTimeFormat(navigator.language, {
-                  dateStyle: "medium",
-                  timeStyle: "medium",
-                }).format(new Date(row.occurredAt))}
-              </time>
-            </Metadata>
-            <Observation row={row} />
-          </Disclosure>
-        ))}
-        {!matching.length && (
-          <EmptyState
-            icon={Activity}
-            size="compact"
-            title={
-              rows.length
-                ? "No records on this page match this filter."
-                : "No recorded trajectory observations."
-            }
-            sub={
-              rows.length
-                ? "Clear the filter or select All observations."
-                : "Refresh after a Run records observations."
-            }
+
+      <PanelSection
+        title="Recorded activity"
+        description={`${matching.length} of ${rows.length} records on this page`}
+      >
+        <FilterBar
+          label="Observation filters"
+          search={
+            <SearchField
+              size="lg"
+              id="search"
+              aria-label="Filter this page"
+              placeholder="Recorded text or ID"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          }
+        >
+          <Select
+            size="lg"
+            id="kind"
+            label="Observation type"
+            value={kind}
+            onValueChange={setKind}
+            options={[
+              { value: "all", label: "All observations" },
+              { value: "run", label: "Runs" },
+              { value: "model", label: "Logical model calls" },
+              { value: "endpoint", label: "Model endpoints" },
+              { value: "toolCall", label: "Tool calls" },
+              { value: "message", label: "Messages" },
+              { value: "attention", label: "Needs attention" },
+            ]}
           />
-        )}
-      </RecordGroup>
-      <Metadata>
-        Counts and filters apply to this page. Missing provider evidence stays
-        unrecorded; timestamps do not imply causality. Export complete Session
-        trajectory from the trusted command menu.
-      </Metadata>
+          <Select
+            size="lg"
+            id="run"
+            label="Run filter"
+            value={selectedRun}
+            onValueChange={setRun}
+            options={runOptions}
+          />
+        </FilterBar>
+        <RecordGroup
+          variant="list"
+          id="records"
+          aria-label="Trajectory observations"
+        >
+          {matching.map((row) => (
+            <Disclosure
+              variant="row"
+              key={`${row.type}:${identity(row)}`}
+              data-trajectory-record={`${row.type}:${identity(row)}`}
+              data-trajectory-kind={
+                row.type === "item" ? row.item.type : row.type
+              }
+              title={title(row)}
+            >
+              <Metadata>
+                <time dateTime={row.occurredAt}>
+                  {new Intl.DateTimeFormat(navigator.language, {
+                    dateStyle: "medium",
+                    timeStyle: "medium",
+                  }).format(new Date(row.occurredAt))}
+                </time>
+              </Metadata>
+              <Observation row={row} />
+            </Disclosure>
+          ))}
+          {!matching.length && (
+            <EmptyState
+              icon={Activity}
+              size="compact"
+              title={
+                rows.length
+                  ? "No records on this page match this filter."
+                  : "No recorded trajectory observations."
+              }
+              sub={
+                rows.length
+                  ? "Clear the filter or select All observations."
+                  : "Refresh after a Run records observations."
+              }
+            />
+          )}
+        </RecordGroup>
+        <Disclosure title="Model activity">
+          <Facts
+            values={[
+              [
+                "Logical model calls",
+                rows.filter((row) => row.type === "model").length,
+              ],
+              [
+                "Model endpoints",
+                rows.filter((row) => row.type === "endpoint").length,
+              ],
+            ]}
+          />
+        </Disclosure>
+      </PanelSection>
+      <Disclosure title="About these records">
+        <Metadata>
+          Counts and filters apply to this page. Missing provider evidence stays
+          unrecorded; timestamps do not imply causality. Export complete Session
+          trajectory from the trusted command menu.
+        </Metadata>
+      </Disclosure>
     </>
   );
 }
@@ -365,51 +470,70 @@ export function Trajectory({ context }: { context: ComponentContext }) {
   const accepted = read.accepted;
   return (
     <Panel label="Session trajectory">
-      <Toolbar label="Trajectory read actions">
-        <PanelTitle>Session trajectory</PanelTitle>
-        <Button disabled={read.loading} onClick={() => void load()}>
-          Refresh
-        </Button>
-      </Toolbar>
-      <Metadata>
-        Recorded Run, model and Item evidence for Session {sessionId}.
-      </Metadata>
+      <PanelHeader
+        title="Session trajectory"
+        context={
+          <Metadata>
+            Session <code>{sessionId}</code>
+          </Metadata>
+        }
+        description="Inspect recorded runs, model calls and tool activity."
+        actions={
+          <IconButton
+            icon={Refresh}
+            aria-label="Refresh"
+            size="md"
+            disabled={read.loading}
+            onClick={() => void load()}
+          />
+        }
+      />
+
       {read.loading && <p role="status">Reading recorded observations…</p>}
       {read.error && (
         <p role="alert">The requested page could not be read: {read.error}</p>
       )}
       {accepted && (
         <>
-          <p role="status">
+          <Metadata
+            role="status"
+            className={read.error ? undefined : "sr-only"}
+          >
             {accepted.page.data.length} recorded observations loaded on page{" "}
             {accepted.cursors.length}.
             {read.error && " Showing the last accepted page."}
-          </p>
+          </Metadata>
           <TrajectoryReport page={accepted.page} />
-          <Toolbar label="Trajectory pages">
-            <Button
-              disabled={read.loading || accepted.cursors.length === 1}
-              onClick={() =>
-                void load(
-                  accepted.cursors.slice(0, -1),
-                  accepted.includeDescendants,
-                )
-              }
-            >
-              Newer records
-            </Button>
-            <Button
-              disabled={read.loading || !accepted.page.nextCursor}
-              onClick={() =>
-                void load(
-                  [...accepted.cursors, accepted.page.nextCursor!],
-                  accepted.includeDescendants,
-                )
-              }
-            >
-              Older records
-            </Button>
-          </Toolbar>
+          {(accepted.cursors.length > 1 ||
+            Boolean(accepted.page.nextCursor)) && (
+            <PanelFooter>
+              {" "}
+              <Toolbar label="Trajectory pages">
+                <Button
+                  disabled={read.loading || accepted.cursors.length === 1}
+                  onClick={() =>
+                    void load(
+                      accepted.cursors.slice(0, -1),
+                      accepted.includeDescendants,
+                    )
+                  }
+                >
+                  Newer records
+                </Button>
+                <Button
+                  disabled={read.loading || !accepted.page.nextCursor}
+                  onClick={() =>
+                    void load(
+                      [...accepted.cursors, accepted.page.nextCursor!],
+                      accepted.includeDescendants,
+                    )
+                  }
+                >
+                  Older records
+                </Button>
+              </Toolbar>
+            </PanelFooter>
+          )}
         </>
       )}
     </Panel>
@@ -444,7 +568,7 @@ export function RenameSession({ context }: { context: ComponentContext }) {
     }
   };
   return (
-    <form
+    <Form
       onSubmit={(event) => {
         event.preventDefault();
         if (pending.current || unknown || saved || context.signal.aborted)
@@ -459,53 +583,65 @@ export function RenameSession({ context }: { context: ComponentContext }) {
         );
       }}
     >
-      <Metadata>
-        Session {session.id} · Captured revision {session.revision}
-      </Metadata>
-      <TextField
-        aria-label="Session title"
-        value={title}
-        disabled={busy || Boolean(unknown) || Boolean(saved)}
-        onChange={(event) => setTitle(event.target.value)}
-      />
-      {failure && (
-        <p role="alert">
-          {failure} The captured revision remains unchanged; reopen this action
-          to inspect the current Session.
-        </p>
-      )}
-      {unknown && (
-        <>
-          <p role="status">
-            The change is unconfirmed. Reconcile the original command before
-            submitting another edit.
+      <FormSection title="Session details">
+        <FormField label="Session title">
+          <TextField
+            aria-label="Session title"
+            value={title}
+            disabled={busy || Boolean(unknown) || Boolean(saved)}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        </FormField>
+        {failure && (
+          <p role="alert">
+            {failure} The captured revision remains unchanged; reopen this
+            action to inspect the current Session.
           </p>
-          <Button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              if (pending.current || context.signal.aborted) return;
-              void observe(unknown.retry());
-            }}
-          >
-            Reconcile original command
-          </Button>
-        </>
-      )}
-      {saved && (
-        <p role="status">
-          Saved {saved.id} · Revision {saved.revision} ·{" "}
-          {saved.title || "Untitled"}. Close and reopen to make another edit.
-        </p>
-      )}
-      <Button
-        type="submit"
-        disabled={
-          busy || Boolean(unknown) || Boolean(saved) || context.signal.aborted
-        }
-      >
-        Save title
-      </Button>
-    </form>
+        )}
+        {unknown && (
+          <>
+            <p role="status">
+              The change is unconfirmed. Reconcile the original command before
+              submitting another edit.
+            </p>
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (pending.current || context.signal.aborted) return;
+                void observe(unknown.retry());
+              }}
+            >
+              Reconcile original command
+            </Button>
+          </>
+        )}
+        {saved && (
+          <p role="status">
+            Saved {saved.id} · Revision {saved.revision} ·{" "}
+            {saved.title || "Untitled"}. Close and reopen to make another edit.
+          </p>
+        )}
+        <Disclosure title="Captured session">
+          <Facts
+            values={[
+              ["Session", session.id],
+              ["Revision", session.revision],
+            ]}
+          />
+        </Disclosure>
+      </FormSection>
+      <FormActions label="Save session title">
+        <Button
+          variant="primary"
+          type="submit"
+          disabled={
+            busy || Boolean(unknown) || Boolean(saved) || context.signal.aborted
+          }
+        >
+          Save title
+        </Button>
+      </FormActions>
+    </Form>
   );
 }

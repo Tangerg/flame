@@ -1,3 +1,4 @@
+import { sharedRuntimePackages } from "./shared-runtime.mjs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { stylexPlugin } from "./stylex.vite.mjs";
@@ -9,12 +10,12 @@ import path from "node:path";
  * It deliberately lives outside the production router and Wails bootstrap:
  * fixtures may freeze clocks, content, appearance, and viewport without adding
  * a debug branch to the shipped application. They still import the production
- * CSS and components, so a screenshot exercises the same visual implementation.
+ * CSS and components for behavioral checks and manual visual review.
  */
 export default defineConfig({
   plugins: [react(), stylexPlugin()],
   resolve: {
-    dedupe: ["react", "react-dom", "@base-ui/react"],
+    dedupe: sharedRuntimePackages,
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
     },

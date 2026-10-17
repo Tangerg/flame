@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { disclosureExitTransition, disclosureTransition, selectionTransition } from "./motion";
+import { visualStyleMotion, motionScale } from "./appearance";
+import { disclosureExitTransition, disclosureTransition } from "./motion";
 
 const seconds = (transition: { duration?: number }): number => transition.duration ?? 0;
 
@@ -11,10 +12,10 @@ describe("motion ladder", () => {
     ).toBeLessThan(seconds(disclosureTransition));
   });
 
-  it("spends the rung below rather than a number of its own", () => {
+  it("uses the theme fast rung for disclosure exits", () => {
     expect(
       seconds(disclosureExitTransition),
       "a duration the ladder cannot express is one nobody can hold",
-    ).toBe(seconds(selectionTransition));
+    ).toBe((visualStyleMotion().fastMs / 1000) * motionScale());
   });
 });

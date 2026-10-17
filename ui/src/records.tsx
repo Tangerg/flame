@@ -1,60 +1,158 @@
 import * as stylex from "@stylexjs/stylex";
-import { Fragment, type ComponentPropsWithRef, type ReactNode } from "react";
+import { type ComponentPropsWithRef, type ReactNode } from "react";
 import {
   color,
   leading,
+  layout,
   radius,
   space,
   surface,
   type,
   weight,
 } from "./tokens.stylex";
+import { CARD_SURFACE } from "./control-surface";
 import { WELL_SURFACE } from "./well-surface";
+import { Icon, type IconGlyph } from "./font-scale";
 
 const styles = stylex.create({
   group: {
-    display: "grid",
+    display: { default: "grid", ":empty": "none" },
     gridTemplateColumns: "minmax(0,1fr)",
-    gap: space.s3,
+    gap: layout.contentGap,
+  },
+  list: {
+    gap: 0,
+    overflow: "clip",
+  },
+  cards: {
+    gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,20rem),1fr))",
+  },
+  heading: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: layout.contentGap,
+    flexWrap: "wrap",
+    minWidth: 0,
+  },
+  headingCopy: {
+    display: "grid",
+    gap: space.s2,
+    flex: "1 1 12rem",
+    minWidth: 0,
+  },
+  headingLine: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: space.s2,
+  },
+  actions: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    columnGap: layout.contentGap,
+    rowGap: space.s1,
+    minWidth: 0,
+  },
+  meta: {
+    display: "inline-flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    columnGap: layout.contentGap,
+    rowGap: space.s1,
+    minWidth: 0,
+    color: color.fgMuted,
+    fontWeight: weight.regular,
+    overflowWrap: "anywhere",
   },
   title: {
+    margin: 0,
     minWidth: 0,
-    flexGrow: 1,
-    fontWeight: weight.semibold,
+    fontWeight: weight.medium,
     overflowWrap: "anywhere",
     textWrap: "balance",
+    lineHeight: leading.snug,
+  },
+  summary: {
+    display: "flex",
+    alignItems: "center",
+    gap: layout.contentGap,
+    width: "100%",
+    minWidth: 0,
+  },
+  mark: {
+    display: "grid",
+    placeItems: "center",
+    flexShrink: 0,
+    width: space.s9,
+    height: space.s9,
+    borderRadius: radius.lg,
+    backgroundColor: surface.canvas,
+    color: color.fgMuted,
+  },
+  summaryCopy: { display: "grid", gap: space.s1, flex: 1, minWidth: 0 },
+  summaryTitle: {
+    color: color.fg,
+    fontWeight: weight.medium,
+    overflowWrap: "anywhere",
+  },
+  summaryDescription: {
+    color: color.fgMuted,
+    overflowWrap: "anywhere",
+    fontWeight: weight.regular,
   },
   body: {
+    margin: 0,
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
     lineHeight: leading.body,
     maxWidth: "75ch",
+    textWrapStyle: "pretty",
+  },
+  document: {
+    minWidth: 0,
+    width: "100%",
+    maxWidth: "75ch",
+    lineHeight: leading.prose,
+    overflowWrap: "anywhere",
+    textWrap: "pretty",
   },
   facts: {
     display: "grid",
-    gridTemplateColumns: "minmax(0,1fr) minmax(0,2fr)",
-    columnGap: space.s3,
-    rowGap: space.s1_5,
+    gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,12rem),1fr))",
+    gap: layout.fieldGap,
     paddingBlock: space.s2,
   },
-  label: { color: color.fgMuted },
+  fact: { display: "grid", gap: space.s1, alignContent: "start", minWidth: 0 },
+  label: { color: color.fgMuted, minWidth: 0, overflowWrap: "anywhere" },
   value: {
     minWidth: 0,
     overflowWrap: "anywhere",
     fontVariantNumeric: "tabular-nums",
-    fontFamily: "var(--font-mono)",
   },
   stats: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,128px),1fr))",
-    gap: space.s4,
-    paddingBlock: space.s4,
+    display: "flex",
+    flexWrap: "wrap",
+    gap: layout.contentGap,
   },
-  stat: { display: "flex", flexDirection: "column", gap: space.s1 },
+  stat: {
+    flex: "1 1 calc(var(--fs-display-lg) * 6)",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    gap: space.s2,
+    minWidth: 0,
+    paddingInline: layout.cardPadding,
+    paddingBlock: layout.cardPadding,
+    backgroundColor: surface.surface,
+    borderRadius: radius.card,
+  },
   count: {
-    fontWeight: weight.semibold,
+    minWidth: 0,
+    overflowWrap: "anywhere",
+    fontWeight: weight.medium,
     fontVariantNumeric: "tabular-nums",
-    fontFamily: "var(--font-mono)",
   },
   code: {
     minWidth: 0,
@@ -74,39 +172,170 @@ const styles = stylex.create({
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,144px),1fr))",
-    gap: space.s4,
+    gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,136px),1fr))",
+    gap: layout.fieldGap,
   },
   tile: {
     display: "grid",
     gridTemplateColumns: "minmax(0,1fr)",
     gap: space.s2,
-    paddingBlock: space.s4,
-    paddingInline: space.s3,
-    backgroundColor: surface.sunken,
-    borderRadius: radius.sm,
+    paddingBlock: layout.cardPadding,
+    paddingInline: layout.cardPadding,
+    alignContent: "start",
     overflowWrap: "anywhere",
     textAlign: "center",
   },
-  visual: { display: "grid", placeItems: "center" },
+  visual: {
+    display: "grid",
+    placeItems: "center",
+    minHeight: space.s12,
+    color: color.fg,
+    marginBlockEnd: space.s2,
+  },
+  share: {
+    display: "block",
+    width: "100%",
+    height: space.s1,
+    appearance: "none",
+    borderWidth: 0,
+    borderRadius: "var(--shape-pill)",
+    backgroundColor: surface.surface2,
+    "::-webkit-meter-bar": {
+      borderWidth: 0,
+      borderRadius: "inherit",
+      backgroundColor: surface.surface2,
+      backgroundImage: "none",
+      boxShadow: "none",
+    },
+    "::-webkit-meter-optimum-value": {
+      borderRadius: "inherit",
+      backgroundColor: color.accent,
+      backgroundImage: "none",
+    },
+    "::-moz-meter-bar": {
+      borderRadius: "inherit",
+      backgroundColor: color.accent,
+      backgroundImage: "none",
+    },
+  },
 });
 
 export type Fact = readonly [label: string, value: ReactNode];
 export function RecordGroup({
   children,
+  variant = "sections",
   ...props
-}: ComponentPropsWithRef<"section">) {
+}: ComponentPropsWithRef<"section"> & {
+  variant?: "sections" | "list" | "cards";
+}) {
   return (
-    <section {...props} {...stylex.props(styles.group)}>
+    <section
+      {...props}
+      data-slot={variant === "list" ? "record-list" : undefined}
+      {...stylex.props(
+        styles.group,
+        variant === "list" && [CARD_SURFACE.face, styles.list],
+        variant === "cards" && styles.cards,
+      )}
+    >
       {children}
     </section>
   );
 }
+export function RecordHeading({
+  title,
+  description,
+  status,
+  actions,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  status?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <div {...stylex.props(styles.heading)}>
+      <div {...stylex.props(styles.headingCopy)}>
+        <div {...stylex.props(styles.headingLine)}>
+          <h3 {...stylex.props(styles.title, type.uiMd)}>{title}</h3>
+          {status}
+        </div>
+        {description && (
+          <p {...stylex.props(styles.summaryDescription, type.uiSm)}>
+            {description}
+          </p>
+        )}
+      </div>
+      {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
+    </div>
+  );
+}
+export function ShareBar({ value, total }: { value: number; total: number }) {
+  return (
+    <meter
+      aria-hidden="true"
+      min={0}
+      max={total}
+      value={value}
+      {...stylex.props(styles.share)}
+    />
+  );
+}
+export function MetricValue({ children }: { children: ReactNode }) {
+  return (
+    <span {...stylex.props(styles.count, type.displayMd)}>{children}</span>
+  );
+}
+export function RecordMeta({ children }: { children: ReactNode }) {
+  return <span {...stylex.props(styles.meta, type.uiSm)}>{children}</span>;
+}
 export function RecordTitle({ children }: { children: ReactNode }) {
-  return <h2 {...stylex.props(styles.title, type.uiMd)}>{children}</h2>;
+  return <h2 {...stylex.props(styles.title, type.displaySm)}>{children}</h2>;
+}
+export function RecordSummary({
+  title,
+  description,
+  status,
+  icon,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  status?: ReactNode;
+  icon?: IconGlyph;
+}) {
+  return (
+    <span {...stylex.props(styles.summary)}>
+      {icon && (
+        <span aria-hidden="true" {...stylex.props(styles.mark)}>
+          <Icon glyph={icon} size="md" />
+        </span>
+      )}
+      <span {...stylex.props(styles.summaryCopy)}>
+        <span {...stylex.props(styles.headingLine)}>
+          <span {...stylex.props(styles.summaryTitle, type.uiMd)}>{title}</span>
+          {status}
+        </span>
+        {description && (
+          <span {...stylex.props(styles.summaryDescription, type.uiSm)}>
+            {description}
+          </span>
+        )}
+      </span>
+    </span>
+  );
 }
 export function RecordBody({ children }: { children: ReactNode }) {
   return <p {...stylex.props(styles.body)}>{children}</p>;
+}
+export function DocumentBody({ children }: { children: ReactNode }) {
+  return (
+    <article
+      data-slot="document-body"
+      {...stylex.props(styles.document, type.prose)}
+    >
+      {children}
+    </article>
+  );
 }
 export function Facts({ values }: { values: readonly Fact[] }) {
   return (
@@ -114,12 +343,12 @@ export function Facts({ values }: { values: readonly Fact[] }) {
       {values
         .filter(([, value]) => value !== undefined)
         .map(([label, value]) => (
-          <Fragment key={label}>
-            <dt {...stylex.props(styles.label)}>{label}</dt>
+          <div key={label} {...stylex.props(styles.fact)}>
+            <dt {...stylex.props(styles.label, type.uiXs)}>{label}</dt>
             <dd {...stylex.props(styles.value)}>
               <bdi>{value}</bdi>
             </dd>
-          </Fragment>
+          </div>
         ))}
     </dl>
   );
@@ -133,7 +362,7 @@ export function Stats({
       {values.map(([label, value]) => (
         <div key={label} {...stylex.props(styles.stat)}>
           <dt {...stylex.props(styles.label, type.uiSm)}>{label}</dt>
-          <dd {...stylex.props(styles.count, type.displaySm)}>{value}</dd>
+          <dd {...stylex.props(styles.count, type.displayLg)}>{value}</dd>
         </div>
       ))}
     </dl>
@@ -176,7 +405,10 @@ export function Tile({
   ...props
 }: ComponentPropsWithRef<"article"> & { visual: ReactNode }) {
   return (
-    <article {...props} {...stylex.props(styles.tile, type.uiSm)}>
+    <article
+      {...props}
+      {...stylex.props(CARD_SURFACE.face, styles.tile, type.uiSm)}
+    >
       <div {...stylex.props(styles.visual)}>{visual}</div>
       {children}
     </article>

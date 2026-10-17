@@ -180,21 +180,21 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
           <IconButton
             icon={iconGlyph("copy")}
             size="sm"
-            title={t("file.copyPath")}
+            aria-label={t("file.copyPath")}
             onClick={() => void copyText(viewer.path)}
           />
           {cwd && localWorkspace().available() && (
             <IconButton
               icon={iconGlyph("folder-open")}
               size="sm"
-              title={t("file.reveal")}
+              aria-label={t("file.reveal")}
               onClick={() => void localWorkspace().reveal(cwd, viewer.path)}
             />
           )}
           <IconButton
             icon={iconGlyph("arrow-left")}
             size="sm"
-            title={t("file.backToFiles")}
+            aria-label={t("file.backToFiles")}
             onClick={closeWorkspaceFile}
           />
         </>
@@ -289,7 +289,9 @@ function GoToLine({ onGo }: { onGo: (line: number) => void }) {
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
-        render={<IconButton icon={iconGlyph("crosshair")} size="sm" title={t("file.goToLine")} />}
+        render={
+          <IconButton icon={iconGlyph("crosshair")} size="sm" aria-label={t("file.goToLine")} />
+        }
       />
       <Popover.Content align="end" sideOffset={6}>
         <div {...stylex.props(fp.goto)}>

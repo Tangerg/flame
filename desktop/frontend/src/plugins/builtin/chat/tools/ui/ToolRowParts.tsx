@@ -75,7 +75,7 @@ export function useToolRowActions(tool: ToolCall) {
         icon={iconGlyph(knownIconName(action.icon) ?? "tool")}
         size="xs"
         quiet
-        title={t(action.title)}
+        aria-label={t(action.title)}
         onClick={(event) => {
           event.stopPropagation();
           void Promise.resolve(action.run(tool)).catch((err) => {
@@ -95,7 +95,7 @@ export function useToolRowActions(tool: ToolCall) {
         icon={iconGlyph("open")}
         size="xs"
         quiet
-        title={t(opener.label(tool))}
+        aria-label={t(opener.label(tool))}
         onClick={(event) => {
           event.stopPropagation();
           void Promise.resolve(opener.open(tool)).catch((err) => {

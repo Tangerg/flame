@@ -101,15 +101,13 @@
 /* prettier-ignore */
 
 :root {
-  --color-accent: #2b5fd0;
-  --color-accent-border: #2450ae;
-  --color-accent-press: #1d408c;
+  --color-accent: #006fdb;
 
-  --color-bg: #ffffff;
-  --color-surface: #f9f9f9;
+  --color-bg: #f5f5f5;
+  --color-surface: #efeff0;
   --color-elevated: #ffffff;
-  --color-sunken: #ededed;
-  --color-drawer: #f9f9f9;
+  --color-sunken: #eaeaeb;
+  --color-drawer: #efeff0;
   --depth-step: 4%;
   --color-surface-2: color-mix(
     in oklab,
@@ -137,30 +135,30 @@
 
   --shadow-cast: rgb(0 0 0 / 0.2);
 
-  --color-text: #1e1f22;
+  --color-text: #18181b;
   --color-text-bright: #000000;
   --color-text-soft: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)),
-    #3d4147
+    #3f3f46
   );
   --color-text-muted: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)),
-    #5a5d63
+    #66666f
   );
   --color-text-faint: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)),
-    #63666d
+    #66666f
   );
   --color-text-on-accent: #ffffff;
   --color-text-on-warning: #000000;
 
-  --color-border: #ededed;
-  --color-border-soft: #dfdfdf;
+  --color-border: #dedee0;
+  --color-border-soft: #c4c4c9;
   --color-control-edge: #939495;
-  --color-divider: rgb(0 0 0 / 0.05);
+  --color-divider: #e4e4e7;
   --color-scrim: #00000022;
   --gauge-track: color-mix(in oklab, currentColor 22%, transparent);
   --scrollbar-thumb: color-mix(in oklab, var(--color-text) 17%, transparent);
@@ -168,7 +166,7 @@
 
   --color-negative: #b0342b;
   --color-warning: #84610e;
-  --color-info: #2b5fd0;
+  --color-info: #006fdb;
   --color-success: #2a713e;
 
   --tone-negative: oklch(from var(--color-negative) 68% calc(c * 1.4) h);
@@ -177,19 +175,20 @@
   --tone-success: oklch(from var(--color-success) 68% calc(c * 1.4) h);
   --tone-accent: oklch(from var(--color-accent) 68% calc(c * 1.4) h);
 
-  --color-cta: var(--color-accent);
-  --color-cta-hover: var(--color-accent-border);
-  --color-cta-text: var(--color-text-on-accent);
+  --color-cta: #006fdb;
+  --color-cta-hover: #0064c5;
+  --color-cta-text: #ffffff;
 
   --fs-ui-2xs: 10px;
-  --fs-ui-xs: 11px;
-  --fs-ui-sm: 12px;
+  --fs-ui-xs: 12px;
+  --fs-ui-sm: 13px;
   --fs-ui-md: 14px;
   --fs-prose: 14px;
   --fs-code: 12px;
 
-  --fs-display-sm: 18px;
-  --fs-display-md: 20px;
+  --fs-display-sm: 16px;
+  --fs-display-md: 18px;
+  --fs-display-lg: 24px;
 
   --icon-xs: 12px;
   --icon-sm: 14px;
@@ -198,7 +197,7 @@
   --icon-xl: 28px;
   --icon-composer: 16px;
 
-  --fw-regular: 430;
+  --fw-regular: 400;
   --fw-medium: 500;
   --fw-semibold: 600;
 
@@ -231,23 +230,40 @@
   --shape-bubble: calc(var(--style-shape-bubble) * var(--radius-scale) * var(--corner-scale));
   --shape-pill: 9999px;
 
-  --button-radius: var(--shape-sm);
+  --layout-page-width: 56rem;
+  --layout-page-gutter: calc(var(--spacing) * 6);
+  --layout-page-block: calc(var(--spacing) * 8);
+  --layout-compact-gutter: calc(var(--spacing) * 4);
+  --layout-content-gap: calc(var(--spacing) * 3);
+  --layout-label-gap: calc(var(--spacing) * 1.5);
+  --layout-row-padding: calc(var(--spacing) * 3);
+  --layout-section-gap: calc(var(--spacing) * 6);
+  --layout-card-padding: calc(var(--spacing) * 5);
+  --layout-field-gap: calc(var(--spacing) * 4);
+  --layout-control-gap: calc(var(--spacing) * 2);
+  --layout-menu-inset: calc(var(--spacing) * 1);
+  --field-background: var(--color-elevated);
+  --field-border: var(--color-control-edge);
+  --field-shadow: var(--shadow-control);
+  --mark-radius: var(--shape-sm);
+  --menu-item-radius: max(0px, calc(var(--floating-panel-radius) - var(--layout-menu-inset)));
+  --button-radius: var(--shape-pill);
   --button-join-seam: color-mix(in oklab, var(--color-cta-text) 20%, transparent);
-  --field-radius: var(--shape-md);
-  --segmented-radius: var(--shape-md);
+  --field-radius: var(--shape-xl);
+  --segmented-radius: var(--shape-composer);
   --segment-radius: max(
     0px,
     calc(var(--segmented-radius) - var(--control-edge-width) - var(--spacing) * 0.5)
   );
-  --surface-card-radius: var(--shape-md);
+  --surface-card-radius: var(--shape-bubble);
   --row-radius: var(--shape-lg);
-  --floating-panel-radius: var(--shape-xl);
+  --floating-panel-radius: var(--shape-bubble);
   --floating-tip-radius: var(--shape-md);
   --dock-tab-radius: var(--shape-lg);
   --control-height-xs: 24px;
-  --control-height-sm: 26px;
-  --control-height-md: 30px;
-  --control-height-lg: 34px;
+  --control-height-sm: 28px;
+  --control-height-md: 32px;
+  --control-height-lg: 36px;
   --control-height-xl: 40px;
   --menu-row-height: 30px;
   --select-min-width: 220px;
@@ -306,7 +322,7 @@
   --layer-floating: 50;
   --layer-modal: 100;
 
-  --shadow-control: none;
+  --shadow-control: 0 1px 2px color-mix(in oklab, var(--shadow-cast) 20%, transparent);
   --shadow-ring: 0 0 0 0.5px var(--seam-line);
   --shadow-raised:
     var(--shadow-ring), 0 1px 2px -1px color-mix(in oklab, var(--shadow-cast) 40%, transparent);
@@ -320,8 +336,7 @@
     0 2px 8px 0 color-mix(in oklab, var(--shadow-cast) 20%, transparent),
     0 4px 80px 8px color-mix(in oklab, var(--shadow-cast) 12%, transparent);
   --shadow-well: none;
-  --shadow-raised-chip: none;
-  --shadow-surface-card: none;
+  --shadow-surface-card: 0 2px 4px color-mix(in oklab, var(--shadow-cast) 20%, transparent), 0 1px 2px color-mix(in oklab, var(--shadow-cast) 30%, transparent);
   --shadow-live-glow: 0 0 6px var(--color-accent);
   --shadow-swatch-selected: 0 0 0 1.5px var(--color-text);
   --color-focus-ring: var(--color-accent);
@@ -353,7 +368,7 @@
   );
   --composer-tray-backdrop: blur(8px);
   --composer-tray-edge-color: color-mix(in oklab, var(--color-border) 80%, transparent);
-  --app-floating-surface: color-mix(in oklab, var(--app-content-surface) 90%, transparent);
+  --app-floating-surface: var(--color-elevated);
   --floating-backdrop: blur(8px) saturate(1.4);
   --app-card-edge: inset 0.5px 0 0 0;
   --app-pane-split: inset 0.5px 0 0 0;
@@ -439,71 +454,48 @@ body {
   color: var(--color-text);
 }
 
-@media (pointer: coarse) {
-  :where(
-    button,
-    [role="button"],
-    [role="tab"],
-    [role="menuitem"],
-    [role="option"],
-    input:not([type="hidden"]),
-    textarea,
-    select
-  ) {
-    min-width: var(--touch-target);
-    min-height: var(--touch-target);
-  }
-}
-
-:root[data-motion="off"] *,
-:root[data-motion="off"] *::before,
-:root[data-motion="off"] *::after {
-  transition-duration: 1ms !important;
-  animation-duration: 1ms !important;
-  animation-iteration-count: 1 !important;
-}
-
 html.theme-dark {
   --wash-step: max(3%, calc(var(--depth-step) / 2));
 
-  --color-accent: #3574f0;
-  --color-accent-border: #115beb;
-  --color-accent-press: #0f4cc5;
+  --color-accent: #0485f7;
 
-  --color-bg: #1f1f1f;
-  --color-surface: #2b2b2b;
-  --color-elevated: #2b2b2b;
-  --color-sunken: #181818;
-  --color-drawer: #161616;
+  --color-bg: #060607;
+  --color-surface: #18181b;
+  --color-elevated: #18181b;
+  --color-sunken: #232325;
+  --color-drawer: #060607;
   --depth-step: 8%;
 
   --shadow-cast: rgb(0 0 0 / 0.55);
   --color-media-edge: rgb(255 255 255 / 0.1);
 
-  --color-text: #e3e5e9;
+  --color-text: #fcfcfc;
   --color-text-bright: #ffffff;
   --color-text-soft: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #c6c9cf
+    #d4d4d8
   );
   --color-text-muted: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #aaaeb5
+    #9f9fa9
   );
   --color-text-faint: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #9da1a7
+    #9f9fa9
   );
   --color-text-on-accent: #ffffff;
+  --color-cta: #006fdb;
+  --color-cta-hover: #0064c5;
+  --color-cta-text: #ffffff;
   --color-text-on-warning: #000000;
 
-  --color-border: #303030;
-  --color-border-soft: #414141;
+  --color-border: #28282c;
+  --color-border-soft: #3f3f46;
   --color-control-edge: #6a6a6c;
-  --color-divider: rgb(255 255 255 / 0.04);
+  --color-divider: #212124;
   --color-scrim: #00000022;
 
   --color-negative: #e68a8a;
@@ -523,7 +515,6 @@ html.theme-dark {
   --color-media-scrim: rgb(0 0 0 / 0.55);
   --color-media-preview: rgb(0 0 0 / 0.9);
   --color-on-media: #ffffff;
-  --touch-target: 44px;
   --window-sidebar-control-span: calc(var(--control-height-sm) + 10px);
   --dock-control-span: calc(var(--control-height-sm) + 10px);
   --surface-header-height: 46px;

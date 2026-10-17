@@ -13,7 +13,7 @@ import {
 } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 import { TabsPrimitive } from "@/ui/primitives";
-import { HoverHighlight, HoverTrack, useHoverTrackItem } from "./hover-track";
+import { ItemHighlight, HoverTrack, useHoverTrackItem } from "@flame/ui";
 import { SectionLabel } from "./section-label";
 
 interface VerticalTabItem {
@@ -101,12 +101,6 @@ const styles = stylex.create({
     scrollPaddingBlock: space.s4,
     backgroundColor: surface.canvas,
   },
-  measure: {
-    marginInline: "auto",
-    maxWidth: "720px",
-    paddingInline: { default: space.s6, "@container (max-width: 640px)": space.s4 },
-    paddingBlock: space.s8,
-  },
   heading: { paddingInline: space.s2, paddingBottom: space.s1, paddingTop: space.s4 },
 });
 
@@ -118,7 +112,7 @@ function RailTab({ item }: { item: VerticalTabItem }) {
       onPointerEnter={track?.onPointerEnter}
       {...stylex.props(styles.tab, type.uiMd)}
     >
-      {track?.hovered && <HoverHighlight item={track} styles={styles.highlight} />}
+      {track?.hovered && <ItemHighlight layoutId={track.layoutId} styles={styles.highlight} />}
       {item.icon && <Icon name={item.icon} size="sm" {...stylex.props(styles.glyph)} />}
       <span {...stylex.props(styles.label)}>{item.label}</span>
     </TabsPrimitive.Tab>
@@ -174,13 +168,11 @@ export function VerticalTabs({
           </TabsPrimitive.List>
         </div>
         <div {...stylex.props(styles.page)}>
-          <div {...stylex.props(styles.measure)}>
-            {items.map((item) => (
-              <TabsPrimitive.Panel key={item.id} value={item.id}>
-                {item.content}
-              </TabsPrimitive.Panel>
-            ))}
-          </div>
+          {items.map((item) => (
+            <TabsPrimitive.Panel key={item.id} value={item.id}>
+              {item.content}
+            </TabsPrimitive.Panel>
+          ))}
         </div>
       </TabsPrimitive.Root>
     </div>

@@ -65,7 +65,7 @@ export function SubagentsPanel() {
           <IconButton
             icon={iconGlyph("chevron-left")}
             size="sm"
-            title={t("subagents.title")}
+            aria-label={t("subagents.title")}
             onClick={() => openWorkspaceSubagentRun(null)}
           />
         )}
@@ -147,7 +147,7 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
               quiet
               disabled={!available}
               className={stylex.props(styles.statusAction).className}
-              title={t("agent.runTree.action.cancel")}
+              aria-label={t("agent.runTree.action.cancel")}
               onClick={() =>
                 cancelSessionRun({ sessionId: narrative.run.sessionId, runId: narrative.run.id })
               }

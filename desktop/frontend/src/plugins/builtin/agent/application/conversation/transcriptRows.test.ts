@@ -64,6 +64,48 @@ function view(options: {
 }
 
 describe("transcript rows", () => {
+  it("projects descendant approvals through the root's Runtime resume barrier", () => {
+    const root = run({ id: ROOT_RUN, status: "waiting", outcome: null, finishedAt: null });
+    const child = run({
+      id: "child-run",
+      parentRunId: ROOT_RUN,
+      rootRunId: ROOT_RUN,
+      spawnedByItemId: "delegate",
+      status: "waiting",
+      outcome: null,
+      finishedAt: null,
+    });
+    const state = view({
+      runs: [root, child],
+      toolCalls: [tool("delegate")],
+      messages: [
+        message("root-message", [toolBlock("delegate")]),
+        message(
+          "child-message",
+          [{ kind: "approval", itemId: "approval", command: "pwd", reason: "Verify" }],
+          child.id,
+        ),
+      ],
+    });
+    state.pendingInterrupts = [
+      { runId: child.id, interrupts: [{ itemId: "approval", kind: "approval" }] },
+    ];
+    const parked = buildTranscriptRows(state, EMPTY_TRANSCRIPT_ROW_CACHE);
+    expect(parked.rows[0]!.facts.awaiting.get("approval")).toBe(ROOT_RUN);
+    const active = buildTranscriptRows(
+      {
+        ...state,
+        runsById: {
+          ...state.runsById,
+          [ROOT_RUN]: { ...root, status: "running", activeSegmentId: "resumed" },
+        },
+      },
+      parked.cache,
+    );
+    expect(active.rows[0]!.facts.awaiting.has("approval")).toBe(false);
+    expect(active.rows[0]).not.toBe(parked.rows[0]);
+  });
+
   it("keeps every untouched row identical when the tail streams", () => {
     const first = message("m1", [text("hello")]);
     const second = message("m2", [text("answer")]);

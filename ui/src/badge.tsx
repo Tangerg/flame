@@ -4,7 +4,7 @@ import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
 import type { Tone } from "./tone";
 import {
   color,
-  corner,
+  radius,
   face,
   space,
   surface,
@@ -15,9 +15,13 @@ import {
 const styles = stylex.create({
   base: {
     display: "inline-flex",
+    justifySelf: "start",
+    width: "fit-content",
+    maxWidth: "100%",
     flexShrink: 0,
     alignItems: "center",
     gap: space.s1,
+    borderRadius: radius.sm,
     fontWeight: weight.medium,
   },
   neutral: { backgroundColor: surface.surface2, color: color.fgMuted },
@@ -51,7 +55,6 @@ export function Badge({
 }: BadgeProps) {
   const styled = stylex.props(
     styles.base,
-    corner.pill,
     styles[tone],
     styles[size],
     SIZE_TYPE[size],

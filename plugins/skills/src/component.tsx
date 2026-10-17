@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { BookOpen } from "@flame/icons/react";
+import { BookOpen, Refresh } from "@flame/icons/react";
 import {
   mutationSettlementIsUnknown,
   isErrorType,
@@ -23,19 +23,25 @@ import type {
 } from "@flame/runtime-contract/wire";
 import {
   Button,
+  Badge,
   Panel,
-  PanelTitle,
-  CodeBlock,
+  PanelHeader,
+  IconButton,
+  PanelSection,
+  RecordForm,
+  FormSection,
+  FormActions,
   Disclosure,
   EmptyState,
   Facts,
-  ListRow,
   Metadata,
   RecordBody,
   RecordGroup,
   RecordTitle,
+  RecordSummary,
   SearchField,
-  Select,
+  FilterBar,
+  Segmented,
   Toolbar,
 } from "@flame/ui";
 
@@ -67,16 +73,43 @@ const failure = (error: unknown) =>
 function SkillRow({
   item,
   review,
+  expanded,
   children,
 }: {
   item: SkillRecord;
   review: boolean;
+  expanded: boolean;
   children?: ReactNode;
 }) {
   return (
-    <ListRow>
-      <RecordTitle>{item.name}</RecordTitle>
-      {item.description && <RecordBody>{item.description}</RecordBody>}
+    <Disclosure
+      variant="row"
+      defaultOpen={expanded}
+      actions={children}
+      title={
+        <RecordSummary
+          icon={BookOpen}
+          title={item.name}
+          description={item.description}
+          status={
+            <Badge tone={review ? "accent" : "neutral"}>
+              {review
+                ? "Proposal"
+                : "lifecycle" in item
+                  ? item.lifecycle
+                  : "scope" in item
+                    ? item.scope
+                    : "Available"}
+            </Badge>
+          }
+        />
+      }
+    >
+      {"instructions" in item && (
+        <FormSection title="Instructions">
+          <RecordBody>{item.instructions}</RecordBody>
+        </FormSection>
+      )}
       <Facts
         values={[
           ["Scope", "scope" in item ? item.scope : undefined],
@@ -106,15 +139,7 @@ function SkillRow({
           ],
         ]}
       />
-      {"instructions" in item && (
-        <Disclosure title="Read instructions">
-          <CodeBlock label={`Instructions for ${item.name}`}>
-            {item.instructions}
-          </CodeBlock>
-        </Disclosure>
-      )}
-      {children}
-    </ListRow>
+    </Disclosure>
   );
 }
 export function Skills({ context }: { context: ComponentContext }) {
@@ -335,37 +360,43 @@ export function Skills({ context }: { context: ComponentContext }) {
 
   return (
     <Panel label="Skills">
-      <Toolbar label="Skill catalogs">
-        <PanelTitle>Skills</PanelTitle>
-        <Select
-          label="Catalog"
-          value={target === "detail" ? "available" : target}
-          options={sections}
-          disabled={Boolean(command)}
-          onValueChange={(value) => navigate(value as Target)}
-        />
-        <Button
-          disabled={read.loading || Boolean(command)}
-          onClick={() => void refresh()}
-        >
-          Refresh
-        </Button>
-        {target === "detail" && (
-          <Button
-            disabled={Boolean(command)}
-            onClick={() => navigate("available")}
-          >
-            Back to available Skills
-          </Button>
-        )}
-      </Toolbar>
-      <Metadata>
-        {target === "library"
-          ? "User-managed Skills. Installation-provided Skills are managed with their package."
-          : workspace
-            ? `Workspace: ${workspace.ref.path}`
-            : "Select a workspace to inspect available Skills and proposals."}
-      </Metadata>
+      <PanelHeader
+        title="Skills"
+        context={
+          <Toolbar label="Skill catalogs">
+            <Segmented
+              ariaLabel="Catalog"
+              value={target === "detail" ? "available" : target}
+              options={sections}
+              disabled={Boolean(command)}
+              onChange={(value) => navigate(value as Target)}
+            />
+            {target === "detail" && (
+              <Button
+                disabled={Boolean(command)}
+                onClick={() => navigate("available")}
+              >
+                Back to available Skills
+              </Button>
+            )}
+          </Toolbar>
+        }
+        description={
+          target === "library"
+            ? "Reusable instructions you manage."
+            : "Instructions and proposals for this workspace."
+        }
+        actions={
+          <IconButton
+            icon={Refresh}
+            aria-label="Refresh"
+            size="md"
+            disabled={read.loading || Boolean(command)}
+            onClick={() => void refresh()}
+          />
+        }
+      />
+
       {read.loading && <p role="status">Reading Skills…</p>}
       {read.error && (
         <p role="alert">{read.error} The last accepted read is retained.</p>
@@ -396,21 +427,35 @@ export function Skills({ context }: { context: ComponentContext }) {
         </section>
       )}
       {review && (
-        <section aria-label="Confirm proposal decision">
+        <RecordForm aria-label="Confirm proposal decision">
           <RecordTitle>
             {review.decision === "approve" ? "Approve" : "Reject"} ·{" "}
             {review.proposal.name}
           </RecordTitle>
-          <Metadata>
-            {workspace!.ref.path} · {review.proposal.scope} ·{" "}
-            {review.proposal.revision}
-          </Metadata>
-          <RecordBody>{review.proposal.description}</RecordBody>
-          <CodeBlock label="Captured proposal instructions">
-            {review.proposal.instructions}
-          </CodeBlock>
-          <Toolbar label="Proposal confirmation">
+          <FormSection title="Proposed skill">
+            <RecordBody>{review.proposal.description}</RecordBody>
+            <RecordBody>{review.proposal.instructions}</RecordBody>
+          </FormSection>
+          <Disclosure title="Review target">
+            <Facts
+              values={[
+                ["Workspace", workspace!.ref.path],
+                ["Scope", review.proposal.scope],
+                ["Revision", review.proposal.revision],
+              ]}
+            />
+          </Disclosure>
+          <FormActions label="Proposal confirmation">
             <Button
+              variant="ghost"
+              disabled={Boolean(command)}
+              onClick={() => setReview(undefined)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={review.decision === "approve" ? "primary" : "tonal"}
+              tone={review.decision === "reject" ? "negative" : undefined}
               disabled={disabled}
               onClick={() => {
                 const { scope, name, revision } = review.proposal;
@@ -433,100 +478,124 @@ export function Skills({ context }: { context: ComponentContext }) {
             >
               Confirm {review.decision}
             </Button>
-            <Button
-              disabled={Boolean(command)}
-              onClick={() => setReview(undefined)}
-            >
-              Cancel
-            </Button>
-          </Toolbar>
-        </section>
+          </FormActions>
+        </RecordForm>
       )}
-      <Toolbar label="Skill filters">
-        <SearchField
-          id="search"
-          aria-label="Search this catalog"
-          placeholder="Name or description"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
+      <PanelSection
+        title={
+          <>
+            {title} {snapshot && <Badge>{rows.length}</Badge>}
+          </>
+        }
+        description={
+          <>
+            {target === "library"
+              ? "User-managed Skills. Installation-provided Skills are managed with their package."
+              : workspace
+                ? `Workspace: ${workspace.ref.path}`
+                : "Select a workspace to inspect available Skills and proposals."}
+          </>
+        }
+      >
+        <FilterBar
+          label="Skill filters"
+          search={
+            <SearchField
+              size="lg"
+              id="search"
+              aria-label="Search this catalog"
+              placeholder="Name or description"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          }
         />
-      </Toolbar>
-      <Metadata>
-        {snapshot
-          ? `${rows.length} ${snapshot.type === "review" ? "pending proposals" : snapshot.type === "library" ? "user-managed Skills" : snapshot.type === "detail" ? "resolved document" : "available Skills"}`
-          : "No accepted read."}
-      </Metadata>
-      {snapshot?.type === "available" &&
-        snapshot.data.diagnostics.map((diagnostic, index) => (
-          <RecordBody key={index}>
-            {diagnostic.name}: {diagnostic.detail}
-          </RecordBody>
-        ))}
-      <RecordGroup id="items" aria-label={title}>
-        {matching.map((item) => (
-          <SkillRow
-            key={"scope" in item ? `${item.scope}:${item.name}` : item.name}
-            item={item}
-            review={snapshot!.type === "review"}
-          >
-            {snapshot!.type === "available" && (
-              <Button
-                disabled={disabled}
-                onClick={() => navigate("detail", item.name)}
-              >
-                Read instructions
-              </Button>
-            )}
-            {snapshot!.type === "library" && "lifecycle" in item && (
-              <Button
-                disabled={disabled}
-                onClick={() =>
-                  submit(
-                    () =>
-                      item.lifecycle === "archived"
-                        ? context.runtime.skills.restore(item.name)
-                        : context.runtime.skills.archive(item.name),
-                    `${item.lifecycle === "archived" ? "Restore" : "Archive"} ${item.name}`,
-                  )
-                }
-              >
-                {item.lifecycle === "archived" ? "Restore" : "Archive"}
-              </Button>
-            )}
-            {snapshot!.type === "review" && "origin" in item && (
-              <Toolbar label={`Proposal actions for ${item.name}`}>
-                {(["reject", "approve"] as const).map((decision) => (
-                  <Button
-                    key={decision}
-                    disabled={disabled}
-                    onClick={() =>
-                      setReview({ proposal: structuredClone(item), decision })
-                    }
-                  >
-                    {decision === "approve" ? "Approve" : "Reject"}
-                  </Button>
-                ))}
-              </Toolbar>
-            )}
-          </SkillRow>
-        ))}
-        {!matching.length && !read.loading && (
-          <EmptyState
-            icon={BookOpen}
-            size="compact"
-            title={
-              rows.length
-                ? "No matching Skills in this catalog."
-                : "No Skills in this catalog."
-            }
-            sub={
-              rows.length
-                ? "Clear the search to show Skills."
-                : "Choose another catalog or refresh after adding a Skill."
-            }
-          />
-        )}
-      </RecordGroup>
+        <Metadata role="status" className="sr-only">
+          {snapshot
+            ? `${rows.length} ${snapshot.type === "review" ? "pending proposals" : snapshot.type === "library" ? "user-managed Skills" : snapshot.type === "detail" ? "resolved document" : "available Skills"}`
+            : "No accepted read."}
+        </Metadata>
+
+        {snapshot?.type === "available" &&
+          snapshot.data.diagnostics.map((diagnostic, index) => (
+            <RecordBody key={index}>
+              {diagnostic.name}: {diagnostic.detail}
+            </RecordBody>
+          ))}
+        <RecordGroup variant="list" id="items" aria-label={title}>
+          {matching.map((item) => (
+            <SkillRow
+              key={`${snapshot!.type}:${"scope" in item ? `${item.scope}:${item.name}` : item.name}`}
+              item={item}
+              review={snapshot!.type === "review"}
+              expanded={snapshot!.type === "detail"}
+            >
+              {snapshot!.type === "available" && (
+                <Button
+                  variant="soft"
+                  size="md"
+                  disabled={disabled}
+                  onClick={() => navigate("detail", item.name)}
+                >
+                  Read instructions
+                </Button>
+              )}
+              {snapshot!.type === "library" && "lifecycle" in item && (
+                <Button
+                  variant="soft"
+                  size="md"
+                  disabled={disabled}
+                  onClick={() =>
+                    submit(
+                      () =>
+                        item.lifecycle === "archived"
+                          ? context.runtime.skills.restore(item.name)
+                          : context.runtime.skills.archive(item.name),
+                      `${item.lifecycle === "archived" ? "Restore" : "Archive"} ${item.name}`,
+                    )
+                  }
+                >
+                  {item.lifecycle === "archived" ? "Restore" : "Archive"}
+                </Button>
+              )}
+              {snapshot!.type === "review" && "origin" in item && (
+                <Toolbar label={`Proposal actions for ${item.name}`}>
+                  {(["reject", "approve"] as const).map((decision) => (
+                    <Button
+                      variant={decision === "approve" ? "outline" : "wash"}
+                      tone={decision === "reject" ? "negative" : undefined}
+                      size="md"
+                      key={decision}
+                      disabled={disabled}
+                      onClick={() =>
+                        setReview({ proposal: structuredClone(item), decision })
+                      }
+                    >
+                      {decision === "approve" ? "Approve" : "Reject"}
+                    </Button>
+                  ))}
+                </Toolbar>
+              )}
+            </SkillRow>
+          ))}
+          {!matching.length && !read.loading && (
+            <EmptyState
+              icon={BookOpen}
+              size="compact"
+              title={
+                rows.length
+                  ? "No matching Skills in this catalog."
+                  : "No Skills in this catalog."
+              }
+              sub={
+                rows.length
+                  ? "Clear the search to show Skills."
+                  : "Choose another catalog or refresh after adding a Skill."
+              }
+            />
+          )}
+        </RecordGroup>
+      </PanelSection>
     </Panel>
   );
 }

@@ -7,7 +7,15 @@ import type {
   PluginPointBinding,
   ResolvePluginPointRequest,
 } from "@flame/runtime-contract/wire";
-import { Button, Metadata, TextField, Toolbar } from "@flame/ui";
+import {
+  Button,
+  CodeBlock,
+  FormField,
+  FormRow,
+  Metadata,
+  PanelSection,
+  TextField,
+} from "@flame/ui";
 import { TextArea } from "@flame/ui/text-field";
 import { SystemMessage } from "@/ui";
 import { useT } from "@/lib/i18n";
@@ -98,53 +106,60 @@ function InspectPoint({
   }
 
   return (
-    <section aria-label={`${point.id} · ${t("packages.points.title")}`}>
-      <Toolbar label={t("packages.points.title")}>
-        <h4>
-          {point.id} · {t("packages.points.title")}
-        </h4>
+    <PanelSection
+      title={`${point.id} · ${t("packages.points.title")}`}
+      description={t("packages.points.readOnly")}
+      actions={
         <Button
+          variant="soft"
+          size="sm"
           pending={current?.pending}
           disabled={!reference || operations.signal.aborted}
           onClick={() => void inspect()}
         >
           {t("packages.points.inspect")}
         </Button>
-      </Toolbar>
+      }
+    >
       <Metadata>
         {metadata.reference} · {metadata.composition} · {metadata.scope} · {metadata.ordering}
       </Metadata>
       <Metadata>
         {t(metadata.optional ? "packages.requirements.optional" : "packages.requirements.required")}
       </Metadata>
-      <Metadata>{t("packages.points.readOnly")}</Metadata>
-      <TextField
-        aria-label={t("packages.points.target")}
-        placeholder={t("packages.points.target")}
-        value={reference}
-        onChange={(event) => setReference(event.target.value)}
-      />
-      <Metadata>{t("packages.points.attributes")}</Metadata>
-      <TextArea
-        rows={3}
-        font="mono"
-        aria-label={t("packages.points.attributes")}
-        value={attributes}
-        onChange={(event) => setAttributes(event.target.value)}
-      />
-      <Metadata>{t("packages.points.order")}</Metadata>
-      <TextArea
-        rows={3}
-        font="mono"
-        aria-label={t("packages.points.order")}
-        value={order}
-        onChange={(event) => setOrder(event.target.value)}
-      />
+      <FormField label={t("packages.points.target")}>
+        <TextField
+          aria-label={t("packages.points.target")}
+          placeholder={t("packages.points.target")}
+          value={reference}
+          onChange={(event) => setReference(event.target.value)}
+        />
+      </FormField>
+      <FormRow>
+        <FormField label={t("packages.points.attributes")}>
+          <TextArea
+            rows={3}
+            font="mono"
+            aria-label={t("packages.points.attributes")}
+            value={attributes}
+            onChange={(event) => setAttributes(event.target.value)}
+          />
+        </FormField>
+        <FormField label={t("packages.points.order")}>
+          <TextArea
+            rows={3}
+            font="mono"
+            aria-label={t("packages.points.order")}
+            value={order}
+            onChange={(event) => setOrder(event.target.value)}
+          />
+        </FormField>
+      </FormRow>
       {current?.error && <SystemMessage variant="warning">{current.error}</SystemMessage>}
       {current?.accepted ? (
         <>
           <Metadata>{t("packages.points.lastInspected")}</Metadata>
-          <pre>
+          <CodeBlock label={t("packages.points.lastInspected")}>
             {JSON.stringify(
               {
                 target: current.accepted.request.target,
@@ -155,11 +170,11 @@ function InspectPoint({
               null,
               2,
             )}
-          </pre>
+          </CodeBlock>
         </>
       ) : (
         <Metadata>{t("packages.requirements.unread")}</Metadata>
       )}
-    </section>
+    </PanelSection>
   );
 }

@@ -7,3 +7,6 @@ export type { TextAreaPrimitiveProps } from "./textarea";
 export { TooltipPrimitive } from "./tooltip";
 export { CheckboxPrimitive } from "./checkbox";
 export { SelectPrimitive } from "./select";
+export { DialogPrimitive } from "./dialog";
+export { SwitchPrimitive } from "./switch";
+export { SliderPrimitive } from "./slider";

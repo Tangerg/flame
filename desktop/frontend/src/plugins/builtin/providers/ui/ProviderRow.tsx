@@ -3,7 +3,16 @@ import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useId, useRef, useState } from "react";
 import { Icon, ProviderIcon } from "@/ui";
-import { Badge, Button, TextField, vocab } from "@flame/ui";
+import {
+  Badge,
+  Button,
+  FormActions,
+  FormField,
+  FormRow,
+  ListRow,
+  TextField,
+  vocab,
+} from "@flame/ui";
 import {
   type ProviderConfiguration,
   useProviderMutationMaterialGeneration,
@@ -20,17 +29,19 @@ import { settingStyles as ss } from "../../settings/kit/settingStyles";
 const pr = stylex.create({
   head: {
     display: "grid",
-    gridTemplateColumns: "24px minmax(0, 1fr) auto",
+    gridTemplateColumns: {
+      default: "24px minmax(0, 1fr) auto",
+      "@container (max-width: 440px)": "24px minmax(0,1fr)",
+    },
     alignItems: "center",
     gap: space.s3,
   },
   id: { textTransform: "capitalize" },
-  fields: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 2fr) minmax(0, 3fr)",
-    gap: space.s2,
+  status: {
+    gridColumn: { default: null, "@container (max-width: 440px)": "2 / -1" },
+    justifySelf: "start",
   },
-  field: { display: "flex", minWidth: 0, flexDirection: "column", gap: space.s1 },
+  statusMessage: { ":empty": { display: "none" } },
   reason: { minWidth: 0, overflowWrap: "anywhere", userSelect: "text" },
 });
 
@@ -44,8 +55,6 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
   const savingLatch = useRef(false);
   const materialGeneration = useProviderMutationMaterialGeneration();
   const { feedback, reset, fail, run } = useAsyncFeedback(materialGeneration);
-  const keyId = useId();
-  const urlId = useId();
   const feedbackId = useId();
 
   const enabled = p.configured;
@@ -99,13 +108,14 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
   const describedBy = feedback.state === "error" ? feedbackId : undefined;
 
   return (
-    <div {...stylex.props(ss.hoverRow, ss.hoverRowTall)}>
+    <ListRow>
       <div {...stylex.props(pr.head)}>
         <ProviderIcon provider={p.id} size="lg" />
         <div {...stylex.props(vocab.min)}>
           <div {...stylex.props(vocab.truncate, ss.label, pr.id, typeStep.uiMd)}>{p.id}</div>
         </div>
         <Badge
+          styles={pr.status}
           size="md"
           tone={fromEnv ? "info" : enabled ? "success" : "neutral"}
           title={fromEnv ? p.credential?.masked : undefined}
@@ -121,13 +131,9 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
         </Badge>
       </div>
 
-      <div {...stylex.props(ss.afterRow, pr.fields)}>
-        <div {...stylex.props(pr.field)}>
-          <label htmlFor={keyId} {...stylex.props(ss.captionInline, typeStep.uiSm)}>
-            {t("providers.apiKey.label")}
-          </label>
+      <FormRow>
+        <FormField label={t("providers.apiKey.label")}>
           <TextField
-            id={keyId}
             font="mono"
             type="password"
             autoComplete="off"
@@ -143,15 +149,13 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
                   : t("providers.apiKey.placeholder")
             }
           />
-        </div>
-        <div {...stylex.props(pr.field)}>
-          <label htmlFor={urlId} {...stylex.props(ss.captionInline, typeStep.uiSm)}>
-            {p.requiresBaseUrl
-              ? t("providers.baseUrl.labelRequired")
-              : t("providers.baseUrl.label")}
-          </label>
+        </FormField>
+        <FormField
+          label={t(
+            p.requiresBaseUrl ? "providers.baseUrl.labelRequired" : "providers.baseUrl.label",
+          )}
+        >
           <TextField
-            id={urlId}
             font="mono"
             type="text"
             required={p.requiresBaseUrl}
@@ -162,19 +166,10 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
             onChange={(e) => edit((value) => value.withBaseURL(e.target.value))}
             placeholder={t("providers.baseUrl.placeholder")}
           />
-        </div>
-      </div>
+        </FormField>
+      </FormRow>
 
-      <div {...stylex.props(ss.afterRow, vocab.line)}>
-        <Button
-          variant="primary"
-          size="sm"
-          disabled={!dirty || !valid}
-          pending={saving}
-          onClick={() => void save()}
-        >
-          {saving ? t("providers.saving") : t("providers.save")}
-        </Button>
+      <FormActions label={t("providers.save")}>
         <Button
           variant="outline"
           size="sm"
@@ -194,23 +189,37 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
           </Button>
         )}
 
-        <span role="status" aria-live="polite" {...stylex.props(ss.inline, typeStep.uiMd)}>
-          {feedback.state === "ok" ? (
-            <span {...stylex.props(ss.inline, vocab.success)}>
-              <Icon name="check" size="sm" /> {t("providers.connectionOk")}
-            </span>
-          ) : saved ? (
-            <span {...stylex.props(ss.inline, vocab.success)}>
-              <Icon name="check" size="sm" /> {t("providers.saved")}
-            </span>
-          ) : null}
-        </span>
-      </div>
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={!dirty || !valid}
+          pending={saving}
+          onClick={() => void save()}
+        >
+          {saving ? t("providers.saving") : t("providers.save")}
+        </Button>
+      </FormActions>
+
+      <span
+        role="status"
+        aria-live="polite"
+        {...stylex.props(pr.statusMessage, ss.inline, typeStep.uiMd)}
+      >
+        {feedback.state === "ok" ? (
+          <span {...stylex.props(ss.inline, vocab.success)}>
+            <Icon name="check" size="sm" /> {t("providers.connectionOk")}
+          </span>
+        ) : saved ? (
+          <span {...stylex.props(ss.inline, vocab.success)}>
+            <Icon name="check" size="sm" /> {t("providers.saved")}
+          </span>
+        ) : null}
+      </span>
       {feedback.state === "error" && (
         <p
           id={feedbackId}
           role="alert"
-          {...stylex.props(ss.afterRow, ss.inline, vocab.negative, pr.reason, typeStep.uiMd)}
+          {...stylex.props(ss.inline, vocab.negative, pr.reason, typeStep.uiMd)}
         >
           <Icon name="alert" size="sm" />
           {feedback.reason}
@@ -219,6 +228,6 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
       {dirty && !valid && (
         <p {...stylex.props(ss.hintSpaced, typeStep.uiSm)}>{t("providers.baseUrl.required")}</p>
       )}
-    </div>
+    </ListRow>
   );
 }

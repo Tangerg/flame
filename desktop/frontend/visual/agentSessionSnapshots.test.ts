@@ -4,9 +4,29 @@ import {
   RUNTIME_AGENT_SESSION_SNAPSHOTS,
   RUNTIME_AGENT_SESSION_TAIL_EVENTS,
   VISUAL_AGENT_STATES,
+  delegatedApprovalSnapshot,
 } from "./agentSessionSnapshots";
 
 describe("the visual agent fixtures", () => {
+  it("parks the delegated tree before offering its root resume", () => {
+    const snapshot = delegatedApprovalSnapshot();
+    expect(snapshot.runs.find((run) => run.id === "run_root")?.status).toBe("waiting");
+    expect(
+      snapshot.runs.filter((run) => run.status !== "finished").map((run) => run.status),
+    ).toEqual(["waiting", "waiting"]);
+    expect(snapshot.runs.flatMap((run) => validateWire("RunRef", run))).toEqual([]);
+    expect(snapshot.items.flatMap((item) => validateWire("Item", item))).toEqual([]);
+  });
+
+  it("keeps the narrative's final approval behind a waiting Runtime root", () => {
+    const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS.narrative;
+    const group = snapshot.pendingInterruptSets[0]!;
+    expect(group.interrupts).toHaveLength(1);
+    expect(snapshot.runs.find((run) => run.id === group.rootRunId)).toMatchObject({
+      status: "waiting",
+    });
+  });
+
   it("hold only items the Runtime could have sent", () => {
     const violations = VISUAL_AGENT_STATES.flatMap((state) =>
       RUNTIME_AGENT_SESSION_SNAPSHOTS[state].items.flatMap((item) =>

@@ -2,8 +2,19 @@ import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { Icon, PillButton, Segmented, Surface, Switch } from "@/ui";
-import { gap, TextField, vocab } from "@flame/ui";
+import { Icon, Segmented, Switch } from "@/ui";
+import {
+  Button,
+  FormActions,
+  FormField,
+  FormGroup,
+  FormRow,
+  RecordForm,
+  gap,
+  TextArea,
+  TextField,
+  vocab,
+} from "@flame/ui";
 import {
   type MCPServerSettings,
   type MCPTransport,
@@ -14,11 +25,10 @@ import {
   useUpdateMCPServer,
 } from "../application/mcpServerConfig";
 import { useT } from "@/lib/i18n";
-import { LinesField } from "./ServerFormFields";
 import { MCPServerEdit, type MCPServerFields } from "../application/mcpServerDraft";
 import { ToolControls } from "./ToolControls";
 import { useAsyncFeedback } from "../../kit";
-import { space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface Props {
@@ -26,10 +36,6 @@ interface Props {
   onDone: () => void;
   onCancel: () => void;
 }
-
-const sf = stylex.create({
-  actions: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: space.s2 },
-});
 
 export function ServerForm({ server, onDone, onCancel }: Props) {
   const t = useT();
@@ -94,98 +100,124 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
   };
 
   return (
-    <Surface className={stylex.props(ss.stack).className}>
+    <RecordForm>
       <p {...stylex.props(typeStep.uiSm, vocab.muted)}>{t("mcp.saveEffect")}</p>
-      <div {...stylex.props(ss.nameGrid)}>
-        <TextField
-          type="text"
-          aria-label={t("mcp.form.name.aria")}
-          value={draft.name}
-          disabled={isEdit}
-          onChange={(e) => updateDraft("name", e.target.value)}
-          placeholder={t("mcp.form.name.placeholder")}
-        />
-        <Segmented<MCPTransport>
-          value={draft.transport}
-          options={[
-            { value: "stdio", label: t("mcp.transport.stdio") },
-            { value: "streamableHttp", label: t("mcp.transport.http") },
-          ]}
-          onChange={(value) => updateDraft("transport", value)}
-          ariaLabel={t("mcp.form.transport.aria")}
-        />
-      </div>
+      <FormRow>
+        <FormField label={t("mcp.form.name.aria")}>
+          <TextField
+            type="text"
+            aria-label={t("mcp.form.name.aria")}
+            value={draft.name}
+            disabled={isEdit}
+            onChange={(e) => updateDraft("name", e.target.value)}
+            placeholder={t("mcp.form.name.placeholder")}
+          />
+        </FormField>
+        <FormGroup label={t("mcp.form.transport.aria")}>
+          <Segmented<MCPTransport>
+            value={draft.transport}
+            options={[
+              { value: "stdio", label: t("mcp.transport.stdio") },
+              { value: "streamableHttp", label: t("mcp.transport.http") },
+            ]}
+            onChange={(value) => updateDraft("transport", value)}
+            ariaLabel={t("mcp.form.transport.aria")}
+          />
+        </FormGroup>
+      </FormRow>
 
       {draft.transport === "stdio" ? (
         <>
-          <TextField
-            font="mono"
-            type="text"
-            aria-label={t("mcp.form.command.aria")}
-            value={draft.command}
-            onChange={(e) => updateDraft("command", e.target.value)}
-            placeholder={t("mcp.form.command.placeholder")}
-          />
-          <LinesField
-            label={t("mcp.form.args")}
-            value={draft.args}
-            onChange={(value) => updateDraft("args", value)}
-            placeholder={t("mcp.form.args.placeholder")}
-          />
-          <LinesField
-            label={t("mcp.form.env")}
-            value={draft.environment.text}
-            onChange={(value) => updateDraft("environment", draft.environment.edited(value))}
-            placeholder={
-              hasEnvironmentStored ? t("mcp.form.env.keep") : t("mcp.form.env.placeholder")
-            }
-          />
-          {hasEnvironmentStored && (
-            <label {...stylex.props(ss.split, vocab.muted, typeStep.uiMd)}>
-              <span>{t("mcp.form.env.clear")}</span>
-              <Switch
-                checked={draft.environment.disposition === "clear"}
-                onCheckedChange={(value) =>
-                  updateDraft("environment", draft.environment.cleared(value))
-                }
-                ariaLabel={t("mcp.form.env.clear")}
+          <FormField label={t("mcp.form.command.aria")}>
+            <TextField
+              font="mono"
+              type="text"
+              aria-label={t("mcp.form.command.aria")}
+              value={draft.command}
+              onChange={(e) => updateDraft("command", e.target.value)}
+              placeholder={t("mcp.form.command.placeholder")}
+            />
+          </FormField>
+          <FormRow>
+            <FormField label={t("mcp.form.args")}>
+              <TextArea
+                font="mono"
+                rows={3}
+                aria-label={t("mcp.form.args")}
+                value={draft.args}
+                onChange={(event) => updateDraft("args", event.target.value)}
+                placeholder={t("mcp.form.args.placeholder")}
               />
-            </label>
-          )}
-          {needsEnvironmentDisposition && (
-            <span {...stylex.props(vocab.warning, typeStep.uiMd)}>
-              {t("mcp.form.env.targetChanged")}
-            </span>
-          )}
-          <TextField
-            font="mono"
-            type="text"
-            aria-label={t("mcp.form.dir.aria")}
-            value={draft.dir}
-            onChange={(e) => updateDraft("dir", e.target.value)}
-            placeholder={t("mcp.form.dir.placeholder")}
-          />
+            </FormField>
+            <div {...stylex.props(vocab.column, gap.s1_5)}>
+              <FormField label={t("mcp.form.env")}>
+                <TextArea
+                  font="mono"
+                  rows={3}
+                  aria-label={t("mcp.form.env")}
+                  value={draft.environment.text}
+                  onChange={(event) =>
+                    updateDraft("environment", draft.environment.edited(event.target.value))
+                  }
+                  placeholder={
+                    hasEnvironmentStored ? t("mcp.form.env.keep") : t("mcp.form.env.placeholder")
+                  }
+                />
+              </FormField>
+              {hasEnvironmentStored && (
+                <label {...stylex.props(ss.split, vocab.muted, typeStep.uiMd)}>
+                  <span>{t("mcp.form.env.clear")}</span>
+                  <Switch
+                    checked={draft.environment.disposition === "clear"}
+                    onCheckedChange={(value) =>
+                      updateDraft("environment", draft.environment.cleared(value))
+                    }
+                    ariaLabel={t("mcp.form.env.clear")}
+                  />
+                </label>
+              )}
+              {needsEnvironmentDisposition && (
+                <span {...stylex.props(vocab.warning, typeStep.uiMd)}>
+                  {t("mcp.form.env.targetChanged")}
+                </span>
+              )}
+            </div>
+          </FormRow>
+          <FormField label={t("mcp.form.dir.aria")}>
+            <TextField
+              font="mono"
+              type="text"
+              aria-label={t("mcp.form.dir.aria")}
+              value={draft.dir}
+              onChange={(e) => updateDraft("dir", e.target.value)}
+              placeholder={t("mcp.form.dir.placeholder")}
+            />
+          </FormField>
         </>
       ) : (
         <>
-          <TextField
-            font="mono"
-            type="text"
-            aria-label={t("mcp.form.url.aria")}
-            value={draft.url}
-            onChange={(e) => updateDraft("url", e.target.value)}
-            placeholder={t("mcp.form.url.placeholder")}
-          />
-          <TextField
-            font="mono"
-            type="password"
-            aria-label={t("mcp.form.auth.aria")}
-            value={draft.authorization.text}
-            onChange={(e) =>
-              updateDraft("authorization", draft.authorization.edited(e.target.value))
-            }
-            placeholder={hasAuthStored ? t("mcp.form.auth.keep") : t("mcp.form.auth.placeholder")}
-          />
+          <FormField label={t("mcp.form.url.aria")}>
+            <TextField
+              font="mono"
+              type="text"
+              aria-label={t("mcp.form.url.aria")}
+              value={draft.url}
+              onChange={(e) => updateDraft("url", e.target.value)}
+              placeholder={t("mcp.form.url.placeholder")}
+            />
+          </FormField>
+          <FormField label={t("mcp.form.auth.aria")}>
+            <TextField
+              font="mono"
+              type="password"
+              aria-label={t("mcp.form.auth.aria")}
+              value={draft.authorization.text}
+              onChange={(e) =>
+                updateDraft("authorization", draft.authorization.edited(e.target.value))
+              }
+              placeholder={hasAuthStored ? t("mcp.form.auth.keep") : t("mcp.form.auth.placeholder")}
+            />
+          </FormField>
           {hasAuthStored && (
             <label {...stylex.props(ss.split, vocab.muted, typeStep.uiMd)}>
               <span>{t("mcp.form.auth.clear")}</span>
@@ -203,14 +235,18 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
               {t("mcp.form.auth.originChanged")}
             </span>
           )}
-          <LinesField
-            label={t("mcp.form.headers")}
-            value={draft.headers.text}
-            onChange={(value) => updateDraft("headers", draft.headers.edited(value))}
-            placeholder={
-              hasHeadersStored ? t("mcp.form.headers.keep") : t("mcp.form.headers.placeholder")
-            }
-          />
+          <FormField label={t("mcp.form.headers")}>
+            <TextArea
+              font="mono"
+              rows={3}
+              aria-label={t("mcp.form.headers")}
+              value={draft.headers.text}
+              onChange={(event) => updateDraft("headers", draft.headers.edited(event.target.value))}
+              placeholder={
+                hasHeadersStored ? t("mcp.form.headers.keep") : t("mcp.form.headers.placeholder")
+              }
+            />
+          </FormField>
           {hasHeadersStored && (
             <label {...stylex.props(ss.split, vocab.muted, typeStep.uiMd)}>
               <span>{t("mcp.form.headers.clear")}</span>
@@ -229,27 +265,29 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
         </>
       )}
 
-      <label {...stylex.props(vocab.column, gap.s1_5)}>
-        <span {...stylex.props(ss.label, typeStep.uiMd)}>{t("mcp.form.timeout")}</span>
-        <TextField
-          type="number"
-          min={0}
-          inputMode="numeric"
-          aria-label={t("mcp.form.timeout")}
-          value={draft.timeoutSec}
-          onChange={(e) => updateDraft("timeoutSec", e.target.value)}
-          placeholder={t("mcp.form.timeout.placeholder")}
-        />
-      </label>
+      <FormRow>
+        <FormField label={t("mcp.form.timeout")}>
+          <TextField
+            type="number"
+            min={0}
+            inputMode="numeric"
+            aria-label={t("mcp.form.timeout")}
+            value={draft.timeoutSec}
+            onChange={(e) => updateDraft("timeoutSec", e.target.value)}
+            placeholder={t("mcp.form.timeout.placeholder")}
+          />
+        </FormField>
 
-      <TextField
-        type="text"
-        aria-label={t("mcp.form.description.aria")}
-        value={draft.description}
-        onChange={(e) => updateDraft("description", e.target.value)}
-        placeholder={t("mcp.form.description.placeholder")}
-      />
-
+        <FormField label={t("mcp.form.description.aria")}>
+          <TextField
+            type="text"
+            aria-label={t("mcp.form.description.aria")}
+            value={draft.description}
+            onChange={(e) => updateDraft("description", e.target.value)}
+            placeholder={t("mcp.form.description.placeholder")}
+          />
+        </FormField>
+      </FormRow>
       {server && (
         <div {...stylex.props(vocab.column, gap.s1_5)}>
           <span {...stylex.props(ss.label, typeStep.uiMd)}>{t("mcp.tools.manage")}</span>
@@ -257,48 +295,52 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
         </div>
       )}
 
-      <div {...stylex.props(sf.actions)}>
-        <PillButton
-          variant="solid"
-          size="sm"
-          disabled={!valid}
-          pending={saving}
-          onClick={() => void onSave()}
-        >
-          {saving ? t("mcp.saving") : isEdit ? t("mcp.save") : t("mcp.add")}
-        </PillButton>
-        <PillButton
-          variant="outlined"
+      <FormActions label={t(isEdit ? "mcp.save" : "mcp.add")}>
+        <Button
+          variant="outline"
           size="sm"
           disabled={!valid}
           pending={feedback.state === "busy"}
           onClick={() => void onTest()}
         >
           {feedback.state === "busy" ? t("mcp.testing") : t("mcp.test")}
-        </PillButton>
-        <PillButton variant="outlined" size="sm" onClick={onCancel}>
+        </Button>
+        <Button variant="outline" size="sm" onClick={onCancel}>
           {t("common.cancel")}
-        </PillButton>
+        </Button>
         {isEdit && (
-          <PillButton variant="danger" size="sm" pending={saving} onClick={() => void onDelete()}>
+          <Button
+            variant="tonal"
+            tone="negative"
+            size="sm"
+            pending={saving}
+            onClick={() => void onDelete()}
+          >
             {t("mcp.delete")}
-          </PillButton>
+          </Button>
         )}
 
-        {feedback.state === "ok" && (
-          <span {...stylex.props(ss.inline, vocab.success, typeStep.uiMd)}>
-            <Icon name="check" size="sm" /> {t("mcp.connectionOk")}
-          </span>
-        )}
-        {feedback.state === "error" && (
-          <span {...stylex.props(ss.inline, vocab.min, vocab.negative, typeStep.uiMd)}>
-            <Icon name="alert" size="sm" />
-            <span {...stylex.props(vocab.truncate)} title={feedback.reason}>
-              {feedback.reason}
-            </span>
-          </span>
-        )}
-      </div>
-    </Surface>
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={!valid}
+          pending={saving}
+          onClick={() => void onSave()}
+        >
+          {saving ? t("mcp.saving") : isEdit ? t("mcp.save") : t("mcp.add")}
+        </Button>
+      </FormActions>
+      {feedback.state === "ok" && (
+        <span {...stylex.props(ss.inline, vocab.success, typeStep.uiMd)}>
+          <Icon name="check" size="sm" /> {t("mcp.connectionOk")}
+        </span>
+      )}
+      {feedback.state === "error" && (
+        <span {...stylex.props(ss.inline, vocab.min, vocab.negative, typeStep.uiMd)}>
+          <Icon name="alert" size="sm" />
+          <span>{feedback.reason}</span>
+        </span>
+      )}
+    </RecordForm>
   );
 }

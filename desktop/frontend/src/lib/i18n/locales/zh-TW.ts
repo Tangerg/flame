@@ -1,4 +1,11 @@
 export const zhTW: Record<string, string> = {
+  "packages.installTitle": "安裝外掛",
+  "packages.installedTitle": "已安裝的外掛",
+  "packages.details": "發佈版本詳情",
+  "packages.actions": "外掛操作",
+  "packages.digest": "發佈版本摘要",
+  "plugins.loadedTitle": "用戶端已載入的外掛",
+
   "packages.module.loading": "正在載入插件頁面…",
   "packages.module.failed": "無法載入或顯示插件頁面。",
   "packages.module.unavailable": "插件目前無法使用。",
@@ -127,6 +134,8 @@ export const zhTW: Record<string, string> = {
   "dock.tabs.label": "右側工作區面板",
   "dock.tabs.closeAll": "關閉全部面板",
   "dock.tabs.closeOthers": "關閉其他面板",
+  "dock.tabs.moveLeft": "向左移動面板",
+  "dock.tabs.moveRight": "向右移動面板",
   "workspace.view.openBeside": "在內容面板中開啟",
   "workspace.view.unavailable.title": "檢視不可用",
   "workspace.view.unavailable.body": '未註冊 "{{id}}" 檢視。請關閉此分頁或重新啟用其外掛。',
@@ -311,8 +320,7 @@ export const zhTW: Record<string, string> = {
   "providers.models.error": "無法載入模型。",
   "providers.empty": "尚無供應商",
   "providers.empty.sub": "執行時回報沒有受支援的 LLM 供應商。",
-  "plugins.hero":
-    "此版本載入的全部外掛。出錯的外掛仍留在清單中並附上它拋出的錯誤，這樣損壞的貢獻是可見的，而不是直接消失。",
+  "plugins.hero": "安裝和管理外掛套件，選擇提供者，查看用戶端已載入的外掛。",
   "plugins.errorDetail.show": "顯示錯誤詳情",
   "plugins.errorDetail.hide": "隱藏錯誤詳情",
   "plugins.errors_other": "{{count}} 個錯誤",
@@ -711,7 +719,6 @@ export const zhTW: Record<string, string> = {
   "mcp.import.renamed": "已重新命名以符合執行階段的要求：{{names}}",
   "mcp.import.error": "無法匯入該設定。",
   "mcp.tools.manage": "管理工具",
-  "mcp.tools.tool": "工具",
   "mcp.tools.enabled": "已啟用",
   "mcp.tools.autoApprove": "自動核准",
   "mcp.tools.empty": "此伺服器未提供任何工具",
@@ -725,6 +732,7 @@ export const zhTW: Record<string, string> = {
   "mcp.testOutcome.timedOut": "伺服器未在時限內回應，請檢查命令或 URL 後重試。",
   "mcp.testOutcome.failed": "伺服器未能連線，或未提供有效的工具清單。請檢查其設定後重試。",
   "settings.theme.system": "系統",
+  "mcp.import.config": "JSON 設定",
   "mcp.import.hint": '貼上一段 MCP 用戶端設定區塊 —— 在 "mcpServers" 下的一個或多個伺服器。',
 
   "rpcError.session_has_active_run": "該工作階段已有一個進行中的執行 —— 請先介入、回應或取消它。",

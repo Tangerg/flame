@@ -49,11 +49,11 @@ const gs = stylex.create({
     paddingBlock: space.s1,
   },
   summary: {
-    minHeight: space.s6,
+    minHeight: "max(calc(var(--spacing) * 6), var(--control-target-min))",
     textDecorationLine: "underline",
     textDecorationColor: { default: "transparent", ":is(:enabled):hover": "currentColor" },
-    cursor: { ':is(:disabled, [aria-disabled="true"])': "default" },
-    opacity: { ':is(:disabled, [aria-disabled="true"])': 1 },
+    cursor: { default: null, ':is(:disabled, [aria-disabled="true"])': "default" },
+    opacity: { default: null, ':is(:disabled, [aria-disabled="true"])': 1 },
   },
   objective: { marginInlineStart: space.s1 },
   actions: {
@@ -167,7 +167,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             pending={busy}
             flex="fill"
             title={goal.objective}
-            className={stylex.props(gs.summary).className}
+            styles={gs.summary}
             onClick={openEditor}
           >
             <span {...stylex.props(vocab.hold, vocab.ink)}>
@@ -184,7 +184,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             size="xs"
             icon={iconGlyph("trash")}
             quiet
-            title={t("goal.action.clear")}
+            aria-label={t("goal.action.clear")}
             disabled={controlsDisabled}
             aria-busy={clearAction.busy}
             onClick={clear}
@@ -195,7 +195,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
               size="xs"
               icon={iconGlyph(goal.status === "active" ? "pause" : "play")}
               quiet
-              title={t(goal.status === "active" ? "goal.action.pause" : "goal.action.resume")}
+              aria-label={t(goal.status === "active" ? "goal.action.pause" : "goal.action.resume")}
               disabled={controlsDisabled}
               aria-busy={statusAction.busy}
               onClick={changeStatus}
@@ -207,7 +207,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
               size="xs"
               icon={iconGlyph("edit")}
               quiet
-              title={t("goal.action.edit")}
+              aria-label={t("goal.action.edit")}
               disabled={controlsDisabled}
               onClick={openEditor}
             />

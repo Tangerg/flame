@@ -3,8 +3,6 @@ import type { Scheme } from "@/lib/appearance";
 interface ThemeBrand {
   accent: string;
   textOnAccent: string;
-  accentBorder?: string;
-  accentPress?: string;
 }
 
 interface ThemeSurfaces {

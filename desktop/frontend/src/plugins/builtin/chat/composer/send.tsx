@@ -46,7 +46,7 @@ function SendButton() {
       icon={iconGlyph("stop")}
       iconSize={16}
       disabled={!stop || !runtimeAvailable}
-      title={t("composer.action.stop")}
+      aria-label={t("composer.action.stop")}
       onClick={() => stop?.()}
       variant={primary ? "primary" : "ghost"}
       round
@@ -58,7 +58,7 @@ function SendButton() {
       icon={iconGlyph("arrow-up")}
       iconSize={16}
       disabled={!enabled}
-      title={label}
+      aria-label={label}
       onClick={submit}
       variant="primary"
       round

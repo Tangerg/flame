@@ -35,7 +35,11 @@ export interface AgentDockTab {
 export interface AgentDockTabsProps {
   tabs: AgentDockTab[];
   ariaLabel: string;
-  onReorder?: (id: string, toIndex: number) => void;
+  reorder?: {
+    onMove: (id: string, toIndex: number) => void;
+    moveLeftLabel: string;
+    moveRightLabel: string;
+  };
 }
 
 const styles = stylex.create({
@@ -141,10 +145,25 @@ function keepActiveDockTabInsideFade(element: HTMLElement): void {
   }
 }
 
-export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps) {
+export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const activeId = tabs.find((tab) => tab.active)?.id ?? tabs[0]?.id;
+  const closeAndFocus = (action: () => void) => {
+    const header = rootRef.current?.parentElement;
+    const reopen = Array.from(
+      header?.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      ) ?? [],
+    ).find((candidate) => !candidate.closest('[role="tablist"]'));
+    action();
+    requestAnimationFrame(() => {
+      const remaining =
+        rootRef.current?.querySelector<HTMLElement>('[role="tab"][data-active]') ??
+        rootRef.current?.querySelector<HTMLElement>('[role="tab"]');
+      (remaining ?? reopen)?.focus({ preventScroll: true });
+    });
+  };
   useLayoutEffect(() => {
     const root = rootRef.current;
     root
@@ -186,26 +205,20 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
       <TabsPrimitive.List aria-label={ariaLabel} {...stylex.props(styles.contents)} activateOnFocus>
         {tabs.map((tab, index) => {
           const close = () => {
-            const header = rootRef.current?.parentElement ?? null;
-            const reopen =
-              header
-                ?.querySelectorAll<HTMLElement>('button, [tabindex]:not([tabindex="-1"])')
-                .values()
-                .find((candidate) => !candidate.closest('[role="tablist"]')) ?? null;
-            tab.onClose();
-            requestAnimationFrame(() => {
-              const remaining =
-                rootRef.current?.querySelector<HTMLElement>('[role="tab"][data-active]') ??
-                rootRef.current?.querySelector<HTMLElement>('[role="tab"]') ??
-                null;
-              (remaining ?? reopen)?.focus({ preventScroll: true });
-            });
+            closeAndFocus(tab.onClose);
+          };
+          const move = (toIndex: number) => {
+            const trigger = Array.from(
+              rootRef.current?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [],
+            ).find((element) => element.dataset.dockTabId === tab.id);
+            reorder?.onMove(tab.id, toIndex);
+            requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
           };
           const row = (
             <div
               data-active={tab.active ? "" : undefined}
               data-dragging={draggingId === tab.id ? "" : undefined}
-              draggable={onReorder !== undefined && tabs.length > 1}
+              draggable={reorder !== undefined && tabs.length > 1}
               onDragStart={(event) => {
                 event.dataTransfer.effectAllowed = "move";
                 event.dataTransfer.setData("text/plain", tab.id);
@@ -221,7 +234,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                 event.preventDefault();
                 const moved = event.dataTransfer.getData("text/plain") || draggingId;
                 setDraggingId(null);
-                if (moved && moved !== tab.id) onReorder?.(moved, index);
+                if (moved && moved !== tab.id) reorder?.onMove(moved, index);
               }}
               onAuxClick={(event) => {
                 if (event.button !== 1) return;
@@ -232,6 +245,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
             >
               <TabsPrimitive.Tab
                 value={tab.id}
+                data-dock-tab-id={tab.id}
                 data-focus-inset=""
                 onKeyDown={(event) => {
                   if (event.key !== "Delete" && event.key !== "Backspace") return;
@@ -251,7 +265,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                 icon={iconGlyph("x")}
                 size="xs"
                 quiet
-                title={tab.closeLabel}
+                aria-label={tab.closeLabel}
                 onClick={close}
                 className={stylex.props(styles.tabClose, reveal.pointerAffordance).className}
               />
@@ -261,6 +275,25 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
             <ContextMenu.Root key={tab.id}>
               <ContextMenu.Trigger render={row} />
               <ContextMenu.Content>
+                {reorder && (
+                  <>
+                    <ContextMenu.IconItem
+                      icon="arrow-left"
+                      disabled={index === 0}
+                      onSelect={() => move(index - 1)}
+                    >
+                      {reorder.moveLeftLabel}
+                    </ContextMenu.IconItem>
+                    <ContextMenu.IconItem
+                      icon="arrow-right"
+                      disabled={index === tabs.length - 1}
+                      onSelect={() => move(index + 1)}
+                    >
+                      {reorder.moveRightLabel}
+                    </ContextMenu.IconItem>
+                    <ContextMenu.Separator />
+                  </>
+                )}
                 <ContextMenu.IconItem icon="x" onSelect={close}>
                   {tab.closeLabel}
                 </ContextMenu.IconItem>
@@ -268,13 +301,16 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                   <ContextMenu.IconItem
                     icon="close-others"
                     disabled={tabs.length < 2}
-                    onSelect={tab.onCloseOthers}
+                    onSelect={() => closeAndFocus(tab.onCloseOthers!)}
                   >
                     {tab.closeOthersLabel}
                   </ContextMenu.IconItem>
                 )}
                 {tab.onCloseAll && (
-                  <ContextMenu.IconItem icon="close-all" onSelect={tab.onCloseAll}>
+                  <ContextMenu.IconItem
+                    icon="close-all"
+                    onSelect={() => closeAndFocus(tab.onCloseAll!)}
+                  >
                     {tab.closeAllLabel}
                   </ContextMenu.IconItem>
                 )}

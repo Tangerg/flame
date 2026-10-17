@@ -1,3 +1,4 @@
+import { selectionTransition } from "@flame/ui";
 import type { Transition } from "motion/react";
 import { motionScale, visualStyleMotion } from "./appearance";
 
@@ -26,8 +27,6 @@ function scaledSpring(duration: "fastMs" | "mediumMs" | "slowMs"): Transition {
 export const disclosureTransition: Transition = scaled("mediumMs");
 
 export const disclosureExitTransition: Transition = scaled("fastMs");
-
-export const selectionTransition: Transition = scaled("fastMs");
 
 export const glyphSwapTransition: Transition = scaledSpring("slowMs");
 

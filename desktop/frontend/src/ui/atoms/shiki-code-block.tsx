@@ -156,7 +156,7 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
             active={wrapCode}
             aria-pressed={wrapCode}
             onClick={toggleCodeWrapPreference}
-            title={t(wrapCode ? "message.code.wrap.disable" : "message.code.wrap.enable")}
+            aria-label={t(wrapCode ? "message.code.wrap.disable" : "message.code.wrap.enable")}
           />
         )}
         <IconButton
@@ -165,7 +165,7 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
           size="xs"
           onClick={() => void copy()}
           tone={copied ? "success" : undefined}
-          title={copied ? t("message.code.copied") : t("message.code.copy")}
+          aria-label={copied ? t("message.code.copied") : t("message.code.copy")}
           className={cn(isPreview && stylex.props(reveal.shown).className)}
         />
       </div>

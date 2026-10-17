@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { DataView, Icon, PillButton } from "@/ui";
-import { gap, vocab } from "@flame/ui";
+import { DataView, Icon } from "@/ui";
+import { Button, RecordGroup, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { useMCPServers } from "../application/mcpServerQueries";
 import { mcpServerLabel } from "@/lib/toolSource";
@@ -27,10 +27,10 @@ export function McpServersPane() {
         ) : (
           <>
             <JsonImport />
-            <PillButton variant="outlined" size="sm" onClick={() => setAdding(true)}>
+            <Button variant="primary" size="sm" onClick={() => setAdding(true)}>
               <Icon name="plus" size="sm" />
               {t("mcp.add")}
-            </PillButton>
+            </Button>
           </>
         )}
       </div>
@@ -48,11 +48,11 @@ export function McpServersPane() {
         }}
       >
         {(rows) => (
-          <div {...stylex.props(vocab.column, gap.s2)}>
+          <RecordGroup variant="list">
             {rows.map((s) => (
               <ServerRow key={mcpServerLabel(s.id)} server={s} />
             ))}
-          </div>
+          </RecordGroup>
         )}
       </DataView>
     </div>

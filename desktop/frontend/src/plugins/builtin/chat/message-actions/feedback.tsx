@@ -40,7 +40,7 @@ function RateableFeedbackButtons({ msg }: { msg: Message }) {
     <>
       <MessageActionButton
         icon="thumbs-up"
-        title={t("msgActions.good")}
+        aria-label={t("msgActions.good")}
         role={msg.role}
         aria-pressed={feedback.rating === "positive"}
         onClick={() => rate("positive")}
@@ -48,7 +48,7 @@ function RateableFeedbackButtons({ msg }: { msg: Message }) {
       />
       <MessageActionButton
         icon="thumbs-down"
-        title={t("msgActions.poor")}
+        aria-label={t("msgActions.poor")}
         role={msg.role}
         aria-pressed={feedback.rating === "negative"}
         onClick={() => rate("negative")}

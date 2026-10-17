@@ -108,20 +108,18 @@ function readTurnFacts(
   let delegatedRuns: DelegatedRunNarrativesByItemId | undefined;
   let awaiting: Map<string, string> | undefined;
 
-  for (const block of message.blocks) {
-    const itemId = awaitableItemId(block);
-    const resumeRunId = itemId === undefined ? undefined : sessionAwaiting.get(itemId);
-    if (itemId === undefined || resumeRunId === undefined) continue;
-    awaiting ??= new Map();
-    awaiting.set(itemId, resumeRunId);
-    identities.push(`awaiting:${itemId}:${resumeRunId}`);
-  }
-
   const pending: Message[] = [message];
   const visitedRuns = new Set<string>();
 
   for (let cursor = 0; cursor < pending.length; cursor += 1) {
     for (const block of pending[cursor]!.blocks) {
+      const itemId = awaitableItemId(block);
+      const resumeRunId = itemId === undefined ? undefined : sessionAwaiting.get(itemId);
+      if (itemId !== undefined && resumeRunId !== undefined && !awaiting?.has(itemId)) {
+        awaiting ??= new Map();
+        awaiting.set(itemId, resumeRunId);
+        identities.push(`awaiting:${itemId}:${resumeRunId}`);
+      }
       if (block.kind !== "tool") continue;
       const toolCallId = block.toolCallId;
 

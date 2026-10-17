@@ -12,7 +12,7 @@ function EditButton() {
   return (
     <MessageActionButton
       icon="edit"
-      title={t("msgActions.edit")}
+      aria-label={t("msgActions.edit")}
       role={msg.role}
       onClick={() => editMessageInComposer(msg)}
     />

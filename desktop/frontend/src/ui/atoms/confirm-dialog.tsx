@@ -1,15 +1,5 @@
-import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { color, leading, space, type, weight } from "@flame/ui/tokens.stylex";
-import { Button } from "@flame/ui/button";
-import { DialogPrimitive } from "@/ui/primitives";
-import { formDialog, MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
-
-const styles = stylex.create({
-  panel: { width: "min(400px, calc(100vw - 32px))" },
-  title: { fontWeight: weight.semibold, color: color.fg },
-  body: { marginTop: space.s1_5, lineHeight: leading.relaxed, color: color.fgMuted },
-});
+import { Button, ModalDialog } from "@flame/ui";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -33,38 +23,32 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop
-          data-slot="confirm-dialog-backdrop"
-          className={stylex.props(MODAL_SCRIM).className}
-        />
-        <DialogPrimitive.Popup
-          data-slot="confirm-dialog"
-          role={destructive ? "alertdialog" : "dialog"}
-          {...stylex.props(modalPanel(), formDialog.plane, formDialog.inset, styles.panel)}
-        >
-          <DialogPrimitive.Title {...stylex.props(type.displaySm, styles.title)}>
-            {title}
-          </DialogPrimitive.Title>
-          <DialogPrimitive.Description {...stylex.props(type.uiMd, styles.body)}>
-            {body}
-          </DialogPrimitive.Description>
-          <div {...stylex.props(formDialog.actions)}>
-            <DialogPrimitive.Close render={<Button variant="ghost">{cancelLabel}</Button>} />
-            <Button
-              variant={destructive ? "tonal" : "primary"}
-              tone={destructive ? "negative" : undefined}
-              onClick={() => {
-                onOpenChange(false);
-                onConfirm();
-              }}
-            >
-              {confirmLabel}
-            </Button>
-          </div>
-        </DialogPrimitive.Popup>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+    <ModalDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={body}
+      size="sm"
+      role={destructive ? "alertdialog" : "dialog"}
+      slot="confirm-dialog"
+      backdropSlot="confirm-dialog-backdrop"
+      footer={
+        <>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            {cancelLabel}
+          </Button>
+          <Button
+            variant={destructive ? "tonal" : "primary"}
+            tone={destructive ? "negative" : undefined}
+            onClick={() => {
+              onOpenChange(false);
+              onConfirm();
+            }}
+          >
+            {confirmLabel}
+          </Button>
+        </>
+      }
+    />
   );
 }

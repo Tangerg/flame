@@ -1409,12 +1409,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     pendingInterruptSets: [],
   },
   narrative: {
-    runs: [
-      run("finished", {
-        finishedAt: "2026-07-31T08:02:30.000Z",
-        outcome: { type: "completed" },
-      }),
-    ],
+    runs: [run("waiting")],
     items: [
       NARRATIVE_TURN_1,
       NARRATIVE_REASONING,
@@ -1613,6 +1608,35 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     pendingInterruptSets: [],
   },
 };
+
+export function delegatedApprovalSnapshot(): RuntimeAgentSessionSnapshot {
+  const snapshot = structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.delegated);
+  snapshot.runs = snapshot.runs.map((value): RunRef => {
+    const parked = { ...value };
+    delete parked.activeSegmentId;
+    if (value.id === ROOT_RUN_ID) return { ...parked, status: "waiting" };
+    if (value.id === "run_nested")
+      return {
+        ...parked,
+        status: "finished",
+        finishedAt: "2026-07-31T08:00:07.000Z",
+        outcome: { type: "completed" },
+      };
+    return value;
+  });
+  snapshot.items = snapshot.items.map((item) =>
+    item.type === "toolCall" && item.id === "item_nested_running"
+      ? {
+          ...item,
+          status: "completed",
+          finishedAt: "2026-07-31T08:00:07.000Z",
+          durationMillis: 1_000,
+          tool: { ...item.tool, result: { hits: [] } },
+        }
+      : item,
+  );
+  return snapshot;
+}
 
 export function projectRuntimeAgentSnapshot(
   snapshot: RuntimeAgentSessionSnapshot,

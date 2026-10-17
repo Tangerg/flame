@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { Icon, reveal, type IconName } from "@/ui";
 import { Button, type ButtonProps } from "@flame/ui";
-import { HoverHighlight, useHoverTrackItem } from "@/ui/atoms/hover-track";
+import { ItemHighlight, useHoverTrackItem } from "@flame/ui";
 import { Tooltip } from "@flame/ui/tooltip";
 import { color, leading, motion, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { AgentOverflowLabel } from "./overflow-label";
@@ -11,7 +11,8 @@ import { AgentOverflowLabel } from "./overflow-label";
 const rowStyles = stylex.create({
   editor: { display: "flex", alignItems: "center", width: "100%" },
   base: {
-    height: "var(--density-row-height)",
+    height: "auto",
+    minHeight: "max(var(--density-row-height), var(--control-target-min))",
     gap: "var(--density-row-gap)",
     paddingInline: space.s2,
     borderWidth: 0,
@@ -41,7 +42,6 @@ const rowStyles = stylex.create({
   },
   stacked: {
     height: "auto",
-    minHeight: "var(--density-row-height)",
     alignItems: "flex-start",
     paddingBlock: space.s2,
   },
@@ -139,7 +139,7 @@ export function AgentRow({
       ]}
       className={cn("agent-row", className)}
     >
-      {track?.hovered && <HoverHighlight item={track} />}
+      {track?.hovered && <ItemHighlight layoutId={track.layoutId} />}
       {icon && (
         <Icon
           name={icon}

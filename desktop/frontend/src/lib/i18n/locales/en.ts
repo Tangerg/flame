@@ -1,4 +1,11 @@
 export const en: Record<string, string> = {
+  "packages.installTitle": "Install a plugin",
+  "packages.installedTitle": "Installed packages",
+  "packages.details": "Release details",
+  "packages.actions": "Package actions",
+  "packages.digest": "Release digest",
+  "plugins.loadedTitle": "Loaded client plugins",
+
   "packages.module.loading": "Loading plugin view…",
   "packages.module.failed": "The plugin view could not be loaded or displayed.",
   "packages.module.unavailable": "The plugin is unavailable.",
@@ -135,6 +142,8 @@ export const en: Record<string, string> = {
   "dock.tabs.label": "Right workspace panels",
   "dock.tabs.closeAll": "Close all panels",
   "dock.tabs.closeOthers": "Close other panels",
+  "dock.tabs.moveLeft": "Move panel left",
+  "dock.tabs.moveRight": "Move panel right",
   "workspace.view.openBeside": "Open in the context dock",
   "workspace.view.unavailable.title": "View unavailable",
   "workspace.view.unavailable.body":
@@ -434,6 +443,7 @@ export const en: Record<string, string> = {
   "mcp.form.description.placeholder": "Description (optional)",
   "mcp.form.description.aria": "Description",
   "mcp.import": "Import from JSON",
+  "mcp.import.config": "JSON configuration",
   "mcp.import.hint": 'Paste an MCP client config block — one or more servers under "mcpServers".',
   "mcp.import.confirm": "Import",
   "mcp.importing": "Importing…",
@@ -442,7 +452,6 @@ export const en: Record<string, string> = {
   "mcp.import.renamed": "Renamed to match what the runtime accepts: {{names}}",
   "mcp.import.error": "Couldn't import that config.",
   "mcp.tools.manage": "Manage tools",
-  "mcp.tools.tool": "Tool",
   "mcp.tools.enabled": "Enabled",
   "mcp.tools.autoApprove": "Auto-approve",
   "mcp.tools.empty": "This server exposes no tools",
@@ -458,7 +467,7 @@ export const en: Record<string, string> = {
   "mcp.testOutcome.failed":
     "The server did not connect or did not offer a valid tool list. Check its settings and retry.",
   "plugins.hero":
-    "Every plugin this build loads. One that fails keeps its place with the error it raised, so a broken contribution is visible rather than simply missing.",
+    "Install and manage plugin packages, choose providers, and inspect loaded client plugins.",
   "plugins.errorDetail.show": "Show error detail",
   "plugins.errorDetail.hide": "Hide error detail",
   "plugins.errors_one": "{{count}} error",

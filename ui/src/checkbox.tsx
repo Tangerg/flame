@@ -1,7 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { clsx as cn } from "clsx";
-import { color, motion, radius, space, surface, type } from "./tokens.stylex";
+import { color, motion, space, type } from "./tokens.stylex";
+import { CHOICE_SURFACE } from "./control-surface";
 import { Icon } from "./font-scale";
 import { Check } from "@flame/icons/react";
 import { CheckboxPrimitive } from "./primitives/index";
@@ -17,22 +18,6 @@ const styles = stylex.create({
   },
   off: { cursor: "not-allowed", opacity: "var(--control-disabled-opacity)" },
   box: {
-    display: "grid",
-    height: "var(--control-mark-size)",
-    width: "var(--control-mark-size)",
-    flexShrink: 0,
-    placeItems: "center",
-    borderRadius: radius.step2xs,
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    borderColor: {
-      default: surface.controlEdge,
-      ":is([data-checked])": color.accent,
-    },
-    backgroundColor: {
-      default: surface.canvas,
-      ":is([data-checked])": color.accent,
-    },
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
@@ -62,7 +47,12 @@ export function Checkbox({
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
-        {...stylex.props(styles.box)}
+        {...stylex.props(
+          CHOICE_SURFACE.mark,
+          CHOICE_SURFACE.square,
+          styles.box,
+          checked && CHOICE_SURFACE.selected,
+        )}
       >
         <CheckboxPrimitive.Indicator>
           <Icon glyph={Check} size="xs" {...stylex.props(styles.mark)} />

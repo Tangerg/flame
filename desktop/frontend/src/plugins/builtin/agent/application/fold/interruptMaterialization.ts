@@ -1,8 +1,7 @@
 import type { AgentInterrupt } from "@/plugins/sdk";
-import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { commandString, editableArgs, mapQuestion } from "./projections";
-import { appendToTurn, patchRunBlock } from "./fold";
+import { mapQuestion } from "./projections";
+import { appendToTurn, writeApproval } from "./fold";
 import type { AgentFoldSource } from "./source";
 
 export function materializeInterrupt(
@@ -11,33 +10,11 @@ export function materializeInterrupt(
   source: AgentFoldSource,
 ): AgentSessionView {
   if (interrupt.type === "approval") {
-    if (
-      state.messages.some(
-        (message) =>
-          message.runId === source.runId &&
-          message.blocks.some(
-            (block) => block.kind === "approval" && block.itemId === interrupt.itemId,
-          ),
-      )
-    ) {
-      return patchRunBlock(
-        state,
-        source.runId,
-        (b) => b.kind === "approval" && b.itemId === interrupt.itemId,
-        (b) => ({ ...b, rememberable: interrupt.payload.rememberable ?? false }),
-      );
-    }
-    const tool = interrupt.payload.tool;
-    const block: ContentBlock = {
-      kind: "approval",
-      itemId: interrupt.itemId,
-      toolName: tool.name,
-      command: commandString(tool),
-      reason: interrupt.payload.reason ?? "",
-      args: editableArgs(tool),
-      rememberable: interrupt.payload.rememberable ?? false,
-    };
-    return appendToTurn(state, source.runId, interrupt.itemId, block, source.timestamp);
+    return writeApproval(
+      state,
+      { id: interrupt.itemId, runId: source.runId, createdAt: source.timestamp },
+      interrupt.payload,
+    );
   }
   if (interrupt.type === "question") {
     const hasBlock = state.messages.some(

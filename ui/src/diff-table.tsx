@@ -10,6 +10,15 @@ export type ComparisonRow =
       leftLine?: number;
       rightLine?: number;
     };
+
+export interface DiffTableLabels {
+  region: string;
+  beforeLine: string;
+  beforeCode: string;
+  afterLine: string;
+  afterCode: string;
+  changedCode: string;
+}
 const styles = stylex.create({
   table: {
     width: "100%",
@@ -42,7 +51,11 @@ function CodeCell({
 }) {
   return (
     <td {...stylex.props(styles.cell, kind && styles[kind])}>
-      {kind && <span>{kind === "added" ? "+ " : "− "}</span>}
+      {kind && (
+        <span aria-hidden="true" {...stylex.props(styles.number)}>
+          {kind === "added" ? "+ " : "− "}
+        </span>
+      )}
       <code>{code}</code>
     </td>
   );
@@ -51,23 +64,30 @@ export function DiffTable({
   rows,
   layout,
   label,
+  labels,
 }: {
   rows: readonly ComparisonRow[];
   layout: "unified" | "split";
   label: string;
+  labels: DiffTableLabels;
 }) {
   const split = layout === "split";
   return (
-    <ScrollRegion label={`Scrollable diff for ${label}`}>
+    <ScrollRegion label={labels.region}>
       <table data-layout={layout} {...stylex.props(styles.table, type.code)}>
         <caption className="sr-only">{label}</caption>
         <thead className="sr-only">
           <tr>
             {(split
-              ? ["Before line", "Before code", "After line", "After code"]
-              : ["Before line", "After line", "Changed code"]
-            ).map((title) => (
-              <th key={title} scope="col">
+              ? [
+                  labels.beforeLine,
+                  labels.beforeCode,
+                  labels.afterLine,
+                  labels.afterCode,
+                ]
+              : [labels.beforeLine, labels.afterLine, labels.changedCode]
+            ).map((title, index) => (
+              <th key={index} scope="col">
                 {title}
               </th>
             ))}

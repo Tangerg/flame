@@ -54,7 +54,12 @@ async function openEditor(rows: unknown[] = []) {
   await act(async () =>
     respondSuccess(transport, read.id, { output: stringifyJSON({ Rows: rows, NextCursor: "" }) }),
   );
-  fireEvent.click(screen.getByRole("button", { name: rows.length ? "Edit" : "Add schedule" }));
+  if (rows.length) {
+    fireEvent.click(screen.getByRole("button", { name: /^More actions for / }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));
+  } else {
+    fireEvent.click(screen.getByRole("button", { name: "Add schedule" }));
+  }
   fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
     target: { value: "Retained draft" },
   });

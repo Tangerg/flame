@@ -1,4 +1,3 @@
-import { colord } from "colord";
 import { describe, expect, it } from "vitest";
 import { densityCssVariables } from "./kit/density";
 import { DEFAULT_UI_DENSITY } from "./kit/appearance";
@@ -33,20 +32,6 @@ describe("the stylesheet's defaults and the values TypeScript writes", () => {
     const written = uiTypeLadderCssVariables(normalizeUiFontSize(undefined));
     expect(Object.keys(written).length).toBeGreaterThan(4);
     expect(expectDefaults(written)).toEqual([]);
-  });
-
-  it.each([
-    [":root", "the light default"],
-    ["html.theme-dark", "the dark scheme"],
-  ])("agree on the accent shades %s derives (%s)", (selector) => {
-    const accent = declaredInBlock(selector, "--color-accent");
-    expect(accent, `${selector} declares no accent to derive from`).toMatch(/^#[\da-f]{6}$/i);
-    expect(declaredInBlock(selector, "--color-accent-border")).toBe(
-      colord(accent!).darken(0.08).toHex(),
-    );
-    expect(declaredInBlock(selector, "--color-accent-press")).toBe(
-      colord(accent!).darken(0.16).toHex(),
-    );
   });
 
   it("is not vacuous — a property the stylesheet does not declare is reported", () => {

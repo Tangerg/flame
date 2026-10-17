@@ -147,7 +147,7 @@ export function RunErrorBanner() {
             icon={iconGlyph("x")}
             size="xs"
             quiet
-            title={t("runError.action.dismiss")}
+            aria-label={t("runError.action.dismiss")}
             onClick={dismissActiveSessionProblem}
           />
         </motion.div>

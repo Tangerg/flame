@@ -4,6 +4,7 @@ import {
   color,
   corner,
   leading,
+  layout,
   space,
   surface,
   type,
@@ -24,13 +25,13 @@ const styles = stylex.create({
     minWidth: 0,
   },
   rootCompact: {
-    gap: space.s1_5,
-    paddingInline: space.s4,
-    paddingBlock: space.s6,
+    gap: layout.labelGap,
+    paddingInline: layout.compactGutter,
+    paddingBlock: layout.sectionGap,
   },
   rootComfortable: {
     gap: space.s2_5,
-    paddingInline: space.s5,
+    paddingInline: layout.cardPadding,
     paddingBlock: space.s12,
   },
   icon: {
@@ -54,7 +55,7 @@ const styles = stylex.create({
     color: color.fgMuted,
     overflowWrap: "break-word",
   },
-  action: { marginTop: space.s1_5 },
+  action: { marginTop: layout.labelGap },
 });
 
 const ROOT = {

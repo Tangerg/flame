@@ -1,23 +1,21 @@
 import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { useState } from "react";
-import { Icon, PillButton, Surface, TextButton } from "@/ui";
-import { TextArea, vocab } from "@flame/ui";
+import { useId, useRef, useState } from "react";
+import { Icon, TextButton } from "@/ui";
+import { Button, FormField, ModalDialog, TextArea, vocab } from "@flame/ui";
 import { useCreateMCPServer } from "../application/mcpServerConfig";
 import { notifyInfo } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { parseMcpImport } from "../application/mcpImport";
-import { space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
-
-const ji = stylex.create({
-  form: { display: "flex", flexDirection: "column", gap: space.s2_5 },
-});
 
 export function JsonImport() {
   const t = useT();
   const create = useCreateMCPServer();
+  const field = useRef<HTMLTextAreaElement>(null);
+  const errorId = useId();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -48,52 +46,61 @@ export function JsonImport() {
     }
   };
 
-  if (!open) {
-    return (
+  return (
+    <>
       <TextButton onClick={() => setOpen(true)}>
         <Icon name="file-braces" size="sm" />
         {t("mcp.import")}
       </TextButton>
-    );
-  }
-  return (
-    <Surface className={stylex.props(ji.form).className}>
-      <span {...stylex.props(vocab.muted, typeStep.uiMd)}>{t("mcp.import.hint")}</span>
-      <TextArea
-        font="mono"
-        size="sm"
-        invalid={error !== undefined}
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        rows={6}
-        spellCheck={false}
-        aria-label={t("mcp.import.hint")}
-        placeholder={
-          '{"mcpServers": {"my-server": {"type": "streamableHttp", "url": "https://example.com/mcp"}}}'
+      <ModalDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={t("mcp.import")}
+        description={t("mcp.import.hint")}
+        closeLabel={t("common.close")}
+        initialFocus={field}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!busy && text.trim()) void onImport();
+        }}
+        footer={
+          <>
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="submit" variant="primary" disabled={!text.trim()} pending={busy}>
+              {busy ? t("mcp.importing") : t("mcp.import.confirm")}
+            </Button>
+          </>
         }
-      />
-      {error && (
-        <span {...stylex.props(ss.inline, vocab.negative, typeStep.uiMd)}>
-          <Icon name="alert" size="sm" />
-          <span {...stylex.props(vocab.truncate)} title={error}>
+      >
+        <FormField label={t("mcp.import.config")}>
+          <TextArea
+            ref={field}
+            font="mono"
+            invalid={error !== undefined}
+            pending={busy}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            rows={10}
+            spellCheck={false}
+            aria-describedby={error ? errorId : undefined}
+            placeholder={
+              '{"mcpServers": {"my-server": {"type": "streamableHttp", "url": "https://example.com/mcp"}}}'
+            }
+          />
+        </FormField>
+        {error && (
+          <div
+            id={errorId}
+            role="alert"
+            {...stylex.props(ss.inline, vocab.negative, typeStep.uiMd)}
+          >
+            <Icon name="alert" size="sm" />
             {error}
-          </span>
-        </span>
-      )}
-      <div {...stylex.props(vocab.line)}>
-        <PillButton
-          variant="solid"
-          size="sm"
-          disabled={!text.trim()}
-          pending={busy}
-          onClick={() => void onImport()}
-        >
-          {busy ? t("mcp.importing") : t("mcp.import.confirm")}
-        </PillButton>
-        <PillButton variant="outlined" size="sm" onClick={() => setOpen(false)}>
-          {t("common.cancel")}
-        </PillButton>
-      </div>
-    </Surface>
+          </div>
+        )}
+      </ModalDialog>
+    </>
   );
 }

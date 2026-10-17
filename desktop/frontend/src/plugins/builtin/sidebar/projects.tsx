@@ -87,7 +87,7 @@ export function ProjectsSection() {
             icon={iconGlyph("plus")}
             size="xs"
             quiet
-            title={t("workIndex.action.addProject")}
+            aria-label={t("workIndex.action.addProject")}
             disabled={!actions.canCreateSessionInFolder}
             onClick={actions.chooseSessionFolder}
           />

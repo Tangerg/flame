@@ -22,8 +22,8 @@ export interface PaletteTheme {
 }
 
 export const SCHEME_BASE: Record<Scheme, { background: string; foreground: string }> = {
-  dark: { background: "#1f1f1f", foreground: "#e3e5e9" },
-  light: { background: "#ffffff", foreground: "#1e1f22" },
+  dark: { background: "#060607", foreground: "#fcfcfc" },
+  light: { background: "#f5f5f5", foreground: "#18181b" },
 };
 
 const mix = (a: string, pct: number, b: string): string =>

@@ -1,15 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { KeyboardEvent, ReactNode } from "react";
-import {
-  color,
-  corner,
-  motion,
-  radius,
-  space,
-  surface,
-  type,
-  weight,
-} from "@flame/ui/tokens.stylex";
+import { corner, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
+import { CHOICE_SURFACE } from "@flame/ui";
 import { Icon } from "@/ui/icons";
 import { CheckboxGroupPrimitive, RadioGroupPrimitive, RadioPrimitive } from "@/ui/primitives";
 import { CheckboxPrimitive } from "@flame/ui/primitives";
@@ -26,7 +18,7 @@ const styles = stylex.create({
     borderRadius: radius.row,
     paddingInline: space.s2,
     paddingBlock: space.s1_5,
-    textAlign: "left",
+    textAlign: "start",
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
@@ -36,29 +28,9 @@ const styles = stylex.create({
       ':is(:disabled, [aria-disabled="true"])': "var(--control-disabled-opacity)",
     },
   },
-  rowChosen: { backgroundColor: surface.hover },
+  rowChosen: { backgroundColor: surface.selected },
   rowOpen: { backgroundColor: { default: null, ":hover": surface.hover } },
 
-  mark: {
-    display: "grid",
-    height: "var(--control-mark-size)",
-    width: "var(--control-mark-size)",
-    flexShrink: 0,
-    placeItems: "center",
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    borderColor: surface.controlEdge,
-    backgroundColor: surface.canvas,
-    lineHeight: 1,
-    fontWeight: weight.medium,
-    color: color.fgMuted,
-  },
-  markSquare: { borderRadius: radius.step2xs },
-  markChosen: {
-    borderColor: color.accent,
-    backgroundColor: color.accent,
-    color: color.onAccent,
-  },
   dot: { display: "block", height: space.s1_5, width: space.s1_5, backgroundColor: "currentColor" },
 });
 
@@ -169,10 +141,10 @@ export function ChoiceOption({
       <span
         aria-hidden
         {...stylex.props(
-          styles.mark,
+          CHOICE_SURFACE.mark,
           type.uiXs,
-          multiple ? styles.markSquare : corner.pill,
-          selected && styles.markChosen,
+          multiple ? CHOICE_SURFACE.square : corner.pill,
+          selected && CHOICE_SURFACE.selected,
         )}
       >
         {multiple ? (

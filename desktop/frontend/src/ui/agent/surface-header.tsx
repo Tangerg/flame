@@ -51,7 +51,7 @@ export function AgentDockToggle({
         hoverIcon={iconGlyph(open ? "x" : undefined)}
         size="sm"
         aria-expanded={open}
-        title={open ? hideLabel : showLabel}
+        aria-label={open ? hideLabel : showLabel}
         onClick={onToggle}
       />
     </div>

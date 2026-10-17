@@ -52,15 +52,7 @@ const bare = new Set();
 for (const match of css.matchAll(/var\(\s*(--[A-Za-z0-9_-]+)\s*([,)])/g))
   if (match[2] === ")") bare.add(match[1]);
 
-/**
- * A spec's probe reads a variable too, and is the one reader the built sheet cannot see.
- *
- * `foundation.visual.spec.ts` measured `--app-content-card-radius` by setting it on a
- * throwaway element and comparing the result — a name this repository has never defined in
- * any commit. It resolved to `0px`, so the assertion compared `0px` against `0px` and could
- * not fail, under a comment describing a corner the shell declares per visual style. A
- * component's `var()` is compiled into the sheet above and already covered; a spec's is not.
- */
+// Browser probes also consume custom properties outside the production stylesheet.
 function walk(dir) {
   const out = [];
   for (const entry of readdirSync(dir)) {

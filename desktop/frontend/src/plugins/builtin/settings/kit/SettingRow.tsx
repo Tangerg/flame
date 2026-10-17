@@ -1,29 +1,31 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
-import { color, space, surface, weight } from "@flame/ui/tokens.stylex";
+import { color, layout, surface, weight } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "./settingStyles";
 
 const styles = stylex.create({
   row: {
     display: "grid",
-    gap: space.s6,
-    borderTopWidth: { default: "var(--control-edge-width)", ":first-child": 0 },
-    borderTopStyle: "solid",
-    borderTopColor: surface.field,
-    paddingInline: space.s4,
-    paddingBlock: space.s3,
+    gap: layout.sectionGap,
+    borderBlockStartWidth: { default: "var(--control-edge-width)", ":first-child": 0 },
+    borderBlockStartStyle: "solid",
+    borderBlockStartColor: surface.field,
+    paddingInline: layout.cardPadding,
+    paddingBlock: layout.rowPadding,
+    minWidth: 0,
   },
   split: {
     gridTemplateColumns: {
       default: "minmax(0, 1fr) auto",
       "@container (max-width: 560px)": "minmax(0, 1fr)",
     },
-    rowGap: space.s3,
+    rowGap: layout.contentGap,
   },
-  stacked: { gap: space.s3 },
+  stacked: { gap: layout.contentGap },
   top: { alignItems: "flex-start" },
   centre: { alignItems: "center" },
+  copy: { minWidth: 0, overflowWrap: "anywhere" },
   name: { color: color.fg, fontWeight: weight.medium },
   control: {
     minWidth: 0,
@@ -41,7 +43,7 @@ export function SettingRow({
 }: {
   label: string;
   labelId?: string;
-  sub: string;
+  sub: ReactNode;
   align?: "start" | "center" | "stacked";
   children: ReactNode;
 }) {
@@ -56,7 +58,7 @@ export function SettingRow({
         stacked && styles.stacked,
       )}
     >
-      <div>
+      <div {...stylex.props(styles.copy)}>
         <div id={labelId} {...stylex.props(styles.name, typeStep.uiMd)}>
           {label}
         </div>

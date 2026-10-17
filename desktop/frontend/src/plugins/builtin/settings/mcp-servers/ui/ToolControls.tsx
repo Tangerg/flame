@@ -17,46 +17,30 @@ import {
   useMCPToolExposure,
   type MCPServerID,
 } from "../application/mcpServerQueries";
-import {
-  color,
-  motion,
-  radius,
-  space,
-  surface,
-  type as typeStep,
-  weight,
-} from "@flame/ui/tokens.stylex";
-import { settingStyles as ss } from "../../kit/settingStyles";
+import { layout, type as typeStep } from "@flame/ui/tokens.stylex";
+import { SettingRow, SettingsGroup } from "../../kit";
 
 interface Props {
   server: MCPServerID;
 }
 
 const tc = stylex.create({
-  panel: { borderRadius: radius.card, backgroundColor: surface.sunken, padding: space.s2_5 },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) auto auto",
+  panel: { display: "grid", gap: layout.contentGap, minWidth: 0 },
+  controls: {
+    display: "flex",
+    flexWrap: "wrap",
     alignItems: "center",
-    columnGap: space.s4,
+    justifyContent: "flex-end",
+    gap: layout.contentGap,
+    minWidth: 0,
   },
-  head: {
-    rowGap: space.s1,
-    paddingInline: space.s1_5,
-    paddingBottom: space.s1_5,
-    color: color.fgMuted,
-    fontWeight: weight.medium,
+  choice: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: layout.controlGap,
+    minWidth: 0,
+    maxWidth: "100%",
   },
-  row: {
-    borderRadius: radius.card,
-    backgroundColor: { default: null, ":hover": surface.hover },
-    paddingInline: space.s1_5,
-    paddingBlock: space.s1_5,
-    transitionProperty: "background-color",
-    transitionTimingFunction: motion.easeState,
-  },
-  switchCol: { width: space.s12, textAlign: "center" },
-  switchCell: { display: "flex", width: space.s12, justifyContent: "center" },
 });
 
 export function ToolControls({ server }: Props) {
@@ -92,11 +76,6 @@ export function ToolControls({ server }: Props) {
   return (
     <div {...stylex.props(tc.panel)}>
       <p {...stylex.props(typeStep.uiSm, vocab.muted)}>{t("mcp.tools.policyHint")}</p>
-      <div {...stylex.props(tc.grid, tc.head, typeStep.uiSm)}>
-        <span>{t("mcp.tools.tool")}</span>
-        <span {...stylex.props(tc.switchCol)}>{t("mcp.tools.enabled")}</span>
-        <span {...stylex.props(tc.switchCol)}>{t("mcp.tools.autoApprove")}</span>
-      </div>
       {exposure.error != null && (
         <EmptyState
           icon={iconGlyph("alert")}
@@ -122,56 +101,63 @@ export function ToolControls({ server }: Props) {
         empty={{ icon: "tool", title: t("mcp.tools.empty") }}
       >
         {(tools) => (
-          <div {...stylex.props(vocab.column)}>
+          <SettingsGroup>
             {tools.map((tool) => {
               const isDisabled = disabled.has(tool.name);
               return (
-                <div key={tool.name} {...stylex.props(tc.grid, tc.row)}>
-                  <div>
-                    <code
-                      {...stylex.props(ss.monoName, typeStep.uiMd)}
-                      title={tool.description || tool.name}
-                    >
-                      {tool.name}
-                    </code>
-                    {tool.nameConflicts.length > 0 && (
-                      <p {...stylex.props(typeStep.uiSm, vocab.muted)}>
-                        {t("mcp.tools.nameConflict", {
-                          name: tool.modelName,
-                          sources: tool.nameConflicts.join(", "),
-                        })}
-                      </p>
-                    )}
+                <SettingRow
+                  key={tool.name}
+                  label={tool.name}
+                  sub={
+                    <>
+                      {tool.description}
+                      {tool.nameConflicts.length > 0 && (
+                        <p {...stylex.props(typeStep.uiSm, vocab.muted)}>
+                          {t("mcp.tools.nameConflict", {
+                            name: tool.modelName,
+                            sources: tool.nameConflicts.join(", "),
+                          })}
+                        </p>
+                      )}
+                    </>
+                  }
+                >
+                  <div {...stylex.props(tc.controls)}>
+                    <label {...stylex.props(tc.choice, typeStep.uiSm)}>
+                      <span>{t("mcp.tools.enabled")}</span>
+                      <Switch
+                        checked={!isDisabled}
+                        disabled={
+                          exposureAction.busy ||
+                          exposure.isLoading ||
+                          exposure.error != null ||
+                          !exposure.data
+                        }
+                        onCheckedChange={(on) =>
+                          exposureAction.run(() => setMCPToolExposure(server, tool.name, !on))
+                        }
+                        ariaLabel={t("mcp.tools.enable.aria", { tool: tool.name })}
+                      />
+                    </label>
+                    <label {...stylex.props(tc.choice, typeStep.uiSm)}>
+                      <span>{t("mcp.tools.autoApprove")}</span>
+                      <Switch
+                        checked={allowRules(tool.name).some((rule) => !rule.stale)}
+                        disabled={
+                          approvalAction.busy ||
+                          rules.isLoading ||
+                          rules.error != null ||
+                          !rules.data
+                        }
+                        onCheckedChange={(on) => setAutoApprove(tool.name, on)}
+                        ariaLabel={t("mcp.tools.autoApprove.aria", { tool: tool.name })}
+                      />
+                    </label>
                   </div>
-                  <div {...stylex.props(tc.switchCell)}>
-                    <Switch
-                      checked={!isDisabled}
-                      disabled={
-                        exposureAction.busy ||
-                        exposure.isLoading ||
-                        exposure.error != null ||
-                        !exposure.data
-                      }
-                      onCheckedChange={(on) =>
-                        exposureAction.run(() => setMCPToolExposure(server, tool.name, !on))
-                      }
-                      ariaLabel={t("mcp.tools.enable.aria", { tool: tool.name })}
-                    />
-                  </div>
-                  <div {...stylex.props(tc.switchCell)}>
-                    <Switch
-                      checked={allowRules(tool.name).some((rule) => !rule.stale)}
-                      disabled={
-                        approvalAction.busy || rules.isLoading || rules.error != null || !rules.data
-                      }
-                      onCheckedChange={(on) => setAutoApprove(tool.name, on)}
-                      ariaLabel={t("mcp.tools.autoApprove.aria", { tool: tool.name })}
-                    />
-                  </div>
-                </div>
+                </SettingRow>
               );
             })}
-          </div>
+          </SettingsGroup>
         )}
       </DataView>
     </div>

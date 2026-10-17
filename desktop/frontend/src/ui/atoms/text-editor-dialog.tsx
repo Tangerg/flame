@@ -1,40 +1,6 @@
-import { iconGlyph } from "@/ui/icons";
 import { isImeKey } from "@/lib/ime";
-import * as stylex from "@stylexjs/stylex";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useRef } from "react";
-import { Button } from "@flame/ui/button";
-import { formDialog, MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
-import { color, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
-import { IconButton } from "@flame/ui/icon-button";
-import { TextArea } from "@flame/ui/text-field";
-import { DialogPrimitive } from "@/ui/primitives";
-
-const styles = stylex.create({
-  panel: { width: "min(560px, calc(100dvw - 32px))" },
-  leading: { marginRight: "auto" },
-  form: { position: "relative", display: "flex", flexDirection: "column" },
-  head: {
-    display: "flex",
-    width: "100%",
-    flexDirection: "column",
-    alignItems: "flex-start",
-    gap: space.s3,
-  },
-  icon: {
-    display: "flex",
-    height: space.s9,
-    width: space.s9,
-    flexShrink: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.xl,
-    backgroundColor: surface.surface2,
-    padding: space.s2,
-  },
-  title: { fontWeight: weight.semibold, color: color.fg },
-  close: { position: "absolute", top: space.s4, right: space.s4 },
-  field: { display: "flex", width: "100%", flexDirection: "column", paddingTop: space.s3 },
-});
+import { Button, FormField, ModalDialog, TextArea } from "@flame/ui";
 
 interface TextEditorDialogProps {
   open: boolean;
@@ -86,74 +52,46 @@ export function TextEditorDialog({
   };
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop
-          data-slot="text-editor-backdrop"
-          className={stylex.props(MODAL_SCRIM).className}
+    <ModalDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      icon={icon}
+      closeLabel={closeLabel}
+      initialFocus={editorRef}
+      onSubmit={submit}
+      slot="text-editor-dialog"
+      backdropSlot="text-editor-backdrop"
+      auxiliaryAction={
+        secondaryAction && (
+          <Button type="button" variant="ghost" pending={busy} onClick={secondaryAction.onClick}>
+            {secondaryAction.label}
+          </Button>
+        )
+      }
+      footer={
+        <>
+          <Button type="button" variant="ghost" pending={busy} onClick={() => onOpenChange(false)}>
+            {cancelLabel}
+          </Button>
+          <Button type="submit" variant="primary" disabled={saveDisabled} pending={busy}>
+            {busy ? savingLabel : saveLabel}
+          </Button>
+        </>
+      }
+    >
+      <FormField label={label}>
+        <TextArea
+          ref={editorRef}
+          rows={12}
+          font={font}
+          aria-label={label}
+          value={value}
+          pending={busy}
+          onKeyDown={submitShortcut}
+          onChange={(event) => onChange(event.target.value)}
         />
-        <DialogPrimitive.Popup
-          data-slot="text-editor-dialog"
-          initialFocus={editorRef}
-          {...stylex.props(modalPanel(), formDialog.plane, styles.panel)}
-        >
-          <form {...stylex.props(styles.form, formDialog.inset)} onSubmit={submit}>
-            <div {...stylex.props(styles.head)}>
-              {icon && <span {...stylex.props(styles.icon)}>{icon}</span>}
-              <DialogPrimitive.Title {...stylex.props(type.displaySm, styles.title)}>
-                {title}
-              </DialogPrimitive.Title>
-            </div>
-            <DialogPrimitive.Close
-              render={
-                <IconButton
-                  icon={iconGlyph("x")}
-                  size="xs"
-                  quiet
-                  title={closeLabel}
-                  {...stylex.props(styles.close)}
-                />
-              }
-            />
-            <div {...stylex.props(styles.field)}>
-              <TextArea
-                ref={editorRef}
-                rows={12}
-                font={font}
-                aria-label={label}
-                value={value}
-                pending={busy}
-                onKeyDown={submitShortcut}
-                onChange={(event) => onChange(event.target.value)}
-              />
-            </div>
-            <div {...stylex.props(formDialog.actions)}>
-              {secondaryAction && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  pending={busy}
-                  onClick={secondaryAction.onClick}
-                  styles={styles.leading}
-                >
-                  {secondaryAction.label}
-                </Button>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                pending={busy}
-                onClick={() => onOpenChange(false)}
-              >
-                {cancelLabel}
-              </Button>
-              <Button type="submit" variant="primary" disabled={saveDisabled} pending={busy}>
-                {busy ? savingLabel : saveLabel}
-              </Button>
-            </div>
-          </form>
-        </DialogPrimitive.Popup>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+      </FormField>
+    </ModalDialog>
   );
 }

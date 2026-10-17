@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarClock } from "@flame/icons/react";
+import { CalendarClock, Refresh, Plus, Play } from "@flame/icons/react";
 import {
   bindOperations,
   mutationSettlementIsUnknown,
@@ -17,11 +17,24 @@ import {
   ListRow,
   Metadata,
   Panel,
-  PanelTitle,
+  PanelHeader,
+  PanelSection,
+  PanelFooter,
+  FormRow,
+  FormSection,
+  FormActions,
+  ActionMenu,
+  IconButton,
+  Icon,
+  Disclosure,
+  FormField,
+  RecordForm,
   RecordBody,
   RecordGroup,
   RecordTitle,
+  RecordHeading,
   SearchField,
+  FilterBar,
   Select,
   TextArea,
   TextField,
@@ -369,34 +382,30 @@ export function Schedules({ context }: { context: ComponentContext }) {
 
   return (
     <Panel label="Schedules">
-      <Toolbar label="Schedule actions">
-        <PanelTitle>Schedules</PanelTitle>
-        <Button disabled={busy} onClick={() => add()}>
-          Add schedule
-        </Button>
-        <Select
-          label="Schedule template"
-          value="choose"
-          disabled={busy}
-          options={[
-            { value: "choose", label: "Create from a template" },
-            ...templates.map((template) => ({
-              value: template.id,
-              label: template.title,
-            })),
-          ]}
-          onValueChange={(id) =>
-            add(templates.find((template) => template.id === id))
-          }
-        />
-        <Button disabled={read.loading || busy} onClick={() => void refresh()}>
-          Refresh
-        </Button>
-      </Toolbar>
-      <Metadata>
-        Saved schedules. Editing or deleting a schedule leaves already captured
-        work and accepted Runs unchanged.
-      </Metadata>
+      <PanelHeader
+        title="Schedules"
+        description="Recurring work and the next time it will run."
+        actions={
+          <>
+            <IconButton
+              icon={Refresh}
+              aria-label="Refresh"
+              size="md"
+              disabled={read.loading || busy}
+              onClick={() => void refresh()}
+            />
+            <Button
+              variant={edit || deleting ? "outline" : "primary"}
+              size="lg"
+              disabled={busy || Boolean(edit) || Boolean(deleting)}
+              onClick={() => add()}
+            >
+              <Icon glyph={Plus} size="sm" /> Add schedule
+            </Button>
+          </>
+        }
+      />
+
       {read.loading && <p role="status">Reading schedules…</p>}
       {read.error && (
         <p role="alert">{read.error} The last accepted page is retained.</p>
@@ -427,128 +436,171 @@ export function Schedules({ context }: { context: ComponentContext }) {
         </section>
       )}
       {edit && (
-        <section aria-label="Schedule editor">
+        <RecordForm aria-label="Schedule editor">
           <RecordTitle>
-            {edit.basis ? `Edit ${edit.basis.ID}` : "New schedule"}
+            {edit.basis
+              ? `Edit ${edit.basis.Title || "schedule"}`
+              : "New schedule"}
           </RecordTitle>
           {edit.basis && (
             <Metadata>
               Captured revision: {String(edit.basis.Revision)}
             </Metadata>
           )}
-          <TextField
-            aria-label="Title"
-            placeholder="Title"
-            value={edit.draft.Title}
-            disabled={busy}
-            onChange={(event) => patch("Title", event.target.value)}
-          />
-          <TextArea
-            aria-label="Instructions"
-            placeholder="Instructions"
-            value={edit.draft.Instructions}
-            disabled={busy}
-            rows={4}
-            onChange={(event) => patch("Instructions", event.target.value)}
-          />
-          <TextField
-            aria-label="Cron expression"
-            placeholder="Cron expression"
-            value={edit.draft.Cron}
-            disabled={busy}
-            onChange={(event) => patch("Cron", event.target.value)}
-          />
-          <TextField
-            aria-label="Workspace path"
-            placeholder="Empty uses the Runtime default"
-            value={edit.draft.CWD}
-            disabled={busy}
-            onChange={(event) => patch("CWD", event.target.value)}
-          />
-          <Select
-            label="Model"
-            value={selectedKey}
-            disabled={busy}
-            options={[
-              { value: "default", label: "Runtime default model" },
-              ...models
-                .filter((model) => !model.deprecated)
-                .map((model) => ({
-                  value: JSON.stringify([model.provider, model.id]),
-                  label: `${model.provider} / ${model.displayName ?? model.id}`,
-                })),
-              ...(selectedKey !== "default" &&
-              (!selectedModel || selectedModel.deprecated)
-                ? [
-                    {
-                      value: selectedKey,
-                      label: `${edit.draft.ModelSelection.provider} / ${edit.draft.ModelSelection.model} (${selectedModel?.deprecated ? "deprecated" : "unavailable"})`,
-                    },
-                  ]
-                : []),
-            ]}
-            onValueChange={(key) =>
-              patch(
-                "ModelSelection",
-                selection(
-                  models.find(
-                    (model) =>
-                      JSON.stringify([model.provider, model.id]) === key,
-                  ),
-                ),
-              )
-            }
-          />
-          <Select
-            label="Reasoning effort"
-            value={edit.draft.ModelSelection.reasoningEffort || "default"}
-            disabled={busy || !edit.draft.ModelSelection.model}
-            options={[
-              { value: "default", label: "Provider default" },
-              ...(selectedModel?.capabilities?.reasoningLevels ?? []).map(
-                (value) => ({
-                  value,
-                  label: value,
-                }),
-              ),
-              ...(edit.draft.ModelSelection.reasoningEffort &&
-              !selectedModel?.capabilities?.reasoningLevels?.includes(
-                edit.draft.ModelSelection.reasoningEffort,
-              )
-                ? [
-                    {
-                      value: edit.draft.ModelSelection.reasoningEffort,
-                      label: `${edit.draft.ModelSelection.reasoningEffort} (unavailable)`,
-                    },
-                  ]
-                : []),
-            ]}
-            onValueChange={(value) =>
-              patch("ModelSelection", {
-                ...edit.draft.ModelSelection,
-                reasoningEffort: value === "default" ? "" : value,
-              })
-            }
-          />
-          {currentModels?.error && (
-            <p role="alert">
-              Model choices could not be read: {currentModels.error}
-            </p>
-          )}
-          <Button
-            disabled={busy || currentModels?.loading}
-            onClick={() => setModelRefresh((value) => value + 1)}
+          <FormSection
+            title="Task"
+            description="What the agent should do when this schedule runs."
           >
-            Refresh model choices
-          </Button>
-          <Checkbox
-            label="Enabled"
-            checked={edit.draft.Enabled}
-            disabled={busy}
-            onCheckedChange={(value) => patch("Enabled", value)}
-          />
-          <Toolbar label="Editor actions">
+            <FormField label="Title">
+              <TextField
+                size="lg"
+                aria-label="Title"
+                placeholder="Title"
+                value={edit.draft.Title}
+                disabled={busy}
+                onChange={(event) => patch("Title", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Instructions">
+              <TextArea
+                aria-label="Instructions"
+                placeholder="Instructions"
+                value={edit.draft.Instructions}
+                disabled={busy}
+                rows={4}
+                onChange={(event) => patch("Instructions", event.target.value)}
+              />
+            </FormField>
+          </FormSection>
+          <FormSection title="Timing and workspace">
+            <FormRow>
+              <FormField label="Cron expression">
+                <TextField
+                  size="lg"
+                  aria-label="Cron expression"
+                  placeholder="0 9 * * 1"
+                  value={edit.draft.Cron}
+                  disabled={busy}
+                  onChange={(event) => patch("Cron", event.target.value)}
+                />
+              </FormField>
+              <FormField label="Workspace path">
+                <TextField
+                  size="lg"
+                  aria-label="Workspace path"
+                  placeholder="Empty uses the Runtime default"
+                  value={edit.draft.CWD}
+                  disabled={busy}
+                  onChange={(event) => patch("CWD", event.target.value)}
+                />
+              </FormField>
+            </FormRow>
+            <Checkbox
+              label="Enabled"
+              checked={edit.draft.Enabled}
+              disabled={busy}
+              onCheckedChange={(value) => patch("Enabled", value)}
+            />
+          </FormSection>
+          <FormSection
+            title="Execution"
+            description="Choose the model and reasoning used for future runs."
+          >
+            <FormRow>
+              <FormField label="Model">
+                <Select
+                  size="lg"
+                  label="Model"
+                  value={selectedKey}
+                  disabled={busy}
+                  options={[
+                    { value: "default", label: "Runtime default model" },
+                    ...models
+                      .filter((model) => !model.deprecated)
+                      .map((model) => ({
+                        value: JSON.stringify([model.provider, model.id]),
+                        label: `${model.provider} / ${model.displayName ?? model.id}`,
+                      })),
+                    ...(selectedKey !== "default" &&
+                    (!selectedModel || selectedModel.deprecated)
+                      ? [
+                          {
+                            value: selectedKey,
+                            label: `${edit.draft.ModelSelection.provider} / ${edit.draft.ModelSelection.model} (${selectedModel?.deprecated ? "deprecated" : "unavailable"})`,
+                          },
+                        ]
+                      : []),
+                  ]}
+                  onValueChange={(key) =>
+                    patch(
+                      "ModelSelection",
+                      selection(
+                        models.find(
+                          (model) =>
+                            JSON.stringify([model.provider, model.id]) === key,
+                        ),
+                      ),
+                    )
+                  }
+                />
+              </FormField>
+              <FormField label="Reasoning effort">
+                <Select
+                  size="lg"
+                  label="Reasoning effort"
+                  value={edit.draft.ModelSelection.reasoningEffort || "default"}
+                  disabled={busy || !edit.draft.ModelSelection.model}
+                  options={[
+                    { value: "default", label: "Provider default" },
+                    ...(selectedModel?.capabilities?.reasoningLevels ?? []).map(
+                      (value) => ({
+                        value,
+                        label: value,
+                      }),
+                    ),
+                    ...(edit.draft.ModelSelection.reasoningEffort &&
+                    !selectedModel?.capabilities?.reasoningLevels?.includes(
+                      edit.draft.ModelSelection.reasoningEffort,
+                    )
+                      ? [
+                          {
+                            value: edit.draft.ModelSelection.reasoningEffort,
+                            label: `${edit.draft.ModelSelection.reasoningEffort} (unavailable)`,
+                          },
+                        ]
+                      : []),
+                  ]}
+                  onValueChange={(value) =>
+                    patch("ModelSelection", {
+                      ...edit.draft.ModelSelection,
+                      reasoningEffort: value === "default" ? "" : value,
+                    })
+                  }
+                />
+              </FormField>
+            </FormRow>
+            {currentModels?.error && (
+              <p role="alert">
+                Model choices could not be read: {currentModels.error}
+              </p>
+            )}
             <Button
+              disabled={busy || currentModels?.loading}
+              onClick={() => setModelRefresh((value) => value + 1)}
+            >
+              Refresh model choices
+            </Button>
+          </FormSection>
+          <FormActions label="Editor actions">
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => setEdit(undefined)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
               disabled={
                 busy ||
                 !edit.draft.Instructions.trim() ||
@@ -558,18 +610,24 @@ export function Schedules({ context }: { context: ComponentContext }) {
             >
               Save schedule
             </Button>
-            <Button disabled={busy} onClick={() => setEdit(undefined)}>
-              Cancel
-            </Button>
-          </Toolbar>
-        </section>
+          </FormActions>
+        </RecordForm>
       )}
       {deleting && (
-        <section aria-label="Confirm schedule deletion">
+        <RecordForm aria-label="Confirm schedule deletion">
           <RecordTitle>Delete {deleting.Title || deleting.ID}?</RecordTitle>
           <RecordBody>Captured work and accepted Runs are retained.</RecordBody>
-          <Toolbar label="Deletion confirmation">
+          <FormActions label="Deletion confirmation">
             <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => setDeleting(undefined)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="tonal"
+              tone="negative"
               disabled={busy}
               onClick={() =>
                 submit(
@@ -581,165 +639,237 @@ export function Schedules({ context }: { context: ComponentContext }) {
             >
               Confirm deletion
             </Button>
-            <Button disabled={busy} onClick={() => setDeleting(undefined)}>
-              Cancel
-            </Button>
-          </Toolbar>
-        </section>
+          </FormActions>
+        </RecordForm>
       )}
-      <Toolbar label="Schedule filters">
-        <SearchField
-          aria-label="Search this page"
-          placeholder="Title or instructions"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <Select
-          label="Schedule status"
-          value={status}
-          onValueChange={setStatus}
-          options={[
-            { value: "all", label: "All statuses" },
-            { value: "enabled", label: "Enabled" },
-            { value: "disabled", label: "Disabled" },
-          ]}
-        />
-      </Toolbar>
-      <Metadata>
-        {rows.filter(enabled).length} enabled ·{" "}
-        {rows.filter((item) => !enabled(item)).length} disabled on this page
-      </Metadata>
-      <RecordGroup id="items" aria-label="Saved schedules">
-        {!matching.length && !read.loading && (
-          <EmptyState
-            icon={CalendarClock}
-            size="compact"
-            title={
-              rows.length
-                ? "No matching schedules on this page."
-                : "No schedules saved."
-            }
-            sub={
-              rows.length
-                ? "Clear the search and filters."
-                : "Use Add schedule to save recurring work."
-            }
-          />
-        )}
-        {matching.map((item) => (
-          <ListRow key={item.ID}>
-            <Toolbar label={item.Title || "Untitled schedule"}>
-              <RecordTitle>{item.Title || "Untitled schedule"}</RecordTitle>
-              <Badge tone={enabled(item) ? "success" : "neutral"}>
-                {enabled(item) ? "Enabled" : "Disabled"}
-              </Badge>
-            </Toolbar>
-            <RecordBody>{item.Instructions}</RecordBody>
-            <Facts
-              values={[
-                ["Schedule", item.ID],
-                ["Revision", String(item.Revision)],
-                ["Cron", item.Cron],
-                ["Workspace", item.CWD || "Runtime default"],
-                [
-                  "Model",
-                  item.ModelSelection.provider && item.ModelSelection.model
-                    ? `${item.ModelSelection.provider}/${item.ModelSelection.model}`
-                    : "Runtime default",
-                ],
-                [
-                  "Reasoning effort",
-                  item.ModelSelection.reasoningEffort || undefined,
-                ],
-                [
-                  "Next firing",
-                  hasTime(item.NextRunAt) ? item.NextRunAt : "Not scheduled",
-                ],
-                [
-                  "Last firing",
-                  hasTime(item.LastRunAt) ? item.LastRunAt : "Never fired",
-                ],
-                ["Created", item.CreatedAt],
+      <PanelSection
+        title="Saved schedules"
+        description={
+          page ? (
+            <>
+              {rows.filter(enabled).length} enabled ·{" "}
+              {rows.filter((item) => !enabled(item)).length} disabled on this
+              page
+            </>
+          ) : undefined
+        }
+        actions={
+          <Toolbar label="Schedule templates">
+            <Select
+              label="Schedule template"
+              value="choose"
+              disabled={busy}
+              options={[
+                { value: "choose", label: "Templates" },
+                ...templates.map((template) => ({
+                  value: template.id,
+                  label: template.title,
+                })),
               ]}
+              onValueChange={(id) =>
+                add(templates.find((template) => template.id === id))
+              }
             />
-            <Toolbar label={`Actions for ${item.ID}`}>
-              <Button
-                disabled={disabled}
-                onClick={() => {
-                  setEdit({
-                    basis: structuredClone(item),
-                    draft: {
-                      Title: item.Title,
-                      Instructions: item.Instructions,
-                      Cron: item.Cron,
-                      CWD: item.CWD,
-                      ModelSelection: structuredClone(item.ModelSelection),
-                      Enabled: enabled(item),
-                    },
-                  });
-                  setDeleting(undefined);
-                }}
-              >
-                Edit
-              </Button>
-              <Button
-                disabled={disabled}
-                onClick={() =>
-                  submit(
-                    "flame.schedules/update.v1",
-                    {
-                      ID: item.ID,
-                      ExpectedRevision: item.Revision,
-                      Enabled: !enabled(item),
-                      ModelSelection: {},
-                    },
-                    enabled(item) ? "Disable schedule" : "Enable schedule",
-                  )
-                }
-              >
-                {enabled(item) ? "Disable" : "Enable"}
-              </Button>
-              <Button
-                disabled={disabled}
-                onClick={() =>
-                  submit(
-                    "flame.schedules/runNow.v1",
-                    { ID: item.ID },
-                    "Run schedule now",
-                  )
-                }
-              >
-                Run now
-              </Button>
-              <Button
-                disabled={disabled}
-                onClick={() => {
-                  setDeleting(structuredClone(item));
-                  setEdit(undefined);
-                }}
-              >
-                Delete
-              </Button>
-            </Toolbar>
-          </ListRow>
-        ))}
-      </RecordGroup>
-      <Toolbar label="Schedule pages">
-        <Button
-          disabled={read.loading || busy || !read.accepted?.history.length}
-          onClick={() => void refresh(read.accepted!.history.slice(0, -1))}
-        >
-          Previous
-        </Button>
-        <Button
-          disabled={read.loading || busy || !page?.NextCursor}
-          onClick={() =>
-            void refresh([...(read.accepted?.history ?? []), page!.NextCursor])
+          </Toolbar>
+        }
+      >
+        <FilterBar
+          label="Schedule filters"
+          search={
+            <SearchField
+              size="lg"
+              aria-label="Search this page"
+              placeholder="Title or instructions"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
           }
         >
-          Next
-        </Button>
-      </Toolbar>
+          <Select
+            size="lg"
+            label="Schedule status"
+            value={status}
+            onValueChange={setStatus}
+            options={[
+              { value: "all", label: "All statuses" },
+              { value: "enabled", label: "Enabled" },
+              { value: "disabled", label: "Disabled" },
+            ]}
+          />
+        </FilterBar>
+        <RecordGroup variant="cards" id="items" aria-label="Saved schedules">
+          {!matching.length && !read.loading && (
+            <EmptyState
+              icon={CalendarClock}
+              size="compact"
+              title={
+                rows.length
+                  ? "No matching schedules on this page."
+                  : "No schedules saved."
+              }
+              sub={
+                rows.length
+                  ? "Clear the search and filters."
+                  : "Use Add schedule to save recurring work."
+              }
+            />
+          )}
+          {matching.map((item) => (
+            <ListRow variant="card" key={item.ID}>
+              <RecordHeading
+                title={item.Title || "Untitled schedule"}
+                actions={
+                  <ActionMenu
+                    label={`More actions for ${item.Title || "Untitled schedule"}`}
+                    disabled={disabled}
+                    items={[
+                      {
+                        label: "Edit",
+                        onSelect: () => {
+                          setEdit({
+                            basis: structuredClone(item),
+                            draft: {
+                              Title: item.Title,
+                              Instructions: item.Instructions,
+                              Cron: item.Cron,
+                              CWD: item.CWD,
+                              ModelSelection: structuredClone(
+                                item.ModelSelection,
+                              ),
+                              Enabled: enabled(item),
+                            },
+                          });
+                          setDeleting(undefined);
+                        },
+                      },
+                      {
+                        label: enabled(item) ? "Disable" : "Enable",
+                        onSelect: () =>
+                          submit(
+                            "flame.schedules/update.v1",
+                            {
+                              ID: item.ID,
+                              ExpectedRevision: item.Revision,
+                              Enabled: !enabled(item),
+                              ModelSelection: {},
+                            },
+                            enabled(item)
+                              ? "Disable schedule"
+                              : "Enable schedule",
+                          ),
+                      },
+                      {
+                        label: "Delete",
+                        tone: "negative",
+                        onSelect: () => {
+                          setDeleting(structuredClone(item));
+                          setEdit(undefined);
+                        },
+                      },
+                    ]}
+                  />
+                }
+                description={item.Instructions}
+                status={
+                  <Badge tone={enabled(item) ? "success" : "neutral"}>
+                    {enabled(item) ? "Enabled" : "Disabled"}
+                  </Badge>
+                }
+              />
+              <Metadata>
+                Next firing ·{" "}
+                {hasTime(item.NextRunAt) ? (
+                  <time dateTime={item.NextRunAt}>
+                    {new Intl.DateTimeFormat(navigator.language, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    }).format(new Date(item.NextRunAt))}
+                  </time>
+                ) : (
+                  "Not scheduled"
+                )}
+              </Metadata>
+              <Disclosure
+                title="Schedule details"
+                actions={
+                  <Button
+                    variant="soft"
+                    size="md"
+                    disabled={disabled}
+                    onClick={() =>
+                      submit(
+                        "flame.schedules/runNow.v1",
+                        { ID: item.ID },
+                        "Run schedule now",
+                      )
+                    }
+                  >
+                    <Icon glyph={Play} size="sm" /> Run now
+                  </Button>
+                }
+              >
+                <Facts
+                  values={[
+                    ["Schedule", item.ID],
+                    ["Cron", item.Cron],
+                    ["Revision", String(item.Revision)],
+                    ["Workspace", item.CWD || "Runtime default"],
+                    [
+                      "Model",
+                      item.ModelSelection.provider && item.ModelSelection.model
+                        ? `${item.ModelSelection.provider}/${item.ModelSelection.model}`
+                        : "Runtime default",
+                    ],
+                    [
+                      "Reasoning effort",
+                      item.ModelSelection.reasoningEffort || undefined,
+                    ],
+                    [
+                      "Next firing",
+                      hasTime(item.NextRunAt)
+                        ? item.NextRunAt
+                        : "Not scheduled",
+                    ],
+                    [
+                      "Last firing",
+                      hasTime(item.LastRunAt) ? item.LastRunAt : "Never fired",
+                    ],
+                    ["Created", item.CreatedAt],
+                  ]}
+                />
+              </Disclosure>
+            </ListRow>
+          ))}
+        </RecordGroup>
+        {(Boolean(read.accepted?.history.length) ||
+          Boolean(page?.NextCursor)) && (
+          <PanelFooter>
+            <Toolbar label="Schedule pages">
+              <Button
+                disabled={
+                  read.loading || busy || !read.accepted?.history.length
+                }
+                onClick={() =>
+                  void refresh(read.accepted!.history.slice(0, -1))
+                }
+              >
+                Previous
+              </Button>
+              <Button
+                disabled={read.loading || busy || !page?.NextCursor}
+                onClick={() =>
+                  void refresh([
+                    ...(read.accepted?.history ?? []),
+                    page!.NextCursor,
+                  ])
+                }
+              >
+                Next
+              </Button>
+            </Toolbar>
+          </PanelFooter>
+        )}
+      </PanelSection>
     </Panel>
   );
 }

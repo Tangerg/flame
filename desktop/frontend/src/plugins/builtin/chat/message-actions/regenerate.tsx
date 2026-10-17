@@ -12,7 +12,7 @@ function RegenerateButton() {
   return (
     <MessageActionButton
       icon="loop"
-      title={t("msgActions.regenerate")}
+      aria-label={t("msgActions.regenerate")}
       role={msg.role}
       onClick={() => regenerateMessage(msg)}
     />

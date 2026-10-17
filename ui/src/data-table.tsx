@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { clsx as cn } from "clsx";
 import type { ComponentPropsWithRef, ReactNode } from "react";
 import { color, leading, space, surface, type, weight } from "./tokens.stylex";
 
@@ -43,15 +44,22 @@ const styles = stylex.create({
 export function ScrollRegion({
   label,
   children,
+  className,
+  styles: extra,
   ...props
-}: ComponentPropsWithRef<"div"> & { label: string }) {
+}: ComponentPropsWithRef<"div"> & {
+  label: string;
+  styles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
+}) {
+  const styled = stylex.props(styles.region, extra);
   return (
     <div
       {...props}
       role="region"
       aria-label={label}
-      tabIndex={0}
-      {...stylex.props(styles.region)}
+      tabIndex={props.tabIndex ?? 0}
+      {...styled}
+      className={cn(styled.className, className)}
     >
       {children}
     </div>

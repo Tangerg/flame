@@ -3,7 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { Suspense, useState } from "react";
 import { Icon, knownIconName, SkeletonList, TextButton, VerticalTabs } from "@/ui";
-import { Button, SearchField, vocab } from "@flame/ui";
+import { Button, Panel, PanelHeader, SearchField, vocab } from "@flame/ui";
 import { AgentSurfaceHeader } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
@@ -13,18 +13,10 @@ import {
   useWorkspaceSettingsPaneTarget,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { useSettingsPanes } from "@/plugins/sdk";
-import { color, leading, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { color, layout, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const sp = stylex.create({
-  title: { color: color.fg, fontWeight: weight.semibold },
-  blurb: {
-    marginTop: space.s1_5,
-    maxWidth: "60ch",
-    lineHeight: leading.body,
-    textWrap: "pretty",
-    color: color.fgMuted,
-  },
-  body: { marginTop: space.s6, paddingBottom: space.s12 },
+  body: { display: "flex", flexDirection: "column", gap: layout.sectionGap, minWidth: 0 },
   backRow: { paddingInline: space.s4, paddingBottom: space.s4 },
   back: { marginBottom: space.s3, alignSelf: "flex-start" },
   empty: {
@@ -129,18 +121,15 @@ function SettingsPaneFrame({
   description,
   children,
 }: {
-  title: ReactNode;
+  title: string;
   description?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section>
-      <header>
-        <h1 {...stylex.props(sp.title, typeStep.displaySm)}>{title}</h1>
-        {description && <p {...stylex.props(sp.blurb, typeStep.uiMd)}>{description}</p>}
-      </header>
+    <Panel label={title}>
+      <PanelHeader title={title} description={description} />
       <div {...stylex.props(sp.body)}>{children}</div>
-    </section>
+    </Panel>
   );
 }
 

@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import type { ReactNode } from "react";
 import { DropdownMenu, Icon, ProviderIcon } from "@/ui";
-import { Button, vocab } from "@flame/ui";
+import { Button, ListRow, vocab } from "@flame/ui";
 import {
   type ProviderConfiguration,
   type RoleConfigState,
@@ -14,22 +14,12 @@ import {
 } from "../application/providerConfig";
 import { useT } from "@/lib/i18n";
 import { useAsyncFeedback } from "../../settings/kit";
-import { face, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
+import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../settings/kit/settingStyles";
 
 const rs = stylex.create({
   title: { display: "flex", minWidth: 0, flexDirection: "column", gap: space.s1 },
   model: { maxWidth: "160px" },
-  row: {
-    display: "flex",
-    flexDirection: "column",
-    gap: space.s3,
-    borderTopWidth: { default: "var(--control-edge-width)", ":first-child": 0 },
-    borderTopStyle: "solid",
-    borderTopColor: surface.field,
-    paddingInline: space.s4,
-    paddingBlock: space.s3,
-  },
 });
 
 function RoleSectionShell({
@@ -49,7 +39,7 @@ function RoleSectionShell({
 }) {
   const t = useT();
   return (
-    <div {...stylex.props(rs.row)}>
+    <ListRow>
       <div {...stylex.props(ss.split)}>
         <div {...stylex.props(rs.title)}>
           <span {...stylex.props(ss.label, typeStep.uiMd)}>{title}</span>
@@ -88,7 +78,7 @@ function RoleSectionShell({
           {error}
         </p>
       )}
-    </div>
+    </ListRow>
   );
 }
 

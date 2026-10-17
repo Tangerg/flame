@@ -1,17 +1,5 @@
-import * as stylex from "@stylexjs/stylex";
 import { useRef, type ReactNode } from "react";
-import { DialogPrimitive } from "@/ui/primitives";
-import { color, space, type, weight } from "@flame/ui/tokens.stylex";
-import { Button } from "@flame/ui/button";
-import { TextField } from "@flame/ui/text-field";
-import { formDialog, MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
-
-const styles = stylex.create({
-  panel: { width: "min(480px, calc(100vw - 32px))" },
-  title: { fontWeight: weight.semibold, color: color.fg },
-  description: { color: color.fgMuted, marginBlock: space.s3, overflowWrap: "anywhere" },
-  leading: { marginRight: "auto" },
-});
+import { Button, FormField, ModalDialog, TextField } from "@flame/ui";
 
 interface InputDialogProps {
   title: string;
@@ -30,67 +18,54 @@ interface InputDialogProps {
 export function InputDialog(props: InputDialogProps) {
   const field = useRef<HTMLInputElement>(null);
   return (
-    <DialogPrimitive.Root
+    <ModalDialog
       open
+      title={props.title}
+      description={props.description}
+      initialFocus={field}
       onOpenChange={(open) => {
         if (!open) props.onClose();
       }}
-    >
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop className={stylex.props(MODAL_SCRIM).className} />
-        <DialogPrimitive.Popup
-          initialFocus={field}
-          {...stylex.props(modalPanel(), formDialog.plane, formDialog.inset, styles.panel)}
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!props.busy && props.value.trim()) props.onConfirm();
-            }}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!props.busy && props.value.trim()) props.onConfirm();
+      }}
+      auxiliaryAction={
+        props.browse && (
+          <Button type="button" variant="ghost" pending={props.busy} onClick={props.browse.run}>
+            {props.browse.label}
+          </Button>
+        )
+      }
+      footer={
+        <>
+          <Button type="button" variant="ghost" onClick={props.onClose}>
+            {props.cancelLabel}
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={!props.value.trim()}
+            pending={props.busy}
           >
-            <DialogPrimitive.Title {...stylex.props(type.displaySm, styles.title)}>
-              {props.title}
-            </DialogPrimitive.Title>
-            <DialogPrimitive.Description {...stylex.props(type.uiMd, styles.description)}>
-              {props.description}
-            </DialogPrimitive.Description>
-            <TextField
-              ref={field}
-              font="mono"
-              aria-label={props.label}
-              value={props.value}
-              pending={props.busy}
-              onChange={(event) => props.onChange(event.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-            />
-            <div {...stylex.props(formDialog.actions)}>
-              {props.browse && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  pending={props.busy}
-                  onClick={props.browse.run}
-                  styles={styles.leading}
-                >
-                  {props.browse.label}
-                </Button>
-              )}
-              <Button type="button" variant="ghost" onClick={props.onClose}>
-                {props.cancelLabel}
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={!props.value.trim()}
-                pending={props.busy}
-              >
-                {props.confirmLabel}
-              </Button>
-            </div>
-          </form>
-        </DialogPrimitive.Popup>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+            {props.confirmLabel}
+          </Button>
+        </>
+      }
+    >
+      <FormField label={props.label}>
+        <TextField
+          ref={field}
+          font="mono"
+          size="lg"
+          aria-label={props.label}
+          value={props.value}
+          pending={props.busy}
+          onChange={(event) => props.onChange(event.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </FormField>
+    </ModalDialog>
   );
 }

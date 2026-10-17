@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, motion, radius, space, surface } from "./tokens.stylex";
+import { color, layout, motion, radius, surface } from "./tokens.stylex";
 
 const styles = stylex.create({
   face: {
@@ -43,7 +43,7 @@ const styles = stylex.create({
     },
   },
   panel: { borderRadius: radius.floatingPanel },
-  options: { borderRadius: radius.lg },
+
   tip: { borderRadius: radius.floatingTip },
   layer: { zIndex: "var(--layer-floating)" },
   scrim: {
@@ -68,10 +68,10 @@ const styles = stylex.create({
     position: "fixed",
     zIndex: "var(--layer-modal)",
     boxShadow: "var(--shadow-modal)",
-    maxHeight: "calc(100dvh - var(--spacing) * 8)",
+    maxHeight: "calc(100dvh - var(--layout-compact-gutter) * 2)",
     overflowY: "auto",
     overscrollBehavior: "contain",
-    scrollPaddingBlock: space.s4,
+    scrollPaddingBlock: layout.compactGutter,
   },
   modalCentred: { inset: 0, margin: "auto", height: "fit-content" },
   modalTop: {
@@ -81,23 +81,10 @@ const styles = stylex.create({
   },
 });
 
-export const formDialog = stylex.create({
-  plane: { borderRadius: radius.floatingPanel, backgroundColor: surface.card },
-  inset: { padding: space.s5 },
-  actions: {
-    marginTop: space.s4,
-    display: "flex",
-    flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: space.s2,
-  },
-});
-
 export const FLOATING_LAYER = [styles.layer];
 
 export const FLOATING_PANEL = [styles.face, styles.motion, styles.panel];
-export const FLOATING_OPTIONS = [styles.face, styles.motion, styles.options];
+export const FLOATING_OPTIONS = [styles.face, styles.motion, styles.panel];
 export const FLOATING_TIP = [styles.face, styles.motion, styles.tip];
 
 export const MODAL_SCRIM = [styles.scrim];

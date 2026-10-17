@@ -1,33 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/classNames";
-import { radius, space, surface } from "@flame/ui/tokens.stylex";
+import { CARD_SURFACE } from "@flame/ui";
+import { layout, radius, space, surface } from "@flame/ui/tokens.stylex";
 
-type SurfaceVariant = "card" | "group" | "request" | "prompt";
-
-const edge = {
-  borderWidth: "var(--control-edge-width)",
-  borderStyle: "solid",
-  borderColor: surface.field,
-} as const;
+type SurfaceVariant = "card" | "prompt";
 
 const styles = stylex.create({
-  card: {
-    ...edge,
-    borderRadius: radius.card,
-    backgroundColor: surface.card,
-    boxShadow: "var(--shadow-surface-card)",
-  },
-  group: {
-    ...edge,
-    borderRadius: radius.card,
-  },
-  request: {
-    ...edge,
-    borderRadius: radius.bubble,
-    backgroundColor: surface.card,
-    boxShadow: "var(--shadow-surface-card)",
-  },
+  base: { minWidth: 0 },
   prompt: {
     borderRadius: radius.bubble,
     backgroundColor: surface.card,
@@ -35,7 +15,7 @@ const styles = stylex.create({
   },
   insetXs: { padding: space.s2 },
   insetSm: { padding: space.s3 },
-  insetMd: { padding: space.s4 },
+  insetMd: { padding: layout.cardPadding },
 });
 
 const INSET = { none: null, xs: styles.insetXs, sm: styles.insetSm, md: styles.insetMd } as const;
@@ -52,7 +32,11 @@ export function Surface({
   children,
   ...props
 }: SurfaceProps) {
-  const styled = stylex.props(styles[variant], INSET[inset]);
+  const styled = stylex.props(
+    styles.base,
+    variant === "card" ? CARD_SURFACE.face : styles.prompt,
+    INSET[inset],
+  );
   return (
     <div {...props} {...styled} className={cn(styled.className, className)}>
       {children}

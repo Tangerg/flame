@@ -1,4 +1,4 @@
-import type { AgentItem } from "@/plugins/sdk";
+import type { AgentInterrupt, AgentItem } from "@/plugins/sdk";
 import type { BlockStatus, ContentBlock } from "@/plugins/sdk/types/contentBlock";
 import type {
   AgentSessionView,
@@ -12,6 +12,8 @@ import {
   mapQuestion,
   mapQuestionAnswers,
   userContentBlocks,
+  commandString,
+  editableArgs,
 } from "./projections";
 
 function mutateMessage(
@@ -339,6 +341,29 @@ export function foldCompaction(
   return { ...state, messages: [...state.messages, msg] };
 }
 
+export function writeApproval(
+  state: AgentSessionView,
+  item: { id: string; runId: string; createdAt: string },
+  payload: Extract<AgentInterrupt, { type: "approval" }>["payload"],
+): AgentSessionView {
+  const block: ContentBlock = {
+    kind: "approval",
+    itemId: item.id,
+    toolName: payload.tool.name,
+    command: commandString(payload.tool),
+    reason: payload.reason ?? "",
+    args: editableArgs(payload.tool),
+    rememberable: payload.rememberable ?? false,
+  };
+  return upsertBlock(
+    state,
+    item,
+    (candidate) => candidate.kind === "approval" && candidate.itemId === item.id,
+    () => block,
+    () => block,
+  );
+}
+
 export function writeToolCall(state: AgentSessionView, item: ItemOf<"toolCall">): AgentSessionView {
   const withBlock =
     state.toolCalls[item.id] === undefined
@@ -351,7 +376,14 @@ export function writeToolCall(state: AgentSessionView, item: ItemOf<"toolCall">)
         )
       : state;
   const tool = projectToolCall(item, withBlock.toolCalls[item.id]);
-  return { ...withBlock, toolCalls: { ...withBlock.toolCalls, [item.id]: tool } };
+  const next = { ...withBlock, toolCalls: { ...withBlock.toolCalls, [item.id]: tool } };
+  return item.approvalDecision === undefined
+    ? next
+    : writeApproval(
+        next,
+        { id: item.id, runId: item.runId, createdAt: item.startedAt },
+        { tool: item.tool },
+      );
 }
 
 function closeAssistantTurn(state: AgentSessionView, runId: string): AgentSessionView {

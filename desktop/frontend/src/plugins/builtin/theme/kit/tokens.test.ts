@@ -44,33 +44,11 @@ describe("buildTokenMap", () => {
     expect(tokens["color-negative"]).toBe("#ff5555");
   });
 
-  it("auto-derives accentBorder + accentPress via colord when not given", () => {
-    const tokens = buildTokenMap(makeSpec());
-    expect(tokens["color-accent-border"]).not.toBe("#1ed760");
-    expect(tokens["color-accent-press"]).not.toBe(tokens["color-accent-border"]);
-    expect(tokens["color-accent-border"]).toMatch(/^#[0-9a-f]{6}$/i);
-    expect(tokens["color-accent-press"]).toMatch(/^#[0-9a-f]{6}$/i);
-  });
-
-  it("respects explicit accentBorder + accentPress overrides", () => {
-    const tokens = buildTokenMap(
-      makeSpec({
-        brand: {
-          accent: "#1ed760",
-          textOnAccent: "#000",
-          accentBorder: "#aabbcc",
-          accentPress: "#112233",
-        },
-      }),
-    );
-    expect(tokens["color-accent-border"]).toBe("#aabbcc");
-    expect(tokens["color-accent-press"]).toBe("#112233");
-  });
-
   it("defaults CTA trio from accent (accent fill + ctaText = textOnAccent)", () => {
     const tokens = buildTokenMap(makeSpec());
     expect(tokens["color-cta"]).toBe("#1ed760");
     expect(tokens["color-cta-text"]).toBe("#000000");
+    expect(tokens["color-cta-hover"]).toBe("#19b350");
   });
 
   it("spec.cta overrides CTA per-field", () => {

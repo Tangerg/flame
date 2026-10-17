@@ -19,8 +19,8 @@ export const DEFAULT_ACCENTS: AccentSpec[] = [
   {
     id: "blue",
     label: "Blue",
-    dark: "#3574f0",
-    light: "#2b5fd0",
+    dark: "#0485f7",
+    light: "#006fdb",
     order: 0,
   },
   {

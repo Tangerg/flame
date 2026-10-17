@@ -1,0 +1,227 @@
+import { expect, test } from "./test";
+import { VISUAL_SETTINGS_PANES } from "./workspaceFixtureStates";
+
+for (const theme of ["light", "dark"]) {
+  for (const width of [1120, 320]) {
+    test(`settings keep controls inside their content measure ${theme} ${width}`, async ({
+      page,
+    }) => {
+      for (const pane of VISUAL_SETTINGS_PANES) {
+        await page.setViewportSize({ width, height: 1000 });
+        await page.goto(
+          `/visual/?fixture=workspace&state=settings&pane=${pane}&theme=${theme}&font-size=18`,
+        );
+        await page.locator("html[data-visual-ready]").waitFor();
+        const panel = page.getByRole("tabpanel");
+        await expect(panel.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(panel.locator("[aria-busy=true]")).toHaveCount(0);
+        await page.evaluate(() => document.fonts.ready);
+        if (pane === "providers") {
+          const identity = panel.getByText("openai", { exact: true });
+          await expect(identity).toBeVisible();
+          expect(
+            await identity.evaluate((element) => element.scrollWidth <= element.clientWidth),
+            "provider identity remains readable beside its status",
+          ).toBe(true);
+        }
+        const escaped = await panel.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          return [
+            ...element.querySelectorAll<HTMLElement>(
+              "button, input:not([type=hidden]), textarea, select",
+            ),
+          ]
+            .filter((control) => {
+              const box = control.getBoundingClientRect();
+              return (
+                box.width > 1 &&
+                box.height > 1 &&
+                (box.left < bounds.left || box.right > bounds.right)
+              );
+            })
+            .map((control) => control.getAttribute("aria-label") ?? control.textContent);
+        });
+        expect(escaped, `${pane}: controls escaped the settings content`).toEqual([]);
+        expect(
+          await page
+            .locator("html")
+            .evaluate((element) => element.scrollWidth - element.clientWidth),
+          `${pane}: page overflow`,
+        ).toBe(0);
+      }
+    });
+  }
+}
+
+test("plugin management aligns its sections and exposes complete release details", async ({
+  page,
+}) => {
+  await page.goto("/visual/?fixture=workspace&state=settings&pane=plugins&theme=light");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const panel = page.getByRole("tabpanel");
+  await expect(panel.getByRole("heading", { name: "flame.memory", exact: true })).toBeVisible();
+  const install = panel.getByRole("button", { name: "Install", exact: true });
+  expect((await install.boundingBox())!.width).toBeLessThan((await panel.boundingBox())!.width / 2);
+  for (const selector of await panel.getByRole("combobox", { name: "Choose provider" }).all()) {
+    await expect(selector).toHaveText("Choose provider");
+  }
+  const sectionEdges = await panel
+    .getByRole("heading", { level: 2 })
+    .evaluateAll((headings) => headings.map((heading) => heading.getBoundingClientRect().left));
+  expect(new Set(sectionEdges).size).toBe(1);
+  const memory = panel
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name: "flame.memory", exact: true }) });
+  await memory.getByRole("button", { name: "Release details" }).click();
+  await expect(memory.getByText("/visual/packages/flame.memory", { exact: true })).toBeVisible();
+  await memory.getByRole("button", { name: "Package actions", exact: true }).click();
+  await expect(page.getByRole("menuitem", { name: "Uninstall", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+});
+
+for (const [locale, title] of [
+  ["zh", "插件"],
+  ["de", "Plugins"],
+]) {
+  test(`localized plugin management mounts each dictionary once ${locale}`, async ({ page }) => {
+    await page.goto(
+      `/visual/?fixture=workspace&state=settings&pane=plugins&theme=light&locale=${locale}`,
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const panel = page.getByRole("tabpanel");
+    await expect(panel.getByRole("heading", { name: title, level: 1, exact: true })).toBeVisible();
+    await expect(panel.getByRole("heading", { name: "flame.memory", exact: true })).toBeVisible();
+    await expect(panel.getByText("kernel", { exact: true })).toHaveCount(0);
+  });
+}
+
+test("MCP fields retain visible labels after entering values", async ({ page }) => {
+  await page.goto("/visual/?fixture=workspace&state=settings&pane=mcp-servers&theme=light");
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.getByRole("button", { name: "Add server", exact: true }).click();
+  const panel = page.getByRole("tabpanel");
+  const transport = panel.getByRole("group", { name: "Transport", exact: true });
+  const stdio = transport.getByRole("tab", { name: "stdio", exact: true });
+  await expect(stdio).toBeVisible();
+  expect(await stdio.evaluate((node) => node.closest("label") === null)).toBe(true);
+  await panel.getByRole("textbox", { name: "Server name", exact: true }).fill("Desktop tools");
+  await panel.getByRole("textbox", { name: "Command", exact: true }).fill("npx");
+  await panel
+    .getByRole("textbox", { name: "Arguments — one per line", exact: true })
+    .fill("-y\nserver");
+  await panel
+    .getByRole("textbox", { name: "Environment — KEY=value, one per line", exact: true })
+    .fill("MODE=desktop");
+  await expect(panel.getByText("Server name", { exact: true })).toBeVisible();
+  await expect(panel.getByText("Command", { exact: true })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Add server", exact: true })).toBeEnabled();
+  await panel.getByRole("tab", { name: "Streamable HTTP", exact: true }).click();
+  await expect(panel.getByText("Server URL", { exact: true })).toBeVisible();
+  await expect(panel.getByText("Authorization token", { exact: true })).toBeVisible();
+});
+
+for (const width of [1120, 320]) {
+  test(`populated MCP permissions keep full labels beside their controls ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(
+      "/visual/?fixture=workspace&state=settings&pane=mcp-servers&theme=light&font-size=18",
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    await page.evaluate(async () => {
+      const moduleUrl = "/src/lib/queryClient.ts";
+      const { queryClient }: typeof import("../src/lib/queryClient") = await import(moduleUrl);
+      queryClient.setQueryData(
+        ["mcp-servers"],
+        [
+          {
+            id: { origin: { type: "user" }, name: "workspace-tools" },
+            status: "connected",
+            type: "stdio",
+            enabled: true,
+            command: "npx",
+            args: [],
+            handshakeTimeout: { type: "bounded", seconds: 30 },
+            toolCount: 1,
+          },
+        ],
+      );
+    });
+    await page.getByRole("button", { name: "Edit workspace-tools", exact: true }).click();
+    await page.getByText("Manage tools", { exact: true }).waitFor();
+    await page.evaluate(async () => {
+      const moduleUrl = "/src/lib/queryClient.ts";
+      const { queryClient }: typeof import("../src/lib/queryClient") = await import(moduleUrl);
+      await queryClient.cancelQueries({ queryKey: ["mcp-tools"] });
+      await queryClient.cancelQueries({ queryKey: ["mcp-tool-exposure"] });
+      queryClient.setQueriesData({ queryKey: ["mcp-tools"] }, [
+        {
+          name: "read_workspace_files",
+          description: "Read files from the current workspace without changing them.",
+          modelName: "read_workspace_files",
+          nameConflicts: [],
+        },
+      ]);
+      queryClient.setQueriesData({ queryKey: ["mcp-tool-exposure"] }, []);
+    });
+    for (const name of ["Enable read_workspace_files", "Auto-approve read_workspace_files"]) {
+      const control = page.getByRole("switch", { name, exact: true });
+      await expect(control).toBeVisible();
+      const label = control.locator("..");
+      expect(await label.evaluate((node) => node.tagName)).toBe("LABEL");
+      expect(await label.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+    }
+    expect(await page.locator("html").evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(
+      0,
+    );
+  });
+}
+
+for (const width of [1120, 320]) {
+  test(`hook copy wraps without displacing or hiding its controls ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(
+      "/visual/?fixture=workspace&state=settings&pane=hooks&theme=light&font-size=18",
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const command = "./scripts/review-permissions --workspace /Users/visual/a-long-workspace-name";
+    await page.evaluate(async (command) => {
+      const moduleUrl = "/src/lib/queryClient.ts";
+      const { queryClient }: typeof import("../src/lib/queryClient") = await import(moduleUrl);
+      queryClient.setQueriesData(
+        { queryKey: ["hooks"] },
+        {
+          projectRoot: "/Users/visual/scope",
+          projectTrusted: false,
+          hooks: [
+            {
+              event: "PreToolUse",
+              matcher: "shell",
+              command,
+              scope: "project",
+              source: "/Users/visual/scope/.flame/hooks.json",
+              active: false,
+            },
+          ],
+        },
+      );
+    }, command);
+    const toggle = page.getByRole("switch", { name: "Trust this project's hooks", exact: true });
+    await expect(toggle).toBeVisible();
+    const identity = page.getByText("Trust this project's hooks", { exact: true });
+    if (width === 1120) {
+      expect((await toggle.boundingBox())!.x).toBeGreaterThan(
+        (await identity.boundingBox())!.x + (await identity.boundingBox())!.width,
+      );
+      expect((await toggle.boundingBox())!.y - (await identity.boundingBox())!.y).toBeLessThan(60);
+    }
+    const fullCommand = page.getByText(command, { exact: true });
+    await expect(fullCommand).toBeVisible();
+    expect(await fullCommand.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+    await expect(fullCommand).toHaveCSS("white-space", "pre-wrap");
+    expect(await page.locator("html").evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(
+      0,
+    );
+  });
+}

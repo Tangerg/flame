@@ -1,34 +1,14 @@
 import * as stylex from "@stylexjs/stylex";
+import { MENU_SURFACE } from "@flame/ui";
 import { cn } from "@/lib/classNames";
-import { color, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
+import { color, space, surface, type } from "@flame/ui/tokens.stylex";
 import { Pressable, type PressableProps } from "./pressable";
 
 export type RowLayout = "grid" | "flex" | "glyph" | "pick" | "pickWide" | "pickPlain";
 type RowSize = "sm" | "md" | "lg";
 
 export const floatingRowStyles = stylex.create({
-  base: {
-    width: "100%",
-    alignItems: "center",
-    gap: space.s2,
-    borderRadius: radius.sm,
-    borderWidth: 0,
-    backgroundColor: {
-      default: "transparent",
-      ":hover": { "@media (hover: hover)": surface.hover },
-      ':is([aria-selected="true"])': surface.selected,
-      ':is([aria-selected="true"]):is(:hover, [data-highlighted])': {
-        "@media (hover: hover)": surface.selectedHover,
-      },
-      ":is([data-highlighted])": surface.hover,
-    },
-    paddingInline: space.s2,
-    textAlign: "left",
-    color: color.fg,
-    transitionProperty: "color, background-color",
-    transitionDuration: motion.color,
-    transitionTimingFunction: motion.easeState,
-  },
+  base: { width: "100%", alignItems: "center" },
   grid: { display: "grid" },
   flex: { display: "flex" },
   glyph: { display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" },
@@ -52,6 +32,7 @@ export const floatingRowStyles = stylex.create({
 });
 
 export const floatingRow = (layout: RowLayout = "grid", size: RowSize = "md") => [
+  MENU_SURFACE.item,
   floatingRowStyles.base,
   type.uiMd,
   layout === "pickWide" ? floatingRowStyles.pick : floatingRowStyles[layout],

@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { HoverTrack } from "@/ui/atoms/hover-track";
+import { HoverTrack } from "@flame/ui";
 import { AgentRow } from "./navigation-row";
 
 afterEach(cleanup);

@@ -1,4 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
+import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
+import { useLayoutEffect, useRef } from "react";
 import type { IconSize } from "./font-scale";
 import { clsx as cn } from "clsx";
 import {
@@ -10,9 +12,10 @@ import {
   surface,
   type,
 } from "./tokens.stylex";
-import { Icon } from "./font-scale";
+import { Icon, useFontSize } from "./font-scale";
 import { Search, X } from "@flame/icons/react";
 import { Button } from "./button";
+import { FIELD_SIZE, FIELD_SURFACE } from "./control-surface";
 import { WELL_SURFACE } from "./well-surface";
 import {
   InputPrimitive,
@@ -27,6 +30,7 @@ type FieldInk = "default" | "soft";
 
 const styles = stylex.create({
   base: {
+    appearance: "none",
     width: "100%",
     minWidth: 0,
     transitionProperty: "color, background-color, border-color, outline-color",
@@ -43,13 +47,6 @@ const styles = stylex.create({
         "var(--control-disabled-opacity)",
     },
   },
-  boxed: {
-    borderRadius: radius.field,
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    borderColor: { default: surface.controlEdge, ":focus": surface.fieldFocus },
-    backgroundColor: surface.canvas,
-  },
   bare: { borderWidth: 0, backgroundColor: "transparent" },
   inline: {
     borderWidth: 0,
@@ -60,77 +57,47 @@ const styles = stylex.create({
   },
   inkDefault: { color: color.fg },
   inkSoft: { color: color.fgSoft },
-  invalidBoxed: {
-    borderColor: { default: color.negative, ":focus": color.negative },
-  },
   invalidBare: { outline: `1px solid ${color.negative}` },
   numeric: { fontVariantNumeric: "tabular-nums" },
   faceMono: { fontFamily: "var(--font-mono)" },
   faceSans: { fontFamily: "var(--font-sans)" },
   input: { lineHeight: leading.tight },
-  inputSm: { minHeight: "var(--control-height-sm)", paddingInline: space.s2 },
-  inputMd: { minHeight: "var(--control-height-md)", paddingInline: space.s2_5 },
-  inputLg: { minHeight: "var(--control-height-lg)", paddingInline: space.s3 },
-  area: { resize: "vertical", lineHeight: leading.body },
+  area: {
+    resize: "vertical",
+    lineHeight: leading.body,
+    borderRadius: radius.field,
+  },
   areaProse: {
     lineHeight: "calc(1em + 6px)",
     "::placeholder": { letterSpacing: "normal" },
   },
-  areaSm: { paddingInline: space.s2_5, paddingBlock: space.s1_5 },
-  areaMd: { paddingInline: space.s3, paddingBlock: space.s2 },
-  autosize: { fieldSizing: "content", resize: "none" },
+  areaSm: { paddingBlock: space.s1_5 },
+  areaMd: { paddingBlock: space.s2 },
+  autosize: { resize: "none" },
   searchBox: {
     display: "flex",
-    width: "min(100%,20rem)",
+    width: "100%",
     minWidth: 0,
     maxWidth: "100%",
     alignItems: "center",
-    borderRadius: radius.field,
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    borderColor: {
-      default: surface.controlEdge,
-      ":focus-within": surface.fieldFocus,
-    },
-    backgroundColor: surface.canvas,
     color: { default: color.fgMuted, ":focus-within": color.fg },
-    transitionProperty: "color, border-color",
-    transitionDuration: motion.color,
-    transitionTimingFunction: motion.easeState,
   },
-  searchSm: {
-    height: "var(--control-height-sm)",
-    gap: space.s1_5,
-    paddingInline: space.s2,
-  },
-  searchMd: {
-    height: "var(--control-height-md)",
-    gap: space.s1_5,
-    paddingInline: space.s2_5,
-  },
-  searchLg: {
-    height: "var(--control-height-lg)",
-    gap: space.s2,
-    paddingInline: space.s3,
-  },
+  searchSm: { gap: space.s1_5 },
+  searchMd: { gap: space.s1_5 },
+  searchLg: { gap: space.s2 },
   glyph: { flexShrink: 0 },
-  clear: { marginRight: "calc(var(--spacing) * -1)", flexShrink: 0 },
+  clear: { marginInlineEnd: "calc(var(--spacing) * -1)", flexShrink: 0 },
 });
 
 const FACE = { mono: styles.faceMono, sans: styles.faceSans } as const;
 const INK = { default: styles.inkDefault, soft: styles.inkSoft } as const;
-const INPUT_SIZE = {
-  sm: styles.inputSm,
-  md: styles.inputMd,
-  lg: styles.inputLg,
-} as const;
 const SEARCH_SIZE = {
   sm: styles.searchSm,
   md: styles.searchMd,
   lg: styles.searchLg,
 } as const;
 
-type FieldSize = keyof typeof INPUT_SIZE;
+type FieldSize = keyof typeof FIELD_SIZE;
 
 type SharedProps = {
   variant?: FieldEdge;
@@ -138,13 +105,14 @@ type SharedProps = {
   ink?: FieldInk;
   invalid?: boolean;
   className?: string;
+  styles?: StyleXArray<StyleXStyles | null | false>;
   pending?: boolean;
 };
 
 function edge(variant: FieldEdge, invalid: boolean) {
   return [
-    styles[variant],
-    invalid && (variant === "boxed" ? styles.invalidBoxed : styles.invalidBare),
+    variant === "boxed" ? FIELD_SURFACE.face : styles[variant],
+    invalid && variant !== "boxed" && styles.invalidBare,
   ];
 }
 
@@ -161,6 +129,7 @@ export function TextField({
   ink = "default",
   invalid = false,
   className,
+  styles: extra,
   pending,
   ...props
 }: TextFieldProps) {
@@ -171,8 +140,9 @@ export function TextField({
     FACE[font],
     INK[ink],
     ...edge(variant, invalid),
-    variant === "boxed" && INPUT_SIZE[size],
+    variant === "boxed" && FIELD_SIZE[size],
     props.type === "number" && styles.numeric,
+    extra,
   );
   return (
     <InputPrimitive
@@ -211,9 +181,84 @@ export function TextArea({
   invalid = false,
   autosize = false,
   className,
+  styles: extra,
   pending,
+  ref,
   ...props
 }: TextAreaProps) {
+  const element = useRef<HTMLTextAreaElement>(null);
+  const resizeRef = useRef<() => void>(() => {});
+  const fontSize = useFontSize();
+  // Safari 17.4 shares this sizing owner with hosts that support field-sizing.
+  useLayoutEffect(() => {
+    const area = element.current;
+    if (!autosize || !area) return;
+    const originalHeight = area.style.height;
+    let active = true;
+    let frame = 0;
+    const resize = () => {
+      if (!active || area.clientWidth === 0) return;
+      const style = getComputedStyle(area);
+      const padding =
+        parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      const border =
+        parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+      const scrollTop = area.scrollTop;
+      area.style.height = "auto";
+      const height =
+        area.scrollHeight +
+        (style.boxSizing === "border-box" ? border : -padding);
+      area.style.height = `${height}px`;
+      area.scrollTop = scrollTop;
+    };
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        resize();
+      });
+    };
+    let width = area.getBoundingClientRect().width;
+    const observer = new ResizeObserver(() => {
+      const next = area.getBoundingClientRect().width;
+      if (next === width) return;
+      width = next;
+      schedule();
+    });
+    observer.observe(area);
+    const reset = () => schedule();
+    area.addEventListener("input", resize);
+    area.form?.addEventListener("reset", reset);
+    document.fonts?.addEventListener("loadingdone", resize);
+    void document.fonts?.ready.then(resize);
+    resizeRef.current = resize;
+    return () => {
+      active = false;
+      cancelAnimationFrame(frame);
+      resizeRef.current = () => {};
+      observer.disconnect();
+      area.removeEventListener("input", resize);
+      area.form?.removeEventListener("reset", reset);
+      document.fonts?.removeEventListener("loadingdone", resize);
+      area.style.height = originalHeight;
+    };
+  }, [autosize]);
+  useLayoutEffect(
+    () => resizeRef.current(),
+    [
+      autosize,
+      variant,
+      size,
+      font,
+      props.value,
+      props.defaultValue,
+      props.rows,
+      props.style,
+      className,
+      extra,
+      fontSize,
+    ],
+  );
   const well = variant === "well";
   const styled = stylex.props(
     styles.base,
@@ -222,15 +267,22 @@ export function TextArea({
     FACE[font],
     INK[ink],
     ...edge(variant === "well" ? "bare" : variant, invalid),
+    variant === "boxed" && FIELD_SIZE[size === "sm" ? "sm" : "md"],
     size === "prose"
       ? [type.prose, styles.areaProse]
       : styles[size === "sm" ? "areaSm" : "areaMd"],
     well && [WELL_SURFACE.face, type.code],
     autosize && styles.autosize,
+    extra,
   );
   return (
     <TextAreaPrimitive
       {...props}
+      ref={(node) => {
+        element.current = node;
+        if (typeof ref === "function") return ref(node);
+        if (ref) ref.current = node;
+      }}
       aria-invalid={invalid || undefined}
       data-chrome-focus={
         variant === "boxed" || "data-chrome-focus" in props ? "" : undefined
@@ -251,8 +303,10 @@ const SEARCH_GLYPH: Record<FieldSize, IconSize> = {
 
 export type SearchFieldProps = Omit<
   TextFieldProps,
-  "variant" | "invalid" | "size"
+  "variant" | "invalid" | "size" | "value" | "defaultValue" | "type"
 > & {
+  value: string;
+  defaultValue?: never;
   size?: FieldSize;
 } & (
     | { onClear: () => void; clearLabel: string }
@@ -265,9 +319,16 @@ export function SearchField({
   onClear,
   clearLabel,
   className,
+  styles: extra,
   ...props
 }: SearchFieldProps) {
-  const box = stylex.props(styles.searchBox, SEARCH_SIZE[size]);
+  const box = stylex.props(
+    FIELD_SURFACE.face,
+    FIELD_SIZE[size],
+    styles.searchBox,
+    SEARCH_SIZE[size],
+    extra,
+  );
   return (
     <div {...box} className={cn(box.className, className)}>
       <Icon
@@ -288,6 +349,8 @@ export function SearchField({
           variant="ghost"
           size="icon-sm"
           onClick={onClear}
+          disabled={props.disabled || props.readOnly}
+          pending={props.pending}
           aria-label={clearLabel}
           styles={styles.clear}
         >

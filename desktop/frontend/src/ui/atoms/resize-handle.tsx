@@ -45,7 +45,7 @@ export function ResizeHandle({
   ...props
 }: ResizeHandleProps) {
   const handleRef = useRef<HTMLDivElement>(null);
-  const listenersRef = useRef<{ move: (event: PointerEvent) => void; up: () => void } | null>(null);
+  const gestureRef = useRef<{ cancel(): void } | null>(null);
   const markedRef = useRef<HTMLElement | null>(null);
 
   const paneRef = useRef({
@@ -70,13 +70,6 @@ export function ResizeHandle({
   });
 
   const detach = useCallback(() => {
-    const listeners = listenersRef.current;
-    if (listeners) {
-      window.removeEventListener("pointermove", listeners.move);
-      window.removeEventListener("pointerup", listeners.up);
-      window.removeEventListener("pointercancel", listeners.up);
-      listenersRef.current = null;
-    }
     const marked = markedRef.current;
     if (marked && resizingAttribute) marked.removeAttribute(resizingAttribute);
     markedRef.current = null;
@@ -91,7 +84,15 @@ export function ResizeHandle({
     [resizingAttribute],
   );
 
-  useEffect(() => detach, [detach]);
+  const cancelGesture = useCallback(() => gestureRef.current?.cancel(), []);
+
+  useEffect(
+    () => () => {
+      cancelGesture();
+      detach();
+    },
+    [cancelGesture, detach, value, edge, property],
+  );
 
   useEffect(() => {
     const handle = handleRef.current;
@@ -116,20 +117,54 @@ export function ResizeHandle({
       const handle = handleRef.current;
       const element = handle ? paneRef.current.container(handle) : null;
       if (!handle || !element || event.button !== 0) return;
+      if (gestureRef.current) return;
       event.preventDefault();
       detach();
 
+      const pane = paneRef.current;
+      const pointerId = event.pointerId;
       const startX = event.clientX;
-      const startWidth = paneRef.current.read(element);
+      const startWidth = pane.read(element);
+      const containerWidth = element.clientWidth;
+      const original = element.style.getPropertyValue(pane.property);
+      const priority = element.style.getPropertyPriority(pane.property);
       let width = startWidth;
       let moved = false;
 
+      const finish = (commit: boolean) => {
+        if (!gestureRef.current) return;
+        gestureRef.current = null;
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", canceled);
+        window.removeEventListener("keydown", keydown, true);
+        window.removeEventListener("blur", cancel);
+        handle.removeEventListener("lostpointercapture", canceled);
+        observer.disconnect();
+        if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+        detach();
+        if (commit && moved && width !== startWidth) {
+          pane.onCommit(width, containerWidth);
+        } else {
+          if (original) element.style.setProperty(pane.property, original, priority);
+          else element.style.removeProperty(pane.property);
+          handle.setAttribute("aria-valuenow", String(paneRef.current.read(element)));
+        }
+      };
+      const cancel = () => finish(false);
       const move = (moveEvent: PointerEvent) => {
-        const pane = paneRef.current;
+        if (moveEvent.pointerId !== pointerId) return;
+        if (
+          !element.isConnected ||
+          element.clientWidth !== containerWidth ||
+          paneRef.current.container(handle) !== element
+        ) {
+          cancel();
+          return;
+        }
         const delta = edge === "end" ? moveEvent.clientX - startX : startX - moveEvent.clientX;
         if (delta === 0 && !moved) return;
-        if (delta !== 0) moved = true;
-        const containerWidth = element.clientWidth;
+        moved = true;
         width = clampWidth(
           startWidth + delta,
           pane.minWidth(containerWidth),
@@ -138,16 +173,31 @@ export function ResizeHandle({
         element.style.setProperty(pane.property, pane.formatProperty(width, containerWidth));
         handle.setAttribute("aria-valuenow", String(width));
       };
-      const up = () => {
-        detach();
-        if (moved) paneRef.current.onCommit(width, element.clientWidth);
+      const up = (upEvent: PointerEvent) => {
+        if (upEvent.pointerId === pointerId) finish(element.clientWidth === containerWidth);
       };
-
+      const canceled = (cancelEvent: PointerEvent) => {
+        if (cancelEvent.pointerId === pointerId) cancel();
+      };
+      const keydown = (keyEvent: KeyboardEvent) => {
+        if (keyEvent.key !== "Escape") return;
+        keyEvent.preventDefault();
+        keyEvent.stopPropagation();
+        cancel();
+      };
+      const observer = new ResizeObserver(() => {
+        if (element.clientWidth !== containerWidth) cancel();
+      });
+      observer.observe(element);
+      gestureRef.current = { cancel };
+      handle.setPointerCapture(pointerId);
       mark(element);
-      listenersRef.current = { move, up };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
-      window.addEventListener("pointercancel", up);
+      window.addEventListener("pointercancel", canceled);
+      window.addEventListener("keydown", keydown, true);
+      window.addEventListener("blur", cancel);
+      handle.addEventListener("lostpointercapture", canceled);
     },
     [detach, edge, mark],
   );
@@ -155,6 +205,7 @@ export function ResizeHandle({
   const onKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (!RESIZE_KEYS.includes(event.key)) return;
+      cancelGesture();
       const handle = handleRef.current;
       const pane = paneRef.current;
       const element = handle ? pane.container(handle) : null;
@@ -180,11 +231,11 @@ export function ResizeHandle({
       handle.setAttribute("aria-valuenow", String(next));
       pane.onCommit(next, containerWidth);
     },
-    [edge, mark],
+    [cancelGesture, edge, mark],
   );
 
   const releaseKeyboard = useCallback(() => {
-    if (listenersRef.current) return;
+    if (gestureRef.current) return;
     detach();
   }, [detach]);
 

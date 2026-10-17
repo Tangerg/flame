@@ -2,7 +2,7 @@ import { createElement, Suspense } from "react";
 import type { CapturedSession } from "@flame/plugin-sdk";
 import type { SessionActionSpec } from "@/plugins/sdk/types";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
-import { ContentDialog } from "@/ui";
+import { ModalDialog } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 
 export function SessionActionDialog({
@@ -16,12 +16,20 @@ export function SessionActionDialog({
 }) {
   const t = useT();
   return (
-    <ContentDialog title={action.title} closeLabel={t("common.close")} close={close}>
+    <ModalDialog
+      open
+      title={action.title}
+      closeLabel={t("common.close")}
+      size="lg"
+      onOpenChange={(open) => {
+        if (!open) close();
+      }}
+    >
       <PluginBoundary plugin={action.id} label={action.title}>
         <Suspense fallback={<p role="status">{t("packages.module.loading")}</p>}>
           {createElement(action.component, { session })}
         </Suspense>
       </PluginBoundary>
-    </ContentDialog>
+    </ModalDialog>
   );
 }

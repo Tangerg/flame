@@ -1,4 +1,6 @@
 import { createFlameClient, type FlameClient } from "@flame/runtime-contract/client";
+import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
+import type { ServerCapabilities, Diff } from "@flame/runtime-contract/wire";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
 import { definePlugin } from "@/plugins/sdk";
 import { createRoot } from "react-dom/client";
@@ -9,7 +11,8 @@ import "@flame/ui/styles.css";
 import { TooltipProvider, FontScaleProvider } from "@flame/ui";
 import { publishMotionScale } from "@/lib/appearance";
 import { queryClient } from "@/lib/queryClient";
-import { setLocale, t } from "@/lib/i18n";
+import { LOCALE, lookupExtensionByKey } from "@/plugins/sdk";
+import { selectLocale } from "@/plugins/builtin/settings/appearance/application/localeSelection";
 import { configureNavigator } from "@/lib/navigation";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
 import { uiTypeLadderCssVariables } from "@/plugins/builtin/theme/kit/typeLadder";
@@ -18,7 +21,13 @@ import { installAppearancePreferencePort } from "@/plugins/builtin/theme/adapter
 import { installDocumentAppearance } from "@/plugins/builtin/theme/adapters/documentAppearance";
 import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
 import { VisualFoundationFixture } from "./VisualFoundationFixture";
-import { VISUAL_AGENT_STATES, type VisualAgentState } from "./agentSessionSnapshots";
+import {
+  VISUAL_AGENT_STATES,
+  RUNTIME_AGENT_SESSION_SNAPSHOTS,
+  type RuntimeAgentSessionSnapshot,
+  type VisualAgentState,
+  delegatedApprovalSnapshot,
+} from "./agentSessionSnapshots";
 import {
   VISUAL_WORK_INDEX_STATES,
   isVisualShellOverlay,
@@ -41,7 +50,6 @@ type FixtureTheme = "light" | "dark";
 
 const VISUAL_CLOCK_STARTED_AT = performance.now();
 Date.now = () => VISUAL_NOW + (performance.now() - VISUAL_CLOCK_STARTED_AT);
-setLocale("en");
 configureNavigator(createMemoryNavigator());
 
 function fixtureTheme(value: string | null): FixtureTheme {
@@ -130,8 +138,14 @@ rootElement.dataset.visualTheme = theme;
 const container = document.getElementById("root");
 if (!container) throw new Error("Visual fixture root element is missing");
 
-async function installVisualRuntimeClient(): Promise<FlameClient> {
-  const client = createFlameClient(createVisualRuntimeTransport());
+async function installVisualRuntimeClient(
+  snapshot: RuntimeAgentSessionSnapshot,
+  capabilities: ServerCapabilities,
+  readDiff: (signal?: AbortSignal) => Promise<Diff>,
+): Promise<FlameClient> {
+  const client = createFlameClient(createVisualRuntimeTransport(snapshot, capabilities, readDiff), {
+    capabilities: () => capabilities,
+  });
   await loadPluginsForTest(
     definePlugin({
       name: "flame.visual.runtime-client",
@@ -160,24 +174,37 @@ async function fixtureNode(): Promise<ReactNode> {
       await loadPluginsForTest(plugin);
     }
     if (fixture === "atoms") {
-      const { VisualAtomsFixture } = await import("./VisualAtomsFixture");
-      return <VisualAtomsFixture />;
+      const { VisualAtomsFixture, VisualInputContractFixture } =
+        await import("./VisualAtomsFixture");
+      return requestedState === "input-contracts" ? (
+        <VisualInputContractFixture />
+      ) : (
+        <VisualAtomsFixture />
+      );
     }
     return <VisualFoundationFixture sidebarOpen={sidebarOpen} />;
   }
   if (fixture === "workspace") {
-    const [{ VisualWorkspaceFixture }, { installVisualWorkspaceFixture }] = await Promise.all([
-      import("./VisualWorkspaceFixture"),
-      import("./installVisualWorkspaceFixture"),
-    ]);
-    const runtimeClient = await installVisualRuntimeClient();
-    await installVisualWorkspaceFixture(() => runtimeClient, workspaceState, theme, {
-      pane: settingsPane,
-      fullViewId: requestedFullView,
-      reviewFiles: requestedReviewFiles,
-      agentState: VISUAL_AGENT_STATES.includes(query.get("agent-state") as VisualAgentState)
+    const [{ VisualWorkspaceFixture }, { installVisualWorkspaceFixture, visualWorkspaceRuntime }] =
+      await Promise.all([
+        import("./VisualWorkspaceFixture"),
+        import("./installVisualWorkspaceFixture"),
+      ]);
+    const runtimeInput = visualWorkspaceRuntime(
+      workspaceState,
+      VISUAL_AGENT_STATES.includes(query.get("agent-state") as VisualAgentState)
         ? (query.get("agent-state") as VisualAgentState)
         : undefined,
+      requestedReviewFiles,
+    );
+    const runtimeClient = await installVisualRuntimeClient(
+      runtimeInput.snapshot,
+      runtimeInput.capabilities,
+      runtimeInput.readDiff,
+    );
+    await installVisualWorkspaceFixture(() => runtimeClient, workspaceState, theme, runtimeInput, {
+      pane: settingsPane,
+      fullViewId: requestedFullView,
     });
     return <VisualWorkspaceFixture state={workspaceState} />;
   }
@@ -194,25 +221,39 @@ async function fixtureNode(): Promise<ReactNode> {
     import("./installVisualAgentFixture"),
   ]);
   const output = query.has("long-output")
-    ? Array.from({ length: 50_000 }, (_, index) => `build output line ${index}`).join("\n")
+    ? Array.from({ length: 50_000 }, (_, index) =>
+        index === 31_415
+          ? "build output li\u001b[31mne 31415\u001b[0m"
+          : `build output line ${index}`,
+      ).join("\n")
     : undefined;
-  const runtimeClient = await installVisualRuntimeClient();
-  const view = await installVisualAgentFixture(() => runtimeClient, state, output);
+  if (query.has("resume-ready") && state !== "delegated")
+    throw new Error("Only the delegated fixture has a parked approval tree");
+  const snapshot = query.has("resume-ready")
+    ? delegatedApprovalSnapshot()
+    : structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS[state]);
+  const runtimeClient = await installVisualRuntimeClient(
+    snapshot,
+    VISUAL_CAPABILITIES,
+    async () => {
+      throw new Error("The Agent fixture has no workspace diff read");
+    },
+  );
+  const view = await installVisualAgentFixture(
+    () => runtimeClient,
+    state,
+    output,
+    snapshot,
+    VISUAL_CAPABILITIES,
+  );
   return <VisualAgentStateFixture state={state} view={view} />;
 }
 
-if (requestedLocale !== "en") {
-  setLocale(requestedLocale);
-  const [{ localePlugins }, { loadPluginsForTest }] = await Promise.all([
-    import("@/plugins/builtin/i18n"),
-    import("@/plugins/sdk/testKernel"),
-  ]);
-  for (const plugin of localePlugins) await loadPluginsForTest(plugin);
-  const { en } = await import("@/lib/i18n/locales/en");
-  for (let attempt = 0; attempt < 400 && t("common.cancel") === en["common.cancel"]; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
-}
+const { localePlugins } = await import("@/plugins/builtin/i18n");
+await loadPluginsForTest(...localePlugins);
+const locale = lookupExtensionByKey(LOCALE, requestedLocale);
+if (!locale) throw new Error(`Visual locale is not registered: ${requestedLocale}`);
+await selectLocale(locale);
 
 const node = await fixtureNode();
 

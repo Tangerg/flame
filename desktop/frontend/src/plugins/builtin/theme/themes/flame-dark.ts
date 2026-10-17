@@ -2,21 +2,21 @@ import { defineColorThemePlugin } from "../kit/defineColorThemePlugin";
 import { SCHEME_BASE } from "../kit/palette";
 
 const c = {
-  accent: "#3574f0",
+  accent: "#0485f7",
 
   canvas: SCHEME_BASE.dark.background,
-  surface1: "#2b2b2b",
-  sunken: "#181818",
+  surface1: "#18181b",
+  sunken: "#232325",
 
   inkBright: "#ffffff",
   ink: SCHEME_BASE.dark.foreground,
-  inkSoft: "#c6c9cf",
-  inkMuted: "#aaaeb5",
-  inkFaint: "#9da1a7",
+  inkSoft: "#d4d4d8",
+  inkMuted: "#9f9fa9",
+  inkFaint: "#9f9fa9",
 
-  hairline: "#303030",
-  hairStrong: "#414141",
-  hairTertiary: "rgb(255 255 255 / 0.04)",
+  hairline: "#28282c",
+  hairStrong: "#3f3f46",
+  hairTertiary: "#212124",
 };
 
 export default defineColorThemePlugin({
@@ -31,6 +31,7 @@ export default defineColorThemePlugin({
   },
   surfaces: {
     bg: c.canvas,
+    drawer: c.canvas,
     surface: c.surface1,
     elevated: c.surface1,
     sunken: c.sunken,
@@ -54,8 +55,8 @@ export default defineColorThemePlugin({
     success: "#6db473",
   },
   cta: {
-    cta: "var(--color-accent-border)",
-    ctaHover: "var(--color-accent-press)",
-    ctaText: "var(--color-text-on-accent)",
+    cta: "#006fdb",
+    ctaHover: "#0064c5",
+    ctaText: "#ffffff",
   },
 });

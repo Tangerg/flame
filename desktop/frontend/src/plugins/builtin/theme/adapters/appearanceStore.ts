@@ -39,7 +39,7 @@ export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>(
     (set) => ({
       theme: "system",
       visualStyle: "flame",
-      accent: "#3574f0",
+      accent: "#0485f7",
       customTheme: { bg: "#0f1117", fg: "#e6e8ee" },
       contrast: DEFAULT_CONTRAST,
       uiFont: "",

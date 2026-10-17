@@ -9,6 +9,23 @@ type VisualStyleTokenName =
   | "style-shape-xl"
   | "style-shape-composer"
   | "style-shape-bubble"
+  | "layout-page-width"
+  | "layout-page-gutter"
+  | "layout-page-block"
+  | "layout-compact-gutter"
+  | "layout-content-gap"
+  | "layout-label-gap"
+  | "layout-row-padding"
+  | "layout-section-gap"
+  | "layout-card-padding"
+  | "layout-field-gap"
+  | "layout-control-gap"
+  | "layout-menu-inset"
+  | "field-background"
+  | "field-border"
+  | "field-shadow"
+  | "mark-radius"
+  | "menu-item-radius"
   | "button-radius"
   | "field-radius"
   | "segmented-radius"
@@ -60,7 +77,6 @@ type VisualStyleTokenName =
   | "shadow-popover"
   | "shadow-modal"
   | "shadow-well"
-  | "shadow-raised-chip"
   | "shadow-surface-card";
 
 export type VisualStyleTokens = Record<VisualStyleTokenName, string>;
@@ -74,21 +90,38 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "style-shape-xl": "12px",
   "style-shape-composer": "20px",
   "style-shape-bubble": "16px",
-  "button-radius": "var(--shape-sm)",
-  "field-radius": "var(--shape-md)",
-  "segmented-radius": "var(--shape-md)",
+  "layout-page-width": "56rem",
+  "layout-page-gutter": "calc(var(--spacing) * 6)",
+  "layout-page-block": "calc(var(--spacing) * 8)",
+  "layout-compact-gutter": "calc(var(--spacing) * 4)",
+  "layout-content-gap": "calc(var(--spacing) * 3)",
+  "layout-label-gap": "calc(var(--spacing) * 1.5)",
+  "layout-row-padding": "calc(var(--spacing) * 3)",
+  "layout-section-gap": "calc(var(--spacing) * 6)",
+  "layout-card-padding": "calc(var(--spacing) * 5)",
+  "layout-field-gap": "calc(var(--spacing) * 4)",
+  "layout-control-gap": "calc(var(--spacing) * 2)",
+  "layout-menu-inset": "calc(var(--spacing) * 1)",
+  "field-background": "var(--color-elevated)",
+  "field-border": "var(--color-control-edge)",
+  "field-shadow": "var(--shadow-control)",
+  "mark-radius": "var(--shape-sm)",
+  "menu-item-radius": "max(0px, calc(var(--floating-panel-radius) - var(--layout-menu-inset)))",
+  "button-radius": "var(--shape-pill)",
+  "field-radius": "var(--shape-xl)",
+  "segmented-radius": "var(--shape-composer)",
   "segment-radius":
     "max(0px, calc(var(--segmented-radius) - var(--control-edge-width) - var(--spacing) * 0.5))",
-  "surface-card-radius": "var(--shape-md)",
+  "surface-card-radius": "var(--shape-bubble)",
   "row-radius": "var(--shape-lg)",
-  "floating-panel-radius": "var(--shape-xl)",
+  "floating-panel-radius": "var(--shape-bubble)",
   "floating-tip-radius": "var(--shape-md)",
   "dock-tab-radius": "var(--shape-lg)",
 
   "control-height-xs": "24px",
-  "control-height-sm": "26px",
-  "control-height-md": "30px",
-  "control-height-lg": "34px",
+  "control-height-sm": "28px",
+  "control-height-md": "32px",
+  "control-height-lg": "36px",
   "menu-row-height": "30px",
   "dock-tab-height": "28px",
   "surface-header-height": "46px",
@@ -115,7 +148,7 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
     "color-mix(in srgb, var(--color-text) 4%, var(--app-content-surface))",
   "composer-tray-backdrop": "blur(8px)",
   "composer-tray-edge-color": "color-mix(in oklab, var(--color-border) 80%, transparent)",
-  "app-floating-surface": "color-mix(in oklab, var(--app-content-surface) 90%, transparent)",
+  "app-floating-surface": "var(--color-elevated)",
   "floating-backdrop": "blur(8px) saturate(1.4)",
   "app-card-edge": "inset 0.5px 0 0 0",
   "app-pane-split": "inset 0.5px 0 0 0",
@@ -125,7 +158,7 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "app-pane-wash-end": "inset -12px 0 12px -6px",
   "seam-line": "var(--color-border-soft)",
 
-  "shadow-control": "none",
+  "shadow-control": "0 1px 2px color-mix(in oklab, var(--shadow-cast) 20%, transparent)",
   "shadow-composer-depth":
     "0 2px 8px 0 color-mix(in oklab, var(--shadow-cast) 20%, transparent), 0 4px 80px 8px color-mix(in oklab, var(--shadow-cast) 12%, transparent)",
   "shadow-ring": "0 0 0 0.5px var(--seam-line)",
@@ -138,8 +171,8 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "shadow-modal":
     "var(--shadow-ring), 0 16px 32px -8px color-mix(in oklab, var(--shadow-cast) 95%, transparent)",
   "shadow-well": "none",
-  "shadow-raised-chip": "none",
-  "shadow-surface-card": "none",
+  "shadow-surface-card":
+    "0 2px 4px color-mix(in oklab, var(--shadow-cast) 20%, transparent), 0 1px 2px color-mix(in oklab, var(--shadow-cast) 30%, transparent)",
 };
 
 export function visualStyleTokens(overrides: Partial<VisualStyleTokens>): VisualStyleTokens {

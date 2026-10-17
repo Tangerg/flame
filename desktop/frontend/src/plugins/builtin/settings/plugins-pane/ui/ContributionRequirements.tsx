@@ -5,7 +5,7 @@ import type {
   PluginContribution,
   PluginInstallation,
 } from "@flame/runtime-contract/wire";
-import { Button, Metadata, Toolbar } from "@flame/ui";
+import { Button, ListRow, Metadata, PanelSection, RecordGroup } from "@flame/ui";
 import { SystemMessage } from "@/ui";
 import { useT } from "@/lib/i18n";
 import type { PackageOperations } from "../application/packages";
@@ -87,49 +87,52 @@ function RequirementBindings({
     }
   }
   return (
-    <section aria-label={`${contribution.id} · ${t("packages.requirements.title")}`}>
-      <Toolbar label={t("packages.requirements.title")}>
-        <h4>
-          {contribution.id} · {t("packages.requirements.title")}
-        </h4>
+    <PanelSection
+      title={`${contribution.id} · ${t("packages.requirements.title")}`}
+      description={t("packages.requirements.future")}
+      actions={
         <Button
+          variant="soft"
+          size="sm"
           pending={current?.pending}
           disabled={operations.signal.aborted}
           onClick={() => void inspect()}
         >
           {t("packages.requirements.inspect")}
         </Button>
-      </Toolbar>
-      <Metadata>{t("packages.requirements.future")}</Metadata>
+      }
+    >
       {current?.error && <SystemMessage variant="warning">{current.error}</SystemMessage>}
-      {contribution.requires.map((required) => {
-        const resolved = current?.bindings?.find((value) => value.id === required.id);
-        return (
-          <div key={required.id}>
-            <Metadata>
-              {required.id} · {pluginContract(required.contract).reference} ·{" "}
-              {t(
-                required.optional
-                  ? "packages.requirements.optional"
-                  : "packages.requirements.required",
-              )}
-            </Metadata>
-            {resolved ? (
-              resolved.bindings.length ? (
-                resolved.bindings.map((binding) => (
-                  <Metadata key={`${binding.installationId}/${binding.contribution}`}>
-                    {binding.installationId} · {binding.contribution} · {binding.digest}
-                  </Metadata>
-                ))
+      <RecordGroup variant="list">
+        {contribution.requires.map((required) => {
+          const resolved = current?.bindings?.find((value) => value.id === required.id);
+          return (
+            <ListRow key={required.id}>
+              <Metadata>
+                {required.id} · {pluginContract(required.contract).reference} ·{" "}
+                {t(
+                  required.optional
+                    ? "packages.requirements.optional"
+                    : "packages.requirements.required",
+                )}
+              </Metadata>
+              {resolved ? (
+                resolved.bindings.length ? (
+                  resolved.bindings.map((binding) => (
+                    <Metadata key={`${binding.installationId}/${binding.contribution}`}>
+                      {binding.installationId} · {binding.contribution} · {binding.digest}
+                    </Metadata>
+                  ))
+                ) : (
+                  <Metadata>{t("packages.requirements.absent")}</Metadata>
+                )
               ) : (
-                <Metadata>{t("packages.requirements.absent")}</Metadata>
-              )
-            ) : (
-              <Metadata>{t("packages.requirements.unread")}</Metadata>
-            )}
-          </div>
-        );
-      })}
-    </section>
+                <Metadata>{t("packages.requirements.unread")}</Metadata>
+              )}
+            </ListRow>
+          );
+        })}
+      </RecordGroup>
+    </PanelSection>
   );
 }

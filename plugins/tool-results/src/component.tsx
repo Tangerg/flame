@@ -1,4 +1,6 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { ansiText, renderAnsi } from "./ansi";
+import { RecordedOutput } from "./recorded-output";
+import { useMemo, useState } from "react";
 import type { CapturedToolResult, ComponentContext } from "@flame/plugin-sdk";
 import {
   Button,
@@ -6,85 +8,11 @@ import {
   Metadata,
   Panel,
   PanelTitle,
-  TextField,
+  SearchField,
   Toolbar,
 } from "@flame/ui";
 
 type Row = { location?: string; number?: number; body: string };
-type AnsiStyle = {
-  tone?: string;
-  bold?: boolean;
-  dim?: boolean;
-  underline?: boolean;
-};
-const tones = [
-  "muted",
-  "negative",
-  "success",
-  "warning",
-  "accent",
-  "accent",
-  "accent",
-  "muted",
-];
-
-function sgr(style: AnsiStyle, params: string): AnsiStyle {
-  const codes =
-    params === ""
-      ? [0]
-      : params.split(";").map((code) => Number.parseInt(code, 10) || 0);
-  let next = { ...style };
-  for (let index = 0; index < codes.length; index++) {
-    const code = codes[index];
-    if (code === 0) next = {};
-    else if (code === 1) next.bold = true;
-    else if (code === 2) next.dim = true;
-    else if (code === 4) next.underline = true;
-    else if (code === 22) {
-      next.bold = false;
-      next.dim = false;
-    } else if (code === 24) next.underline = false;
-    else if (code === 39) next.tone = undefined;
-    else if (code >= 30 && code <= 37) next.tone = tones[code - 30];
-    else if (code >= 90 && code <= 97) next.tone = tones[code - 90];
-    else if (code === 38 || code === 48)
-      index += codes[index + 1] === 5 ? 2 : 4;
-  }
-  return next;
-}
-
-// ANSI determines local text style only; result bytes never become markup or URLs.
-function ansi(input: string) {
-  const spans: { text: string; style: AnsiStyle }[] = [];
-  let style: AnsiStyle = {};
-  let cursor = 0;
-  // eslint-disable-next-line no-control-regex -- Recorded terminal output contains ANSI escape bytes.
-  for (const match of input.matchAll(/\u001b\[([0-9;?]*)([A-Za-z])/g)) {
-    if (match.index > cursor)
-      spans.push({ text: input.slice(cursor, match.index), style });
-    if (match[2] === "m") style = sgr(style, match[1]);
-    cursor = match.index + match[0].length;
-  }
-  if (cursor < input.length) spans.push({ text: input.slice(cursor), style });
-  return spans.map(({ text, style: value }, index) => {
-    const style: CSSProperties = {
-      color:
-        value.tone === "muted"
-          ? "var(--color-text-muted)"
-          : value.tone
-            ? `var(--tone-${value.tone})`
-            : undefined,
-      fontWeight: value.bold ? "bold" : undefined,
-      opacity: value.dim ? 0.7 : undefined,
-      textDecoration: value.underline ? "underline" : undefined,
-    };
-    return (
-      <span key={index} style={style}>
-        {text}
-      </span>
-    );
-  });
-}
 
 function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -113,16 +41,6 @@ function rows(tool: CapturedToolResult): Row[] {
         number: (tool.range?.start ?? 1) + index,
         body,
       }));
-  if (Array.isArray(result.changes))
-    return result.changes.map((change) => {
-      const value = record(change);
-      return {
-        location: value.from
-          ? `${text(value.from)} → ${text(value.path)}`
-          : text(value.path),
-        body: text(value.status ?? "changed"),
-      };
-    });
   if (Array.isArray(result.hits))
     return result.hits.map((hit) => {
       const value = record(hit);
@@ -160,8 +78,8 @@ function rows(tool: CapturedToolResult): Row[] {
     ];
     if (entries.length)
       return entries.map((entry) => ({
-        location: entry[1].trim(),
-        body: entry[2].trim(),
+        location: entry[1]!.trim(),
+        body: entry[2]!.trim(),
       }));
   }
   if (tool.name === "ask_user") {
@@ -173,17 +91,14 @@ function rows(tool: CapturedToolResult): Row[] {
     .map((body) => ({ body }));
 }
 
-export function RecordedResult({ context }: { context: ComponentContext }) {
-  const tool = context.toolResult;
-  if (!tool || tool.status === "running" || typeof tool.result !== "string")
-    throw new Error("A settled captured Tool result is required");
+function RecordedRows({ tool }: { tool: CapturedToolResult }) {
   const [filter, setFilter] = useState("");
   const [visible, setVisible] = useState(40);
   const recorded = useMemo(() => rows(tool), [tool]);
   const matching = useMemo(
     () =>
       recorded.filter((row) =>
-        `${row.location ?? ""}\n${row.body}`
+        `${row.location ?? ""}\n${ansiText(row.body)}`
           .toLowerCase()
           .includes(filter.toLowerCase()),
       ),
@@ -197,9 +112,9 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
           {tool.status} · Recorded result{tool.error ? ` · ${tool.error}` : ""}
         </Metadata>
         <Toolbar label="Recorded result filter">
-          <TextField
+          <SearchField
             aria-label="Filter recorded result"
-            type="search"
+            placeholder="Find in recorded results"
             value={filter}
             onChange={(event) => {
               setFilter(event.target.value);
@@ -223,7 +138,7 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
                     : undefined,
               }}
             >
-              {ansi(row.body || " ")}
+              {renderAnsi(row.body || " ")}
             </pre>
           </ListRow>
         ))}
@@ -238,4 +153,49 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
       </Panel>
     </div>
   );
+}
+
+const CHANGE_VERB = {
+  added: "Created",
+  modified: "Edited",
+  moved: "Moved",
+  deleted: "Deleted",
+} as const;
+
+export function RecordedResult({ context }: { context: ComponentContext }) {
+  const tool = context.toolResult;
+  if (!tool || tool.status === "running" || typeof tool.result !== "string")
+    throw new Error("A settled captured Tool result is required");
+  const changes = parsed(tool.result).changes;
+  if (Array.isArray(changes))
+    return (
+      <table
+        aria-label="Applied changes"
+        style={{ width: "100%", tableLayout: "fixed" }}
+      >
+        <tbody>
+          {changes.map((input, index) => {
+            const change = record(input);
+            const path = text(change.path);
+            const status = text(change.status);
+            return (
+              <tr key={`${path}:${index}`}>
+                <td style={{ width: "5em", verticalAlign: "top" }}>
+                  {CHANGE_VERB[status as keyof typeof CHANGE_VERB] ?? status}
+                </td>
+                <td style={{ overflowWrap: "anywhere" }}>
+                  <span title={path}>{path}</span>
+                  {typeof change.from === "string" && (
+                    <Metadata>From {change.from}</Metadata>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    );
+  if (tool.name === "shell" || tool.name === "read_shell_output")
+    return <RecordedOutput text={tool.result} />;
+  return <RecordedRows tool={tool} />;
 }

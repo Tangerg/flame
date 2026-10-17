@@ -34,24 +34,29 @@ export type ButtonTone = "negative" | "warning" | "accent" | "success";
 
 const inset = (step: string) => `calc(${step} - var(--control-edge-width))`;
 const INSET_XS = inset(space.s2);
-const INSET_SM = inset(space.s2_5);
-const INSET_MD = inset(space.s3);
-const INSET_LG = inset(space.s3_5);
+const INSET_SM = inset(space.s2);
+const INSET_MD = inset(space.s2_5);
+const INSET_LG = inset(space.s3);
 
 const styles = stylex.create({
   base: {
     display: "inline-flex",
+    justifySelf: "start",
+    width: "fit-content",
+    "corner-shape": "round",
+    maxWidth: "100%",
     flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
     gap: space.s1_5,
-    whiteSpace: "nowrap",
+    whiteSpace: "normal",
+    overflowWrap: "anywhere",
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
     borderColor: "transparent",
     fontFamily: "var(--font-sans)",
     fontWeight: weight.medium,
-    lineHeight: leading.tight,
+    lineHeight: leading.snug,
     transitionProperty:
       "background-color, border-color, color, opacity, scale, translate, text-decoration-color",
     transitionDuration: motion.fast,
@@ -59,23 +64,27 @@ const styles = stylex.create({
   },
 
   xs: {
-    height: "var(--control-height-xs)",
+    minHeight: "max(var(--control-height-xs), var(--control-target-min))",
     borderRadius: radius.button,
+    paddingBlock: space.s0_5,
     paddingInline: INSET_XS,
   },
   sm: {
-    height: "var(--control-height-sm)",
+    minHeight: "max(var(--control-height-sm), var(--control-target-min))",
     borderRadius: radius.button,
+    paddingBlock: space.s0_5,
     paddingInline: INSET_SM,
   },
   md: {
-    height: "var(--control-height-md)",
+    minHeight: "max(var(--control-height-md), var(--control-target-min))",
     borderRadius: radius.button,
+    paddingBlock: space.s0_5,
     paddingInline: INSET_MD,
   },
   lg: {
-    height: "var(--control-height-lg)",
+    minHeight: "max(var(--control-height-lg), var(--control-target-min))",
     borderRadius: radius.button,
+    paddingBlock: space.s0_5,
     paddingInline: INSET_LG,
   },
   iconXs: {
@@ -151,7 +160,7 @@ const styles = stylex.create({
     },
   },
   outline: {
-    borderColor: surface.controlEdge,
+    borderColor: surface.fieldStrong,
     backgroundColor: {
       default: "transparent",
       ":hover": { "@media (hover: hover)": surface.hover },
@@ -225,6 +234,7 @@ const styles = stylex.create({
   },
   bare: {
     height: "auto",
+    minHeight: "var(--control-target-min)",
     justifyContent: "flex-start",
     borderRadius: 0,
     borderWidth: 0,

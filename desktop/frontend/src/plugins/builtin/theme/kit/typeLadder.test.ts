@@ -10,13 +10,14 @@ describe("uiTypeLadder", () => {
   it("lands the default base on the whole-pixel grid", () => {
     expect(uiTypeLadder(UI_FONT_SIZE_DEFAULT_PX)).toEqual({
       "ui-2xs": 10,
-      "ui-xs": 11,
-      "ui-sm": 12,
+      "ui-xs": 12,
+      "ui-sm": 13,
       "ui-md": 14,
       prose: 14,
       code: 12,
-      "display-sm": 18,
-      "display-md": 20,
+      "display-sm": 16,
+      "display-md": 18,
+      "display-lg": 24,
     });
   });
 
@@ -39,7 +40,7 @@ describe("uiTypeLadder", () => {
   it("keeps every heading above the reading text it heads", () => {
     for (let base = UI_FONT_SIZE_MIN_PX; base <= UI_FONT_SIZE_MAX_PX; base += 1) {
       const ladder = uiTypeLadder(base);
-      for (const step of ["display-sm", "display-md"] as const) {
+      for (const step of ["display-sm", "display-md", "display-lg"] as const) {
         expect(ladder[step]).toBeGreaterThan(ladder.prose);
       }
     }
@@ -59,13 +60,14 @@ describe("uiTypeLadderCssVariables", () => {
   it("emits every ladder step as a px custom property", () => {
     expect(uiTypeLadderCssVariables(UI_FONT_SIZE_DEFAULT_PX)).toEqual({
       "--fs-ui-2xs": "10px",
-      "--fs-ui-xs": "11px",
-      "--fs-ui-sm": "12px",
+      "--fs-ui-xs": "12px",
+      "--fs-ui-sm": "13px",
       "--fs-ui-md": "14px",
       "--fs-prose": "14px",
       "--fs-code": "12px",
-      "--fs-display-sm": "18px",
-      "--fs-display-md": "20px",
+      "--fs-display-sm": "16px",
+      "--fs-display-md": "18px",
+      "--fs-display-lg": "24px",
     });
   });
 });

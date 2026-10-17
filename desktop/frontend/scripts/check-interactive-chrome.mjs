@@ -170,7 +170,6 @@ const RULES = [
     appliesTo: (_line, _rel, _selector, jsxTag) =>
       [
         "Button",
-        "PillButton",
         "TextButton",
         "IconButton",
         "BannerAction",

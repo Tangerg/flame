@@ -11,32 +11,52 @@ import {
   useExtensionPoint,
   useShortcutOverrides,
 } from "@/plugins/sdk";
-import { color, motion, space, surface, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import {
+  color,
+  layout,
+  motion,
+  space,
+  surface,
+  type as typeStep,
+  weight,
+} from "@flame/ui/tokens.stylex";
 import { SettingsGroup } from "@/plugins/builtin/settings/kit";
 
 const sc = stylex.create({
-  pane: { display: "flex", flexDirection: "column", gap: space.s3 },
-  toolbar: { display: "flex", alignItems: "center", gap: space.s2 },
-  table: { width: "100%", borderCollapse: "collapse", textAlign: "left" },
+  pane: { display: "flex", flexDirection: "column", gap: layout.contentGap },
+  toolbar: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: layout.controlGap },
+  table: { width: "100%", borderCollapse: "collapse", textAlign: "start" },
   head: {
     backgroundColor: surface.sunken,
     color: color.fgFaint,
     fontWeight: weight.semibold,
   },
-  cell: { paddingInline: space.s4, paddingBlock: space.s1_5 },
-  keyColumn: { width: "260px", textAlign: "right" },
-  right: { textAlign: "right" },
+  cell: {
+    textAlign: "start",
+    paddingInline: layout.cardPadding,
+    paddingBlock: layout.rowPadding,
+    overflowWrap: "anywhere",
+  },
+  keyColumn: { width: "40%", textAlign: "end" },
+  right: { textAlign: "end" },
   row: {
     backgroundColor: { default: null, ":hover": surface.hover },
     transitionProperty: "background-color",
     transitionTimingFunction: motion.easeState,
   },
-  keys: { display: "inline-flex", alignItems: "center", gap: space.s1 },
-  controls: {
+  keys: {
     display: "inline-flex",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "flex-end",
-    gap: space.s2,
+    gap: space.s1,
+  },
+  controls: {
+    display: "inline-flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: layout.controlGap,
   },
   note: { color: color.fgMuted },
   warn: { color: color.warning },

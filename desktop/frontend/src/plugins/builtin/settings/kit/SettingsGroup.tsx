@@ -11,7 +11,7 @@ export function SettingsGroup({ className, children, ...props }: ComponentPropsW
   return (
     <Surface
       {...props}
-      variant="group"
+      variant="card"
       data-focus-inset=""
       inset="none"
       className={cn(stylex.props(styles.group).className, className)}

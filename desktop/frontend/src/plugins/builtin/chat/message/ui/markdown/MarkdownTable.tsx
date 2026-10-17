@@ -53,7 +53,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
               quiet
               aria-expanded={previewOpen}
               aria-haspopup="dialog"
-              title={t("message.table.expand")}
+              aria-label={t("message.table.expand")}
             />
           }
         >
@@ -62,7 +62,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
             size="sm"
             quiet
             onClick={() => setPreviewOpen(false)}
-            title={t("message.table.closePreview")}
+            aria-label={t("message.table.closePreview")}
             className={stylex.props(mt.close).className}
           />
           <div className="md md-table-preview">
@@ -74,7 +74,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
           size="xs"
           quiet
           onClick={() => void copy()}
-          title={t(copied ? "message.table.copied" : "message.table.copy")}
+          aria-label={t(copied ? "message.table.copied" : "message.table.copy")}
         />
       </div>
     </div>

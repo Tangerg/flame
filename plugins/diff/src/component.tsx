@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentContext } from "@flame/plugin-sdk";
-import { FileDiff } from "@flame/icons/react";
+import { FileDiff, Refresh } from "@flame/icons/react";
 import type { Diff, DiffMode } from "@flame/runtime-contract/wire";
 import {
   Badge,
@@ -10,9 +10,13 @@ import {
   EmptyState,
   Metadata,
   Panel,
-  PanelTitle,
+  PanelHeader,
+  PanelSection,
+  IconButton,
+  RecordSummary,
   RecordGroup,
   SearchField,
+  FilterBar,
   Select,
   Toolbar,
 } from "@flame/ui";
@@ -32,7 +36,7 @@ export function DiffReport({ snapshot }: { snapshot: DiffSnapshot }) {
         next.delete(snapshot.focusPath!);
         return next;
       });
-    focused.current?.scrollIntoView({ block: "start" });
+    focused.current?.scrollIntoView({ block: "nearest" });
   }, [snapshot]);
   const files = snapshot.diff.files ?? [];
   const matching = files.filter((file) =>
@@ -43,13 +47,6 @@ export function DiffReport({ snapshot }: { snapshot: DiffSnapshot }) {
   const source = snapshot.diff.baseline;
   return (
     <>
-      <Metadata>
-        <span id="baseline">
-          {source.type === "emptyTree"
-            ? "Baseline: empty tree"
-            : `Baseline: ${source.type} · ${source.commit}`}
-        </span>
-      </Metadata>
       {snapshot.diff.truncated && (
         <Metadata>
           <span id="truncated">
@@ -57,108 +54,158 @@ export function DiffReport({ snapshot }: { snapshot: DiffSnapshot }) {
           </span>
         </Metadata>
       )}
-      <Toolbar label="Diff filters">
-        <SearchField
-          id="filter"
-          aria-label="Filter files"
-          placeholder="File path"
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-        />
-        <Select
-          id="layout"
-          label="Layout"
-          value={layout}
-          onValueChange={setLayout}
-          options={[
-            { value: "unified", label: "Unified" },
-            { value: "split", label: "Side by side" },
-          ]}
-        />
-        <Button
-          id="expand"
-          size="sm"
-          variant="ghost"
-          onClick={() => setCollapsed(new Set())}
+      <PanelSection
+        title="Changed files"
+        description={`${matching.length} of ${files.length} files in this read`}
+        actions={
+          <Toolbar label="File disclosure actions">
+            <Button
+              id="expand"
+              size="sm"
+              variant="ghost"
+              onClick={() => setCollapsed(new Set())}
+            >
+              Expand all
+            </Button>
+            <Button
+              id="collapse"
+              size="sm"
+              variant="ghost"
+              onClick={() =>
+                setCollapsed(new Set(files.map((file) => file.path)))
+              }
+            >
+              Collapse all
+            </Button>
+          </Toolbar>
+        }
+      >
+        <FilterBar
+          label="Diff filters"
+          search={
+            <SearchField
+              size="lg"
+              id="filter"
+              aria-label="Filter files"
+              placeholder="File path"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+            />
+          }
         >
-          Expand all
-        </Button>
-        <Button
-          id="collapse"
-          size="sm"
-          variant="ghost"
-          onClick={() => setCollapsed(new Set(files.map((file) => file.path)))}
-        >
-          Collapse all
-        </Button>
-      </Toolbar>
-      {!files.length && !snapshot.diff.truncated && (
-        <EmptyState
-          icon={FileDiff}
-          size="compact"
-          title="No changes in this comparison."
-          sub="Choose another baseline or refresh after editing a file."
-        />
-      )}
-      {files.length > 0 && !matching.length && (
-        <EmptyState
-          size="compact"
-          title="No matching files."
-          sub="Clear the filter to show changed files."
-        />
-      )}
-      {snapshot.focusPath &&
-        !files.some((file) => file.path === snapshot.focusPath) && (
-          <Metadata>The requested file is absent from this diff.</Metadata>
+          <Select
+            size="lg"
+            id="layout"
+            label="Layout"
+            value={layout}
+            onValueChange={setLayout}
+            options={[
+              { value: "unified", label: "Unified" },
+              { value: "split", label: "Side by side" },
+            ]}
+          />
+        </FilterBar>
+        {!files.length && !snapshot.diff.truncated && (
+          <EmptyState
+            icon={FileDiff}
+            size="compact"
+            title="No changes in this comparison."
+            sub="Choose another baseline or refresh after editing a file."
+          />
         )}
-      <RecordGroup id="files" aria-label="Changed files">
-        {matching.map((file) => (
-          <Disclosure
-            key={file.path}
-            ref={file.path === snapshot.focusPath ? focused : undefined}
-            data-diff-file={file.path}
-            data-focused={file.path === snapshot.focusPath}
-            open={!collapsed.has(file.path)}
-            onOpenChange={(open) =>
-              setCollapsed((current) => {
-                const next = new Set(current);
-                if (open) next.delete(file.path);
-                else next.add(file.path);
-                return next;
-              })
-            }
-            title={
-              <>
-                {file.previousPath
-                  ? `${file.previousPath} → ${file.path}`
-                  : file.path}{" "}
-                · {file.status}{" "}
-                {!file.binary && (
-                  <Badge tone="neutral">{`+${file.added ?? "?"} −${file.removed ?? "?"}`}</Badge>
-                )}
-              </>
-            }
-          >
-            {file.binary ? (
-              <Metadata>Binary content is not displayed.</Metadata>
-            ) : (
-              <>
-                <DiffTable
-                  rows={file.rows}
-                  layout={layout as "unified" | "split"}
-                  label={file.path}
+        {files.length > 0 && !matching.length && (
+          <EmptyState
+            size="compact"
+            title="No matching files."
+            sub="Clear the filter to show changed files."
+          />
+        )}
+        {snapshot.focusPath &&
+          !files.some((file) => file.path === snapshot.focusPath) && (
+            <Metadata>The requested file is absent from this diff.</Metadata>
+          )}
+        <RecordGroup variant="list" id="files" aria-label="Changed files">
+          {matching.map((file) => (
+            <Disclosure
+              variant="row"
+              key={file.path}
+              ref={file.path === snapshot.focusPath ? focused : undefined}
+              data-diff-file={file.path}
+              data-focused={file.path === snapshot.focusPath}
+              open={!collapsed.has(file.path)}
+              onOpenChange={(open) =>
+                setCollapsed((current) => {
+                  const next = new Set(current);
+                  if (open) next.delete(file.path);
+                  else next.add(file.path);
+                  return next;
+                })
+              }
+              title={
+                <RecordSummary
+                  icon={FileDiff}
+                  title={file.path.split("/").at(-1)}
+                  description={
+                    <code>
+                      {file.status} · {file.path}
+                    </code>
+                  }
+                  status={
+                    !file.binary && (
+                      <Badge
+                        tone="neutral"
+                        face="mono"
+                      >{`+${file.added ?? "?"} −${file.removed ?? "?"}`}</Badge>
+                    )
+                  }
                 />
-                <Metadata>Scroll horizontally to read long lines.</Metadata>
-              </>
-            )}
-          </Disclosure>
-        ))}
-      </RecordGroup>
-      <Metadata>
-        These are current workspace changes, not a stored Tool result. Refresh
-        to read again. This page cannot edit files, stage changes or restore a
-        checkpoint.
-      </Metadata>
+              }
+            >
+              {file.previousPath && (
+                <Metadata>
+                  From <code>{file.previousPath}</code>
+                </Metadata>
+              )}
+              {file.binary ? (
+                <Metadata>Binary content is not displayed.</Metadata>
+              ) : (
+                <>
+                  <DiffTable
+                    rows={file.rows}
+                    layout={layout as "unified" | "split"}
+                    label={file.path}
+                    labels={{
+                      region: `Scrollable diff for ${file.path}`,
+                      beforeLine: "Before line",
+                      beforeCode: "Before code",
+                      afterLine: "After line",
+                      afterCode: "After code",
+                      changedCode: "Changed code",
+                    }}
+                  />
+                  <Metadata>Scroll horizontally to read long lines.</Metadata>
+                </>
+              )}
+            </Disclosure>
+          ))}
+        </RecordGroup>
+        <Disclosure title="Comparison details">
+          <Metadata>
+            <span id="baseline">
+              {source.type === "emptyTree"
+                ? "Baseline: empty tree"
+                : `Baseline: ${source.type} · ${source.commit}`}
+            </span>
+          </Metadata>
+        </Disclosure>
+      </PanelSection>
+      <Disclosure title="About this diff">
+        <Metadata>
+          These are current workspace changes, not a stored Tool result. Refresh
+          to read again. This page cannot edit files, stage changes or restore a
+          checkpoint.
+        </Metadata>
+      </Disclosure>
     </>
   );
 }
@@ -219,29 +266,48 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   }, [refresh]);
   return (
     <Panel label="Workspace diff">
-      <Toolbar label="Diff comparison actions">
-        <PanelTitle>Workspace diff</PanelTitle>
-        <Select
-          label="Comparison"
-          value={mode}
-          options={[
-            { value: "worktree", label: "Working tree" },
-            { value: "base", label: "Default branch" },
-          ]}
-          onValueChange={(value) => setMode(value as DiffMode)}
-        />
-        <Button disabled={read.loading} onClick={() => void refresh()}>
-          Refresh
-        </Button>
-      </Toolbar>
-      <Metadata>Current workspace changes from {workspace.ref.path}.</Metadata>
+      <PanelHeader
+        title="Workspace diff"
+        context={
+          <>
+            <Toolbar label="Diff comparison actions">
+              <Select
+                label="Comparison"
+                value={mode}
+                options={[
+                  { value: "worktree", label: "Working tree" },
+                  { value: "base", label: "Default branch" },
+                ]}
+                onValueChange={(value) => setMode(value as DiffMode)}
+              />
+            </Toolbar>
+            <Metadata>
+              <code>{workspace.ref.path}</code>
+            </Metadata>{" "}
+          </>
+        }
+        description="Review changes in your workspace."
+        actions={
+          <IconButton
+            icon={Refresh}
+            aria-label="Refresh"
+            size="md"
+            disabled={read.loading}
+            onClick={() => void refresh()}
+          />
+        }
+      />
+
       {read.loading && <p role="status">Reading workspace diff…</p>}
       {read.error && (
         <p role="alert">The current diff could not be read: {read.error}</p>
       )}
       {read.accepted && (
         <>
-          <p role="status">
+          <Metadata
+            role="status"
+            className={read.accepted.mode === mode ? "sr-only" : undefined}
+          >
             Workspace diff loaded.{" "}
             {read.accepted.mode === "worktree"
               ? "Working tree"
@@ -249,7 +315,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
             comparison.
             {read.accepted.mode !== mode &&
               " Showing the last accepted comparison while the selected comparison is unavailable."}
-          </p>
+          </Metadata>
           <DiffReport snapshot={read.accepted.snapshot} />
         </>
       )}

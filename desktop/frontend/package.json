@@ -8,9 +8,6 @@
   },
   "scripts": {
     "dev": "vite",
-    "visual:dev": "vite --config vite.visual.config.ts",
-    "visual:test": "playwright test --config playwright.visual.config.ts",
-    "visual:test:update": "playwright test --config playwright.visual.config.ts --update-snapshots",
     "perf:baseline": "playwright test --config playwright.perf.config.ts",
     "build": "tsc && vite build",
     "preview": "vite preview",
@@ -47,7 +44,9 @@
     "check:shorthand": "node scripts/check-shorthand-longhand.mjs",
     "check:dead-tokens": "node scripts/check-dead-tokens.mjs",
     "check:styles": "node scripts/check-dead-styles.mjs",
-    "precheck": "npm run build --prefix ../../ui"
+    "precheck": "npm run build --prefix ../../ui",
+    "browser:dev": "vite --config vite.visual.config.ts",
+    "browser:test": "playwright test --config playwright.browser.config.ts"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [

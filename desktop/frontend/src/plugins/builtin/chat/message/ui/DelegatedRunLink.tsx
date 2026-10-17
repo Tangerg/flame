@@ -103,7 +103,7 @@ export function DelegatedRunLink({
             size="sm"
             quiet
             disabled={!available}
-            title={t("agent.runTree.action.cancel")}
+            aria-label={t("agent.runTree.action.cancel")}
             onClick={() => cancelSessionRun({ sessionId: run.sessionId, runId: run.id })}
           />
         )}

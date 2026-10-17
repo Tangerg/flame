@@ -29,9 +29,8 @@ The whole system reduces to five decisions. Everything below elaborates them.
    belong to the visual style, never individual call sites.
 2. **Near-monochrome, one restrained accent** — overall black/white/grey; the
    accent (a calm **blue**, user-selectable) marks live state, progress, focus,
-   links, and the one primary action per surface. It is the CTA fill too: this
-   language spends its single colour on the action that matters and leaves
-   everything else grey.
+   and links. Primary actions invert neutral ink against their surface: dark
+   on light, light on dark. Their fill and text belong to the theme's CTA tokens.
 3. **Dual-theme parity, follows the OS** — light and dark are both first-class
    and polished; the default theme is "system" and tracks `prefers-color-scheme`
    live. The two are mirrors of one region algorithm, not two hand-built skins.
@@ -56,21 +55,30 @@ Flame is an agent client — a desktop application (Wails / React) that streams 
 
 Light and dark are **equal first-class themes**; the default follows the OS (`prefers-color-scheme`) and tracks it live. Neither scheme is second-class.
 
-**Reference** — the direction is the JetBrains tool-window language: an editor you
-are _inside_, framed by opaque panels, with the technical layer set in mono.
+**Reference** — ZCode's resource management pages guide plugin layout and control
+proportions: a bounded content column, clear page identity, grouped resources,
+quiet supporting copy and aligned actions. The local reference is read-only;
+Flame keeps StyleX, Base UI, its own tokens and Runtime ownership.
 
-- **Region model**: three materials separated by value and a half-pixel edge. The reading plane is the one surface that is not chrome.
-- **Density**: short chrome bars, single-line index rows, borderless cards.
-- **Voice**: sans for language, mono for data — and the mono is load-bearing, not
-  decorative, because most of what an agent transcript reports IS data.
-
-**Explicitly rejected** (both prior passes):
-
-- Seam rings and directional casts at region seams (a cast lands on the reading plane)
-- Cards-on-canvas gutters, panel drop shadows, and glass blur outside floating panels
-- An inverting ink CTA that kept the accent unused (the accent IS the CTA)
-- Pill-radius CTAs, ALL-CAPS letter-spaced labels, 700+ display weight
-- Bright focus halos/glows that flash on click (focus is a single quiet stroke)
+- Plugin pages share `Panel` and `PanelHeader`, with one content measure and
+  container-responsive gutters. Search, filters and content share alignment edges.
+- Settings, plugin resources and inline editors share the semantic layout roles
+  for card insets, row padding, field labels and content gaps. Compact page gutters
+  also bound modals. Translated field labels keep their intrinsic height; they do
+  not stretch neighboring controls. Field labels contain their control only;
+  related commands belong in the shared trailing action zone.
+- Resource lists use direct summary disclosures: identity and description lead,
+  state and the main action trail, and details expand across the full row width.
+  Secondary commands use the shared action menu. Technical provenance belongs in
+  details; current user-facing state remains visible.
+- Schedules are independent tasks and use a responsive card grid. Dense evidence
+  feeds remain linear lists. Neither layout introduces its own business state.
+- Management search and selection share the large control size and radius tokens.
+  Compact workbench controls retain the smaller size roles; all sizes respect the
+  coarse-pointer floor and grow with translated labels.
+- Metric tiles use a quiet surface fill and tabular values. Resource lists group
+  through fill and subtle separators; independently actionable cards and editor
+  forms use one structural edge. None receives a decorative drop shadow.
 
 ## 2. Color
 
@@ -86,31 +94,15 @@ repeat the hexes, which is how the previous version of it went stale.
 
 | Token                                              | Role                                                                                                                                                                             |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `canvas` (`--color-bg`)                            | The reading plane — transcript, view bodies. Darkest surface on dark, brightest on light.                                                                                        |
+| `canvas` (`--color-bg`)                            | The reading plane — transcript and view bodies, slightly off-white in light and near-black in dark.                                                                              |
 | `surface`                                          | Region chrome — the drawer, the dock, the bars that frame the plane.                                                                                                             |
 | `card` (`--app-card-surface` → `--color-elevated`) | An object placed on a region: a message, a tool card, the composer.                                                                                                              |
 | `sunken` (`--color-sunken`)                        | A well cut into a surface: code bodies, terminals, diff hunks, text fields, progress tracks, and inline code in prose.                                                           |
 | `surface-2` / `-3`                                 | Derived chip rungs above `surface` — badges, kbd, selected rows, resting control fills. Mixed out of the CHROME grey, so they belong on chrome; on the plane they read as grime. |
 
-**Why four anchors and not one ladder.** The reading plane is the extreme of its
-scheme — pure white on light, near-black on dark — and an object on it steps IN,
-toward the chrome. On light that reads as a ladder: every region steps down from
-white. On dark it cannot, because the WELL still goes the other way — a card lifts
-UP off the plane while a code body recedes BELOW it. One monotonic mix cannot say
-both, so `elevated` and `sunken` stay anchors.
-
-A card used to be spelled `#ffffff` over an off-white plane, which is the same
-delta pointing the other way — 1.2 L with zero chroma, so the object was held up
-entirely by its cast. Stepping in instead gives it a value AND a hue of its own.
-
-**One hue, chroma by area.** Every neutral sits on the accent's hue, and carries
-chroma in inverse proportion to the area it covers: the plane none, the chrome
-~0.006, a card ~0.008, a well ~0.016 (dark: 0.008 / 0.010 / 0.015). Under roughly
-C 0.005 a grey's hue is not addressable in 8-bit sRGB — one byte swings it 20–40° —
-so a near-neutral ramp cannot pick its own hue, and a hue nobody chose is what
-"dirty grey" means. Chroma is what makes the set read as one material family;
-keeping it low on the large areas is what keeps the same decision from reading as
-a blue tint.
+The light canvas is off-white; editable fields and summary cards are white.
+The dark canvas is near-black; cards lift gently above it. Resource lists use the elevated content surface and one quiet separator between
+adjacent records. Wells remain distinct from cards and list groups.
 
 `surface-2/3/4` derive from `surface` via `color-mix(--depth-step)` so the
 contrast preference moves the chip rungs per scheme — they are never pinned
@@ -150,19 +142,13 @@ semi-transparent border shifts across surface lifts and reads as approximate.
 ### Accent policy
 
 The single accent (`--color-accent`, a calm blue by default, user-selectable with
-green / pink / orange as alternates) is reserved for **exactly four surfaces**:
+green / pink / orange as alternates) is reserved for these uses:
 
 1. Selected navigation and dock tab state
-2. Primary CTA fill (`button-primary`, Send button)
-3. Focus ring (`:focus-visible` — a single thin stroke, **no halo / glow**; one global rule, never drawn at a callsite)
-4. Live indicator (streaming dot, running pill, `tab-dot.running`)
+2. Focus ring (`:focus-visible` — a single thin stroke, **no halo / glow**; one global rule, never drawn at a callsite)
+3. Live indicator (streaming dot, running pill, `tab-dot.running`)
 
 Forbidden surfaces for accent: section background, card fill, avatar background, decorative borders, status icons that are not "live". And **no bright accent ring on input focus or click** — inputs/composer strengthen their border quietly instead (the loud halo read as cheap).
-
-"Card fill" here means the accent as a **colour**. The surface anchors sitting on
-the accent's _hue_ at C ≤ 0.016 is the neutral algorithm above, not accent usage:
-at that chroma nothing reads as blue, and the alternative is not a purer neutral
-but an unchosen one.
 
 ### Semantic palette
 
@@ -210,7 +196,7 @@ Consolas, monospace`, and Flame's is JetBrains Mono.
 
 ### Scale
 
-The full scale is nine sizes — four UI steps, prose, code, and three display steps. Display sizes are smaller than typical marketing systems because Flame is a product UI, not a hero page.
+The scale has nine roles: four UI steps, prose, code, and three display steps. At the default 14 px base, UI steps are 10 / 12 / 13 / 14 px and display steps are 16 / 18 / 24 px. Display sizes are smaller than typical marketing systems because Flame is a product UI, not a hero page.
 
 Sizes, weights and tracking are the `--fs-*`, `--fw-*` and `--tracking-*` tokens
 in `globals.css`; `check:tokens` fails the build on a per-callsite pixel value.
@@ -219,15 +205,13 @@ in `globals.css`; `check:tokens` fails the build on a per-callsite pixel value.
 
 1. **Sans-first; mono is the _data_ voice only.** Labels, section headings, nav, speaker names, view titles + subtitles are **sans**. Mono (`caption-mono` / `code`) is reserved for genuine data — IDs, durations, timestamps, file paths, tool-call signatures. (The earlier "mono as eyebrow everywhere" read as an engineering console; pulled back.)
 
-2. **600 is the ceiling, and it is the heading weight.** The ladder is three
-   rungs — `--fw-regular` 430, `--fw-medium` 500, `--fw-semibold` 600. 700 and up
-   are out, and nothing in the app reaches for one. 600 carries titles and section
-   headings and the HITL action button; below that, hierarchy comes from size and
-   the 430/500 contrast rather than more weight. Both references land the same
-   way: Codex sets its heading at 600 over a 430 body, and 600 is the single most
-   common weight in ChatGPT's stylesheet.
+2. **Use weight for hierarchy without making every control bold.** Regular body
+   and action labels use 400, resource names use 500, and page titles use 600.
+   Supporting descriptions use the 13 px step, not micro text.
 
-3. **Display gets negative tracking.** Three editorial steps — 18 / 20 / 24 — matching Codex's heading ladder; the app has no fourth, so there is no token for one. Body holds at -0.05 to 0.
+3. **Keep display restrained.** Plugin page headings use the 24 px step; section
+   and resource headings use the UI ladder with distinct weights. Sizes derive from the single appearance-owned ladder and
+   retain the user's font-size preference.
 
 4. **Sentence-case headlines.** Never ALL-CAPS. Welcome screen, settings sections, view headers — all sentence-case. Optional period termination is allowed (Vercel signature) but not required.
 
@@ -343,10 +327,7 @@ Every seam between regions is carried by an inset 0.5px edge whose shape the vis
 style owns — `--app-card-edge` at the drawer seam (drawn INSIDE the plane, because
 the plane outranks the drawer on z-index so the drawer can slide under it),
 `--app-pane-split` where the dock meets the conversation, `--app-header-edge` under
-a bar. A call site never draws a region boundary. The only elements with a real
-drop shadow are **truly-floating overlays** (menus, popovers, tooltips, command
-palette, lightbox), which have no value delta to lean on because they can land over
-anything.
+a bar. A call site never draws a region boundary. Resource surfaces use the shared contact shadow. Floating overlays (menus, popovers, tooltips, command palette, lightbox) use greater depth because they can land over any surface.
 
 | Level | Treatment                                              | Use                                                                            |
 | ----- | ------------------------------------------------------ | ------------------------------------------------------------------------------ |
@@ -368,9 +349,9 @@ where there was none; `check-interactive-chrome` fails the build on both that an
 a hand-picked `hover:bg-fg/[…]` alpha.
 
 This holds identically in **both schemes**; the edge takes the scheme's
-`border-soft`, and only floating overlays use `--shadow-cast`.
-(Both earlier models are gone: cards-on-canvas with gutters and multi-layer drops,
-and the 2026-07 seam-ring pass that gave every boundary a hairline.)
+`border-soft`, while elevation uses the scheme's `--shadow-cast`.
+Resource lists use one shared surface with separators. Forms and metric summaries
+use bounded cards with a quiet contact shadow; workbench regions retain their seam treatment.
 
 ## 6. Shapes
 
@@ -379,26 +360,22 @@ and the 2026-07 seam-ring pass that gave every boundary a hairline.)
 The visual style owns the ladder (`style-shape-*`); the user's radius preference
 multiplies through.
 
-| Token      | Value  | Use                                                                                                                                    |
-| ---------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `none`     | 0px    | Full-bleed bars                                                                                                                        |
-| `2xs`      | 2px    | Small marks inside a control — key caps, checkboxes, swatches                                                                          |
-| `xs`       | 4px    | Anything that is really a tag — badges, inline code                                                                                    |
-| `sm`       | 6px    | Controls a hand hits directly: buttons, the segments inside a track, the tooltip tip                                                   |
-| `md`       | 8px    | Cards, text fields, segmented tracks                                                                                                   |
-| `lg`       | 10px   | Blocks inside the conversation — code, diagrams, images, banners — and the surfaces that are the top of a panel: index rows, dock tabs |
-| `xl`       | 12px   | Every floating panel and modal, through `--floating-panel-radius`                                                                      |
-| `bubble`   | 16px   | The user's own message, and the cards that answer it                                                                                   |
-| `composer` | 20px   | The composer and the surfaces that echo it                                                                                             |
-| `pill`     | 9999px | Circles and lozenges: dots, tracks and thumbs, the status pill, circular icon wells, the count badge, a selected choice row            |
+| Semantic role           | Default                       | Use                                                     |
+| ----------------------- | ----------------------------- | ------------------------------------------------------- |
+| `button-radius`         | Pill                          | Buttons and icon buttons                                |
+| `field-radius`          | 12px                          | Text, search and select controls at every size          |
+| `mark-radius`           | 6px                           | Checkbox marks                                          |
+| `row-radius`            | 10px                          | Navigation rows                                         |
+| `surface-card-radius`   | 16px                          | Settings groups, resource lists, cards and inline forms |
+| `floating-panel-radius` | 16px                          | Popovers, menus and dialogs                             |
+| `floating-tip-radius`   | 8px                           | Tooltips                                                |
+| `segmented-radius`      | 20px                          | Segmented tracks                                        |
+| `menu-item-radius`      | Panel radius minus menu inset | Nested menu rows                                        |
 
-An index row and a dock tab take `lg` rather than the control rung, and the
-distinction is what each one IS rather than how tall it is. A tab is the top of
-the panel beneath it, so its corner is that panel's corner; at a control rung it
-read as a segmented control that had lost its track. A row is a slab the pointer
-lands on, not a button standing in a bar. (This table said `sm` for both while
-the code said `lg` — the reason lived in a comment that was deleted, so it is
-written here, where it is the design's own statement rather than an aside.)
+Components consume semantic roles. The visual style maps those roles to the
+shape ladder; resizing a field does not choose another radius. Card padding,
+page gutters and grouping use the shared layout tokens. Nested menu corners
+are derived from their panel and inset rather than authored independently.
 
 ### Corner curve
 
@@ -421,8 +398,7 @@ ships in draws the arc at the base radius today.
 
 ### NEVER
 
-- **No pill-radius CTAs.** The action button is a rounded square on the control
-  ladder — a lone disc beside a row of rectangles reads as a different kit.
+- **No call-site corner values.** Buttons use the shared capsule role; fields use the 12px field role and resource groups use the 16px card role.
 - **No mixed scales on one screen.** One corner language, one ladder, no step
   invented at a call site.
 
@@ -487,7 +463,6 @@ listed because a command declared one, never because a table was kept in step.
 
 Accent (`--color-accent`, user-selectable) appears in:
 
-1. **Primary CTA fill** — `bg-cta`: the send button, an accent `PillButton`
 2. **Focus ring** — `:focus-visible`, a single thin accent stroke (**no halo / glow**, and never on plain mouse-focus of inputs). One global rule in globals.css draws it for everything; mark `data-focus-inset` where it would land outside the box, `data-chrome-focus` where a row fills instead. A theme retunes it through `--color-focus-ring`. Never drawn at a callsite — `check-interactive-chrome` fails the build
 3. **Live indicator** — the running `StatusDot`, the status pill while a run is
    live, the reasoning block's pulse dot
@@ -511,7 +486,7 @@ When in doubt: **does this surface convey "the agent is alive and live"?** If ye
 
 - Render IDs / durations / file paths / tool signatures in mono; labels, headings + names in **sans**.
 - Cap chat content (message stream + composer) at `chat-measure: 760px`, centered.
-- Use literal hex hairlines — not `color-mix(text X%, transparent)`.
+- Use semantic border and divider tokens; resource separators stay quieter than control boundaries.
 - Set every interactive element with `:hover`, `:active`, `:focus-visible`.
 - Use `font-feature-settings: "tnum"` on every numeric display.
 - Default the Work Index to **expanded** (275px); collapse it fully off-canvas on
@@ -522,13 +497,13 @@ When in doubt: **does this surface convey "the agent is alive and live"?** If ye
 ### Don't
 
 - **Don't use ALL-CAPS labels with letter-spacing.** Section labels / eyebrows / table heads are **sentence-case** (mono for dense technical labels like `args` / `attrs`); the ALL-CAPS + wide-tracking eyebrow is the rejected Sonance vocabulary.
-- **Don't use pill-radius CTAs** (`9999px`, `500px`, `100px` on a button). Buttons are `sm`, through `--button-radius`.
+- **Don't assign button geometry at call sites.** Shared controls own the capsule treatment through `--button-radius`.
 - **Don't use weight 700+ for display.** 600 is the ceiling, Linear and Vercel both forbid this.
-- **Don't add panel / card drop shadows.** The layout is flush — depth is the surface step plus a half-pixel seam edge. Stacked-subtle shadow is for truly-floating overlays (Level 4) only, in BOTH schemes. No cards-on-canvas, no gutters.
-- **Don't use pure `#000000` or a harsh near-black canvas.** Dark canvas is `--color-bg`, a soft grey, not a black.
+- **Don't add call-site shadows.** Workbench regions stay flush. Resource groups and forms use the shared contact-shadow token; overlays use their elevation role.
+- **Don't hardcode canvas colors at call sites.** The default cool neutral canvas follows the HeroUI palette through `--color-bg`.
 - **Don't flash a bright accent ring/halo on focus or click.** Keyboard focus is one thin stroke; inputs/composer just strengthen their border. The loud glow read as cheap.
 - **Don't introduce a second chromatic accent.** Flame has one accent + four semantic colors. No more.
-- **Don't use accent decoratively.** Active tab / primary CTA / focus ring / live indicator — that's the entire allowed list.
+- **Don't use accent decoratively.** Focus ring / selected control / live indicator — that's the entire allowed list.
 - **Don't set body paragraphs in mono.** Mono is for the technical layer only.
 - **Don't apply atmospheric gradients, mesh backdrops, or dot grids** (the latter was discussed and rejected — Linear explicitly forbids "atmospheric gradients or spotlight cards").
 - **Don't add a fourth glass surface.** Blur is material, not decoration, and it belongs to exactly three tokens — `--floating-backdrop`, `--composer-backdrop`, `--composer-tray-backdrop` (see `DESKTOP_UI_POLISH.md` §Glass). ChatGPT blurs its own composer surface the same way. A raw `backdrop-blur-*` at a call site is how a fourth appears.
@@ -537,8 +512,7 @@ When in doubt: **does this surface convey "the agent is alive and live"?** If ye
 
 Light is full parity, not second-class — and the **default theme follows the OS**
 (`prefers-color-scheme`, live). It runs the same region algorithm mirrored: the
-plane is the brightest surface, the chrome steps down from it, cards lift to
-white, wells recede. Values live in `themes/flame-light.ts`.
+canvas is off-white, cards, fields and resource groups are white with quiet semantic boundaries. Dark cards lift above their near-black canvas. Values live in `themes/flame-light.ts`.
 
 Two places where light is not a mechanical inversion, both for the same reason —
 ink cannot be:
@@ -551,14 +525,11 @@ ink cannot be:
 
 ## 12. References
 
-- **ChatGPT desktop** — the authority. Where its answer and this document's
-  disagree, its answer is the one to explain away, not the other. Its own
-  stylesheet is readable evidence: heading weight, thread measure, composer
-  material, glass.
-- **Codex** — the corner shape, the heading ladder, the body weight.
-- **JetBrains tool windows** — the region model: an editor you are inside, framed
-  by opaque panels, separated by value rather than by lines.
-- **Linear-app** — the scarce single-accent policy and sentence-case labels.
+- **ZCode** — plugin page composition, grouped resource rows, control proportions,
+  supporting text hierarchy and desktop resource density.
+- **HeroUI 3.2.6** — default cool neutral palette, blue primary actions, capsule buttons, rounded fields, layered fills and contact shadows. Adaptations retain 24/28/32/36px desktop control roles, native cursors, 3:1 field boundaries and AA text contrast. The application theme owns token values; `@flame/ui` owns their rendering.
+- **ChatGPT / Codex** — conversation reading measure and tool disclosure behavior.
+- **JetBrains tool windows** — the surrounding workbench region model.
 - Flame Runtime Protocol — `src/rpc/` — drives the shape of the data this UI
   renders.
 
@@ -567,9 +538,9 @@ ink cannot be:
 1. When adding a new surface, build it from the rings in `ui/` rather than at the
    call site; if the vocabulary has no rung for it, add the rung and say so here.
 2. Verify BOTH schemes (the default follows the OS) before merging visual changes.
-3. Run `npx tsc --noEmit && npx vitest run` after any token change.
-4. Visually verify in `wails3 dev` — type/spacing changes especially.
-5. Treat the accent as scarce: ask "is this live?" — if no, use grey.
+3. Batch related layout and token changes, then run the repository gates once.
+4. Inspect actual rendered pages in both themes, at narrow widths and increased text size. Screenshot baselines are not an acceptance criterion. Use the inert browser fixtures for review; native packaging needs separate host verification.
+5. Reserve accent for primary actions, active controls and meaningful status; use neutral fills for supporting actions.
 
 ## Responsive document and shared renderers
 
@@ -585,3 +556,10 @@ First-party Tool results and Markdown renderer controls are compiled from
 Recorded-content and Markdown grammar remain local renderer responsibilities.
 Hover icon changes use a short opacity crossfade; they do not blur or shrink
 on routine pointer movement. Reduced motion removes control and overlay movement.
+
+Shared field, menu, card, and choice surfaces are authored in `@flame/ui`; host
+atoms consume those skins instead of restating colors, radii, and edges. The
+visual-style owner supplies semantic `layout-*` tokens for page measure, gutters,
+card padding, and grouping. Segments and navigation hover tracks use the same
+shared spring backplate, with current timing and motion scale projected from
+the theme owner.

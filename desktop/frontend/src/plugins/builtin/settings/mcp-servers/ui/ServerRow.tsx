@@ -3,8 +3,8 @@ import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useEffect, useId, useRef, useState } from "react";
-import { PillButton, StatusDot, Switch, Tag } from "@/ui";
-import { IconButton, vocab } from "@flame/ui";
+import { StatusDot, Switch, Tag } from "@/ui";
+import { Button, IconButton, ListRow, vocab } from "@flame/ui";
 import {
   type MCPServerSettings,
   type MCPTransport,
@@ -15,7 +15,7 @@ import { notifyError } from "@/plugins/sdk";
 import type { DotTone } from "@/lib/tone";
 import { useT } from "@/lib/i18n";
 import { ServerForm } from "./ServerForm";
-import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { face, layout, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const STATUS_TONE: Record<MCPServerSettings["status"], DotTone> = {
@@ -36,9 +36,9 @@ const sr = stylex.create({
     display: "grid",
     gridTemplateColumns: "auto minmax(0, 1fr) auto",
     alignItems: "center",
-    gap: space.s3,
+    gap: layout.contentGap,
   },
-  actions: { display: "flex", alignItems: "center", gap: space.s2_5 },
+  actions: { display: "flex", alignItems: "center", gap: layout.controlGap },
 });
 
 export function ServerRow({ server }: { server: MCPServerSettings }) {
@@ -90,7 +90,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
   const active = server.status === "connected";
 
   return (
-    <div {...stylex.props(ss.hoverRow)}>
+    <ListRow>
       <div {...stylex.props(sr.head)}>
         <StatusDot tone={tone} />
         <div {...stylex.props(vocab.line, vocab.min)}>
@@ -114,14 +114,9 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
             </span>
           )}
           {(server.status === "needsAuth" || signingIn) && (
-            <PillButton
-              variant="solid"
-              size="sm"
-              pending={signingIn}
-              onClick={() => void onSignIn()}
-            >
+            <Button variant="primary" size="sm" pending={signingIn} onClick={() => void onSignIn()}>
               {t(signingIn ? "mcp.signingIn" : "mcp.signIn")}
-            </PillButton>
+            </Button>
           )}
           {server.id.origin.type === "user" && (
             <>
@@ -134,7 +129,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
                 icon={iconGlyph("edit")}
                 size="sm"
                 active={editing}
-                title={t("mcp.edit", { server: server.id.name })}
+                aria-label={t("mcp.edit", { server: server.id.name })}
                 aria-expanded={editing}
                 aria-controls={panelId}
                 onClick={() => setEditing((value) => !value)}
@@ -145,7 +140,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
       </div>
 
       {editing && (
-        <div id={panelId} {...stylex.props(ss.afterRow)}>
+        <div id={panelId}>
           <ServerForm
             server={server}
             onDone={() => setEditing(false)}
@@ -153,6 +148,6 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
           />
         </div>
       )}
-    </div>
+    </ListRow>
   );
 }

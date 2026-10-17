@@ -43,8 +43,8 @@ func TestDesktopWindowPinsTheCompactToolbarStyle(t *testing.T) {
 }
 
 func TestDesktopWindowOpensOnACanvasTheAppPaints(t *testing.T) {
-	light := application.NewRGB(255, 255, 255)
-	dark := application.NewRGB(29, 31, 35)
+	light := application.NewRGB(245, 245, 245)
+	dark := application.NewRGB(6, 6, 7)
 
 	want := light
 	if systemPrefersDarkAppearance() {

@@ -100,7 +100,7 @@ function FullViewBar({ icon, title, sub, actions, titleFace = "prose" }: ViewHea
           <IconButton
             icon={iconGlyph("open")}
             size="sm"
-            title={t("workspace.view.openBeside")}
+            aria-label={t("workspace.view.openBeside")}
             onClick={placement.onOpenInDock}
           />
         )}
@@ -108,7 +108,7 @@ function FullViewBar({ icon, title, sub, actions, titleFace = "prose" }: ViewHea
           <IconButton
             icon={iconGlyph("x")}
             size="sm"
-            title={t("common.close")}
+            aria-label={t("common.close")}
             onClick={placement.onClose}
           />
         )}

@@ -13,4 +13,5 @@ export const CONTROL = [
   '[role="radio"]',
 ].join(", ");
 
-export const FOCUSABLE = `${CONTROL}, [tabindex]:not([tabindex="-1"])`;
+// Base UI's clipped sentinels route focus; they are not visible controls.
+export const FOCUSABLE = `:is(${CONTROL}, [tabindex]:not([tabindex="-1"])):not([data-base-ui-focus-guard])`;

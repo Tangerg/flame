@@ -75,7 +75,7 @@ export function ApprovalCard({
 
   return (
     <Surface
-      variant="request"
+      variant="card"
       inset="none"
       data-slot="approval-surface"
       className={stylex.props(ms.cardClip).className}

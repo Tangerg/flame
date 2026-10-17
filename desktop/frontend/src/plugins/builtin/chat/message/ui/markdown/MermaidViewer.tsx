@@ -85,7 +85,7 @@ export function MermaidViewer({ svg }: { svg: string }) {
         <IconButton
           icon={iconGlyph("zoom-out")}
           size="sm"
-          title={t("message.mermaid.zoomOut")}
+          aria-label={t("message.mermaid.zoomOut")}
           disabled={stepIndex === 0}
           focusableWhenDisabled
           onClick={() => zoom(-1)}
@@ -102,7 +102,7 @@ export function MermaidViewer({ svg }: { svg: string }) {
         <IconButton
           icon={iconGlyph("zoom-in")}
           size="sm"
-          title={t("message.mermaid.zoomIn")}
+          aria-label={t("message.mermaid.zoomIn")}
           disabled={stepIndex === ZOOM_STEPS.length - 1}
           focusableWhenDisabled
           onClick={() => zoom(1)}

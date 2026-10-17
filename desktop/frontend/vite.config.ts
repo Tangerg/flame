@@ -1,3 +1,4 @@
+import { sharedRuntimePackages } from "./shared-runtime.mjs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
@@ -35,7 +36,7 @@ export default defineConfig({
       }
     : undefined,
   resolve: {
-    dedupe: ["react", "react-dom", "@base-ui/react"],
+    dedupe: sharedRuntimePackages,
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
     },

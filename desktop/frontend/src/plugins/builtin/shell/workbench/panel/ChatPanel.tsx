@@ -138,7 +138,11 @@ function DockHeader({
       <AgentDockTabs
         tabs={tabs}
         ariaLabel={t("dock.tabs.label")}
-        onReorder={reorderWorkspaceDockView}
+        reorder={{
+          onMove: reorderWorkspaceDockView,
+          moveLeftLabel: t("dock.tabs.moveLeft"),
+          moveRightLabel: t("dock.tabs.moveRight"),
+        }}
       />
       <AddDockViewPicker groups={groups} openViewIds={openViewIds} />
     </AgentSurfaceHeader>

@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, space, type, weight } from "@flame/ui/tokens.stylex";
 import type { CatalogPickerGroup } from "@/ui/atoms";
-import { HoverTrack } from "@/ui/atoms/hover-track";
+import { HoverTrack } from "@flame/ui";
 import { ScrollArea } from "@/ui/atoms/scroll-area";
 import { AgentRow } from "./navigation-row";
 

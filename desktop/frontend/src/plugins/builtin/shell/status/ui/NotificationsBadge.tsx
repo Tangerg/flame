@@ -74,7 +74,7 @@ export function NotificationsBadge() {
             <IconButton
               icon={iconGlyph("trash")}
               size="sm"
-              title={t("notifications.clearAll")}
+              aria-label={t("notifications.clearAll")}
               disabled={log.length === 0}
               focusableWhenDisabled
               onClick={clearAll}
@@ -107,7 +107,7 @@ export function NotificationsBadge() {
                 <IconButton
                   icon={iconGlyph("x")}
                   size="xs"
-                  title={t("notifications.dismiss")}
+                  aria-label={t("notifications.dismiss")}
                   onClick={() => dismiss(entry.id)}
                 />
               )}

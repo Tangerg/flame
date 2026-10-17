@@ -1,14 +1,14 @@
 import { defineConfig } from "@playwright/test";
-import visual from "./playwright.visual.config";
+import browser from "./playwright.browser.config";
 
 const PERF_PORT = 4175;
 
 export default defineConfig({
-  ...visual,
+  ...browser,
   testMatch: "**/*.perf.spec.ts",
   workers: 1,
   use: {
-    ...visual.use,
+    ...browser.use,
     baseURL: `http://127.0.0.1:${PERF_PORT}`,
     reducedMotion: "no-preference",
   },

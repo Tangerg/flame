@@ -1,7 +1,15 @@
 import { createElement, useMemo, type ReactNode } from "react";
 import { Lexer, type Token, type Tokens } from "marked";
 import type { ComponentContext } from "@flame/plugin-sdk";
-import { Metadata, Panel, PanelTitle, RecordBody } from "@flame/ui";
+import {
+  CodeBlock,
+  DocumentBody,
+  Metadata,
+  Panel,
+  PanelHeader,
+  RecordBody,
+  ScrollRegion,
+} from "@flame/ui";
 
 // Parsed file content never supplies HTML or executable URL attributes.
 function renderTokens(tokens: Token[]): ReactNode[] {
@@ -48,9 +56,9 @@ function renderTokens(tokens: Token[]): ReactNode[] {
         return <code key={key}>{(token as Tokens.Codespan).text}</code>;
       case "code":
         return (
-          <pre key={key}>
-            <code>{(token as Tokens.Code).text}</code>
-          </pre>
+          <CodeBlock key={key} label={`Code block ${key + 1}`}>
+            {(token as Tokens.Code).text}
+          </CodeBlock>
         );
       case "link": {
         const value = token as Tokens.Link;
@@ -91,24 +99,26 @@ function renderTokens(tokens: Token[]): ReactNode[] {
       case "table": {
         const value = token as Tokens.Table;
         return (
-          <table key={key}>
-            <thead>
-              <tr>
-                {value.header.map((cell, index) => (
-                  <th key={index}>{renderTokens(cell.tokens)}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {value.rows.map((row, index) => (
-                <tr key={index}>
-                  {row.map((cell, column) => (
-                    <td key={column}>{renderTokens(cell.tokens)}</td>
+          <ScrollRegion key={key} label={`Markdown table ${key + 1}`}>
+            <table>
+              <thead>
+                <tr>
+                  {value.header.map((cell, index) => (
+                    <th key={index}>{renderTokens(cell.tokens)}</th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {value.rows.map((row, index) => (
+                  <tr key={index}>
+                    {row.map((cell, column) => (
+                      <td key={column}>{renderTokens(cell.tokens)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollRegion>
         );
       }
       case "text": {
@@ -143,15 +153,16 @@ export function Markdown({ context }: { context: ComponentContext }) {
     );
   return (
     <Panel label="Markdown file">
-      <PanelTitle>{file.path}</PanelTitle>
+      <PanelHeader
+        title={<code>{file.path}</code>}
+        description="Captured file content"
+      />
       <Metadata>
         {file.workspace?.path ?? "Runtime default workspace"} ·{" "}
         {file.totalLines} recorded lines
       </Metadata>
-      <Metadata>
-        Captured file content. Links and embedded content are displayed as text.
-      </Metadata>
-      <article>{content}</article>
+      <DocumentBody>{content}</DocumentBody>
+      <Metadata>Links and embedded content are displayed as text.</Metadata>
     </Panel>
   );
 }

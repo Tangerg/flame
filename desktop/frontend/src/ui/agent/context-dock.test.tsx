@@ -58,7 +58,11 @@ describe("AgentDockTabs", () => {
   it("reports the drop position when a tab is dragged onto a sibling", () => {
     const onReorder = vi.fn();
     const view = render(
-      <AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" onReorder={onReorder} />,
+      <AgentDockTabs
+        tabs={tabs("skills")}
+        ariaLabel="Workspace tabs"
+        reorder={{ onMove: onReorder, moveLeftLabel: "Move left", moveRightLabel: "Move right" }}
+      />,
     );
     const rows = view.container.querySelectorAll<HTMLElement>("[draggable=true]");
     const data = new Map<string, string>();
@@ -82,7 +86,7 @@ describe("AgentDockTabs", () => {
           { id: "diff", title: "diff", active: true, onClose: () => {}, closeLabel: "Close diff" },
         ]}
         ariaLabel="Workspace tabs"
-        onReorder={vi.fn()}
+        reorder={{ onMove: vi.fn(), moveLeftLabel: "Move left", moveRightLabel: "Move right" }}
       />,
     );
 

@@ -4,8 +4,8 @@ import * as stylex from "@stylexjs/stylex";
 import type { PluginError, PluginErrorSource } from "@/plugins/sdk";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useState } from "react";
-import { Icon, PillButton, TextButton } from "@/ui";
-import { Badge, IconButton, vocab } from "@flame/ui";
+import { Icon, TextButton } from "@/ui";
+import { Button, Badge, IconButton, PanelSection, vocab } from "@flame/ui";
 import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { useInstalledPlugins, usePluginErrorStore } from "@/plugins/sdk";
@@ -34,8 +34,12 @@ const pp = stylex.create({
   faulted: { backgroundColor: surface.negativeWash },
   head: {
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gridTemplateColumns: {
+      default: "minmax(0, 1fr) auto",
+      "@container (max-width: 440px)": "minmax(0, 1fr)",
+    },
     gap: space.s2_5,
+    minWidth: 0,
     paddingInline: space.s4,
     paddingBlock: space.s3,
   },
@@ -101,48 +105,50 @@ export function PluginsPane() {
   return (
     <>
       <PackageManager />
-      <SettingsGroup>
-        {rows.map((name) => {
-          const errors = errorsByPlugin.get(name) ?? [];
-          const errCount = errors.length;
-          const open = expanded.has(name);
-          return (
-            <div key={name} {...stylex.props(pp.plugin, errCount > 0 && pp.faulted)}>
-              <div {...stylex.props(pp.head)}>
-                <div>
-                  <div {...stylex.props(ss.label, typeStep.uiMd)}>{name}</div>
-                  {errCount > 0 && (
-                    <TextButton
-                      tone="negative"
-                      onClick={() => toggle(name)}
-                      title={open ? t("plugins.errorDetail.hide") : t("plugins.errorDetail.show")}
-                      {...stylex.props(vocab.afterLine)}
-                    >
-                      <Icon name="bug" size="xs" />
-                      {t("plugins.errors", { count: errCount })}
-                      <Icon name={open ? "chevron-up" : "chevron-down"} size="xs" />
-                    </TextButton>
-                  )}
+      <PanelSection title={t("plugins.loadedTitle")}>
+        <SettingsGroup>
+          {rows.map((name) => {
+            const errors = errorsByPlugin.get(name) ?? [];
+            const errCount = errors.length;
+            const open = expanded.has(name);
+            return (
+              <div key={name} {...stylex.props(pp.plugin, errCount > 0 && pp.faulted)}>
+                <div {...stylex.props(pp.head)}>
+                  <div>
+                    <div {...stylex.props(ss.label, typeStep.uiMd)}>{name}</div>
+                    {errCount > 0 && (
+                      <TextButton
+                        tone="negative"
+                        onClick={() => toggle(name)}
+                        title={open ? t("plugins.errorDetail.hide") : t("plugins.errorDetail.show")}
+                        {...stylex.props(vocab.afterLine)}
+                      >
+                        <Icon name="bug" size="xs" />
+                        {t("plugins.errors", { count: errCount })}
+                        <Icon name={open ? "chevron-up" : "chevron-down"} size="xs" />
+                      </TextButton>
+                    )}
+                  </div>
+                  <div {...stylex.props(vocab.lineTight)}>
+                    {errCount > 0 && (
+                      <Button variant="outline" size="sm" onClick={() => clearFor(name)}>
+                        {t("plugins.clear")}
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div {...stylex.props(vocab.lineTight)}>
-                  {errCount > 0 && (
-                    <PillButton variant="outlined" size="sm" onClick={() => clearFor(name)}>
-                      {t("plugins.clear")}
-                    </PillButton>
-                  )}
-                </div>
+                {open && errCount > 0 && (
+                  <div {...stylex.props(pp.errors)}>
+                    {errors.map((err) => (
+                      <ErrorEntry key={err.id} err={err} />
+                    ))}
+                  </div>
+                )}
               </div>
-              {open && errCount > 0 && (
-                <div {...stylex.props(pp.errors)}>
-                  {errors.map((err) => (
-                    <ErrorEntry key={err.id} err={err} />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </SettingsGroup>
+            );
+          })}
+        </SettingsGroup>
+      </PanelSection>
     </>
   );
 }
@@ -175,7 +181,7 @@ function ErrorEntry({ err }: { err: PluginError }) {
           <IconButton
             icon={iconGlyph("copy")}
             size="xs"
-            title={t("plugins.copyError")}
+            aria-label={t("plugins.copyError")}
             onClick={copy}
           />
         </div>

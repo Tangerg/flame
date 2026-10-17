@@ -92,7 +92,8 @@ describe("PluginsPane installation facts", () => {
         <PluginsPane />
       </QueryClientProvider>,
     );
-    fireEvent.click(await screen.findByRole("button", { name: "Configure inputs" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Release details" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure inputs" }));
     installation = {
       ...installation,
       selected: { ...installation.selected, digest: replacementDigest },
@@ -245,6 +246,7 @@ describe("PluginsPane installation facts", () => {
     expect(
       screen.getByText("The MCP configuration couldn't be read and was disabled."),
     ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Release details" }));
     expect(screen.getByText(/"configured"/)).toBeTruthy();
     expect(screen.getByText(/eu-west/)).toBeTruthy();
   });

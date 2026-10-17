@@ -3,8 +3,9 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { MutationPromise } from "@flame/runtime-contract/client";
 import { mutationSettlementIsUnknown } from "@flame/runtime-contract/client/mutation";
 import type { PluginInstallation, PluginProviderSelection } from "@flame/runtime-contract/wire";
-import { Button, Metadata, Select, Toolbar } from "@flame/ui";
+import { Button, Metadata, PanelSection, Select, Toolbar } from "@flame/ui";
 import { DataView, SystemMessage } from "@/ui";
+import { SettingRow, SettingsGroup } from "../../kit";
 import { useT } from "@/lib/i18n";
 import { usePluginProviders, type PackageOperations } from "../application/packages";
 
@@ -31,14 +32,20 @@ export function ProviderSelections({
           roles.add(pluginContract(required.contract).reference);
     }
   return (
-    <section aria-label={t("packages.providers.title")}>
-      <Toolbar label={t("packages.providers.title")}>
-        <h3>{t("packages.providers.title")}</h3>
-        <Button pending={providers.isFetching} onClick={() => void providers.refetch()}>
+    <PanelSection
+      title={t("packages.providers.title")}
+      description={t("packages.providers.future")}
+      actions={
+        <Button
+          variant="soft"
+          size="sm"
+          pending={providers.isFetching}
+          onClick={() => void providers.refetch()}
+        >
           {t("packages.providers.refresh")}
         </Button>
-      </Toolbar>
-      <Metadata>{t("packages.providers.future")}</Metadata>
+      }
+    >
       <DataView
         items={providers.data ?? []}
         isLoading={providers.isLoading}
@@ -48,17 +55,19 @@ export function ProviderSelections({
       >
         {(rows) => <Metadata>{t("packages.providers.count", { count: rows.length })}</Metadata>}
       </DataView>
-      {[...roles].sort().map((role) => (
-        <ProviderRole
-          key={role}
-          role={role}
-          current={(providers.data ?? []).find((value) => value.role === role)}
-          installations={installations}
-          operations={operations}
-          refresh={providers.refetch}
-        />
-      ))}
-    </section>
+      <SettingsGroup>
+        {[...roles].sort().map((role) => (
+          <ProviderRole
+            key={role}
+            role={role}
+            current={(providers.data ?? []).find((value) => value.role === role)}
+            installations={installations}
+            operations={operations}
+            refresh={providers.refetch}
+          />
+        ))}
+      </SettingsGroup>
+    </PanelSection>
   );
 }
 
@@ -87,19 +96,19 @@ function ProviderRole({
   );
   type State = {
     operations: PackageOperations;
-    draft: string;
+    draft: string | null;
     busy: boolean;
     failure?: string;
     unknown?: MutationPromise<PluginProviderSelection>;
   };
-  const [state, setState] = useState<State>({ operations, draft: "", busy: false });
+  const [state, setState] = useState<State>({ operations, draft: null, busy: false });
   const { draft, busy, failure, unknown } =
     state.operations === operations
       ? state
-      : { draft: "", busy: false, failure: undefined, unknown: undefined };
+      : { draft: null, busy: false, failure: undefined, unknown: undefined };
   const update = (change: Partial<Omit<State, "operations">>) =>
     setState((previous) => ({
-      ...(previous.operations === operations ? previous : { operations, draft: "", busy: false }),
+      ...(previous.operations === operations ? previous : { operations, draft: null, busy: false }),
       ...change,
       operations,
     }));
@@ -142,7 +151,7 @@ function ProviderRole({
       await operations.track(mutation);
       if (signal.aborted) return;
       command.current = undefined;
-      update({ unknown: undefined, draft: "" });
+      update({ unknown: undefined, draft: null });
       await refresh();
     } catch (error) {
       if (signal.aborted) return;
@@ -172,16 +181,17 @@ function ProviderRole({
     }
   };
   return (
-    <div>
-      <h4>{role}</h4>
-      <Metadata>
-        {current
+    <SettingRow
+      label={role}
+      sub={
+        current
           ? t(active ? "packages.providers.current" : "packages.providers.unavailable", {
               name: chosen?.installation.selected.name ?? current.installationId,
               contribution: current.contribution,
             })
-          : t("packages.providers.unselected")}
-      </Metadata>
+          : t("packages.providers.unselected")
+      }
+    >
       <Toolbar label={role}>
         <Select
           label={t("packages.providers.choose")}
@@ -194,6 +204,7 @@ function ProviderRole({
           disabled={busy || !!unknown}
         />
         <Button
+          variant="soft"
           pending={busy}
           disabled={!candidate || !!unknown || operations.signal.aborted}
           onClick={select}
@@ -224,6 +235,6 @@ function ProviderRole({
           </Button>
         </SystemMessage>
       )}
-    </div>
+    </SettingRow>
   );
 }

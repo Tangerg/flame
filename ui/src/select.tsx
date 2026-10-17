@@ -1,15 +1,14 @@
 import * as stylex from "@stylexjs/stylex";
 import { ChevronDown, Check } from "@flame/icons/react";
 import { SelectPrimitive } from "./primitives/index";
+import { FIELD_SIZE, FIELD_SURFACE, MENU_SURFACE } from "./control-surface";
 import { Button } from "./button";
 import { Icon } from "./font-scale";
 import { FLOATING_LAYER, FLOATING_OPTIONS } from "./floating-surface";
-import { color, radius, space, surface, type } from "./tokens.stylex";
+import { space, type } from "./tokens.stylex";
 
 const styles = stylex.create({
   popup: {
-    paddingInline: space.s1,
-    paddingBlock: space.s1,
     overflow: "auto",
     maxHeight: "var(--available-height)",
     minWidth: "var(--anchor-width)",
@@ -19,26 +18,18 @@ const styles = stylex.create({
   item: {
     display: "flex",
     alignItems: "center",
-    gap: space.s2,
-    minHeight: "var(--control-height-md)",
-    overflowWrap: "anywhere",
-    paddingInline: space.s2,
-    paddingBlock: space.s1_5,
-    borderRadius: radius.row,
-    color: color.fg,
-    cursor: "default",
-    backgroundColor: {
-      default: "transparent",
-      ":is([data-highlighted])": surface.hover,
-    },
+    justifyContent: "space-between",
   },
   trigger: {
+    justifySelf: "stretch",
+    width: "auto",
     maxWidth: "100%",
     height: "auto",
-    minHeight: "24px",
     whiteSpace: "normal",
     textAlign: "start",
     overflowWrap: "anywhere",
+    justifyContent: "space-between",
+    gap: space.s3,
   },
 });
 
@@ -49,13 +40,15 @@ export function Select({
   label,
   id,
   disabled,
+  size = "md",
 }: {
-  value: string;
+  value: string | null;
   onValueChange: (value: string) => void;
   options: readonly { value: string; label: string }[];
   label: string;
   id?: string;
   disabled?: boolean;
+  size?: "sm" | "md" | "lg";
 }) {
   return (
     <SelectPrimitive.Root
@@ -67,11 +60,25 @@ export function Select({
       }}
     >
       <SelectPrimitive.Trigger
-        render={<Button variant="outline" size="sm" styles={styles.trigger} />}
+        render={
+          <Button
+            variant="bare"
+            size={size}
+            styles={[
+              FIELD_SURFACE.face,
+              FIELD_SURFACE.trigger,
+              FIELD_SIZE[size],
+              styles.trigger,
+            ]}
+          />
+        }
         id={id}
+        data-chrome-focus=""
         aria-label={label}
       >
-        <SelectPrimitive.Value />
+        <SelectPrimitive.Value
+          placeholder={value === null ? label : undefined}
+        />
         <SelectPrimitive.Icon>
           <Icon glyph={ChevronDown} size="xs" />
         </SelectPrimitive.Icon>
@@ -82,13 +89,18 @@ export function Select({
           sideOffset={4}
         >
           <SelectPrimitive.Popup
-            {...stylex.props(FLOATING_OPTIONS, styles.popup, type.uiSm)}
+            {...stylex.props(
+              FLOATING_OPTIONS,
+              MENU_SURFACE.content,
+              styles.popup,
+              type.uiMd,
+            )}
           >
             {options.map((option) => (
               <SelectPrimitive.Item
                 key={option.value}
                 value={option.value}
-                {...stylex.props(styles.item)}
+                {...stylex.props(MENU_SURFACE.item, styles.item)}
               >
                 <SelectPrimitive.ItemText>
                   {option.label}

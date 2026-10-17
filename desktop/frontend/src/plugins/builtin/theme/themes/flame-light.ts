@@ -2,22 +2,22 @@ import { defineColorThemePlugin } from "../kit/defineColorThemePlugin";
 import { SCHEME_BASE } from "../kit/palette";
 
 const c = {
-  accent: "#2b5fd0",
+  accent: "#006fdb",
 
   canvas: SCHEME_BASE.light.background,
   card: "#ffffff",
-  surface1: "#f9f9f9",
-  sunken: "#ededed",
+  surface1: "#efeff0",
+  sunken: "#eaeaeb",
 
   inkBright: "#000000",
   ink: SCHEME_BASE.light.foreground,
-  inkSoft: "#3d4147",
-  inkMuted: "#5a5d63",
-  inkFaint: "#63666d",
+  inkSoft: "#3f3f46",
+  inkMuted: "#66666f",
+  inkFaint: "#66666f",
 
-  hairline: "#ededed",
-  hairStrong: "#dfdfdf",
-  hairTertiary: "rgb(0 0 0 / 0.05)",
+  hairline: "#dedee0",
+  hairStrong: "#c4c4c9",
+  hairTertiary: "#e4e4e7",
 };
 
 export default defineColorThemePlugin({
@@ -55,8 +55,8 @@ export default defineColorThemePlugin({
     success: "#2a713e",
   },
   cta: {
-    cta: "var(--color-accent)",
-    ctaHover: "var(--color-accent-border)",
-    ctaText: "var(--color-text-on-accent)",
+    cta: c.accent,
+    ctaHover: "#0064c5",
+    ctaText: "#ffffff",
   },
 });

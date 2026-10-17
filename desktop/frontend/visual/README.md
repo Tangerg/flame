@@ -1,7 +1,6 @@
-# Visual fixtures
+# Browser fixtures
 
-This is a test-only Vite entry for deterministic screenshot and interaction
-checks. It is intentionally separate from the production router and Wails
+This is a test-only Vite entry for isolated browser interaction checks and manual design review. It is intentionally separate from the production router and Wails
 bootstrap.
 
 Rules:
@@ -32,23 +31,22 @@ cleanup. It covers dock width and resizing, navigation identity,
 diff loading/empty/error states, and the
 production Settings surface without a parallel presentation model.
 
-`closure.visual.spec.ts` adds cross-surface release evidence: WCAG A/AA audits,
-keyboard-only traversal, IME composition, real 44 px coarse-pointer targets,
-the production clipboard path, OS and application motion preferences, the
-maximum 18 px UI type setting, and DPR 2 hairlines. Its goldens use a `0.05`
-per-pixel threshold so subtle ink regressions remain visible; geometry and
-contrast also have semantic assertions.
+Portable workspace views use the production installed-component lifecycle and public
+client over canonical, validated fixture reads. Session trajectory rereads the same
+snapshot that the scripted Runtime response advances; fixture view models never write
+an independent approval decision. Components render in the shared React host.
 
-`webkit.visual.spec.ts` is a compatibility smoke suite for the rendering engine
-closest to Wails' macOS WKWebView. It validates shell focus handoff, Agent HITL
-keyboard operation, CJK and syntax-highlighted long content, review geometry,
-and Settings menu focus return. It deliberately has no WebKit goldens:
-engine-specific font rasterisation must not create a second pixel baseline.
-Chromium owns deterministic screenshot comparison; WebKit owns CSS, layout,
-focus, and event compatibility.
+`*.browser.spec.ts` verifies observable interactions, keyboard and focus behavior,
+accessibility, readable content, overflow and touch target geometry. The WebKit
+smoke suite covers the engine closest to macOS WKWebView. Pixel comparisons,
+golden-only scenarios, cosmetic token matrices, baseline images and snapshot-update
+commands are removed.
+Design review uses the actual rendered pages in both themes after a batch of
+changes; passing these behavioral checks does not establish visual quality.
 
-Run `npm run visual:dev` for inspection and `npm run visual:test` for regression
-checks. Update reviewed baselines with `npm run visual:test:update`.
+Run `npm run browser:dev` for manual inspection and `npm run browser:test` for
+browser behavior checks. Run focused scenarios for the changed behavior rather
+than repeating the complete matrix for each spacing or typography adjustment.
 
 Useful routes:
 

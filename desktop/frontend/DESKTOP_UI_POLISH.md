@@ -32,12 +32,10 @@ site's**. The tool-window style now shipping answers:
 - **region boundary** → a 0.5px inset edge in `border-soft` (`--app-card-edge` at the
   drawer, `--app-pane-split` at the dock, `--app-header-edge` under a bar), on top of
   the value step. Half a pixel is one device pixel on a 2x panel: crisp without weight.
-- **card** → fill only (`bg-card`). No border, no shadow: it is already a different
-  material from the plane it sits on.
+- **card** → fill (`bg-card`) plus the shared, quiet contact shadow. The default HeroUI-inspired resource surface uses no decorative border.
 - **well** → fill only (`bg-sunken`).
 - **floating overlay** (menus, popovers, tooltips) → one optical ring plus
-  directional depth in `--shadow-popover`, and no second border. These are the only
-  surfaces that genuinely leave the plane.
+  directional depth in `--shadow-popover`, and no second border. These use greater elevation than the contact shadow on resource surfaces.
 - **fixed control** (text fields, chips, the composer) → a real border. The composer
   takes the accent on focus, which is the same "live" colour the run indicator uses.
 - **state** → background fill only (`bg-hover` / `bg-selected`), at a strength tied

@@ -1,4 +1,11 @@
 export const es: Record<string, string> = {
+  "packages.installTitle": "Instalar un complemento",
+  "packages.installedTitle": "Paquetes instalados",
+  "packages.details": "Detalles de la versión",
+  "packages.actions": "Acciones del paquete",
+  "packages.digest": "Resumen de la versión",
+  "plugins.loadedTitle": "Complementos cargados en el cliente",
+
   "packages.module.loading": "Cargando la vista del plugin…",
   "packages.module.failed": "No se pudo cargar o mostrar la vista del plugin.",
   "packages.module.unavailable": "El plugin no está disponible.",
@@ -130,6 +137,8 @@ export const es: Record<string, string> = {
   "dock.tabs.label": "Paneles del espacio derecho",
   "dock.tabs.closeAll": "Cerrar todos los paneles",
   "dock.tabs.closeOthers": "Cerrar los demás paneles",
+  "dock.tabs.moveLeft": "Mover panel a la izquierda",
+  "dock.tabs.moveRight": "Mover panel a la derecha",
   "workspace.view.openBeside": "Abrir en el panel de contexto",
   "workspace.view.unavailable.title": "Vista no disponible",
   "workspace.view.unavailable.body":
@@ -325,7 +334,7 @@ export const es: Record<string, string> = {
   "providers.empty": "Sin proveedores",
   "providers.empty.sub": "El runtime no informa proveedores de LLM compatibles.",
   "plugins.hero":
-    "Todos los complementos que carga esta compilación. El que falla conserva su lugar junto al error que provocó, para que una contribución rota se vea en lugar de faltar sin más.",
+    "Instala y administra paquetes de complementos, elige proveedores y consulta los complementos cargados en el cliente.",
   "plugins.errorDetail.show": "Mostrar detalle del error",
   "plugins.errorDetail.hide": "Ocultar detalle del error",
   "plugins.errors_one": "{{count}} error",
@@ -754,7 +763,6 @@ export const es: Record<string, string> = {
   "mcp.import.renamed": "Se renombraron para que el runtime las acepte: {{names}}",
   "mcp.import.error": "No se pudo importar esa configuración.",
   "mcp.tools.manage": "Gestionar herramientas",
-  "mcp.tools.tool": "Herramienta",
   "mcp.tools.enabled": "Activada",
   "mcp.tools.autoApprove": "Aprobar automáticamente",
   "mcp.tools.empty": "Este servidor no expone herramientas",
@@ -783,6 +791,7 @@ export const es: Record<string, string> = {
   "file.error.sub": "Puede haberse movido o estar fuera del espacio de trabajo.",
   "composer.key.historyPrevDesc": "Recuperar el mensaje anterior",
   "composer.key.historyNextDesc": "Recuperar el mensaje siguiente",
+  "mcp.import.config": "Configuración JSON",
   "mcp.import.hint":
     'Pega un bloque de configuración de cliente MCP: uno o varios servidores bajo "mcpServers".',
 

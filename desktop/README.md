@@ -176,6 +176,8 @@ owner, then inspects the replacement. Closing a client only closes its connectio
 it does not shut down the external Runtime or cancel another client's Run.
 
 Approval cards read their verdict from the Runtime ToolCall's `approvalDecision`.
+Live events and snapshot reloads use the same approval-block projection, so a
+durable verdict remains visible after its pending interrupt has gone.
 Local response staging only disables submission; it cannot declare approval or denial.
 Once Runtime withdraws a request without a verdict, its approval controls disappear.
 
@@ -295,6 +297,13 @@ Browser and native component/lifecycle acceptance require actual host execution.
 Source checks and native packaging alone do not prove rendering or recovery.
 
 ## Shared presentation package
+
+Dock order belongs to workspace navigation; dragging and menu moves issue the same
+reorder intent. Resize gestures own a temporary preview and captured pointer; only
+release commits a preference. Cancellation, capture loss, replacement and unmount
+restore the preview. Image inspection keeps browser scroll positions as the pan
+owner and captures an image coordinate for anchored zoom. Selection changes and
+viewport resize retire the previous image geometry.
 
 Build `icons`, then `ui`, before installing the graphical client and the portable page toolchain. `@flame/ui` owns controls, record composition and StyleX token declarations; product composites stay in Desktop. First-party components are built from each package's `src/component.tsx` through the public SDK. The resource gate checks exact ESM reproduction. Components use shared React/UI provider context. Explicitly select changed resources through the existing installation workflow. Durable plugin data formats are unchanged.
 

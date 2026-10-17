@@ -2,7 +2,7 @@ import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { StatusDot } from "@/ui";
-import { Button, TextField, vocab } from "@flame/ui";
+import { Button, FormActions, FormField, TextField, vocab } from "@flame/ui";
 import { useT, type Translate } from "@/lib/i18n";
 import {
   applyRuntimeEndpoint,
@@ -18,10 +18,19 @@ import {
   type RuntimeServicePhase,
 } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { SettingRow, SettingsGroup } from "../../kit";
-import { color, face, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
+import {
+  color,
+  face,
+  layout,
+  radius,
+  space,
+  surface,
+  type as typeStep,
+} from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const cp = stylex.create({
+  form: { display: "grid", gap: layout.fieldGap, minWidth: 0 },
   status: {
     marginTop: space.s1,
     borderRadius: radius.card,
@@ -134,13 +143,10 @@ export function ConnectionPane() {
       <SettingRow
         label={t("settings.connection.title")}
         sub={t("settings.connection.sub")}
-        align="start"
+        align="stacked"
       >
-        <div {...stylex.props(ss.grid2)}>
-          <label htmlFor="runtime-base-url" {...stylex.props(ss.captionInline, typeStep.uiMd)}>
-            {t("settings.connection.url")}
-          </label>
-          <div {...stylex.props(vocab.line)}>
+        <div {...stylex.props(cp.form)}>
+          <FormField label={t("settings.connection.url")}>
             <TextField
               font="mono"
               id="runtime-base-url"
@@ -158,34 +164,10 @@ export function ConnectionPane() {
                 if (apply()) e.currentTarget.blur();
               }}
               placeholder={defaultEndpoint}
-              {...stylex.props(vocab.grow)}
               spellCheck={false}
             />
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              disabled={isDefault}
-              onClick={reset}
-              className={stylex.props(vocab.hold).className}
-            >
-              {t("settings.connection.reset")}
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              disabled={!dirty}
-              onClick={() => void apply()}
-              className={stylex.props(vocab.hold).className}
-            >
-              {t("settings.connection.apply")}
-            </Button>
-          </div>
-          <label htmlFor="runtime-local-token" {...stylex.props(ss.captionInline, typeStep.uiMd)}>
-            {t("settings.connection.token")}
-          </label>
-          <div {...stylex.props(vocab.line)}>
+          </FormField>
+          <FormField label={t("settings.connection.token")}>
             <TextField
               id="runtime-local-token"
               type="password"
@@ -201,6 +183,19 @@ export function ConnectionPane() {
               placeholder={t("settings.connection.tokenPlaceholder")}
               spellCheck={false}
             />
+          </FormField>
+          <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("settings.connection.tokenHint")}</p>
+          <FormActions label={t("settings.connection.apply")}>
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              disabled={isDefault}
+              onClick={reset}
+              className={stylex.props(vocab.hold).className}
+            >
+              {t("settings.connection.reset")}
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -213,8 +208,17 @@ export function ConnectionPane() {
             >
               {t("settings.connection.clearToken")}
             </Button>
-          </div>
-          <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("settings.connection.tokenHint")}</p>
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              disabled={!dirty}
+              onClick={() => void apply()}
+              className={stylex.props(vocab.hold).className}
+            >
+              {t("settings.connection.apply")}
+            </Button>
+          </FormActions>
           {error ? (
             <div
               id="runtime-connection-error"

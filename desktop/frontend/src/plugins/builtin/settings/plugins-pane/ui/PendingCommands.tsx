@@ -1,22 +1,23 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import * as stylex from "@stylexjs/stylex";
 import {
   OperationFailure,
   isErrorType,
   stringifyJSON,
   type PluginCommandRecovery,
 } from "@flame/runtime-contract/client";
-import { Button, Metadata, Toolbar } from "@flame/ui";
-import { space } from "@flame/ui/tokens.stylex";
+import {
+  Button,
+  CodeBlock,
+  ListRow,
+  Metadata,
+  PanelSection,
+  RecordGroup,
+  Toolbar,
+} from "@flame/ui";
 import { SystemMessage } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { failureText } from "@/lib/rpcErrors";
 import type { PackageOperations } from "../application/packages";
-
-const styles = stylex.create({
-  section: { padding: space.s4, display: "flex", flexDirection: "column", gap: space.s3 },
-  output: { whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 240, overflow: "auto" },
-});
 
 type Outcome =
   | { type: "confirmed"; key: string; output: string }
@@ -86,17 +87,21 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
   }
 
   return (
-    <section aria-label={t("packages.commands.title")} {...stylex.props(styles.section)}>
-      <Toolbar label={t("packages.commands.title")}>
-        <h3>{t("packages.commands.title")}</h3>
+    <PanelSection
+      aria-label={t("packages.commands.title")}
+      title={t("packages.commands.title")}
+      description={t("packages.commands.explanation")}
+      actions={
         <Button
+          variant="soft"
+          size="sm"
           disabled={!!current?.checking || operations.signal.aborted}
           onClick={() => setObservation({ operations, outcome: current?.outcome })}
         >
           {t("packages.commands.refresh")}
         </Button>
-      </Toolbar>
-      <Metadata>{t("packages.commands.explanation")}</Metadata>
+      }
+    >
       {current?.checking && (
         <p role="status">{t("packages.commands.checking", { id: current.checking })}</p>
       )}
@@ -107,27 +112,35 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
           {!current?.checking && !read.commands.length && (
             <Metadata>{t("packages.commands.none")}</Metadata>
           )}
-          {read.commands.map((command) => (
-            <div key={command.idempotencyKey} role="group" aria-label={command.idempotencyKey}>
-              <Metadata>{command.idempotencyKey}</Metadata>
-              <Metadata>
-                {command.binding.method} · {command.binding.installationId} ·{" "}
-                {command.binding.digest}
-              </Metadata>
-              <Button
-                disabled={!!current?.checking || operations.signal.aborted}
-                onClick={() => void observe(command, "recover")}
+          <RecordGroup variant="list">
+            {read.commands.map((command) => (
+              <ListRow
+                key={command.idempotencyKey}
+                role="group"
+                aria-label={command.idempotencyKey}
               >
-                {t("packages.commands.recover")}
-              </Button>
-              <Button
-                disabled={!!current?.checking || operations.signal.aborted}
-                onClick={() => void observe(command, "retire")}
-              >
-                {t("packages.commands.retire")}
-              </Button>
-            </div>
-          ))}
+                <Metadata>{command.idempotencyKey}</Metadata>
+                <Metadata>
+                  {command.binding.method} · {command.binding.installationId} ·{" "}
+                  {command.binding.digest}
+                </Metadata>
+                <Toolbar label={command.idempotencyKey}>
+                  <Button
+                    disabled={!!current?.checking || operations.signal.aborted}
+                    onClick={() => void observe(command, "recover")}
+                  >
+                    {t("packages.commands.recover")}
+                  </Button>
+                  <Button
+                    disabled={!!current?.checking || operations.signal.aborted}
+                    onClick={() => void observe(command, "retire")}
+                  >
+                    {t("packages.commands.retire")}
+                  </Button>
+                </Toolbar>
+              </ListRow>
+            ))}
+          </RecordGroup>
         </>
       )}
       {current?.outcome && (
@@ -136,12 +149,14 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
             {t(`packages.commands.${current.outcome.type}`, { id: current.outcome.key })}
           </p>
           {current.outcome.type === "confirmed" ? (
-            <pre {...stylex.props(styles.output)}>{current.outcome.output}</pre>
+            <CodeBlock label={t("packages.commands.confirmed", { id: current.outcome.key })}>
+              {current.outcome.output}
+            </CodeBlock>
           ) : current.outcome.type !== "retired" ? (
             <SystemMessage variant="warning">{current.outcome.reason}</SystemMessage>
           ) : null}
         </div>
       )}
-    </section>
+    </PanelSection>
   );
 }

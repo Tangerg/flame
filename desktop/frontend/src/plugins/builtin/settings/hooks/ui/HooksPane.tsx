@@ -1,8 +1,8 @@
 import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { DataView, Icon, Surface, Switch, Tag } from "@/ui";
-import { Badge, EmptyState, gap, vocab } from "@flame/ui";
+import { DataView, Icon, Switch, Tag } from "@/ui";
+import { Badge, EmptyState, gap, ListRow, RecordGroup, vocab } from "@flame/ui";
 import { isUnsupportedMethod } from "@/lib/rpcErrors";
 import type { HookReadModel } from "../application/hookConfig";
 import { useHookConfigs } from "../application/hookConfig";
@@ -10,60 +10,78 @@ import { setHookTrust } from "../application/hookTrust";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useCommandAction } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
-import { color, face, leading, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
-import { settingStyles as ss } from "../../kit/settingStyles";
+import { color, face, leading, layout, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { SettingRow, SettingsGroup } from "../../kit";
 
 const hp = stylex.create({
   row: {
     display: "grid",
     gridTemplateColumns: "auto minmax(0, 1fr) auto",
     alignItems: "center",
-    gap: space.s3,
+    gap: layout.contentGap,
   },
-  inactive: { opacity: "var(--state-receded)" },
   injected: { fontStyle: "italic" },
   scope: { color: color.fgFaint, fontWeight: weight.medium },
-  sub: { marginTop: space.s0_5, color: color.fgMuted, lineHeight: leading.body },
+  copy: { display: "grid", gap: layout.labelGap, minWidth: 0 },
+  identity: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: layout.controlGap,
+    minWidth: 0,
+  },
+  command: {
+    minWidth: 0,
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    lineHeight: leading.body,
+  },
 });
 
 function HookRow({ h }: { h: HookReadModel }) {
   const t = useT();
   return (
-    <div {...stylex.props(hp.row, ss.hoverRow, !h.active && hp.inactive)}>
-      <Icon
-        name={h.scope === "global" ? "globe" : "folder"}
-        size="sm"
-        className={stylex.props(vocab.faint).className}
-      />
-      <div {...stylex.props(vocab.line, vocab.min)}>
-        <Tag>{h.event}</Tag>
-        {h.matcher && (
+    <ListRow>
+      <div {...stylex.props(hp.row)}>
+        <Icon
+          name={h.scope === "global" ? "globe" : "folder"}
+          size="sm"
+          className={stylex.props(vocab.faint).className}
+        />
+        <div {...stylex.props(hp.copy)}>
+          <div {...stylex.props(hp.identity)}>
+            <Tag>{h.event}</Tag>
+            {h.matcher && (
+              <span
+                {...stylex.props(vocab.hold, vocab.accent, typeStep.uiSm, face.mono)}
+                title={t("hooks.matcher")}
+              >
+                {h.matcher}
+              </span>
+            )}
+          </div>
           <span
-            {...stylex.props(vocab.hold, vocab.accent, typeStep.uiSm, face.mono)}
-            title={t("hooks.matcher")}
+            {...stylex.props(hp.command, face.mono, typeStep.uiMd)}
+            title={h.command || h.inject || h.source}
           >
-            {h.matcher}
+            {h.command ? (
+              h.command
+            ) : (
+              <span {...stylex.props(vocab.muted, hp.injected)}>{h.inject}</span>
+            )}
           </span>
-        )}
-        <span
-          {...stylex.props(vocab.fill, ss.monoName, typeStep.uiMd)}
-          title={h.command || h.inject || h.source}
-        >
-          {h.command ? (
-            h.command
-          ) : (
-            <span {...stylex.props(vocab.muted, hp.injected)}>{h.inject}</span>
-          )}
-        </span>
+        </div>
+        {!h.active ? (
+          <Badge tone="warning" title={t("hooks.inactive.hint")}>
+            {t("hooks.inactive")}
+          </Badge>
+        ) : h.inject ? (
+          <span {...stylex.props(vocab.hold, hp.scope, typeStep.uiXs)}>
+            {t("hooks.kind.inject")}
+          </span>
+        ) : null}
       </div>
-      {!h.active ? (
-        <Badge tone="warning" title={t("hooks.inactive.hint")}>
-          {t("hooks.inactive")}
-        </Badge>
-      ) : h.inject ? (
-        <span {...stylex.props(vocab.hold, hp.scope, typeStep.uiXs)}>{t("hooks.kind.inject")}</span>
-      ) : null}
-    </div>
+    </ListRow>
   );
 }
 
@@ -93,30 +111,24 @@ export function HooksPane() {
   return (
     <div {...stylex.props(vocab.column, gap.s4)}>
       {projectRoot && data?.hasProjectHooks && (
-        <Surface className={stylex.props(ss.split).className}>
-          <div {...stylex.props(vocab.min)}>
-            <div {...stylex.props(ss.label, typeStep.uiMd)}>{t("hooks.trust")}</div>
-            <div {...stylex.props(hp.sub, typeStep.uiMd)}>{t("hooks.trust.sub")}</div>
-            <div
-              {...stylex.props(
-                vocab.afterLine,
-                vocab.truncate,
-                vocab.faint,
-                typeStep.uiSm,
-                face.mono,
-              )}
-              title={projectRoot}
-            >
-              {projectRoot}
-            </div>
-          </div>
-          <Switch
-            checked={data?.projectTrusted ?? false}
-            disabled={trust.busy}
-            onCheckedChange={(trusted) => trust.run(() => setHookTrust(projectRoot, trusted))}
-            ariaLabel={t("hooks.trust.aria")}
-          />
-        </Surface>
+        <SettingsGroup>
+          <SettingRow
+            label={t("hooks.trust")}
+            sub={
+              <>
+                <span>{t("hooks.trust.sub")}</span>
+                <div {...stylex.props(vocab.afterLine, face.mono)}>{projectRoot}</div>
+              </>
+            }
+          >
+            <Switch
+              checked={data?.projectTrusted ?? false}
+              disabled={trust.busy}
+              onCheckedChange={(trusted) => trust.run(() => setHookTrust(projectRoot, trusted))}
+              ariaLabel={t("hooks.trust.aria")}
+            />
+          </SettingRow>
+        </SettingsGroup>
       )}
 
       <DataView
@@ -128,11 +140,11 @@ export function HooksPane() {
         empty={{ icon: "lightning", title: t("hooks.empty"), sub: t("hooks.empty.sub") }}
       >
         {(rows) => (
-          <div {...stylex.props(vocab.column, gap.s0_5)}>
+          <RecordGroup variant="list">
             {rows.map((h, i) => (
               <HookRow key={`${h.source}:${h.event}:${i}`} h={h} />
             ))}
-          </div>
+          </RecordGroup>
         )}
       </DataView>
     </div>

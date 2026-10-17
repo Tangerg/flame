@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { StyleXStyles } from "@stylexjs/stylex";
 import type { ComponentProps, ReactNode } from "react";
+import { MENU_SURFACE } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { space, surface } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
@@ -26,13 +27,11 @@ const menuStyles = stylex.create({
     maxHeight: "min(380px, var(--available-height))",
     overflow: "hidden auto",
     overscrollBehavior: "contain",
-    scrollPaddingBlock: space.s1,
-    padding: space.s1,
   },
   label: { minWidth: 0, whiteSpace: "normal", overflowWrap: "anywhere" },
 });
 
-const MENU_CONTENT = [FLOATING_OPTIONS, menuStyles.content];
+const MENU_CONTENT = [FLOATING_OPTIONS, MENU_SURFACE.content, menuStyles.content];
 
 const menuItem = (layout: RowLayout = "grid") => [menuStyles.item, floatingRow(layout, "sm")];
 

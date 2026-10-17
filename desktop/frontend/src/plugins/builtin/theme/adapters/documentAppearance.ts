@@ -64,8 +64,6 @@ function applyColorTheme(theme: ColorThemeId, preferredAccent: string, contrast:
   });
 
   root.style.setProperty("--color-accent", liveAccent);
-  root.style.setProperty("--color-accent-border", colord(liveAccent).darken(0.08).toHex());
-  root.style.setProperty("--color-accent-press", colord(liveAccent).darken(0.16).toHex());
   root.style.setProperty("--depth-step", depthStep(scheme, contrast));
 
   const declaredInk = spec?.tokens?.["color-text-on-accent"] ?? "#ffffff";
@@ -88,8 +86,6 @@ function applyColorTheme(theme: ColorThemeId, preferredAccent: string, contrast:
   );
   appliedColorTokens.push(
     "--color-accent",
-    "--color-accent-border",
-    "--color-accent-press",
     "--color-text-on-accent",
     "--color-cta-text",
     "--color-focus-ring",

@@ -55,12 +55,12 @@ describe("ResizeHandle", () => {
     fireEvent.pointerDown(handle, { button: 0, clientX: 320 });
     expect(screen.getByTestId("container").hasAttribute("data-resizing")).toBe(true);
 
-    fireEvent(window, new MouseEvent("pointermove", { clientX: 400 }));
+    fireEvent(window, new PointerEvent("pointermove", { clientX: 400 }));
     expect(paneWidth()).toBe("400px");
     expect(handle.getAttribute("aria-valuenow")).toBe("400");
     expect(onCommit).not.toHaveBeenCalled();
 
-    fireEvent(window, new MouseEvent("pointerup"));
+    fireEvent(window, new PointerEvent("pointerup"));
     expect(onCommit).toHaveBeenCalledExactlyOnceWith(400, expect.any(Number));
     expect(screen.getByTestId("container").hasAttribute("data-resizing")).toBe(false);
   });
@@ -71,8 +71,8 @@ describe("ResizeHandle", () => {
     const handle = screen.getByRole("separator", { name: "Resize panel" });
 
     fireEvent.pointerDown(handle, { button: 0, clientX: 320 });
-    fireEvent(window, new MouseEvent("pointermove", { clientX: 320 }));
-    fireEvent(window, new MouseEvent("pointerup"));
+    fireEvent(window, new PointerEvent("pointermove", { clientX: 320 }));
+    fireEvent(window, new PointerEvent("pointerup"));
 
     expect(onCommit).not.toHaveBeenCalled();
     expect(paneWidth()).toBe("");
@@ -132,8 +132,76 @@ describe("ResizeHandle", () => {
     unmount();
 
     expect(container.hasAttribute("data-resizing")).toBe(false);
-    fireEvent(window, new MouseEvent("pointermove", { clientX: 500 }));
-    fireEvent(window, new MouseEvent("pointerup"));
+    fireEvent(window, new PointerEvent("pointermove", { clientX: 500 }));
+    fireEvent(window, new PointerEvent("pointerup"));
     expect(onCommit).not.toHaveBeenCalled();
+  });
+});
+
+describe("ResizeHandle gesture settlement", () => {
+  it.each(["pointercancel", "Escape", "lostpointercapture", "blur"])(
+    "rolls back %s without committing the preference",
+    (reason) => {
+      const onCommit = vi.fn();
+      render(<Harness onCommit={onCommit} />);
+      const handle = screen.getByRole("separator", { name: "Resize panel" });
+      const pane = screen.getByTestId("container");
+      pane.style.setProperty(PROPERTY, "320px", "important");
+      fireEvent.pointerDown(handle, { button: 0, pointerId: 7, clientX: 320 });
+      fireEvent.pointerMove(window, { pointerId: 7, clientX: 450 });
+      expect(paneWidth()).toBe("450px");
+      if (reason === "Escape") fireEvent.keyDown(window, { key: "Escape" });
+      else if (reason === "blur") fireEvent.blur(window);
+      else
+        fireEvent(
+          reason === "lostpointercapture" ? handle : window,
+          new PointerEvent(reason, { pointerId: 7 }),
+        );
+      expect(paneWidth()).toBe("320px");
+      expect(pane.style.getPropertyPriority(PROPERTY)).toBe("important");
+      expect(handle.getAttribute("aria-valuenow")).toBe("320");
+      expect(pane.hasAttribute("data-resizing")).toBe(false);
+      fireEvent.pointerMove(window, { pointerId: 7, clientX: 600 });
+      fireEvent.pointerUp(window, { pointerId: 7 });
+      expect(onCommit).not.toHaveBeenCalled();
+      expect(paneWidth()).toBe("320px");
+    },
+  );
+
+  it("ignores a second pointer throughout the gesture", () => {
+    const onCommit = vi.fn();
+    render(<Harness onCommit={onCommit} />);
+    const handle = screen.getByRole("separator", { name: "Resize panel" });
+    fireEvent.pointerDown(handle, { button: 0, pointerId: 7, clientX: 320 });
+    fireEvent.pointerMove(window, { pointerId: 8, clientX: 800 });
+    fireEvent.pointerCancel(window, { pointerId: 8 });
+    fireEvent.pointerUp(window, { pointerId: 8 });
+    expect(paneWidth()).toBe("");
+    fireEvent.pointerMove(window, { pointerId: 7, clientX: 400 });
+    fireEvent.pointerUp(window, { pointerId: 7 });
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith(400, expect.any(Number));
+  });
+
+  it("restores the starting property when unmounted after a preview", () => {
+    const onCommit = vi.fn();
+    const { unmount } = render(<Harness onCommit={onCommit} />);
+    const pane = screen.getByTestId("container");
+    fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
+    fireEvent.pointerMove(window, { clientX: 450 });
+    unmount();
+    expect(pane.style.getPropertyValue(PROPERTY)).toBe("");
+    fireEvent.pointerUp(window);
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("retires a drag when an external width replaces it", () => {
+    const onCommit = vi.fn();
+    const view = render(<Harness onCommit={onCommit} />);
+    fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
+    fireEvent.pointerMove(window, { clientX: 450 });
+    view.rerender(<Harness value={500} onCommit={onCommit} />);
+    fireEvent.pointerUp(window);
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(screen.getByRole("separator").getAttribute("aria-valuenow")).toBe("500");
   });
 });

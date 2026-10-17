@@ -28,19 +28,15 @@ export function buildTokenMap(spec: ColorThemePluginSpec): Record<string, string
     `color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - ${rest}) * ${INK_TRACKING})), ${ink})`;
 
   const accent = colord(spec.brand.accent);
-  const accentBorder = spec.brand.accentBorder ?? accent.darken(0.08).toHex();
-  const accentPress = spec.brand.accentPress ?? accent.darken(0.16).toHex();
   const cta: ThemeCta = {
     cta: spec.brand.accent,
-    ctaHover: accentBorder,
+    ctaHover: accent.darken(0.08).toHex(),
     ctaText: spec.brand.textOnAccent,
     ...spec.cta,
   };
 
   return {
     "color-accent": spec.brand.accent,
-    "color-accent-border": accentBorder,
-    "color-accent-press": accentPress,
     "color-text-on-accent": spec.brand.textOnAccent,
 
     "color-bg": spec.surfaces.bg,

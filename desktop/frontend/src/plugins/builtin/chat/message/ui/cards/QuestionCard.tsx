@@ -333,7 +333,7 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
               quiet
               disabled={activeIndex === 0}
               focusableWhenDisabled
-              title={t("question.action.previous")}
+              aria-label={t("question.action.previous")}
               onClick={() => navigateQuestion(activeIndex - 1)}
             />
             <span {...stylex.props(qc.pageCount)}>
@@ -345,7 +345,7 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
               quiet
               disabled={isLastQuestion}
               focusableWhenDisabled
-              title={t("question.action.next")}
+              aria-label={t("question.action.next")}
               onClick={() => navigateQuestion(activeIndex + 1)}
             />
           </div>
@@ -457,7 +457,7 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
               onBlur={() => {
                 compositionCommitPendingRef.current = false;
               }}
-              className={stylex.props(qc.freeField, typeStep.uiMd).className}
+              styles={qc.freeField}
             />
           </div>
         )}

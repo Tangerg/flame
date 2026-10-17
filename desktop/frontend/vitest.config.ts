@@ -1,4 +1,5 @@
 /// <reference types="vitest" />
+import { sharedRuntimePackages } from "./shared-runtime.mjs";
 import { configDefaults, defineConfig } from "vitest/config";
 import path from "node:path";
 import { stylexTransform } from "./stylex.vite.mjs";
@@ -14,7 +15,7 @@ export default defineConfig({
   // component with it.
   plugins: [stylexTransform()],
   resolve: {
-    dedupe: ["react", "react-dom", "@base-ui/react"],
+    dedupe: sharedRuntimePackages,
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
     },
@@ -28,10 +29,9 @@ export default defineConfig({
         extends: true,
         test: {
           name: "frontend",
-          // `visual/` holds the fixtures the goldens are taken from. Playwright proves what they
-          // LOOK like; whether the Runtime could have sent them is a pure assertion, and it has no
-          // business costing a browser.
-          include: ["src/**/*.test.{ts,tsx}", "visual/**/*.test.ts"],
+          // Fixture validity and portable component contracts do not require a browser;
+          // Playwright owns rendered geometry and appearance.
+          include: ["src/**/*.test.{ts,tsx}", "visual/**/*.test.{ts,tsx}"],
           exclude: [...configDefaults.exclude, runtimeLifecycleTest],
           sequence: { groupOrder: 0 },
         },

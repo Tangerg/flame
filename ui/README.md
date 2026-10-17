@@ -14,7 +14,7 @@ import "@flame/ui/styles.css";
 
 <FontScaleProvider fontSize={14}>
   <Button variant="primary">Review</Button>
-  <IconButton icon={Brain} title="Memory" />
+  <IconButton icon={Brain} aria-label="Memory" />
 </FontScaleProvider>;
 ```
 
@@ -29,10 +29,101 @@ npm run check --prefix ui
 
 The package is private and is consumed through repository-local `file:` dependencies. Package verification installs locally packed UI and icon archives into an independent consumer. It never publishes to npm. Source owns styling; generated `dist` and token-name outputs are not committed. Changes to shared components require the Desktop gate and the portable resource build and component lifecycle acceptance.
 
+`Panel` owns the content measure and container-responsive gutters.
+`PanelHeader` owns the page title, description, contextual navigation and primary
+actions. `PanelSection` groups one heading, supporting context, filters and content;
+`PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface, corners
+and separators. Its `cards` variant provides the responsive schedule grid;
+`ListRow variant="card"` owns each independent card surface.
+`Disclosure variant="row"` owns resource summaries that expand directly.
+`RecordSummary` owns the optional identity mark, copy and state alignment.
+`FilterBar` owns the growing search column and wrapping filter controls.
+Management filters use the shared `lg` size for both search and selection; compact
+workbench controls keep their own smaller roles.
+`RecordHeading` groups identity, state and the main action. `Disclosure` owns a
+full-width expanding panel with an optional adjacent action slot. `ActionMenu` owns
+secondary action presentation, keyboard behavior and focus return; consumers
+supply their captured command callbacks. `Stats` uses a responsive group of quiet metric tiles;
+`MetricValue` and `ShareBar` render existing values without calculating business totals. `Segmented` owns the controlled catalog selector in
+Desktop and portable views. `Form`, `RecordForm`, `FormSection`, `FormRow`, `FormField` and `FormGroup` provide responsive form grouping and visible
+native labels; `DocumentBody` styles already-parsed semantic document content.
+These components own presentation only and do not query or advance product facts.
+
 ## Review preview
 
-The Desktop visual fixture renders the library with the real Flame appearance owner. Run `npm run visual:dev --prefix desktop/frontend` from the repository root and open `/visual/?fixture=atoms&theme=light` or the dark counterpart. The shared-panel specimen includes the Memory toolbar, status filter and record row. This preview uses an isolated in-memory transport and does not contact a user Runtime.
+The Desktop visual fixture renders the library with the real Flame appearance owner. Run `npm run browser:dev --prefix desktop/frontend` from the repository root and open `/visual/?fixture=atoms&theme=light` or the dark counterpart. The shared-panel specimen includes the Memory toolbar, status filter and record row. This preview uses an isolated in-memory transport and does not contact a user Runtime.
 
 Field `invalid` owns both error styling and the accessible invalid state. Search
 clear actions require an explicit localized label. Compact controls retain a
 24px minimum target; hover effects run only on hover-capable pointers.
+Text buttons wrap long labels and grow vertically within their available width;
+size tokens define their minimum height. Icon-only controls retain square geometry.
+The shared stylesheet owns the 44px coarse-pointer floor; controls and their
+layout hosts include that floor in their geometry.
+
+`SearchField` requires a controlled string value. Its input and clear action obey
+the same disabled, read-only and pending constraints. `IconButton` requires either
+`aria-label` or `aria-labelledby`; `title` only overrides the tooltip. `DiffTable`
+requires consumer-supplied region and column labels, including assistive text.
+
+`TextArea autosize` measures its content across supported hosts. The component owns
+height updates for input, controlled values, form reset, width and font changes;
+CSS still owns minimum and maximum height. Consumers do not add another sizing loop.
+
+The shared stylesheet also applies the application's `data-motion="off"` projection
+and the system reduced-motion preference. Both disable motion with zero duration;
+they do not manufacture transitions on otherwise static components.
+
+The default host theme follows HeroUI 3.2.6: cool neutrals, blue primary actions,
+capsule buttons, rounded fields and quiet contact shadows. Desktop size roles are
+24/28/32/36px, independent of navigation density. Controls retain native cursors,
+keyboard focus, wrapping labels and the coarse-pointer target floor. Theme values
+remain with the host; the library renders them without a second appearance store.
+Settings and portable pages share `Panel` as the sole content-measure owner.
+
+`ModalDialog` owns bounded modal geometry, accessible titles and descriptions,
+header and footer alignment, and internal body scrolling. Its optional submit
+handler makes the popup itself a native form; installed component content keeps
+its own form when no handler is supplied. Desktop dialogs supply their existing
+command handlers and captured targets. `Form` preserves native submission and
+shares its section spacing with `RecordForm`; only `RecordForm` adds a card
+surface and inset. `FormActions` owns the trailing action
+zone for inline editors, with cancellation before the primary action.
+
+## Shared visual ownership
+
+The host visual-style contribution owns colors, shape, layout, and timing tokens.
+`FIELD_SURFACE`, `MENU_SURFACE`, `CARD_SURFACE`, and `CHOICE_SURFACE` own their
+respective control skins. Desktop atoms and portable components consume these
+same surfaces. `layout` tokens own page measure, gutters, section and field gaps,
+card padding, row padding, label and content gaps, compact viewport gutters,
+control spacing, and menu insets; consumers keep only structural
+layout and content-specific geometry.
+
+`HoverTrack` and `ItemHighlight` own the moving item backplate, also used by
+`Segmented`. They share the host's Motion runtime. The spring reads the slow
+motion rung and motion scale from the current CSS projection, so a theme change
+affects the next movement without a second animation preference. No animation
+runs before styles are available, during server rendering, or when motion is
+disabled. System reduced motion is honored separately.
+
+The former large-control radius and resource-surface tokens are removed. All
+field sizes use `field-radius`; cards and resource lists use `app-card-surface`.
+Repository consumers migrate together; external authored components must use
+these shared roles when rebuilt.
+
+`FIELD_SIZE` owns the minimum height and inline inset for single-line text,
+search, and select controls. Large fields have the same skin as compact ones.
+For interactive preview, append `&motion=full` to the fixture URL. Geometry
+fixtures disable motion by default; they do not represent the application
+motion preference.
+
+`FormRow`, `FormField` and `FormGroup` keep intrinsic field heights when translated
+labels wrap. `FormField` uses a native label for one labelable control;
+`FormGroup` names a composite control group without replacing its option names.
+Both share field spacing and label typography.
+Boxed single-line and multiline fields share `FIELD_SIZE` text insets and reset
+native WebKit appearance; focus and invalid borders remain with `FIELD_SURFACE`.
+Provider, MCP, and hook lists consume `RecordGroup` and `ListRow`, while inline
+editors consume `RecordForm`, `FormField`, and `FormActions` rather than defining
+another set of row insets, field spacing, and footer alignment.

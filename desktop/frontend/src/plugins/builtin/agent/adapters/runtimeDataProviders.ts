@@ -26,6 +26,13 @@ export function registerAgentDataProviders(
         toAgentSessionSummary,
       ),
   });
+  registerApprovalPolicyDataProviders(ctx, runtimeClient);
+}
+
+export function registerApprovalPolicyDataProviders(
+  ctx: Contributor,
+  runtimeClient: () => FlameClient,
+): void {
   ctx.contribute(DATA_PROVIDER, {
     key: APPROVAL_MODE_KEY,
     fetcher: (_params, signal) => runtimeClient().approval.getMode(signal),

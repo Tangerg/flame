@@ -194,7 +194,7 @@ export function MermaidBlock({ code }: Props) {
                 icon={iconGlyph("maximize")}
                 size="xs"
                 quiet
-                title={t("message.mermaid.enlarge")}
+                aria-label={t("message.mermaid.enlarge")}
                 aria-haspopup="dialog"
               />
             }
@@ -206,7 +206,7 @@ export function MermaidBlock({ code }: Props) {
             size="xs"
             quiet
             onClick={() => void copy()}
-            title={t(copied ? "message.mermaid.copied" : "message.mermaid.copy")}
+            aria-label={t(copied ? "message.mermaid.copied" : "message.mermaid.copy")}
             tone={copied ? "success" : undefined}
           />
         </div>

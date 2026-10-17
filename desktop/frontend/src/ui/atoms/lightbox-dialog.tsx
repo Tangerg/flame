@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useRef, type KeyboardEventHandler, type ReactElement, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { radius, space, surface } from "@flame/ui/tokens.stylex";
-import { DialogPrimitive } from "@/ui/primitives";
+import { DialogPrimitive } from "@flame/ui/primitives";
 import { MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
 
 type LightboxKind = "figure" | "document" | "media";
@@ -25,9 +25,6 @@ const styles = stylex.create({
     overflow: "auto",
     borderRadius: radius.floatingPanel,
     backgroundColor: surface.card,
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    borderColor: surface.field,
     paddingInline: space.s8,
     paddingBottom: space.s8,
     paddingTop: space.s12,

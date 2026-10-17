@@ -1,7 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
+import { FIELD_SIZE, FIELD_SURFACE } from "@flame/ui";
 import { cn } from "@/lib/classNames";
-import { color, motion, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
+import { color, space, type, weight } from "@flame/ui/tokens.stylex";
 import { Icon } from "@/ui/icons";
 import { Pressable, type PressableProps } from "./pressable";
 
@@ -10,28 +11,12 @@ const styles = stylex.create({
     display: "inline-flex",
     width: "fit-content",
     minWidth: "var(--select-min-width)",
-    minHeight: "var(--control-height-md)",
     alignItems: "center",
     justifyContent: "space-between",
     gap: space.s2,
-    borderRadius: radius.field,
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    borderColor: surface.field,
-    backgroundColor: {
-      default: surface.surface2,
-      ":hover": surface.surface3,
-      ':is([data-popup-open][aria-expanded="true"])': surface.surface3,
-      ":disabled": surface.surface2,
-    },
-    paddingInline: space.s2_5,
     paddingBlock: space.s1_5,
-    textAlign: "left",
+    textAlign: "start",
     fontWeight: weight.medium,
-    color: color.fg,
-    transitionProperty: "background-color, border-color, color",
-    transitionDuration: motion.color,
-    transitionTimingFunction: motion.easeState,
   },
   label: {
     minWidth: 0,
@@ -49,11 +34,18 @@ export interface SelectTriggerProps extends Omit<PressableProps, "children"> {
 }
 
 export function SelectTrigger({ label, leading: lead, className, ...props }: SelectTriggerProps) {
-  const styled = stylex.props(styles.trigger, type.uiMd);
+  const styled = stylex.props(
+    FIELD_SURFACE.face,
+    FIELD_SURFACE.trigger,
+    FIELD_SIZE.md,
+    styles.trigger,
+    type.uiMd,
+  );
   return (
     <Pressable
       {...props}
       type={props.type ?? "button"}
+      data-chrome-focus=""
       {...styled}
       className={cn(styled.className, className)}
     >

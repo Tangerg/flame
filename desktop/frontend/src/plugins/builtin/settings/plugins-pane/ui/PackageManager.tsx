@@ -12,11 +12,23 @@ import type {
   PluginRequest,
 } from "@flame/runtime-contract/wire";
 import { useT } from "@/lib/i18n";
-import { DataView, PillButton, SystemMessage, TextEditorDialog } from "@/ui";
-import { TextField, vocab } from "@flame/ui";
+import { DataView, SystemMessage, TextEditorDialog } from "@/ui";
+import {
+  ActionMenu,
+  Badge,
+  Button,
+  CodeBlock,
+  Disclosure,
+  Facts,
+  ListRow,
+  PanelSection,
+  RecordGroup,
+  RecordHeading,
+  TextField,
+  Toolbar,
+} from "@flame/ui";
 import { space } from "@flame/ui/tokens.stylex";
-import { SettingsGroup, useAsyncFeedback } from "../../kit";
-import { settingStyles as ss } from "../../kit/settingStyles";
+import { useAsyncFeedback } from "../../kit";
 import { packageOperations, usePackageRealization, usePackages } from "../application/packages";
 import { ProviderSelections } from "./ProviderSelections";
 import { ContributionRequirements } from "./ContributionRequirements";
@@ -25,8 +37,16 @@ import { PendingCommands } from "./PendingCommands";
 import { pointMetadata } from "../adapters/pointContracts";
 
 const styles = stylex.create({
-  row: { padding: space.s4, display: "flex", flexDirection: "column", gap: space.s3 },
-  preview: { whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 240, overflow: "auto" },
+  install: {
+    display: "grid",
+    gridTemplateColumns: {
+      default: "minmax(0,1fr) auto",
+      "@container (max-width: 440px)": "minmax(0,1fr)",
+    },
+    alignItems: "start",
+    gap: space.s2,
+    minWidth: 0,
+  },
 });
 
 type PackageEdit =
@@ -60,20 +80,25 @@ export function PackageManager() {
     }, t("packages.install"));
   };
   return (
-    <SettingsGroup>
-      {operations && <PendingCommands operations={operations} />}
-      <div {...stylex.props(styles.row)}>
-        <SystemMessage>{t("packages.trust")}</SystemMessage>
-        <TextField
-          aria-label={t("packages.source")}
-          placeholder={t("packages.source")}
-          value={source}
-          onChange={(event) => setSource(event.target.value)}
-          pending={busy}
-        />
-        <PillButton pending={busy} disabled={!source || !operations} onClick={() => void install()}>
-          {t("packages.install")}
-        </PillButton>
+    <>
+      <PanelSection title={t("packages.installTitle")} description={t("packages.trust")}>
+        <div {...stylex.props(styles.install)}>
+          <TextField
+            aria-label={t("packages.source")}
+            placeholder={t("packages.source")}
+            value={source}
+            onChange={(event) => setSource(event.target.value)}
+            pending={busy}
+          />
+          <Button
+            variant="primary"
+            pending={busy}
+            disabled={!source || !operations}
+            onClick={() => void install()}
+          >
+            {t("packages.install")}
+          </Button>
+        </div>
         {error && <SystemMessage variant="warning">{error}</SystemMessage>}
         {installed && installed.signal === operations?.signal && (
           <SystemMessage>{t("packages.installed", { name: installed.name })}</SystemMessage>
@@ -86,32 +111,35 @@ export function PackageManager() {
             {t("packages.realizationFailed", { reason: realization.reason })}
           </SystemMessage>
         )}
-      </div>
+      </PanelSection>
       {operations && (
         <ProviderSelections installations={catalog.data ?? []} operations={operations} />
       )}
-      <DataView
-        items={catalog.data ?? []}
-        isLoading={catalog.isLoading}
-        failure={catalog.error}
-        onRetry={catalog.refetch}
-        empty={{ icon: "blocks", title: t("packages.empty") }}
-      >
-        {(rows) => (
-          <>
-            {operations &&
-              rows.map((installation) => (
-                <PackageRow
-                  key={installation.id}
-                  installation={installation}
-                  operations={operations}
-                  refresh={catalog.refetch}
-                />
-              ))}
-          </>
-        )}
-      </DataView>
-    </SettingsGroup>
+      <PanelSection title={t("packages.installedTitle")}>
+        <DataView
+          items={catalog.data ?? []}
+          isLoading={catalog.isLoading}
+          failure={catalog.error}
+          onRetry={catalog.refetch}
+          empty={{ icon: "blocks", title: t("packages.empty") }}
+        >
+          {(rows) => (
+            <RecordGroup variant="list">
+              {operations &&
+                rows.map((installation) => (
+                  <PackageRow
+                    key={installation.id}
+                    installation={installation}
+                    operations={operations}
+                    refresh={catalog.refetch}
+                  />
+                ))}
+            </RecordGroup>
+          )}
+        </DataView>
+      </PanelSection>
+      {operations && <PendingCommands operations={operations} />}
+    </>
   );
 }
 function PackageRow({
@@ -189,92 +217,94 @@ function PackageRow({
     });
   };
   return (
-    <div {...stylex.props(styles.row)}>
-      <div {...stylex.props(ss.label, vocab.truncate)} title={installation.selected.name}>
-        {installation.selected.version
-          ? `${installation.selected.name} · ${installation.selected.version}`
-          : installation.selected.name}
-      </div>
-      <div {...stylex.props(vocab.muted, vocab.truncate)} title={request.digest}>
-        {request.digest}
-      </div>
-      <div {...stylex.props(vocab.muted)}>
-        {t(enabled ? "packages.enabled" : "packages.disabled")}
-      </div>
-      <div {...stylex.props(ss.lineWrap)}>
-        <PillButton
-          size="sm"
-          pending={busy}
-          onClick={() => {
-            setEdit({
-              type: "configure",
-              target: request,
-              value: JSON.stringify(
-                { valueChanges: {}, serverChanges: {}, skillChanges: {} },
-                null,
-                2,
-              ),
-            });
-          }}
-        >
-          {t("packages.configure")}
-        </PillButton>
-        <PillButton
-          size="sm"
-          pending={busy}
-          onClick={() =>
-            void run(t(enablementLabel), () =>
-              operations.setEnablement({
-                installationId: installation.id,
-                enabled: !enabled,
-              }),
-            )
-          }
-        >
-          {t(enablementLabel)}
-        </PillButton>
-        <PillButton
-          size="sm"
-          pending={busy}
-          onClick={() => {
-            setEdit({
-              type: "stage",
-              target: { installationId: installation.id },
-              value: installation.source,
-            });
-          }}
-        >
-          {t("packages.stage")}
-        </PillButton>
-        {installation.staged && (
-          <PillButton
-            size="sm"
-            pending={busy}
-            onClick={() =>
-              void run(t("packages.select"), () =>
-                operations.select({
-                  installationId: installation.id,
-                  digest: installation.staged!.digest,
-                }),
-              )
-            }
-          >
-            {t("packages.select")}
-          </PillButton>
-        )}
-        <PillButton
-          size="sm"
-          pending={busy}
-          onClick={() =>
-            void run(t("packages.uninstall"), () => operations.uninstall(installation.id))
-          }
-        >
-          {t("packages.uninstall")}
-        </PillButton>
-      </div>
-      <ContributionRequirements installation={installation} operations={operations} />
-      <PointInspection installation={installation} operations={operations} />
-      <pre {...stylex.props(styles.preview)}>{preview}</pre>
+    <ListRow>
+      <RecordHeading
+        title={installation.selected.name}
+        description={installation.selected.version}
+        status={
+          <Badge tone={enabled ? "success" : "neutral"}>
+            {t(enabled ? "packages.enabled" : "packages.disabled")}
+          </Badge>
+        }
+        actions={
+          <Toolbar label={t("packages.actions")}>
+            <Button
+              variant="soft"
+              size="sm"
+              pending={busy}
+              onClick={() => {
+                setEdit({
+                  type: "configure",
+                  target: request,
+                  value: JSON.stringify(
+                    { valueChanges: {}, serverChanges: {}, skillChanges: {} },
+                    null,
+                    2,
+                  ),
+                });
+              }}
+            >
+              {t("packages.configure")}
+            </Button>
+            <ActionMenu
+              label={t("packages.actions")}
+              disabled={busy}
+              items={[
+                {
+                  label: t(enablementLabel),
+                  onSelect: () =>
+                    void run(t(enablementLabel), () =>
+                      operations.setEnablement({
+                        installationId: installation.id,
+                        enabled: !enabled,
+                      }),
+                    ),
+                },
+                {
+                  label: t("packages.stage"),
+                  onSelect: () =>
+                    setEdit({
+                      type: "stage",
+                      target: { installationId: installation.id },
+                      value: installation.source,
+                    }),
+                },
+                ...(installation.staged
+                  ? [
+                      {
+                        label: t("packages.select"),
+                        onSelect: () =>
+                          void run(t("packages.select"), () =>
+                            operations.select({
+                              installationId: installation.id,
+                              digest: installation.staged!.digest,
+                            }),
+                          ),
+                      },
+                    ]
+                  : []),
+                {
+                  label: t("packages.uninstall"),
+                  tone: "negative",
+                  onSelect: () =>
+                    void run(t("packages.uninstall"), () => operations.uninstall(installation.id)),
+                },
+              ]}
+            />
+          </Toolbar>
+        }
+      />
+      <Disclosure title={t("packages.details")}>
+        <Facts
+          values={[
+            [t("packages.digest"), request.digest],
+            [t("packages.source"), installation.source],
+          ]}
+        />
+        <ContributionRequirements installation={installation} operations={operations} />
+        <PointInspection installation={installation} operations={operations} />
+        <CodeBlock label={t("packages.details")}>{preview}</CodeBlock>
+      </Disclosure>
       {realizationMessages(t, installation.realization).map((message) => (
         <SystemMessage key={message} variant="warning">
           {message}
@@ -309,7 +339,7 @@ function PackageRow({
         onSave={() => void save()}
         font="mono"
       />
-    </div>
+    </ListRow>
   );
 }
 
