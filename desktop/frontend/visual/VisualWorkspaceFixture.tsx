@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef } from "react";
-import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { ChatPanel } from "@/plugins/builtin/shell/workbench/panel/ChatPanel";
 import { Slot } from "@/plugins/host/Slot";
 import { AppToaster } from "@/plugins/builtin/shell/toaster";
@@ -7,7 +6,11 @@ import {
   useActiveWorkspaceViewId,
   useWorkspaceDock,
 } from "@/plugins/builtin/workspace/public/navigation";
-import { useDockWidth } from "@/plugins/builtin/workspace/public/sidebarDrawer";
+import {
+  useDockWidth,
+  useSidebarDrawer,
+  useSidebarWidth,
+} from "@/plugins/builtin/workspace/public/sidebarDrawer";
 import { AgentAppShell, AgentRow, AgentSurfaceHeader } from "@/ui/agent";
 import type { VisualWorkspaceState } from "./workspaceFixtureStates";
 import * as stylex from "@stylexjs/stylex";
@@ -117,15 +120,17 @@ function WorkspaceFixtureReadout({ state }: { state: VisualWorkspaceState }) {
 
 export function VisualWorkspaceFixture({ state }: { state: VisualWorkspaceState }) {
   const settingsOpen = state === "settings";
+  const sidebar = useSidebarDrawer();
+  const sidebarWidth = useSidebarWidth();
 
   return (
     <AgentAppShell
       sidebarLabel="Workspace fixture states"
       sidebarResizeLabel="Resize the workspace fixture sidebar"
-      sidebarOpen={!settingsOpen}
-      sidebarWidth={SIDEBAR_DEFAULT_WIDTH_PX}
-      onResize={() => undefined}
-      onSidebarToggle={() => undefined}
+      sidebarOpen={!settingsOpen && !sidebar.collapsed}
+      sidebarWidth={sidebarWidth.width}
+      onResize={sidebarWidth.setWidth}
+      onSidebarToggle={sidebar.toggle}
       sidebarExpandLabel="Expand the workspace fixture sidebar"
       sidebarCollapseLabel="Collapse the workspace fixture sidebar"
       sidebar={settingsOpen ? undefined : <WorkspaceStateSidebar state={state} />}

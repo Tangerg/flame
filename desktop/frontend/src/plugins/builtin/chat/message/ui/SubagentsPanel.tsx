@@ -16,7 +16,7 @@ import {
   useToggleWorkspaceTool,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { Icon, ScrollArea, SectionLabel, StatusDot } from "@/ui";
-import { EmptyState, IconButton, toneInk, vocab } from "@flame/ui";
+import { EmptyState, IconButton, RecordSummary, toneInk, vocab } from "@flame/ui";
 import { AgentSurfaceHeader, AgentWorkspaceView } from "@/ui/agent";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
@@ -39,8 +39,8 @@ const styles = stylex.create({
   group: { marginBottom: space.s4 },
   title: { marginBottom: space.s2 },
   transcript: { display: "flex", flexDirection: "column", gap: space.s5, minWidth: 0 },
-  status: { display: "flex", alignItems: "center", gap: space.s2 },
-  summary: { minWidth: 0 },
+  status: { display: "flex", alignItems: "flex-start", gap: space.s2 },
+  summary: { minWidth: 0, flex: 1 },
   statusAction: { marginInlineStart: "auto" },
   detail: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
 });
@@ -134,12 +134,20 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
         {...stylex.props(styles.transcript)}
       >
         <div {...stylex.props(styles.status, typeStep.uiMd)}>
-          <Icon name="bot" size="sm" />
-          <span title={model.label} {...stylex.props(styles.summary, vocab.truncate)}>
-            {model.label}
+          <span {...stylex.props(vocab.firstLine)}>
+            <Icon name="bot" size="sm" />
           </span>
-          <StatusDot tone={model.dotTone} />
-          <span {...stylex.props(vocab.hold, toneInk[model.ink])}>{model.statusLabel}</span>
+          <span {...stylex.props(styles.summary)}>
+            <RecordSummary
+              title={<span title={model.label}>{model.label}</span>}
+              status={
+                <span {...stylex.props(vocab.line, vocab.hold, toneInk[model.ink])}>
+                  <StatusDot tone={model.dotTone} />
+                  {model.statusLabel}
+                </span>
+              }
+            />
+          </span>
           {model.cancelable && (
             <IconButton
               icon={iconGlyph("stop")}

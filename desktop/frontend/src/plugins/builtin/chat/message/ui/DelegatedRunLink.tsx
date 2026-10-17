@@ -2,7 +2,7 @@ import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { Icon, Pressable, reveal, StatusDot } from "@/ui";
-import { IconButton, toneInk, vocab } from "@flame/ui";
+import { IconButton, RecordSummary, toneInk, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { openWorkspaceSubagentRun } from "@/plugins/builtin/workspace/public/navigation";
@@ -39,7 +39,6 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
   },
   detail: { display: "flex", flexDirection: "column", gap: space.s0_5, minWidth: 0, flex: 1 },
-  name: { minWidth: 0, flex: 1 },
   cancelSlot: {
     display: "flex",
     flexShrink: 0,
@@ -76,13 +75,15 @@ export function DelegatedRunLink({
           <Icon name="bot" size="md" />
         </span>
         <span {...stylex.props(styles.detail)}>
-          <span {...stylex.props(vocab.line, typeStep.uiMd)}>
-            <span title={model.label} {...stylex.props(styles.name, vocab.truncate)}>
-              {model.label}
-            </span>
-            <StatusDot tone={model.dotTone} />
-            <span {...stylex.props(vocab.hold, toneInk[model.ink])}>{model.statusLabel}</span>
-          </span>
+          <RecordSummary
+            title={<span title={model.label}>{model.label}</span>}
+            status={
+              <span {...stylex.props(vocab.line, vocab.hold, toneInk[model.ink])}>
+                <StatusDot tone={model.dotTone} />
+                {model.statusLabel}
+              </span>
+            }
+          />
           {model.detail && (
             <span {...stylex.props(vocab.muted, vocab.truncate, typeStep.uiXs)}>
               {model.detail}

@@ -234,6 +234,34 @@ it("keeps subagent selection in session-scoped history without replacing the mai
   expect(navigator().get()).toMatchObject({ session: "parent-session", subagent: "child-run" });
 });
 
+it("keeps subagent selection and the way back in the active full view", () => {
+  navigator().go({
+    session: "parent-session",
+    view: "subagents",
+    dock: "diff",
+    subagent: null,
+  });
+
+  openWorkspaceSubagentRun("child-run");
+  expect(navigator().get()).toMatchObject({
+    session: "parent-session",
+    view: "subagents",
+    dock: "diff",
+    subagent: "child-run",
+  });
+
+  openWorkspaceSubagentRun("nested-run");
+  navigator().back();
+  expect(navigator().get()).toMatchObject({
+    view: "subagents",
+    dock: "diff",
+    subagent: "child-run",
+  });
+
+  openWorkspaceSubagentRun(null);
+  expect(navigator().get()).toMatchObject({ view: "subagents", dock: "diff", subagent: null });
+});
+
 it("opens the contribution catalogue when Diff has no admitted renderer or several choices", async () => {
   openWorkspaceDiffForFile("a.ts");
   expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);

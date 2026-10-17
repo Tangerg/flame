@@ -34,6 +34,10 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
     }),
     useSubagentRunId: () => navigator().use((location) => location.subagent),
     openSubagentRun: (runId) => {
+      if (navigator().get().view === "subagents") {
+        navigator().go({ subagent: runId });
+        return;
+      }
       useContextDockStore.getState().adoptDockLocation("subagents");
       navigator().go({ view: null, dock: "subagents", subagent: runId });
     },

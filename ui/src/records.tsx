@@ -111,12 +111,19 @@ const styles = stylex.create({
     textWrap: "pretty",
   },
   facts: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,12rem),1fr))",
+    display: "flex",
+    flexWrap: "wrap",
+    minWidth: 0,
     gap: layout.fieldGap,
     paddingBlock: space.s2,
   },
-  fact: { display: "grid", gap: space.s1, alignContent: "start", minWidth: 0 },
+  fact: {
+    flex: "1 1 max-content",
+    display: "grid",
+    gap: space.s1,
+    alignContent: "start",
+    minWidth: 0,
+  },
   label: { color: color.fgMuted, minWidth: 0, overflowWrap: "anywhere" },
   value: {
     minWidth: 0,
