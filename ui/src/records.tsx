@@ -168,12 +168,14 @@ const styles = stylex.create({
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,136px),1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fill,minmax(min(100%,calc(10em + 2 * var(--layout-card-padding))),1fr))",
     gap: layout.fieldGap,
   },
   tile: {
     display: "grid",
     gridTemplateColumns: "minmax(0,1fr)",
+    minWidth: 0,
     gap: space.s2,
     paddingBlock: layout.cardPadding,
     paddingInline: layout.cardPadding,
@@ -396,7 +398,7 @@ export function TileGrid({
   ...props
 }: ComponentPropsWithRef<"section">) {
   return (
-    <section {...props} {...stylex.props(styles.grid)}>
+    <section {...props} {...stylex.props(styles.grid, type.uiSm)}>
       {children}
     </section>
   );

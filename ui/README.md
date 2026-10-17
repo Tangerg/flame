@@ -59,6 +59,9 @@ replaces the default ellipsis with a text trigger for named action menus.
 `Facts` keeps labels with their values and wraps complete pairs according to their
 content. Short pairs share rows; long identities and paths use the available width
 and remain complete. Visual reading order follows the source order.
+`TileGrid` reserves text space at the tile's font scale plus the shared card
+inset. Filtering retains the column geometry, so a lone result keeps the
+catalog's card width; narrow containers retain complete, wrapping identities.
 `Stats` groups metrics in one shared card with a single inset and compact,
 content-driven columns that wrap with the available width;
 `MetricValue` and `ShareBar` render existing values without calculating business totals. `Segmented` owns the controlled catalog selector in
