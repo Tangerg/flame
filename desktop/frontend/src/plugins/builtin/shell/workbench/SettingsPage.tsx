@@ -1,7 +1,7 @@
 import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
-import type { ReactNode } from "react";
-import { Suspense, useState } from "react";
+import type { ReactNode, Ref } from "react";
+import { Suspense, useRef, useState } from "react";
 import { knownIconName, SkeletonList, TextButton, VerticalTabs } from "@/ui";
 import { Panel, PanelHeader, SearchField } from "@flame/ui";
 import { useT } from "@/lib/i18n";
@@ -41,6 +41,7 @@ export function SettingsPage() {
   const panes = useSettingsPanes();
   const targetPane = useWorkspaceSettingsPaneTarget();
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const normalizedQuery = query.trim().toLocaleLowerCase();
 
   const known = new Set(GROUPS.map((g) => g.id));
@@ -78,9 +79,7 @@ export function SettingsPage() {
     );
   const firstMatch = allItems.find(matches)?.id;
   const activeId =
-    targetPane && allItems.some((p) => p.id === targetPane)
-      ? targetPane
-      : (firstMatch ?? allItems[0]?.id);
+    targetPane && allItems.some((p) => p.id === targetPane) ? targetPane : allItems[0]?.id;
 
   return (
     <VerticalTabs
@@ -94,13 +93,20 @@ export function SettingsPage() {
       railEmpty={
         <div role="status" {...stylex.props(sp.empty, typeStep.uiSm)}>
           <span>{t("settings.search.empty", { query: query.trim() })}</span>
-          <TextButton tone="accent" onClick={() => setQuery("")}>
+          <TextButton
+            tone="accent"
+            onClick={() => {
+              setQuery("");
+              searchRef.current?.focus();
+            }}
+          >
             {t("settings.search.clear")}
           </TextButton>
         </div>
       }
       railHeader={
         <SettingsRailHeader
+          ref={searchRef}
           query={query}
           onQueryChange={setQuery}
           onSubmit={() => {
@@ -131,11 +137,13 @@ function SettingsPaneFrame({
 }
 
 function SettingsRailHeader({
+  ref,
   query,
   onQueryChange,
   onSubmit,
   searchPlaceholder,
 }: {
+  ref: Ref<HTMLInputElement>;
   query: string;
   onQueryChange: (value: string) => void;
   onSubmit: () => void;
@@ -145,6 +153,7 @@ function SettingsRailHeader({
   return (
     <div {...stylex.props(sp.search)}>
       <SearchField
+        ref={ref}
         size="lg"
         value={query}
         onValueChange={onQueryChange}

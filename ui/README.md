@@ -85,7 +85,9 @@ The shared stylesheet owns the 44px coarse-pointer floor; controls and their
 layout hosts include that floor in their geometry.
 
 `SearchField` requires a controlled string value. Its input and clear action obey
-the same disabled, read-only and pending constraints. `IconButton` requires either
+the same disabled, read-only and pending constraints. Its explicit clear action
+returns focus to the input and replaces the browser's native cancel action.
+`IconButton` requires either
 `aria-label` or `aria-labelledby`; `title` only overrides the tooltip. `DiffTable`
 requires consumer-supplied region and column labels, including assistive text.
 

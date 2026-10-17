@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
-import { useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import type { IconSize } from "./font-scale";
 import { clsx as cn } from "clsx";
 import {
@@ -85,6 +85,7 @@ const styles = stylex.create({
   searchSm: { gap: space.s1_5 },
   searchMd: { gap: space.s1_5 },
   searchLg: { gap: space.s2 },
+  customClear: { "::-webkit-search-cancel-button": { display: "none" } },
   glyph: { flexShrink: 0 },
   clear: { marginInlineEnd: "calc(var(--spacing) * -1)", flexShrink: 0 },
 });
@@ -320,8 +321,18 @@ export function SearchField({
   clearLabel,
   className,
   styles: extra,
+  ref,
   ...props
 }: SearchFieldProps) {
+  const element = useRef<HTMLElement>(null);
+  const setElement = useCallback(
+    (node: HTMLElement | null) => {
+      element.current = node;
+      if (typeof ref === "function") return ref(node);
+      if (ref) ref.current = node;
+    },
+    [ref],
+  );
   const box = stylex.props(
     FIELD_SURFACE.face,
     FIELD_SIZE[size],
@@ -338,17 +349,22 @@ export function SearchField({
       />
       <TextField
         {...props}
+        ref={setElement}
         type="search"
         variant="bare"
         font={font}
         size={size}
         data-chrome-focus=""
+        styles={onClear && styles.customClear}
       />
       {onClear && props.value !== "" && (
         <Button
           variant="ghost"
           size="icon-sm"
-          onClick={onClear}
+          onClick={() => {
+            onClear();
+            element.current?.focus();
+          }}
           disabled={props.disabled || props.readOnly}
           pending={props.pending}
           aria-label={clearLabel}

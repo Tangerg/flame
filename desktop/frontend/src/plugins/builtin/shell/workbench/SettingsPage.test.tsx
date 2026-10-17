@@ -5,6 +5,7 @@ import { SETTINGS_PANE } from "@/plugins/sdk/kernelPoints";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { SettingsPage } from "./SettingsPage";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+import { navigator } from "@/lib/navigation";
 
 async function loadPanes() {
   await loadPluginsForTest(
@@ -56,6 +57,7 @@ describe("settingsPage", () => {
 
   it("falls back to the first pane when no panes match the saved selection", async () => {
     await loadPanes();
+    navigator().go({ settings: "removed" });
     render(<SettingsPage />);
     expect(screen.getByTestId("appearance-body")).toBeTruthy();
   });
@@ -68,11 +70,34 @@ describe("settingsPage", () => {
 
     expect(screen.getByTestId("appearance-body")).toBeTruthy();
     expect(screen.getByRole("status").textContent).toContain("zzzz");
-    fireEvent.click(
-      within(screen.getByRole("status")).getByRole("button", { name: /clear search/i }),
-    );
+    const clear = within(screen.getByRole("status")).getByRole("button", {
+      name: /clear search/i,
+    });
+    clear.focus();
+    fireEvent.click(clear);
     expect(screen.getAllByRole("tab")).toHaveLength(2);
+    expect(document.activeElement).toBe(search);
   });
+
+  it.each([null, "removed"])(
+    "keeps the default pane named while filtering with navigation target %s",
+    async (target) => {
+      await loadPanes();
+      navigator().go({ settings: target });
+      render(<SettingsPage />);
+      const search = screen.getByRole("searchbox");
+      fireEvent.change(search, { target: { value: "hot reload" } });
+      expect(screen.queryByRole("tab", { name: "Appearance" })).toBeNull();
+      await waitFor(() => expect(screen.getAllByRole("tabpanel")).toHaveLength(1));
+      expect(screen.getByRole("tabpanel", { name: "Appearance" }).textContent).toContain(
+        "appearance body",
+      );
+      expect(navigator().get().settings).toBe(target);
+      fireEvent.keyDown(search, { key: "Enter" });
+      expect(screen.getByTestId("plugins-body")).toBeTruthy();
+      expect(navigator().get().settings).toBe("plugins");
+    },
+  );
 
   it("finds a pane by a field it contains, not only by its title", async () => {
     await loadPanes();

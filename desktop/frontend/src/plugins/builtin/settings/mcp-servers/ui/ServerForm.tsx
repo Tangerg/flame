@@ -341,13 +341,22 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
           {saving ? t("mcp.saving") : isEdit ? t("mcp.save") : t("mcp.add")}
         </Button>
       </FormActions>
-      {feedback.state === "ok" && (
-        <span {...stylex.props(ss.inline, vocab.success, typeStep.uiMd)}>
-          <Icon name="check" size="sm" /> {t("mcp.connectionOk")}
-        </span>
-      )}
+      <span
+        role="status"
+        className={
+          feedback.state === "ok"
+            ? stylex.props(ss.inline, vocab.success, typeStep.uiMd).className
+            : "sr-only"
+        }
+      >
+        {feedback.state === "ok" && (
+          <>
+            <Icon name="check" size="sm" /> {t("mcp.connectionOk")}
+          </>
+        )}
+      </span>
       {feedback.state === "error" && (
-        <span {...stylex.props(ss.inline, vocab.min, vocab.negative, typeStep.uiMd)}>
+        <span role="alert" {...stylex.props(ss.inline, vocab.min, vocab.negative, typeStep.uiMd)}>
           <Icon name="alert" size="sm" />
           <span>{feedback.reason}</span>
         </span>

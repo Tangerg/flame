@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FormEvent } from "react";
+import { createRef, useState } from "react";
 import { Brain } from "@flame/icons/react";
 import {
   Button,
@@ -301,6 +302,57 @@ describe("shared controls", () => {
 });
 
 describe("search field mutation contract", () => {
+  it("returns focus to its controlled input when clearing removes the action", () => {
+    const ref = createRef<HTMLInputElement>();
+    const clear = vi.fn();
+    function Search() {
+      const [query, setQuery] = useState("found");
+      return (
+        <SearchField
+          ref={ref}
+          value={query}
+          onValueChange={setQuery}
+          aria-label="Search"
+          onClear={() => {
+            clear();
+            setQuery("");
+          }}
+          clearLabel="Clear search"
+        />
+      );
+    }
+    const view = render(<Search />);
+    const input = screen.getByRole("searchbox", { name: "Search" });
+    expect(ref.current).toBe(input);
+    const button = screen.getByRole("button", { name: "Clear search" });
+    button.focus();
+    fireEvent.click(button);
+    expect(clear).toHaveBeenCalledOnce();
+    expect(ref.current?.value).toBe("");
+    expect(document.activeElement).toBe(input);
+    expect(screen.queryByRole("button", { name: "Clear search" })).toBeNull();
+    view.unmount();
+    expect(ref.current).toBeNull();
+  });
+
+  it("preserves callback ref cleanup for its input", () => {
+    const release = vi.fn();
+    const ref = vi.fn(() => release);
+    const view = render(
+      <SearchField ref={ref} value="" aria-label="Search" readOnly />,
+    );
+    expect(ref).toHaveBeenCalledWith(
+      screen.getByRole("searchbox", { name: "Search" }),
+    );
+    view.rerender(
+      <SearchField ref={ref} value="found" aria-label="Search" readOnly />,
+    );
+    expect(ref).toHaveBeenCalledOnce();
+    expect(release).not.toHaveBeenCalled();
+    view.unmount();
+    expect(release).toHaveBeenCalledOnce();
+  });
+
   it.each(["disabled", "readOnly", "pending"] as const)(
     "blocks clearing while %s and allows it after recovery",
     (state) => {

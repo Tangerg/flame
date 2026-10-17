@@ -18,7 +18,7 @@ import { SectionLabel } from "./section-label";
 
 interface VerticalTabItem {
   id: string;
-  label: ReactNode;
+  label: string;
   icon?: IconName;
   content: ReactNode;
 }
@@ -41,7 +41,7 @@ const styles = stylex.create({
     },
     gridTemplateRows: {
       default: "minmax(0, 1fr)",
-      "@container (max-width: 640px)": "minmax(0, 40%) minmax(0, 1fr)",
+      "@container (max-width: 640px)": "fit-content(40%) minmax(0, 1fr)",
     },
     overflow: "hidden",
     backgroundColor: surface.canvas,
@@ -169,7 +169,7 @@ export function VerticalTabs({
         </div>
         <div {...stylex.props(styles.page)}>
           {items.map((item) => (
-            <TabsPrimitive.Panel key={item.id} value={item.id}>
+            <TabsPrimitive.Panel key={item.id} value={item.id} aria-label={item.label}>
               {item.content}
             </TabsPrimitive.Panel>
           ))}
