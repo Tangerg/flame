@@ -96,7 +96,7 @@ function SkillRow({
           title={item.name}
           description={item.description}
           status={
-            <Badge tone={review ? "accent" : "neutral"}>
+            <Badge tone={review ? "warning" : "neutral"}>
               {review
                 ? "Proposal"
                 : "lifecycle" in item

@@ -6,7 +6,6 @@ import {
   color,
   leading,
   layout,
-  radius,
   space,
   surface,
   type,
@@ -128,18 +127,15 @@ const styles = stylex.create({
     display: "flex",
     flexWrap: "wrap",
     gap: layout.contentGap,
-  },
-  stat: {
-    flex: "1 1 calc(var(--fs-display-lg) * 6)",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    gap: space.s2,
-    minWidth: 0,
     paddingInline: layout.cardPadding,
     paddingBlock: layout.cardPadding,
-    backgroundColor: surface.surface,
-    borderRadius: radius.card,
+  },
+  stat: {
+    flex: "1 1 max-content",
+    display: "flex",
+    flexDirection: "column",
+    gap: layout.controlGap,
+    minWidth: 0,
   },
   count: {
     minWidth: 0,
@@ -357,7 +353,7 @@ export function Stats({
   ...props
 }: { values: readonly Fact[] } & ComponentPropsWithRef<"dl">) {
   return (
-    <dl {...props} {...stylex.props(styles.stats)}>
+    <dl {...props} {...stylex.props(CARD_SURFACE.face, styles.stats)}>
       {values.map(([label, value]) => (
         <div key={label} {...stylex.props(styles.stat)}>
           <dt {...stylex.props(styles.label, type.uiSm)}>{label}</dt>

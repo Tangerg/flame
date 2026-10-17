@@ -56,7 +56,8 @@ full-width expanding panel with an optional adjacent action slot. `ActionMenu` o
 secondary action presentation, keyboard behavior and focus return; each command
 receives its actual trigger as the opener for an inline editor. `triggerContent`
 replaces the default ellipsis with a text trigger for named action menus.
-`Stats` uses a responsive group of quiet metric tiles;
+`Stats` groups metrics in one shared card with a single inset and compact,
+content-driven columns that wrap with the available width;
 `MetricValue` and `ShareBar` render existing values without calculating business totals. `Segmented` owns the controlled catalog selector in
 Desktop and portable views. `Form`, `RecordForm`, `FormSection`, `FormRow`, `FormField` and `FormGroup` provide responsive form grouping and visible
 native labels; `DocumentBody` styles already-parsed semantic document content.
@@ -96,6 +97,11 @@ capsule buttons, rounded fields and quiet contact shadows. Desktop size roles ar
 keyboard focus, wrapping labels and the coarse-pointer target floor. Theme values
 remain with the host; the library renders them without a second appearance store.
 Settings and portable pages share `Panel` as the sole content-measure owner.
+
+Tonal `Badge` labels consume the host's on-tint text roles, derived from each
+semantic ink and the main text ink. The shared component keeps the state label
+visible; consumers select its tone from the product owner's state. Neutral labels
+retain muted ink, while icons, links and actions retain the ordinary semantic ink.
 
 `ModalDialog` owns bounded modal geometry, accessible titles and descriptions,
 header and footer alignment, and internal body scrolling. Its optional submit

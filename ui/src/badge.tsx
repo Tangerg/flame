@@ -25,11 +25,23 @@ const styles = stylex.create({
     fontWeight: weight.medium,
   },
   neutral: { backgroundColor: surface.surface2, color: color.fgMuted },
-  accent: { backgroundColor: surface.accentBadge, color: color.fgSoft },
-  success: { backgroundColor: surface.successBadge, color: color.fgSoft },
-  warning: { backgroundColor: surface.warningBadge, color: color.fgSoft },
-  negative: { backgroundColor: surface.negativeBadge, color: color.fgSoft },
-  info: { backgroundColor: surface.infoBadge, color: color.fgSoft },
+  accent: {
+    backgroundColor: surface.accentBadge,
+    color: color.accentBadgeText,
+  },
+  success: {
+    backgroundColor: surface.successBadge,
+    color: color.successBadgeText,
+  },
+  warning: {
+    backgroundColor: surface.warningBadge,
+    color: color.warningBadgeText,
+  },
+  negative: {
+    backgroundColor: surface.negativeBadge,
+    color: color.negativeBadgeText,
+  },
+  info: { backgroundColor: surface.infoBadge, color: color.infoBadgeText },
   sm: { paddingInline: space.s2, paddingBlock: "1px" },
   md: { paddingInline: space.s2_5, paddingBlock: space.s0_5 },
 });

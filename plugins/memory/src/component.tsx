@@ -152,7 +152,7 @@ export function MemoryReport({
                   <RecordMeta>
                     <span>Record details</span>
                     <Badge
-                      tone={item.Status === "pending" ? "accent" : "neutral"}
+                      tone={item.Status === "pending" ? "warning" : "neutral"}
                     >
                       {item.Status === "pending" ? "Pending review" : "Active"}
                     </Badge>

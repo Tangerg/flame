@@ -78,9 +78,10 @@ Flame keeps StyleX, Base UI, its own tokens and Runtime ownership.
 - Management search and selection share the large control size and radius tokens.
   Compact workbench controls retain the smaller size roles; all sizes respect the
   coarse-pointer floor and grow with translated labels.
-- Metric tiles use a quiet surface fill and tabular values. Resource lists group
-  through fill and subtle separators; independently actionable cards and editor
-  forms use one structural edge. None receives a decorative drop shadow.
+- Metric summaries use one shared card with tabular values. Columns wrap by
+  their content width; labels stay close to their values. Resource lists group
+  through fill and subtle separators; summaries, independently actionable cards
+  and editor forms share the card surface and quiet contact shadow.
 
 ## 2. Color
 
@@ -172,6 +173,13 @@ not shipped, so the hue is still said once — by the theme, or by the user's ac
 pick — and no palette has to carry a second set. Anything that must be legible on
 its own keeps the ink: these tones are near 1.9:1 on white and would fail 1.4.11
 as a mark.
+
+Badge labels consume the host's `--color-*-badge-text` roles, derived from each
+semantic ink and the main text ink. This keeps the semantic hue readable on the
+badge tint across content and chrome surfaces. These on-tint roles do not replace
+the ordinary semantic ink used by icons, links and actions. Pending Memory
+reviews and Skills proposals use warning because they require user attention;
+their product owners still supply the state and commands.
 
 **Semantic colours are scheme-tuned**, and in both directions. Dark lifts them in
 luminance and pulls the chroma down so they neither vibrate nor edge-bleed on a

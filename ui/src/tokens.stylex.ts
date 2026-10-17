@@ -13,6 +13,11 @@ export const color = stylex.defineVars({
   warning: "var(--color-warning)",
   success: "var(--color-success)",
   info: "var(--color-info)",
+  accentBadgeText: "var(--color-accent-badge-text)",
+  successBadgeText: "var(--color-success-badge-text)",
+  warningBadgeText: "var(--color-warning-badge-text)",
+  negativeBadgeText: "var(--color-negative-badge-text)",
+  infoBadgeText: "var(--color-info-badge-text)",
 });
 
 export const motion = stylex.defineVars({

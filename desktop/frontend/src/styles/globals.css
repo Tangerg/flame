@@ -37,6 +37,15 @@
   --color-success-badge: color-mix(in srgb, var(--tone-success) 18%, transparent);
   --color-info-badge: color-mix(in srgb, var(--tone-info) 18%, transparent);
   --color-accent-badge: color-mix(in srgb, var(--tone-accent) 18%, transparent);
+  --color-negative-badge-text: color-mix(
+    in oklab,
+    var(--color-negative) 70%,
+    var(--color-text) 30%
+  );
+  --color-warning-badge-text: color-mix(in oklab, var(--color-warning) 70%, var(--color-text) 30%);
+  --color-success-badge-text: color-mix(in oklab, var(--color-success) 70%, var(--color-text) 30%);
+  --color-info-badge-text: color-mix(in oklab, var(--color-info) 70%, var(--color-text) 30%);
+  --color-accent-badge-text: color-mix(in oklab, var(--color-accent) 70%, var(--color-text) 30%);
   --color-negative-edge: color-mix(in srgb, var(--tone-negative) 38%, transparent);
   --text-ui-2xs--letter-spacing: 0;
   --text-code--letter-spacing: 0;

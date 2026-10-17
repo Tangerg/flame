@@ -1,4 +1,8 @@
-import { contrastRatio, WCAG_AA_NON_TEXT } from "@/plugins/builtin/theme/kit/legibility";
+import {
+  contrastRatio,
+  WCAG_AA_NON_TEXT,
+  WCAG_AA_TEXT,
+} from "@/plugins/builtin/theme/kit/legibility";
 import { expect, test, type Locator, type Page } from "./test";
 
 const THEMES = ["light", "dark"] as const;
@@ -80,6 +84,68 @@ test("a long button label stays inside its complete click target", async ({ page
 });
 
 for (const theme of THEMES) {
+  test(`semantic badge labels retain their hues and text contrast across surfaces in ${theme}`, async ({
+    page,
+  }) => {
+    for (const accent of ["#0485f7", "#7f52ff", "#21a179", "#e8590c"]) {
+      const query = new URLSearchParams({ fixture: "atoms", theme, accent });
+      await page.goto(`/visual/?${query}`);
+      const badges = page.locator('[data-atom="badge"] span');
+      await expect(badges).toHaveCount(6);
+      const pairs = await badges.evaluateAll((nodes) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext("2d", { willReadFrequently: true })!;
+        const paint = (...layers: string[]) => {
+          context.clearRect(0, 0, 1, 1);
+          for (const layer of layers) {
+            if (!CSS.supports("color", layer)) throw new Error(`Invalid color: ${layer}`);
+            context.fillStyle = layer;
+            context.fillRect(0, 0, 1, 1);
+          }
+          const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data;
+          if (a !== 255) throw new Error("Badge contrast requires an opaque composed background");
+          return `rgb(${r}, ${g}, ${b})`;
+        };
+        const host = document.createElement("div");
+        document.body.append(host);
+        try {
+          return [
+            "--color-bg",
+            "--app-card-surface",
+            "--color-surface",
+            "--app-drawer-surface",
+            "--app-dock-surface",
+            "--app-dock-tabstrip-surface",
+          ].flatMap((surface) => {
+            host.style.backgroundColor = `var(${surface})`;
+            const behind = getComputedStyle(host).backgroundColor;
+            return nodes.map((node) => {
+              const badge = node.cloneNode(true) as HTMLElement;
+              host.append(badge);
+              const style = getComputedStyle(badge);
+              const background = paint(behind, style.backgroundColor);
+              const foreground = paint(background, style.color);
+              badge.remove();
+              return { surface, label: node.textContent, background, foreground };
+            });
+          });
+        } finally {
+          host.remove();
+        }
+      });
+      for (const pair of pairs) {
+        expect(
+          contrastRatio(pair.foreground, pair.background),
+          `${accent} ${pair.label} on ${pair.surface}`,
+        ).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+      }
+      const labelColors = pairs.slice(0, 6).map((pair) => pair.foreground);
+      expect(new Set(labelColors.slice(1)).size).toBeGreaterThanOrEqual(4);
+      for (const color of labelColors.slice(1)) expect(color).not.toBe(labelColors[0]);
+    }
+  });
+
   test(`disabled and pending buttons keep their paint while enabled buttons answer hover in ${theme}`, async ({
     page,
   }) => {
