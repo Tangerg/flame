@@ -195,9 +195,7 @@ test("a menu-opened memory confirmation returns focus without changing the recor
 });
 
 for (const width of [1120, 320]) {
-  test(`objective editor keeps the footer visible while its body scrolls ${width}`, async ({
-    page,
-  }) => {
+  test(`objective editor keeps long input and its footer reachable ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 500 });
     await page.goto("/visual/?fixture=agent&theme=dark&state=running&font-size=18");
     await page.locator("html[data-visual-ready]").waitFor();
@@ -208,11 +206,14 @@ for (const width of [1120, 320]) {
     expect(
       await field.evaluate((node) => (node as HTMLTextAreaElement).form?.getAttribute("role")),
     ).toBe("dialog");
-    const body = dialog.locator('[data-slot="dialog-body"]');
-    expect(await body.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
-    await body.evaluate((node) => {
+    await field.fill("Review the workspace while preserving accepted work.\n".repeat(1000));
+    expect(await field.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
+    await field.evaluate((node) => {
       node.scrollTop = node.scrollHeight;
     });
+    await expect(field).toBeInViewport({ ratio: 1 });
+    for (const button of await dialog.locator("footer").getByRole("button").all())
+      await expect(button).toBeInViewport({ ratio: 1 });
     const actions = await dialog.locator("footer").boundingBox();
     expect(actions!.y + actions!.height).toBeLessThanOrEqual(484);
     const content = await dialog.boundingBox();

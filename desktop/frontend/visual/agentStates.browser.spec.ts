@@ -360,8 +360,17 @@ for (const theme of ["light", "dark"] as const) {
     await expect(objective).toHaveValue(
       "Get the desktop suite green on Linux without loosening any gate or skipping a test",
     );
-    await expect(objective).toHaveAttribute("rows", "12");
-    await expect(dialog.getByRole("button", { name: "Save" })).toBeDisabled();
+    const save = dialog.getByRole("button", { name: "Save" });
+    await expect(save).toBeDisabled();
+    const shortHeight = (await objective.boundingBox())!.height;
+    await objective.fill(
+      "Review the full workspace and preserve every relevant contract.\n".repeat(80),
+    );
+    expect((await objective.boundingBox())!.height).toBeGreaterThan(shortHeight);
+    expect(await objective.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
+    await expect(objective).toBeInViewport({ ratio: 1 });
+    await expect(save).toBeInViewport({ ratio: 1 });
+    await expect(save).toBeEnabled();
 
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).not.toBeVisible();

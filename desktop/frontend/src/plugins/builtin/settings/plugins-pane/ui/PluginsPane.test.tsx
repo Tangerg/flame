@@ -161,16 +161,19 @@ describe("PluginsPane installation facts", () => {
     );
     fireEvent.click(await screen.findByRole("button", { name: "Configure inputs" }));
     const encoded = JSON.stringify(changes);
-    fireEvent.change(within(screen.getByRole("dialog")).getByRole("textbox"), {
+    const dialog = screen.getByRole("dialog");
+    const field = within(dialog).getByRole("textbox");
+    fireEvent.change(field, {
       target: { value: encoded },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await screen.findByText((text) => text.includes(error));
+    const message = await within(dialog).findByRole("alert");
+    expect(message.textContent).toContain(error);
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(message.id).not.toBe("");
+    expect(field.getAttribute("aria-describedby")).toBe(message.id);
     expect(submit).not.toHaveBeenCalled();
-    expect(within(screen.getByRole("dialog")).getByRole("textbox")).toHaveProperty(
-      "value",
-      encoded,
-    );
+    expect(field).toHaveProperty("value", encoded);
   });
 
   it("shows and clears kernel errors without requiring an installed plugin", async () => {

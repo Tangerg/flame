@@ -376,7 +376,9 @@ export function Schedules({ context }: { context: ComponentContext }) {
         .includes(search.toLocaleLowerCase()),
   );
   const busy = Boolean(command);
-  const disabled = busy || read.loading || Boolean(read.error);
+  const editorOpen = Boolean(edit || deleting);
+  const actionsDisabled = busy || editorOpen;
+  const disabled = actionsDisabled || read.loading || Boolean(read.error);
   const selectedModel = models.find(
     (model) =>
       model.provider === edit?.draft.ModelSelection.provider &&
@@ -432,16 +434,16 @@ export function Schedules({ context }: { context: ComponentContext }) {
               onClick={() => void refresh()}
             />
             <Button
-              variant={edit || deleting ? "outline" : "primary"}
+              variant={editorOpen ? "outline" : "primary"}
               size="lg"
-              disabled={busy || Boolean(edit) || Boolean(deleting)}
+              disabled={actionsDisabled}
               onClick={(event) => add(event.currentTarget)}
             >
               <Icon glyph={Plus} size="sm" /> Add schedule
             </Button>
             <ActionMenu
-              label="Schedule template"
-              disabled={busy}
+              label="Schedule templates"
+              disabled={actionsDisabled}
               triggerContent={
                 <>
                   Templates <Icon glyph={ChevronDown} size="sm" />

@@ -153,7 +153,7 @@ function PackageRow({
 }) {
   const t = useT();
   const [edit, setEdit] = useState<PackageEdit>();
-  const { feedback, run: runFeedback } = useAsyncFeedback(operations.signal);
+  const { feedback, reset, run: runFeedback } = useAsyncFeedback(operations.signal);
   const busy = feedback.state === "busy";
   const error = feedback.state === "error" ? feedback.reason : "";
   const request = { installationId: installation.id, digest: installation.selected.digest };
@@ -233,6 +233,7 @@ function PackageRow({
               size="sm"
               pending={busy}
               onClick={() => {
+                reset();
                 setEdit({
                   type: "configure",
                   target: request,
@@ -262,12 +263,14 @@ function PackageRow({
                 },
                 {
                   label: t("packages.stage"),
-                  onSelect: () =>
+                  onSelect: () => {
+                    reset();
                     setEdit({
                       type: "stage",
                       target: { installationId: installation.id },
                       value: installation.source,
-                    }),
+                    });
+                  },
                 },
                 ...(installation.staged
                   ? [
@@ -321,7 +324,7 @@ function PackageRow({
           </SystemMessage>
         );
       })}
-      {error && <SystemMessage variant="warning">{error}</SystemMessage>}
+      {!edit && error && <SystemMessage variant="warning">{error}</SystemMessage>}
       <TextEditorDialog
         open={edit !== undefined}
         onOpenChange={(open) => {
@@ -336,6 +339,7 @@ function PackageRow({
         saveLabel={t("packages.save")}
         savingLabel={t("packages.loading")}
         busy={busy}
+        error={error}
         onSave={() => void save()}
         font="mono"
       />

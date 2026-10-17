@@ -1,6 +1,19 @@
 import { isImeKey } from "@/lib/ime";
-import { type FormEvent, type KeyboardEvent, type ReactNode, useRef } from "react";
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  useId,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { Button, FormField, ModalDialog, TextArea } from "@flame/ui";
+import * as stylex from "@stylexjs/stylex";
+import { SystemMessage } from "./system-message";
+
+const styles = stylex.create({
+  editor: { maxHeight: "40dvh" },
+});
 
 interface TextEditorDialogProps {
   open: boolean;
@@ -15,6 +28,7 @@ interface TextEditorDialogProps {
   saveLabel: string;
   savingLabel: string;
   busy?: boolean;
+  error?: string;
   saveDisabled?: boolean;
   onSave: () => void;
   font?: "sans" | "mono";
@@ -34,12 +48,18 @@ export function TextEditorDialog({
   saveLabel,
   savingLabel,
   busy = false,
+  error,
   saveDisabled = false,
   onSave,
   font = "sans",
   secondaryAction,
 }: TextEditorDialogProps) {
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const errorId = useId();
+  useLayoutEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: "nearest" });
+  }, [error]);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!busy && !saveDisabled) onSave();
@@ -83,15 +103,24 @@ export function TextEditorDialog({
       <FormField label={label}>
         <TextArea
           ref={editorRef}
-          rows={12}
+          rows={4}
+          autosize
+          styles={styles.editor}
           font={font}
           aria-label={label}
+          aria-describedby={error ? errorId : undefined}
+          invalid={Boolean(error)}
           value={value}
           pending={busy}
           onKeyDown={submitShortcut}
           onChange={(event) => onChange(event.target.value)}
         />
       </FormField>
+      {error && (
+        <SystemMessage ref={errorRef} id={errorId} variant="error">
+          {error}
+        </SystemMessage>
+      )}
     </ModalDialog>
   );
 }
