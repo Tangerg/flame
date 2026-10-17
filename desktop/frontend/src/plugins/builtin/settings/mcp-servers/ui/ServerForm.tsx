@@ -1,7 +1,7 @@
 import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Icon, Segmented, Switch } from "@/ui";
 import {
   Button,
@@ -33,17 +33,22 @@ import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface Props {
   server?: MCPServerSettings;
+  opener: HTMLElement;
   onDone: () => void;
   onCancel: () => void;
 }
 
-export function ServerForm({ server, onDone, onCancel }: Props) {
+export function ServerForm({ server, opener, onDone, onCancel }: Props) {
   const t = useT();
   const create = useCreateMCPServer();
   const update = useUpdateMCPServer();
   const remove = useDeleteMCPServer();
   const test = useTestMCPServer();
   const isEdit = server !== undefined;
+  const firstField = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    firstField.current?.focus();
+  }, []);
 
   const [edit, setEdit] = useState<MCPServerEdit>(() => MCPServerEdit.of(server));
   const draft = edit.fields;
@@ -100,11 +105,12 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
   };
 
   return (
-    <RecordForm>
+    <RecordForm opener={opener}>
       <p {...stylex.props(typeStep.uiSm, vocab.muted)}>{t("mcp.saveEffect")}</p>
       <FormRow>
         <FormField label={t("mcp.form.name.aria")}>
           <TextField
+            ref={isEdit ? undefined : firstField}
             type="text"
             aria-label={t("mcp.form.name.aria")}
             value={draft.name}
@@ -130,6 +136,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
         <>
           <FormField label={t("mcp.form.command.aria")}>
             <TextField
+              ref={isEdit ? firstField : undefined}
               font="mono"
               type="text"
               aria-label={t("mcp.form.command.aria")}
@@ -198,6 +205,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
         <>
           <FormField label={t("mcp.form.url.aria")}>
             <TextField
+              ref={isEdit ? firstField : undefined}
               font="mono"
               type="text"
               aria-label={t("mcp.form.url.aria")}

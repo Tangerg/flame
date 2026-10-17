@@ -36,6 +36,129 @@ test("font size selectors reach the full supported scale and restore inherited s
   await expect(root).toHaveCSS("--fs-code", inherited);
 });
 
+test("MCP adding keeps its opener and returns focus after cancellation", async ({ page }) => {
+  await page.goto("/visual/?fixture=workspace&state=settings&pane=mcp-servers&theme=light");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const panel = page.getByRole("tabpanel");
+  const trigger = panel.getByRole("button", { name: "Add server", exact: true }).first();
+  await trigger.click();
+  await expect(panel.getByRole("textbox", { name: "Server name", exact: true })).toBeFocused();
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toBeDisabled();
+  await panel.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toBeEnabled();
+});
+
+for (const transport of ["stdio", "streamableHttp"] as const) {
+  test(`MCP editing focuses its first editable field and returns to its opener ${transport}`, async ({
+    page,
+  }) => {
+    await page.goto("/visual/?fixture=workspace&state=settings&pane=mcp-servers&theme=dark");
+    await page.locator("html[data-visual-ready]").waitFor();
+    const panel = page.getByRole("tabpanel");
+    await expect(panel.locator("[aria-busy=true]")).toHaveCount(0);
+    await page.evaluate(async (type) => {
+      const moduleUrl = "/src/lib/queryClient.ts";
+      const { queryClient }: typeof import("../src/lib/queryClient") = await import(moduleUrl);
+      queryClient.setQueryData(
+        ["mcp-servers"],
+        [
+          {
+            id: { origin: { type: "user" }, name: "workspace-tools" },
+            status: "connected",
+            type,
+            enabled: true,
+            command: "npx",
+            args: [],
+            url: "https://example.invalid/mcp",
+            handshakeTimeout: { type: "bounded", seconds: 30 },
+            toolCount: 0,
+          },
+        ],
+      );
+    }, transport);
+    const trigger = panel.getByRole("button", { name: "Edit workspace-tools", exact: true });
+    await trigger.click();
+    const field = panel.getByRole("textbox", {
+      name: transport === "stdio" ? "Command" : "Server URL",
+      exact: true,
+    });
+    await expect(field).toBeFocused();
+    await expect(panel.getByRole("textbox", { name: "Server name", exact: true })).toBeDisabled();
+    const mode = panel.getByRole("tab", {
+      name: transport === "stdio" ? "Streamable HTTP" : "stdio",
+      exact: true,
+    });
+    await mode.click();
+    await expect(mode).toBeFocused();
+    await panel.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(trigger).toBeFocused();
+  });
+}
+
+for (const width of [1120, 320]) {
+  test(`remembered approval rules show their full target and matching scope ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto(
+      "/visual/?fixture=workspace&state=settings&pane=approvals&theme=light&font-size=18",
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const panel = page.getByRole("tabpanel");
+    await expect(panel.locator("[aria-busy=true]")).toHaveCount(0);
+    const server = "project-" + "workspace-".repeat(12) + "tools";
+    const source = `mcp/${server}/read_workspace_files`;
+    const condition =
+      "./scripts/review-permissions --workspace /Users/visual/" +
+      "project-".repeat(20) +
+      "\n--mode exact";
+    const dir = "/Users/visual/" + "workspace-".repeat(24);
+    await page.evaluate(
+      async ({ server, condition, dir }) => {
+        const moduleUrl = "/src/lib/queryClient.ts";
+        const { queryClient }: typeof import("../src/lib/queryClient") = await import(moduleUrl);
+        queryClient.setQueriesData({ queryKey: ["approval-rules"] }, [
+          {
+            id: "visual-rule-long",
+            scope: "project",
+            modelName: "read_workspace_files",
+            tool: {
+              type: "mcp",
+              server: { origin: { type: "user" }, name: server },
+              name: "read_workspace_files",
+            },
+            subject: { type: "exact", value: condition },
+            dir,
+            decision: "deny",
+            stale: false,
+          },
+        ]);
+      },
+      { server, condition, dir },
+    );
+    for (const text of [source, `Exact: ${condition}`, dir]) {
+      const value = panel.getByText(text, { exact: true });
+      await expect(value).toBeVisible();
+      expect(await value.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+      await expect(value).toHaveCSS("white-space", "pre-wrap");
+      await expect(value).not.toHaveCSS("text-overflow", "ellipsis");
+    }
+    const remove = panel.getByRole("button", { name: "Forget read_workspace_files", exact: true });
+    await expect(remove).toBeVisible();
+    expect(
+      await remove.evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        return box.left >= 0 && box.right <= document.documentElement.clientWidth;
+      }),
+    ).toBe(true);
+    expect(await page.locator("html").evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(
+      0,
+    );
+  });
+}
+
 for (const theme of ["light", "dark"]) {
   for (const width of [1120, 320]) {
     test(`settings keep controls inside their content measure ${theme} ${width}`, async ({
@@ -149,7 +272,11 @@ test("MCP fields retain visible labels after entering values", async ({ page }) 
     .fill("MODE=desktop");
   await expect(panel.getByText("Server name", { exact: true })).toBeVisible();
   await expect(panel.getByText("Command", { exact: true })).toBeVisible();
-  await expect(panel.getByRole("button", { name: "Add server", exact: true })).toBeEnabled();
+  await expect(
+    panel
+      .getByRole("group", { name: "Add server", exact: true })
+      .getByRole("button", { name: "Add server", exact: true }),
+  ).toBeEnabled();
   await panel.getByRole("tab", { name: "Streamable HTTP", exact: true }).click();
   await expect(panel.getByText("Server URL", { exact: true })).toBeVisible();
   await expect(panel.getByText("Authorization token", { exact: true })).toBeVisible();

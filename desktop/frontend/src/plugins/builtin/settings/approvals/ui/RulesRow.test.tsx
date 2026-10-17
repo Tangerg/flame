@@ -31,7 +31,7 @@ it("distinguishes a literal wildcard from a pattern and a whole-tool grant", () 
     decision: "allow",
   }));
   render(<RulesRow />);
-  expect(screen.getByText("· All arguments")).toBeTruthy();
-  expect(screen.getByText("· Exact: echo *")).toBeTruthy();
-  expect(screen.getByText("· Glob: echo *")).toBeTruthy();
+  expect(screen.getByText("All arguments")).toBeTruthy();
+  expect(screen.getByText("Exact: echo *")).toBeTruthy();
+  expect(screen.getByText("Glob: echo *")).toBeTruthy();
 });

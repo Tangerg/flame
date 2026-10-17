@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { useLayoutEffect, useRef } from "react";
 import { useT } from "@/lib/i18n";
 import { SectionLabel, TextButton, Well } from "@/ui";
 import { TextArea, vocab } from "@flame/ui";
@@ -24,6 +25,10 @@ export function ApprovalArgsEditor({
   onTextChange: (text: string) => void;
 }) {
   const t = useT();
+  const editor = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    if (editing) editor.current?.focus();
+  }, [editing]);
   return (
     <div>
       <div {...stylex.props(ae.head)}>
@@ -46,6 +51,7 @@ export function ApprovalArgsEditor({
       {editing ? (
         <>
           <TextArea
+            ref={editor}
             font="mono"
             invalid={invalid}
             value={argsText}

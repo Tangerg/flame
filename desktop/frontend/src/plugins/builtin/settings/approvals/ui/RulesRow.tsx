@@ -17,6 +17,7 @@ import { useT } from "@/lib/i18n";
 import {
   color,
   face,
+  layout,
   motion,
   radius,
   space,
@@ -36,9 +37,10 @@ const SCOPE_TONE: Record<ApprovalRuleSummary["scope"], Tone> = {
 const r = stylex.create({
   list: { display: "flex", flexDirection: "column", gap: space.s0_5 },
   rule: {
-    display: "flex",
-    alignItems: "center",
-    gap: space.s2,
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    alignItems: "start",
+    gap: layout.controlGap,
     borderRadius: radius.card,
     backgroundColor: { default: null, ":hover": surface.hover },
     paddingInline: space.s2_5,
@@ -46,9 +48,30 @@ const r = stylex.create({
     transitionProperty: "background-color",
     transitionTimingFunction: motion.easeState,
   },
+  copy: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr)",
+    gap: layout.labelGap,
+    minWidth: 0,
+    overflowWrap: "anywhere",
+  },
+  identity: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: layout.controlGap,
+    minWidth: 0,
+  },
+  details: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr)",
+    gap: layout.labelGap,
+    minWidth: 0,
+    whiteSpace: "pre-wrap",
+  },
   verdict: { flexShrink: 0, fontWeight: weight.medium },
   allow: { color: color.success },
-  tool: { color: color.fg },
+  tool: { color: color.fg, minWidth: 0, maxWidth: "100%" },
 });
 
 export function RulesRow() {
@@ -83,42 +106,43 @@ export function RulesRow() {
             </div>
             {rows.map((rule) => (
               <div key={rule.id} {...stylex.props(r.rule)}>
-                <Badge tone={SCOPE_TONE[rule.scope]} face="mono">
-                  {t(`approvals.scope.${rule.scope}`)}
-                </Badge>
-                <span
-                  {...stylex.props(
-                    r.verdict,
-                    rule.decision === "deny" ? vocab.negative : r.allow,
-                    typeStep.uiSm,
-                  )}
-                >
-                  {rule.decision === "deny" ? t("approvals.deny") : t("approvals.allow")}
-                </span>
-                <span
-                  {...stylex.props(vocab.fill, vocab.truncate, r.tool, typeStep.uiMd, face.mono)}
-                >
-                  {rule.modelName}
-                  <span {...stylex.props(vocab.muted)}>
-                    {" "}
-                    ·{" "}
-                    {rule.tool.type === "builtIn"
-                      ? t("approvals.builtIn")
-                      : toolSourceLabel(rule.tool)}
-                  </span>
-                  <span {...stylex.props(vocab.muted)}>
-                    {" · "}
-                    {t(`approvals.subject.${rule.subject.type}`)}
-                    {rule.subject.type !== "all" ? `: ${rule.subject.value}` : null}
-                  </span>
-                  {rule.dir ? <span {...stylex.props(vocab.faint)}> — {rule.dir}</span> : null}
-                </span>
-                {rule.stale ? <Badge tone="warning">{t("approvals.stale")}</Badge> : null}
+                <div {...stylex.props(r.copy)}>
+                  <div {...stylex.props(r.identity)}>
+                    <Badge tone={SCOPE_TONE[rule.scope]} face="mono">
+                      {t(`approvals.scope.${rule.scope}`)}
+                    </Badge>
+                    <span
+                      {...stylex.props(
+                        r.verdict,
+                        rule.decision === "deny" ? vocab.negative : r.allow,
+                        typeStep.uiSm,
+                      )}
+                    >
+                      {rule.decision === "deny" ? t("approvals.deny") : t("approvals.allow")}
+                    </span>
+                    <span {...stylex.props(r.tool, typeStep.uiMd, face.mono)}>
+                      {rule.modelName}
+                    </span>
+                    {rule.stale ? <Badge tone="warning">{t("approvals.stale")}</Badge> : null}
+                  </div>
+                  <div {...stylex.props(r.details, vocab.muted, typeStep.uiSm, face.mono)}>
+                    <span>
+                      {rule.tool.type === "builtIn"
+                        ? t("approvals.builtIn")
+                        : toolSourceLabel(rule.tool)}
+                    </span>
+                    <span>
+                      {t(`approvals.subject.${rule.subject.type}`)}
+                      {rule.subject.type !== "all" ? `: ${rule.subject.value}` : null}
+                    </span>
+                    {rule.dir ? <span>{rule.dir}</span> : null}
+                  </div>
+                </div>
                 <IconButton
                   icon={iconGlyph("x")}
                   size="xs"
                   quiet
-                  className={stylex.props(vocab.hold).className}
+                  styles={vocab.hold}
                   aria-label={t("approvals.forget", { tool: rule.modelName })}
                   aria-busy={busy}
                   pending={busy}

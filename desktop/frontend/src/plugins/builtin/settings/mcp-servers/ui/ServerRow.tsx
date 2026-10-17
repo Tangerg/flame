@@ -45,7 +45,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
   const t = useT();
   const setEnabled = useSetMCPServerEnabled();
   const authorize = useAuthorizeMCPServer();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<HTMLElement | null>(null);
   const panelId = useId();
   const [signingIn, setSigningIn] = useState(false);
   const authorizationController = useRef<AbortController | null>(null);
@@ -128,11 +128,11 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
               <IconButton
                 icon={iconGlyph("edit")}
                 size="sm"
-                active={editing}
+                active={editing !== null}
                 aria-label={t("mcp.edit", { server: server.id.name })}
-                aria-expanded={editing}
+                aria-expanded={editing !== null}
                 aria-controls={panelId}
-                onClick={() => setEditing((value) => !value)}
+                onClick={(event) => setEditing(editing ? null : event.currentTarget)}
               />
             </>
           )}
@@ -143,8 +143,9 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
         <div id={panelId}>
           <ServerForm
             server={server}
-            onDone={() => setEditing(false)}
-            onCancel={() => setEditing(false)}
+            opener={editing}
+            onDone={() => setEditing(null)}
+            onCancel={() => setEditing(null)}
           />
         </div>
       )}
