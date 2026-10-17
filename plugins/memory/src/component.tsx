@@ -46,10 +46,12 @@ import {
 type MemoryItem = MethodOutputs["flame.memory/list.v1"]["Rows"][number];
 type MemoryPage = MethodOutputs["flame.memory/list.v1"];
 
-export function MemoryReport({
+function MemoryReport({
   page,
   disabled,
+  authoring,
   edit,
+  remove,
   command,
   search,
   status,
@@ -58,17 +60,15 @@ export function MemoryReport({
 }: {
   page: MemoryPage;
   disabled: boolean;
+  authoring: boolean;
   edit(item: MemoryItem, opener: HTMLElement): void;
+  remove(item: MemoryItem, opener: HTMLElement): void;
   command<K extends MutationName>(method: K, input: MethodInputs[K]): void;
   search: string;
   status: string;
   origin: string;
   pinned: boolean;
 }) {
-  const [deleting, setDeleting] = useState<{
-    item: MemoryItem;
-    opener: HTMLElement;
-  }>();
   const rows = page.Rows;
   const matching = rows.filter(
     (item) =>
@@ -89,40 +89,6 @@ export function MemoryReport({
           </>
         }
       >
-        {deleting && (
-          <RecordForm
-            aria-label="Confirm memory deletion"
-            opener={deleting.opener}
-          >
-            <RecordTitle>Delete this memory?</RecordTitle>
-            <RecordBody>{deleting.item.Content}</RecordBody>
-            <Metadata>
-              This memory will no longer be available to the agent.
-            </Metadata>
-            <FormActions label="Memory deletion confirmation">
-              <Button
-                variant="ghost"
-                disabled={disabled}
-                // oxlint-disable-next-line jsx-a11y/no-autofocus
-                autoFocus
-                onClick={() => setDeleting(undefined)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="tonal"
-                tone="negative"
-                disabled={disabled}
-                onClick={() => {
-                  command("flame.memory/delete.v1", { ID: deleting.item.ID });
-                  setDeleting(undefined);
-                }}
-              >
-                Delete memory
-              </Button>
-            </FormActions>
-          </RecordForm>
-        )}
         <RecordGroup variant="list" id="items" aria-label="Recorded memory">
           {!matching.length && (
             <EmptyState
@@ -196,7 +162,7 @@ export function MemoryReport({
                         <Button
                           variant="soft"
                           size="md"
-                          disabled={disabled}
+                          disabled={disabled || authoring}
                           onClick={(event) => edit(item, event.currentTarget)}
                         >
                           Edit
@@ -216,11 +182,8 @@ export function MemoryReport({
                             {
                               label: "Delete",
                               tone: "negative",
-                              onSelect: (opener) =>
-                                setDeleting({
-                                  item: structuredClone(item),
-                                  opener,
-                                }),
+                              disabled: authoring,
+                              onSelect: (opener) => remove(item, opener),
                             },
                           ]}
                         />
@@ -262,8 +225,17 @@ type Accepted = {
   cwd: string;
 };
 type Read = { loading: boolean; accepted?: Accepted; error?: string };
-type Edit = ({ type: "add" } | { type: "update"; item: MemoryItem }) & {
+type Edit = (
+  | { type: "add"; content: string }
+  | { type: "update"; item: MemoryItem; content: string }
+  | { type: "delete"; item: MemoryItem }
+) & {
   opener: HTMLElement;
+};
+type Command = {
+  promise: MutationPromise<unknown>;
+  // Updates also pin independent records, so the method cannot identify the submitting form.
+  source: "editor" | "record";
 };
 
 export function Memory({ context }: { context: ComponentContext }) {
@@ -287,13 +259,12 @@ export function Memory({ context }: { context: ComponentContext }) {
   const cwd = scope === "project" ? context.workspace?.ref.path : "";
   const [read, setRead] = useState<Read>({ loading: false });
   const [edit, setEdit] = useState<Edit>();
-  const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
-  const [unknown, setUnknown] = useState<MutationPromise<unknown>>();
+  const [unknown, setUnknown] = useState<Command>();
   const [message, setMessage] = useState<string>();
   const reading = useRef<AbortController>(undefined);
   const lifetime = useRef<AbortController>(undefined);
-  const command = useRef<MutationPromise<unknown>>(undefined);
+  const command = useRef<Command>(undefined);
   const observing = useRef(false);
 
   const load = useCallback(
@@ -385,21 +356,17 @@ export function Memory({ context }: { context: ComponentContext }) {
     if (!owner || owner.signal.aborted || context.signal.aborted) return;
     return AbortSignal.any([context.signal, owner.signal]);
   }
-  async function observe(
-    original: MutationPromise<unknown>,
-    owner: AbortSignal,
-  ) {
+  async function observe(original: Command, owner: AbortSignal) {
     if (observing.current) return;
     observing.current = true;
     setPending(true);
     setMessage(undefined);
     try {
-      await original;
+      await original.promise;
       if (owner.aborted) return;
       command.current = undefined;
       setUnknown(undefined);
-      setEdit(undefined);
-      setDraft("");
+      if (original.source === "editor") setEdit(undefined);
       setMessage("Memory change saved.");
       await load(owner);
     } catch (error) {
@@ -421,12 +388,16 @@ export function Memory({ context }: { context: ComponentContext }) {
       if (!owner.aborted) setPending(false);
     }
   }
-  function change<K extends MutationName>(method: K, input: MethodInputs[K]) {
+  function change<K extends MutationName>(
+    method: K,
+    input: MethodInputs[K],
+    source: Command["source"] = "record",
+  ) {
     const owner = observerSignal();
     if (!owner || command.current || observing.current || cwd === undefined)
       return;
     try {
-      const original = operations.command(method, input);
+      const original = { promise: operations.command(method, input), source };
       command.current = original;
       void observe(original, owner);
     } catch (error) {
@@ -441,7 +412,10 @@ export function Memory({ context }: { context: ComponentContext }) {
     const owner = observerSignal();
     if (!owner || !unknown || observing.current) return;
     try {
-      const attempt = unknown.retry({ signal: owner });
+      const attempt = {
+        ...unknown,
+        promise: unknown.promise.retry({ signal: owner }),
+      };
       command.current = attempt;
       void observe(attempt, owner);
     } catch (error) {
@@ -481,16 +455,14 @@ export function Memory({ context }: { context: ComponentContext }) {
                 { value: "user", label: "User" },
               ]}
               onChange={(value) => {
-                if (command.current || observing.current) return;
-                setEdit(undefined);
-                setDraft("");
+                if (edit || command.current || observing.current) return;
                 setSearch("");
                 setStatus("all");
                 setOrigin("all");
                 setPinned(false);
                 setScope(value as Scope);
               }}
-              disabled={locked}
+              disabled={locked || Boolean(edit)}
             />
           </Toolbar>
           <FilterBar
@@ -549,8 +521,11 @@ export function Memory({ context }: { context: ComponentContext }) {
                 size="lg"
                 disabled={locked || cwd === undefined || Boolean(edit)}
                 onClick={(event) => {
-                  setEdit({ type: "add", opener: event.currentTarget });
-                  setDraft("");
+                  setEdit({
+                    type: "add",
+                    content: "",
+                    opener: event.currentTarget,
+                  });
                 }}
               >
                 <Icon glyph={Plus} size="sm" /> Add memory
@@ -565,13 +540,44 @@ export function Memory({ context }: { context: ComponentContext }) {
       {message && <p role="status">{message}</p>}
       {unknown && (
         <Toolbar label="Original Memory command">
-          <Metadata>Original command: {unknown.idempotencyKey}</Metadata>
+          <Metadata>
+            Original command: {unknown.promise.idempotencyKey}
+          </Metadata>
           <Button disabled={pending} onClick={reconcile}>
             Check original result
           </Button>
         </Toolbar>
       )}
-      {edit && (
+      {edit?.type === "delete" ? (
+        <RecordForm aria-label="Confirm memory deletion" opener={edit.opener}>
+          <RecordTitle>Delete this memory?</RecordTitle>
+          <RecordBody>{edit.item.Content}</RecordBody>
+          <Metadata>
+            This memory will no longer be available to the agent.
+          </Metadata>
+          <FormActions label="Memory deletion confirmation">
+            <Button
+              variant="ghost"
+              disabled={locked}
+              // oxlint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+              onClick={() => setEdit(undefined)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="tonal"
+              tone="negative"
+              disabled={locked}
+              onClick={() =>
+                change("flame.memory/delete.v1", { ID: edit.item.ID }, "editor")
+              }
+            >
+              Delete memory
+            </Button>
+          </FormActions>
+        </RecordForm>
+      ) : edit ? (
         <RecordForm
           aria-label={edit.type === "add" ? "Add memory" : "Edit memory"}
           opener={edit.opener}
@@ -585,9 +591,11 @@ export function Memory({ context }: { context: ComponentContext }) {
               // oxlint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               rows={6}
-              value={draft}
+              value={edit.content}
               pending={locked}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) =>
+                setEdit({ ...edit, content: event.target.value })
+              }
             />
           </FormField>
           <FormActions label="Save memory content">
@@ -602,27 +610,36 @@ export function Memory({ context }: { context: ComponentContext }) {
               variant="primary"
               disabled={
                 locked ||
-                !draft.trim() ||
-                (edit.type === "update" && draft.trim() === edit.item.Content)
+                !edit.content.trim() ||
+                (edit.type === "update" &&
+                  edit.content.trim() === edit.item.Content)
               }
               onClick={() =>
                 edit.type === "add"
-                  ? change("flame.memory/add.v1", {
-                      Scope: scope,
-                      CWD: cwd!,
-                      Content: draft.trim(),
-                    })
-                  : change("flame.memory/update.v1", {
-                      ID: edit.item.ID,
-                      Content: draft.trim(),
-                    })
+                  ? change(
+                      "flame.memory/add.v1",
+                      {
+                        Scope: scope,
+                        CWD: cwd!,
+                        Content: edit.content.trim(),
+                      },
+                      "editor",
+                    )
+                  : change(
+                      "flame.memory/update.v1",
+                      {
+                        ID: edit.item.ID,
+                        Content: edit.content.trim(),
+                      },
+                      "editor",
+                    )
               }
             >
               Save
             </Button>
           </FormActions>
         </RecordForm>
-      )}
+      ) : null}
       {current && (
         <>
           <MemoryReport
@@ -631,10 +648,18 @@ export function Memory({ context }: { context: ComponentContext }) {
             status={status}
             origin={origin}
             pinned={pinned}
+            authoring={Boolean(edit)}
             disabled={locked || read.loading || Boolean(read.error)}
             edit={(item, opener) => {
-              setEdit({ type: "update", item, opener });
-              setDraft(item.Content);
+              setEdit({
+                type: "update",
+                item: structuredClone(item),
+                content: item.Content,
+                opener,
+              });
+            }}
+            remove={(item, opener) => {
+              setEdit({ type: "delete", item: structuredClone(item), opener });
             }}
             command={change}
           />

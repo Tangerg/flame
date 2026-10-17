@@ -788,13 +788,13 @@ export function Schedules({ context }: { context: ComponentContext }) {
                     ]}
                   />
                 }
-                description={item.Instructions}
                 status={
                   <Badge tone={enabled(item) ? "success" : "neutral"}>
                     {enabled(item) ? "Enabled" : "Disabled"}
                   </Badge>
                 }
               />
+              <RecordBody>{item.Instructions}</RecordBody>
               <Metadata>
                 Cron · <code>{item.Cron}</code>
               </Metadata>

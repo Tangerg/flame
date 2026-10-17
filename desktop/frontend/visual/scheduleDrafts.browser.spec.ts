@@ -31,6 +31,9 @@ for (const width of [1120, 320]) {
     await expect(templates).toBeEnabled();
     for (const trigger of await recordActions.all()) await expect(trigger).toBeEnabled();
     await templates.press("Enter");
+    await expect(
+      page.getByRole("menuitem", { name: "Hourly progress check", exact: true }),
+    ).toBeFocused();
     await page.keyboard.press("End");
     await expect(
       page.getByRole("menuitem", { name: "Weekly maintenance review", exact: true }),

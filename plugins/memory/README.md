@@ -159,7 +159,11 @@ The backend still owns validation, business changes and original command receipt
 
 The Host supplies optional frozen Session/workspace targets under client scope;
 user memory remains available without a workspace. The component owns only local
-scope/filter/edit and accepted page/cursor state. Unknown acknowledgement retains the
+scope/filter/edit and accepted page/cursor state.
+One local form owns creation, editing and deletion confirmation together with its
+captured target and draft. Independent record commands keep that draft; only the
+submitting form's successful original command closes it, including after reconciliation.
+Unknown acknowledgement retains the
 original mutation handle/key, blocks new changes and exposes same-command reconciliation.
 A failed read preserves the accepted page. No optimistic item or competing result
 owner is introduced. The former HTML/Memory-specific carrier/read API is removed.
