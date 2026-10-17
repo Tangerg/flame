@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "./test";
+import { expect, test, type Locator, type Page } from "./test";
 import AxeBuilder from "@axe-core/playwright";
 import type { VisualAgentState } from "./agentSessionSnapshots";
 import { en } from "@/lib/i18n/locales/en";
@@ -51,23 +51,20 @@ async function openWorkspace(page: Page, route: WorkspaceRoute): Promise<void> {
   await expect(page.getByTestId("workspace-state")).toHaveAttribute("data-state", route.state);
 }
 
-test("a full view sets its title in mono only when the title is a path", async ({ page }) => {
-  const readTitle = () =>
-    page
-      .locator("main .agent-surface-header:visible span")
-      .first()
-      .evaluate((title) => {
-        const head = (stack: string) =>
-          stack
-            .split(",")[0]!
-            .trim()
-            .replace(/^["']|["']$/g, "");
-        const mono = head(
-          getComputedStyle(document.documentElement).getPropertyValue("--font-mono"),
-        );
-        const family = title ? getComputedStyle(title).fontFamily : "";
-        return { text: title?.textContent?.trim() ?? "", isMono: head(family) === mono, family };
-      });
+test("a full view keeps its catalog title in prose and its file identity in mono", async ({
+  page,
+}) => {
+  const readTitle = (title: Locator) =>
+    title.evaluate((title) => {
+      const head = (stack: string) =>
+        stack
+          .split(",")[0]!
+          .trim()
+          .replace(/^["']|["']$/g, "");
+      const mono = head(getComputedStyle(document.documentElement).getPropertyValue("--font-mono"));
+      const family = title ? getComputedStyle(title).fontFamily : "";
+      return { text: title?.textContent?.trim() ?? "", isMono: head(family) === mono, family };
+    });
 
   await openWorkspace(page, { state: "full-view", fullView: "package:visual:diff" });
   const heading = page
@@ -77,9 +74,16 @@ test("a full view sets its title in mono only when the title is a path", async (
   expect(await heading.evaluate((node) => getComputedStyle(node).fontFamily)).not.toMatch(
     /monospace/,
   );
+  const header = page.locator('[data-slot="workspace-window-header"]');
+  expect((await readTitle(header.getByText("Workspace diff", { exact: true }))).isMono).toBe(false);
 
   await openWorkspace(page, { state: "full-view", fullView: "file" });
-  const path = await readTitle();
+  expect((await readTitle(header.getByText("Files", { exact: true }))).isMono).toBe(false);
+  const identity = page
+    .locator('[data-slot="workspace-view-header"]:visible')
+    .getByTitle(ACTIVE_FILE_PATH, { exact: true });
+  await expect(identity).toHaveCount(1);
+  const path = await readTitle(identity);
   expect(path.text).toBe(ACTIVE_FILE_PATH);
   expect(path.isMono, `a PATH is mono, got ${path.family}`).toBe(true);
 });
@@ -241,7 +245,7 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   if (state === "settings") {
-    await expect(page.getByRole("heading").first()).toBeVisible();
+    await expect(page.getByRole("tabpanel").getByRole("heading").first()).toBeVisible();
     await expect(page.locator('main section [aria-busy="true"]')).toHaveCount(0);
     return;
   }
@@ -605,6 +609,12 @@ test("settings filtering and menu dismissal stay inside production semantics", a
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menuitem", { name: "Light" })).toHaveCount(0);
   await expect(theme).toBeFocused();
+  await page
+    .locator('[data-slot="workspace-window-header"]')
+    .getByRole("button", { name: en["common.close"]!, exact: true })
+    .click();
+  await expect(page.getByTestId("active-main-view")).toHaveText("");
+  await expect(search).toHaveCount(0);
 });
 
 test("font smoothing updates the browser rendering preference and survives reload", async ({

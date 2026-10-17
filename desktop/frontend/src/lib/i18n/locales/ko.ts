@@ -264,7 +264,6 @@ export const ko: Record<string, string> = {
   "providers.setup.action": "제공자 구성",
 
   "settings.title": "설정",
-  "settings.backToApp": "앱으로 돌아가기",
   "settings.searchPlaceholder": "설정 검색…",
   "settings.pane.appearance": "외관",
   "settings.pane.plugins": "플러그인",
@@ -980,8 +979,7 @@ export const ko: Record<string, string> = {
   "providers.role.stale": "마지막으로 확인된 값을 표시 중입니다 — 새로 고침에 실패했습니다.",
   "providers.setup.steps":
     "공급자 하나를 고르고 API 키를 붙여넣은 뒤 ‘저장 후 테스트’를 누르세요. 시작하려면 이것만 하면 됩니다.",
-  "providers.setup.done":
-    "공급자가 준비되었습니다. ‘앱으로 돌아가기’로 돌아가면 초안이 그대로 있습니다.",
+  "providers.setup.done": "공급자가 준비되었습니다. 설정을 닫고 돌아가면 초안이 그대로 있습니다.",
   "providers.roles.heading": "모델 역할",
   "settings.search.empty": "“{{query}}”와(과) 일치하는 설정이 없습니다.",
   "settings.search.clear": "검색 지우기",

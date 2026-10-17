@@ -276,7 +276,6 @@ export const fr: Record<string, string> = {
   "providers.setup.action": "Configurer un fournisseur",
 
   "settings.title": "Paramètres",
-  "settings.backToApp": "Retour à l'app",
   "settings.searchPlaceholder": "Rechercher dans les paramètres…",
   "settings.pane.appearance": "Apparence",
   "settings.pane.plugins": "Plugins",
@@ -1045,7 +1044,7 @@ export const fr: Record<string, string> = {
   "providers.setup.steps":
     "Choisissez un fournisseur, collez sa clé API puis « Enregistrer et tester ». C’est tout ce qu’il faut pour commencer.",
   "providers.setup.done":
-    "Un fournisseur est prêt. Utilisez « Retour à l’app » : votre brouillon est toujours là.",
+    "Un fournisseur est prêt. Fermez les paramètres pour revenir : votre brouillon est toujours là.",
   "providers.roles.heading": "Rôles des modèles",
   "settings.search.empty": "Aucun réglage ne correspond à « {{query}} ».",
   "settings.search.clear": "Effacer la recherche",

@@ -266,7 +266,6 @@ export const ja: Record<string, string> = {
   "providers.setup.action": "プロバイダーを設定",
 
   "settings.title": "設定",
-  "settings.backToApp": "アプリに戻る",
   "settings.searchPlaceholder": "設定を検索…",
   "settings.pane.appearance": "外観",
   "settings.pane.plugins": "プラグイン",
@@ -998,7 +997,7 @@ export const ja: Record<string, string> = {
   "providers.setup.steps":
     "プロバイダーを 1 つ選び、API キーを貼り付けて「保存してテスト」を押してください。始めるにはこれだけで十分です。",
   "providers.setup.done":
-    "プロバイダーの準備ができました。「アプリに戻る」で戻れます。下書きはそのままです。",
+    "プロバイダーの準備ができました。設定を閉じると戻れます。下書きはそのままです。",
   "providers.roles.heading": "モデルの役割",
   "settings.search.empty": "「{{query}}」に一致する設定はありません。",
   "settings.search.clear": "検索をクリア",

@@ -280,7 +280,6 @@ export const en: Record<string, string> = {
   "providers.setup.action": "Configure a provider",
 
   "settings.title": "Settings",
-  "settings.backToApp": "Back to app",
   "settings.searchPlaceholder": "Search settings…",
   "settings.group.general": "General",
   "settings.group.models": "Models",
@@ -1012,7 +1011,7 @@ export const en: Record<string, string> = {
   "providers.setup.steps":
     "Pick one provider, paste its API key, then Save & test. That is all you need to start.",
   "providers.setup.done":
-    "A provider is ready. Use Back to app to return — your draft is still there.",
+    "A provider is ready. Close Settings to return — your draft is still there.",
   "providers.roles.heading": "Model roles",
   "settings.search.empty": "No settings match “{{query}}”.",
   "settings.search.clear": "Clear search",

@@ -2,14 +2,12 @@ import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { Suspense, useState } from "react";
-import { Icon, knownIconName, SkeletonList, TextButton, VerticalTabs } from "@/ui";
-import { Button, Panel, PanelHeader, SearchField, vocab } from "@flame/ui";
-import { AgentSurfaceHeader } from "@/ui/agent";
+import { knownIconName, SkeletonList, TextButton, VerticalTabs } from "@/ui";
+import { Panel, PanelHeader, SearchField } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
 import {
   openWorkspaceSettingsPane,
-  selectWorkspaceChat,
   useWorkspaceSettingsPaneTarget,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { useSettingsPanes } from "@/plugins/sdk";
@@ -17,8 +15,7 @@ import { color, layout, space, type as typeStep } from "@flame/ui/tokens.stylex"
 
 const sp = stylex.create({
   body: { display: "flex", flexDirection: "column", gap: layout.sectionGap, minWidth: 0 },
-  backRow: { paddingInline: space.s4, paddingBottom: space.s4 },
-  back: { marginBottom: space.s3, alignSelf: "flex-start" },
+  search: { padding: space.s4 },
   empty: {
     display: "flex",
     flexDirection: "column",
@@ -146,38 +143,23 @@ function SettingsRailHeader({
 }) {
   const t = useT();
   return (
-    <div {...stylex.props(vocab.column)}>
-      <AgentSurfaceHeader divider={false} corner="window" aria-hidden />
-      <div {...stylex.props(sp.backRow)}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="md"
-          press="none"
-          data-chrome-focus=""
-          onClick={selectWorkspaceChat}
-          className={stylex.props(sp.back).className}
-        >
-          <Icon name="arrow-left" size="md" full />
-          <span>{t("settings.backToApp")}</span>
-        </Button>
-        <SearchField
-          size="lg"
-          value={query}
-          onValueChange={onQueryChange}
-          onClear={() => onQueryChange("")}
-          clearLabel={t("settings.search.clear")}
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && query) {
-              event.preventDefault();
-              onQueryChange("");
-            }
-            if (event.key === "Enter" && !isImeKey(event.nativeEvent)) onSubmit();
-          }}
-          placeholder={searchPlaceholder}
-          aria-label={searchPlaceholder}
-        />
-      </div>
+    <div {...stylex.props(sp.search)}>
+      <SearchField
+        size="lg"
+        value={query}
+        onValueChange={onQueryChange}
+        onClear={() => onQueryChange("")}
+        clearLabel={t("settings.search.clear")}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && query) {
+            event.preventDefault();
+            onQueryChange("");
+          }
+          if (event.key === "Enter" && !isImeKey(event.nativeEvent)) onSubmit();
+        }}
+        placeholder={searchPlaceholder}
+        aria-label={searchPlaceholder}
+      />
     </div>
   );
 }

@@ -2,7 +2,6 @@ import * as stylex from "@stylexjs/stylex";
 import { Activity, Fragment, useCallback, useState, type ReactNode } from "react";
 import { dockWidthRow } from "./dockWidth";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
-import type { ViewPlacement } from "@/plugins/builtin/workspace/public/viewPlacement";
 import { CatalogPicker, knownIconName, type CatalogPickerGroup } from "@/ui";
 import {
   AgentContentCard,
@@ -47,8 +46,8 @@ import { RunStatusPill } from "./RunStatusPill";
 import { SessionIdentity } from "./SessionIdentity";
 import { DockResizer } from "./DockResizer";
 import { HeaderDiffStat } from "./HeaderDiffStat";
-import { ViewPlacementProvider } from "@/plugins/builtin/workspace/public/viewPlacement";
 import { WorkspaceViewBody } from "./WorkspaceViewBody";
+import { WorkspaceWindowHeader } from "./WorkspaceWindowHeader";
 import { useT } from "@/lib/i18n";
 import { canPresentDock } from "@/lib/shellGeometry";
 import { shellStyles as sh } from "../shellStyles";
@@ -199,13 +198,6 @@ export function ChatPanel({ onSend }: Props) {
 
   const viewsById = new Map(views.map((view) => [view.id, view]));
 
-  const placementFor = (id: string, placement: "full" | "dock"): ViewPlacement => ({
-    placement,
-    splittable: viewsById.get(id)?.dock !== undefined,
-    onOpenInDock: () => openWorkspaceViewInDock(id),
-    onClose: () => (placement === "dock" ? closeWorkspaceDockView(id) : closeWorkspaceView(id)),
-  });
-
   const dockTabs = ownedDockViewIds.map((id) => {
     const view = viewsById.get(id);
     const title = view ? t(view.title) : id;
@@ -234,11 +226,16 @@ export function ChatPanel({ onSend }: Props) {
   return (
     <AgentContentCard label={t("shell.region.workspace")}>
       {activeMainView !== null && (
-        <SessionOwnedWorkspaceState sessionId={activeSessionId}>
-          <ViewPlacementProvider value={placementFor(activeMainView, "full")}>
+        <>
+          <WorkspaceWindowHeader
+            view={viewsById.get(activeMainView)}
+            onOpenInDock={() => openWorkspaceViewInDock(activeMainView)}
+            onClose={() => closeWorkspaceView(activeMainView)}
+          />
+          <SessionOwnedWorkspaceState sessionId={activeSessionId}>
             <WorkspaceViewBody viewId={activeMainView} />
-          </ViewPlacementProvider>
-        </SessionOwnedWorkspaceState>
+          </SessionOwnedWorkspaceState>
+        </>
       )}
       <Activity mode={activeMainView === null ? "visible" : "hidden"}>
         <AgentDockRow
@@ -276,9 +273,7 @@ export function ChatPanel({ onSend }: Props) {
                 {ownedDockViewIds.map((viewId) => (
                   <Activity key={viewId} mode={viewId === dock.activeViewId ? "visible" : "hidden"}>
                     <div data-dock-view-id={viewId} {...stylex.props(sh.overlay)}>
-                      <ViewPlacementProvider value={placementFor(viewId, "dock")}>
-                        <WorkspaceViewBody viewId={viewId} />
-                      </ViewPlacementProvider>
+                      <WorkspaceViewBody viewId={viewId} />
                     </div>
                   </Activity>
                 ))}

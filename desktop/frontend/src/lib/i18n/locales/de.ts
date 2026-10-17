@@ -272,7 +272,6 @@ export const de: Record<string, string> = {
   "providers.setup.action": "Provider konfigurieren",
 
   "settings.title": "Einstellungen",
-  "settings.backToApp": "Zur App",
   "settings.searchPlaceholder": "Einstellungen suchen…",
   "settings.pane.appearance": "Darstellung",
   "settings.pane.plugins": "Plugins",
@@ -1034,7 +1033,7 @@ export const de: Record<string, string> = {
   "providers.setup.steps":
     "Wähle einen Anbieter, füge seinen API-Schlüssel ein und klicke auf „Speichern & testen“. Mehr brauchst du zum Starten nicht.",
   "providers.setup.done":
-    "Ein Anbieter ist bereit. Mit „Zurück zur App“ kehrst du zurück – dein Entwurf ist noch da.",
+    "Ein Anbieter ist bereit. Schließe die Einstellungen, um zurückzukehren – dein Entwurf ist noch da.",
   "providers.roles.heading": "Modellrollen",
   "settings.search.empty": "Keine Einstellung passt zu „{{query}}“.",
   "settings.search.clear": "Suche löschen",

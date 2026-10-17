@@ -119,7 +119,7 @@ function WorkspaceFixtureReadout({ state }: { state: VisualWorkspaceState }) {
 }
 
 export function VisualWorkspaceFixture({ state }: { state: VisualWorkspaceState }) {
-  const settingsOpen = state === "settings";
+  const settingsOpen = useActiveWorkspaceViewId() === "settings";
   const sidebar = useSidebarDrawer();
   const sidebarWidth = useSidebarWidth();
 

@@ -143,6 +143,7 @@ test("long panels keep one filter zone reachable and remeasure it after wrapping
   const panel = page.getByRole("region", { name: "Flame icon gallery", exact: true });
   const viewport = page.locator('[data-slot="workspace-view-body"]').filter({ has: panel });
   const controls = panel.locator('[data-slot="panel-controls"]');
+  const windowHeader = page.locator('[data-slot="workspace-window-header"]');
   await expect(controls).toHaveCount(1);
   expect(await viewport.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
   const height = () => controls.evaluate((node) => node.getBoundingClientRect().height);
@@ -155,6 +156,10 @@ test("long panels keep one filter zone reachable and remeasure it after wrapping
     node.scrollTop = node.scrollHeight;
   });
   await expect(controls).toBeInViewport({ ratio: 1 });
+  const headerBounds = (await windowHeader.boundingBox())!;
+  expect((await controls.boundingBox())!.y).toBeGreaterThanOrEqual(
+    headerBounds.y + headerBounds.height,
+  );
   await expect(panel.getByRole("searchbox", { name: "Filter icons" })).toBeInViewport({
     ratio: 1,
   });
@@ -163,6 +168,10 @@ test("long panels keep one filter zone reachable and remeasure it after wrapping
   await expect.poll(height).toBeGreaterThan(wide);
   await expect.poll(projected).toBe(await height());
   await expect(controls).toBeInViewport({ ratio: 1 });
+  const narrowHeader = (await windowHeader.boundingBox())!;
+  expect((await controls.boundingBox())!.y).toBeGreaterThanOrEqual(
+    narrowHeader.y + narrowHeader.height,
+  );
   await page.goto(
     "/visual/?fixture=workspace&state=full-view&full-view=package:visual:trajectory&theme=light&font-size=18",
   );

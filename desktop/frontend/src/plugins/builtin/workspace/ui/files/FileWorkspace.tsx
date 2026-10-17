@@ -70,7 +70,7 @@ function FileBrowser() {
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
   const query = useWorkspaceListFiles(workspace.status === "ready" ? { cwd } : undefined);
   return (
-    <WorkspaceViewLayout scrollInset="flush" icon="folder" title="workspace.view.title.file">
+    <WorkspaceViewLayout scrollInset="flush">
       <DataView
         items={query.data}
         isLoading={query.isLoading || workspace.status === "resolving"}
@@ -159,10 +159,7 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
     <WorkspaceViewLayout
       scrollInset="flush"
       scrollRef={scrollPort}
-      titleFace="mono"
-      icon={icon}
-      title={viewer.path}
-      dockIdentity={<FilePath path={viewer.path} />}
+      identity={<FilePath path={viewer.path} />}
       actions={
         <>
           {renderer && wholeFile && (

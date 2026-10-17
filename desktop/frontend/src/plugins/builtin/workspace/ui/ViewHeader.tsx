@@ -1,115 +1,26 @@
-import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import type { IconName } from "@/ui";
-import { AgentSurfaceHeader } from "@/ui/agent";
-import { Icon } from "@/ui";
-import { IconButton, vocab } from "@flame/ui";
-import { useT } from "@/lib/i18n";
-import { useViewPlacement } from "@/plugins/builtin/workspace/public/viewPlacement";
+import { vocab } from "@flame/ui";
 import { face, type as typeStep } from "@flame/ui/tokens.stylex";
 import { viewStyles as vs } from "./viewStyles";
 
 export interface ViewHeaderProps {
-  icon: IconName;
-  title: ReactNode;
-  dockIdentity?: ReactNode;
+  identity?: ReactNode;
   sub?: ReactNode;
   actions?: ReactNode;
-  titleFace?: "prose" | "mono";
 }
 
-export function ViewHeader({
-  icon,
-  title,
-  dockIdentity,
-  sub,
-  actions,
-  titleFace,
-}: ViewHeaderProps) {
-  const placement = useViewPlacement();
-  if (placement?.placement === "dock") {
-    return <DockViewBar identity={dockIdentity} sub={sub} actions={actions} />;
-  }
-  return (
-    <FullViewBar icon={icon} title={title} sub={sub} actions={actions} titleFace={titleFace} />
-  );
-}
-
-function DockViewBar({
-  identity,
-  sub,
-  actions,
-}: Pick<ViewHeaderProps, "sub" | "actions"> & { identity?: ReactNode }) {
+export function ViewHeader({ identity, sub, actions }: ViewHeaderProps) {
   if (identity === undefined && sub === undefined && actions === undefined) return null;
   return (
     <header data-slot="workspace-view-header" {...stylex.props(vs.contentHeader)}>
-      <div {...stylex.props(vs.headerIdentity, vocab.muted, typeStep.uiSm, face.mono)}>
-        {identity !== undefined && <span {...stylex.props(vs.headerName)}>{identity}</span>}
-        {sub !== undefined && <span {...stylex.props(vs.headerMetadata)}>{sub}</span>}
-      </div>
+      {(identity !== undefined || sub !== undefined) && (
+        <div {...stylex.props(vs.headerIdentity, vocab.muted, typeStep.uiSm, face.mono)}>
+          {identity !== undefined && <span {...stylex.props(vs.headerName)}>{identity}</span>}
+          {sub !== undefined && <span {...stylex.props(vs.headerMetadata)}>{sub}</span>}
+        </div>
+      )}
       {actions !== undefined && <div {...stylex.props(vs.headerActions)}>{actions}</div>}
     </header>
-  );
-}
-
-function FullViewBar({ icon, title, sub, actions, titleFace = "prose" }: ViewHeaderProps) {
-  const placement = useViewPlacement();
-  const t = useT();
-
-  return (
-    <>
-      <AgentSurfaceHeader corner="window">
-        <Icon name={icon} size="md" className={stylex.props(vocab.hold, vocab.muted).className} />
-        <div {...stylex.props(vocab.line, vocab.fill)}>
-          <span
-            {...stylex.props(
-              vocab.min,
-              vocab.truncate,
-              vs.title,
-              typeStep.uiMd,
-              titleFace === "mono" && face.mono,
-            )}
-          >
-            {typeof title === "string" ? t(title) : title}
-          </span>
-          {sub !== undefined && (
-            <>
-              <span aria-hidden="true" {...stylex.props(vocab.hold, vs.dotSep, typeStep.uiMd)}>
-                ·
-              </span>
-              <span
-                {...stylex.props(vocab.min, vocab.truncate, vocab.muted, typeStep.uiMd, face.mono)}
-              >
-                {sub}
-              </span>
-            </>
-          )}
-        </div>
-        <div {...stylex.props(vs.actionsTight)}>
-          {placement?.splittable && (
-            <IconButton
-              icon={iconGlyph("open")}
-              size="sm"
-              aria-label={t("workspace.view.openBeside")}
-              onClick={placement.onOpenInDock}
-            />
-          )}
-          {placement && (
-            <IconButton
-              icon={iconGlyph("x")}
-              size="sm"
-              aria-label={t("common.close")}
-              onClick={placement.onClose}
-            />
-          )}
-        </div>
-      </AgentSurfaceHeader>
-      {actions !== undefined && (
-        <header data-slot="workspace-view-header" {...stylex.props(vs.contentHeader)}>
-          <div {...stylex.props(vs.headerActions)}>{actions}</div>
-        </header>
-      )}
-    </>
   );
 }

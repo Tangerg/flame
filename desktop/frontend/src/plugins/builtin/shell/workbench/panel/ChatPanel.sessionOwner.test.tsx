@@ -1,7 +1,11 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { useState, type ReactNode } from "react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { lazy, useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceViewSpec } from "@/plugins/sdk";
+import {
+  closeWorkspaceView,
+  openWorkspaceViewInDock,
+} from "@/plugins/builtin/workspace/public/navigation";
 import { ChatPanel } from "./ChatPanel";
 
 const model = vi.hoisted(() => ({
@@ -51,10 +55,6 @@ vi.mock("@/plugins/builtin/workspace/public/sidebarDrawer", () => ({
 vi.mock("@/plugins/sdk", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/plugins/sdk")>()),
   useWorkspaceViews: () => model.views,
-}));
-
-vi.mock("@/plugins/host/PluginBoundary", () => ({
-  PluginBoundary: ({ children }: { children: ReactNode }) => children,
 }));
 
 vi.mock("@/plugins/host/Slot", () => ({ Slot: () => null }));
@@ -197,4 +197,131 @@ it("measures dock availability when returning from a promoted main view", () => 
     cleanup();
     width.mockRestore();
   }
+});
+
+describe("ChatPanel full-view window controls", () => {
+  beforeEach(() => {
+    model.sessionId = "ses_window";
+    model.activeMainView = "current-view";
+    model.dock = { open: false, viewIds: [], activeViewId: null };
+    model.views = [];
+    vi.mocked(closeWorkspaceView).mockClear();
+    vi.mocked(openWorkspaceViewInDock).mockClear();
+  });
+
+  function expectWindowHeader(container: HTMLElement, title: string) {
+    const header = container.querySelector<HTMLElement>('[data-slot="workspace-window-header"]');
+    expect(header).not.toBeNull();
+    expect(header!.closest('[data-slot="workspace-view-body"]')).toBeNull();
+    const controls = within(header!);
+    expect(controls.getByText(title, { exact: true })).toBeTruthy();
+    expect(controls.getByRole<HTMLButtonElement>("button", { name: "Close" }).disabled).toBe(false);
+    return controls;
+  }
+
+  it("keeps the title and Close available while a lazy view is suspended and after it loads", async () => {
+    const loading = Promise.withResolvers<{ default: () => ReactNode }>();
+    model.views = [
+      {
+        id: "current-view",
+        title: "Suspended workspace",
+        component: lazy(() => loading.promise),
+      },
+    ];
+    model.isLoading = true;
+    const view = render(<ChatPanel onSend={() => true} />);
+
+    expect(screen.queryByText("Loaded workspace")).toBeNull();
+    let controls = expectWindowHeader(view.container, "Suspended workspace");
+    fireEvent.click(controls.getByRole("button", { name: "Close" }));
+    expect(closeWorkspaceView).toHaveBeenLastCalledWith("current-view");
+
+    await act(async () => {
+      loading.resolve({ default: () => <p>Loaded workspace</p> });
+    });
+
+    expect(screen.getByText("Loaded workspace")).toBeTruthy();
+    controls = expectWindowHeader(view.container, "Suspended workspace");
+    fireEvent.click(controls.getByRole("button", { name: "Close" }));
+    expect(closeWorkspaceView).toHaveBeenCalledTimes(2);
+    expect(closeWorkspaceView).toHaveBeenLastCalledWith("current-view");
+  });
+
+  it("keeps window controls outside a failed view and its real boundary retry", () => {
+    const failure = new Error("The workspace fixture failed to render");
+    let failing = true;
+    function RecoveringWorkspaceView() {
+      if (failing) throw failure;
+      return <p>Recovered workspace</p>;
+    }
+    model.views = [
+      { id: "current-view", title: "Recoverable workspace", component: RecoveringWorkspaceView },
+    ];
+    const logError = console.error.bind(console);
+    const errorLog = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      if (!args.includes(failure)) logError(...args);
+    });
+    try {
+      const view = render(<ChatPanel onSend={() => true} />);
+      expect(screen.getByRole("alert").textContent).toContain(failure.message);
+      let controls = expectWindowHeader(view.container, "Recoverable workspace");
+      fireEvent.click(controls.getByRole("button", { name: "Close" }));
+      expect(closeWorkspaceView).toHaveBeenLastCalledWith("current-view");
+
+      failing = false;
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(screen.getByText("Recovered workspace")).toBeTruthy();
+      controls = expectWindowHeader(view.container, "Recoverable workspace");
+      fireEvent.click(controls.getByRole("button", { name: "Close" }));
+      expect(closeWorkspaceView).toHaveBeenCalledTimes(2);
+      expect(closeWorkspaceView).toHaveBeenLastCalledWith("current-view");
+    } finally {
+      errorLog.mockRestore();
+    }
+  });
+
+  it("offers Close for an unknown view without offering a context dock target", () => {
+    model.activeMainView = "missing-view";
+    const view = render(<ChatPanel onSend={() => true} />);
+    const controls = expectWindowHeader(view.container, "View unavailable");
+
+    expect(controls.queryByRole("button", { name: "Open in the context dock" })).toBeNull();
+    fireEvent.click(controls.getByRole("button", { name: "Close" }));
+    expect(closeWorkspaceView).toHaveBeenCalledExactlyOnceWith("missing-view");
+  });
+
+  it.each([undefined, "workspace", "session", "run"] as const)(
+    "offers context dock navigation only for a declared dock scope (%s)",
+    (dock) => {
+      model.views = [
+        { id: "current-view", title: "Current workspace", dock, component: StatefulWorkspaceView },
+      ];
+      const view = render(<ChatPanel onSend={() => true} />);
+      let controls = expectWindowHeader(view.container, "Current workspace");
+      const openBeside = controls.queryByRole("button", {
+        name: "Open in the context dock",
+      });
+      expect(openBeside !== null).toBe(dock !== undefined);
+      if (openBeside) fireEvent.click(openBeside);
+      expect(vi.mocked(openWorkspaceViewInDock).mock.calls).toEqual(
+        dock === undefined ? [] : [["current-view"]],
+      );
+
+      model.activeMainView = "replacement-view";
+      model.views = [
+        {
+          id: "replacement-view",
+          title: "Replacement workspace",
+          component: StatefulWorkspaceView,
+        },
+      ];
+      view.rerender(<ChatPanel onSend={() => true} />);
+      controls = expectWindowHeader(view.container, "Replacement workspace");
+      expect(controls.queryByRole("button", { name: "Open in the context dock" })).toBeNull();
+      fireEvent.click(controls.getByRole("button", { name: "Close" }));
+      expect(closeWorkspaceView).toHaveBeenCalledExactlyOnceWith("replacement-view");
+    },
+  );
 });

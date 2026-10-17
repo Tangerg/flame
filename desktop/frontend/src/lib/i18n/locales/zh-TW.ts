@@ -262,7 +262,6 @@ export const zhTW: Record<string, string> = {
   "providers.setup.action": "前往設定 provider",
 
   "settings.title": "設定",
-  "settings.backToApp": "返回應用",
   "settings.searchPlaceholder": "搜尋設定…",
   "settings.pane.appearance": "外觀",
   "settings.pane.plugins": "外掛",
@@ -947,7 +946,7 @@ export const zhTW: Record<string, string> = {
   "providers.role.stale": "顯示的是最後已知的值——重新整理失敗。",
   "providers.setup.steps":
     "選一個供應商，貼上它的 API 金鑰，然後按「儲存並測試」。開始使用只需要這一步。",
-  "providers.setup.done": "供應商已就緒。按「返回應用程式」即可回去——你的草稿仍在。",
+  "providers.setup.done": "供應商已就緒。關閉設定即可返回——你的草稿仍在。",
   "providers.roles.heading": "模型角色",
   "settings.search.empty": "沒有與「{{query}}」相符的設定。",
   "settings.search.clear": "清除搜尋",

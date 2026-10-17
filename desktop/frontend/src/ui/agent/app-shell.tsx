@@ -67,7 +67,7 @@ export function AgentAppShell({
     <div
       ref={shellRef}
       className="agent-shell"
-      data-sidebar={hasSidebar && sidebarOpen ? "expanded" : "collapsed"}
+      data-sidebar={hasSidebar ? (sidebarOpen ? "expanded" : "collapsed") : "absent"}
     >
       {hasSidebar && (
         <div className="agent-window-sidebar-control">

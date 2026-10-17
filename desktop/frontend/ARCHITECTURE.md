@@ -293,6 +293,13 @@ Settings pane. Stores retain tab sets, drafts, per-view state, and continuity.
 Restored continuity can seed navigation; effects do not keep a second writable
 copy of the same current-location value.
 
+The Workbench owns the persistent window header above each full-width workspace
+view. It derives identity and navigation from the admitted view specification and
+keeps recovery actions outside the content's scrollport, loading state, and error
+boundary. Pages own their content headers, filters, and actions; file identity
+and metadata stay in the file content bar. AppShell derives whether a sidebar is
+expanded, collapsed, or absent and reserves only the corresponding window controls.
+
 Provider identity is the exact provider/model pair. An existing Session supplies
 its own durable selection. An explicit user choice in Composer becomes a Run
 override; incomplete catalog reads do not overwrite the Session's selection.

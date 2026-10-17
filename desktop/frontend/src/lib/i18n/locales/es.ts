@@ -275,7 +275,6 @@ export const es: Record<string, string> = {
   "providers.setup.action": "Configurar proveedor",
 
   "settings.title": "Ajustes",
-  "settings.backToApp": "Volver a la app",
   "settings.searchPlaceholder": "Buscar ajustes…",
   "settings.pane.appearance": "Apariencia",
   "settings.pane.plugins": "Plugins",
@@ -1039,7 +1038,8 @@ export const es: Record<string, string> = {
   "providers.role.stale": "Se muestra el último valor conocido: la actualización falló.",
   "providers.setup.steps":
     "Elige un proveedor, pega su clave de API y pulsa «Guardar y probar». Es todo lo que necesitas para empezar.",
-  "providers.setup.done": "Hay un proveedor listo. Usa «Volver a la app»: tu borrador sigue ahí.",
+  "providers.setup.done":
+    "Hay un proveedor listo. Cierra Ajustes para volver: tu borrador sigue ahí.",
   "providers.roles.heading": "Funciones de modelo",
   "settings.search.empty": "Ningún ajuste coincide con «{{query}}».",
   "settings.search.clear": "Borrar búsqueda",

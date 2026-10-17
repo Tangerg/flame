@@ -36,7 +36,6 @@ export const viewStyles = stylex.create({
   glyphTop: { marginTop: space.s0_5 },
   origin: { marginTop: space.s1, color: color.fgFaint },
   actions: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
-  actionsTight: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s0_5 },
   contentHeader: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr)",
@@ -102,7 +101,6 @@ export const viewStyles = stylex.create({
 
   pushEnd: { marginInlineStart: "auto" },
 
-  title: { color: color.fg, fontWeight: weight.medium },
   description: {
     marginTop: space.s0_5,
     color: color.fgMuted,
@@ -110,7 +108,6 @@ export const viewStyles = stylex.create({
     overflowWrap: "break-word",
   },
   subCaption: { marginTop: space.s0_5, color: color.fgFaint },
-  dotSep: { lineHeight: 1, color: color.fgFaint },
   subCaptionMuted: { marginTop: space.s0_5, color: color.fgMuted },
 
   entry: {

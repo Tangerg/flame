@@ -268,7 +268,6 @@ export const zh: Record<string, string> = {
   "providers.setup.action": "去配置 provider",
 
   "settings.title": "设置",
-  "settings.backToApp": "返回应用",
   "settings.searchPlaceholder": "搜索设置…",
   "settings.group.general": "通用",
   "settings.group.models": "模型",
@@ -943,7 +942,7 @@ export const zh: Record<string, string> = {
   "providers.role.stale": "显示的是最后已知的值——刷新失败。",
   "providers.setup.steps":
     "选一个提供商，粘贴它的 API 密钥，然后点“保存并测试”。开始使用只需要这一步。",
-  "providers.setup.done": "提供商已就绪。点“返回应用”即可回去——你的草稿仍在。",
+  "providers.setup.done": "提供商已就绪。关闭设置即可返回——你的草稿仍在。",
   "providers.roles.heading": "模型角色",
   "settings.search.empty": "没有与“{{query}}”匹配的设置。",
   "settings.search.clear": "清除搜索",
