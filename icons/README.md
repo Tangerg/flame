@@ -19,6 +19,8 @@ import { Brain, BrainOff, BellOff } from "@flame/icons/react";
 
 `size` is the actual square viewport in CSS pixels: a finite positive number, defaulting to 16. Sizes below 22 use the 16px optical master; sizes from 22 use the 24px master. Both drawings remain vector shapes. Inspect 9–36px in the preview; 9–11px is an application constraint that needs special care, rather than a promise that every detailed icon stays equally legible.
 
+Icons retain their viewport in flex layouts by default. Explicit layout styles can override this behavior.
+
 Color inherits through `currentColor`. Native SVG props, `className`, `style`, events, `data-*`, ARIA, and a React 19 SVG ref work normally. Decorative icons are hidden from accessibility APIs by default. `aria-label` or `aria-labelledby` makes an icon an image unless explicitly overridden; action controls should carry their own accessible name.
 
 Geometry, strokes, children, and width/height attributes belong to the drawing. Use `size` for dimensions. CSS should change color, opacity, or layout rather than stroke weight, fill, or viewport dimensions. Separate named components express semantic states; `disabled` belongs to the control. The library has no provider, theme registry, runtime name lookup, stroke options, or speculative filled style.

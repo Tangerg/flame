@@ -10,6 +10,7 @@ import { FLOATING_LAYER, FLOATING_OPTIONS } from "@flame/ui/floating-surface";
 import { floatingRow, floatingRowStyles, type RowLayout } from "./option-row";
 
 const menuStyles = stylex.create({
+  rows: { display: "grid", alignContent: "start", rowGap: "2px" },
   item: { position: "relative" },
   separator: {
     position: "relative",
@@ -19,9 +20,6 @@ const menuStyles = stylex.create({
     backgroundColor: surface.divider,
   },
   content: {
-    display: "grid",
-    alignContent: "start",
-    rowGap: "2px",
     minWidth: "12rem",
     maxWidth: "min(var(--available-width), calc(100dvw - var(--spacing) * 8))",
     maxHeight: "min(380px, var(--available-height))",
@@ -31,7 +29,7 @@ const menuStyles = stylex.create({
   label: { minWidth: 0, whiteSpace: "normal", overflowWrap: "anywhere" },
 });
 
-const MENU_CONTENT = [FLOATING_OPTIONS, MENU_SURFACE.content, menuStyles.content];
+const MENU_CONTENT = [FLOATING_OPTIONS, MENU_SURFACE.content, menuStyles.rows, menuStyles.content];
 
 const menuItem = (layout: RowLayout = "grid") => [menuStyles.item, floatingRow(layout, "sm")];
 
@@ -171,6 +169,34 @@ function DropdownItem({
   return <MenuPrimitive.Item {...props} {...item} className={cn(item.className, className)} />;
 }
 
+function DropdownRadioGroup({
+  className,
+  ...props
+}: ComponentProps<typeof MenuPrimitive.RadioGroup>) {
+  const group = stylex.props(menuStyles.rows);
+  return (
+    <MenuPrimitive.RadioGroup {...props} {...group} className={cn(group.className, className)} />
+  );
+}
+
+function DropdownRadioItem({
+  layout,
+  styles,
+  className,
+  closeOnClick = true,
+  ...props
+}: ComponentProps<typeof MenuPrimitive.RadioItem> & RowRefinement) {
+  const item = stylex.props(menuItem(layout), styles);
+  return (
+    <MenuPrimitive.RadioItem
+      {...props}
+      closeOnClick={closeOnClick}
+      {...item}
+      className={cn(item.className, className)}
+    />
+  );
+}
+
 function DropdownSubmenuTrigger({
   layout,
   className,
@@ -237,6 +263,9 @@ export const DropdownMenu = {
   Trigger: MenuPrimitive.Trigger,
   Content: DropdownContent,
   Item: DropdownItem,
+  RadioGroup: DropdownRadioGroup,
+  RadioItem: DropdownRadioItem,
+  RadioItemIndicator: MenuPrimitive.RadioItemIndicator,
   Separator: DropdownSeparator,
   SubmenuRoot: MenuPrimitive.SubmenuRoot,
   SubmenuTrigger: DropdownSubmenuTrigger,

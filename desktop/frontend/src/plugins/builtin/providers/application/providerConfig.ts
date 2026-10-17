@@ -60,16 +60,9 @@ export function useUtilityModelConfig() {
   const role = utilityRole.data;
   const modelOptions = models.data ?? [];
   const providerConfigs = providers.data ?? [];
-  const selected =
-    role?.provider && role.model
-      ? (modelOptions.find(
-          (model) => model.provider === role.provider && model.id === role.model,
-        ) ?? null)
-      : null;
   return {
     role,
     modelOptions,
-    selected,
     isSet: Boolean(role?.model),
     isAvailable: providerRoleIsAvailable(role, providerConfigs),
     isError: models.isError,

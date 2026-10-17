@@ -64,7 +64,7 @@ export function createIcon(
         strokeWidth: master.strokeWidth,
         strokeLinecap: "round",
         strokeLinejoin: "round",
-        style: { ...style, width: size, height: size },
+        style: { flexShrink: 0, ...style, width: size, height: size },
       },
       master.paths.map((path, index) =>
         createElement("path", { ...path, key: index }),

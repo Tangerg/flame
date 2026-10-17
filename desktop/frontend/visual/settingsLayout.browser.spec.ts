@@ -44,8 +44,11 @@ test("font size selectors reach the full supported scale and restore inherited s
   const ui = page.getByRole("combobox", { name: "Interface size", exact: true });
   await ui.focus();
   await ui.press("Enter");
+  await expect(page.getByRole("option", { name: "14", exact: true })).toBeFocused();
   await page.keyboard.press("End");
+  await expect(page.getByRole("option", { name: "18", exact: true })).toBeFocused();
   await page.keyboard.press("ArrowUp");
+  await expect(page.getByRole("option", { name: "17", exact: true })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(ui).toHaveText("17");
   await expect(page.locator("body")).toHaveCSS("font-size", "17px");

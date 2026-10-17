@@ -24,7 +24,6 @@ vi.mock("../application/providerConfig", () => ({
   useUtilityModelConfig: () => ({
     role: undefined,
     modelOptions: [],
-    selected: null,
     isSet: false,
     isAvailable: true,
     isError: false,
@@ -45,7 +44,7 @@ describe("Provider role mutation material", () => {
     const view = render(<EmbeddingModelSection />);
 
     fireEvent.click(screen.getByRole("button", { name: "Embedding model" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Off" }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "Off" }));
     await screen.findByText("retired embedding failure");
 
     provider.generation = 2;
@@ -59,7 +58,7 @@ describe("Provider role mutation material", () => {
     const view = render(<UtilityModelSection />);
 
     fireEvent.click(screen.getByRole("button", { name: "Utility model" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Use Runtime default" }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "Use Runtime default" }));
     await screen.findByText("retired role failure");
 
     provider.generation = 2;
@@ -79,7 +78,7 @@ describe("Provider role mutation material", () => {
 
     const trigger = screen.getByRole("button", { name: "Utility model" });
     fireEvent.click(trigger);
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Use Runtime default" }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "Use Runtime default" }));
     await waitFor(() => expect(provider.setUtilityRole).toHaveBeenCalledOnce());
 
     const ariaDisabledWhilePending = trigger.getAttribute("aria-disabled");

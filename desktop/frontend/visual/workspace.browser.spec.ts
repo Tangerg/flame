@@ -697,7 +697,7 @@ test("provider and model settings keep validation local to their form", async ({
 
   const utilityModel = page.getByRole("button", { name: "Utility model" });
   await utilityModel.click();
-  await expect(page.getByRole("menuitem", { name: /GPT-5.6/ })).toBeVisible();
+  await expect(page.getByRole("menuitemradio", { name: /GPT-5.6/ })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(utilityModel).toBeFocused();
 

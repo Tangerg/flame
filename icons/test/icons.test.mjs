@@ -45,6 +45,22 @@ test("decorative defaults, native accessibility and attributes survive rendering
   assert.match(labelled, /color="red"/);
 });
 
+test("declared icon viewports resist flex compression and retain explicit layout overrides", () => {
+  const fixed = renderToStaticMarkup(createElement(glyphs.Alert, { size: 18 }));
+  assert.match(fixed, /flex-shrink:0/);
+  assert.match(fixed, /width:18px;height:18px/);
+
+  const overridden = renderToStaticMarkup(
+    createElement(glyphs.Alert, {
+      size: 18,
+      style: { flexShrink: 1, opacity: 0.5 },
+    }),
+  );
+  assert.match(overridden, /flex-shrink:1/);
+  assert.match(overridden, /opacity:0.5/);
+  assert.match(overridden, /width:18px;height:18px/);
+});
+
 test("size and authored geometry have one owner even with untyped props", () => {
   const svg = renderToStaticMarkup(
     createElement(glyphs.Eye, {
