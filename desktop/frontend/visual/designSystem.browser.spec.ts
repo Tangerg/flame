@@ -122,6 +122,7 @@ test("navigation rows share the continuous sliding backplate", async ({ page }) 
   const frames = await positions(second.locator('[data-slot="item-highlight"]'), "y");
   expect(hasIntermediate(frames, from, to)).toBe(true);
   expect(Math.abs(frames.at(-1)! - to)).toBeLessThan(1);
+  await expect(second).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 });
 
 test("reduced motion keeps selection accurate without a sliding transform", async ({ page }) => {

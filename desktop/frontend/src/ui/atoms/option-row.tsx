@@ -26,8 +26,16 @@ export const floatingRowStyles = stylex.create({
   md: { minHeight: "calc(var(--spacing) * 8)", paddingBlock: space.s1 },
   lg: { minHeight: "calc(var(--spacing) * 9)", paddingBlock: space.s1_5 },
   destructive: {
-    color: { default: color.negative, ":is([data-highlighted])": color.negative },
-    backgroundColor: { default: null, ":is([data-highlighted])": surface.negativeWash },
+    color: {
+      default: color.negative,
+      ":is([data-highlighted]):not(:disabled, [aria-disabled=true], [data-disabled])":
+        color.negative,
+    },
+    backgroundColor: {
+      default: null,
+      ":is([data-highlighted]):not(:disabled, [aria-disabled=true], [data-disabled])":
+        surface.negativeWash,
+    },
   },
 });
 

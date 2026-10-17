@@ -17,13 +17,17 @@ const rowStyles = stylex.create({
     paddingInline: space.s2,
     borderWidth: 0,
     textAlign: "left",
-    color: { default: color.fg, ":hover": color.fg },
+    color: {
+      default: color.fg,
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": color.fg,
+    },
     backgroundColor: {
       default: "transparent",
-      ":hover": surface.hover,
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": surface.hover,
       ":focus-visible": surface.hover,
       ":is([data-active])": surface.selected,
-      ":is([data-active]):is(:hover, :focus-visible)": surface.selectedHover,
+      ":is([data-active]):is(:hover:not(:disabled, [aria-disabled=true], [data-disabled]), :focus-visible)":
+        surface.selectedHover,
     },
     transitionProperty: "background-color, color",
     transitionDuration: "var(--dur-color)",
@@ -32,10 +36,11 @@ const rowStyles = stylex.create({
   tracked: {
     backgroundColor: {
       default: "transparent",
-      ":hover": "transparent",
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": "transparent",
       ":focus-visible": surface.hover,
       ":is([data-active])": surface.selected,
-      ":is([data-active]):is(:hover, :focus-visible)": surface.selected,
+      ":is([data-active]):is(:hover:not(:disabled, [aria-disabled=true], [data-disabled]), :focus-visible)":
+        surface.selected,
     },
     position: "relative",
     isolation: "isolate",
@@ -71,9 +76,18 @@ const rowStyles = stylex.create({
     placeItems: "center",
   },
   quiet: {
-    color: { default: color.fgMuted, ":hover": color.fg, ":is([data-active])": color.fg },
+    color: {
+      default: color.fgMuted,
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": color.fg,
+      ":is([data-active])": color.fg,
+    },
   },
-  search: { backgroundColor: { default: surface.hover, ":hover": surface.selected } },
+  search: {
+    backgroundColor: {
+      default: surface.hover,
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": surface.selected,
+    },
+  },
 });
 
 const ROW_GROUP = [reveal.host] as const;

@@ -51,7 +51,10 @@ const gs = stylex.create({
   summary: {
     minHeight: "max(calc(var(--spacing) * 6), var(--control-target-min))",
     textDecorationLine: "underline",
-    textDecorationColor: { default: "transparent", ":is(:enabled):hover": "currentColor" },
+    textDecorationColor: {
+      default: "transparent",
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": "currentColor",
+    },
     cursor: { default: null, ':is(:disabled, [aria-disabled="true"])': "default" },
     opacity: { default: null, ':is(:disabled, [aria-disabled="true"])': 1 },
   },

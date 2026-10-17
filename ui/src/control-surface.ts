@@ -22,7 +22,8 @@ export const FIELD_SURFACE = stylex.create({
   trigger: {
     color: {
       default: color.fgSoft,
-      ":is(:hover, :focus-within, [data-popup-open])": color.fg,
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": color.fg,
+      ":is(:focus-within, [data-popup-open])": color.fg,
     },
     opacity: {
       default: 1,
@@ -47,15 +48,19 @@ export const MENU_SURFACE = stylex.create({
     overflowWrap: "anywhere",
     backgroundColor: {
       default: "transparent",
-      ":hover": { "@media (hover: hover)": surface.hover },
-      ":is([data-highlighted])": surface.hover,
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.hover,
+      },
+      ":is([data-highlighted]):not(:disabled, [aria-disabled=true], [data-disabled])":
+        surface.hover,
       ':is([aria-selected="true"])': surface.selected,
-      ':is([aria-selected="true"]):is(:hover, [data-highlighted])':
+      ':is([aria-selected="true"]):is(:hover, [data-highlighted]):not(:disabled, [aria-disabled=true], [data-disabled])':
         surface.selectedHover,
     },
     opacity: {
       default: 1,
-      ":is([data-disabled])": "var(--control-disabled-opacity)",
+      ':is(:disabled, [aria-disabled="true"], [data-disabled])':
+        "var(--control-disabled-opacity)",
     },
     transitionProperty: "color, background-color",
     transitionDuration: motion.color,

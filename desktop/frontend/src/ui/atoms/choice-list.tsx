@@ -22,14 +22,22 @@ const styles = stylex.create({
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
-    cursor: { default: null, ':is(:disabled, [aria-disabled="true"])': "not-allowed" },
+    cursor: {
+      default: null,
+      ':is(:disabled, [aria-disabled="true"], [data-disabled])': "not-allowed",
+    },
     opacity: {
       default: null,
-      ':is(:disabled, [aria-disabled="true"])': "var(--control-disabled-opacity)",
+      ':is(:disabled, [aria-disabled="true"], [data-disabled])': "var(--control-disabled-opacity)",
     },
   },
   rowChosen: { backgroundColor: surface.selected },
-  rowOpen: { backgroundColor: { default: null, ":hover": surface.hover } },
+  rowOpen: {
+    backgroundColor: {
+      default: null,
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": surface.hover,
+    },
+  },
 
   dot: { display: "block", height: space.s1_5, width: space.s1_5, backgroundColor: "currentColor" },
 });

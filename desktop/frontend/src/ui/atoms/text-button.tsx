@@ -16,24 +16,43 @@ const styles = stylex.create({
     transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
   },
-  muted: { color: { default: color.fgMuted, ":hover": color.fg } },
-  faint: { color: { default: color.fgFaint, ":hover": color.fg } },
+  muted: {
+    color: {
+      default: color.fgMuted,
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": color.fg,
+    },
+  },
+  faint: {
+    color: {
+      default: color.fgFaint,
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": color.fg,
+    },
+  },
   negative: {
     color: color.negative,
     textDecorationLine: "underline",
-    textDecorationColor: { default: "transparent", ":hover": "currentColor" },
+    textDecorationColor: {
+      default: "transparent",
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": "currentColor",
+    },
   },
   inline: {},
   row: {
     width: "100%",
     minHeight: "var(--control-height-sm)",
     borderRadius: radius.row,
-    backgroundColor: { default: "transparent", ":hover": surface.hover },
+    backgroundColor: {
+      default: "transparent",
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": surface.hover,
+    },
   },
   link: {
     fontFamily: "var(--font-mono)",
     textDecorationLine: "underline",
-    textDecorationColor: { default: "transparent", ":hover": "currentColor" },
+    textDecorationColor: {
+      default: "transparent",
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": "currentColor",
+    },
   },
 });
 

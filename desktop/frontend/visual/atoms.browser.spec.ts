@@ -1,5 +1,5 @@
 import { contrastRatio, WCAG_AA_NON_TEXT } from "@/plugins/builtin/theme/kit/legibility";
-import { expect, test, type Page } from "./test";
+import { expect, test, type Locator, type Page } from "./test";
 
 const THEMES = ["light", "dark"] as const;
 
@@ -29,6 +29,35 @@ async function paint(page: Page, selector: string, property: string): Promise<st
     }, property);
 }
 
+async function controlPaint(control: Locator) {
+  return control.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return {
+      background: style.backgroundColor,
+      color: style.color,
+      border: style.borderColor,
+    };
+  });
+}
+
+async function restingPaint(page: Page, control: Locator) {
+  await control.scrollIntoViewIfNeeded();
+  await page.mouse.move(1, 1);
+  expect(await control.evaluate((node) => node.matches(":hover"))).toBe(false);
+  return controlPaint(control);
+}
+
+async function hoveredPaint(control: Locator) {
+  await control.hover();
+  expect(await control.evaluate((node) => node.matches(":hover"))).toBe(true);
+  return controlPaint(control);
+}
+
+async function expectStableHover(page: Page, control: Locator) {
+  const resting = await restingPaint(page, control);
+  expect(await hoveredPaint(control)).toEqual(resting);
+}
+
 test("a long button label stays inside its complete click target", async ({ page }) => {
   await openGallery(page, "light");
   const button = page.locator('[data-atom="button"]').getByRole("button").first();
@@ -51,6 +80,118 @@ test("a long button label stays inside its complete click target", async ({ page
 });
 
 for (const theme of THEMES) {
+  test(`disabled and pending buttons keep their paint while enabled buttons answer hover in ${theme}`, async ({
+    page,
+  }) => {
+    await openGallery(page, theme);
+    const buttons = page.locator('[data-atom="button"]');
+    for (const label of ["Primary", "Soft", "Outline", "Ghost", "Delete"]) {
+      const enabled = buttons.getByRole("button", { name: label, exact: true });
+      const resting = await restingPaint(page, enabled);
+      expect(await hoveredPaint(enabled)).not.toEqual(resting);
+
+      const disabled = buttons.getByRole("button", { name: `${label} disabled`, exact: true });
+      await expect(disabled).toHaveJSProperty("disabled", true);
+      await expectStableHover(page, disabled);
+
+      const pending = buttons.getByRole("button", { name: `${label} pending`, exact: true });
+      await expect(pending).toHaveJSProperty("disabled", false);
+      await expect(pending).toHaveAttribute("aria-disabled", "true");
+      await expectStableHover(page, pending);
+    }
+  });
+
+  test(`unavailable text, segment and choice controls keep their paint on hover in ${theme}`, async ({
+    page,
+  }) => {
+    await openGallery(page, theme);
+    const controls = page.locator('[data-atom="unavailable-controls"]');
+    const disabledText = controls.getByRole("button", {
+      name: "Disabled text action",
+      exact: true,
+    });
+    await expect(disabledText).toHaveJSProperty("disabled", true);
+    await expectStableHover(page, disabledText);
+    const pendingText = controls.getByRole("button", { name: "Pending text action", exact: true });
+    await expect(pendingText).toHaveJSProperty("disabled", false);
+    await expect(pendingText).toHaveAttribute("aria-disabled", "true");
+    await expectStableHover(page, pendingText);
+
+    const tabs = controls.getByRole("tablist", { name: "Unavailable diagnostics", exact: true });
+    for (const label of ["Trace", "Metrics"]) {
+      const tab = tabs.getByRole("tab", { name: label, exact: true });
+      await expect(tab).toBeDisabled();
+      await expectStableHover(page, tab);
+    }
+    const choice = controls.getByRole("radio", { name: "Unavailable choice", exact: true });
+    await expect(choice).toBeDisabled();
+    await expectStableHover(page, choice);
+
+    const enabled = [
+      page.locator('[data-atom="text-button"]').getByRole("button", { name: "Muted", exact: true }),
+      page.getByRole("tablist", { name: "Diagnostics", exact: true }).getByRole("tab", {
+        name: "Metrics",
+        exact: true,
+      }),
+      page.locator('[data-atom="choice-list-single"]').getByRole("radio", {
+        name: "alpha",
+        exact: true,
+      }),
+    ];
+    for (const control of enabled) {
+      const resting = await restingPaint(page, control);
+      expect(await hoveredPaint(control)).not.toEqual(resting);
+    }
+  });
+
+  test(`unavailable field triggers keep their paint and enabled pickers answer hover in ${theme}`, async ({
+    page,
+  }) => {
+    await openGallery(page, theme);
+    const triggers = page.locator('[data-atom="select-trigger"]');
+    const disabled = triggers.getByRole("button", { name: "Disabled selection", exact: true });
+    await expect(disabled).toHaveJSProperty("disabled", true);
+    await expectStableHover(page, disabled);
+    const pending = triggers.getByRole("button", { name: "Pending selection", exact: true });
+    await expect(pending).toHaveJSProperty("disabled", false);
+    await expect(pending).toHaveAttribute("aria-disabled", "true");
+    await expectStableHover(page, pending);
+    const disabledSelect = triggers.getByRole("combobox", {
+      name: "Disabled status",
+      exact: true,
+    });
+    await expect(disabledSelect).toHaveJSProperty("disabled", true);
+    await expectStableHover(page, disabledSelect);
+
+    const enabled = [
+      triggers.getByRole("button", { name: "gpt-5 · high", exact: true }),
+      page.getByRole("combobox", { name: "Memory status", exact: true }),
+    ];
+    for (const trigger of enabled) {
+      const resting = await restingPaint(page, trigger);
+      expect((await hoveredPaint(trigger)).color).not.toBe(resting.color);
+    }
+    const select = enabled[1]!;
+    await select.click();
+    await expect(page.getByRole("listbox")).toBeVisible();
+    await page.getByRole("option", { name: "Active", exact: true }).click();
+    await expect(select).toHaveText("Active");
+  });
+
+  test(`menu hover highlights enabled items and leaves disabled items unchanged in ${theme}`, async ({
+    page,
+  }) => {
+    await openGallery(page, theme);
+    await page.getByRole("button", { name: "Record actions", exact: true }).click();
+    const menu = page.getByRole("menu", { name: "Record actions", exact: true });
+    const enabled = menu.getByRole("menuitem", { name: "Edit record", exact: true });
+    const resting = await restingPaint(page, enabled);
+    expect((await hoveredPaint(enabled)).background).not.toBe(resting.background);
+    const disabled = menu.getByRole("menuitem", { name: "Delete record", exact: true });
+    await expect(disabled).toHaveAttribute("data-disabled", "");
+    await expectStableHover(page, disabled);
+  });
+
   test(`every atom renders in ${theme}`, async ({ page }) => {
     await openGallery(page, theme);
     const panel = page.getByRole("region", { name: "Shared Memory controls" });

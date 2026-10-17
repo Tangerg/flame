@@ -142,7 +142,8 @@ const styles = stylex.create({
   rowCurrent: {
     backgroundColor: {
       default: surface.selected,
-      ":is([data-highlighted])": surface.selectedHover,
+      ":is([data-highlighted]):not(:disabled, [aria-disabled=true], [data-disabled])":
+        surface.selectedHover,
     },
   },
   railRow: {

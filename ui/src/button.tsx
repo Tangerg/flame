@@ -122,78 +122,101 @@ const styles = stylex.create({
     scale: {
       default: null,
       ":active": "var(--press-scale)",
-      ':is(:disabled, [aria-disabled="true"]):active': 1,
+      ':is(:disabled, [aria-disabled="true"], [data-disabled]):active': 1,
     },
   },
   nudge: {
     translate: {
       default: null,
       ":active": "0 0.5px",
-      ':is(:disabled, [aria-disabled="true"]):active': null,
+      ':is(:disabled, [aria-disabled="true"], [data-disabled]):active': null,
     },
   },
 
   ghost: {
     backgroundColor: {
       default: "transparent",
-      ":hover": { "@media (hover: hover)": surface.hover },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.hover,
+      },
       ":is([data-chrome-focus]):focus-visible": surface.hover,
       ':is([data-popup-open][aria-expanded="true"])': surface.selected,
-      ':is([data-popup-open][aria-expanded="true"]):hover': {
-        "@media (hover: hover)": surface.selectedHover,
-      },
+      ':is([data-popup-open][aria-expanded="true"]):hover:not(:disabled, [aria-disabled=true], [data-disabled])':
+        {
+          "@media (hover: hover)": surface.selectedHover,
+        },
     },
     color: {
       default: color.fgMuted,
-      ":hover": { "@media (hover: hover)": color.fg },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": color.fg,
+      },
       ':is([data-popup-open][aria-expanded="true"])': color.fg,
     },
   },
   soft: {
     backgroundColor: {
       default: surface.surface2,
-      ":hover": { "@media (hover: hover)": surface.surface3 },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.surface3,
+      },
     },
     color: {
       default: color.fgSoft,
-      ":hover": { "@media (hover: hover)": color.fg },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": color.fg,
+      },
     },
   },
   outline: {
     borderColor: surface.fieldStrong,
     backgroundColor: {
       default: "transparent",
-      ":hover": { "@media (hover: hover)": surface.hover },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.hover,
+      },
     },
     color: {
       default: color.fgSoft,
-      ":hover": { "@media (hover: hover)": color.fg },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": color.fg,
+      },
     },
   },
   primary: {
     backgroundColor: {
       default: surface.ctaFill,
-      ":hover": { "@media (hover: hover)": surface.ctaHover },
-      ':is(:disabled, [aria-disabled="true"])': surface.surface2,
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.ctaHover,
+      },
+      ':is(:disabled, [aria-disabled="true"], [data-disabled])':
+        surface.surface2,
     },
     color: {
       default: color.ctaText,
-      ':is(:disabled, [aria-disabled="true"])': color.fgFaint,
+      ':is(:disabled, [aria-disabled="true"], [data-disabled])': color.fgFaint,
     },
-    opacity: { default: null, ':is(:disabled, [aria-disabled="true"])': 1 },
+    opacity: {
+      default: null,
+      ':is(:disabled, [aria-disabled="true"], [data-disabled])': 1,
+    },
   },
   wash: { backgroundColor: "transparent" },
   washNegative: {
     backgroundColor: {
       default: "transparent",
-      ":hover": { "@media (hover: hover)": surface.negativeWash },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.negativeWash,
+      },
     },
     color: color.negative,
   },
   washWarning: {
     backgroundColor: {
       default: "transparent",
-      ":hover": { "@media (hover: hover)": surface.warningWash },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.warningWash,
+      },
     },
     color: color.warning,
   },
@@ -201,14 +224,18 @@ const styles = stylex.create({
   tonalNegative: {
     backgroundColor: {
       default: surface.negativeWash,
-      ":hover": { "@media (hover: hover)": surface.negativeBadge },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.negativeBadge,
+      },
     },
     color: color.negative,
   },
   tonalWarning: {
     backgroundColor: {
       default: surface.warningWash,
-      ":hover": { "@media (hover: hover)": surface.warningBadge },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.warningBadge,
+      },
     },
     color: color.warning,
   },
@@ -216,7 +243,9 @@ const styles = stylex.create({
   mediaTray: {
     backgroundColor: {
       default: "transparent",
-      ":hover": { "@media (hover: hover)": surface.mediaScrim },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.mediaScrim,
+      },
     },
     color: color.onMedia,
   },
@@ -224,11 +253,15 @@ const styles = stylex.create({
     borderWidth: 0,
     backgroundColor: {
       default: surface.canvas,
-      ":hover": { "@media (hover: hover)": surface.surface2 },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.surface2,
+      },
     },
     color: {
       default: color.fgSoft,
-      ":hover": { "@media (hover: hover)": color.fg },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": color.fg,
+      },
     },
     boxShadow: "var(--shadow-raised)",
   },
@@ -238,10 +271,7 @@ const styles = stylex.create({
     justifyContent: "flex-start",
     borderRadius: 0,
     borderWidth: 0,
-    backgroundColor: {
-      default: "transparent",
-      ":hover": { "@media (hover: hover)": "transparent" },
-    },
+    backgroundColor: "transparent",
     paddingInline: 0,
     paddingBlock: 0,
     lineHeight: "inherit",
@@ -255,7 +285,9 @@ const styles = stylex.create({
     overflowWrap: "break-word",
     color: {
       default: color.fg,
-      ":hover": { "@media (hover: hover)": color.fgSoft },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": color.fgSoft,
+      },
     },
     textDecorationLine: "underline",
     textDecorationColor: color.fgFaint,
@@ -273,25 +305,33 @@ const styles = stylex.create({
   quietAccent: {
     color: {
       default: color.fgFaint,
-      ":hover": { "@media (hover: hover)": color.accent },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": color.accent,
+      },
     },
   },
   quietNegative: {
     color: {
       default: color.fgFaint,
-      ":hover": { "@media (hover: hover)": color.negative },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": color.negative,
+      },
     },
   },
   quietSuccess: {
     color: {
       default: color.fgFaint,
-      ":hover": { "@media (hover: hover)": color.success },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": color.success,
+      },
     },
   },
   quietWarning: {
     color: {
       default: color.fgFaint,
-      ":hover": { "@media (hover: hover)": color.warning },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": color.warning,
+      },
     },
   },
 
@@ -300,7 +340,9 @@ const styles = stylex.create({
   active: {
     backgroundColor: {
       default: surface.selected,
-      ":hover": { "@media (hover: hover)": surface.selectedHover },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": surface.selectedHover,
+      },
     },
     color: color.fg,
   },

@@ -47,8 +47,15 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
     color: {
       default: color.fgMuted,
-      ":hover": { "@media (hover: hover)": color.fg },
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
+        "@media (hover: hover)": color.fg,
+      },
       ":is([data-active])": color.fg,
+    },
+    opacity: {
+      default: null,
+      ':is(:disabled, [aria-disabled="true"], [data-disabled])':
+        "var(--control-disabled-opacity)",
     },
   },
   label: { position: "relative" },

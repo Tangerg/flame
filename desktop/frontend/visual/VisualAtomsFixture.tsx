@@ -38,6 +38,7 @@ import {
   Select,
   Badge,
   Button,
+  ActionMenu,
   Checkbox,
   EmptyState,
   IconButton,
@@ -77,6 +78,14 @@ function Specimen({ name, children }: { name: string; children: ReactNode }) {
 }
 
 const noop = () => {};
+
+const BUTTON_VARIANTS = [
+  { variant: "primary", label: "Primary" },
+  { variant: "soft", label: "Soft" },
+  { variant: "outline", label: "Outline" },
+  { variant: "ghost", label: "Ghost" },
+  { variant: "tonal", label: "Delete" },
+] as const;
 
 function SegmentedSpecimen() {
   const [value, setValue] = useState("trace");
@@ -185,18 +194,62 @@ export function VisualAtomsFixture() {
         </FormRow>
       </Specimen>
       <Specimen name="button">
-        <div {...stylex.props(styles.row)}>
-          <Button variant="primary">Primary</Button>
-          <Button variant="soft">Soft</Button>
-          <Button variant="outline">Outline</Button>
-          <Button variant="ghost">Ghost</Button>
-          <Button variant="tonal" tone="negative">
-            Delete
-          </Button>
-          <Button variant="primary" disabled>
-            Disabled
-          </Button>
+        <div {...stylex.props(styles.column)}>
+          {BUTTON_VARIANTS.map(({ variant, label }) => (
+            <div key={variant} {...stylex.props(styles.row)}>
+              <Button variant={variant} tone={variant === "tonal" ? "negative" : undefined}>
+                {label}
+              </Button>
+              <Button
+                variant={variant}
+                tone={variant === "tonal" ? "negative" : undefined}
+                disabled
+              >
+                {label} disabled
+              </Button>
+              <Button variant={variant} tone={variant === "tonal" ? "negative" : undefined} pending>
+                {label} pending
+              </Button>
+            </div>
+          ))}
         </div>
+      </Specimen>
+      <Specimen name="unavailable-controls">
+        <TextButton disabled shape="row">
+          Disabled text action
+        </TextButton>
+        <TextButton pending shape="row">
+          Pending text action
+        </TextButton>
+        <Segmented
+          disabled
+          value="trace"
+          onChange={noop}
+          ariaLabel="Unavailable diagnostics"
+          options={[
+            { value: "trace", label: "Trace" },
+            { value: "metrics", label: "Metrics" },
+          ]}
+        />
+        <span id="atoms-disabled-choice">Unavailable choices</span>
+        <ChoiceList
+          disabled
+          multiple={false}
+          value={[]}
+          values={["unavailable"]}
+          labelledBy="atoms-disabled-choice"
+          onValueChange={noop}
+        >
+          <ChoiceOption
+            disabled
+            multiple={false}
+            value="unavailable"
+            selected={false}
+            label="Unavailable choice"
+          >
+            Unavailable choice
+          </ChoiceOption>
+        </ChoiceList>
       </Specimen>
       <Specimen name="icon-button">
         <div {...stylex.props(styles.row)}>
@@ -262,6 +315,26 @@ export function VisualAtomsFixture() {
       </Specimen>
       <Specimen name="select-trigger">
         <SelectTrigger label="gpt-5 · high" leading={<Icon name="sparkle" size="sm" />} />
+        <SelectTrigger label="Disabled selection" disabled />
+        <SelectTrigger label="Pending selection" pending />
+        <Select
+          disabled
+          label="Disabled status"
+          value="pending"
+          onValueChange={noop}
+          options={[{ value: "pending", label: "Pending review" }]}
+        />
+      </Specimen>
+      <Specimen name="action-menu">
+        <ActionMenu
+          label="Record actions"
+          triggerContent="Record actions"
+          items={[
+            { label: "Open record", onSelect: noop },
+            { label: "Edit record", onSelect: noop },
+            { label: "Delete record", tone: "negative", disabled: true, onSelect: noop },
+          ]}
+        />
       </Specimen>
       <Specimen name="badge">
         <div {...stylex.props(styles.row)}>
