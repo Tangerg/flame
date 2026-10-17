@@ -942,7 +942,8 @@ for (const theme of ["light", "dark"] as const) {
     await table.evaluate((element) => element.scrollIntoView({ block: "center" }));
     await expectStableBox(table);
     await table.hover();
-    await page.getByRole("button", { name: "Expand table" }).click();
+    const trigger = page.getByRole("button", { name: "Expand table" });
+    await trigger.click();
 
     const dialog = page.getByRole("dialog", { name: "Table preview" });
     await expect(dialog).toBeVisible();
@@ -955,8 +956,11 @@ for (const theme of ["light", "dark"] as const) {
         ),
     );
 
-    await page.getByRole("button", { name: "Close table preview" }).click();
+    const close = dialog.getByRole("button", { name: "Close table preview" });
+    await expect(close).toHaveCount(1);
+    await close.click();
     await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
   });
 }
 

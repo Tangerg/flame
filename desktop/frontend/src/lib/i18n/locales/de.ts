@@ -648,6 +648,10 @@ export const de: Record<string, string> = {
   "settings.group.advanced": "Erweitert",
   "settings.pane.mcpServers": "MCP-Server",
   "settings.pane.hooks": "Hooks",
+  "settings.appearance.colors": "Design und Farbe",
+  "settings.appearance.typography": "Typografie",
+  "settings.appearance.interaction": "Interaktion",
+  "settings.appearance.language": "Sprache",
   "settings.appearance.hero":
     "Themes, Kontrast, Typografie und Bewegung bestimmen das Arbeitsgefühl von Flame.",
   "context.usage.aria": "Kontextauslastung: {{percent}}%",

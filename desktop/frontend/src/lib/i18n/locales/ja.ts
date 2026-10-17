@@ -628,6 +628,10 @@ export const ja: Record<string, string> = {
   "settings.group.advanced": "詳細",
   "settings.pane.mcpServers": "MCP サーバー",
   "settings.pane.hooks": "フック",
+  "settings.appearance.colors": "テーマと色",
+  "settings.appearance.typography": "文字",
+  "settings.appearance.interaction": "操作",
+  "settings.appearance.language": "言語",
   "settings.appearance.hero":
     "テーマ、コントラスト、タイポグラフィ、モーションが Flame の操作感を決めます。",
   "context.usage.aria": "コンテキスト使用率: {{percent}}%",

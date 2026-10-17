@@ -3,6 +3,7 @@ export * from "./badge";
 export * from "./tooltip";
 export * from "./text-field";
 export * from "./icon-button";
+export * from "./icon-mark";
 export * from "./empty-state";
 export * from "./glyph-swap";
 export * from "./typography";

@@ -5,7 +5,7 @@ import { useId, useLayoutEffect, useRef, useState } from "react";
 import { DialogPrimitive } from "@flame/ui/primitives";
 import { Icon } from "@/ui/icons";
 import { MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
-import { color, radius, space, surface } from "@flame/ui/tokens.stylex";
+import { color, space, surface } from "@flame/ui/tokens.stylex";
 import { Kbd } from "./kbd";
 import { OptionRow } from "./option-row";
 import { TextField } from "@flame/ui/text-field";
@@ -13,11 +13,9 @@ import { TextField } from "@flame/ui/text-field";
 const styles = stylex.create({
   panel: {
     display: "flex",
-    width: "min(520px, calc(100vw - 32px))",
+    width: "min(520px, calc(100dvw - var(--layout-compact-gutter) * 2))",
     flexDirection: "column",
     overflow: "hidden",
-    borderRadius: radius.floatingPanel,
-    backgroundColor: surface.canvas,
   },
   contents: { display: "contents" },
   queryRow: {

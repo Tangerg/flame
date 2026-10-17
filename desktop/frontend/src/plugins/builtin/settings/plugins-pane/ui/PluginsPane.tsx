@@ -13,6 +13,7 @@ import {
   color,
   face,
   leading,
+  layout,
   motion,
   radius,
   space,
@@ -24,9 +25,6 @@ import { settingStyles as ss } from "../../kit/settingStyles";
 
 const pp = stylex.create({
   plugin: {
-    borderTopWidth: { default: "var(--control-edge-width)", ":first-child": 0 },
-    borderTopStyle: "solid",
-    borderTopColor: surface.field,
     backgroundColor: { default: null, ":hover": surface.hover },
     transitionProperty: "background-color",
     transitionTimingFunction: motion.easeState,
@@ -40,14 +38,14 @@ const pp = stylex.create({
     },
     gap: space.s2_5,
     minWidth: 0,
-    paddingInline: space.s4,
+    paddingInline: layout.cardPadding,
     paddingBlock: space.s3,
   },
   errors: {
     display: "flex",
     flexDirection: "column",
     gap: space.s1_5,
-    paddingInline: space.s4,
+    paddingInline: layout.cardPadding,
     paddingBottom: space.s3,
   },
   errorCard: {

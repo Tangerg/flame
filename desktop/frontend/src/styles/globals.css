@@ -121,10 +121,10 @@
   );
   --wash-step: max(3%, var(--depth-step));
   --wash-hover: color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 1.25), transparent);
-  --wash-selected: color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 2.5), transparent);
+  --wash-selected: color-mix(in srgb, var(--color-accent) calc(var(--wash-step) * 2.5), transparent);
   --wash-selected-hover: color-mix(
     in srgb,
-    var(--color-text) calc(var(--wash-step) * 3.75),
+    var(--color-accent) calc(var(--wash-step) * 3.75),
     transparent
   );
   --color-sunken-hover: color-mix(
@@ -357,6 +357,11 @@
     var(--dock-tab-active-surface)
   );
   --app-card-surface: var(--color-elevated);
+  --surface-emphasis: linear-gradient(
+    145deg,
+    color-mix(in oklab, var(--color-accent) 18%, var(--app-card-surface)),
+    color-mix(in oklab, var(--color-accent) 5%, var(--app-card-surface))
+  );
   --app-user-message-surface: color-mix(in srgb, var(--color-text) 5%, transparent);
   --app-composer-surface: color-mix(in oklab, var(--app-content-surface) 86%, transparent);
   --composer-backdrop: blur(20px) saturate(1.4);

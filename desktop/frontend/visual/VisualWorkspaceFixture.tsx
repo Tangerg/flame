@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { ChatPanel } from "@/plugins/builtin/shell/workbench/panel/ChatPanel";
+import { Slot } from "@/plugins/host/Slot";
 import { AppToaster } from "@/plugins/builtin/shell/toaster";
 import {
   useActiveWorkspaceViewId,
@@ -135,6 +136,7 @@ export function VisualWorkspaceFixture({ state }: { state: VisualWorkspaceState 
       }
       overlay={
         <>
+          <Slot name="app.overlay" />
           <WorkspaceFixtureReadout state={state} />
           <AppToaster />
         </>

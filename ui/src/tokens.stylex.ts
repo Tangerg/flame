@@ -46,6 +46,7 @@ export const surface = stylex.defineVars({
   ctaHover: "var(--color-cta-hover)",
   mediaScrim: "var(--color-media-scrim)",
   accentWash: "var(--color-accent-wash)",
+  emphasis: "var(--surface-emphasis)",
   negativeWash: "var(--color-negative-wash)",
   infoWash: "var(--color-info-wash)",
   successWash: "var(--color-success-wash)",

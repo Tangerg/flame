@@ -213,7 +213,20 @@ async function fixtureNode(): Promise<ReactNode> {
       import("./VisualShellFixture"),
       import("./installVisualShellFixture"),
     ]);
-    await installVisualShellFixture(workIndexState, theme, sidebarOpen, shellOverlay);
+    const runtimeClient = await installVisualRuntimeClient(
+      structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+      VISUAL_CAPABILITIES,
+      async () => {
+        throw new Error("The shell fixture has no workspace diff read");
+      },
+    );
+    await installVisualShellFixture(
+      () => runtimeClient,
+      workIndexState,
+      theme,
+      sidebarOpen,
+      shellOverlay,
+    );
     return <VisualShellFixture state={workIndexState} />;
   }
   const [{ VisualAgentStateFixture }, { installVisualAgentFixture }] = await Promise.all([

@@ -236,21 +236,18 @@ function Observation({ row }: { row: TrajectoryEntry }) {
     </>
   );
 }
-export function TrajectoryReport({ page }: { page: Page<TrajectoryEntry> }) {
-  const [kind, setKind] = useState("all");
-  const [run, setRun] = useState("all");
-  const [search, setSearch] = useState("");
+export function TrajectoryReport({
+  page,
+  kind,
+  run,
+  search,
+}: {
+  page: Page<TrajectoryEntry>;
+  kind: string;
+  run: string;
+  search: string;
+}) {
   const rows = page.data;
-  const runOptions = [
-    { value: "all", label: "All Runs" },
-    ...Array.from(new Set(rows.map(runId))).map((id) => ({
-      value: id,
-      label: id || "Session only",
-    })),
-  ];
-  const selectedRun = runOptions.some((option) => option.value === run)
-    ? run
-    : "all";
   const matching = rows.filter((row) => {
     const category = row.type === "item" ? row.item.type : row.type;
     const matchesKind =
@@ -261,7 +258,7 @@ export function TrajectoryReport({ page }: { page: Page<TrajectoryEntry> }) {
         ["userMessage", "agentMessage", "reasoning"].includes(category));
     return (
       matchesKind &&
-      (selectedRun === "all" || runId(row) === selectedRun) &&
+      (run === "all" || runId(row) === run) &&
       JSON.stringify(evidence(row), (key, value) =>
         key === "data" ? undefined : value,
       )
@@ -290,44 +287,6 @@ export function TrajectoryReport({ page }: { page: Page<TrajectoryEntry> }) {
         title="Recorded activity"
         description={`${matching.length} of ${rows.length} records on this page`}
       >
-        <FilterBar
-          label="Observation filters"
-          search={
-            <SearchField
-              size="lg"
-              id="search"
-              aria-label="Filter this page"
-              placeholder="Recorded text or ID"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          }
-        >
-          <Select
-            size="lg"
-            id="kind"
-            label="Observation type"
-            value={kind}
-            onValueChange={setKind}
-            options={[
-              { value: "all", label: "All observations" },
-              { value: "run", label: "Runs" },
-              { value: "model", label: "Logical model calls" },
-              { value: "endpoint", label: "Model endpoints" },
-              { value: "toolCall", label: "Tool calls" },
-              { value: "message", label: "Messages" },
-              { value: "attention", label: "Needs attention" },
-            ]}
-          />
-          <Select
-            size="lg"
-            id="run"
-            label="Run filter"
-            value={selectedRun}
-            onValueChange={setRun}
-            options={runOptions}
-          />
-        </FilterBar>
         <RecordGroup
           variant="list"
           id="records"
@@ -408,6 +367,9 @@ type Read = {
 };
 
 export function Trajectory({ context }: { context: ComponentContext }) {
+  const [kind, setKind] = useState("all");
+  const [run, setRun] = useState("all");
+  const [search, setSearch] = useState("");
   const sessionId = useMemo(() => {
     if (!context.sessionId)
       throw new Error("Session trajectory requires a Session context");
@@ -468,27 +430,84 @@ export function Trajectory({ context }: { context: ComponentContext }) {
     return () => reading.current?.abort();
   }, [load]);
   const accepted = read.accepted;
-  return (
-    <Panel label="Session trajectory">
-      <PanelHeader
-        title="Session trajectory"
-        context={
-          <Metadata>
-            Session <code>{sessionId}</code>
-          </Metadata>
-        }
-        description="Inspect recorded runs, model calls and tool activity."
-        actions={
-          <IconButton
-            icon={Refresh}
-            aria-label="Refresh"
-            size="md"
-            disabled={read.loading}
-            onClick={() => void load()}
-          />
-        }
-      />
+  const rows = accepted?.page.data ?? [];
+  const runOptions = [
+    { value: "all", label: "All Runs" },
+    ...Array.from(new Set(rows.map(runId))).map((id) => ({
+      value: id,
+      label: id || "Session only",
+    })),
+  ];
+  const selectedRun = runOptions.some((option) => option.value === run)
+    ? run
+    : "all";
 
+  return (
+    <Panel
+      label="Session trajectory"
+      header={
+        <PanelHeader
+          title="Session trajectory"
+          context={
+            <Metadata>
+              Session <code>{sessionId}</code>
+            </Metadata>
+          }
+          description="Inspect recorded runs, model calls and tool activity."
+        />
+      }
+      controls={
+        <>
+          <Toolbar label="Trajectory controls">
+            <IconButton
+              icon={Refresh}
+              aria-label="Refresh"
+              size="md"
+              disabled={read.loading}
+              onClick={() => void load()}
+            />
+          </Toolbar>
+          <FilterBar
+            label="Observation filters"
+            search={
+              <SearchField
+                size="lg"
+                id="search"
+                aria-label="Filter this page"
+                placeholder="Recorded text or ID"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            }
+          >
+            <Select
+              size="lg"
+              id="kind"
+              label="Observation type"
+              value={kind}
+              onValueChange={setKind}
+              options={[
+                { value: "all", label: "All observations" },
+                { value: "run", label: "Runs" },
+                { value: "model", label: "Logical model calls" },
+                { value: "endpoint", label: "Model endpoints" },
+                { value: "toolCall", label: "Tool calls" },
+                { value: "message", label: "Messages" },
+                { value: "attention", label: "Needs attention" },
+              ]}
+            />
+            <Select
+              size="lg"
+              id="run"
+              label="Run filter"
+              value={selectedRun}
+              onValueChange={setRun}
+              options={runOptions}
+            />
+          </FilterBar>
+        </>
+      }
+    >
       {read.loading && <p role="status">Reading recorded observations…</p>}
       {read.error && (
         <p role="alert">The requested page could not be read: {read.error}</p>
@@ -503,7 +522,12 @@ export function Trajectory({ context }: { context: ComponentContext }) {
             {accepted.cursors.length}.
             {read.error && " Showing the last accepted page."}
           </Metadata>
-          <TrajectoryReport page={accepted.page} />
+          <TrajectoryReport
+            page={accepted.page}
+            kind={kind}
+            run={selectedRun}
+            search={search}
+          />
           {(accepted.cursors.length > 1 ||
             Boolean(accepted.page.nextCursor)) && (
             <PanelFooter>

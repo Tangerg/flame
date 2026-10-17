@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { useRef, type ReactNode } from "react";
 import { Ellipsis } from "@flame/icons/react";
 import { MENU_SURFACE } from "./control-surface";
 import { Button } from "./button";
@@ -20,7 +21,7 @@ const styles = stylex.create({
 
 export interface ActionMenuItem {
   label: string;
-  onSelect(): void;
+  onSelect(opener: HTMLButtonElement): void;
   tone?: "negative";
   disabled?: boolean;
 }
@@ -29,19 +30,32 @@ export function ActionMenu({
   label,
   items,
   disabled,
+  triggerContent,
 }: {
   label: string;
   items: readonly ActionMenuItem[];
   disabled?: boolean;
+  triggerContent?: ReactNode;
 }) {
+  const trigger = useRef<HTMLButtonElement>(null);
   return (
     <MenuPrimitive.Root>
       <MenuPrimitive.Trigger
+        ref={trigger}
         disabled={disabled}
         aria-label={label}
-        render={<Button size="icon-md" variant="ghost" />}
+        render={
+          <Button
+            size={triggerContent === undefined ? "icon-md" : "md"}
+            variant="ghost"
+          />
+        }
       >
-        <Icon glyph={Ellipsis} size="md" />
+        {triggerContent === undefined ? (
+          <Icon glyph={Ellipsis} size="md" />
+        ) : (
+          triggerContent
+        )}
       </MenuPrimitive.Trigger>
       <MenuPrimitive.Portal>
         <MenuPrimitive.Positioner
@@ -61,7 +75,7 @@ export function ActionMenu({
               <MenuPrimitive.Item
                 key={item.label}
                 disabled={disabled || item.disabled}
-                onClick={item.onSelect}
+                onClick={() => item.onSelect(trigger.current!)}
                 {...stylex.props(
                   MENU_SURFACE.item,
                   styles.item,

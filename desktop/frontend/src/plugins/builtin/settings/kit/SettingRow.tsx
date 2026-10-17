@@ -1,16 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
-import { color, layout, surface, weight } from "@flame/ui/tokens.stylex";
+import { color, layout, weight } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "./settingStyles";
 
 const styles = stylex.create({
   row: {
     display: "grid",
     gap: layout.sectionGap,
-    borderBlockStartWidth: { default: "var(--control-edge-width)", ":first-child": 0 },
-    borderBlockStartStyle: "solid",
-    borderBlockStartColor: surface.field,
     paddingInline: layout.cardPadding,
     paddingBlock: layout.rowPadding,
     minWidth: 0,

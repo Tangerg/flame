@@ -45,9 +45,15 @@ const options = [
 ];
 const cost = (amount?: number) =>
   amount === undefined ? "Not reported" : dollars.format(amount);
-export function UsageReport({ report }: { report: UsageSummary }) {
-  const [group, setGroup] = useState("byProvider");
-  const [filter, setFilter] = useState("");
+export function UsageReport({
+  report,
+  group,
+  filter,
+}: {
+  report: UsageSummary;
+  group: string;
+  filter: string;
+}) {
   const buckets =
     report[
       group as "byProvider" | "byModel" | "byDay" | "byOrigin" | "byScope"
@@ -130,27 +136,6 @@ export function UsageReport({ report }: { report: UsageSummary }) {
         title="Usage breakdown"
         description={`Recorded costs by ${options.find((option) => option.value === group)!.label.toLowerCase()}`}
       >
-        <FilterBar
-          label="Usage filters"
-          search={
-            <SearchField
-              size="lg"
-              id="filter"
-              aria-label="Filter"
-              placeholder="Find a source"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-            />
-          }
-        >
-          <Select
-            size="lg"
-            label="Group by"
-            value={group}
-            onValueChange={setGroup}
-            options={options}
-          />
-        </FilterBar>
         <RecordGroup variant="list" aria-label="Recorded usage by source">
           {matching.map((bucket) => (
             <ListRow key={bucket.key}>
@@ -231,6 +216,8 @@ type Read = {
 };
 
 export function Usage({ context }: { context: ComponentContext }) {
+  const [group, setGroup] = useState("byProvider");
+  const [filter, setFilter] = useState("");
   const [period, setPeriod] = useState<Period>(periods[0]);
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
@@ -263,22 +250,25 @@ export function Usage({ context }: { context: ComponentContext }) {
     return () => reading.current?.abort();
   }, [refresh]);
   return (
-    <Panel label="Usage">
-      <PanelHeader
-        title="Usage"
-        description="Recorded model usage and cost."
-        actions={
-          <>
-            <Toolbar label="Usage report actions">
-              <Select
-                label="Period"
-                value={period.value}
-                options={periods.map(({ value, label }) => ({ value, label }))}
-                onValueChange={(value) =>
-                  setPeriod(periods.find((item) => item.value === value)!)
-                }
-              />
-            </Toolbar>
+    <Panel
+      label="Usage"
+      header={
+        <PanelHeader
+          title="Usage"
+          description="Recorded model usage and cost."
+        />
+      }
+      controls={
+        <>
+          <Toolbar label="Usage controls">
+            <Select
+              label="Period"
+              value={period.value}
+              options={periods.map(({ value, label }) => ({ value, label }))}
+              onValueChange={(value) =>
+                setPeriod(periods.find((item) => item.value === value)!)
+              }
+            />
             <IconButton
               icon={Refresh}
               aria-label="Refresh"
@@ -286,10 +276,31 @@ export function Usage({ context }: { context: ComponentContext }) {
               disabled={read.loading}
               onClick={() => void refresh()}
             />
-          </>
-        }
-      />
-
+          </Toolbar>
+          <FilterBar
+            label="Usage filters"
+            search={
+              <SearchField
+                size="lg"
+                id="filter"
+                aria-label="Filter"
+                placeholder="Find a source"
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+              />
+            }
+          >
+            <Select
+              size="lg"
+              label="Group by"
+              value={group}
+              onValueChange={setGroup}
+              options={options}
+            />
+          </FilterBar>
+        </>
+      }
+    >
       {read.loading && <p role="status">Reading usage…</p>}
       {read.error && (
         <p role="alert">The current report could not be read: {read.error}</p>
@@ -304,7 +315,11 @@ export function Usage({ context }: { context: ComponentContext }) {
             {read.accepted.period !== period &&
               " Showing the last accepted period while the selected period is unavailable."}
           </Metadata>
-          <UsageReport report={read.accepted.report} />
+          <UsageReport
+            report={read.accepted.report}
+            group={group}
+            filter={filter}
+          />
         </>
       )}
     </Panel>

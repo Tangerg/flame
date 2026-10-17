@@ -1,16 +1,10 @@
 import { iconGlyph } from "@/ui/icons";
-import * as stylex from "@stylexjs/stylex";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { copyRichText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { LightboxDialog } from "@/ui";
 import { IconButton } from "@flame/ui";
-import { space } from "@flame/ui/tokens.stylex";
-
-const mt = stylex.create({
-  close: { position: "absolute", top: space.s2, right: space.s2 },
-});
 
 interface Props {
   markdownSource: string;
@@ -46,6 +40,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
           onOpenChange={setPreviewOpen}
           title={t("message.table.preview")}
           kind="document"
+          closeLabel={t("message.table.closePreview")}
           trigger={
             <IconButton
               icon={iconGlyph("maximize")}
@@ -57,14 +52,6 @@ export function MarkdownTable({ markdownSource, children }: Props) {
             />
           }
         >
-          <IconButton
-            icon={iconGlyph("x")}
-            size="sm"
-            quiet
-            onClick={() => setPreviewOpen(false)}
-            aria-label={t("message.table.closePreview")}
-            className={stylex.props(mt.close).className}
-          />
           <div className="md md-table-preview">
             <table dir="auto">{children}</table>
           </div>

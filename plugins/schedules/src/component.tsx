@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarClock, Refresh, Plus, Play } from "@flame/icons/react";
+import {
+  CalendarClock,
+  Refresh,
+  Plus,
+  Play,
+  ChevronDown,
+} from "@flame/icons/react";
 import {
   bindOperations,
   mutationSettlementIsUnknown,
@@ -66,7 +72,7 @@ type Read = {
   accepted?: { page: Page; history: string[] };
   error?: string;
 };
-type Edit = { basis?: Schedule; draft: Draft };
+type Edit = { basis?: Schedule; draft: Draft; opener: HTMLElement };
 type ModelRead = {
   context: ComponentContext;
   catalogs: Map<string, Model[]>;
@@ -104,7 +110,10 @@ export function Schedules({ context }: { context: ComponentContext }) {
   const currentModels = modelRead?.context === context ? modelRead : undefined;
   const models = [...(currentModels?.catalogs.values() ?? [])].flat();
   const [edit, setEdit] = useState<Edit>();
-  const [deleting, setDeleting] = useState<Schedule>();
+  const [deleting, setDeleting] = useState<{
+    item: Schedule;
+    opener: HTMLElement;
+  }>();
   const [command, setCommand] = useState<Command>();
   const pending = useRef<Command>(undefined);
   const accepted = useRef<{ page: Page; history: string[] }>(undefined);
@@ -303,9 +312,10 @@ export function Schedules({ context }: { context: ComponentContext }) {
         setCommand({ ...original, error: failure(error) });
     }
   }
-  function add(template?: (typeof templates)[number]) {
+  function add(opener: HTMLElement, template?: (typeof templates)[number]) {
     if (pending.current) return;
     setEdit({
+      opener,
       draft: {
         Title: template?.title ?? "",
         Instructions: template?.instructions ?? "",
@@ -381,12 +391,17 @@ export function Schedules({ context }: { context: ComponentContext }) {
       : "default";
 
   return (
-    <Panel label="Schedules">
-      <PanelHeader
-        title="Schedules"
-        description="Recurring work and the next time it will run."
-        actions={
-          <>
+    <Panel
+      label="Schedules"
+      header={
+        <PanelHeader
+          title="Schedules"
+          description="Recurring work and the next time it will run."
+        />
+      }
+      controls={
+        <>
+          <Toolbar label="Schedule controls">
             <IconButton
               icon={Refresh}
               aria-label="Refresh"
@@ -398,14 +413,51 @@ export function Schedules({ context }: { context: ComponentContext }) {
               variant={edit || deleting ? "outline" : "primary"}
               size="lg"
               disabled={busy || Boolean(edit) || Boolean(deleting)}
-              onClick={() => add()}
+              onClick={(event) => add(event.currentTarget)}
             >
               <Icon glyph={Plus} size="sm" /> Add schedule
             </Button>
-          </>
-        }
-      />
-
+            <ActionMenu
+              label="Schedule template"
+              disabled={busy}
+              triggerContent={
+                <>
+                  Templates <Icon glyph={ChevronDown} size="sm" />
+                </>
+              }
+              items={templates.map((template) => ({
+                label: template.title,
+                onSelect: (opener) => add(opener, template),
+              }))}
+            />
+          </Toolbar>
+          <FilterBar
+            label="Schedule filters"
+            search={
+              <SearchField
+                size="lg"
+                aria-label="Search this page"
+                placeholder="Title or instructions"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            }
+          >
+            <Select
+              size="lg"
+              label="Schedule status"
+              value={status}
+              onValueChange={setStatus}
+              options={[
+                { value: "all", label: "All statuses" },
+                { value: "enabled", label: "Enabled" },
+                { value: "disabled", label: "Disabled" },
+              ]}
+            />
+          </FilterBar>
+        </>
+      }
+    >
       {read.loading && <p role="status">Reading schedules…</p>}
       {read.error && (
         <p role="alert">{read.error} The last accepted page is retained.</p>
@@ -436,7 +488,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
         </section>
       )}
       {edit && (
-        <RecordForm aria-label="Schedule editor">
+        <RecordForm aria-label="Schedule editor" opener={edit.opener}>
           <RecordTitle>
             {edit.basis
               ? `Edit ${edit.basis.Title || "schedule"}`
@@ -455,6 +507,8 @@ export function Schedules({ context }: { context: ComponentContext }) {
               <TextField
                 size="lg"
                 aria-label="Title"
+                // oxlint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
                 placeholder="Title"
                 value={edit.draft.Title}
                 disabled={busy}
@@ -614,13 +668,20 @@ export function Schedules({ context }: { context: ComponentContext }) {
         </RecordForm>
       )}
       {deleting && (
-        <RecordForm aria-label="Confirm schedule deletion">
-          <RecordTitle>Delete {deleting.Title || deleting.ID}?</RecordTitle>
+        <RecordForm
+          aria-label="Confirm schedule deletion"
+          opener={deleting.opener}
+        >
+          <RecordTitle>
+            Delete {deleting.item.Title || deleting.item.ID}?
+          </RecordTitle>
           <RecordBody>Captured work and accepted Runs are retained.</RecordBody>
           <FormActions label="Deletion confirmation">
             <Button
               variant="ghost"
               disabled={busy}
+              // oxlint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
               onClick={() => setDeleting(undefined)}
             >
               Cancel
@@ -632,7 +693,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
               onClick={() =>
                 submit(
                   "flame.schedules/delete.v1",
-                  { ID: deleting.ID },
+                  { ID: deleting.item.ID },
                   "Delete schedule",
                 )
               }
@@ -653,50 +714,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
             </>
           ) : undefined
         }
-        actions={
-          <Toolbar label="Schedule templates">
-            <Select
-              label="Schedule template"
-              value="choose"
-              disabled={busy}
-              options={[
-                { value: "choose", label: "Templates" },
-                ...templates.map((template) => ({
-                  value: template.id,
-                  label: template.title,
-                })),
-              ]}
-              onValueChange={(id) =>
-                add(templates.find((template) => template.id === id))
-              }
-            />
-          </Toolbar>
-        }
       >
-        <FilterBar
-          label="Schedule filters"
-          search={
-            <SearchField
-              size="lg"
-              aria-label="Search this page"
-              placeholder="Title or instructions"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          }
-        >
-          <Select
-            size="lg"
-            label="Schedule status"
-            value={status}
-            onValueChange={setStatus}
-            options={[
-              { value: "all", label: "All statuses" },
-              { value: "enabled", label: "Enabled" },
-              { value: "disabled", label: "Disabled" },
-            ]}
-          />
-        </FilterBar>
         <RecordGroup variant="cards" id="items" aria-label="Saved schedules">
           {!matching.length && !read.loading && (
             <EmptyState
@@ -725,8 +743,9 @@ export function Schedules({ context }: { context: ComponentContext }) {
                     items={[
                       {
                         label: "Edit",
-                        onSelect: () => {
+                        onSelect: (opener) => {
                           setEdit({
+                            opener,
                             basis: structuredClone(item),
                             draft: {
                               Title: item.Title,
@@ -761,8 +780,8 @@ export function Schedules({ context }: { context: ComponentContext }) {
                       {
                         label: "Delete",
                         tone: "negative",
-                        onSelect: () => {
-                          setDeleting(structuredClone(item));
+                        onSelect: (opener) => {
+                          setDeleting({ item: structuredClone(item), opener });
                           setEdit(undefined);
                         },
                       },

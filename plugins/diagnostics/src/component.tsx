@@ -8,6 +8,7 @@ import type {
 } from "@flame/plugin-sdk";
 import { Activity, Refresh, Gauge, FileText } from "@flame/icons/react";
 import {
+  Toolbar,
   Panel,
   PanelHeader,
   PanelSection,
@@ -68,9 +69,14 @@ function title(row: Observation) {
   );
 }
 
-function DiagnosticsReport({ snapshot }: { snapshot: TelemetrySnapshot }) {
-  const [signal, setSignal] = useState("spans");
-  const rows = snapshot[signal as Signal];
+function DiagnosticsReport({
+  snapshot,
+  signal,
+}: {
+  snapshot: TelemetrySnapshot;
+  signal: Signal;
+}) {
+  const rows = snapshot[signal];
   return (
     <>
       <Stats
@@ -84,18 +90,6 @@ function DiagnosticsReport({ snapshot }: { snapshot: TelemetrySnapshot }) {
       <PanelSection
         title="Local observations"
         description={`${rows.length} observations in the last buffer read. Older observations may have been evicted.`}
-        actions={
-          <Segmented
-            ariaLabel="Telemetry signal"
-            value={signal}
-            onChange={setSignal}
-            options={[
-              { value: "spans", label: "Traces" },
-              { value: "metrics", label: "Metrics" },
-              { value: "logs", label: "Logs" },
-            ]}
-          />
-        }
       >
         <RecordGroup variant="list" id="output" aria-label="Local observations">
           {rows.map((row) => (
@@ -174,6 +168,7 @@ function DiagnosticsReport({ snapshot }: { snapshot: TelemetrySnapshot }) {
 type Read = { snapshot?: TelemetrySnapshot; error?: string };
 
 export function Diagnostics({ context }: { context: ComponentContext }) {
+  const [signal, setSignal] = useState<Signal>("spans");
   const [read, setRead] = useState<Read>({});
   const refresh = useCallback(() => {
     try {
@@ -194,6 +189,7 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
     try {
       context.signal.throwIfAborted();
       context.telemetry.clear();
+      setSignal("spans");
       setRead({});
       refresh();
     } catch (error) {
@@ -207,35 +203,51 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
     }
   }
   return (
-    <Panel label="Client diagnostics">
-      <PanelHeader
-        title="Client diagnostics"
-        description="Local traces, metrics and logs from this workbench."
-        actions={
-          <>
-            <IconButton
-              icon={Refresh}
-              aria-label="Refresh"
-              size="md"
-              disabled={context.signal.aborted}
-              onClick={refresh}
-            />
-            <ActionMenu
-              label="Diagnostic actions"
-              disabled={context.signal.aborted}
-              items={[
-                {
-                  label: "Clear local observations",
-                  tone: "negative",
-                  onSelect: clear,
-                },
-              ]}
-            />
-          </>
-        }
-      />
+    <Panel
+      label="Client diagnostics"
+      header={
+        <PanelHeader
+          title="Client diagnostics"
+          description="Local traces, metrics and logs from this workbench."
+        />
+      }
+      controls={
+        <Toolbar label="Diagnostic controls">
+          <IconButton
+            icon={Refresh}
+            aria-label="Refresh"
+            size="md"
+            disabled={context.signal.aborted}
+            onClick={refresh}
+          />
+          <ActionMenu
+            label="Diagnostic actions"
+            disabled={context.signal.aborted}
+            items={[
+              {
+                label: "Clear local observations",
+                tone: "negative",
+                onSelect: clear,
+              },
+            ]}
+          />
+          <Segmented
+            ariaLabel="Telemetry signal"
+            value={signal}
+            onChange={(value) => setSignal(value as Signal)}
+            options={[
+              { value: "spans", label: "Traces" },
+              { value: "metrics", label: "Metrics" },
+              { value: "logs", label: "Logs" },
+            ]}
+          />
+        </Toolbar>
+      }
+    >
       {read.error && <p role="alert">{read.error}</p>}
-      {read.snapshot && <DiagnosticsReport snapshot={read.snapshot} />}
+      {read.snapshot && (
+        <DiagnosticsReport snapshot={read.snapshot} signal={signal} />
+      )}
       <Disclosure title="About client diagnostics">
         <Metadata>
           Only this client's local buffer is shown. Refresh reads its latest

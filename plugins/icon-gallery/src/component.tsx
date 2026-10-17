@@ -37,34 +37,40 @@ export function Gallery() {
     (icon) => (!group || icon.group === group) && icon.search.includes(query),
   );
   return (
-    <Panel label="Flame icon gallery">
-      <PanelHeader
-        title="Flame icon gallery"
-        description="Original drawings, shown at their canonical 24 px optical size."
-      />
-      <FilterBar
-        label="Icon filters"
-        search={
-          <SearchField
-            size="lg"
-            aria-label="Filter icons"
-            placeholder="Name or category"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-          />
-        }
-      >
-        <Select
-          size="lg"
-          label="Icon category"
-          value={group}
-          onValueChange={setGroup}
-          options={[
-            { value: "", label: "All categories" },
-            ...groups.map((value) => ({ value, label: value })),
-          ]}
+    <Panel
+      label="Flame icon gallery"
+      header={
+        <PanelHeader
+          title="Flame icon gallery"
+          description="Original drawings, shown at their canonical 24 px optical size."
         />
-      </FilterBar>
+      }
+      controls={
+        <FilterBar
+          label="Icon filters"
+          search={
+            <SearchField
+              size="lg"
+              aria-label="Filter icons"
+              placeholder="Name or category"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+            />
+          }
+        >
+          <Select
+            size="lg"
+            label="Icon category"
+            value={group}
+            onValueChange={setGroup}
+            options={[
+              { value: "", label: "All categories" },
+              ...groups.map((value) => ({ value, label: value })),
+            ]}
+          />
+        </FilterBar>
+      }
+    >
       <Metadata role="status">
         {visible.length} of {catalog.length} icons
       </Metadata>

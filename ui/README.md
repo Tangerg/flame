@@ -30,6 +30,11 @@ npm run check --prefix ui
 The package is private and is consumed through repository-local `file:` dependencies. Package verification installs locally packed UI and icon archives into an independent consumer. It never publishes to npm. Source owns styling; generated `dist` and token-name outputs are not committed. Changes to shared components require the Desktop gate and the portable resource build and component lifecycle acceptance.
 
 `Panel` owns the content measure and container-responsive gutters.
+Its explicit `header` slot holds introductory content, `controls` holds the one
+sticky action and filter zone, and children hold the scrolling content. The host
+keeps its existing scroll viewport. `Panel` measures only its own controls,
+projects their height on its root, and uses it to keep focused content and anchors
+clear of the controls; wrapped controls update through `ResizeObserver`.
 `PanelHeader` owns the page title, description, contextual navigation and primary
 actions. `PanelSection` groups one heading, supporting context, filters and content;
 `PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface, corners
@@ -42,12 +47,17 @@ Management filters use the shared `lg` size for both search and selection; compa
 workbench controls keep their own smaller roles.
 `RecordHeading` groups identity, state and the main action. `Disclosure` owns a
 full-width expanding panel with an optional adjacent action slot. `ActionMenu` owns
-secondary action presentation, keyboard behavior and focus return; consumers
-supply their captured command callbacks. `Stats` uses a responsive group of quiet metric tiles;
+secondary action presentation, keyboard behavior and focus return; each command
+receives its actual trigger as the opener for an inline editor. `triggerContent`
+replaces the default ellipsis with a text trigger for named action menus.
+`Stats` uses a responsive group of quiet metric tiles;
 `MetricValue` and `ShareBar` render existing values without calculating business totals. `Segmented` owns the controlled catalog selector in
 Desktop and portable views. `Form`, `RecordForm`, `FormSection`, `FormRow`, `FormField` and `FormGroup` provide responsive form grouping and visible
 native labels; `DocumentBody` styles already-parsed semantic document content.
 These components own presentation only and do not query or advance product facts.
+`IconMark` owns the decorative identity frame used by record summaries, empty
+states and modal headers. Its emphasis surface derives from the host accent;
+changing the accent recolors these marks and selected rows together.
 
 ## Review preview
 
@@ -87,8 +97,14 @@ handler makes the popup itself a native form; installed component content keeps
 its own form when no handler is supplied. Desktop dialogs supply their existing
 command handlers and captured targets. `Form` preserves native submission and
 shares its section spacing with `RecordForm`; only `RecordForm` adds a card
-surface and inset. `FormActions` owns the trailing action
+surface and inset. Inline editors pass their captured `opener` to `RecordForm`.
+On unmount it returns focus only when that form owned focus and removal left
+focus on the document body. Restoration follows the DOM commit so the opener
+can be enabled again; another control's focus is preserved. `FormActions` owns the trailing action
 zone for inline editors, with cancellation before the primary action.
+`modalPanel()` owns the elevated modal face, corners, shadow and motion. Document
+lightboxes own their close control and reserve its space alongside their content;
+callers supply the localized close label.
 
 ## Shared visual ownership
 

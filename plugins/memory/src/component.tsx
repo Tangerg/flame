@@ -51,17 +51,24 @@ export function MemoryReport({
   disabled,
   edit,
   command,
+  search,
+  status,
+  origin,
+  pinned,
 }: {
   page: MemoryPage;
   disabled: boolean;
-  edit(item: MemoryItem): void;
+  edit(item: MemoryItem, opener: HTMLElement): void;
   command<K extends MutationName>(method: K, input: MethodInputs[K]): void;
+  search: string;
+  status: string;
+  origin: string;
+  pinned: boolean;
 }) {
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  const [origin, setOrigin] = useState("all");
-  const [pinned, setPinned] = useState(false);
-  const [deleting, setDeleting] = useState<MemoryItem>();
+  const [deleting, setDeleting] = useState<{
+    item: MemoryItem;
+    opener: HTMLElement;
+  }>();
   const rows = page.Rows;
   const matching = rows.filter(
     (item) =>
@@ -81,55 +88,14 @@ export function MemoryReport({
             <span id="summary">{`${rows.filter((item) => item.Status === "pending").length} pending · ${rows.filter((item) => item.Status === "active").length} active on this page`}</span>
           </>
         }
-        actions={
-          <Checkbox
-            checked={pinned}
-            onCheckedChange={setPinned}
-            label="Pinned only"
-          />
-        }
       >
-        <FilterBar
-          label="Memory filters"
-          search={
-            <SearchField
-              size="lg"
-              id="search"
-              aria-label="Search this page"
-              placeholder="Recorded text or ID"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          }
-        >
-          <Select
-            size="lg"
-            label="Memory status"
-            value={status}
-            onValueChange={setStatus}
-            options={[
-              { value: "all", label: "All statuses" },
-              { value: "pending", label: "Pending review" },
-              { value: "active", label: "Active" },
-            ]}
-          />
-          <Select
-            size="lg"
-            label="Memory origin"
-            value={origin}
-            onValueChange={setOrigin}
-            options={[
-              { value: "all", label: "All origins" },
-              { value: "auto", label: "Mined" },
-              { value: "user", label: "User authored" },
-            ]}
-          />
-        </FilterBar>
-
         {deleting && (
-          <RecordForm aria-label="Confirm memory deletion">
+          <RecordForm
+            aria-label="Confirm memory deletion"
+            opener={deleting.opener}
+          >
             <RecordTitle>Delete this memory?</RecordTitle>
-            <RecordBody>{deleting.Content}</RecordBody>
+            <RecordBody>{deleting.item.Content}</RecordBody>
             <Metadata>
               This memory will no longer be available to the agent.
             </Metadata>
@@ -137,6 +103,8 @@ export function MemoryReport({
               <Button
                 variant="ghost"
                 disabled={disabled}
+                // oxlint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
                 onClick={() => setDeleting(undefined)}
               >
                 Cancel
@@ -146,7 +114,7 @@ export function MemoryReport({
                 tone="negative"
                 disabled={disabled}
                 onClick={() => {
-                  command("flame.memory/delete.v1", { ID: deleting.ID });
+                  command("flame.memory/delete.v1", { ID: deleting.item.ID });
                   setDeleting(undefined);
                 }}
               >
@@ -229,7 +197,7 @@ export function MemoryReport({
                           variant="soft"
                           size="md"
                           disabled={disabled}
-                          onClick={() => edit(item)}
+                          onClick={(event) => edit(item, event.currentTarget)}
                         >
                           Edit
                         </Button>
@@ -248,8 +216,11 @@ export function MemoryReport({
                             {
                               label: "Delete",
                               tone: "negative",
-                              onSelect: () =>
-                                setDeleting(structuredClone(item)),
+                              onSelect: (opener) =>
+                                setDeleting({
+                                  item: structuredClone(item),
+                                  opener,
+                                }),
                             },
                           ]}
                         />
@@ -291,7 +262,9 @@ type Accepted = {
   cwd: string;
 };
 type Read = { loading: boolean; accepted?: Accepted; error?: string };
-type Edit = { type: "add" } | { type: "update"; item: MemoryItem };
+type Edit = ({ type: "add" } | { type: "update"; item: MemoryItem }) & {
+  opener: HTMLElement;
+};
 
 export function Memory({ context }: { context: ComponentContext }) {
   const operations = useMemo(() => {
@@ -307,6 +280,10 @@ export function Memory({ context }: { context: ComponentContext }) {
     );
   }, [context]);
   const [scope, setScope] = useState<Scope>("project");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [origin, setOrigin] = useState("all");
+  const [pinned, setPinned] = useState(false);
   const cwd = scope === "project" ? context.workspace?.ref.path : "";
   const [read, setRead] = useState<Read>({ loading: false });
   const [edit, setEdit] = useState<Edit>();
@@ -476,11 +453,26 @@ export function Memory({ context }: { context: ComponentContext }) {
     }
   }
   return (
-    <Panel label="Agent memory">
-      <PanelHeader
-        title="Agent memory"
-        context={
-          <Toolbar label="Memory target and actions">
+    <Panel
+      label="Agent memory"
+      header={
+        <PanelHeader
+          title="Agent memory"
+          context={
+            <Metadata>
+              {scope === "user"
+                ? "User memory"
+                : cwd
+                  ? `Project memory · ${cwd}`
+                  : "Choose a Session with a workspace, or select User memory."}
+            </Metadata>
+          }
+          description="Facts and preferences the agent can use in future work."
+        />
+      }
+      controls={
+        <>
+          <Toolbar label="Memory controls">
             <Segmented
               ariaLabel="Memory scope"
               value={scope}
@@ -492,22 +484,14 @@ export function Memory({ context }: { context: ComponentContext }) {
                 if (command.current || observing.current) return;
                 setEdit(undefined);
                 setDraft("");
+                setSearch("");
+                setStatus("all");
+                setOrigin("all");
+                setPinned(false);
                 setScope(value as Scope);
               }}
               disabled={locked}
             />
-            <Metadata>
-              {scope === "user"
-                ? "User memory"
-                : cwd
-                  ? `Project memory · ${cwd}`
-                  : "Choose a Session with a workspace, or select User memory."}
-            </Metadata>
-          </Toolbar>
-        }
-        description="Facts and preferences the agent can use in future work."
-        actions={
-          <>
             <IconButton
               icon={Refresh}
               aria-label="Refresh"
@@ -522,17 +506,58 @@ export function Memory({ context }: { context: ComponentContext }) {
               variant={edit ? "outline" : "primary"}
               size="lg"
               disabled={locked || cwd === undefined || Boolean(edit)}
-              onClick={() => {
-                setEdit({ type: "add" });
+              onClick={(event) => {
+                setEdit({ type: "add", opener: event.currentTarget });
                 setDraft("");
               }}
             >
               <Icon glyph={Plus} size="sm" /> Add memory
             </Button>
-          </>
-        }
-      />
-
+            <Checkbox
+              checked={pinned}
+              onCheckedChange={setPinned}
+              label="Pinned only"
+            />
+          </Toolbar>
+          <FilterBar
+            label="Memory filters"
+            search={
+              <SearchField
+                size="lg"
+                id="search"
+                aria-label="Search this page"
+                placeholder="Recorded text or ID"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            }
+          >
+            <Select
+              size="lg"
+              label="Memory status"
+              value={status}
+              onValueChange={setStatus}
+              options={[
+                { value: "all", label: "All statuses" },
+                { value: "pending", label: "Pending review" },
+                { value: "active", label: "Active" },
+              ]}
+            />
+            <Select
+              size="lg"
+              label="Memory origin"
+              value={origin}
+              onValueChange={setOrigin}
+              options={[
+                { value: "all", label: "All origins" },
+                { value: "auto", label: "Mined" },
+                { value: "user", label: "User authored" },
+              ]}
+            />
+          </FilterBar>
+        </>
+      }
+    >
       {read.loading && <p role="status">Reading recorded memory…</p>}
       {read.error && <p role="alert">{read.error}</p>}
       {message && <p role="status">{message}</p>}
@@ -547,6 +572,7 @@ export function Memory({ context }: { context: ComponentContext }) {
       {edit && (
         <RecordForm
           aria-label={edit.type === "add" ? "Add memory" : "Edit memory"}
+          opener={edit.opener}
         >
           <RecordTitle>
             {edit.type === "add" ? "Add memory" : "Edit memory"}
@@ -554,6 +580,8 @@ export function Memory({ context }: { context: ComponentContext }) {
           <FormField label="Memory content">
             <TextArea
               aria-label="Memory content"
+              // oxlint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
               rows={6}
               value={draft}
               pending={locked}
@@ -597,9 +625,13 @@ export function Memory({ context }: { context: ComponentContext }) {
         <>
           <MemoryReport
             page={current.page}
+            search={search}
+            status={status}
+            origin={origin}
+            pinned={pinned}
             disabled={locked || read.loading || Boolean(read.error)}
-            edit={(item) => {
-              setEdit({ type: "update", item });
+            edit={(item, opener) => {
+              setEdit({ type: "update", item, opener });
               setDraft(item.Content);
             }}
             command={change}

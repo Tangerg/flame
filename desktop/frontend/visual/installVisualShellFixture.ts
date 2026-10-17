@@ -1,4 +1,8 @@
 import { queryClient } from "@/lib/queryClient";
+import type { FlameClient } from "@flame/runtime-contract/client";
+import { createElement } from "react";
+import { RenameSession } from "../../../plugins/trajectory/src/component";
+import { InstalledSessionActionComponent } from "@/plugins/builtin/settings/plugins-pane/ui/InstalledComponent";
 import { navigator } from "@/lib/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { installAgentStatePorts } from "@/plugins/builtin/agent/adapters/agentStatePorts";
@@ -27,7 +31,7 @@ import {
   WORKSPACE_PROJECTS_KEY,
   type WorkspaceProjectSummary,
 } from "@/plugins/builtin/workspace/public/queries";
-import { DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
+import { DATA_PROVIDER, SESSION_ACTION, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
 import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
 import { useShellLayoutStore } from "@/plugins/builtin/workspace/adapters/shellLayoutStore";
@@ -38,6 +42,8 @@ import type {
 } from "./shellFixtureStates";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { installVisualRuntimeServiceStatusPort } from "./installVisualRuntimeServiceStatusPort";
+import { visualComponentProps } from "./installedComponentProps";
+import { visualNavigationBootstrap, visualRuntimeStream } from "./visualRuntimePorts";
 
 const ACTIVE_SESSION_ID = "visual-shell-active";
 
@@ -162,7 +168,28 @@ function dataProviderPlugin(state: VisualWorkIndexState): AnyPlugin {
   });
 }
 
+function sessionActionsPlugin(runtimeClient: () => FlameClient): AnyPlugin {
+  return definePlugin({
+    name: "flame.visual.session-actions",
+    setup(ctx) {
+      const lifetime = ctx.lifetime("visual-rename-session");
+      const sources = visualComponentProps(runtimeClient(), lifetime, "rename-session");
+      lifetime.contribute(SESSION_ACTION, {
+        id: "package:visual:rename-session",
+        title: "flame.trajectory · Name this investigation",
+        component: ({ session }) =>
+          createElement(InstalledSessionActionComponent, {
+            ...sources,
+            entry: RenameSession,
+            session,
+          }),
+      });
+    },
+  });
+}
+
 export async function installVisualShellFixture(
+  runtimeClient: () => FlameClient,
   state: VisualWorkIndexState,
   theme: VisualShellTheme,
   sidebarOpen: boolean,
@@ -187,6 +214,9 @@ export async function installVisualShellFixture(
   });
 
   await loadPluginsForTest(
+    visualRuntimeStream,
+    visualNavigationBootstrap,
+    sessionActionsPlugin(runtimeClient),
     dataProviderPlugin(state),
     flameLight,
     defaultAccents,

@@ -1,16 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import type { CSSProperties, ReactNode } from "react";
-import {
-  color,
-  corner,
-  leading,
-  layout,
-  space,
-  surface,
-  type,
-  weight,
-} from "./tokens.stylex";
+import { color, leading, layout, space, type, weight } from "./tokens.stylex";
 import { Icon, type IconGlyph } from "./font-scale";
+import { IconMark } from "./icon-mark";
 
 export type EmptyStateSize = "compact" | "comfortable";
 
@@ -34,14 +26,6 @@ const styles = stylex.create({
     paddingInline: layout.cardPadding,
     paddingBlock: space.s12,
   },
-  icon: {
-    display: "grid",
-    placeItems: "center",
-    backgroundColor: surface.surface2,
-    color: color.fgMuted,
-  },
-  iconCompact: { height: space.s7, width: space.s7 },
-  iconComfortable: { height: space.s10, width: space.s10 },
   title: {
     fontWeight: weight.medium,
     letterSpacing: "normal",
@@ -61,10 +45,6 @@ const styles = stylex.create({
 const ROOT = {
   compact: styles.rootCompact,
   comfortable: styles.rootComfortable,
-} as const;
-const ICON = {
-  compact: styles.iconCompact,
-  comfortable: styles.iconComfortable,
 } as const;
 const TITLE_TYPE = { compact: type.uiXs, comfortable: type.uiMd } as const;
 
@@ -86,9 +66,9 @@ export function EmptyState({
   return (
     <div {...stylex.props(styles.root, ROOT[size])} style={style}>
       {icon && (
-        <div {...stylex.props(styles.icon, corner.pill, ICON[size])}>
+        <IconMark size={size === "compact" ? "sm" : "lg"}>
           <Icon glyph={icon} size={size === "compact" ? "md" : "lg"} />
-        </div>
+        </IconMark>
       )}
       <div {...stylex.props(TITLE_TYPE[size], styles.title)}>{title}</div>
       {sub && <div {...stylex.props(type.uiSm, styles.sub)}>{sub}</div>}

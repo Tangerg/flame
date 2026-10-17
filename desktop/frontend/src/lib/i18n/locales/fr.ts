@@ -659,6 +659,10 @@ export const fr: Record<string, string> = {
   "settings.group.advanced": "Avancé",
   "settings.pane.mcpServers": "Serveurs MCP",
   "settings.pane.hooks": "Hooks",
+  "settings.appearance.colors": "Thème et couleurs",
+  "settings.appearance.typography": "Typographie",
+  "settings.appearance.interaction": "Interaction",
+  "settings.appearance.language": "Langue",
   "settings.appearance.hero":
     "Thèmes, contraste, typographie et animation définissent la sensation de travail de Flame.",
   "context.usage.aria": "Utilisation du contexte : {{percent}}%",

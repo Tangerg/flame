@@ -1,5 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
-import { useId, type ComponentPropsWithRef, type ReactNode } from "react";
+import {
+  useId,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type ComponentPropsWithRef,
+  type ReactNode,
+} from "react";
 import { CARD_SURFACE } from "./control-surface";
 import { clsx } from "clsx";
 import {
@@ -41,6 +48,23 @@ const styles = stylex.create({
   header: {
     display: "grid",
     gap: layout.controlGap,
+    minWidth: 0,
+  },
+  controls: {
+    position: "sticky",
+    insetBlockStart: 0,
+    zIndex: "var(--layer-card)",
+    display: "grid",
+    gridTemplateColumns: "minmax(0,1fr)",
+    gap: layout.contentGap,
+    paddingBlock: layout.controlGap,
+    backgroundColor: surface.canvas,
+    minWidth: 0,
+  },
+  body: {
+    display: "flex",
+    flexDirection: "column",
+    gap: layout.sectionGap,
     minWidth: 0,
   },
   headerLine: {
@@ -191,13 +215,58 @@ const styles = stylex.create({
 export function Panel({
   children,
   label,
+  header,
+  controls,
 }: {
   children: ReactNode;
   label: string;
+  header?: ReactNode;
+  controls?: ReactNode;
 }) {
+  const panelRef = useRef<HTMLElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const hasControls = Boolean(controls);
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const controls = controlsRef.current;
+    const measure = () => {
+      panel.style.setProperty(
+        "--panel-controls-height",
+        `${controls?.getBoundingClientRect().height ?? 0}px`,
+      );
+    };
+    measure();
+    if (!controls) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(controls, { box: "border-box" });
+    return () => {
+      observer.disconnect();
+      panel.style.setProperty("--panel-controls-height", "0px");
+    };
+  }, [hasControls]);
   return (
-    <section aria-label={label} {...stylex.props(styles.panel, type.uiMd)}>
-      <div {...stylex.props(styles.content)}>{children}</div>
+    <section
+      ref={panelRef}
+      data-slot="panel"
+      aria-label={label}
+      {...stylex.props(styles.panel, type.uiMd)}
+    >
+      <div {...stylex.props(styles.content)}>
+        {header}
+        {hasControls && (
+          <div
+            ref={controlsRef}
+            data-slot="panel-controls"
+            {...stylex.props(styles.controls)}
+          >
+            {controls}
+          </div>
+        )}
+        <div data-slot="panel-body" {...stylex.props(styles.body)}>
+          {children}
+        </div>
+      </div>
     </section>
   );
 }
@@ -381,11 +450,42 @@ export function Form({ children, ...props }: ComponentPropsWithRef<"form">) {
 
 export function RecordForm({
   children,
+  opener,
+  ref,
   ...props
-}: ComponentPropsWithRef<"section">) {
+}: ComponentPropsWithRef<"section"> & { opener?: HTMLElement }) {
+  const element = useRef<HTMLElement>(null);
+  const ownedFocus = useRef(false);
+  useLayoutEffect(() => {
+    const form = element.current;
+    if (!form || !opener) return;
+    ownedFocus.current = false;
+    return () => {
+      ownedFocus.current = form.contains(form.ownerDocument.activeElement);
+    };
+  }, [opener]);
+  useEffect(() => {
+    const form = element.current;
+    if (!form || !opener) return;
+    return () => {
+      // Passive cleanup runs after the opener's disabled state commits.
+      if (
+        !form.isConnected &&
+        ownedFocus.current &&
+        form.ownerDocument.activeElement === form.ownerDocument.body &&
+        opener.isConnected
+      )
+        opener.focus();
+    };
+  }, [opener]);
   return (
     <section
       {...props}
+      ref={(node) => {
+        element.current = node;
+        if (typeof ref === "function") return ref(node);
+        if (ref) ref.current = node;
+      }}
       {...stylex.props(CARD_SURFACE.face, styles.form, styles.recordForm)}
     >
       {children}

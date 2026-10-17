@@ -59,7 +59,11 @@ type Command = {
   uncertain: boolean;
   error?: string;
 };
-type Review = { proposal: SkillProposal; decision: "approve" | "reject" };
+type Review = {
+  proposal: SkillProposal;
+  decision: "approve" | "reject";
+  opener: HTMLElement;
+};
 const sections = [
   { value: "available", label: "Available Skills" },
   { value: "review", label: "Skill proposals" },
@@ -359,11 +363,21 @@ export function Skills({ context }: { context: ComponentContext }) {
       : sections.find((section) => section.value === target)!.label;
 
   return (
-    <Panel label="Skills">
-      <PanelHeader
-        title="Skills"
-        context={
-          <Toolbar label="Skill catalogs">
+    <Panel
+      label="Skills"
+      header={
+        <PanelHeader
+          title="Skills"
+          description={
+            target === "library"
+              ? "Reusable instructions you manage."
+              : "Instructions and proposals for this workspace."
+          }
+        />
+      }
+      controls={
+        <>
+          <Toolbar label="Skill controls">
             <Segmented
               ariaLabel="Catalog"
               value={target === "detail" ? "available" : target}
@@ -379,24 +393,30 @@ export function Skills({ context }: { context: ComponentContext }) {
                 Back to available Skills
               </Button>
             )}
+            <IconButton
+              icon={Refresh}
+              aria-label="Refresh"
+              size="md"
+              disabled={read.loading || Boolean(command)}
+              onClick={() => void refresh()}
+            />
           </Toolbar>
-        }
-        description={
-          target === "library"
-            ? "Reusable instructions you manage."
-            : "Instructions and proposals for this workspace."
-        }
-        actions={
-          <IconButton
-            icon={Refresh}
-            aria-label="Refresh"
-            size="md"
-            disabled={read.loading || Boolean(command)}
-            onClick={() => void refresh()}
+          <FilterBar
+            label="Skill filters"
+            search={
+              <SearchField
+                size="lg"
+                id="search"
+                aria-label="Search this catalog"
+                placeholder="Name or description"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            }
           />
-        }
-      />
-
+        </>
+      }
+    >
       {read.loading && <p role="status">Reading Skills…</p>}
       {read.error && (
         <p role="alert">{read.error} The last accepted read is retained.</p>
@@ -427,7 +447,10 @@ export function Skills({ context }: { context: ComponentContext }) {
         </section>
       )}
       {review && (
-        <RecordForm aria-label="Confirm proposal decision">
+        <RecordForm
+          aria-label="Confirm proposal decision"
+          opener={review.opener}
+        >
           <RecordTitle>
             {review.decision === "approve" ? "Approve" : "Reject"} ·{" "}
             {review.proposal.name}
@@ -449,6 +472,8 @@ export function Skills({ context }: { context: ComponentContext }) {
             <Button
               variant="ghost"
               disabled={Boolean(command)}
+              // oxlint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
               onClick={() => setReview(undefined)}
             >
               Cancel
@@ -497,19 +522,6 @@ export function Skills({ context }: { context: ComponentContext }) {
           </>
         }
       >
-        <FilterBar
-          label="Skill filters"
-          search={
-            <SearchField
-              size="lg"
-              id="search"
-              aria-label="Search this catalog"
-              placeholder="Name or description"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          }
-        />
         <Metadata role="status" className="sr-only">
           {snapshot
             ? `${rows.length} ${snapshot.type === "review" ? "pending proposals" : snapshot.type === "library" ? "user-managed Skills" : snapshot.type === "detail" ? "resolved document" : "available Skills"}`
@@ -567,8 +579,12 @@ export function Skills({ context }: { context: ComponentContext }) {
                       size="md"
                       key={decision}
                       disabled={disabled}
-                      onClick={() =>
-                        setReview({ proposal: structuredClone(item), decision })
+                      onClick={(event) =>
+                        setReview({
+                          proposal: structuredClone(item),
+                          decision,
+                          opener: event.currentTarget,
+                        })
                       }
                     >
                       {decision === "approve" ? "Approve" : "Reject"}

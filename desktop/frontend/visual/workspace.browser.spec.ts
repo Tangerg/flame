@@ -861,8 +861,8 @@ test("the portable Usage page filters recorded buckets without changing totals",
 test("a package template fills a draft without creating a schedule", async ({ page }) => {
   await openWorkspace(page, { state: "dock-schedules" });
   await waitForWorkspaceState(page, "dock-schedules");
-  await page.getByRole("combobox", { name: "Schedule template" }).click();
-  await page.getByRole("option", { name: "Weekly maintenance review", exact: true }).click();
+  await page.getByRole("button", { name: "Schedule template" }).click();
+  await page.getByRole("menuitem", { name: "Weekly maintenance review", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Title", exact: true })).toHaveValue(
     "Weekly maintenance review",
   );
@@ -877,16 +877,21 @@ test("deleting a schedule asks first, and a declined ask changes nothing", async
   const item = pluginView(page, "schedules")
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: "Nightly dependency audit", exact: true }) });
-  await item
-    .getByRole("button", { name: "More actions for Nightly dependency audit", exact: true })
-    .click();
+  const trigger = item.getByRole("button", {
+    name: "More actions for Nightly dependency audit",
+    exact: true,
+  });
+  await trigger.click();
   await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
 
   const dialog = page.getByRole("region", { name: "Confirm schedule deletion" });
   await expect(dialog).toContainText("Nightly dependency audit");
   await expect(dialog).toContainText("Captured work and accepted Runs are retained.");
   await expect(dialog.getByRole("button", { name: "Confirm deletion", exact: true })).toBeVisible();
-  await dialog.getByRole("button", { name: "Cancel" }).click();
+  const cancel = dialog.getByRole("button", { name: "Cancel" });
+  await expect(cancel).toBeFocused();
+  await cancel.press("Enter");
+  await expect(trigger).toBeFocused();
 
   await expect(pluginView(page, "schedules").locator("article")).toHaveCount(2);
 });

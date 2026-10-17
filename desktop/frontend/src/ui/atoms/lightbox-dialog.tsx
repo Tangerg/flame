@@ -1,11 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import { useRef, type KeyboardEventHandler, type ReactElement, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { radius, space, surface } from "@flame/ui/tokens.stylex";
+import { iconGlyph } from "@/ui/icons";
+import { space, surface } from "@flame/ui/tokens.stylex";
 import { DialogPrimitive } from "@flame/ui/primitives";
+import { IconButton } from "@flame/ui";
 import { MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
-
-type LightboxKind = "figure" | "document" | "media";
 
 const styles = stylex.create({
   figure: {
@@ -13,8 +13,6 @@ const styles = stylex.create({
     maxHeight: "90vh",
     maxWidth: "min(1400px, 95vw)",
     overflow: "auto",
-    borderRadius: radius.floatingPanel,
-    backgroundColor: surface.card,
     padding: space.s6,
   },
   document: {
@@ -23,8 +21,6 @@ const styles = stylex.create({
     maxWidth: "80vw",
     maxHeight: "90vh",
     overflow: "auto",
-    borderRadius: radius.floatingPanel,
-    backgroundColor: surface.card,
     paddingInline: space.s8,
     paddingBottom: space.s8,
     paddingTop: space.s12,
@@ -40,6 +36,7 @@ const styles = stylex.create({
     boxShadow: "none",
     padding: 0,
   },
+  close: { position: "absolute", top: space.s2, right: space.s2 },
   dismiss: { cursor: "zoom-out" },
   srOnly: {
     position: "absolute",
@@ -54,27 +51,22 @@ const styles = stylex.create({
   },
 });
 
-interface LightboxDialogProps {
+interface LightboxBaseProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
   trigger: ReactElement;
   title: ReactNode;
   children: ReactNode;
-  kind?: LightboxKind;
   className?: string;
 }
 
-export function LightboxDialog({
-  open,
-  onOpenChange,
-  onKeyDown,
-  trigger,
-  title,
-  children,
-  kind = "figure",
-  className,
-}: LightboxDialogProps) {
+type LightboxDialogProps = LightboxBaseProps &
+  ({ kind?: "figure" | "media" } | { kind: "document"; closeLabel: string });
+
+export function LightboxDialog(props: LightboxDialogProps) {
+  const { open, onOpenChange, onKeyDown, trigger, title, children, className } = props;
+  const kind = props.kind ?? "figure";
   const panel = stylex.props(modalPanel(), styles[kind]);
   const popupRef = useRef<HTMLDivElement>(null);
   return (
@@ -92,6 +84,19 @@ export function LightboxDialog({
           className={cn(panel.className, className)}
         >
           <DialogPrimitive.Title {...stylex.props(styles.srOnly)}>{title}</DialogPrimitive.Title>
+          {props.kind === "document" && (
+            <DialogPrimitive.Close
+              render={
+                <IconButton
+                  icon={iconGlyph("x")}
+                  size="sm"
+                  quiet
+                  aria-label={props.closeLabel}
+                  styles={styles.close}
+                />
+              }
+            />
+          )}
           {children}
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>

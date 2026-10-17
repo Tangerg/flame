@@ -1,5 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
+import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
 import { type ComponentPropsWithRef, type ReactNode } from "react";
+import { clsx } from "clsx";
 import {
   color,
   leading,
@@ -13,6 +15,7 @@ import {
 import { CARD_SURFACE } from "./control-surface";
 import { WELL_SURFACE } from "./well-surface";
 import { Icon, type IconGlyph } from "./font-scale";
+import { IconMark } from "./icon-mark";
 
 const styles = stylex.create({
   group: {
@@ -80,16 +83,6 @@ const styles = stylex.create({
     gap: layout.contentGap,
     width: "100%",
     minWidth: 0,
-  },
-  mark: {
-    display: "grid",
-    placeItems: "center",
-    flexShrink: 0,
-    width: space.s9,
-    height: space.s9,
-    borderRadius: radius.lg,
-    backgroundColor: surface.canvas,
-    color: color.fgMuted,
   },
   summaryCopy: { display: "grid", gap: space.s1, flex: 1, minWidth: 0 },
   summaryTitle: {
@@ -224,19 +217,25 @@ export type Fact = readonly [label: string, value: ReactNode];
 export function RecordGroup({
   children,
   variant = "sections",
+  styles: extra,
+  className,
   ...props
 }: ComponentPropsWithRef<"section"> & {
   variant?: "sections" | "list" | "cards";
+  styles?: StyleXArray<StyleXStyles | null | false>;
 }) {
+  const styled = stylex.props(
+    styles.group,
+    variant === "list" && [CARD_SURFACE.face, styles.list],
+    variant === "cards" && styles.cards,
+    extra,
+  );
   return (
     <section
       {...props}
       data-slot={variant === "list" ? "record-list" : undefined}
-      {...stylex.props(
-        styles.group,
-        variant === "list" && [CARD_SURFACE.face, styles.list],
-        variant === "cards" && styles.cards,
-      )}
+      {...styled}
+      className={clsx(styled.className, className)}
     >
       {children}
     </section>
@@ -306,9 +305,9 @@ export function RecordSummary({
   return (
     <span {...stylex.props(styles.summary)}>
       {icon && (
-        <span aria-hidden="true" {...stylex.props(styles.mark)}>
+        <IconMark>
           <Icon glyph={icon} size="md" />
-        </span>
+        </IconMark>
       )}
       <span {...stylex.props(styles.summaryCopy)}>
         <span {...stylex.props(styles.headingLine)}>

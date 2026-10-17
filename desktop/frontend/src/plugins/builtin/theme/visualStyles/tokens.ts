@@ -54,6 +54,7 @@ type VisualStyleTokenName =
   | "app-dock-tabstrip-surface"
   | "dock-tab-active-surface"
   | "app-card-surface"
+  | "surface-emphasis"
   | "app-composer-surface"
   | "app-composer-tray-surface"
   | "app-composer-project-tray-surface"
@@ -131,7 +132,7 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
 
   "wash-hover": "color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 1.25), transparent)",
   "wash-selected":
-    "color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 2.5), transparent)",
+    "color-mix(in srgb, var(--color-accent) calc(var(--wash-step) * 2.5), transparent)",
 
   "app-drawer-surface": "var(--color-drawer)",
   "app-content-surface": "var(--color-bg)",
@@ -141,6 +142,8 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
     "color-mix(in oklab, var(--color-text) calc(var(--depth-step) * 0.75), var(--app-dock-surface))",
   "dock-tab-active-surface": "var(--app-dock-surface)",
   "app-card-surface": "var(--color-elevated)",
+  "surface-emphasis":
+    "linear-gradient(145deg, color-mix(in oklab, var(--color-accent) 18%, var(--app-card-surface)), color-mix(in oklab, var(--color-accent) 5%, var(--app-card-surface)))",
   "app-composer-surface": "color-mix(in oklab, var(--app-content-surface) 86%, transparent)",
   "composer-backdrop": "blur(20px) saturate(1.4)",
   "app-composer-tray-surface": "color-mix(in oklab, var(--app-content-surface) 70%, transparent)",

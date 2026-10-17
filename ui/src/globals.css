@@ -341,5 +341,21 @@ html[data-flame-ui-theme-paint] * {
 }
 
 [data-slot="record-list"] > * + * {
-  border-block-start: var(--control-edge-width) solid var(--color-divider);
+  position: relative;
+}
+
+[data-slot="panel-body"] :where(:focus, [id]) {
+  scroll-margin-block-start: calc(
+    var(--panel-controls-height, 0px) + var(--layout-control-gap)
+  );
+}
+
+[data-slot="record-list"] > * + *::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  inset-inline: var(--layout-card-padding);
+  inset-block-start: 0;
+  block-size: var(--hairline-width);
+  background-color: var(--color-divider);
 }

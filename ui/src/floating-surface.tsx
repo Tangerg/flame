@@ -67,6 +67,9 @@ const styles = stylex.create({
   modal: {
     position: "fixed",
     zIndex: "var(--layer-modal)",
+    borderRadius: radius.floatingPanel,
+    backgroundColor: surface.card,
+    color: color.fg,
     boxShadow: "var(--shadow-modal)",
     maxHeight: "calc(100dvh - var(--layout-compact-gutter) * 2)",
     overflowY: "auto",

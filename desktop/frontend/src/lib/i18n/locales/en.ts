@@ -295,6 +295,10 @@ export const en: Record<string, string> = {
   "settings.pane.approvals": "Approvals",
   "settings.pane.mcpServers": "MCP servers",
   "settings.pane.hooks": "Hooks",
+  "settings.appearance.colors": "Theme and color",
+  "settings.appearance.typography": "Typography",
+  "settings.appearance.interaction": "Interaction",
+  "settings.appearance.language": "Language",
   "settings.appearance.hero":
     "Themes, contrast, typography, and motion define the working feel of Flame.",
   "context.usage.aria": "Context usage: {{percent}}%",

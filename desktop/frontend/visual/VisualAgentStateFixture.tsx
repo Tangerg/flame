@@ -4,6 +4,7 @@ import { selectCurrentRootAttention } from "@/plugins/builtin/agent/application/
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { useChatSend } from "@/plugins/builtin/agent/public/input";
 import { ChatPanel } from "@/plugins/builtin/shell/workbench/panel/ChatPanel";
+import { Slot } from "@/plugins/host/Slot";
 import { AgentAppShell, AgentRow, AgentSurfaceHeader } from "@/ui/agent";
 import type { VisualAgentState } from "./agentSessionSnapshots";
 import * as stylex from "@stylexjs/stylex";
@@ -108,6 +109,7 @@ export function VisualAgentStateFixture({
           <ChatPanel onSend={send} />
         </div>
       }
+      overlay={<Slot name="app.overlay" />}
     />
   );
 }

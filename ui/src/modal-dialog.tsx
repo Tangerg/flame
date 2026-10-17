@@ -3,16 +3,9 @@ import { DialogPrimitive as Dialog } from "./primitives/dialog";
 import { X } from "@flame/icons/react";
 import type { ComponentProps, FormEventHandler, ReactNode } from "react";
 import { IconButton } from "./icon-button";
+import { IconMark } from "./icon-mark";
 import { MODAL_SCRIM, modalPanel } from "./floating-surface";
-import {
-  color,
-  layout,
-  radius,
-  space,
-  surface,
-  type,
-  weight,
-} from "./tokens.stylex";
+import { color, layout, surface, type, weight } from "./tokens.stylex";
 
 const styles = stylex.create({
   panel: {
@@ -21,9 +14,6 @@ const styles = stylex.create({
     width: "min(35rem, calc(100dvw - var(--layout-compact-gutter) * 2))",
     minWidth: 0,
     overflow: "hidden",
-    borderRadius: radius.floatingPanel,
-    backgroundColor: surface.card,
-    color: color.fg,
     overflowWrap: "anywhere",
   },
   small: {
@@ -41,19 +31,9 @@ const styles = stylex.create({
     flexShrink: 0,
     minWidth: 0,
   },
-  heading: { display: "grid", gap: layout.controlGap, minWidth: 0, flex: 1 },
+  heading: { minWidth: 0, flex: 1 },
   title: { margin: 0, fontWeight: weight.semibold, textWrap: "balance" },
   description: { margin: 0, color: color.fgMuted, textWrap: "pretty" },
-  mark: {
-    display: "grid",
-    placeItems: "center",
-    width: space.s9,
-    height: space.s9,
-    flexShrink: 0,
-    borderRadius: radius.lg,
-    backgroundColor: surface.canvas,
-    color: color.fgMuted,
-  },
   body: {
     display: "grid",
     gridTemplateColumns: "minmax(0,1fr)",
@@ -142,7 +122,7 @@ export function ModalDialog({
           )}
         >
           <header {...stylex.props(styles.header)}>
-            {icon && <span {...stylex.props(styles.mark)}>{icon}</span>}
+            {icon && <IconMark>{icon}</IconMark>}
             <div {...stylex.props(styles.heading)}>
               <Dialog.Title {...stylex.props(styles.title, type.displaySm)}>
                 {title}
