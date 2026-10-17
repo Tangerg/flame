@@ -106,8 +106,12 @@ shares its section spacing with `RecordForm`; only `RecordForm` adds a card
 surface and inset. Inline editors pass their captured `opener` to `RecordForm`.
 On unmount it returns focus only when that form owned focus and removal left
 focus on the document body. Restoration follows the DOM commit so the opener
-can be enabled again; another control's focus is preserved. `FormActions` owns the trailing action
-zone for inline editors, with cancellation before the primary action.
+can be enabled again; another control's focus is preserved. `FormActions` groups
+inline editor actions, with `auxiliaryAction` leading and children trailing;
+cancellation precedes the primary action. Both groups wrap within the available
+width, using the shared control gap internally and content gap between groups.
+The parent form or record composition owns spacing before the actions;
+`FormActions` adds no outer inset or separator.
 `modalPanel()` owns the elevated modal face, corners, shadow and motion. Document
 lightboxes own their close control and reserve its space alongside their content;
 callers supply the localized close label. Top-aligned overlays derive their

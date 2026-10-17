@@ -1,13 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
 import { Toaster } from "sonner";
+import { useScheme } from "@/lib/appearance";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
 import { color, radius, surface, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 
 const ts = stylex.create({
   toast: {
     borderRadius: radius.floatingPanel,
+    borderWidth: 0,
     backgroundColor: surface.card,
     color: color.fg,
+    fontFamily: "var(--font-sans)",
     boxShadow: "var(--shadow-overlay)",
   },
   title: { fontWeight: weight.medium },
@@ -21,10 +24,11 @@ const CLASS_NAMES = {
 };
 
 export function AppToaster() {
+  const scheme = useScheme();
   return (
     <Toaster
       position="bottom-right"
-      theme="system"
+      theme={scheme}
       duration={4000}
       toastOptions={{ classNames: CLASS_NAMES }}
     />

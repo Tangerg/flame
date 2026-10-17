@@ -185,29 +185,35 @@ export function ConnectionPane() {
             />
           </FormField>
           <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("settings.connection.tokenHint")}</p>
-          <FormActions label={t("settings.connection.apply")}>
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              disabled={isDefault}
-              onClick={reset}
-              className={stylex.props(vocab.hold).className}
-            >
-              {t("settings.connection.reset")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!token && !hasRuntimeAccessToken()}
-              onClick={() => {
-                setToken("");
-                setTokenEdited(true);
-              }}
-              styles={vocab.hold}
-            >
-              {t("settings.connection.clearToken")}
-            </Button>
+          <FormActions
+            label={t("settings.connection.apply")}
+            auxiliaryAction={
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="md"
+                  disabled={isDefault}
+                  onClick={reset}
+                  className={stylex.props(vocab.hold).className}
+                >
+                  {t("settings.connection.reset")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={!token && !hasRuntimeAccessToken()}
+                  onClick={() => {
+                    setToken("");
+                    setTokenEdited(true);
+                  }}
+                  styles={vocab.hold}
+                >
+                  {t("settings.connection.clearToken")}
+                </Button>
+              </>
+            }
+          >
             <Button
               type="button"
               variant="primary"

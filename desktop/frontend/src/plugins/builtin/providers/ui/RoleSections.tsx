@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import type { ReactNode } from "react";
 import { DropdownMenu, Icon, ProviderIcon } from "@/ui";
-import { Button, ListRow, vocab } from "@flame/ui";
+import { Button, gap, vocab } from "@flame/ui";
 import {
   type ProviderConfiguration,
   type RoleConfigState,
@@ -13,12 +13,11 @@ import {
   useUtilityModelConfig,
 } from "../application/providerConfig";
 import { useT } from "@/lib/i18n";
-import { useAsyncFeedback } from "../../settings/kit";
-import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { SettingRow, useAsyncFeedback } from "../../settings/kit";
+import { face, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "../../settings/kit/settingStyles";
 
 const rs = stylex.create({
-  title: { display: "flex", minWidth: 0, flexDirection: "column", gap: space.s1 },
   model: { maxWidth: "160px" },
 });
 
@@ -39,46 +38,38 @@ function RoleSectionShell({
 }) {
   const t = useT();
   return (
-    <ListRow>
-      <div {...stylex.props(ss.split)}>
-        <div {...stylex.props(rs.title)}>
-          <span {...stylex.props(ss.label, typeStep.uiMd)}>{title}</span>
-          <span {...stylex.props(ss.hint, typeStep.uiMd)}>{description}</span>
+    <SettingRow
+      label={title}
+      sub={
+        <div {...stylex.props(vocab.column, gap.s1)}>
+          <p>{description}</p>
+          {state.kind === "ready" && note}
+          {state.kind === "error" && (
+            <p role="alert" {...stylex.props(vocab.negative)}>
+              {t("providers.role.loadError")}
+            </p>
+          )}
+          {state.kind === "ready" && state.stale && <p>{t("providers.role.stale")}</p>}
+          {error && (
+            <p role="alert" {...stylex.props(vocab.negative)}>
+              {error}
+            </p>
+          )}
         </div>
-        {state.kind === "loading" ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="md"
-            press="none"
-            disabled
-            aria-label={title}
-          >
-            <span {...stylex.props(vocab.muted)}>{t("common.loading")}</span>
-          </Button>
-        ) : state.kind === "error" ? (
-          <Button type="button" variant="outline" size="md" onClick={state.retry}>
-            {t("common.retry")}
-          </Button>
-        ) : (
-          children
-        )}
-      </div>
-      {state.kind === "ready" && note}
-      {state.kind === "error" && (
-        <p role="alert" {...stylex.props(ss.hint, vocab.negative, typeStep.uiMd)}>
-          {t("providers.role.loadError")}
-        </p>
+      }
+    >
+      {state.kind === "loading" ? (
+        <Button type="button" variant="outline" size="md" press="none" disabled aria-label={title}>
+          <span {...stylex.props(vocab.muted)}>{t("common.loading")}</span>
+        </Button>
+      ) : state.kind === "error" ? (
+        <Button type="button" variant="outline" size="md" onClick={state.retry}>
+          {t("common.retry")}
+        </Button>
+      ) : (
+        children
       )}
-      {state.kind === "ready" && state.stale && (
-        <p {...stylex.props(ss.hint, typeStep.uiMd)}>{t("providers.role.stale")}</p>
-      )}
-      {error && (
-        <p role="alert" {...stylex.props(ss.hint, vocab.negative, typeStep.uiMd)}>
-          {error}
-        </p>
-      )}
-    </ListRow>
+    </SettingRow>
   );
 }
 
@@ -101,11 +92,7 @@ export function UtilityModelSection() {
       error={
         feedback.state === "error" ? feedback.reason : isError ? t("providers.models.error") : null
       }
-      note={
-        isSet && !isAvailable ? (
-          <p {...stylex.props(ss.hint, typeStep.uiMd)}>{t("providers.notConfigured")}</p>
-        ) : null
-      }
+      note={isSet && !isAvailable ? <p>{t("providers.notConfigured")}</p> : null}
     >
       <DropdownMenu.Root>
         <DropdownMenu.Trigger
@@ -195,9 +182,9 @@ export function EmbeddingModelSection() {
       error={feedback.state === "error" ? feedback.reason : null}
       note={
         isSet && !isAvailable ? (
-          <p {...stylex.props(ss.hint, typeStep.uiMd)}>{t("providers.notConfigured")}</p>
+          <p>{t("providers.notConfigured")}</p>
         ) : capableProviders.length === 0 ? (
-          <p {...stylex.props(ss.hint, typeStep.uiMd)}>{t("providers.embedding.none")}</p>
+          <p>{t("providers.embedding.none")}</p>
         ) : null
       }
     >

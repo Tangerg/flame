@@ -763,25 +763,34 @@ test("a dock tab closes from the keyboard", async ({ page }) => {
   expect(reachable).toBe(false);
 });
 
-test("plugin notifications use the production toast and dismiss automatically", async ({
-  page,
-}) => {
-  await openWorkspace(page, { state: "settings" });
+for (const theme of ["light", "dark"] as const) {
+  test(`plugin notifications follow the application theme and dismiss automatically ${theme}`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: theme === "light" ? "dark" : "light" });
+    await openWorkspace(page, { state: "settings", theme });
+    await page
+      .locator("html")
+      .evaluate((root) => root.style.setProperty("--font-sans", "monospace"));
 
-  await page.evaluate(() => {
-    const host = window as unknown as {
-      flameVisualNotify?: (message: string, level?: "info" | "warn" | "error") => void;
-    };
-    if (!host.flameVisualNotify) throw new Error("the fixture notifier plugin did not install");
-    host.flameVisualNotify("Provider credentials were rejected", "error");
+    await page.evaluate(() => {
+      const host = window as unknown as {
+        flameVisualNotify?: (message: string, level?: "info" | "warn" | "error") => void;
+      };
+      if (!host.flameVisualNotify) throw new Error("the fixture notifier plugin did not install");
+      host.flameVisualNotify("Provider credentials were rejected", "error");
+    });
+
+    const toast = page.locator("[data-sonner-toast]");
+    await expect(toast).toContainText("Provider credentials were rejected");
+    await expect(toast).toHaveAttribute("data-type", "error");
+    await expect(toast).toHaveCSS("font-family", "monospace");
+    await expect(page.locator("[data-sonner-toaster]")).toHaveAttribute("data-sonner-theme", theme);
+    await expect(toast).toHaveCSS("border-top-width", "0px");
+
+    await expect.poll(() => toast.count(), { timeout: 6_000 }).toBe(0);
   });
-
-  const toast = page.locator("[data-sonner-toast]");
-  await expect(toast).toContainText("Provider credentials were rejected");
-  await expect(toast).toHaveAttribute("data-type", "error");
-
-  await expect.poll(() => toast.count(), { timeout: 6_000 }).toBe(0);
-});
+}
 
 test("workspace surfaces do not create page-level horizontal overflow", async ({ page }) => {
   await openWorkspace(page, { state: "dock-review" });

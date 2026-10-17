@@ -198,15 +198,12 @@ const styles = stylex.create({
   formActions: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "flex-end",
     flexWrap: "wrap",
-    gap: layout.controlGap,
+    gap: layout.contentGap,
     minWidth: 0,
-    paddingBlockStart: layout.fieldGap,
-    borderBlockStartWidth: "var(--control-edge-width)",
-    borderBlockStartStyle: "solid",
-    borderBlockStartColor: surface.field,
   },
+  formActionGroup: { maxWidth: "100%" },
+  formMainActions: { marginInlineStart: "auto", justifyContent: "flex-end" },
 });
 
 export function Panel({
@@ -394,14 +391,29 @@ export function FormSection({
 
 export function FormActions({
   label,
+  auxiliaryAction,
   children,
 }: {
   label: string;
+  auxiliaryAction?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div role="group" aria-label={label} {...stylex.props(styles.formActions)}>
-      {children}
+      {auxiliaryAction && (
+        <div {...stylex.props(styles.actions, styles.formActionGroup)}>
+          {auxiliaryAction}
+        </div>
+      )}
+      <div
+        {...stylex.props(
+          styles.actions,
+          styles.formActionGroup,
+          styles.formMainActions,
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

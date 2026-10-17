@@ -169,7 +169,16 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
         </FormField>
       </FormRow>
 
-      <FormActions label={t("providers.save")}>
+      <FormActions
+        label={t("providers.save")}
+        auxiliaryAction={
+          hasStoredKey && (
+            <Button variant="ghost" size="sm" pending={saving} onClick={() => void onClearKey()}>
+              {t("providers.apiKey.clear")}
+            </Button>
+          )
+        }
+      >
         <Button
           variant="outline"
           size="sm"
@@ -183,12 +192,6 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
               ? t("providers.saveAndTest")
               : t("providers.test")}
         </Button>
-        {hasStoredKey && (
-          <Button variant="ghost" size="sm" pending={saving} onClick={() => void onClearKey()}>
-            {t("providers.apiKey.clear")}
-          </Button>
-        )}
-
         <Button
           variant="primary"
           size="sm"

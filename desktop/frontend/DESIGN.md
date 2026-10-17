@@ -66,7 +66,9 @@ Flame keeps StyleX, Base UI, its own tokens and Runtime ownership.
   for card insets, row padding, field labels and content gaps. Compact page gutters
   also bound modals. Translated field labels keep their intrinsic height; they do
   not stretch neighboring controls. Field labels contain their control only;
-  related commands belong in the shared trailing action zone.
+  related commands belong in the shared action zone. Auxiliary actions lead;
+  cancellation and the primary action trail. The parent composition owns the
+  spacing before this zone.
 - Resource lists use direct summary disclosures: identity and description lead,
   state and the main action trail, and details expand across the full row width.
   Secondary commands use the shared action menu. Technical provenance belongs in

@@ -1,6 +1,35 @@
 import { expect, test } from "./test";
 import { VISUAL_SETTINGS_PANES } from "./workspaceFixtureStates";
 
+for (const theme of ["light", "dark"]) {
+  test(`provider roles pair their labels and controls and separate removal from saving ${theme}`, async ({
+    page,
+  }) => {
+    for (const width of [1120, 320]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto(
+        `/visual/?fixture=workspace&state=settings&pane=providers&theme=${theme}&font-size=18`,
+      );
+      await page.locator("html[data-visual-ready]").waitFor();
+      const panel = page.getByRole("tabpanel");
+      for (const name of ["Utility model", "Embedding model"]) {
+        const label = (await panel.getByText(name, { exact: true }).boundingBox())!;
+        const control = (await panel.getByRole("button", { name, exact: true }).boundingBox())!;
+        if (width === 1120) expect(control.x).toBeGreaterThanOrEqual(label.x + label.width);
+        else expect(control.y).toBeGreaterThanOrEqual(label.y + label.height);
+      }
+      const remove = panel.getByRole("button", { name: "Remove stored key", exact: true });
+      const actions = panel.getByRole("group", { name: "Save", exact: true }).first();
+      const test = actions.getByRole("button", { name: "Test", exact: true });
+      if (width === 1120) {
+        const removal = (await remove.boundingBox())!;
+        expect((await test.boundingBox())!.x).toBeGreaterThanOrEqual(removal.x + removal.width);
+      }
+      expect(await actions.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+    }
+  });
+}
+
 test("font size selectors reach the full supported scale and restore inherited sizes", async ({
   page,
 }) => {

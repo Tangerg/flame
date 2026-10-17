@@ -303,7 +303,22 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
         </div>
       )}
 
-      <FormActions label={t(isEdit ? "mcp.save" : "mcp.add")}>
+      <FormActions
+        label={t(isEdit ? "mcp.save" : "mcp.add")}
+        auxiliaryAction={
+          isEdit && (
+            <Button
+              variant="tonal"
+              tone="negative"
+              size="sm"
+              pending={saving}
+              onClick={() => void onDelete()}
+            >
+              {t("mcp.delete")}
+            </Button>
+          )
+        }
+      >
         <Button
           variant="outline"
           size="sm"
@@ -313,21 +328,9 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
         >
           {feedback.state === "busy" ? t("mcp.testing") : t("mcp.test")}
         </Button>
-        <Button variant="outline" size="sm" onClick={onCancel}>
+        <Button variant="ghost" size="sm" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
-        {isEdit && (
-          <Button
-            variant="tonal"
-            tone="negative"
-            size="sm"
-            pending={saving}
-            onClick={() => void onDelete()}
-          >
-            {t("mcp.delete")}
-          </Button>
-        )}
-
         <Button
           variant="primary"
           size="sm"
