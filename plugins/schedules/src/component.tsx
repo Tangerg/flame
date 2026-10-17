@@ -400,8 +400,30 @@ export function Schedules({ context }: { context: ComponentContext }) {
         />
       }
       controls={
-        <>
-          <Toolbar label="Schedule controls">
+        <FilterBar
+          label="Schedule controls"
+          search={
+            <SearchField
+              size="lg"
+              aria-label="Search this page"
+              placeholder="Title or instructions"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          }
+        >
+          <Select
+            size="lg"
+            label="Schedule status"
+            value={status}
+            onValueChange={setStatus}
+            options={[
+              { value: "all", label: "All statuses" },
+              { value: "enabled", label: "Enabled" },
+              { value: "disabled", label: "Disabled" },
+            ]}
+          />
+          <Toolbar label="Schedule actions">
             <IconButton
               icon={Refresh}
               aria-label="Refresh"
@@ -431,31 +453,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
               }))}
             />
           </Toolbar>
-          <FilterBar
-            label="Schedule filters"
-            search={
-              <SearchField
-                size="lg"
-                aria-label="Search this page"
-                placeholder="Title or instructions"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            }
-          >
-            <Select
-              size="lg"
-              label="Schedule status"
-              value={status}
-              onValueChange={setStatus}
-              options={[
-                { value: "all", label: "All statuses" },
-                { value: "enabled", label: "Enabled" },
-                { value: "disabled", label: "Disabled" },
-              ]}
-            />
-          </FilterBar>
-        </>
+        </FilterBar>
       }
     >
       {read.loading && <p role="status">Reading schedules…</p>}
@@ -796,6 +794,9 @@ export function Schedules({ context }: { context: ComponentContext }) {
                 }
               />
               <Metadata>
+                Cron · <code>{item.Cron}</code>
+              </Metadata>
+              <Metadata>
                 Next firing ·{" "}
                 {hasTime(item.NextRunAt) ? (
                   <time dateTime={item.NextRunAt}>
@@ -830,7 +831,6 @@ export function Schedules({ context }: { context: ComponentContext }) {
                 <Facts
                   values={[
                     ["Schedule", item.ID],
-                    ["Cron", item.Cron],
                     ["Revision", String(item.Revision)],
                     ["Workspace", item.CWD || "Runtime default"],
                     [

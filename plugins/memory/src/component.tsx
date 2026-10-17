@@ -472,7 +472,7 @@ export function Memory({ context }: { context: ComponentContext }) {
       }
       controls={
         <>
-          <Toolbar label="Memory controls">
+          <Toolbar label="Memory navigation">
             <Segmented
               ariaLabel="Memory scope"
               value={scope}
@@ -492,35 +492,9 @@ export function Memory({ context }: { context: ComponentContext }) {
               }}
               disabled={locked}
             />
-            <IconButton
-              icon={Refresh}
-              aria-label="Refresh"
-              size="md"
-              disabled={read.loading || cwd === undefined || pending}
-              onClick={() => {
-                const owner = observerSignal();
-                if (owner) void load(owner);
-              }}
-            />
-            <Button
-              variant={edit ? "outline" : "primary"}
-              size="lg"
-              disabled={locked || cwd === undefined || Boolean(edit)}
-              onClick={(event) => {
-                setEdit({ type: "add", opener: event.currentTarget });
-                setDraft("");
-              }}
-            >
-              <Icon glyph={Plus} size="sm" /> Add memory
-            </Button>
-            <Checkbox
-              checked={pinned}
-              onCheckedChange={setPinned}
-              label="Pinned only"
-            />
           </Toolbar>
           <FilterBar
-            label="Memory filters"
+            label="Memory controls"
             search={
               <SearchField
                 size="lg"
@@ -554,6 +528,34 @@ export function Memory({ context }: { context: ComponentContext }) {
                 { value: "user", label: "User authored" },
               ]}
             />
+            <Checkbox
+              checked={pinned}
+              onCheckedChange={setPinned}
+              label="Pinned only"
+            />
+            <Toolbar label="Memory actions">
+              <IconButton
+                icon={Refresh}
+                aria-label="Refresh"
+                size="md"
+                disabled={read.loading || cwd === undefined || pending}
+                onClick={() => {
+                  const owner = observerSignal();
+                  if (owner) void load(owner);
+                }}
+              />
+              <Button
+                variant={edit ? "outline" : "primary"}
+                size="lg"
+                disabled={locked || cwd === undefined || Boolean(edit)}
+                onClick={(event) => {
+                  setEdit({ type: "add", opener: event.currentTarget });
+                  setDraft("");
+                }}
+              >
+                <Icon glyph={Plus} size="sm" /> Add memory
+              </Button>
+            </Toolbar>
           </FilterBar>
         </>
       }

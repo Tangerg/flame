@@ -377,7 +377,7 @@ export function Skills({ context }: { context: ComponentContext }) {
       }
       controls={
         <>
-          <Toolbar label="Skill controls">
+          <Toolbar label="Skill navigation">
             <Segmented
               ariaLabel="Catalog"
               value={target === "detail" ? "available" : target}
@@ -393,16 +393,9 @@ export function Skills({ context }: { context: ComponentContext }) {
                 Back to available Skills
               </Button>
             )}
-            <IconButton
-              icon={Refresh}
-              aria-label="Refresh"
-              size="md"
-              disabled={read.loading || Boolean(command)}
-              onClick={() => void refresh()}
-            />
           </Toolbar>
           <FilterBar
-            label="Skill filters"
+            label="Skill controls"
             search={
               <SearchField
                 size="lg"
@@ -413,7 +406,15 @@ export function Skills({ context }: { context: ComponentContext }) {
                 onChange={(event) => setSearch(event.target.value)}
               />
             }
-          />
+          >
+            <IconButton
+              icon={Refresh}
+              aria-label="Refresh"
+              size="md"
+              disabled={read.loading || Boolean(command)}
+              onClick={() => void refresh()}
+            />
+          </FilterBar>
         </>
       }
     >

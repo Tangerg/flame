@@ -12,6 +12,7 @@ import {
   Metadata,
   PanelSection,
   RecordGroup,
+  RecordMeta,
   Toolbar,
 } from "@flame/ui";
 import { SystemMessage } from "@/ui";
@@ -47,6 +48,8 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
   } catch (error) {
     read = { type: "failed", reason: failureText(error, t("packages.commands.failed")) };
   }
+  const empty =
+    read.type === "ready" && read.commands.length === 0 && !current?.checking && !current?.outcome;
 
   async function observe(command: PluginCommandRecovery, action: "recover" | "retire") {
     if (current?.checking || operations.signal.aborted) return;
@@ -89,8 +92,14 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
   return (
     <PanelSection
       aria-label={t("packages.commands.title")}
-      title={t("packages.commands.title")}
-      description={t("packages.commands.explanation")}
+      title={
+        empty ? (
+          <RecordMeta>{t("packages.commands.none")}</RecordMeta>
+        ) : (
+          t("packages.commands.title")
+        )
+      }
+      description={empty ? undefined : t("packages.commands.explanation")}
       actions={
         <Button
           variant="soft"
@@ -109,7 +118,7 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
         <SystemMessage variant="warning">{read.reason}</SystemMessage>
       ) : (
         <>
-          {!current?.checking && !read.commands.length && (
+          {!empty && !current?.checking && !read.commands.length && (
             <Metadata>{t("packages.commands.none")}</Metadata>
           )}
           <RecordGroup variant="list">

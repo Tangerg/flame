@@ -42,7 +42,10 @@ and separators. Its `cards` variant provides the responsive schedule grid;
 `ListRow variant="card"` owns each independent card surface.
 `Disclosure variant="row"` owns resource summaries that expand directly.
 `RecordSummary` owns the optional identity mark, copy and state alignment.
-`FilterBar` owns the growing search column and wrapping filter controls.
+`FilterBar` owns the growing search column and wrapping controls. Page actions
+follow the filters in that same zone; multiple actions use a named `Toolbar`
+within it. Scope and catalog navigation keep a separate preceding `Toolbar`.
+Controls wrap naturally rather than shrinking their labels to fit one row.
 Management filters use the shared `lg` size for both search and selection; compact
 workbench controls keep their own smaller roles.
 `RecordHeading` groups identity, state and the main action. `Disclosure` owns a

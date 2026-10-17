@@ -877,6 +877,7 @@ test("deleting a schedule asks first, and a declined ask changes nothing", async
   const item = pluginView(page, "schedules")
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: "Nightly dependency audit", exact: true }) });
+  await expect(item.getByText("0 2 * * *", { exact: true })).toBeVisible();
   const trigger = item.getByRole("button", {
     name: "More actions for Nightly dependency audit",
     exact: true,

@@ -1,4 +1,5 @@
 import { iconGlyph } from "@/ui/icons";
+import { Refresh } from "@flame/icons/react";
 import { useState, type ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { color, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -43,6 +44,7 @@ import {
   SearchField,
   TextArea,
   TextField,
+  Toolbar,
 } from "@flame/ui";
 import { Icon } from "@/ui/icons";
 
@@ -126,31 +128,46 @@ export function VisualAtomsFixture() {
   return (
     <main data-slot="atoms-gallery" {...stylex.props(styles.page)}>
       <Specimen name="shared-panel">
-        <Panel label="Shared Memory controls">
-          <PanelHeader title="Agent memory" description="Facts and preferences for future work." />
-          <FilterBar
-            label="Memory filters"
-            search={
-              <SearchField
-                size="lg"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                aria-label="Search memory"
-                placeholder="Recorded text or ID"
-              />
-            }
-          >
-            <Select
-              size="lg"
-              label="Memory status"
-              value={status}
-              onValueChange={setStatus}
-              options={[
-                { value: "pending", label: "Pending review" },
-                { value: "active", label: "Active" },
-              ]}
+        <Panel
+          label="Shared Memory controls"
+          header={
+            <PanelHeader
+              title="Agent memory"
+              description="Facts and preferences for future work."
             />
-          </FilterBar>
+          }
+          controls={
+            <FilterBar
+              label="Memory controls"
+              search={
+                <SearchField
+                  size="lg"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  aria-label="Search memory"
+                  placeholder="Recorded text or ID"
+                />
+              }
+            >
+              <Select
+                size="lg"
+                label="Memory status"
+                value={status}
+                onValueChange={setStatus}
+                options={[
+                  { value: "pending", label: "Pending review" },
+                  { value: "active", label: "Active" },
+                ]}
+              />
+              <Toolbar label="Memory actions">
+                <IconButton icon={Refresh} size="md" aria-label="Refresh" onClick={noop} />
+                <Button variant="primary" size="lg" onClick={noop}>
+                  <Icon name="plus" size="sm" /> Add memory
+                </Button>
+              </Toolbar>
+            </FilterBar>
+          }
+        >
           <ListRow>
             <p>Keep the durable fact with its owner.</p>
             <Metadata>Project · User authored · Pinned</Metadata>

@@ -1,6 +1,41 @@
 import { expect, test } from "./test";
 import { VISUAL_SETTINGS_PANES } from "./workspaceFixtureStates";
 
+test("font size selectors reach the full supported scale and restore inherited sizes", async ({
+  page,
+}) => {
+  await page.goto(
+    "/visual/?fixture=workspace&state=settings&pane=appearance&theme=light&font-size=14",
+  );
+  await page.locator("html[data-visual-ready]").waitFor();
+  const root = page.locator("html");
+  const codeSize = () =>
+    root.evaluate((node) => getComputedStyle(node).getPropertyValue("--fs-code").trim());
+  const inherited = await codeSize();
+  const ui = page.getByRole("combobox", { name: "Interface size", exact: true });
+  await ui.focus();
+  await ui.press("Enter");
+  await page.keyboard.press("End");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Enter");
+  await expect(ui).toHaveText("17");
+  await expect(page.locator("body")).toHaveCSS("font-size", "17px");
+  const scaled = await codeSize();
+  const code = page.getByRole("combobox", { name: "Code size", exact: true });
+  await code.click();
+  await page.getByRole("option", { name: "16", exact: true }).click();
+  await expect(root).toHaveCSS("--fs-code", "16px");
+  await code.click();
+  await page.getByRole("option", { name: "Follow UI", exact: true }).click();
+  await expect(code).toBeFocused();
+  await expect(root).toHaveCSS("--fs-code", scaled);
+  await ui.click();
+  await page.getByRole("option", { name: "Default", exact: true }).click();
+  await expect(ui).toBeFocused();
+  await expect(page.locator("body")).toHaveCSS("font-size", "14px");
+  await expect(root).toHaveCSS("--fs-code", inherited);
+});
+
 for (const theme of ["light", "dark"]) {
   for (const width of [1120, 320]) {
     test(`settings keep controls inside their content measure ${theme} ${width}`, async ({

@@ -457,55 +457,51 @@ export function Trajectory({ context }: { context: ComponentContext }) {
         />
       }
       controls={
-        <>
-          <Toolbar label="Trajectory controls">
-            <IconButton
-              icon={Refresh}
-              aria-label="Refresh"
-              size="md"
-              disabled={read.loading}
-              onClick={() => void load()}
-            />
-          </Toolbar>
-          <FilterBar
-            label="Observation filters"
-            search={
-              <SearchField
-                size="lg"
-                id="search"
-                aria-label="Filter this page"
-                placeholder="Recorded text or ID"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            }
-          >
-            <Select
+        <FilterBar
+          label="Trajectory controls"
+          search={
+            <SearchField
               size="lg"
-              id="kind"
-              label="Observation type"
-              value={kind}
-              onValueChange={setKind}
-              options={[
-                { value: "all", label: "All observations" },
-                { value: "run", label: "Runs" },
-                { value: "model", label: "Logical model calls" },
-                { value: "endpoint", label: "Model endpoints" },
-                { value: "toolCall", label: "Tool calls" },
-                { value: "message", label: "Messages" },
-                { value: "attention", label: "Needs attention" },
-              ]}
+              id="search"
+              aria-label="Filter this page"
+              placeholder="Recorded text or ID"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
             />
-            <Select
-              size="lg"
-              id="run"
-              label="Run filter"
-              value={selectedRun}
-              onValueChange={setRun}
-              options={runOptions}
-            />
-          </FilterBar>
-        </>
+          }
+        >
+          <Select
+            size="lg"
+            id="kind"
+            label="Observation type"
+            value={kind}
+            onValueChange={setKind}
+            options={[
+              { value: "all", label: "All observations" },
+              { value: "run", label: "Runs" },
+              { value: "model", label: "Logical model calls" },
+              { value: "endpoint", label: "Model endpoints" },
+              { value: "toolCall", label: "Tool calls" },
+              { value: "message", label: "Messages" },
+              { value: "attention", label: "Needs attention" },
+            ]}
+          />
+          <Select
+            size="lg"
+            id="run"
+            label="Run filter"
+            value={selectedRun}
+            onValueChange={setRun}
+            options={runOptions}
+          />
+          <IconButton
+            icon={Refresh}
+            aria-label="Refresh"
+            size="md"
+            disabled={read.loading}
+            onClick={() => void load()}
+          />
+        </FilterBar>
       }
     >
       {read.loading && <p role="status">Reading recorded observations…</p>}

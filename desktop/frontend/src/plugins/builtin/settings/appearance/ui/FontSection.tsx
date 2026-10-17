@@ -1,7 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
-import type { SegmentedOption } from "@/ui";
-import { DropdownMenu, Icon, Segmented, SelectTrigger, Switch } from "@/ui";
-import { vocab } from "@flame/ui";
+import { DropdownMenu, Icon, SelectTrigger, Switch } from "@/ui";
+import { Select, vocab } from "@flame/ui";
 import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "@flame/ui/typography";
 import { useT } from "@/lib/i18n";
 import { useSystemFonts } from "../application/systemFonts";
@@ -39,7 +38,7 @@ function FontPicker({
             label={custom ? value : defaultLabel}
             aria-label={label}
             style={custom ? { fontFamily: `"${value}"` } : undefined}
-            className={stylex.props(fsx.trigger, mono && custom && face.mono).className}
+            styles={[fsx.trigger, mono && custom && face.mono]}
           />
         }
       />
@@ -66,15 +65,10 @@ function FontPicker({
 
 const CODE_SIZE_VALUES = [11, 12, 13, 14, 15, 16];
 
-const SIZE_VALUES = [
-  UI_FONT_SIZE_MIN_PX,
-  12,
-  13,
-  14,
-  15,
-  16,
-  UI_FONT_SIZE_MAX_PX,
-] as const satisfies readonly number[];
+const SIZE_VALUES = Array.from(
+  { length: UI_FONT_SIZE_MAX_PX - UI_FONT_SIZE_MIN_PX + 1 },
+  (_, index) => UI_FONT_SIZE_MIN_PX + index,
+);
 const SIZE_RESET = "default";
 
 export function FontSection() {
@@ -92,11 +86,11 @@ export function FontSection() {
     setFontSmoothing,
   } = useFontPreferences();
 
-  const codeSizeOptions: SegmentedOption<string>[] = [
+  const codeSizeOptions = [
     { value: SIZE_RESET, label: t("settings.font.followUi") },
     ...CODE_SIZE_VALUES.map((px) => ({ value: String(px), label: String(px) })),
   ];
-  const sizeOptions: SegmentedOption<string>[] = [
+  const sizeOptions = [
     { value: SIZE_RESET, label: t("settings.font.default") },
     ...SIZE_VALUES.map((px) => ({ value: String(px), label: String(px) })),
   ];
@@ -122,19 +116,19 @@ export function FontSection() {
         />
       </SettingRow>
       <SettingRow label={t("settings.font.size")} sub={t("settings.font.size.sub")}>
-        <Segmented
+        <Select
           value={fontSize === null ? SIZE_RESET : String(fontSize)}
           options={sizeOptions}
-          onChange={(v) => setFontSize(v === SIZE_RESET ? null : Number(v))}
-          ariaLabel={t("settings.font.size")}
+          onValueChange={(v) => setFontSize(v === SIZE_RESET ? null : Number(v))}
+          label={t("settings.font.size")}
         />
       </SettingRow>
       <SettingRow label={t("settings.font.codeSize")} sub={t("settings.font.codeSize.sub")}>
-        <Segmented
+        <Select
           value={codeFontSize === null ? SIZE_RESET : String(codeFontSize)}
           options={codeSizeOptions}
-          onChange={(v) => setCodeFontSize(v === SIZE_RESET ? null : Number(v))}
-          ariaLabel={t("settings.font.codeSize")}
+          onValueChange={(v) => setCodeFontSize(v === SIZE_RESET ? null : Number(v))}
+          label={t("settings.font.codeSize")}
         />
       </SettingRow>
       <SettingRow label={t("settings.font.smoothing")} sub={t("settings.font.smoothing.sub")}>

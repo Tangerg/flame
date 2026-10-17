@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { FIELD_SIZE, FIELD_SURFACE } from "@flame/ui";
 import { cn } from "@/lib/classNames";
@@ -31,15 +32,23 @@ const styles = stylex.create({
 export interface SelectTriggerProps extends Omit<PressableProps, "children"> {
   label: ReactNode;
   leading?: ReactNode;
+  styles?: StyleXArray<StyleXStyles | null | false>;
 }
 
-export function SelectTrigger({ label, leading: lead, className, ...props }: SelectTriggerProps) {
+export function SelectTrigger({
+  label,
+  leading: lead,
+  styles: extra,
+  className,
+  ...props
+}: SelectTriggerProps) {
   const styled = stylex.props(
     FIELD_SURFACE.face,
     FIELD_SURFACE.trigger,
     FIELD_SIZE.md,
     styles.trigger,
     type.uiMd,
+    extra,
   );
   return (
     <Pressable

@@ -21,7 +21,6 @@ import {
   FilterBar,
   Select,
   Stats,
-  Toolbar,
 } from "@flame/ui";
 
 const number = new Intl.NumberFormat("en-US");
@@ -259,46 +258,43 @@ export function Usage({ context }: { context: ComponentContext }) {
         />
       }
       controls={
-        <>
-          <Toolbar label="Usage controls">
-            <Select
-              label="Period"
-              value={period.value}
-              options={periods.map(({ value, label }) => ({ value, label }))}
-              onValueChange={(value) =>
-                setPeriod(periods.find((item) => item.value === value)!)
-              }
-            />
-            <IconButton
-              icon={Refresh}
-              aria-label="Refresh"
-              size="md"
-              disabled={read.loading}
-              onClick={() => void refresh()}
-            />
-          </Toolbar>
-          <FilterBar
-            label="Usage filters"
-            search={
-              <SearchField
-                size="lg"
-                id="filter"
-                aria-label="Filter"
-                placeholder="Find a source"
-                value={filter}
-                onChange={(event) => setFilter(event.target.value)}
-              />
-            }
-          >
-            <Select
+        <FilterBar
+          label="Usage controls"
+          search={
+            <SearchField
               size="lg"
-              label="Group by"
-              value={group}
-              onValueChange={setGroup}
-              options={options}
+              id="filter"
+              aria-label="Filter"
+              placeholder="Find a source"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
             />
-          </FilterBar>
-        </>
+          }
+        >
+          <Select
+            size="lg"
+            label="Period"
+            value={period.value}
+            options={periods.map(({ value, label }) => ({ value, label }))}
+            onValueChange={(value) =>
+              setPeriod(periods.find((item) => item.value === value)!)
+            }
+          />
+          <Select
+            size="lg"
+            label="Group by"
+            value={group}
+            onValueChange={setGroup}
+            options={options}
+          />
+          <IconButton
+            icon={Refresh}
+            aria-label="Refresh"
+            size="md"
+            disabled={read.loading}
+            onClick={() => void refresh()}
+          />
+        </FilterBar>
       }
     >
       {read.loading && <p role="status">Reading usage…</p>}
