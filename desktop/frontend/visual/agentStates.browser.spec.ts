@@ -1787,6 +1787,24 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
+test("a short command output expands to its captured line count", async ({ page }) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=tool-shells");
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.getByRole("button", { name: /steps/ }).first().click();
+  const command = page.locator('[data-tool="shell"]').first();
+  await command.getByRole("button").first().click();
+  await command.getByRole("button", { name: /earlier lines · 10 total/ }).click();
+  const output = command.getByRole("region", { name: "Tool output", exact: true });
+  await expect(output.locator("[data-output-line]")).toHaveCount(10);
+  const excessHeight = () =>
+    output.evaluate((node) =>
+      Math.abs(node.clientHeight - 10 * parseFloat(getComputedStyle(node).lineHeight)),
+    );
+  await expect.poll(excessHeight).toBeLessThanOrEqual(1);
+  await command.evaluate((node) => (node as HTMLElement).style.setProperty("--fs-code", "16px"));
+  await expect.poll(excessHeight).toBeLessThanOrEqual(1);
+});
+
 test("large command output stays fully readable inside the tool card", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=tool-shells&long-output=1");
   await page.locator("html[data-visual-ready]").waitFor();

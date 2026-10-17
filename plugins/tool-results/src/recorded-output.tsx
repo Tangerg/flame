@@ -165,7 +165,7 @@ export function RecordedOutput({ text }: { text: string }) {
             tabIndex={0}
             data-focus-inset=""
             style={{
-              height: "min(50vh,24rem)",
+              height: `min(50vh,24rem,${lines.length}lh)`,
               minWidth: 0,
               overflow: "auto",
               overflowAnchor: "none",

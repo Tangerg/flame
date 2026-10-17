@@ -9,17 +9,20 @@ import { layout, space, surface, type } from "./tokens.stylex";
 const styles = stylex.create({
   root: {
     display: "grid",
-    gridTemplateColumns: {
-      default: "minmax(0,1fr) auto",
-      "@container (max-width: 440px)": "minmax(0,1fr)",
-    },
-    alignItems: "center",
-    columnGap: space.s3,
+    gridTemplateColumns: "minmax(0,1fr)",
     minWidth: 0,
     backgroundColor: {
       default: "transparent",
       ":is([data-focused=true])": surface.selected,
     },
+  },
+  header: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    columnGap: layout.contentGap,
+    rowGap: layout.controlGap,
+    minWidth: 0,
   },
   row: {
     paddingInline: layout.cardPadding,
@@ -30,7 +33,11 @@ const styles = stylex.create({
     },
   },
   trigger: {
-    width: "100%",
+    width: "auto",
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: "auto",
+    minWidth: 0,
     height: "auto",
     justifyContent: "flex-start",
     textAlign: "start",
@@ -50,7 +57,6 @@ const styles = stylex.create({
   },
   title: { minWidth: 0, flex: 1, overflowWrap: "anywhere" },
   content: {
-    gridColumn: "1 / -1",
     display: "grid",
     gridTemplateColumns: "minmax(0,1fr)",
     gap: layout.controlGap,
@@ -65,6 +71,10 @@ const styles = stylex.create({
   },
   actions: {
     display: "flex",
+    flex: "0 1 auto",
+    minWidth: 0,
+    maxWidth: "100%",
+    marginInlineStart: "auto",
     alignItems: "center",
     flexWrap: "wrap",
     gap: layout.controlGap,
@@ -100,32 +110,34 @@ export function Disclosure({
         />
       }
     >
-      <CollapsiblePrimitive.Trigger
-        render={
-          <Button
-            variant={variant === "row" ? "bare" : "ghost"}
-            size="sm"
-            styles={styles.trigger}
-          />
-        }
-      >
-        {variant === "plain" && (
-          <Icon
-            glyph={ChevronRight}
-            size="xs"
-            {...stylex.props(styles.glyph)}
-          />
-        )}
-        <span {...stylex.props(styles.title, type.uiSm)}>{title}</span>
-        {variant === "row" && (
-          <Icon
-            glyph={ChevronRight}
-            size="xs"
-            {...stylex.props(styles.glyph)}
-          />
-        )}
-      </CollapsiblePrimitive.Trigger>
-      {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
+      <div {...stylex.props(styles.header)}>
+        <CollapsiblePrimitive.Trigger
+          render={
+            <Button
+              variant={variant === "row" ? "bare" : "ghost"}
+              size="sm"
+              styles={styles.trigger}
+            />
+          }
+        >
+          {variant === "plain" && (
+            <Icon
+              glyph={ChevronRight}
+              size="xs"
+              {...stylex.props(styles.glyph)}
+            />
+          )}
+          <span {...stylex.props(styles.title, type.uiSm)}>{title}</span>
+          {variant === "row" && (
+            <Icon
+              glyph={ChevronRight}
+              size="xs"
+              {...stylex.props(styles.glyph)}
+            />
+          )}
+        </CollapsiblePrimitive.Trigger>
+        {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
+      </div>
       <CollapsiblePrimitive.Panel
         {...stylex.props(
           styles.content,

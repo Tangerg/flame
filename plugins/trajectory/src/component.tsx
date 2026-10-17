@@ -607,6 +607,8 @@ export function RenameSession({ context }: { context: ComponentContext }) {
         <FormField label="Session title">
           <TextField
             aria-label="Session title"
+            // oxlint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus
             value={title}
             disabled={busy || Boolean(unknown) || Boolean(saved)}
             onChange={(event) => setTitle(event.target.value)}

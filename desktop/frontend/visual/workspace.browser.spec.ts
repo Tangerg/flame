@@ -1044,6 +1044,27 @@ test("memory cards keep state compact and preserve full record evidence behind d
 });
 
 for (const theme of ["light", "dark"] as const) {
+  test(`short disclosure actions share a row when their content fits ${theme}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1120, height: 720 });
+    await openWorkspace(page, { state: "dock-schedules", theme });
+    await waitForWorkspaceState(page, "dock-schedules");
+    const card = pluginView(page, "schedules").getByRole("article").first();
+    const details = card.getByRole("button", { name: "Schedule details", exact: true });
+    const run = card.getByRole("button", { name: "Run now", exact: true });
+    const summary = (await details.boundingBox())!;
+    const action = (await run.boundingBox())!;
+    expect(
+      Math.min(summary.y + summary.height, action.y + action.height) -
+        Math.max(summary.y, action.y),
+    ).toBeGreaterThan(0);
+    expect(action.x).toBeGreaterThanOrEqual(summary.x + summary.width);
+    await details.click();
+    await expect(details).toHaveAttribute("aria-expanded", "true");
+    await expect(card.getByText("sch_nightly", { exact: true })).toBeVisible();
+  });
+
   test(`portable editors keep visible field labels and one save action ${theme}`, async ({
     page,
   }) => {
