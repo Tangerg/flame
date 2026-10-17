@@ -43,22 +43,13 @@ function DockViewBar({
 }: Pick<ViewHeaderProps, "sub" | "actions"> & { identity?: ReactNode }) {
   if (identity === undefined && sub === undefined && actions === undefined) return null;
   return (
-    <AgentSurfaceHeader>
-      <div {...stylex.props(vocab.line, vocab.fill, vocab.muted, typeStep.uiSm, face.mono)}>
-        {identity !== undefined && <span {...stylex.props(vocab.fill)}>{identity}</span>}
-        {identity !== undefined && sub !== undefined && (
-          <span aria-hidden {...stylex.props(vocab.hold, vs.dotSep)}>
-            ·
-          </span>
-        )}
-        {sub !== undefined && (
-          <span {...stylex.props(vocab.truncate, identity === undefined ? vocab.fill : vocab.hold)}>
-            {sub}
-          </span>
-        )}
+    <header data-slot="workspace-view-header" {...stylex.props(vs.contentHeader)}>
+      <div {...stylex.props(vs.headerIdentity, vocab.muted, typeStep.uiSm, face.mono)}>
+        {identity !== undefined && <span {...stylex.props(vs.headerName)}>{identity}</span>}
+        {sub !== undefined && <span {...stylex.props(vs.headerMetadata)}>{sub}</span>}
       </div>
-      {actions !== undefined && <div {...stylex.props(vs.actionsTight)}>{actions}</div>}
-    </AgentSurfaceHeader>
+      {actions !== undefined && <div {...stylex.props(vs.headerActions)}>{actions}</div>}
+    </header>
   );
 }
 
@@ -67,52 +58,58 @@ function FullViewBar({ icon, title, sub, actions, titleFace = "prose" }: ViewHea
   const t = useT();
 
   return (
-    <AgentSurfaceHeader corner="window">
-      <Icon name={icon} size="md" className={stylex.props(vocab.hold, vocab.muted).className} />
-      <div {...stylex.props(vocab.line, vocab.fill)}>
-        <span
-          {...stylex.props(
-            vocab.min,
-            vocab.truncate,
-            vs.title,
-            typeStep.uiMd,
-            titleFace === "mono" && face.mono,
+    <>
+      <AgentSurfaceHeader corner="window">
+        <Icon name={icon} size="md" className={stylex.props(vocab.hold, vocab.muted).className} />
+        <div {...stylex.props(vocab.line, vocab.fill)}>
+          <span
+            {...stylex.props(
+              vocab.min,
+              vocab.truncate,
+              vs.title,
+              typeStep.uiMd,
+              titleFace === "mono" && face.mono,
+            )}
+          >
+            {typeof title === "string" ? t(title) : title}
+          </span>
+          {sub !== undefined && (
+            <>
+              <span aria-hidden="true" {...stylex.props(vocab.hold, vs.dotSep, typeStep.uiMd)}>
+                ·
+              </span>
+              <span
+                {...stylex.props(vocab.min, vocab.truncate, vocab.muted, typeStep.uiMd, face.mono)}
+              >
+                {sub}
+              </span>
+            </>
           )}
-        >
-          {typeof title === "string" ? t(title) : title}
-        </span>
-        {sub !== undefined && (
-          <>
-            <span aria-hidden="true" {...stylex.props(vocab.hold, vs.dotSep, typeStep.uiMd)}>
-              ·
-            </span>
-            <span
-              {...stylex.props(vocab.min, vocab.truncate, vocab.muted, typeStep.uiMd, face.mono)}
-            >
-              {sub}
-            </span>
-          </>
-        )}
-      </div>
-      <div {...stylex.props(vs.actionsTight)}>
-        {actions}
-        {placement?.splittable && (
-          <IconButton
-            icon={iconGlyph("open")}
-            size="sm"
-            aria-label={t("workspace.view.openBeside")}
-            onClick={placement.onOpenInDock}
-          />
-        )}
-        {placement && (
-          <IconButton
-            icon={iconGlyph("x")}
-            size="sm"
-            aria-label={t("common.close")}
-            onClick={placement.onClose}
-          />
-        )}
-      </div>
-    </AgentSurfaceHeader>
+        </div>
+        <div {...stylex.props(vs.actionsTight)}>
+          {placement?.splittable && (
+            <IconButton
+              icon={iconGlyph("open")}
+              size="sm"
+              aria-label={t("workspace.view.openBeside")}
+              onClick={placement.onOpenInDock}
+            />
+          )}
+          {placement && (
+            <IconButton
+              icon={iconGlyph("x")}
+              size="sm"
+              aria-label={t("common.close")}
+              onClick={placement.onClose}
+            />
+          )}
+        </div>
+      </AgentSurfaceHeader>
+      {actions !== undefined && (
+        <header data-slot="workspace-view-header" {...stylex.props(vs.contentHeader)}>
+          <div {...stylex.props(vs.headerActions)}>{actions}</div>
+        </header>
+      )}
+    </>
   );
 }

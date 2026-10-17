@@ -73,6 +73,33 @@ describe("QuestionCard choice semantics", () => {
     ).toBe("false");
   });
 
+  it("submits the full distinguishing label when long choices share a prefix", () => {
+    const labels = [
+      "Run all release checks for the selected workspace and include concurrency diagnostics",
+      "Run all release checks for the selected workspace and include accessibility diagnostics",
+    ];
+    render(
+      <QuestionCard
+        status="complete"
+        resumeRunId="run-1"
+        itemId="question-long-labels"
+        questions={[
+          {
+            type: "choice",
+            header: "Checks",
+            prompt: "Which release checks should run?",
+            multiple: false,
+            allowCustom: false,
+            options: labels.map((label) => ({ label, description: "" })),
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: labels[1] }));
+    expect(submitQuestion).toHaveBeenCalledWith([[labels[1]]]);
+  });
+
   it("moves and selects within a radio group with the arrow keys", async () => {
     render(
       <QuestionCard
@@ -112,7 +139,7 @@ describe("QuestionCard choice semantics", () => {
     );
   });
 
-  it("uses the question as the only request heading and keeps option detail inline", () => {
+  it("uses the question as the only request heading and keeps option detail with its choice", () => {
     const { container } = render(
       <QuestionCard
         status="complete"

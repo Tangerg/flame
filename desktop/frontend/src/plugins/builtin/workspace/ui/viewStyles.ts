@@ -1,5 +1,14 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, motion, radius, space, surface, weight } from "@flame/ui/tokens.stylex";
+import {
+  color,
+  leading,
+  layout,
+  motion,
+  radius,
+  space,
+  surface,
+  weight,
+} from "@flame/ui/tokens.stylex";
 
 export const viewStyles = stylex.create({
   gutter: { paddingInline: "var(--reading-gutter-wide)" },
@@ -28,6 +37,31 @@ export const viewStyles = stylex.create({
   origin: { marginTop: space.s1, color: color.fgFaint },
   actions: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
   actionsTight: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s0_5 },
+  contentHeader: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr)",
+    gap: layout.controlGap,
+    flexShrink: 0,
+    minWidth: 0,
+    paddingInline: layout.compactGutter,
+    paddingBlock: layout.controlGap,
+  },
+  headerIdentity: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "baseline",
+    gap: layout.controlGap,
+    minWidth: 0,
+  },
+  headerName: { flex: "1 1 12rem", minWidth: 0 },
+  headerMetadata: { minWidth: 0, overflowWrap: "anywhere" },
+  headerActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: layout.controlGap,
+    minWidth: 0,
+  },
   body: { color: color.fg, lineHeight: leading.body, overflowWrap: "break-word" },
   metaLine: { marginTop: space.s1, display: "flex", alignItems: "center", gap: space.s2 },
   formLine: { marginTop: space.s2, display: "flex", alignItems: "center", gap: space.s2 },

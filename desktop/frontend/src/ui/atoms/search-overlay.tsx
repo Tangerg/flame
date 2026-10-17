@@ -28,9 +28,16 @@ const styles = stylex.create({
     paddingInline: "calc(var(--spacing) * 3.5)",
     paddingBlock: space.s2_5,
     color: color.fgMuted,
+    flexShrink: 0,
   },
   input: { flex: 1 },
-  list: { maxHeight: "calc(var(--spacing) * 80)", overflowY: "auto", padding: space.s1_5 },
+  list: {
+    minHeight: 0,
+    maxHeight: "calc(var(--spacing) * 80)",
+    overflowY: "auto",
+    padding: space.s1_5,
+    scrollPaddingBlock: space.s1_5,
+  },
 });
 
 interface SearchOption {

@@ -107,7 +107,9 @@ can be enabled again; another control's focus is preserved. `FormActions` owns t
 zone for inline editors, with cancellation before the primary action.
 `modalPanel()` owns the elevated modal face, corners, shadow and motion. Document
 lightboxes own their close control and reserve its space alongside their content;
-callers supply the localized close label.
+callers supply the localized close label. Top-aligned overlays derive their
+available height from the same inset that positions them, preserving the compact
+bottom gutter. Search overlays keep the query row fixed while their results scroll.
 
 ## Shared visual ownership
 

@@ -1,6 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, layout, motion, radius, surface } from "./tokens.stylex";
 
+const MODAL_TOP_INSET = "calc(var(--spacing) * 24)";
+
 const styles = stylex.create({
   face: {
     position: "relative",
@@ -79,7 +81,8 @@ const styles = stylex.create({
   modalCentred: { inset: 0, margin: "auto", height: "fit-content" },
   modalTop: {
     insetInline: 0,
-    top: "calc(var(--spacing) * 24)",
+    top: MODAL_TOP_INSET,
+    maxHeight: `calc(100dvh - ${MODAL_TOP_INSET} - var(--layout-compact-gutter))`,
     marginInline: "auto",
   },
 });

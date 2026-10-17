@@ -1,6 +1,10 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { RefCallback } from "react";
 
+function allowsScrolling(overflow: string): boolean {
+  return overflow === "auto" || overflow === "scroll";
+}
+
 export function useScrollReach(): {
   ref: RefCallback<HTMLElement>;
   tabIndex: 0 | undefined;
@@ -11,7 +15,10 @@ export function useScrollReach(): {
   const measure = useCallback(() => {
     const node = nodeRef.current;
     if (!node) return;
-    const next = node.scrollHeight > node.clientHeight + 1;
+    const style = getComputedStyle(node);
+    const next =
+      (allowsScrolling(style.overflowX) && node.scrollWidth > node.clientWidth + 1) ||
+      (allowsScrolling(style.overflowY) && node.scrollHeight > node.clientHeight + 1);
     setReachable((prev) => (prev === next ? prev : next));
   }, []);
 

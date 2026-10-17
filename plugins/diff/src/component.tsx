@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ComponentContext } from "@flame/plugin-sdk";
 import { FileDiff, Refresh } from "@flame/icons/react";
 import type { Diff, DiffMode } from "@flame/runtime-contract/wire";
@@ -22,20 +29,22 @@ import {
 } from "@flame/ui";
 
 export type DiffSnapshot = { diff: Diff; focusPath?: string };
-export function DiffReport({ snapshot }: { snapshot: DiffSnapshot }) {
-  const [filter, setFilter] = useState("");
-  const [layout, setLayout] = useState("unified");
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
+function DiffReport({
+  snapshot,
+  filter,
+  layout,
+  collapsed,
+  onOpenChange,
+}: {
+  snapshot: DiffSnapshot;
+  filter: string;
+  layout: "unified" | "split";
+  collapsed: ReadonlySet<string>;
+  onOpenChange: (path: string, open: boolean) => void;
+}) {
   const focused = useRef<HTMLElement>(null);
+  const focusId = useId();
   useEffect(() => {
-    if (snapshot.focusPath)
-      setCollapsed((current) => {
-        const next = new Set(current);
-        next.delete(snapshot.focusPath!);
-        return next;
-      });
     focused.current?.scrollIntoView({ block: "nearest" });
   }, [snapshot]);
   const files = snapshot.diff.files ?? [];
@@ -57,54 +66,7 @@ export function DiffReport({ snapshot }: { snapshot: DiffSnapshot }) {
       <PanelSection
         title="Changed files"
         description={`${matching.length} of ${files.length} files in this read`}
-        actions={
-          <Toolbar label="File disclosure actions">
-            <Button
-              id="expand"
-              size="sm"
-              variant="ghost"
-              onClick={() => setCollapsed(new Set())}
-            >
-              Expand all
-            </Button>
-            <Button
-              id="collapse"
-              size="sm"
-              variant="ghost"
-              onClick={() =>
-                setCollapsed(new Set(files.map((file) => file.path)))
-              }
-            >
-              Collapse all
-            </Button>
-          </Toolbar>
-        }
       >
-        <FilterBar
-          label="Diff filters"
-          search={
-            <SearchField
-              size="lg"
-              id="filter"
-              aria-label="Filter files"
-              placeholder="File path"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-            />
-          }
-        >
-          <Select
-            size="lg"
-            id="layout"
-            label="Layout"
-            value={layout}
-            onValueChange={setLayout}
-            options={[
-              { value: "unified", label: "Unified" },
-              { value: "split", label: "Side by side" },
-            ]}
-          />
-        </FilterBar>
         {!files.length && !snapshot.diff.truncated && (
           <EmptyState
             icon={FileDiff}
@@ -130,17 +92,11 @@ export function DiffReport({ snapshot }: { snapshot: DiffSnapshot }) {
               variant="row"
               key={file.path}
               ref={file.path === snapshot.focusPath ? focused : undefined}
+              id={file.path === snapshot.focusPath ? focusId : undefined}
               data-diff-file={file.path}
               data-focused={file.path === snapshot.focusPath}
               open={!collapsed.has(file.path)}
-              onOpenChange={(open) =>
-                setCollapsed((current) => {
-                  const next = new Set(current);
-                  if (open) next.delete(file.path);
-                  else next.add(file.path);
-                  return next;
-                })
-              }
+              onOpenChange={(open) => onOpenChange(file.path, open)}
               title={
                 <RecordSummary
                   icon={FileDiff}
@@ -172,7 +128,7 @@ export function DiffReport({ snapshot }: { snapshot: DiffSnapshot }) {
                 <>
                   <DiffTable
                     rows={file.rows}
-                    layout={layout as "unified" | "split"}
+                    layout={layout}
                     label={file.path}
                     labels={{
                       region: `Scrollable diff for ${file.path}`,
@@ -223,6 +179,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     return { ...context.workspace, focus: context.workspace.focus };
   }, [context]);
   const [mode, setMode] = useState<DiffMode>("worktree");
+  const [filter, setFilter] = useState("");
+  const [layout, setLayout] = useState<"unified" | "split">("unified");
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
   const refresh = useCallback(async () => {
@@ -243,11 +204,18 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       const focusPath = workspace.focus.path.startsWith(prefix)
         ? workspace.focus.path.slice(prefix.length)
         : workspace.focus.path;
-      if (!signal.aborted)
+      if (!signal.aborted) {
+        setCollapsed((current) => {
+          if (!current.has(focusPath)) return current;
+          const next = new Set(current);
+          next.delete(focusPath);
+          return next;
+        });
         setRead({
           loading: false,
           accepted: { snapshot: { diff, focusPath }, mode },
         });
+      }
     } catch (error) {
       if (!signal.aborted)
         setRead((previous) => ({
@@ -264,40 +232,88 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     void refresh();
     return () => reading.current?.abort();
   }, [refresh]);
+  const files = read.accepted?.snapshot.diff.files ?? [];
   return (
-    <Panel label="Workspace diff">
-      <PanelHeader
-        title="Workspace diff"
-        context={
-          <>
-            <Toolbar label="Diff comparison actions">
-              <Select
-                label="Comparison"
-                value={mode}
-                options={[
-                  { value: "worktree", label: "Working tree" },
-                  { value: "base", label: "Default branch" },
-                ]}
-                onValueChange={(value) => setMode(value as DiffMode)}
-              />
-            </Toolbar>
+    <Panel
+      label="Workspace diff"
+      header={
+        <PanelHeader
+          title="Workspace diff"
+          context={
             <Metadata>
               <code>{workspace.ref.path}</code>
-            </Metadata>{" "}
-          </>
-        }
-        description="Review changes in your workspace."
-        actions={
-          <IconButton
-            icon={Refresh}
-            aria-label="Refresh"
-            size="md"
-            disabled={read.loading}
-            onClick={() => void refresh()}
+            </Metadata>
+          }
+          description="Review changes in your workspace."
+        />
+      }
+      controls={
+        <FilterBar
+          label="Diff controls"
+          search={
+            <SearchField
+              size="lg"
+              id="filter"
+              aria-label="Filter files"
+              placeholder="File path"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+            />
+          }
+        >
+          <Select
+            size="lg"
+            label="Comparison"
+            value={mode}
+            options={[
+              { value: "worktree", label: "Working tree" },
+              { value: "base", label: "Default branch" },
+            ]}
+            onValueChange={(value) => setMode(value as DiffMode)}
           />
-        }
-      />
-
+          <Select
+            size="lg"
+            id="layout"
+            label="Layout"
+            value={layout}
+            onValueChange={(value) => setLayout(value as "unified" | "split")}
+            options={[
+              { value: "unified", label: "Unified" },
+              { value: "split", label: "Side by side" },
+            ]}
+          />
+          <Toolbar label="Diff actions">
+            <IconButton
+              icon={Refresh}
+              aria-label="Refresh"
+              size="md"
+              disabled={read.loading}
+              onClick={() => void refresh()}
+            />
+            <Button
+              id="expand"
+              size="sm"
+              variant="ghost"
+              disabled={!files.length}
+              onClick={() => setCollapsed(new Set())}
+            >
+              Expand all
+            </Button>
+            <Button
+              id="collapse"
+              size="sm"
+              variant="ghost"
+              disabled={!files.length}
+              onClick={() =>
+                setCollapsed(new Set(files.map((file) => file.path)))
+              }
+            >
+              Collapse all
+            </Button>
+          </Toolbar>
+        </FilterBar>
+      }
+    >
       {read.loading && <p role="status">Reading workspace diff…</p>}
       {read.error && (
         <p role="alert">The current diff could not be read: {read.error}</p>
@@ -316,7 +332,20 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
             {read.accepted.mode !== mode &&
               " Showing the last accepted comparison while the selected comparison is unavailable."}
           </Metadata>
-          <DiffReport snapshot={read.accepted.snapshot} />
+          <DiffReport
+            snapshot={read.accepted.snapshot}
+            filter={filter}
+            layout={layout}
+            collapsed={collapsed}
+            onOpenChange={(path, open) =>
+              setCollapsed((current) => {
+                const next = new Set(current);
+                if (open) next.delete(path);
+                else next.add(path);
+                return next;
+              })
+            }
+          />
         </>
       )}
     </Panel>

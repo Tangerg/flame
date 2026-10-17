@@ -1161,6 +1161,16 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
                         description: "Replay the canonical wire samples against the schema.",
                         preview: "npm run check:api-consumers",
                       },
+                      {
+                        label:
+                          "Run all release checks for the selected workspace and include concurrency diagnostics",
+                        description: "",
+                      },
+                      {
+                        label:
+                          "Run all release checks for the selected workspace and include accessibility diagnostics",
+                        description: "Keep the full option visible before choosing a release gate.",
+                      },
                     ],
                   },
                 ],

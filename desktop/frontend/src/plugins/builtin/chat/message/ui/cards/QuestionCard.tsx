@@ -38,6 +38,7 @@ import {
   space,
   surface,
   type as typeStep,
+  weight,
 } from "@flame/ui/tokens.stylex";
 import { chatStyles as ct } from "@/ui/agent/chatStyles";
 import { messageStyles as ms } from "../messageStyles";
@@ -79,17 +80,23 @@ const qc = stylex.create({
     paddingTop: space.s1,
     paddingBottom: space.s2,
   },
-  optionLine: { display: "flex", minWidth: 0, flex: 1, alignItems: "baseline", gap: space.s2 },
+  optionLine: {
+    display: "flex",
+    flexWrap: "wrap",
+    minWidth: 0,
+    flex: 1,
+    alignItems: "baseline",
+    columnGap: space.s2,
+    rowGap: space.s0_5,
+  },
   optionLabel: {
     minWidth: 0,
-    maxWidth: "50%",
-    flexShrink: 0,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    fontWeight: 500,
+    maxWidth: "100%",
+    overflowWrap: "anywhere",
+    fontWeight: weight.medium,
     color: color.fg,
   },
+  optionDescription: { flexBasis: "100%", minWidth: 0, overflowWrap: "anywhere" },
   field: { paddingInline: space.s2, paddingBlock: space.s1_5 },
   textArea: { maxHeight: "calc(var(--spacing) * 40)" },
   freeRow: {
@@ -388,11 +395,9 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
                     {recommended && <Badge>{t("question.recommended")}</Badge>}
                     {option.description && (
                       <span
-                        title={option.description}
                         className={
                           stylex.props(
-                            vocab.fill,
-                            vocab.truncate,
+                            qc.optionDescription,
                             ct.bodyLeading,
                             vocab.muted,
                             typeStep.uiSm,

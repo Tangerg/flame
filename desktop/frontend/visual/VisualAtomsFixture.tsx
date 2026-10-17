@@ -406,6 +406,16 @@ export function VisualAtomsFixture() {
         <div {...stylex.props(styles.column)}>
           <Well>go test ./...</Well>
           <FilePath path="desktop/frontend/src/ui/atoms/switch.tsx" />
+          <Button size="sm" variant="ghost">
+            Before long JSON
+          </Button>
+          <Well cap="md" wrap="pre">
+            {JSON.stringify(
+              { content: "A recorded tool result retains its original content. ".repeat(8) },
+              null,
+              2,
+            )}
+          </Well>
         </div>
       </Specimen>
       <Specimen name="empty-skeleton">
