@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { color, leading, radius, space, surface, type } from "@flame/ui/tokens.stylex";
+import { color, layout, leading, radius, space, surface, type } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 import { Button, type ButtonProps } from "@flame/ui/button";
 
@@ -12,10 +12,11 @@ type SystemMessageShape = "sentence" | "form";
 const styles = stylex.create({
   banner: {
     display: "flex",
-    flexDirection: "row",
-    gap: space.s3,
+    flexWrap: "wrap",
+    minWidth: 0,
+    gap: layout.contentGap,
     borderRadius: radius.lg,
-    paddingInline: space.s3,
+    paddingInline: layout.contentGap,
   },
   sentence: { alignItems: "center", paddingBlock: space.s2 },
   form: { alignItems: "flex-start", paddingBlock: space.s2_5 },
@@ -26,10 +27,9 @@ const styles = stylex.create({
   body: {
     display: "flex",
     minWidth: 0,
-    flex: 1,
-    flexDirection: "row",
+    flex: "1 1 14rem",
     alignItems: "flex-start",
-    gap: space.s2_5,
+    gap: layout.contentGap,
     lineHeight: leading.body,
   },
   glyph: {
@@ -39,7 +39,8 @@ const styles = stylex.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  copy: { minWidth: 0, flex: 1 },
+  copy: { minWidth: 0, flex: 1, overflowWrap: "anywhere", whiteSpace: "pre-wrap" },
+  action: { maxWidth: "100%", marginInlineStart: "auto" },
 });
 
 const TONE = {
@@ -87,10 +88,17 @@ export function SystemMessage({
             <Icon name={iconName} size="md" />
           </span>
         )}
-        <div {...stylex.props(styles.copy, type.uiMd)}>{children}</div>
+        <div data-slot="system-message-copy" {...stylex.props(styles.copy, type.uiMd)}>
+          {children}
+        </div>
       </div>
       {action && (
-        <Button variant={action.variant ?? "soft"} size="sm" onClick={action.onClick}>
+        <Button
+          variant={action.variant ?? "soft"}
+          size="sm"
+          styles={styles.action}
+          onClick={action.onClick}
+        >
           {action.label}
         </Button>
       )}

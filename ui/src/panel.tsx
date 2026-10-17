@@ -67,14 +67,6 @@ const styles = stylex.create({
     gap: layout.sectionGap,
     minWidth: 0,
   },
-  headerLine: {
-    display: "flex",
-    flexWrap: "wrap",
-    alignItems: "center",
-    columnGap: space.s4,
-    rowGap: layout.contentGap,
-    minWidth: 0,
-  },
   actions: {
     display: "flex",
     flexWrap: "wrap",
@@ -153,7 +145,12 @@ const styles = stylex.create({
   fieldLabel: { color: color.fgSoft, fontWeight: weight.medium },
   context: { marginTop: space.s2, minWidth: 0 },
   section: { display: "grid", gap: layout.contentGap, minWidth: 0 },
-  sectionHeading: { margin: 0, fontWeight: weight.medium, minWidth: 0 },
+  sectionHeading: {
+    margin: 0,
+    fontWeight: weight.semibold,
+    color: color.fgMuted,
+    minWidth: 0,
+  },
   sectionHead: {
     display: "flex",
     flexWrap: "wrap",
@@ -189,8 +186,8 @@ const styles = stylex.create({
   legend: {
     padding: 0,
     marginBlockEnd: layout.contentGap,
-    color: color.fg,
-    fontWeight: weight.medium,
+    color: color.fgMuted,
+    fontWeight: weight.semibold,
   },
   formFields: {
     display: "grid",
@@ -274,19 +271,14 @@ export function PanelHeader({
   title,
   description,
   context,
-  actions,
 }: {
   title: ReactNode;
   description?: ReactNode;
   context?: ReactNode;
-  actions?: ReactNode;
 }) {
   return (
     <header {...stylex.props(styles.header)}>
-      <div {...stylex.props(styles.headerLine)}>
-        <PanelTitle size="lg">{title}</PanelTitle>
-        {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
-      </div>
+      <PanelTitle size="lg">{title}</PanelTitle>
       {description && (
         <p {...stylex.props(styles.description, type.uiMd)}>{description}</p>
       )}
@@ -362,7 +354,7 @@ export function PanelSection({
     <section {...props} {...stylex.props(styles.section)}>
       <div {...stylex.props(styles.sectionHead)}>
         <div {...stylex.props(styles.sectionCopy)}>
-          <h2 {...stylex.props(styles.sectionHeading, type.uiMd)}>{title}</h2>
+          <h2 {...stylex.props(styles.sectionHeading, type.uiSm)}>{title}</h2>
           {description && <Metadata>{description}</Metadata>}
         </div>
         {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
@@ -391,7 +383,7 @@ export function FormSection({
 }) {
   return (
     <fieldset {...stylex.props(styles.formSection)}>
-      <legend {...stylex.props(styles.legend, type.uiMd)}>{title}</legend>
+      <legend {...stylex.props(styles.legend, type.uiSm)}>{title}</legend>
       <div {...stylex.props(styles.formFields)}>
         {description && <Metadata>{description}</Metadata>}
         {children}

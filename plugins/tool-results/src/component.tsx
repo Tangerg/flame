@@ -2,15 +2,7 @@ import { ansiText, renderAnsi } from "./ansi";
 import { RecordedOutput } from "./recorded-output";
 import { useMemo, useState } from "react";
 import type { CapturedToolResult, ComponentContext } from "@flame/plugin-sdk";
-import {
-  Button,
-  ListRow,
-  Metadata,
-  Panel,
-  PanelTitle,
-  SearchField,
-  Toolbar,
-} from "@flame/ui";
+import { Button, Metadata, SearchField } from "@flame/ui";
 
 type Row = { location?: string; number?: number; body: string };
 
@@ -94,7 +86,14 @@ function rows(tool: CapturedToolResult): Row[] {
 function RecordedRows({ tool }: { tool: CapturedToolResult }) {
   const [filter, setFilter] = useState("");
   const [visible, setVisible] = useState(40);
-  const recorded = useMemo(() => rows(tool), [tool]);
+  const recorded = useMemo(
+    () =>
+      rows(tool).map((row, index) => ({
+        ...row,
+        number: row.number ?? index + 1,
+      })),
+    [tool],
+  );
   const matching = useMemo(
     () =>
       recorded.filter((row) =>
@@ -104,28 +103,81 @@ function RecordedRows({ tool }: { tool: CapturedToolResult }) {
       ),
     [recorded, filter],
   );
+  const numberWidth = `${String(recorded.at(-1)?.number ?? 1).length}ch`;
   return (
-    <div style={{ maxHeight: "min(50vh, 24rem)", overflowY: "auto" }}>
-      <Panel label="Recorded Tool result">
-        <PanelTitle>{tool.name}</PanelTitle>
-        <Metadata>
-          {tool.status} · Recorded result{tool.error ? ` · ${tool.error}` : ""}
-        </Metadata>
-        <Toolbar label="Recorded result filter">
-          <SearchField
-            aria-label="Filter recorded result"
-            placeholder="Find in recorded results"
-            value={filter}
-            onChange={(event) => {
-              setFilter(event.target.value);
-              setVisible(40);
-            }}
-          />
-        </Toolbar>
+    <div
+      data-slot="recorded-result"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--layout-control-gap)",
+        minWidth: 0,
+        maxHeight: "min(50vh, 24rem)",
+      }}
+    >
+      <div data-slot="recorded-result-controls" style={{ flexShrink: 0 }}>
+        <SearchField
+          aria-label="Filter recorded result"
+          placeholder="Find in recorded results"
+          value={filter}
+          onChange={(event) => {
+            setFilter(event.target.value);
+            setVisible(40);
+          }}
+        />
+      </div>
+      <div
+        data-slot="recorded-result-viewport"
+        role="region"
+        aria-label="Recorded result rows"
+        tabIndex={0}
+        data-focus-inset=""
+        style={{
+          minWidth: 0,
+          minHeight: 0,
+          overflow: "auto",
+          overscrollBehavior: "contain",
+          scrollPaddingBlock: "var(--layout-control-gap)",
+        }}
+      >
         {matching.slice(0, visible).map((row, index) => (
-          <ListRow key={index}>
-            {row.location !== undefined && <Metadata>{row.location}</Metadata>}
-            {row.number !== undefined && <Metadata>Line {row.number}</Metadata>}
+          <div
+            key={index}
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                row.location === undefined
+                  ? `${numberWidth} minmax(0, 1fr)`
+                  : "minmax(0, 1fr)",
+              columnGap: "var(--layout-content-gap)",
+              rowGap: "var(--layout-label-gap)",
+              paddingBlock:
+                row.location === undefined
+                  ? undefined
+                  : "var(--layout-row-padding)",
+              minWidth: 0,
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--fs-code)",
+              lineHeight: "var(--leading-relaxed)",
+            }}
+          >
+            {row.location === undefined ? (
+              <span
+                style={{
+                  color: "var(--color-text-faint)",
+                  textAlign: "end",
+                  userSelect: "none",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                <span className="sr-only">Line </span>
+                {row.number}
+              </span>
+            ) : (
+              <Metadata style={{ whiteSpace: "pre-wrap" }}>
+                {row.location}
+              </Metadata>
+            )}
             <pre
               style={{
                 whiteSpace: "pre-wrap",
@@ -140,17 +192,20 @@ function RecordedRows({ tool }: { tool: CapturedToolResult }) {
             >
               {renderAnsi(row.body || " ")}
             </pre>
-          </ListRow>
+          </div>
         ))}
         {!matching.length && (
           <p>No matching recorded rows. Clear the filter to see all results.</p>
         )}
         {matching.length > visible && (
-          <Button onClick={() => setVisible((current) => current + 40)}>
+          <Button
+            onClick={() => setVisible((current) => current + 40)}
+            style={{ marginBlockStart: "var(--layout-control-gap)" }}
+          >
             Show {Math.min(40, matching.length - visible)} more matching rows
           </Button>
         )}
-      </Panel>
+      </div>
     </div>
   );
 }

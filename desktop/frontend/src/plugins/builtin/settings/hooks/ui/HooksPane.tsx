@@ -16,13 +16,18 @@ import { SettingRow, SettingsGroup } from "../../kit";
 const hp = stylex.create({
   row: {
     display: "grid",
-    gridTemplateColumns: "auto minmax(0, 1fr) auto",
-    alignItems: "center",
+    gridTemplateColumns: "auto minmax(0, 1fr)",
+    alignItems: "start",
     gap: layout.contentGap,
   },
   injected: { fontStyle: "italic" },
   scope: { color: color.fgFaint, fontWeight: weight.medium },
-  copy: { display: "grid", gap: layout.labelGap, minWidth: 0 },
+  copy: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr)",
+    gap: layout.labelGap,
+    minWidth: 0,
+  },
   identity: {
     display: "flex",
     flexWrap: "wrap",
@@ -30,7 +35,7 @@ const hp = stylex.create({
     gap: layout.controlGap,
     minWidth: 0,
   },
-  command: {
+  code: {
     minWidth: 0,
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
@@ -43,25 +48,34 @@ function HookRow({ h }: { h: HookReadModel }) {
   return (
     <ListRow>
       <div {...stylex.props(hp.row)}>
-        <Icon
-          name={h.scope === "global" ? "globe" : "folder"}
-          size="sm"
-          className={stylex.props(vocab.faint).className}
-        />
+        <span {...stylex.props(vocab.firstLine)}>
+          <Icon
+            name={h.scope === "global" ? "globe" : "folder"}
+            size="sm"
+            className={stylex.props(vocab.faint).className}
+          />
+        </span>
         <div {...stylex.props(hp.copy)}>
           <div {...stylex.props(hp.identity)}>
             <Tag>{h.event}</Tag>
-            {h.matcher && (
-              <span
-                {...stylex.props(vocab.hold, vocab.accent, typeStep.uiSm, face.mono)}
-                title={t("hooks.matcher")}
-              >
-                {h.matcher}
-              </span>
-            )}
+            {!h.active ? (
+              <Badge tone="warning" title={t("hooks.inactive.hint")}>
+                {t("hooks.inactive")}
+              </Badge>
+            ) : h.inject ? (
+              <span {...stylex.props(hp.scope, typeStep.uiXs)}>{t("hooks.kind.inject")}</span>
+            ) : null}
           </div>
+          {h.matcher && (
+            <span
+              {...stylex.props(hp.code, vocab.accent, typeStep.uiSm, face.mono)}
+              title={t("hooks.matcher")}
+            >
+              {h.matcher}
+            </span>
+          )}
           <span
-            {...stylex.props(hp.command, face.mono, typeStep.uiMd)}
+            {...stylex.props(hp.code, face.mono, typeStep.uiMd)}
             title={h.command || h.inject || h.source}
           >
             {h.command ? (
@@ -71,15 +85,6 @@ function HookRow({ h }: { h: HookReadModel }) {
             )}
           </span>
         </div>
-        {!h.active ? (
-          <Badge tone="warning" title={t("hooks.inactive.hint")}>
-            {t("hooks.inactive")}
-          </Badge>
-        ) : h.inject ? (
-          <span {...stylex.props(vocab.hold, hp.scope, typeStep.uiXs)}>
-            {t("hooks.kind.inject")}
-          </span>
-        ) : null}
       </div>
     </ListRow>
   );

@@ -8,6 +8,7 @@ import { type PlanStep, useSessionPlan } from "@/plugins/builtin/agent/public/pl
 import { activePlanState, type ActivePlanState } from "../application/progress";
 import {
   color,
+  leading,
   radius,
   space,
   type as typeStep,
@@ -58,7 +59,7 @@ const ap = stylex.create({
     minWidth: 0,
     alignItems: "flex-start",
     gap: space.s2,
-    lineHeight: "1rem",
+    lineHeight: leading.snug,
   },
   stepText: {
     minWidth: 0,

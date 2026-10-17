@@ -391,6 +391,12 @@ export function VisualAtomsFixture() {
           <SystemMessage variant="success">Saved.</SystemMessage>
           <SystemMessage variant="warning">Check this first.</SystemMessage>
           <SystemMessage variant="error">Something failed.</SystemMessage>
+          <SystemMessage
+            variant="warning"
+            action={{ label: "Review installation details and retry the original operation" }}
+          >
+            {`The original command remains unresolved.\n${"installation_digest_".repeat(12)}`}
+          </SystemMessage>
         </div>
       </Specimen>
       <Specimen name="section-divider">

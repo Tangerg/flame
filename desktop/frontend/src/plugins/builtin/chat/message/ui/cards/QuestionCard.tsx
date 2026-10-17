@@ -57,11 +57,11 @@ const qc = stylex.create({
   },
   settledList: { display: "flex", flexDirection: "column", gap: space.s3 },
   settledItem: { display: "flex", flexDirection: "column", gap: space.s1 },
-  settledAsk: { whiteSpace: "pre-wrap", lineHeight: "1rem", color: color.fgMuted },
+  settledAsk: { whiteSpace: "pre-wrap", lineHeight: leading.body, color: color.fgMuted },
   settledAnswer: {
     whiteSpace: "pre-wrap",
     overflowWrap: "break-word",
-    lineHeight: "1rem",
+    lineHeight: leading.body,
     color: color.fgFaint,
   },
   pager: {

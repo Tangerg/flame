@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Icon, TextEditorDialog } from "@/ui";
 import { Button, Disclosure, IconButton, vocab } from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
-import { color } from "@flame/ui/tokens.stylex";
+import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const goalTray = stylex.create({
   material: {
@@ -36,11 +36,11 @@ import {
   runtimeCommandsAvailable,
   useRuntimeCommandsAvailable,
 } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { space } from "@flame/ui/tokens.stylex";
 
 const gs = stylex.create({
   bar: {
     display: "flex",
+    flexWrap: "wrap",
     width: "100%",
     alignItems: "center",
     justifyContent: "space-between",
@@ -48,7 +48,12 @@ const gs = stylex.create({
     paddingInline: space.s3,
     paddingBlock: space.s1,
   },
+  identity: { minWidth: 0, flex: "1 1 24ch" },
   summary: {
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+    columnGap: space.s2,
+    rowGap: 0,
     minHeight: "max(calc(var(--spacing) * 6), var(--control-target-min))",
     textDecorationLine: "underline",
     textDecorationColor: {
@@ -58,13 +63,13 @@ const gs = stylex.create({
     cursor: { default: null, ':is(:disabled, [aria-disabled="true"])': "default" },
     opacity: { default: null, ':is(:disabled, [aria-disabled="true"])': 1 },
   },
-  objective: { marginInlineStart: space.s1 },
+  objective: { flex: "1 1 20ch" },
   actions: {
     display: "flex",
     flexShrink: 0,
     alignItems: "center",
     gap: space.s3,
-    marginInlineStart: space.s2,
+    marginInlineStart: "auto",
   },
   reason: {
     display: "grid",
@@ -155,7 +160,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   return (
     <>
       <div data-slot="goal-status-row" {...stylex.props(gs.bar)}>
-        <div {...stylex.props(vocab.line, vocab.fill)}>
+        <div data-slot="goal-identity" {...stylex.props(vocab.line, gs.identity)}>
           <Icon
             name="target"
             size="sm"
@@ -173,10 +178,10 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             styles={gs.summary}
             onClick={openEditor}
           >
-            <span {...stylex.props(vocab.hold, vocab.ink)}>
+            <span {...stylex.props(vocab.hold, vocab.muted, typeStep.uiXs)}>
               {t(GOAL_STATUS_I18N[goal.status].label)}
             </span>
-            <span {...stylex.props(gs.objective, vocab.min, vocab.truncate, vocab.muted)}>
+            <span {...stylex.props(gs.objective, vocab.min, vocab.truncate, vocab.ink)}>
               {goal.objective}
             </span>
           </Button>

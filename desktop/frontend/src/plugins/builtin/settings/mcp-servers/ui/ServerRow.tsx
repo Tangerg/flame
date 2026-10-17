@@ -4,7 +4,15 @@ import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useEffect, useId, useRef, useState } from "react";
 import { StatusDot, Switch, Tag } from "@/ui";
-import { Button, IconButton, ListRow, vocab } from "@flame/ui";
+import {
+  Button,
+  IconButton,
+  ListRow,
+  RecordBody,
+  RecordHeading,
+  RecordMeta,
+  vocab,
+} from "@flame/ui";
 import {
   type MCPServerSettings,
   type MCPTransport,
@@ -16,7 +24,6 @@ import type { DotTone } from "@/lib/tone";
 import { useT } from "@/lib/i18n";
 import { ServerForm } from "./ServerForm";
 import { face, layout, type as typeStep } from "@flame/ui/tokens.stylex";
-import { settingStyles as ss } from "../../kit/settingStyles";
 
 const STATUS_TONE: Record<MCPServerSettings["status"], DotTone> = {
   disabled: "idle",
@@ -32,13 +39,14 @@ function TransportBadge({ transport }: { transport: MCPTransport }) {
 }
 
 const sr = stylex.create({
-  head: {
+  identity: {
     display: "grid",
-    gridTemplateColumns: "auto minmax(0, 1fr) auto",
-    alignItems: "center",
-    gap: layout.contentGap,
+    gridTemplateColumns: "auto minmax(0, 1fr)",
+    alignItems: "start",
+    gap: layout.controlGap,
+    minWidth: 0,
   },
-  actions: { display: "flex", alignItems: "center", gap: layout.controlGap },
+  name: { whiteSpace: "pre-wrap" },
 });
 
 export function ServerRow({ server }: { server: MCPServerSettings }) {
@@ -91,53 +99,64 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
 
   return (
     <ListRow>
-      <div {...stylex.props(sr.head)}>
-        <StatusDot tone={tone} />
-        <div {...stylex.props(vocab.line, vocab.min)}>
-          <span {...stylex.props(vocab.truncate, ss.label, typeStep.uiMd)} title={server.id.name}>
-            {server.id.name}
+      <RecordHeading
+        title={
+          <span {...stylex.props(sr.identity)}>
+            <span {...stylex.props(vocab.firstLine)}>
+              <StatusDot tone={tone} />
+            </span>
+            <span {...stylex.props(sr.name)}>{server.id.name}</span>
           </span>
-          <TransportBadge transport={server.type} />
-          {server.status === "failed" && server.errorDetail && (
-            <span
-              {...stylex.props(vocab.truncate, vocab.negative, typeStep.uiMd)}
-              title={server.errorDetail}
-            >
-              {server.errorDetail}
-            </span>
-          )}
-        </div>
-        <div {...stylex.props(sr.actions)}>
-          {active && (
-            <span {...stylex.props(vocab.muted, typeStep.uiMd, face.mono)}>
-              {t("mcp.toolCount", { count: server.toolCount ?? 0 })}
-            </span>
-          )}
-          {(server.status === "needsAuth" || signingIn) && (
-            <Button variant="primary" size="sm" pending={signingIn} onClick={() => void onSignIn()}>
-              {t(signingIn ? "mcp.signingIn" : "mcp.signIn")}
-            </Button>
-          )}
-          {server.id.origin.type === "user" && (
-            <>
-              <Switch
-                checked={server.enabled}
-                onCheckedChange={(value) => void onToggle(value)}
-                ariaLabel={t("mcp.enable.aria", { server: server.id.name })}
-              />
-              <IconButton
-                icon={iconGlyph("edit")}
+        }
+        description={
+          <RecordMeta>
+            <TransportBadge transport={server.type} />
+            {active && (
+              <span {...stylex.props(face.mono)}>
+                {t("mcp.toolCount", { count: server.toolCount ?? 0 })}
+              </span>
+            )}
+          </RecordMeta>
+        }
+        actions={
+          <>
+            {(server.status === "needsAuth" || signingIn) && (
+              <Button
+                variant="primary"
                 size="sm"
-                active={editing !== null}
-                aria-label={t("mcp.edit", { server: server.id.name })}
-                aria-expanded={editing !== null}
-                aria-controls={panelId}
-                onClick={(event) => setEditing(editing ? null : event.currentTarget)}
-              />
-            </>
-          )}
-        </div>
-      </div>
+                pending={signingIn}
+                onClick={() => void onSignIn()}
+              >
+                {t(signingIn ? "mcp.signingIn" : "mcp.signIn")}
+              </Button>
+            )}
+            {server.id.origin.type === "user" && (
+              <>
+                <Switch
+                  checked={server.enabled}
+                  onCheckedChange={(value) => void onToggle(value)}
+                  ariaLabel={t("mcp.enable.aria", { server: server.id.name })}
+                />
+                <IconButton
+                  icon={iconGlyph("edit")}
+                  size="sm"
+                  active={editing !== null}
+                  aria-label={t("mcp.edit", { server: server.id.name })}
+                  aria-expanded={editing !== null}
+                  aria-controls={panelId}
+                  onClick={(event) => setEditing(editing ? null : event.currentTarget)}
+                />
+              </>
+            )}
+          </>
+        }
+      />
+
+      {server.status === "failed" && server.errorDetail && (
+        <RecordBody>
+          <span {...stylex.props(vocab.negative, typeStep.uiMd)}>{server.errorDetail}</span>
+        </RecordBody>
+      )}
 
       {editing && (
         <div id={panelId}>

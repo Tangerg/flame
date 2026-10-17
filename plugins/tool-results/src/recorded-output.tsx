@@ -110,7 +110,7 @@ export function RecordedOutput({ text }: { text: string }) {
         position: "relative",
         fontFamily: "var(--font-mono)",
         fontSize: "var(--fs-code)",
-        lineHeight: 1.65,
+        lineHeight: "var(--leading-relaxed)",
       }}
     >
       <span
@@ -168,6 +168,7 @@ export function RecordedOutput({ text }: { text: string }) {
               height: "min(50vh,24rem)",
               minWidth: 0,
               overflow: "auto",
+              overflowAnchor: "none",
               overscrollBehavior: "contain",
             }}
             onScroll={readWindow}

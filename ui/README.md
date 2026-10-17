@@ -35,8 +35,9 @@ sticky action and filter zone, and children hold the scrolling content. The host
 keeps its existing scroll viewport. `Panel` measures only its own controls,
 projects their height on its root, and uses it to keep focused content and anchors
 clear of the controls; wrapped controls update through `ResizeObserver`.
-`PanelHeader` owns the page title, description, contextual navigation and primary
-actions. `PanelSection` groups one heading, supporting context, filters and content;
+`PanelHeader` owns the page title, description and contextual navigation.
+Page actions belong to the persistent `Panel.controls` zone, alongside filters.
+`PanelSection` groups one heading, supporting context, filters and content;
 `PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface, corners
 and separators. Its `cards` variant provides the responsive schedule grid;
 `ListRow variant="card"` owns each independent card surface.
@@ -46,6 +47,8 @@ and separators. Its `cards` variant provides the responsive schedule grid;
 follow the filters in that same zone; multiple actions use a named `Toolbar`
 within it. Scope and catalog navigation keep a separate preceding `Toolbar`.
 Controls wrap naturally rather than shrinking their labels to fit one row.
+Section headings and form legends use the smaller, semibold supporting role;
+record identities retain the main text role within each group.
 Management filters use the shared `lg` size for both search and selection; compact
 workbench controls keep their own smaller roles.
 `RecordHeading` groups identity, state and the main action. `Disclosure` owns a
