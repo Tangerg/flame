@@ -1,8 +1,15 @@
 import { ansiText, renderAnsi } from "./ansi";
-import { RecordedOutput } from "./recorded-output";
-import { useMemo, useState } from "react";
+import {
+  controlCluster,
+  controlStrip,
+  FindField,
+  isFindShortcut,
+  RecordedOutput,
+} from "./recorded-output";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Search } from "@flame/icons/react";
 import type { CapturedToolResult, ComponentContext } from "@flame/plugin-sdk";
-import { Button, Metadata, SearchField } from "@flame/ui";
+import { Button, IconButton, Metadata } from "@flame/ui";
 
 type Row = { location?: string; number?: number; body: string };
 
@@ -84,8 +91,20 @@ function rows(tool: CapturedToolResult): Row[] {
 }
 
 function RecordedRows({ tool }: { tool: CapturedToolResult }) {
+  const [finding, setFinding] = useState(false);
   const [filter, setFilter] = useState("");
   const [visible, setVisible] = useState(40);
+  const viewport = useRef<HTMLDivElement>(null);
+  const search = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    if (finding) search.current?.focus();
+  }, [finding]);
+  function closeFind() {
+    setFinding(false);
+    setFilter("");
+    setVisible(40);
+    viewport.current?.focus();
+  }
   const recorded = useMemo(
     () =>
       rows(tool).map((row, index) => ({
@@ -104,32 +123,57 @@ function RecordedRows({ tool }: { tool: CapturedToolResult }) {
     [recorded, filter],
   );
   const numberWidth = `${String(recorded.at(-1)?.number ?? 1).length}ch`;
+  const controls = (
+    <div
+      data-slot="recorded-result-controls"
+      style={{
+        ...controlStrip,
+        flexShrink: 0,
+        marginBlockStart: finding ? 0 : "var(--layout-label-gap)",
+        marginBlockEnd: finding ? "var(--layout-label-gap)" : 0,
+      }}
+    >
+      {finding ? (
+        <FindField
+          label="Result search"
+          fieldLabel="Filter result"
+          value={filter}
+          fieldRef={search}
+          onChange={(value) => {
+            setFilter(value);
+            setVisible(40);
+          }}
+          onClose={closeFind}
+        />
+      ) : (
+        <div style={controlCluster}>
+          <IconButton
+            icon={Search}
+            size="xs"
+            quiet
+            aria-label="Find"
+            onClick={() => setFinding(true)}
+          />
+        </div>
+      )}
+    </div>
+  );
   return (
     <div
       data-slot="recorded-result"
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "var(--layout-control-gap)",
         minWidth: 0,
         maxHeight: "min(50vh, 24rem)",
       }}
     >
-      <div data-slot="recorded-result-controls" style={{ flexShrink: 0 }}>
-        <SearchField
-          aria-label="Filter recorded result"
-          placeholder="Find in recorded results"
-          value={filter}
-          onChange={(event) => {
-            setFilter(event.target.value);
-            setVisible(40);
-          }}
-        />
-      </div>
+      {finding && controls}
       <div
+        ref={viewport}
         data-slot="recorded-result-viewport"
         role="region"
-        aria-label="Recorded result rows"
+        aria-label="Result"
         tabIndex={0}
         data-focus-inset=""
         style={{
@@ -138,6 +182,13 @@ function RecordedRows({ tool }: { tool: CapturedToolResult }) {
           overflow: "auto",
           overscrollBehavior: "contain",
           scrollPaddingBlock: "var(--layout-control-gap)",
+        }}
+        onKeyDown={(event) => {
+          if (isFindShortcut(event)) {
+            event.preventDefault();
+            setFinding(true);
+            search.current?.focus();
+          }
         }}
       >
         {matching.slice(0, visible).map((row, index) => (
@@ -174,7 +225,12 @@ function RecordedRows({ tool }: { tool: CapturedToolResult }) {
                 {row.number}
               </span>
             ) : (
-              <Metadata style={{ whiteSpace: "pre-wrap" }}>
+              <Metadata
+                style={{
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "var(--font-sans)",
+                }}
+              >
                 {row.location}
               </Metadata>
             )}
@@ -195,7 +251,9 @@ function RecordedRows({ tool }: { tool: CapturedToolResult }) {
           </div>
         ))}
         {!matching.length && (
-          <p>No matching recorded rows. Clear the filter to see all results.</p>
+          <Metadata>
+            No matching rows. Close find to see the whole result.
+          </Metadata>
         )}
         {matching.length > visible && (
           <Button
@@ -206,6 +264,7 @@ function RecordedRows({ tool }: { tool: CapturedToolResult }) {
           </Button>
         )}
       </div>
+      {!finding && controls}
     </div>
   );
 }

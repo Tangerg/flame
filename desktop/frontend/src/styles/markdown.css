@@ -11,7 +11,7 @@
   color: var(--color-text);
   letter-spacing: inherit;
 }
-.md > p:not(:first-child) {
+.md > p:where(:not(:first-child)) {
   margin-top: calc(var(--md-space) * 2);
 }
 .md > p + p {
@@ -33,13 +33,6 @@
   width: 100%;
   max-width: none;
 }
-.md > p[data-markdown-unspaced="true"]:has(+ p[data-markdown-unspaced="true"]) {
-  margin-bottom: var(--md-space);
-}
-.md > p[data-markdown-unspaced="true"] + p[data-markdown-unspaced="true"] {
-  margin-top: var(--md-space);
-}
-
 .md [data-md-level] {
   font-weight: 600;
   letter-spacing: normal;

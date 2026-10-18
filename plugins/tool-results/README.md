@@ -14,9 +14,10 @@ errors. This data does not follow navigation or reread a historical producer. Fi
 navigation, copy, approvals and explicit mutation actions retain their existing owners.
 
 Filters, ANSI styles, line numbers and incremental expansion are local presentation.
-Inline results keep their filter above one bounded scrolling body. Source lines
-share a continuous numbered layout; located results keep their context above each
-snippet. The host Tool disclosure owns identity, status and failure details.
+Result filters open on demand above one bounded scrolling body; their compact
+Find action follows the result text. Source lines share a continuous numbered
+layout; located results keep their context above each snippet. The host Tool
+disclosure owns identity, status and failure details.
 Authored result bytes, HTML and URLs render as text. The client preserves generic
 inspection during loading, failure, connection retirement and withdrawal. Opening
 history never downloads or executes the old producer's JavaScript or replays a Tool.

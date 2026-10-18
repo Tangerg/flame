@@ -335,7 +335,7 @@ describe("markdownMessage", () => {
     expect(prose.filter((value) => cells(value).length > 0)).toEqual([]);
   });
 
-  it("marks every paragraph of a reply that has no word spaces, not only the ones with kanji", () => {
+  it("keeps unspaced-script paragraphs as distinct directional prose", () => {
     const japanese = [
       "実行は完了しました。",
       "それではつづきをおねがいします。",
@@ -344,16 +344,22 @@ describe("markdownMessage", () => {
     const { container, unmount } = render(
       <MarkdownRenderer text={japanese.join("\n\n")} reveal="instant" />,
     );
-    expect(container.querySelectorAll('.md > p[data-markdown-unspaced="true"]')).toHaveLength(
-      japanese.length,
-    );
+    expect(
+      Array.from(
+        container.querySelectorAll('.md > p[dir="auto"]'),
+        (paragraph) => paragraph.textContent,
+      ),
+    ).toEqual(japanese);
     unmount();
 
     const spaced = ["실행이 완료되었습니다.", "The run finished."];
     const other = render(<MarkdownRenderer text={spaced.join("\n\n")} reveal="instant" />);
-    expect(other.container.querySelectorAll('.md > p[data-markdown-unspaced="true"]')).toHaveLength(
-      0,
-    );
+    expect(
+      Array.from(
+        other.container.querySelectorAll('.md > p[dir="auto"]'),
+        (paragraph) => paragraph.textContent,
+      ),
+    ).toEqual(spaced);
   });
 
   it("renders markdown lists", () => {
@@ -397,7 +403,7 @@ describe("markdownMessage", () => {
     expect(pending.getAttribute("checked")).toBeNull();
   });
 
-  it("marks directional prose and Han paragraphs like Codex", () => {
+  it("preserves paragraph boundaries and automatic direction for multilingual prose", () => {
     const src = [
       "# عنوان",
       "",
@@ -414,7 +420,12 @@ describe("markdownMessage", () => {
     const { container } = render(<MarkdownRenderer text={src} reveal="instant" />);
 
     expect(container.querySelector('h3[dir="auto"][data-md-level="1"]')).toBeTruthy();
-    expect(container.querySelectorAll('p[data-markdown-unspaced="true"]')).toHaveLength(2);
+    expect(
+      Array.from(
+        container.querySelectorAll('.md > p[dir="auto"]'),
+        (paragraph) => paragraph.textContent,
+      ),
+    ).toEqual(["中文第一段。", "中文第二段。"]);
     expect(container.querySelector('ul[dir="auto"]')).toBeTruthy();
     expect(container.querySelector('ol[dir="auto"]')).toBeTruthy();
     expect(container.querySelector('blockquote[dir="auto"]')).toBeTruthy();

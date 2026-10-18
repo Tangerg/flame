@@ -1550,7 +1550,20 @@ test("expanded reasoning keeps a quiet identity mark and an aside rule", async (
   await expect(reasoning).toHaveAttribute("data-shell", "line");
   await expect(mark.locator("svg")).toBeVisible();
   await expect(mark).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-  await expect(reasoning.getByRole("region")).toHaveCSS("border-left-width", "1px");
+  await trigger.click();
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  const region = reasoning.getByRole("region");
+  await expect(region).toBeVisible();
+  const rules = await region.evaluate((body) => {
+    const frame = body.closest('[data-slot="agent-activity-disclosure"]');
+    const widths = [];
+    for (let node: Element | null = body; node && node !== frame; node = node.parentElement) {
+      const width = Number.parseFloat(getComputedStyle(node).borderInlineStartWidth);
+      if (width > 0) widths.push(width);
+    }
+    return widths;
+  });
+  expect(rules).toEqual([1]);
 });
 
 test("a path row gives up its directory before its filename", async ({ page }) => {
@@ -1831,7 +1844,7 @@ test("a short command output expands to its captured line count", async ({ page 
   await page.getByRole("button", { name: /steps/ }).first().click();
   const command = page.locator('[data-tool="shell"]').first();
   await command.getByRole("button").first().click();
-  await command.getByRole("button", { name: /earlier lines · 10 total/ }).click();
+  await command.getByRole("button", { name: /earlier line · 10 total/ }).click();
   const output = command.getByRole("region", { name: "Tool output", exact: true });
   await expect(output.locator("[data-output-line]")).toHaveCount(10);
   const excessHeight = () =>
@@ -1879,6 +1892,10 @@ test("large command output stays fully readable inside the tool card", async ({ 
   const match = output.locator("[data-current-match]");
   await expect(match).toHaveText("build output line 31415");
   await expect(match).toBeInViewport();
+  await output.focus();
+  await output.press("ControlOrMeta+f");
+  await expect(find).toBeFocused();
+  await expect(find).toHaveValue("line 31415");
   await command.evaluate((node) => (node as HTMLElement).style.setProperty("--fs-code", "16px"));
   await expect
     .poll(() =>

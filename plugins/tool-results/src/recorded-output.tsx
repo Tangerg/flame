@@ -1,9 +1,106 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Button, TextField } from "@flame/ui";
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { ArrowDownToLine, ChevronUp, Search, X } from "@flame/icons/react";
+import { Button, IconButton, SearchField } from "@flame/ui";
 import { ansiText, renderAnsi } from "./ansi";
 
 const PREVIEW_LINES = 9;
 const OVERSCAN = 6;
+
+export const controlStrip: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: "var(--layout-control-gap)",
+  minWidth: 0,
+  marginBlockEnd: "var(--layout-label-gap)",
+  fontFamily: "var(--font-sans)",
+  fontSize: "var(--fs-ui-sm)",
+  lineHeight: "var(--leading-body)",
+};
+
+export const controlCluster: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "2px",
+  marginInlineStart: "auto",
+};
+
+export function isFindShortcut(event: KeyboardEvent) {
+  return (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f";
+}
+
+export function FindField({
+  label,
+  fieldLabel,
+  value,
+  fieldRef,
+  status,
+  onChange,
+  onClose,
+  onEnter,
+}: {
+  label: string;
+  fieldLabel: string;
+  value: string;
+  fieldRef: RefObject<HTMLElement | null>;
+  status?: ReactNode;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  onEnter?: (backward: boolean) => void;
+}) {
+  return (
+    <div
+      role="search"
+      aria-label={label}
+      style={{
+        display: "flex",
+        flex: "1 1 14rem",
+        alignItems: "center",
+        gap: "var(--layout-control-gap)",
+        minWidth: 0,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <SearchField
+          ref={fieldRef}
+          size="sm"
+          aria-label={fieldLabel}
+          placeholder={fieldLabel}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              onClose();
+            }
+            if (event.key === "Enter" && onEnter) {
+              event.preventDefault();
+              onEnter(event.shiftKey);
+            }
+          }}
+        />
+      </div>
+      {status}
+      <IconButton
+        icon={X}
+        size="xs"
+        quiet
+        aria-label="Close find"
+        onClick={onClose}
+      />
+    </div>
+  );
+}
 
 export function RecordedOutput({ text }: { text: string }) {
   const lines = useMemo(() => text.replace(/\n$/, "").split("\n"), [text]);
@@ -102,6 +199,7 @@ export function RecordedOutput({ text }: { text: string }) {
       </span>
     </div>
   ));
+  const earlier = lines.length - PREVIEW_LINES;
 
   return (
     <div
@@ -125,39 +223,76 @@ export function RecordedOutput({ text }: { text: string }) {
       />
       {expanded ? (
         <>
-          {finding && (
-            <div role="search" aria-label="Output search">
-              <TextField
-                ref={search}
-                type="search"
-                aria-label="Find in output"
+          <div data-slot="output-controls" style={controlStrip}>
+            {finding && (
+              <FindField
+                label="Output search"
+                fieldLabel="Find in output"
                 value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
+                fieldRef={search}
+                status={
+                  query && (
+                    <span
+                      role="status"
+                      style={{
+                        flexShrink: 0,
+                        color: "var(--color-text-faint)",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {matches.length
+                        ? `${(match % matches.length) + 1} of ${matches.length}`
+                        : "No matches"}
+                    </span>
+                  )
+                }
+                onChange={(value) => {
+                  setQuery(value);
                   setMatch(0);
                 }}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    closeFind();
-                  }
-                  if (event.key === "Enter" && matches.length) {
-                    event.preventDefault();
-                    setMatch(
-                      (current) =>
-                        (current + (event.shiftKey ? matches.length - 1 : 1)) %
-                        matches.length,
-                    );
-                  }
+                onClose={closeFind}
+                onEnter={(backward) => {
+                  if (!matches.length) return;
+                  setMatch(
+                    (current) =>
+                      (current + (backward ? matches.length - 1 : 1)) %
+                      matches.length,
+                  );
                 }}
               />
-              <span role="status">
-                {matches.length
-                  ? `${(match % matches.length) + 1} of ${matches.length}`
-                  : "No matches"}
-              </span>
+            )}
+            <div style={controlCluster}>
+              {!atLatest && (
+                <IconButton
+                  icon={ArrowDownToLine}
+                  size="xs"
+                  quiet
+                  aria-label="Jump to latest"
+                  onClick={jumpToLatest}
+                />
+              )}
+              {!finding && (
+                <IconButton
+                  icon={Search}
+                  size="xs"
+                  quiet
+                  aria-label="Find"
+                  onClick={() => setFinding(true)}
+                />
+              )}
+              <IconButton
+                icon={ChevronUp}
+                size="xs"
+                quiet
+                aria-label="Collapse"
+                onClick={() => {
+                  setExpanded(false);
+                  setFinding(false);
+                  setQuery("");
+                }}
+              />
             </div>
-          )}
+          </div>
           <div
             ref={viewport}
             role="region"
@@ -173,12 +308,10 @@ export function RecordedOutput({ text }: { text: string }) {
             }}
             onScroll={readWindow}
             onKeyDown={(event) => {
-              if (
-                (event.metaKey || event.ctrlKey) &&
-                event.key.toLowerCase() === "f"
-              ) {
+              if (isFindShortcut(event)) {
                 event.preventDefault();
                 setFinding(true);
+                search.current?.focus();
               }
             }}
           >
@@ -186,24 +319,16 @@ export function RecordedOutput({ text }: { text: string }) {
             {visible}
             <div style={{ height: (lines.length - end) * metrics.row }} />
           </div>
-          {!atLatest && <Button onClick={jumpToLatest}>Jump to latest</Button>}
-          <Button
-            onClick={() => {
-              setExpanded(false);
-              setFinding(false);
-              setQuery("");
-            }}
-          >
-            Collapse
-          </Button>
         </>
       ) : (
         <>
-          {lines.length > PREVIEW_LINES && (
-            <Button onClick={() => setExpanded(true)}>
-              Show {lines.length - PREVIEW_LINES} earlier lines · {lines.length}{" "}
-              total
-            </Button>
+          {earlier > 0 && (
+            <div data-slot="output-controls" style={controlStrip}>
+              <Button size="xs" onClick={() => setExpanded(true)}>
+                Show {earlier} earlier {earlier === 1 ? "line" : "lines"} ·{" "}
+                {lines.length} total
+              </Button>
+            </div>
           )}
           <div
             role="region"

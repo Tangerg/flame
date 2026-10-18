@@ -124,13 +124,26 @@ for (const theme of ["light", "dark"]) {
     await page.getByRole("button", { name: /steps/ }).first().click();
     await page.locator('[data-tool="read"]').first().click();
     const result = page.locator('[data-slot="recorded-result"]').first();
-    const viewport = result.getByRole("region", { name: "Recorded result rows", exact: true });
-    const filter = result.getByRole("searchbox", { name: "Filter recorded result", exact: true });
+    const viewport = result.getByRole("region", { name: "Result", exact: true });
+    const filter = result.getByRole("searchbox", { name: "Filter result", exact: true });
     await expect(viewport.locator("pre")).toHaveCount(6);
     expect(await viewport.evaluate((node) => node.scrollHeight)).toBeLessThan(240);
+    await expect(filter).toHaveCount(0);
+    await result.getByRole("button", { name: "Find", exact: true }).click();
+    await expect(filter).toBeFocused();
     await filter.fill("return");
     await expect(viewport.locator("pre")).toHaveCount(1);
     await expect(viewport).toContainText("Line 5");
+    await viewport.focus();
+    await viewport.press("ControlOrMeta+f");
+    await expect(filter).toBeFocused();
+    await expect(filter).toHaveValue("return");
+    await result.getByRole("button", { name: "Close find", exact: true }).click();
+    await expect(filter).toHaveCount(0);
+    await expect(viewport).toBeFocused();
+    await expect(viewport.locator("pre")).toHaveCount(6);
+    await viewport.press("ControlOrMeta+f");
+    await expect(filter).toBeFocused();
     await filter.fill("");
     await page.setViewportSize({ width: 900, height: 360 });
     await filter.scrollIntoViewIfNeeded();
@@ -143,6 +156,9 @@ for (const theme of ["light", "dark"]) {
     expect(await viewport.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
     expect((await controls.boundingBox())!.y).toBe(y);
     await expect(filter).toBeInViewport({ ratio: 1 });
+    await filter.press("Escape");
+    await expect(filter).toHaveCount(0);
+    await expect(viewport).toBeFocused();
   });
 
   test(`long MCP identity, diagnostics and hook conditions remain visible inside their rows in ${theme}`, async ({

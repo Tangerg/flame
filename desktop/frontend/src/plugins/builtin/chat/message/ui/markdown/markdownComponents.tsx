@@ -27,8 +27,6 @@ function visibleText(children: ReactNode): string {
 }
 
 const WHITESPACE_ONLY = /^\s*$/;
-const UNSPACED_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
-
 const NUMERIC_CELL = /^[+-]?\d[\d,\u202f\u00a0]*(?:\.\d+)?\s*(?:%|[a-zA-Z]{1,3})?$/;
 const NUMERIC_CLASS = "md-table-cell-numeric";
 
@@ -117,14 +115,7 @@ const sharedMarkdownComponents: Components = {
         </p>
       );
     }
-    return (
-      <p
-        data-markdown-unspaced={UNSPACED_SCRIPT.test(visibleText(children)) ? "true" : undefined}
-        dir="auto"
-      >
-        {children}
-      </p>
-    );
+    return <p dir="auto">{children}</p>;
   },
   h1({ children }) {
     return (
