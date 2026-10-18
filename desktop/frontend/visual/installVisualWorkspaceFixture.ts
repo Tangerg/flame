@@ -53,6 +53,7 @@ import { navigator } from "@/lib/navigation";
 import {
   RUNTIME_AGENT_SESSION_SNAPSHOTS,
   LONG_RESPONSE_MARKDOWN,
+  READING_BLOCKS_MARKDOWN,
   VISUAL_SESSION_ID,
   type VisualAgentState,
 } from "./agentSessionSnapshots";
@@ -118,6 +119,12 @@ const READING_GUIDE_SOURCE: WorkspaceFileContent = {
   content: LONG_RESPONSE_MARKDOWN,
   startLine: 1,
   totalLines: LONG_RESPONSE_MARKDOWN.split("\n").length,
+};
+
+const READING_BLOCKS_SOURCE: WorkspaceFileContent = {
+  content: READING_BLOCKS_MARKDOWN,
+  startLine: 1,
+  totalLines: READING_BLOCKS_MARKDOWN.split("\n").length,
 };
 
 function pending<T>(signal?: AbortSignal): Promise<T> {
@@ -280,6 +287,12 @@ function workspaceDataPlugin(
                   type: "file",
                   sizeBytes: new TextEncoder().encode(LONG_RESPONSE_MARKDOWN).byteLength,
                 },
+                {
+                  path: "reading-blocks.md",
+                  name: "reading-blocks.md",
+                  type: "file",
+                  sizeBytes: new TextEncoder().encode(READING_BLOCKS_MARKDOWN).byteLength,
+                },
               ] satisfies WorkspaceFileEntry[]),
       });
 
@@ -289,6 +302,7 @@ function workspaceDataPlugin(
           const path = (params as WorkspaceReadFileQuery).path;
           if (path === "README.md") return README_SOURCE;
           if (path === "reading-guide.md") return READING_GUIDE_SOURCE;
+          if (path === "reading-blocks.md") return READING_BLOCKS_SOURCE;
           return RESIZER_SOURCE;
         },
       });

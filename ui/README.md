@@ -85,6 +85,8 @@ host's content measure and font size. `data-prose-level` records an authored
 heading level when the host nests its physical heading below a surrounding
 outline. The `inline-code` and `prose-table` data slots also supply those reading
 roles outside a complete prose root, including table lightboxes.
+Quotes and loose lists retain paragraph boundaries around nested blocks; quote
+spacing applies to direct content without overriding a nested list's own flow.
 `TaskListItem` renders one recorded task as a list item with an immutable,
 named checkbox marker. Its caller supplies the captured checked state and primary
 visible label; paragraphs and nested lists remain selectable document content.

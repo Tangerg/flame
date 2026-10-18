@@ -346,6 +346,9 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   margin-block-start: var(--prose-space);
   margin-block-end: 0;
 }
+:where([data-prose]) :where(li > p + :is(ul, ol), li > :is(ul, ol) + p) {
+  margin-block-start: calc(var(--prose-space) * 2);
+}
 :where([data-prose])
   :where(ul.contains-task-list:not(:has(> li:not(.task-list-item)))) {
   padding-inline-start: 0;
@@ -385,9 +388,23 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   line-height: var(--leading-prose);
   background: transparent;
 }
-:where([data-prose]) :where(blockquote p) {
+:where([data-prose]) :where(blockquote > p) {
   margin: 0;
   line-height: inherit;
+}
+:where([data-prose])
+  :where(
+    blockquote > p + p,
+    blockquote > p + :is(ul, ol),
+    blockquote > :is(ul, ol) + p
+  ) {
+  margin-block-start: calc(var(--prose-space) * 2);
+}
+:where([data-prose]) :where(blockquote > :first-child) {
+  margin-block-start: 0;
+}
+:where([data-prose]) :where(blockquote > :last-child) {
+  margin-block-end: 0;
 }
 :where([data-prose]) :where(blockquote)::after {
   content: "";
