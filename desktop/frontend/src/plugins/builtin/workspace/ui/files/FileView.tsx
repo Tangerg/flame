@@ -28,6 +28,7 @@ export function FileView({
   const { highlighter, theme: shikiTheme } = useCodeHighlighter();
 
   const plain = useMemo(() => content.split("\n"), [content]);
+  const numberWidth = `${String(startLine + plain.length - 1).length}ch`;
   const highlighted = useMemo(
     () => (highlighter ? highlightLines(highlighter, content, shikiTheme, path) : null),
     [highlighter, content, shikiTheme, path],
@@ -52,9 +53,10 @@ export function FileView({
             key={i}
             ref={isTarget ? targetRef : undefined}
             data-quote-line={n}
-            {...stylex.props(cs.lineRow, cs.gutterOne, isTarget && cs.targetLine)}
+            style={{ gridTemplateColumns: `${numberWidth} minmax(0, 1fr)` }}
+            {...stylex.props(cs.lineRow, isTarget && cs.targetLine)}
           >
-            <span {...stylex.props(cs.gutter, typeStep.uiSm)}>{n}</span>
+            <span {...stylex.props(cs.gutter)}>{n}</span>
             {html !== undefined ? (
               <span {...stylex.props(cs.wrap)} dangerouslySetInnerHTML={{ __html: html }} />
             ) : (

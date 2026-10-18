@@ -165,6 +165,7 @@ export const ko: Record<string, string> = {
   "message.table.copy": "표 복사",
   "message.table.copied": "복사됨",
   "message.table.expand": "표 펼치기",
+  "message.table.content": "표 내용",
   "message.table.preview": "표 미리보기",
   "message.table.closePreview": "표 미리보기 닫기",
   "message.math.expression": "수식",

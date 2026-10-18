@@ -20,6 +20,8 @@ layout; located results keep their context above each snippet. The host Tool
 disclosure owns identity, status and failure details.
 Missing snippets add no body row; recorded empty snippets and source lines retain
 their blank line.
+Result viewports contain horizontal overscroll and let vertical scrolling continue
+through the transcript when the result reaches its edge or fits without scrolling.
 Explicit expansion transfers focus once to the new output viewport after its
 initial positioning, unless the user has already moved elsewhere. Explicit Jump
 to latest returns focus to that viewport so keyboard reading can continue.

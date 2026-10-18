@@ -165,6 +165,7 @@ export const zhTW: Record<string, string> = {
   "message.table.copy": "複製表格",
   "message.table.copied": "已複製",
   "message.table.expand": "展開表格",
+  "message.table.content": "表格內容",
   "message.table.preview": "表格預覽",
   "message.table.closePreview": "關閉表格預覽",
   "message.math.expression": "數學公式",

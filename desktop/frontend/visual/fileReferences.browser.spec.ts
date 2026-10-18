@@ -92,3 +92,78 @@ test("inline references retain keyboard navigation to the recorded file and line
     view.locator('[data-quote-source="file"][data-quote-path="desktop/frontend/package.json"]'),
   ).toBeVisible();
 });
+
+for (const [fontSize, codeFontSize, theme] of [
+  [14, 20, "light"],
+  [18, 10, "dark"],
+] as const) {
+  test(`file source keeps line numbers with the code scale in ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1120, height: 900 });
+    await page.goto(
+      `/visual/?fixture=workspace&state=dock-files&theme=${theme}&font-size=${fontSize}`,
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    await page.getByRole("treeitem", { name: "reading-guide.md", exact: true }).click();
+    const view = page.locator('[data-dock-view-id="file"]');
+    await view.getByRole("tab", { name: "Source", exact: true }).click();
+    const source = view.locator('[data-quote-source="file"]');
+    await expect(source).toBeVisible();
+    await page.evaluate(async (size) => {
+      const appearancePath = "/src/plugins/builtin/theme/adapters/appearanceStore.ts";
+      const { useAppearanceStore } = await import(appearancePath);
+      useAppearanceStore.getState().setCodeFontSize(size);
+    }, codeFontSize);
+    await expect(source).toHaveCSS("font-size", `${codeFontSize}px`);
+    const gutter = source.locator('[data-quote-line="2"] > span').first();
+    await expect(gutter).toHaveCSS("font-size", `${codeFontSize}px`);
+    await expect(gutter).toHaveCSS(
+      "line-height",
+      await source.evaluate((node) => getComputedStyle(node).lineHeight),
+    );
+
+    await page.evaluate(async () => {
+      if (!location.pathname.startsWith("/visual/"))
+        throw new Error("An isolated fixture is required");
+      const clientPath = "/src/lib/queryClient.ts";
+      const queryPath = "/src/plugins/builtin/workspace/application/workspaceQueries.ts";
+      const { queryClient } = await import(clientPath);
+      const { WORKSPACE_READ_FILE_KEY } = await import(queryPath);
+      await queryClient.cancelQueries({ queryKey: [WORKSPACE_READ_FILE_KEY] });
+      queryClient.setQueriesData(
+        { queryKey: [WORKSPACE_READ_FILE_KEY] },
+        { content: "first\n\n  final", startLine: 999998, totalLines: 1000000 },
+      );
+    });
+    await expect(source.locator('[data-quote-line="1000000"]')).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    const rows = await source.evaluate((node) =>
+      [...node.children].map((row) => {
+        const gutter = row.children[0]!;
+        const code = row.children[1]!;
+        const range = document.createRange();
+        range.selectNodeContents(gutter);
+        const number = range.getBoundingClientRect();
+        const slot = gutter.getBoundingClientRect();
+        return {
+          number: gutter.textContent,
+          text: code.textContent,
+          numberFits: number.left >= slot.left - 1 && number.right <= slot.right + 1,
+          codeLeft: code.getBoundingClientRect().left,
+          numberRight: number.right,
+          height: row.getBoundingClientRect().height,
+          lineHeight: Number.parseFloat(getComputedStyle(code).lineHeight),
+        };
+      }),
+    );
+    expect(rows.map((row) => row.number)).toEqual(["999998", "999999", "1000000"]);
+    expect(rows.map((row) => row.text?.trimEnd())).toEqual(["first", "", "  final"]);
+    for (const row of rows) {
+      expect(row.numberFits).toBe(true);
+      expect(row.numberRight).toBeLessThan(row.codeLeft);
+      expect(row.height).toBeCloseTo(row.lineHeight, 1);
+      expect(row.codeLeft).toBe(rows[0]!.codeLeft);
+    }
+    expect(await source.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  });
+}

@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { LightboxDialog } from "@/ui";
 import { IconButton } from "@flame/ui";
+import { useScrollReach } from "@/ui/atoms/use-scroll-reach";
 
 interface Props {
   markdownSource: string;
@@ -13,6 +14,8 @@ interface Props {
 
 export function MarkdownTable({ markdownSource, children }: Props) {
   const t = useT();
+  const scroll = useScrollReach();
+  const reachable = scroll.tabIndex === 0;
   const [previewOpen, setPreviewOpen] = useState(false);
   const tableRef = useRef<HTMLTableElement>(null);
   const writeTable = useCallback(
@@ -27,7 +30,13 @@ export function MarkdownTable({ markdownSource, children }: Props) {
 
   return (
     <div className="md-table-container" data-markdown-table tabIndex={-1}>
-      <div className="md-table-scroller">
+      <div
+        {...scroll}
+        className="md-table-scroller"
+        role={reachable ? "region" : undefined}
+        aria-label={reachable ? t("message.table.content") : undefined}
+        data-focus-inset={reachable ? "" : undefined}
+      >
         <table ref={tableRef} dir="auto" data-slot="prose-table">
           {children}
         </table>

@@ -168,6 +168,7 @@ export const fr: Record<string, string> = {
   "message.table.copy": "Copier le tableau",
   "message.table.copied": "Copié",
   "message.table.expand": "Agrandir le tableau",
+  "message.table.content": "Contenu du tableau",
   "message.table.preview": "Aperçu du tableau",
   "message.table.closePreview": "Fermer l’aperçu du tableau",
   "message.math.expression": "Expression mathématique",

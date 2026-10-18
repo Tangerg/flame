@@ -168,6 +168,7 @@ export const de: Record<string, string> = {
   "message.table.copy": "Tabelle kopieren",
   "message.table.copied": "Kopiert",
   "message.table.expand": "Tabelle vergrößern",
+  "message.table.content": "Tabelleninhalt",
   "message.table.preview": "Tabellenvorschau",
   "message.table.closePreview": "Tabellenvorschau schließen",
   "message.math.expression": "Mathematischer Ausdruck",

@@ -180,7 +180,7 @@ function RecordedRows({ tool }: { tool: CapturedToolResult }) {
           minWidth: 0,
           minHeight: 0,
           overflow: "auto",
-          overscrollBehavior: "contain",
+          overscrollBehavior: "contain auto",
           scrollPaddingBlock: "var(--layout-control-gap)",
         }}
         onKeyDown={(event) => {

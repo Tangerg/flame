@@ -179,3 +179,64 @@ test("search results omit absent snippets while preserving recorded empty lines"
   await expect(filteredRows.first()).toContainText("Line 4");
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });
+
+test("recorded results scroll internally when bounded and continue through the transcript", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1120, height: 720 });
+  await page.goto("/visual/?fixture=agent&state=tool-agentic&theme=light&font-size=18");
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.getByRole("button", { name: /calls/ }).first().click();
+  await page.locator('[data-tool="list_skills"]').click();
+  const result = page.locator('[data-slot="recorded-result-viewport"]');
+  const transcript = page.locator(".msg-scroll-viewport");
+  await expect(result).toContainText("trace-flaky-test");
+  const bounds = (await transcript.boundingBox())!;
+  await page.mouse.move(bounds.x + bounds.width - 8, bounds.y + 150);
+  await page.mouse.wheel(0, -2000);
+  await expect.poll(() => transcript.evaluate((node) => node.scrollTop)).toBe(0);
+  expect(
+    await transcript.evaluate((node) => node.scrollHeight - node.clientHeight),
+  ).toBeGreaterThan(0);
+  expect(await result.evaluate((node) => node.scrollHeight - node.clientHeight)).toBe(0);
+  await expect(result).toBeInViewport({ ratio: 1 });
+  const shortBounds = (await result.boundingBox())!;
+  await page.mouse.move(
+    shortBounds.x + shortBounds.width / 2,
+    shortBounds.y + shortBounds.height / 2,
+  );
+  await page.mouse.wheel(0, 240);
+  await expect.poll(() => transcript.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+  expect(await result.evaluate((node) => node.scrollTop)).toBe(0);
+
+  await page.setViewportSize({ width: 1120, height: 360 });
+  await result.scrollIntoViewIfNeeded();
+  const boundedRange = await result.evaluate((node) => node.scrollHeight - node.clientHeight);
+  expect(boundedRange).toBeGreaterThan(5);
+  await result.evaluate((node) => {
+    node.scrollTop = 0;
+  });
+  const boundedBounds = (await result.boundingBox())!;
+  await page.mouse.move(
+    boundedBounds.x + boundedBounds.width / 2,
+    boundedBounds.y + boundedBounds.height / 2,
+  );
+  const beforeInnerScroll = await transcript.evaluate((node) => node.scrollTop);
+  await page.mouse.wheel(0, 5);
+  await expect.poll(() => result.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+  expect(await transcript.evaluate((node) => node.scrollTop)).toBe(beforeInnerScroll);
+  await result.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await expect.poll(() => result.evaluate((node) => node.scrollTop)).toBe(boundedRange);
+  const beforeBoundary = await transcript.evaluate((node) => ({
+    top: node.scrollTop,
+    room: node.scrollHeight - node.clientHeight - node.scrollTop,
+  }));
+  expect(beforeBoundary.room).toBeGreaterThan(0);
+  await page.mouse.wheel(0, 120);
+  await expect
+    .poll(() => transcript.evaluate((node) => node.scrollTop))
+    .toBeGreaterThan(beforeBoundary.top);
+  expect(await result.evaluate((node) => node.scrollTop)).toBe(boundedRange);
+});

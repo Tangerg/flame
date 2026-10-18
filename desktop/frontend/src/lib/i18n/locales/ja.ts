@@ -166,6 +166,7 @@ export const ja: Record<string, string> = {
   "message.table.copy": "表をコピー",
   "message.table.copied": "コピーしました",
   "message.table.expand": "表を拡大",
+  "message.table.content": "表の内容",
   "message.table.preview": "表のプレビュー",
   "message.table.closePreview": "表のプレビューを閉じる",
   "message.math.expression": "数式",

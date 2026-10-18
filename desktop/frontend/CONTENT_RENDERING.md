@@ -675,6 +675,7 @@ interface BlockCtx {
 - Generated footnotes keep document-local reference, definition and label identities across streaming completion. Repeated references return to their own occurrence; another message with the same authored identifier has a separate identity.
 - Footnotes form supporting content, with the generated label retained for assistive reading. Selection copy keeps the answer and note text while omitting the hidden label and return controls. Fragment links stay in the document; external links retain the shared safe-opening policy.
 - Reference-style links retain a document-wide parsing context when definitions arrive. Links without an accepted destination remain ordinary reading text.
+- Overflowing answer tables expose one named keyboard scroll region before their actions. Fitting tables add no Tab stop; content and width changes update that same region's reachability.
 
 ---
 
@@ -1907,6 +1908,10 @@ interface GrepResult {
 > `FileLine.text` / `DiffRow.code` / `GrepMatch.text` 是**纯文本，不含服务端 HTML** —— **高亮全部由客户端做。**
 
 The Files dock owns both directory browsing and file content. Opening a directory entry, conversation reference, or search result selects a file in that same panel. Returning to the directory preserves its expanded folders. Directory and content queries distinguish unresolved Session workspace selection from the Runtime default workspace, and expose read failures with retry actions.
+
+Source line numbers and text share the code font scale and line height. The source
+gutter fits the accepted window's final line number; indentation and blank lines
+retain their recorded text.
 
 Optional file renderers receive complete, frozen accepted Runtime reads through the
 public component context and exact-release ESM loading. A unique normalized extension

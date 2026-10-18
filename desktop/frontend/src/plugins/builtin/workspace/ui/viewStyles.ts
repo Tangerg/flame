@@ -150,7 +150,11 @@ export const codeStyles = stylex.create({
   sheet: { paddingBlock: space.s2, fontFamily: "var(--font-mono)", lineHeight: leading.relaxed },
   gutter: { textAlign: "right", color: color.fgFaint, userSelect: "none" },
   wrap: { minWidth: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
-  lineRow: { display: "grid", alignItems: "flex-start", paddingInline: space.s3 },
-  gutterOne: { gridTemplateColumns: "44px minmax(0, 1fr)", gap: space.s2 },
+  lineRow: {
+    display: "grid",
+    alignItems: "flex-start",
+    gap: space.s2,
+    paddingInline: space.s3,
+  },
   targetLine: { backgroundColor: surface.accentWash },
 });

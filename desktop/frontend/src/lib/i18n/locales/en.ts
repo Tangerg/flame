@@ -174,6 +174,7 @@ export const en: Record<string, string> = {
   "message.table.copy": "Copy table",
   "message.table.copied": "Copied",
   "message.table.expand": "Expand table",
+  "message.table.content": "Table content",
   "message.table.preview": "Table preview",
   "message.table.closePreview": "Close table preview",
   "message.math.expression": "Mathematical expression",

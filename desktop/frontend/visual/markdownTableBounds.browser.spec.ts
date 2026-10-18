@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from "./test";
+import { expect, test, type Locator, type Page } from "./test";
 
 async function bounds(container: Locator) {
   return container.evaluate((node) => {
@@ -50,6 +50,31 @@ async function bounds(container: Locator) {
       overlaps,
     };
   });
+}
+
+async function readTableWithKeyboard(page: Page, container: Locator) {
+  await container.evaluate((node) => node.scrollIntoView({ block: "center" }));
+  const scroller = container.locator(".md-table-scroller");
+  const range = await scroller.evaluate((node) => node.scrollWidth - node.clientWidth);
+  expect(range).toBeGreaterThan(1);
+  await container.focus();
+  await page.keyboard.press("Tab");
+  await expect(scroller).toBeFocused();
+  await expect(scroller).toHaveAttribute("role", "region");
+  await expect(scroller).toHaveAccessibleName("Table content");
+  await expect(scroller).toHaveAttribute("data-focus-inset", "");
+  const transcript = page.locator(".msg-scroll-viewport");
+  const outerTop = await transcript.evaluate((node) => node.scrollTop);
+  const before = await scroller.evaluate((node) => node.scrollLeft);
+  await page.keyboard.down("ArrowRight");
+  try {
+    await expect.poll(() => scroller.evaluate((node) => node.scrollLeft)).toBeGreaterThan(before);
+  } finally {
+    await page.keyboard.up("ArrowRight");
+  }
+  expect(await transcript.evaluate((node) => node.scrollTop)).toBe(outerTop);
+  await page.keyboard.press("Tab");
+  await expect(container.getByRole("button", { name: "Expand table", exact: true })).toBeFocused();
 }
 
 for (const [width, fontSize, theme] of [
@@ -105,3 +130,104 @@ for (const [width, fontSize, theme] of [
     }
   });
 }
+
+test("an overflowing canonical table remains keyboard readable as the answer resizes", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 1200 });
+  await page.goto("/visual/?fixture=agent&state=narrative&theme=dark&font-size=18");
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  const table = page.locator("[data-markdown-table]").filter({ hasText: "Strategy" });
+  await readTableWithKeyboard(page, table);
+
+  await page.setViewportSize({ width: 1472, height: 900 });
+  const scroller = table.locator(".md-table-scroller");
+  await expect
+    .poll(() => scroller.evaluate((node) => node.scrollWidth - node.clientWidth))
+    .toBeLessThanOrEqual(1);
+  await expect(scroller).not.toHaveAttribute("tabindex");
+  await expect(scroller).not.toHaveAttribute("role");
+  await expect(scroller).not.toHaveAttribute("aria-label");
+  await table.focus();
+  await page.keyboard.press("Tab");
+  await expect(table.getByRole("button", { name: "Expand table", exact: true })).toBeFocused();
+});
+
+test("a wide authored table remains keyboard readable in the desktop Dock reading column", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1472, height: 900 });
+  await page.goto(
+    "/visual/?fixture=workspace&state=dock-light&agent-state=narrative&theme=light&font-size=18",
+  );
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  const resize = page.getByRole("separator", { name: "Resize right workspace", exact: true });
+  await resize.focus();
+  await resize.press("End");
+  await expect(resize).toHaveAttribute(
+    "aria-valuenow",
+    (await resize.getAttribute("aria-valuemax"))!,
+  );
+
+  const original = page.locator("[data-markdown-table]").filter({ hasText: "Strategy" });
+  const originalScroller = original.locator(".md-table-scroller");
+  expect(
+    await originalScroller.evaluate((node) => node.scrollWidth - node.clientWidth),
+  ).toBeLessThanOrEqual(1);
+  await expect(originalScroller).not.toHaveAttribute("tabindex");
+  await original.focus();
+  await page.keyboard.press("Tab");
+  await expect(original.getByRole("button", { name: "Expand table", exact: true })).toBeFocused();
+
+  await page.evaluate(async () => {
+    if (!location.pathname.startsWith("/visual/"))
+      throw new Error("An isolated fixture is required");
+    const fixturePath = "/visual/agentSessionSnapshots.ts";
+    const storePath = "/src/plugins/builtin/agent/adapters/agentStore.ts";
+    const projectionPath = "/src/plugins/builtin/agent/application/session/sessionSnapshot.ts";
+    const fixture = (await import(fixturePath)) as typeof import("./agentSessionSnapshots");
+    const { useAgentStore } = await import(storePath);
+    const { projectAgentSessionSnapshot } = await import(projectionPath);
+    const snapshot = structuredClone(fixture.RUNTIME_AGENT_SESSION_SNAPSHOTS.narrative);
+    const answer = snapshot.items.find(
+      (item) =>
+        item.type === "agentMessage" &&
+        item.content?.some(
+          (part) => part.type === "text" && part.text.includes("Strategy comparison"),
+        ),
+    );
+    if (answer?.type !== "agentMessage") throw new Error("The accepted answer is required");
+    answer.content = [
+      {
+        type: "text",
+        text: [
+          "## Recorded observations",
+          "",
+          "Compare the accepted measurements before continuing.",
+          "",
+          "| Observation_01 | Observation_02 | Observation_03 | Observation_04 | Observation_05 |",
+          "| --- | --- | --- | --- | --- |",
+          "| Accepted | Accepted | Accepted | Accepted | Final observation |",
+          "",
+          "The explanation continues after the recorded evidence.",
+        ].join("\n"),
+      },
+    ];
+    const store = useAgentStore.getState();
+    const refresh = store.beginViewRefresh("ses_visual", true);
+    if (
+      !refresh ||
+      !store.commitViewRefresh(
+        "ses_visual",
+        refresh,
+        projectAgentSessionSnapshot(fixture.projectRuntimeAgentSnapshot(snapshot)),
+      )
+    )
+      throw new Error("The fixture snapshot could not be installed");
+  });
+  const wide = page.locator("[data-markdown-table]").filter({ hasText: "Observation_01" });
+  await readTableWithKeyboard(page, wide);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+});
