@@ -19,11 +19,13 @@ const ib = stylex.create({
     padding: 0,
   },
   image: {
+    width: "auto",
     maxHeight: "calc(var(--spacing) * 64)",
     maxWidth: "100%",
     borderRadius: radius.card,
     objectFit: "contain",
   },
+  unavailable: { marginBlock: 0 },
 });
 
 export function ImageBlock({ mime, data }: { mime: string; data: string }) {
@@ -31,7 +33,7 @@ export function ImageBlock({ mime, data }: { mime: string; data: string }) {
   const src = `data:${mime};base64,${data}`;
   const size = useMemo(() => imageSizeFromBase64(data), [data]);
   const [failedSource, setFailedSource] = useState<string | null>(null);
-  if (failedSource === src) return <UnavailableImage />;
+  if (failedSource === src) return <UnavailableImage styles={ib.unavailable} />;
   return (
     <ImagePreviewGallery
       item={{ src, alt: "", width: size?.width, height: size?.height }}

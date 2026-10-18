@@ -690,6 +690,11 @@ placeholders; images embedded in ordinary text retain their inline spacing. Imag
 preview triggers share the displayed image's corner token so keyboard focus follows
 its outline.
 
+Protocol image frames follow the aspect-preserving thumbnail bounds. Their ordered
+render unit owns the surrounding spacing in both decoded and unavailable states.
+The lightbox shows the active image's label and, for multi-image galleries, its
+position, derived from the existing gallery selection.
+
 ---
 
 ### 4.4 思考（Reasoning）

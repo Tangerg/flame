@@ -95,10 +95,17 @@ describe("ImageBlock", () => {
     await openPreview(screen.getByRole("button", { name: "Architecture" }));
     expect(screen.getByRole("dialog", { name: "Architecture" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "Architecture" })).toBeTruthy();
+    const name = screen.getByText("Architecture", { selector: "span" });
+    expect(name.getAttribute("aria-hidden")).toBe("true");
+    const position = screen.getByRole("status");
+    expect(position.textContent).toBe("1 / 2");
     fireEvent.click(screen.getByRole("button", { name: "Next image" }));
 
     const dialog = screen.getByRole("dialog", { name: "Image preview" });
     expect(screen.getByRole("region", { name: "Image preview" })).toBeTruthy();
+    expect(screen.getByText("Image preview", { selector: "span" })).toBeTruthy();
+    expect(screen.queryByText("Architecture", { selector: "span" })).toBeNull();
+    expect(position.textContent).toBe("2 / 2");
     expect(dialog.querySelector("img")?.getAttribute("src")).toBe(
       `data:image/gif;base64,${SECOND_GIF}`,
     );
@@ -106,6 +113,8 @@ describe("ImageBlock", () => {
     fireEvent.click(screen.getByRole("button", { name: "Previous image" }));
     expect(screen.getByRole("dialog", { name: "Architecture" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "Architecture" })).toBeTruthy();
+    expect(screen.getByText("Architecture", { selector: "span" })).toBeTruthy();
+    expect(position.textContent).toBe("1 / 2");
   });
 
   it("shows a non-interactive decode failure and restores preview when the source changes", async () => {
@@ -140,5 +149,6 @@ describe("ImageBlock", () => {
     await openPreview(screen.getAllByRole("button", { name: "View attached image" })[0]!);
 
     expect(screen.queryByRole("button", { name: "Next image" })).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });

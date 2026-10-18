@@ -96,3 +96,141 @@ test("media-only paragraphs own image spacing across wrapped and unavailable ima
   expect(failed.readingOverflow).toBe(0);
   expect(failed.pageOverflow).toBe(0);
 });
+
+test("protocol portraits keep their frame fitted and decode failures preserve surrounding rhythm", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1120, height: 1000 });
+  await page.goto("/visual/?fixture=agent&state=idle&theme=light&font-size=18&sidebar=collapsed");
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  const sources = await page.evaluate(() => {
+    const png = (width: number, height: number) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d")!;
+      context.fillStyle = "#3674e8";
+      context.fillRect(0, 0, width, height);
+      return canvas.toDataURL("image/png").split(",")[1]!;
+    };
+    const valid = png(600, 900);
+    // The intact signature and IHDR leave only browser decoding to reject the missing body.
+    return {
+      valid,
+      badBody: btoa(atob(valid).slice(0, 33)),
+      landscape: png(900, 600),
+      small: png(160, 80),
+    };
+  });
+  const installImage = (data: string) =>
+    page.evaluate(async (data) => {
+      if (!location.pathname.startsWith("/visual/"))
+        throw new Error("An isolated fixture is required");
+      const fixturePath = "/visual/agentSessionSnapshots.ts";
+      const storePath = "/src/plugins/builtin/agent/adapters/agentStore.ts";
+      const projectionPath = "/src/plugins/builtin/agent/application/session/sessionSnapshot.ts";
+      const fixture = (await import(fixturePath)) as typeof import("./agentSessionSnapshots");
+      const { useAgentStore } = await import(storePath);
+      const { projectAgentSessionSnapshot } = await import(projectionPath);
+      const snapshot = structuredClone(fixture.RUNTIME_AGENT_SESSION_SNAPSHOTS.idle);
+      const prompt = snapshot.items.find((item) => item.type === "userMessage");
+      const answer = snapshot.items.find((item) => item.type === "agentMessage");
+      if (!prompt || !answer)
+        throw new Error("The fixture must contain accepted prompt and answer items");
+      snapshot.items = [
+        prompt,
+        {
+          ...answer,
+          content: [
+            { type: "text", text: "Before protocol image." },
+            { type: "image", mime: "image/png", data },
+            { type: "text", text: "After protocol image." },
+          ],
+        },
+      ];
+      const store = useAgentStore.getState();
+      const refresh = store.beginViewRefresh("ses_visual", true);
+      if (
+        !refresh ||
+        !store.commitViewRefresh(
+          "ses_visual",
+          refresh,
+          projectAgentSessionSnapshot(fixture.projectRuntimeAgentSnapshot(snapshot)),
+        )
+      )
+        throw new Error("The fixture snapshot could not be installed");
+    }, data);
+  const gaps = () =>
+    page.evaluate(() => {
+      const before = [...document.querySelectorAll(".md p")].find(
+        (node) => node.textContent === "Before protocol image.",
+      )!;
+      const after = [...document.querySelectorAll(".md p")].find(
+        (node) => node.textContent === "After protocol image.",
+      )!;
+      const content = before.closest(".msg-content")!;
+      const image = content.querySelector(
+        'button[data-message-image-preview-trigger], [role="img"]',
+      )!;
+      const bounds = image.getBoundingClientRect();
+      return {
+        before: bounds.top - before.getBoundingClientRect().bottom,
+        after: after.getBoundingClientRect().top - bounds.bottom,
+      };
+    });
+
+  await installImage(sources.valid);
+  await page.getByText("After protocol image.", { exact: true }).waitFor();
+  const preview = page.getByRole("button", { name: "View attached image", exact: true });
+  const image = preview.locator("img");
+  await image.evaluate((image: HTMLImageElement) => image.decode());
+  await expect(image).toHaveAttribute("width", "600");
+  await expect(image).toHaveAttribute("height", "900");
+  const imageBounds = () =>
+    image.evaluate((image: HTMLImageElement) => {
+      const bounds = image.getBoundingClientRect();
+      const frame = image.closest("button")!.getBoundingClientRect();
+      const content = image.closest(".msg-content")!;
+      return {
+        width: bounds.width,
+        height: bounds.height,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+        naturalRatio: image.naturalWidth / image.naturalHeight,
+        frame: { width: frame.width, height: frame.height, left: frame.left, top: frame.top },
+        image: { width: bounds.width, height: bounds.height, left: bounds.left, top: bounds.top },
+        contentWidth: content.clientWidth,
+        contentOverflow: content.scrollWidth - content.clientWidth,
+        pageOverflow: document.documentElement.scrollWidth - innerWidth,
+      };
+    });
+  const portrait = await imageBounds();
+  expect(portrait.width).toBeCloseTo(portrait.height * portrait.naturalRatio, 1);
+  expect(portrait.frame).toEqual(portrait.image);
+  expect(await gaps()).toEqual({ before: 20, after: 24 });
+
+  await installImage(sources.badBody);
+  const unavailable = page.getByRole("img", { name: "Image unavailable", exact: true });
+  await expect(unavailable).toBeVisible();
+  await expect(preview).toHaveCount(0);
+  expect(await gaps()).toEqual({ before: 20, after: 24 });
+
+  for (const [viewportWidth, data] of [
+    [1120, sources.landscape],
+    [1120, sources.small],
+    [360, sources.landscape],
+  ] as const) {
+    await page.setViewportSize({ width: viewportWidth, height: 1000 });
+    await installImage(data);
+    await image.evaluate((image: HTMLImageElement) => image.decode());
+    const bounds = await imageBounds();
+    expect(bounds.frame).toEqual(bounds.image);
+    expect(bounds.width).toBeCloseTo(bounds.height * bounds.naturalRatio, 1);
+    expect(bounds.width).toBeLessThanOrEqual(bounds.naturalWidth);
+    expect(bounds.height).toBeLessThanOrEqual(bounds.naturalHeight);
+    expect(bounds.width).toBeLessThanOrEqual(bounds.contentWidth);
+    expect(bounds.contentOverflow).toBe(0);
+    expect(bounds.pageOverflow).toBe(0);
+  }
+});

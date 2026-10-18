@@ -26,13 +26,39 @@ const ig = stylex.create({
     width: "100%",
     flexDirection: "column",
   },
-  topRight: {
+  toolbar: {
     position: "absolute",
     top: space.s3,
+    left: space.s3,
     right: space.s3,
     zIndex: 1,
     display: "flex",
     alignItems: "center",
+    gap: space.s2,
+  },
+  identity: {
+    display: "flex",
+    alignItems: "center",
+    minWidth: 0,
+    gap: space.s2,
+    paddingInline: space.s3,
+    paddingBlock: space.s2,
+    borderRadius: radius.floatingPanel,
+    backgroundColor: surface.mediaScrim,
+    color: color.onMedia,
+  },
+  name: {
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  position: { flexShrink: 0, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" },
+  actions: {
+    display: "flex",
+    alignItems: "center",
+    flexShrink: 0,
+    marginInlineStart: "auto",
     gap: space.s1,
   },
   prev: { position: "absolute", top: "50%", left: space.s3, zIndex: 1, translate: "0 -50%" },
@@ -425,23 +451,35 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
       })}
     >
       <div {...stylex.props(ig.frame)}>
-        <div {...stylex.props(ig.topRight)}>
-          <IconButton
-            icon={iconGlyph("download")}
-            aria-label={t("message.image.download")}
-            aria-busy={save.busy}
-            pending={save.busy}
-            onClick={() => save.run(() => saveInlineImage(active.src))}
-            variant="media"
-            size="xl"
-          />
-          <IconButton
-            icon={iconGlyph("x")}
-            aria-label={t("message.image.close")}
-            onClick={() => setGallery(null)}
-            variant="media"
-            size="xl"
-          />
+        <div {...stylex.props(ig.toolbar)}>
+          <div {...stylex.props(ig.identity, typeStep.uiSm)}>
+            <span aria-hidden="true" title={activeLabel} {...stylex.props(ig.name)}>
+              {activeLabel}
+            </span>
+            {hasGallery && (
+              <span role="status" {...stylex.props(ig.position)}>
+                {gallery!.index + 1} / {gallery!.items.length}
+              </span>
+            )}
+          </div>
+          <div {...stylex.props(ig.actions)}>
+            <IconButton
+              icon={iconGlyph("download")}
+              aria-label={t("message.image.download")}
+              aria-busy={save.busy}
+              pending={save.busy}
+              onClick={() => save.run(() => saveInlineImage(active.src))}
+              variant="media"
+              size="xl"
+            />
+            <IconButton
+              icon={iconGlyph("x")}
+              aria-label={t("message.image.close")}
+              onClick={() => setGallery(null)}
+              variant="media"
+              size="xl"
+            />
+          </div>
         </div>
         {hasGallery && (
           <>
