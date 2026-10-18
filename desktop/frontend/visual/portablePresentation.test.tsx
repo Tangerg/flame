@@ -217,6 +217,8 @@ it("shows tool execution status independently of its approval decision", () => {
       }}
     />,
   );
+  expect(screen.getByText("1 record on this page")).toBeTruthy();
+  expect(screen.getByText("1 tool call")).toBeTruthy();
   const summary = screen.getByRole("button", { name: /incomplete/ });
   expect(summary.textContent).toContain("Approval: approve");
   expect(screen.queryByText(row.item.id, { exact: true })).toBeNull();
@@ -293,7 +295,7 @@ it("keeps timed-out Runs and refused or canceled tools in attention without rewr
       record.getAttribute("data-trajectory-record"),
     ),
   ).toEqual(["run:run_timeout", "item:item_refused", "item:item_canceled"]);
-  expect(screen.getByText("Needs attention").nextElementSibling?.textContent).toBe("3");
+  expect(screen.getByText("3 need attention")).toBeTruthy();
   const timeoutSummary = screen.getByRole("button", { name: /run_timeout/ });
   expect(timeoutSummary.textContent).toContain("timedOut");
   const refusedRecord = within(
@@ -312,6 +314,43 @@ it("keeps timed-out Runs and refused or canceled tools in attention without rewr
     within(timeoutSummary.closest("section")!).getByRole("region", { name: "Recorded evidence" })
       .textContent,
   ).toBe(JSON.stringify(timeout, null, 2));
+});
+
+it("reads settled neutral states as quiet metadata and keeps attention states beside the title", () => {
+  const original = visualTrajectory(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle).find(
+    (entry) => entry.type === "run",
+  );
+  if (!original || original.type !== "run") throw new Error("idle snapshot must contain a Run");
+  const run = (id: string, outcome: "completed" | "failed"): TrajectoryEntry => ({
+    ...original,
+    run: {
+      ...original.run,
+      id,
+      status: "finished",
+      outcome:
+        outcome === "failed"
+          ? { type: "failed", error: { type: "agent_stuck" } }
+          : { type: outcome },
+    },
+  });
+  render(
+    <TrajectoryReport
+      page={{ data: [run("run_settled", "completed"), run("run_broken", "failed")] }}
+      kind="all"
+      run="all"
+      search=""
+    />,
+  );
+  const meta = (id: string) =>
+    screen.getByRole("button", { name: new RegExp(id) }).querySelector("time")!.parentElement!
+      .textContent;
+  expect(meta("run_settled")).toContain("completed");
+  expect(meta("run_settled")).toContain("run_settled");
+  expect(meta("run_broken")).not.toContain("failed");
+  expect(screen.getByRole("button", { name: /run_broken/ }).textContent).toContain("failed");
+  expect(screen.getByText("2 records on this page")).toBeTruthy();
+  expect(screen.getByText("1 needs attention")).toBeTruthy();
+  expect(screen.getByText("0 tool calls")).toBeTruthy();
 });
 
 it("distinguishes same-time Runs before expansion and keeps one Run identity fact", () => {

@@ -33,7 +33,10 @@ filter includes them; unknown outcome and failure remain visible. Counts are rec
 counts, not additive billing totals.
 
 Status tones project recorded severity independently of the attention filter and
-counts. Failed, timed-out and lost Runs are failures; canceled Runs and refused or
+counts. Settled neutral states read as quiet summary metadata; running, waiting,
+warning and failure states keep a toned badge beside the title. The recorded state
+text is always shown. The page record, tool call and attention counts are one
+wrapping metadata line under Recorded activity. Failed, timed-out and lost Runs are failures; canceled Runs and refused or
 canceled tools remain neutral. Attention includes timed-out Runs and retains
 incomplete, refused or errored tools without changing their recorded state.
 

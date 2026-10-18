@@ -43,7 +43,6 @@ import {
   SearchField,
   FilterBar,
   Select,
-  Stats,
   Toolbar,
   TextField,
   type Fact,
@@ -169,6 +168,7 @@ function title(row: TrajectoryEntry) {
     state = item.status;
     if (item.type === "toolCall") decision = item.approvalDecision;
   }
+  const tone = statusTone(row);
   return (
     <RecordSummary
       icon={
@@ -185,6 +185,7 @@ function title(row: TrajectoryEntry) {
       title={title}
       description={
         <RecordMeta>
+          {tone === "neutral" && <span>{state}</span>}
           {row.type === "run" && <code>{row.run.id}</code>}
           <time dateTime={row.occurredAt}>
             {new Intl.DateTimeFormat(navigator.language, {
@@ -196,7 +197,7 @@ function title(row: TrajectoryEntry) {
           {decision && <span>Approval: {decision}</span>}
         </RecordMeta>
       }
-      status={<Badge tone={statusTone(row)}>{state}</Badge>}
+      status={tone !== "neutral" && <Badge tone={tone}>{state}</Badge>}
     />
   );
 }
@@ -345,26 +346,29 @@ export function TrajectoryReport({
         .includes(search.toLocaleLowerCase())
     );
   });
+  const toolCalls = rows.filter(
+    (row) => row.type === "item" && row.item.type === "toolCall",
+  ).length;
+  const attention = rows.filter(needsAttention).length;
   return (
     <>
-      <Stats
-        id="metrics"
-        aria-label="Current page observations"
-        values={[
-          ["Page records", rows.length],
-          [
-            "Tool calls",
-            rows.filter(
-              (row) => row.type === "item" && row.item.type === "toolCall",
-            ).length,
-          ],
-          ["Needs attention", rows.filter(needsAttention).length],
-        ]}
-      />
-
       <PanelSection
         title="Recorded activity"
-        description={`${matching.length} of ${rows.length} records on this page`}
+        description={
+          <RecordMeta>
+            <span>
+              {matching.length === rows.length
+                ? `${rows.length} ${rows.length === 1 ? "record" : "records"} on this page`
+                : `${matching.length} of ${rows.length} ${rows.length === 1 ? "record" : "records"} on this page`}
+            </span>
+            <span>
+              {toolCalls} {toolCalls === 1 ? "tool call" : "tool calls"}
+            </span>
+            <span>
+              {attention} {attention === 1 ? "needs" : "need"} attention
+            </span>
+          </RecordMeta>
+        }
       >
         <RecordGroup
           variant="list"
@@ -533,7 +537,6 @@ export function Trajectory({ context }: { context: ComponentContext }) {
               Session <code>{sessionId}</code>
             </Metadata>
           }
-          description="Inspect recorded runs, model calls and tool activity."
         />
       }
       controls={

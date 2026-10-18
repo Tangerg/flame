@@ -513,7 +513,7 @@ test("file and portable trajectory tabs render through their production views", 
   const run = pluginView(page).locator('[data-trajectory-record="run:run_root"]');
   await expect(run).toBeVisible();
   await expect(run.getByRole("button", { expanded: false })).toHaveAccessibleName(
-    "Run · openai/gpt-5.6-sol running 8:00:00 AM",
+    "Run · openai/gpt-5.6-sol running run_root 8:00:00 AM",
   );
 });
 
