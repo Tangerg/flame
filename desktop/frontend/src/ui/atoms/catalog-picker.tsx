@@ -42,7 +42,7 @@ const styles = stylex.create({
   rowText: { minWidth: 0 },
   rowLine: { display: "flex", minWidth: 0, alignItems: "baseline", gap: space.s1_5 },
   caption: { flexShrink: 0, color: color.fgFaint },
-  mark: { color: color.accent },
+  mark: { color: color.accentText },
 
   stackedPopup: {
     display: "flex",

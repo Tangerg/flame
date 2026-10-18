@@ -10,30 +10,39 @@ import {
   type RefObject,
 } from "react";
 import { ArrowDownToLine, ChevronUp, Search, X } from "@flame/icons/react";
-import { Button, IconButton, SearchField } from "@flame/ui";
+import {
+  Button,
+  CodeCaption,
+  CodeFrame,
+  IconButton,
+  SearchField,
+  type CodeActionLabels,
+} from "@flame/ui";
 import { ansiText, renderAnsi } from "./ansi";
 
 const PREVIEW_LINES = 9;
 const OVERSCAN = 6;
 
-export const controlStrip: CSSProperties = {
+export const frameInset = "calc(var(--spacing) * 3)";
+
+export const findBar: CSSProperties = {
   display: "flex",
-  flexWrap: "wrap",
-  alignItems: "center",
-  gap: "var(--layout-control-gap)",
   minWidth: 0,
-  marginBlockEnd: "var(--layout-label-gap)",
+  paddingInline: `${frameInset} calc(var(--spacing) * 1.5)`,
+  paddingBlockEnd: "var(--layout-label-gap)",
   fontFamily: "var(--font-sans)",
   fontSize: "var(--fs-ui-sm)",
   lineHeight: "var(--leading-body)",
 };
 
-export const controlCluster: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "2px",
-  marginInlineStart: "auto",
-};
+export function resultActions(copy: string): CodeActionLabels {
+  return {
+    copy,
+    copied: "Copied",
+    wrap: "Enable word wrap",
+    unwrap: "Disable word wrap",
+  };
+}
 
 export function isFindShortcut(event: KeyboardEvent) {
   return (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f";
@@ -214,102 +223,127 @@ export function RecordedOutput({ text }: { text: string }) {
     </div>
   ));
   const earlier = lines.length - PREVIEW_LINES;
+  const copied = useMemo(() => ansiText(text), [text]);
 
   return (
-    <div
-      style={{
-        minWidth: 0,
-        position: "relative",
-        fontFamily: "var(--font-mono)",
-        fontSize: "var(--fs-code)",
-        lineHeight: "var(--leading-relaxed)",
-      }}
-    >
-      <span
-        ref={ruler}
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          visibility: "hidden",
-          height: "1lh",
-          width: 0,
-        }}
-      />
-      {expanded ? (
-        <>
-          <div data-slot="output-controls" style={controlStrip}>
-            {finding && (
-              <FindField
-                label="Output search"
-                fieldLabel="Find in output"
-                value={query}
-                fieldRef={search}
-                status={
-                  query && (
-                    <span
-                      role="status"
-                      style={{
-                        flexShrink: 0,
-                        color: "var(--color-text-faint)",
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      {matches.length
-                        ? `${(match % matches.length) + 1} of ${matches.length}`
-                        : "No matches"}
-                    </span>
-                  )
-                }
-                onChange={(value) => {
-                  setQuery(value);
-                  setMatch(0);
-                }}
-                onClose={closeFind}
-                onEnter={(backward) => {
-                  if (!matches.length) return;
-                  setMatch(
-                    (current) =>
-                      (current + (backward ? matches.length - 1 : 1)) %
-                      matches.length,
-                  );
+    <CodeFrame>
+      <CodeCaption
+        language="output"
+        code={copied}
+        labels={resultActions("Copy output")}
+        wrappable={false}
+      >
+        {expanded ? (
+          <>
+            {!atLatest && (
+              <IconButton
+                icon={ArrowDownToLine}
+                size="xs"
+                quiet
+                aria-label="Jump to latest"
+                onClick={() => {
+                  jumpToLatest();
+                  viewport.current?.focus();
                 }}
               />
             )}
-            <div style={controlCluster}>
-              {!atLatest && (
-                <IconButton
-                  icon={ArrowDownToLine}
-                  size="xs"
-                  quiet
-                  aria-label="Jump to latest"
-                  onClick={() => {
-                    jumpToLatest();
-                    viewport.current?.focus();
-                  }}
-                />
-              )}
-              {!finding && (
-                <IconButton
-                  icon={Search}
-                  size="xs"
-                  quiet
-                  aria-label="Find"
-                  onClick={() => setFinding(true)}
-                />
-              )}
+            {!finding && (
               <IconButton
-                icon={ChevronUp}
+                icon={Search}
                 size="xs"
                 quiet
-                aria-label="Collapse"
-                onClick={() => {
-                  setExpanded(false);
-                  setFinding(false);
-                  setQuery("");
-                }}
+                aria-label="Find"
+                onClick={() => setFinding(true)}
               />
-            </div>
-          </div>
+            )}
+            <IconButton
+              icon={ChevronUp}
+              size="xs"
+              quiet
+              aria-label="Collapse"
+              onClick={() => {
+                setExpanded(false);
+                setFinding(false);
+                setQuery("");
+              }}
+            />
+          </>
+        ) : (
+          earlier > 0 && (
+            <Button
+              size="xs"
+              onClick={(event) => {
+                expansionOpener.current = event.currentTarget;
+                setExpanded(true);
+              }}
+            >
+              Show {earlier} earlier {earlier === 1 ? "line" : "lines"} ·{" "}
+              {lines.length} total
+            </Button>
+          )
+        )}
+      </CodeCaption>
+      {expanded && finding && (
+        <div data-slot="output-controls" style={findBar}>
+          <FindField
+            label="Output search"
+            fieldLabel="Find in output"
+            value={query}
+            fieldRef={search}
+            status={
+              query && (
+                <span
+                  role="status"
+                  style={{
+                    flexShrink: 0,
+                    color: "var(--color-text-faint)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {matches.length
+                    ? `${(match % matches.length) + 1} of ${matches.length}`
+                    : "No matches"}
+                </span>
+              )
+            }
+            onChange={(value) => {
+              setQuery(value);
+              setMatch(0);
+            }}
+            onClose={closeFind}
+            onEnter={(backward) => {
+              if (!matches.length) return;
+              setMatch(
+                (current) =>
+                  (current + (backward ? matches.length - 1 : 1)) %
+                  matches.length,
+              );
+            }}
+          />
+        </div>
+      )}
+      <div
+        style={{
+          minWidth: 0,
+          position: "relative",
+          paddingInline: frameInset,
+          paddingBlockEnd: frameInset,
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--fs-code)",
+          lineHeight: "var(--leading-relaxed)",
+        }}
+      >
+        <span
+          ref={ruler}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            visibility: "hidden",
+            height: "1lh",
+            width: 0,
+          }}
+        />
+        {expanded ? (
           <div
             ref={viewport}
             role="region"
@@ -336,23 +370,7 @@ export function RecordedOutput({ text }: { text: string }) {
             {visible}
             <div style={{ height: (lines.length - end) * metrics.row }} />
           </div>
-        </>
-      ) : (
-        <>
-          {earlier > 0 && (
-            <div data-slot="output-controls" style={controlStrip}>
-              <Button
-                size="xs"
-                onClick={(event) => {
-                  expansionOpener.current = event.currentTarget;
-                  setExpanded(true);
-                }}
-              >
-                Show {earlier} earlier {earlier === 1 ? "line" : "lines"} ·{" "}
-                {lines.length} total
-              </Button>
-            </div>
-          )}
+        ) : (
           <div
             role="region"
             aria-label="Tool output preview"
@@ -362,8 +380,8 @@ export function RecordedOutput({ text }: { text: string }) {
           >
             {visible}
           </div>
-        </>
-      )}
-    </div>
+        )}
+      </div>
+    </CodeFrame>
   );
 }

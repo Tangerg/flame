@@ -1,4 +1,5 @@
 import type { AccentSpec, CommandSpec, MessageRoleSpec } from "@/plugins/sdk";
+import { DEFAULT_ACCENT } from "@/plugins/builtin/theme/public/appearance";
 
 type CommandRun = CommandSpec["run"];
 
@@ -17,27 +18,27 @@ export interface DefaultCommandRuns {
 
 export const DEFAULT_ACCENTS: AccentSpec[] = [
   {
+    id: "flame",
+    label: "Flame",
+    color: DEFAULT_ACCENT,
+    order: 0,
+  },
+  {
     id: "blue",
     label: "Blue",
     color: "#0485f7",
-    order: 0,
+    order: 1,
   },
   {
     id: "purple",
     label: "Purple",
     color: "#7f52ff",
-    order: 1,
+    order: 2,
   },
   {
     id: "green",
     label: "Green",
     color: "#21a179",
-    order: 2,
-  },
-  {
-    id: "orange",
-    label: "Orange",
-    color: "#e8590c",
     order: 3,
   },
 ];

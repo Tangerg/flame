@@ -1,16 +1,19 @@
 import { ansiText, renderAnsi } from "./ansi";
 import {
-  controlCluster,
-  controlStrip,
+  findBar,
   FindField,
+  frameInset,
   isFindShortcut,
   RecordedOutput,
+  resultActions,
 } from "./recorded-output";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Search } from "@flame/icons/react";
 import type { CapturedToolResult, ComponentContext } from "@flame/plugin-sdk";
 import {
   Button,
+  CodeCaption,
+  CodeFrame,
   IconButton,
   Metadata,
   RecordBody,
@@ -19,13 +22,13 @@ import {
 
 type Row =
   | { kind: "source"; number: number; body: string }
-  | { kind: "located"; location: string; body?: string }
+  | { kind: "located"; location?: string; body?: string }
   | { kind: "entry"; title: string; context?: string; body?: string }
   | { kind: "prose"; body: string }
   | { kind: "notice"; body: string };
 
 type ResultContent =
-  | { kind: "rows"; rows: Row[] }
+  | { kind: "rows"; label: string; rows: Row[] }
   | { kind: "output"; text: string }
   | { kind: "changes"; changes: Record<string, unknown>[] };
 
@@ -51,6 +54,10 @@ function sourceRows(source: string, start = 1): Row[] {
     number: start + index,
     body,
   }));
+}
+
+function proseRows(body: string): Row[] {
+  return [{ kind: "prose", body }];
 }
 
 function xmlElements(element: Element): Element[] | undefined {
@@ -130,14 +137,17 @@ function resultContent(tool: CapturedToolResult): ResultContent {
     case "read":
       return {
         kind: "rows",
+        label: "source",
         rows: sourceRows(source.replace(/\n$/, ""), tool.range?.start ?? 1),
       };
     case "ask_user":
+      return { kind: "rows", label: "answer", rows: proseRows(source) };
     case "load_skill":
+      return { kind: "rows", label: "instructions", rows: proseRows(source) };
     case "search_memory":
-      return { kind: "rows", rows: [{ kind: "prose", body: source }] };
+      return { kind: "rows", label: "memories", rows: proseRows(source) };
     case "list_skills":
-      return { kind: "rows", rows: skillRows(source) };
+      return { kind: "rows", label: "skills", rows: skillRows(source) };
     case "read_skill_resource":
     case "read_tool_result":
     case "search_tools":
@@ -145,7 +155,7 @@ function resultContent(tool: CapturedToolResult): ResultContent {
     case "stop_shell":
     case "propose_skill":
     case "delegate_task":
-      return { kind: "rows", rows: sourceRows(source) };
+      return { kind: "rows", label: "result", rows: sourceRows(source) };
   }
   const result = parsed(source);
   if (Array.isArray(result.changes))
@@ -153,6 +163,7 @@ function resultContent(tool: CapturedToolResult): ResultContent {
   if (Array.isArray(result.hits))
     return {
       kind: "rows",
+      label: "matches",
       rows: result.hits.map((hit) => {
         const value = record(hit);
         return {
@@ -165,6 +176,7 @@ function resultContent(tool: CapturedToolResult): ResultContent {
   if (Array.isArray(result.results))
     return {
       kind: "rows",
+      label: "results",
       rows: result.results.map((hit) => {
         const value = record(hit);
         const title = text(value.title).trim();
@@ -183,6 +195,7 @@ function resultContent(tool: CapturedToolResult): ResultContent {
       .join("\n");
     return {
       kind: "rows",
+      label: "response",
       rows: [
         {
           kind: "located",
@@ -195,23 +208,27 @@ function resultContent(tool: CapturedToolResult): ResultContent {
   if (tool.name === "web_fetch" && typeof result.content === "string")
     return {
       kind: "rows",
-      rows: [
-        {
-          kind: "located",
-          location: text(result.format ?? "text"),
-          body: result.content,
-        },
-      ],
+      label: text(result.format ?? "text"),
+      rows: [{ kind: "located", body: result.content }],
     };
   return {
     kind: "rows",
+    label: "result",
     rows: sourceRows(
       typeof result.output === "string" ? result.output : source,
     ),
   };
 }
 
-function RecordedRows({ recorded }: { recorded: Row[] }) {
+function RecordedRows({
+  label,
+  source,
+  recorded,
+}: {
+  label: string;
+  source: string;
+  recorded: Row[];
+}) {
   const [finding, setFinding] = useState(false);
   const [filter, setFilter] = useState("");
   const [visible, setVisible] = useState(40);
@@ -233,7 +250,7 @@ function RecordedRows({ recorded }: { recorded: Row[] }) {
           row.kind === "entry"
             ? `${row.title}\n${row.context ?? ""}`
             : row.kind === "located"
-              ? row.location
+              ? (row.location ?? "")
               : "";
         const body = row.body ?? "";
         const visibleBody =
@@ -248,44 +265,8 @@ function RecordedRows({ recorded }: { recorded: Row[] }) {
   );
   const lastSource = recorded.findLast((row) => row.kind === "source");
   const numberWidth = `${String(lastSource?.number ?? 1).length}ch`;
-  const controls = (
-    <div
-      data-slot="recorded-result-controls"
-      style={{
-        ...controlStrip,
-        flexShrink: 0,
-        marginBlockStart: finding ? 0 : "var(--layout-label-gap)",
-        marginBlockEnd: finding ? "var(--layout-label-gap)" : 0,
-      }}
-    >
-      {finding ? (
-        <FindField
-          label="Result search"
-          fieldLabel="Filter result"
-          value={filter}
-          fieldRef={search}
-          onChange={(value) => {
-            setFilter(value);
-            setVisible(40);
-          }}
-          onClose={closeFind}
-        />
-      ) : (
-        <div style={controlCluster}>
-          <IconButton
-            icon={Search}
-            size="xs"
-            quiet
-            aria-label="Find"
-            onClick={() => setFinding(true)}
-          />
-        </div>
-      )}
-    </div>
-  );
   return (
     <div
-      data-slot="recorded-result"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -293,132 +274,168 @@ function RecordedRows({ recorded }: { recorded: Row[] }) {
         maxHeight: "min(50vh, 24rem)",
       }}
     >
-      {finding && controls}
-      <div
-        ref={viewport}
-        data-slot="recorded-result-viewport"
-        role="region"
-        aria-label="Result"
-        tabIndex={0}
-        data-focus-inset=""
-        style={{
-          minWidth: 0,
-          minHeight: 0,
-          overflow: "auto",
-          overscrollBehavior: "contain auto",
-          scrollPaddingBlock: "var(--layout-control-gap)",
-        }}
-        onKeyDown={(event) => {
-          if (isFindShortcut(event)) {
-            event.preventDefault();
-            setFinding(true);
-            search.current?.focus();
-          }
-        }}
-      >
-        {matching.slice(0, visible).map((row, index) => (
-          <div
-            key={index}
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                row.kind === "source"
-                  ? `${numberWidth} minmax(0, 1fr)`
-                  : "minmax(0, 1fr)",
-              columnGap: "var(--layout-content-gap)",
-              rowGap: "var(--layout-label-gap)",
-              paddingBlock:
-                row.kind === "located" || row.kind === "entry"
-                  ? "var(--layout-row-padding)"
-                  : undefined,
-              minWidth: 0,
-              fontFamily:
-                row.kind === "source" || row.kind === "located"
-                  ? "var(--font-mono)"
-                  : "var(--font-sans)",
-              fontSize:
-                row.kind === "source" || row.kind === "located"
-                  ? "var(--fs-code)"
-                  : "var(--fs-ui-md)",
-              lineHeight: "var(--leading-relaxed)",
-            }}
-          >
-            {row.kind === "source" && (
-              <span
-                style={{
-                  color: "var(--color-text-faint)",
-                  textAlign: "end",
-                  userSelect: "none",
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                <span className="sr-only">Line </span>
-                {row.number}
-              </span>
-            )}
-            {row.kind === "located" && (
-              <Metadata
-                style={{
-                  whiteSpace: "pre-wrap",
-                  fontFamily: "var(--font-sans)",
-                }}
-              >
-                {row.location}
-              </Metadata>
-            )}
-            {row.kind === "entry" && (
-              <RecordSummary
-                title={
-                  <span style={{ whiteSpace: "pre-wrap" }}>{row.title}</span>
-                }
-                description={
-                  row.context === undefined ? undefined : (
-                    <span style={{ whiteSpace: "pre-wrap" }}>
-                      {row.context}
-                    </span>
-                  )
-                }
-              />
-            )}
-            {row.body !== undefined &&
-              (row.kind === "entry" || row.kind === "prose") && (
-                <RecordBody>{row.body || " "}</RecordBody>
-              )}
-            {row.kind === "notice" && <Metadata>{row.body}</Metadata>}
-            {row.body !== undefined &&
-              (row.kind === "source" || row.kind === "located") && (
-                <pre
+      <CodeFrame data-slot="recorded-result">
+        <CodeCaption
+          language={label}
+          code={source}
+          labels={resultActions("Copy result")}
+          wrappable={false}
+        >
+          {!finding && (
+            <IconButton
+              icon={Search}
+              size="xs"
+              quiet
+              aria-label="Find"
+              onClick={() => setFinding(true)}
+            />
+          )}
+        </CodeCaption>
+        {finding && (
+          <div data-slot="recorded-result-controls" style={findBar}>
+            <FindField
+              label="Result search"
+              fieldLabel="Filter result"
+              value={filter}
+              fieldRef={search}
+              onChange={(value) => {
+                setFilter(value);
+                setVisible(40);
+              }}
+              onClose={closeFind}
+            />
+          </div>
+        )}
+        <div
+          ref={viewport}
+          data-slot="recorded-result-viewport"
+          role="region"
+          aria-label="Result"
+          tabIndex={0}
+          data-focus-inset=""
+          style={{
+            minWidth: 0,
+            minHeight: 0,
+            overflow: "auto",
+            overscrollBehavior: "contain auto",
+            scrollPaddingBlock: "var(--layout-control-gap)",
+            paddingInline: frameInset,
+            paddingBlockEnd: frameInset,
+          }}
+          onKeyDown={(event) => {
+            if (isFindShortcut(event)) {
+              event.preventDefault();
+              setFinding(true);
+              search.current?.focus();
+            }
+          }}
+        >
+          {matching.slice(0, visible).map((row, index) => (
+            <div
+              key={index}
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  row.kind === "source"
+                    ? `${numberWidth} minmax(0, 1fr)`
+                    : "minmax(0, 1fr)",
+                columnGap: "var(--layout-content-gap)",
+                rowGap: "var(--layout-label-gap)",
+                paddingBlockStart:
+                  index === 0 ||
+                  (row.kind !== "located" && row.kind !== "entry")
+                    ? undefined
+                    : row.body === undefined
+                      ? "var(--layout-label-gap)"
+                      : "calc(var(--layout-row-padding) * 2)",
+                minWidth: 0,
+                fontFamily:
+                  row.kind === "source" || row.kind === "located"
+                    ? "var(--font-mono)"
+                    : "var(--font-sans)",
+                fontSize:
+                  row.kind === "source" || row.kind === "located"
+                    ? "var(--fs-code)"
+                    : "var(--fs-ui-md)",
+                lineHeight: "var(--leading-relaxed)",
+              }}
+            >
+              {row.kind === "source" && (
+                <span
                   style={{
-                    whiteSpace: "pre-wrap",
-                    overflowWrap: "anywhere",
-                    margin: 0,
-                    color: /^error\b/.test(row.body)
-                      ? "var(--tone-negative)"
-                      : /^warning\b/.test(row.body)
-                        ? "var(--tone-warning)"
-                        : undefined,
+                    color: "var(--color-text-faint)",
+                    textAlign: "end",
+                    userSelect: "none",
+                    fontVariantNumeric: "tabular-nums",
                   }}
                 >
-                  {renderAnsi(row.body || " ")}
-                </pre>
+                  <span className="sr-only">Line </span>
+                  {row.number}
+                </span>
               )}
-          </div>
-        ))}
-        {!matching.length && (
-          <Metadata>
-            No matching rows. Close find to see the whole result.
-          </Metadata>
-        )}
-        {matching.length > visible && (
-          <Button
-            onClick={() => setVisible((current) => current + 40)}
-            style={{ marginBlockStart: "var(--layout-control-gap)" }}
-          >
-            Show {Math.min(40, matching.length - visible)} more matching rows
-          </Button>
-        )}
-      </div>
-      {!finding && controls}
+              {row.kind === "located" && row.location !== undefined && (
+                <Metadata
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    fontFamily: "var(--font-sans)",
+                  }}
+                >
+                  {row.location}
+                </Metadata>
+              )}
+              {row.kind === "entry" && (
+                <RecordSummary
+                  title={
+                    <span style={{ whiteSpace: "pre-wrap" }}>{row.title}</span>
+                  }
+                  description={
+                    row.context === undefined ? undefined : (
+                      <span style={{ whiteSpace: "pre-wrap" }}>
+                        {row.context}
+                      </span>
+                    )
+                  }
+                />
+              )}
+              {row.body !== undefined &&
+                (row.kind === "entry" || row.kind === "prose") && (
+                  <RecordBody>{row.body || " "}</RecordBody>
+                )}
+              {row.kind === "notice" && <Metadata>{row.body}</Metadata>}
+              {row.body !== undefined &&
+                (row.kind === "source" || row.kind === "located") && (
+                  <pre
+                    style={{
+                      whiteSpace: "pre-wrap",
+                      overflowWrap: "anywhere",
+                      margin: 0,
+                      color: /^error\b/.test(row.body)
+                        ? "var(--color-negative)"
+                        : /^warning\b/.test(row.body)
+                          ? "var(--color-warning)"
+                          : undefined,
+                    }}
+                  >
+                    {renderAnsi(row.body || " ")}
+                  </pre>
+                )}
+            </div>
+          ))}
+          {!matching.length && (
+            <Metadata>
+              No matching rows. Close find to see the whole result.
+            </Metadata>
+          )}
+          {matching.length > visible && (
+            <Button
+              onClick={() => setVisible((current) => current + 40)}
+              style={{ marginBlockStart: "var(--layout-control-gap)" }}
+            >
+              Show {Math.min(40, matching.length - visible)} more matching rows
+            </Button>
+          )}
+        </div>
+      </CodeFrame>
     </div>
   );
 }
@@ -449,10 +466,24 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
             const status = text(change.status);
             return (
               <tr key={`${path}:${index}`}>
-                <td style={{ width: "5em", verticalAlign: "top" }}>
+                <td
+                  style={{
+                    width: "5em",
+                    verticalAlign: "baseline",
+                    color: "var(--color-text-muted)",
+                    fontSize: "var(--fs-ui-sm)",
+                  }}
+                >
                   {CHANGE_VERB[status as keyof typeof CHANGE_VERB] ?? status}
                 </td>
-                <td style={{ overflowWrap: "anywhere" }}>
+                <td
+                  style={{
+                    verticalAlign: "baseline",
+                    overflowWrap: "anywhere",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "var(--fs-code)",
+                  }}
+                >
                   <span title={path}>{path}</span>
                   {typeof change.from === "string" && (
                     <Metadata>From {change.from}</Metadata>
@@ -465,5 +496,11 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
       </table>
     );
   if (content.kind === "output") return <RecordedOutput text={content.text} />;
-  return <RecordedRows recorded={content.rows} />;
+  return (
+    <RecordedRows
+      label={content.label}
+      source={tool!.result!}
+      recorded={content.rows}
+    />
+  );
 }

@@ -19,12 +19,12 @@ import { color, corner, space, type as typeStep } from "@flame/ui/tokens.stylex"
 const sr = stylex.create({
   host: { position: "relative", userSelect: "none" },
   trailing: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1_5 },
-  favorite: { color: color.accent },
+  favorite: { color: color.accentText },
   mark: { height: space.s1_5, width: space.s1_5, flexShrink: 0 },
   markRunning: {
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
-    borderColor: color.accent,
+    borderColor: color.accentText,
     animation: "var(--animate-pulse-dot)",
   },
   markWaiting: { backgroundColor: color.warning },

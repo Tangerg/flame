@@ -17,7 +17,7 @@ const tokensOf = (subject: PaletteTheme, accent = "#0485f7", contrast = 25) =>
 
 const restingInk = (token: string) => token.match(/(#[0-9a-f]{6})\)$/i)?.[1] ?? token;
 
-const ACCENTS = ["#0485f7", "#7f52ff", "#21a179", "#e8590c", "#ffe066", "#101828"];
+const ACCENTS = ["#fb6e30", "#0485f7", "#7f52ff", "#21a179", "#e8590c", "#ffe066", "#101828"];
 
 const APPEARANCES: ReadonlyArray<[string, PaletteTheme]> = [
   ["built-in light", theme("light")],
@@ -94,8 +94,8 @@ describe("palette themes", () => {
   });
 
   it.each(
-    ["#0485f7", "#7f52ff", "#21a179", "#e8590c", "#7dd3fc", "#ffe066"].flatMap((accent) =>
-      (["light", "dark"] as const).map((scheme) => [accent, scheme] as const),
+    ["#fb6e30", "#0485f7", "#7f52ff", "#21a179", "#e8590c", "#7dd3fc", "#ffe066"].flatMap(
+      (accent) => (["light", "dark"] as const).map((scheme) => [accent, scheme] as const),
     ),
   )("keep the primary label readable at rest and on hover (%s, %s)", (accent, scheme) => {
     const t = tokensOf(theme(scheme), accent);
@@ -106,6 +106,20 @@ describe("palette themes", () => {
     expect(Math.abs(toOklch(t["color-cta-hover"]!).h - toOklch(t["color-cta"]!).h)).toBeLessThan(
       15,
     );
+  });
+
+  it("keep a seed too light for a white mark as its own solid under dark ink", () => {
+    for (const seed of ["#fb6e30", "#f59e0b", "#ffe066"]) {
+      expect(solidFill(seed)).toBe(seed);
+      for (const scheme of ["light", "dark"] as const)
+        expect(tokensOf(theme(scheme), seed)["color-text-on-accent"]).toBe("#000000");
+    }
+    for (const seed of ["#0485f7", "#21a179", "#e5484d", "#30a46c", "#0090ff"]) {
+      const solid = solidFill(seed);
+      expect(contrastRatio(solid, "#ffffff")).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+      expect(toOklch(solid).l).toBeLessThan(toOklch(seed).l);
+      expect(Math.abs(toOklch(solid).h - toOklch(seed).h)).toBeLessThan(15);
+    }
   });
 
   it("separate the planes further as the contrast preference rises", () => {

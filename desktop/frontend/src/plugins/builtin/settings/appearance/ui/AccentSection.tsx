@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useId } from "react";
 import { useT } from "@/lib/i18n";
 import { ACCENT, useExtensionPoint } from "@/plugins/sdk";
-import { accentSolid } from "@/plugins/builtin/theme/public/appearance";
+import { accentInk, accentSolid } from "@/plugins/builtin/theme/public/appearance";
 import { useAccentPreference } from "../application/appearancePreferences";
 import { SettingRow } from "../../kit";
 import { ColorPickerInput, Icon, Pressable } from "@/ui";
@@ -42,7 +42,6 @@ const a = stylex.create({
   mark: {
     pointerEvents: "none",
     position: "absolute",
-    color: surface.surface,
     transitionProperty: "opacity, scale",
     transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
@@ -58,12 +57,13 @@ const a = stylex.create({
   },
 });
 
-function SelectionMark({ selected }: { selected: boolean }) {
+function SelectionMark({ selected, fill }: { selected: boolean; fill: string }) {
   return (
     <span
       aria-hidden
       data-slot="accent-selection-mark"
       {...stylex.props(a.mark, selected ? a.markOn : a.markOff)}
+      style={{ color: accentInk(fill) }}
     >
       <Icon name="check" size="xs" />
     </span>
@@ -95,7 +95,7 @@ function CustomAccentPicker({
         className={stylex.props(a.chrome, corner.pill, isActive && a.chromeOn).className}
         style={{ background: isActive ? value : RAINBOW_HINT }}
       />
-      <SelectionMark selected={isActive} />
+      <SelectionMark selected={isActive} fill={value} />
       <ColorPickerInput
         id={inputId}
         aria-label={label}
@@ -115,26 +115,30 @@ export function AccentSection() {
   return (
     <SettingRow label={t("settings.accent")} sub={t("settings.accent.sub")}>
       <div {...stylex.props(a.swatchRow)}>
-        {accents.map((swatch) => (
-          <Pressable
-            key={swatch.id}
-            type="button"
-            onClick={() => setAccent(swatch.color)}
-            title={`${t("settings.accent")}: ${swatch.label}`}
-            aria-label={`${t("settings.accent")}: ${swatch.label}`}
-            aria-pressed={accent === swatch.color}
-            className={stylex.props(a.target, a.noPad, corner.pill).className}
-          >
-            <span
-              aria-hidden
-              className={
-                stylex.props(a.chrome, corner.pill, accent === swatch.color && a.chromeOn).className
-              }
-              style={{ background: accentSolid(swatch.color) }}
-            />
-            <SelectionMark selected={accent === swatch.color} />
-          </Pressable>
-        ))}
+        {accents.map((swatch) => {
+          const fill = accentSolid(swatch.color);
+          return (
+            <Pressable
+              key={swatch.id}
+              type="button"
+              onClick={() => setAccent(swatch.color)}
+              title={`${t("settings.accent")}: ${swatch.label}`}
+              aria-label={`${t("settings.accent")}: ${swatch.label}`}
+              aria-pressed={accent === swatch.color}
+              className={stylex.props(a.target, a.noPad, corner.pill).className}
+            >
+              <span
+                aria-hidden
+                className={
+                  stylex.props(a.chrome, corner.pill, accent === swatch.color && a.chromeOn)
+                    .className
+                }
+                style={{ background: fill }}
+              />
+              <SelectionMark selected={accent === swatch.color} fill={fill} />
+            </Pressable>
+          );
+        })}
         <CustomAccentPicker
           value={accent}
           isActive={isCustom}

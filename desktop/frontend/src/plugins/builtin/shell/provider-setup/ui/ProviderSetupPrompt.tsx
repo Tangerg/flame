@@ -10,7 +10,7 @@ import { color, leading, space, type as typeStep, weight } from "@flame/ui/token
 const ps = stylex.create({
   card: { width: "100%", textAlign: "left" },
   row: { display: "flex", alignItems: "flex-start", gap: space.s3 },
-  glyph: { marginTop: space.s0_5, flexShrink: 0, color: color.accent },
+  glyph: { marginTop: space.s0_5, flexShrink: 0, color: color.accentText },
   stack: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: space.s2 },
   title: { textWrap: "balance", color: color.fg, fontWeight: weight.semibold },
   body: { margin: 0, textWrap: "pretty", lineHeight: leading.prose, color: color.fgSoft },

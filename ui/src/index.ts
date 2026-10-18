@@ -14,6 +14,7 @@ export * from "./records";
 export {
   CodeBlock,
   CodeCaption,
+  CodeFrame,
   CodeHighlightProvider,
   setCodeWrap,
   useCodeWrap,

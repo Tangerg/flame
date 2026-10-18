@@ -91,12 +91,13 @@ native labels; `DocumentBody` styles already-parsed semantic document content.
 These components own presentation only and do not query or advance product facts.
 `CodeBlock` frames its single literal string child with the same `ARTIFACT_SURFACE` skin
 as the transcript's code and diagram artifacts. Its named `pre` remains the
-bounded keyboard scroll region. `CodeCaption` is the one code header for every
-renderer, including the transcript's highlighted blocks: the recorded language
-(or `text`), a wrap toggle bound to the single page-wide `useCodeWrap` preference,
-and a copy action that writes the exact literal and reports success only after
-the clipboard accepts it. Callers supply localized `CodeActionLabels`; portable
-packages use the English defaults. Syntax color is a host capability:
+bounded keyboard scroll region. `CodeFrame` is that frame alone, for portable views
+that own their own body, such as recorded Tool results. `CodeCaption` is the one code
+header for every renderer, including the transcript's highlighted blocks: the recorded
+label (or `text`), any consumer actions passed as children, a wrap toggle bound to
+the single page-wide `useCodeWrap` preference, and a copy action that writes the exact
+literal and reports success only after the clipboard accepts it. Callers supply
+localized `CodeActionLabels`; portable packages use English labels. Syntax color is a host capability:
 `CodeHighlightProvider` supplies one `CodeSourceComponent`, which React renders
 inside the stable `pre` region as `<Source source language />` and which returns
 the `code` element for exactly that source: escaped highlighted markup when ready,
@@ -178,8 +179,9 @@ The shared stylesheet also applies the application's `data-motion="off"` project
 and the system reduced-motion preference. Both disable motion with zero duration;
 they do not manufacture transitions on otherwise static components.
 
-The default host theme follows HeroUI 3.2.6: cool neutrals, blue primary actions,
-rounded buttons, fields and quiet contact shadows. Button and field radii follow
+The default host theme owns the semantic roles (neutral planes, one accent scale
+generated from the user's configurable accent, and status colors) and follows HeroUI
+3.2.6 for rounded buttons, fields and quiet contact shadows. Button and field radii follow
 the user's radius scale at every size; text chips and status labels share the
 button role. Fixed circular marks and explicitly round buttons keep their geometry.
 Desktop size roles are

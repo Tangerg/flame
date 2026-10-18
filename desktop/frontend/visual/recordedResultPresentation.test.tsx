@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { CapturedToolResult, ComponentContext } from "@flame/plugin-sdk";
 import { RecordedResult } from "../../../plugins/tool-results/src/component";
 
@@ -226,5 +226,41 @@ it("preserves the complete literal result for malformed or unknown skills XML", 
     );
     expectInert(result);
     rendered.unmount();
+  }
+});
+
+it("leads each recognised result with its caption actions and copies the recorded text", async () => {
+  const writeText = vi.fn(async () => {});
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
+  try {
+    const lines = Array.from({ length: 12 }, (_, i) => `line ${i}`).join("\n");
+    const output = `\u001b[32mok\u001b[0m\n${lines}`;
+    const shell = render(<RecordedResult context={capturedContext("shell", output)} />);
+    const preview = screen.getByRole("region", { name: "Tool output preview" });
+    const buttons = screen.getAllByRole("button");
+    expect(
+      buttons.map((button) => button.getAttribute("aria-label") ?? button.textContent),
+    ).toEqual(["Show 4 earlier lines · 13 total", "Copy output"]);
+    for (const button of buttons)
+      expect(
+        button.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Copy output" }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(`ok\n${lines}`));
+    shell.unmount();
+
+    const page = JSON.stringify({ format: "markdown", content: "# Title\n\nBody" });
+    render(<RecordedResult context={capturedContext("web_fetch", page)} />);
+    const result = screen.getByRole("region", { name: "Result" });
+    expect(
+      screen.getByText("markdown", { exact: true }).closest("[data-slot='code-caption']"),
+    ).toBeTruthy();
+    expect(result.textContent).not.toContain("markdown");
+    const find = screen.getByRole("button", { name: "Find" });
+    expect(find.compareDocumentPosition(result) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Copy result" }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith(page));
+  } finally {
+    vi.unstubAllGlobals();
   }
 });

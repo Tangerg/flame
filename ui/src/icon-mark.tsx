@@ -7,7 +7,7 @@ const styles = stylex.create({
     display: "inline-grid",
     placeItems: "center",
     flexShrink: 0,
-    color: color.accent,
+    color: color.accentText,
     backgroundImage: surface.emphasis,
     borderRadius: radius.lg,
   },

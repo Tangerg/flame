@@ -18,7 +18,7 @@ const pr = stylex.create({
     flexShrink: 0,
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
-    borderColor: color.accent,
+    borderColor: color.accentText,
     animation: "var(--animate-pulse-dot)",
   },
   trailing: { display: "inline-flex", alignItems: "center", gap: space.s1_5 },

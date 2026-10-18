@@ -1,12 +1,20 @@
 import type { CSSProperties } from "react";
 
+const INK = {
+  muted: "var(--color-text-muted)",
+  negative: "var(--color-negative)",
+  success: "var(--color-success)",
+  warning: "var(--color-warning)",
+  accent: "var(--color-accent-text)",
+} as const;
+
 type AnsiStyle = {
-  tone?: string;
+  tone?: keyof typeof INK;
   bold?: boolean;
   dim?: boolean;
   underline?: boolean;
 };
-const tones = [
+const tones: readonly (keyof typeof INK)[] = [
   "muted",
   "negative",
   "success",
@@ -63,12 +71,7 @@ export function renderAnsi(input: string) {
   if (cursor < input.length) spans.push({ text: input.slice(cursor), style });
   return spans.map(({ text, style: value }, index) => {
     const style: CSSProperties = {
-      color:
-        value.tone === "muted"
-          ? "var(--color-text-muted)"
-          : value.tone
-            ? `var(--tone-${value.tone})`
-            : undefined,
+      color: value.tone && INK[value.tone],
       fontWeight: value.bold ? "bold" : undefined,
       opacity: value.dim ? 0.7 : undefined,
       textDecoration: value.underline ? "underline" : undefined,

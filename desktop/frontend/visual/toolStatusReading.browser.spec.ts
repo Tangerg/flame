@@ -240,3 +240,93 @@ test("recorded results scroll internally when bounded and continue through the t
     .toBeGreaterThan(beforeBoundary.top);
   expect(await result.evaluate((node) => node.scrollTop)).toBe(boundedRange);
 });
+
+for (const theme of ["light", "dark"] as const) {
+  test(`ANSI colored output reads on its frame in ${theme}`, async ({ page }) => {
+    await page.goto(`/visual/?fixture=agent&state=tool-shells&theme=${theme}`);
+    await page.locator("html[data-visual-ready]").waitFor();
+    const lines = [
+      ["success", 32, "--- PASS: TestCommitAtomicity (0.01s)"],
+      ["negative", 31, "--- FAIL: TestRollbackOnFlushFailure (0.02s)"],
+      ["warning", 33, "warning: 1 test skipped"],
+      ["accent", 34, "ok  \tgithub.com/Tangerg/flame/runtime/internal/run"],
+      ["muted", 90, "(cached)"],
+    ] as const;
+    await page.evaluate(
+      async (output) => {
+        const fixturePath = "/visual/agentSessionSnapshots.ts";
+        const storePath = "/src/plugins/builtin/agent/adapters/agentStore.ts";
+        const projectionPath = "/src/plugins/builtin/agent/application/session/sessionSnapshot.ts";
+        const fixture = (await import(fixturePath)) as typeof import("./agentSessionSnapshots");
+        const { useAgentStore } = await import(storePath);
+        const { projectAgentSessionSnapshot } = await import(projectionPath);
+        const snapshot = structuredClone(fixture.RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-shells"]);
+        snapshot.items = snapshot.items
+          .filter(
+            (item) =>
+              item.type === "userMessage" ||
+              item.type === "agentMessage" ||
+              item.id === "item_shells_command",
+          )
+          .map((item) =>
+            item.type === "toolCall"
+              ? { ...item, tool: { ...item.tool, result: { exitCode: 1, output } } }
+              : item,
+          );
+        const store = useAgentStore.getState();
+        const refresh = store.beginViewRefresh("ses_visual", true);
+        if (
+          !refresh ||
+          !store.commitViewRefresh(
+            "ses_visual",
+            refresh,
+            projectAgentSessionSnapshot(fixture.projectRuntimeAgentSnapshot(snapshot)),
+          )
+        )
+          throw new Error("The fixture snapshot could not be installed");
+      },
+      lines.map(([, code, text]) => `\u001b[${code}m${text}\u001b[0m`).join("\n"),
+    );
+
+    const command = page.locator('[data-tool="shell"]').first();
+    await command.getByRole("button").first().click();
+    const output = command.getByRole("region", { name: "Tool output preview", exact: true });
+    for (const [tone, , text] of lines) {
+      const span = output.getByText(text, { exact: true });
+      await expect(span).toBeVisible();
+      const measured = await span.evaluate((node) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext("2d", { willReadFrequently: true })!;
+        const paint = (layers: string[]) => {
+          context.clearRect(0, 0, 1, 1);
+          for (const layer of layers) {
+            context.fillStyle = layer;
+            context.fillRect(0, 0, 1, 1);
+          }
+          return [...context.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+        };
+        const luminance = (rgb: number[]) =>
+          rgb
+            .map((value) => value / 255)
+            .map((value) => (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4))
+            .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index]!, 0);
+        const planes: string[] = [];
+        for (let at: Element | null = node; at; at = at.parentElement)
+          planes.unshift(getComputedStyle(at).backgroundColor);
+        const plane = luminance(paint(planes));
+        const ink = luminance(paint([...planes, getComputedStyle(node).color]));
+        const body = getComputedStyle(node.closest("[role=region]")!).color;
+        return {
+          contrast: (Math.max(plane, ink) + 0.05) / (Math.min(plane, ink) + 0.05),
+          tinted: getComputedStyle(node).color !== body,
+        };
+      });
+      expect({ tone, contrast: measured.contrast >= 4.5, tinted: measured.tinted }).toEqual({
+        tone,
+        contrast: true,
+        tinted: true,
+      });
+    }
+  });
+}

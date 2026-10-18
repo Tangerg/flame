@@ -28,8 +28,8 @@ The whole system reduces to five decisions. Everything below elaborates them.
    an input surface with one real border, accented on focus. Boundary mechanisms
    belong to the visual style, never individual call sites.
 2. **Tinted neutrals, one accent family, readable color in the content** — the
-   neutral scale leans toward the accent hue, and the accent (a calm **blue** by
-   default, user-selectable) carries headings, links, list markers, quote rules,
+   neutral scale leans toward the accent hue, and the accent (**Flame Orange**
+   `#FB6E30` by default, user-selectable) carries headings, links, list markers, quote rules,
    inline code, the user's own messages, selection, focus and primary actions.
    Every role is a step of one generated scale, so the page gains color without
    gaining hues. Primary action fill and label belong to the theme's CTA tokens.
@@ -110,9 +110,11 @@ built-in result for first paint and a test holds the two equal.
   (Radix's "natural pairing"), so the whole window follows the accent; a theme
   that declares its own canvas keeps its exact canvas and ink untinted. Steps 10
   and 11 are lifted until they read at 4.5:1 on the deepest plane text sits on.
-- **Accent and status.** Step 9 is the solid fill: the seed itself when white or
-  (for pale seeds) black reads on it at 4.5:1, otherwise the seed deepened in
-  lightness, hue and chroma held. Step 10 moves away from the solid's label ink,
+- **Accent and status.** Step 9 is the solid fill: the seed itself when white reads
+  on it at 4.5:1, or when the seed is too light to carry white even as a 3:1 mark
+  and black reads on it at 4.5:1; otherwise the seed deepened in lightness, hue and
+  chroma held. Deepening a light seed such as Flame Orange or amber that far would
+  turn it into rust or brown, so it keeps its own colour under dark ink. Step 10 moves away from the solid's label ink,
   so a hovered primary action never loses its label. Steps 1–8 follow lightness
   and relative-chroma templates read off Radix's scales and anchored to the
   theme's canvas. Steps 11 and 12 are searched until they clear 4.5:1 and 7:1 on
@@ -128,9 +130,9 @@ built-in result for first paint and a test holds the two equal.
 | `--color-sunken`                                 | neutral 3 / 4              | Wells: code bodies, terminals, tracks.                                   |
 | `--color-divider` / `-border` / `-border-strong` | neutral 4, 5, 7            | Separators, bars, region boundaries (weakest to strongest).              |
 | `--color-text` / `-soft` / `-muted` / `-faint`   | neutral 12 → 10            | Ink ladder; soft/muted/faint track the contrast preference.              |
-| `--color-accent`, `--color-cta`                  | accent 9                   | Marks and primary fills (`--color-cta-hover` is accent 10).              |
+| `--color-accent`, `--color-cta`                  | accent 9                   | Solid fills: primary actions, checked/on controls, progress (`--color-cta-hover` is accent 10). |
 | `--color-accent-line`                            | accent 7                   | Quote rules and other accent strokes.                                    |
-| `--color-accent-text`                            | accent 11                  | Links, file references, list markers, accent-tone labels.                |
+| `--color-accent-text`                            | accent 11                  | Links, file references, list markers, accent-tone labels, and glyph or state marks drawn on a plane (favorite, running ring and dot, selected check, icon marks). |
 | `--color-accent-strong`                          | accent 12                  | Prose headings, page titles, inline code.                                |
 | `--color-{negative,warning,success,info}`        | status 11                  | Status words and icons.                                                  |
 | `--tone-{accent,negative,warning,success,info}`  | scale 9                    | The fill every `-wash` / `-badge` / `-edge` tint and callout rule mixes. |
@@ -475,6 +477,10 @@ Accent comes from one generated scale and appears only through its roles:
    controls, progress, primary actions (`--color-cta`).
 2. **Focus ring** — `:focus-visible`, a single thin stroke (**no halo / glow**, and never on plain mouse-focus of inputs). One global rule in globals.css draws it; mark `data-focus-inset` where it would land outside the box, `data-chrome-focus` where a row fills instead. The palette derives `--color-focus-ring`. Never drawn at a callsite — `check-interactive-chrome` fails the build.
 3. **Live indicator** — the running `StatusDot`, the live status pill, the reasoning pulse.
+   A mark drawn on a plane takes `--color-accent-text`, which is searched to read on
+   every plane; the solid `--color-accent` is a fill and may be too light to stand alone
+   (Flame Orange is 2.6:1 on the light canvas). Ink on an accent fill comes from the
+   palette's on-fill rule for that exact fill, as the accent picker's selection check does.
 4. **Content hierarchy** — headings, links, list markers, quote rules, inline code and the user bubble (see §2 Accent in content).
 
 Accent does **not** appear as avatar backgrounds, ordinary affordance icons,
@@ -519,8 +525,9 @@ ink cannot be:
 
 - **Readable steps are searched, not assumed.** Status and accent inks (step 11)
   move in lightness until each clears 4.5:1 on the darkest surface it can sit on.
-- **The solid fill may be deeper than the chosen accent.** A seed that cannot
-  carry a white label is deepened in lightness, hue held, in both schemes.
+- **The solid fill may be deeper than the chosen accent.** A mid-tone seed that
+  cannot carry a white label is deepened in lightness, hue held, in both schemes; a
+  light seed keeps its colour and takes dark ink instead.
 
 ## 12. References
 

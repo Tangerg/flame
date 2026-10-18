@@ -12,7 +12,7 @@ const styles = stylex.create({
   },
   idle: { backgroundColor: color.fgFaint },
   running: {
-    backgroundColor: color.accent,
+    backgroundColor: color.accentText,
     boxShadow: "var(--shadow-live-glow)",
     animation: motion.pulseDot,
   },

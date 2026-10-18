@@ -7,13 +7,14 @@ import { DropdownMenu, Icon, SelectTrigger } from "@/ui";
 import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { COLOR_THEME, useExtensionPoint } from "@/plugins/sdk";
+import { DEFAULT_ACCENT, accentSolid } from "@/plugins/builtin/theme/public/appearance";
 import { SettingRow } from "../../kit";
 import { useThemePreference } from "../application/appearancePreferences";
 import { color, corner, radius, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
-const FALLBACK_TOKENS: Record<Scheme, { bg: string; surface: string; accent: string }> = {
-  dark: { bg: "#0c0d0f", surface: "#16181b", accent: "#6c97ff" },
-  light: { bg: "#ffffff", surface: "#f6f7f8", accent: "#2563eb" },
+const FALLBACK_TOKENS: Record<Scheme, { bg: string; surface: string }> = {
+  dark: { bg: "#0c0d0f", surface: "#16181b" },
+  light: { bg: "#ffffff", surface: "#f6f7f8" },
 };
 
 function previewTokens(spec: ColorThemeSpec): { bg: string; surface: string; accent: string } {
@@ -21,7 +22,7 @@ function previewTokens(spec: ColorThemeSpec): { bg: string; surface: string; acc
   return {
     bg: spec.tokens?.["color-bg"] ?? fallback.bg,
     surface: spec.tokens?.["color-surface"] ?? fallback.surface,
-    accent: spec.tokens?.["color-accent"] ?? fallback.accent,
+    accent: spec.tokens?.["color-accent"] ?? accentSolid(DEFAULT_ACCENT),
   };
 }
 

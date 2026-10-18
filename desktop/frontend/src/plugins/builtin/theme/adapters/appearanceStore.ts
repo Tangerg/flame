@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { rehydrateOrDefault } from "@/lib/persistedStore";
 import type { Paired } from "@/lib/persistedStore";
 import {
+  DEFAULT_ACCENT,
   DEFAULT_CONTRAST,
   DEFAULT_UI_DENSITY,
   UI_DENSITY_MODES,
@@ -39,7 +40,7 @@ export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>(
     (set) => ({
       theme: "system",
       visualStyle: "flame",
-      accent: "#0485f7",
+      accent: DEFAULT_ACCENT,
       customTheme: { bg: "#0f1117", fg: "#e6e8ee" },
       contrast: DEFAULT_CONTRAST,
       uiFont: "",

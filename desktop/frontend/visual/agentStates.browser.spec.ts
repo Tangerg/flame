@@ -1992,6 +1992,9 @@ test("keyboard output expansion retains its reading focus and visible controls",
   await expect(output).toBeInViewport({ ratio: 1 });
 
   await page.keyboard.press("Shift+Tab");
+  const copy = command.getByRole("button", { name: "Copy output", exact: true });
+  await expect(copy).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
   const collapse = command.getByRole("button", { name: "Collapse", exact: true });
   await expect(collapse).toBeFocused();
   await page.keyboard.press("Shift+Tab");
@@ -2001,6 +2004,8 @@ test("keyboard output expansion retains its reading focus and visible controls",
   expect(await find.evaluate((node) => node.matches(":focus-visible"))).toBe(true);
   await page.keyboard.press("Tab");
   await expect(collapse).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(copy).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(output).toBeFocused();
   await expect(output).toBeInViewport({ ratio: 1 });

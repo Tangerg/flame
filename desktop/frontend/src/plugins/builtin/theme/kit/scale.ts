@@ -1,12 +1,10 @@
 import type { Scheme } from "@/lib/appearance";
-import { WCAG_AA_TEXT, contrastRatio, inkOnFill } from "./legibility";
+import { WCAG_AA_NON_TEXT, WCAG_AA_TEXT, contrastRatio, inkOnFill } from "./legibility";
 import { fromOklch, mixOklab, toOklch, type Oklch } from "./oklab";
 
 export type Scale = readonly string[];
 
 const WCAG_AAA_TEXT = 7;
-
-const DARK_INK_FLOOR = 0.78;
 
 const HUE_LIGHTNESS: Record<Scheme, readonly number[]> = {
   light: [0.993, 0.982, 0.957, 0.931, 0.899, 0.859, 0.805, 0.731],
@@ -36,9 +34,10 @@ const NEUTRAL_TINT: Record<Scheme, readonly number[]> = {
 };
 
 export function solidFill(seed: string): string {
-  if (contrastRatio(seed, "#ffffff") >= WCAG_AA_TEXT) return seed;
+  const onWhite = contrastRatio(seed, "#ffffff");
+  if (onWhite >= WCAG_AA_TEXT) return seed;
+  if (onWhite < WCAG_AA_NON_TEXT && contrastRatio(seed, "#000000") >= WCAG_AA_TEXT) return seed;
   const tone = toOklch(seed);
-  if (tone.l >= DARK_INK_FLOOR && contrastRatio(seed, "#000000") >= WCAG_AA_TEXT) return seed;
   let fill = seed;
   for (let l = tone.l; l > 0 && contrastRatio(fill, "#ffffff") < WCAG_AA_TEXT; l -= 0.005)
     fill = fromOklch({ ...tone, l });

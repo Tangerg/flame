@@ -37,7 +37,7 @@ site's**. The tool-window style now shipping answers:
 - **floating overlay** (menus, popovers, tooltips) → one optical ring plus
   directional depth in `--shadow-popover`, and no second border. These use greater elevation than the contact shadow on resource surfaces.
 - **fixed control** (text fields, chips, the composer) → a real border. The composer
-  takes the accent on focus, which is the same "live" colour the run indicator uses.
+  takes the accent's focus-ring role on focus: the accent, held to 3:1 on the canvas.
 - **state** → background fill only (`bg-hover` / `bg-selected`), at a strength tied
   to the same ladder step the regions use.
 

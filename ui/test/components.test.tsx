@@ -12,6 +12,8 @@ import { Brain } from "@flame/icons/react";
 import {
   Button,
   CodeBlock,
+  CodeCaption,
+  CodeFrame,
   CodeHighlightProvider,
   type CodeSourceProps,
   ImageNotice,
@@ -225,6 +227,30 @@ describe("recorded code", () => {
         .getAllByRole("region")
         .map((region) => region.getAttribute("data-wrap")),
     ).toEqual(["true", "true"]);
+  });
+
+  it("frames a consumer body under one caption that leads with consumer actions", () => {
+    render(
+      <CodeFrame>
+        <CodeCaption language="output" code="ok" wrappable={false}>
+          <button type="button">Find</button>
+        </CodeCaption>
+        <div role="region" aria-label="Tool output">
+          ok
+        </div>
+      </CodeFrame>,
+    );
+    const caption = screen.getByText("output").parentElement!;
+    expect(
+      screen
+        .getAllByRole("button")
+        .map(
+          (button) => button.getAttribute("aria-label") ?? button.textContent,
+        ),
+    ).toEqual(["Find", "Copy code"]);
+    expect(caption.nextElementSibling).toBe(
+      screen.getByRole("region", { name: "Tool output" }),
+    );
   });
 });
 

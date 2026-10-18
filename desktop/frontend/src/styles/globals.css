@@ -114,16 +114,16 @@
 /* prettier-ignore */
 
 :root {
-  --color-accent: #0076de;
-  --color-accent-line: #95c1f7;
-  --color-accent-text: #0e69c2;
-  --color-accent-strong: #0f3560;
+  --color-accent: #fb6e30;
+  --color-accent-line: #f2aa8e;
+  --color-accent-text: #b74300;
+  --color-accent-strong: #592108;
 
-  --color-bg: #f4f5f7;
-  --color-surface: #eef0f3;
-  --color-elevated: #fdfdfe;
-  --color-sunken: #e8eaed;
-  --color-drawer: #eef0f3;
+  --color-bg: #f7f4f3;
+  --color-surface: #f3efee;
+  --color-elevated: #fefdfd;
+  --color-sunken: #ede9e8;
+  --color-drawer: #f3efee;
   --depth-step: 4%;
   --color-surface-2: color-mix(
     in oklab,
@@ -151,18 +151,18 @@
 
   --shadow-cast: rgb(0 0 0 / 0.2);
 
-  --color-text: #181b20;
-  --color-text-bright: #0f1115;
-  --color-text-soft: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #373b41);
-  --color-text-muted: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #60666d);
-  --color-text-faint: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #636a72);
-  --color-text-on-accent: #ffffff;
+  --color-text: #1f1a17;
+  --color-text-bright: #14100e;
+  --color-text-soft: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #403936);
+  --color-text-muted: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #6d635f);
+  --color-text-faint: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #716763);
+  --color-text-on-accent: #000000;
   --color-text-on-warning: #000000;
 
-  --color-border: #dcdfe4;
-  --color-border-strong: #c6ccd2;
-  --color-control-edge: #8a8c90;
-  --color-divider: #e2e5e9;
+  --color-border: #e3dedc;
+  --color-border-strong: #d2c9c6;
+  --color-control-edge: #908b89;
+  --color-divider: #e9e4e2;
   --color-scrim: #00000022;
   --gauge-track: color-mix(in oklab, currentColor 22%, transparent);
   --scrollbar-thumb: color-mix(in oklab, var(--color-text) 17%, transparent);
@@ -177,11 +177,11 @@
   --tone-warning: #ffc53d;
   --tone-info: #0078d6;
   --tone-success: #008853;
-  --tone-accent: #0076de;
+  --tone-accent: #fb6e30;
 
-  --color-cta: #0076de;
-  --color-cta-hover: #006dcf;
-  --color-cta-text: #ffffff;
+  --color-cta: #fb6e30;
+  --color-cta-hover: #ee662a;
+  --color-cta-text: #000000;
 
   --fs-ui-2xs: 10px;
   --fs-ui-xs: 12px;
@@ -343,7 +343,7 @@
   --shadow-surface-card: 0 2px 4px color-mix(in oklab, var(--shadow-cast) 20%, transparent), 0 1px 2px color-mix(in oklab, var(--shadow-cast) 30%, transparent);
   --shadow-live-glow: 0 0 6px var(--color-accent);
   --shadow-swatch-selected: 0 0 0 1.5px var(--color-text);
-  --color-focus-ring: #0076de;
+  --color-focus-ring: #e76730;
 
   --app-drawer-surface: var(--color-drawer);
   --app-content-surface: var(--color-bg);
@@ -466,50 +466,50 @@ html.theme-dark {
   --wash-step: max(3%, calc(var(--depth-step) / 2));
   --app-user-message-surface: color-mix(in oklab, var(--tone-accent) 18%, transparent);
 
-  --color-accent: #0076de;
-  --color-accent-line: #245994;
-  --color-accent-text: #80b9ff;
-  --color-accent-strong: #cbe2ff;
-  --tone-accent: #0076de;
-  --color-focus-ring: #0076de;
+  --color-accent: #fb6e30;
+  --color-accent-line: #8b3d1c;
+  --color-accent-text: #fb9871;
+  --color-accent-strong: #ffd5c5;
+  --tone-accent: #fb6e30;
+  --color-focus-ring: #fb6e30;
 
-  --color-bg: #0e0f11;
-  --color-surface: #1c1e21;
-  --color-elevated: #1c1e21;
-  --color-sunken: #212428;
-  --color-drawer: #0e0f11;
+  --color-bg: #110e0d;
+  --color-surface: #211d1c;
+  --color-elevated: #211d1c;
+  --color-sunken: #282321;
+  --color-drawer: #110e0d;
   --depth-step: 8%;
 
   --shadow-cast: rgb(0 0 0 / 0.55);
   --color-media-edge: rgb(255 255 255 / 0.1);
 
-  --color-text: #eceef1;
-  --color-text-bright: #f0f1f4;
+  --color-text: #f1edec;
+  --color-text-bright: #f4f1f0;
   --color-text-soft: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #c9ccd0
+    #d0cac8
   );
   --color-text-muted: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #9fa4a9
+    #a9a19e
   );
   --color-text-faint: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #848b93
+    #958985
   );
-  --color-text-on-accent: #ffffff;
-  --color-cta: #0076de;
-  --color-cta-hover: #0c6bc7;
-  --color-cta-text: #ffffff;
+  --color-text-on-accent: #000000;
+  --color-cta: #fb6e30;
+  --color-cta-hover: #ff8452;
+  --color-cta-text: #000000;
   --color-text-on-warning: #000000;
 
-  --color-border: #282b30;
-  --color-border-strong: #3e4349;
-  --color-control-edge: #5e6062;
-  --color-divider: #212428;
+  --color-border: #2f2a28;
+  --color-border-strong: #48403d;
+  --color-control-edge: #625f5e;
+  --color-divider: #282321;
   --color-scrim: #00000022;
 
   --color-negative: #ff928d;
@@ -1043,7 +1043,7 @@ html.theme-dark {
 
 .agent-composer-glass:focus-within,
 .agent-composer-glass[data-dropping] {
-  --composer-ring: var(--color-accent);
+  --composer-ring: var(--color-focus-ring);
 }
 
 [data-slot="mermaid-stage"] svg {

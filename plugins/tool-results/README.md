@@ -14,8 +14,16 @@ errors. This data does not follow navigation or reread a historical producer. Fi
 navigation, copy, approvals and explicit mutation actions retain their existing owners.
 
 Filters, ANSI styles, line numbers and incremental expansion are local presentation.
-Result filters open on demand above one bounded scrolling body; their compact
-Find action follows the result text. Source lines share a continuous numbered
+ANSI foreground colours and the `error`/`warning` line fallbacks use the host's readable
+text roles (`--color-negative`, `--color-success`, `--color-warning`, `--color-accent-text`,
+`--color-text-muted`), never the solid fill tones, so coloured output reads on the frame.
+Rows and command output use the shared `CodeFrame` and `CodeCaption`, so recognised
+results read like the generic inspector's captured code: the caption names the
+content and holds Find, expansion, Jump to latest, Collapse and Copy. Copy writes the
+recorded text, without ANSI styling for command output. Result filters open on
+demand beneath the caption, above one bounded scrolling body. A web fetch names its
+format in the caption. Applied-change receipts stay an unframed table whose verbs
+and code-role paths rank below the Tool row. Source lines share a continuous numbered
 layout; located source results keep their context above each snippet. Web results
 and skill summaries separate the primary title, supporting URL and readable body
 using the shared record typography. An absent or repeated web title shows its URL

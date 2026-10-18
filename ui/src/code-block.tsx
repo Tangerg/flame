@@ -71,9 +71,16 @@ const ENGLISH_CODE_ACTIONS: CodeActionLabels = {
 };
 
 const styles = stylex.create({
-  frame: { minWidth: 0, maxWidth: "100%", overflow: "hidden" },
+  frame: {
+    display: "flex",
+    flexDirection: "column",
+    minWidth: 0,
+    maxWidth: "100%",
+    overflow: "hidden",
+  },
   caption: {
     display: "flex",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: space.s1,
     minHeight: "calc(var(--control-height-xs) + var(--spacing) * 2)",
@@ -83,13 +90,23 @@ const styles = stylex.create({
     fontFamily: "var(--font-sans)",
   },
   language: {
-    minWidth: 0,
-    flex: 1,
+    flex: "1 0 auto",
+    maxWidth: "100%",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     color: color.fgMuted,
     fontWeight: weight.medium,
+  },
+  actions: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: space.s1,
+    minWidth: 0,
+    maxWidth: "100%",
+    marginInlineStart: "auto",
   },
   code: {
     margin: 0,
@@ -108,6 +125,21 @@ const styles = stylex.create({
   wrapped: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
 });
 
+export function CodeFrame({
+  children,
+  ...props
+}: Omit<ComponentPropsWithoutRef<"div">, "className" | "style">) {
+  return (
+    <div
+      data-slot="code-frame"
+      {...props}
+      {...stylex.props(ARTIFACT_SURFACE.face, styles.frame)}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function CodeCaption({
   language,
   code,
@@ -115,8 +147,9 @@ export function CodeCaption({
   wrappable = true,
   copyable = true,
   copyReveal,
+  children,
   ...props
-}: Omit<ComponentPropsWithoutRef<"div">, "children" | "className" | "style"> & {
+}: Omit<ComponentPropsWithoutRef<"div">, "className" | "style"> & {
   language?: string;
   code: string;
   labels?: CodeActionLabels;
@@ -133,26 +166,29 @@ export function CodeCaption({
       {...stylex.props(styles.caption, type.uiXs)}
     >
       <span {...stylex.props(styles.language)}>{language || "text"}</span>
-      {wrappable && (
-        <IconButton
-          icon={wrapped ? WrapText : UnfoldHorizontal}
-          size="xs"
-          active={wrapped}
-          aria-pressed={wrapped}
-          onClick={() => setCodeWrap(!wrapped)}
-          aria-label={wrapped ? labels.unwrap : labels.wrap}
-        />
-      )}
-      {copyable && (
-        <IconButton
-          icon={copied ? Check : Copy}
-          size="xs"
-          tone={copied ? "success" : undefined}
-          onClick={() => void copy()}
-          {...copyReveal}
-          aria-label={copied ? labels.copied : labels.copy}
-        />
-      )}
+      <span {...stylex.props(styles.actions)}>
+        {children}
+        {wrappable && (
+          <IconButton
+            icon={wrapped ? WrapText : UnfoldHorizontal}
+            size="xs"
+            active={wrapped}
+            aria-pressed={wrapped}
+            onClick={() => setCodeWrap(!wrapped)}
+            aria-label={wrapped ? labels.unwrap : labels.wrap}
+          />
+        )}
+        {copyable && (
+          <IconButton
+            icon={copied ? Check : Copy}
+            size="xs"
+            tone={copied ? "success" : undefined}
+            onClick={() => void copy()}
+            {...copyReveal}
+            aria-label={copied ? labels.copied : labels.copy}
+          />
+        )}
+      </span>
     </div>
   );
 }
@@ -171,10 +207,7 @@ export function CodeBlock({
   const wrapped = useCodeWrap();
   const Source = useContext(CodeSource);
   return (
-    <div
-      data-slot="code-block"
-      {...stylex.props(ARTIFACT_SURFACE.face, styles.frame)}
-    >
+    <CodeFrame data-slot="code-block">
       <CodeCaption language={language} code={children} labels={labels} />
       <pre
         dir="ltr"
@@ -187,6 +220,6 @@ export function CodeBlock({
       >
         <Source source={children} language={language || "text"} />
       </pre>
-    </div>
+    </CodeFrame>
   );
 }

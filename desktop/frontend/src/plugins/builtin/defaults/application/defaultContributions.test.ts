@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_ACCENT } from "@/plugins/builtin/theme/public/appearance";
 import {
   DEFAULT_ACCENTS,
   defaultMessageRoles,
@@ -8,12 +9,16 @@ import {
 describe("DEFAULT_ACCENTS", () => {
   it("keeps accent ids stable and ordered for the appearance picker", () => {
     expect(DEFAULT_ACCENTS.map((accent) => accent.id)).toEqual([
+      "flame",
       "blue",
       "purple",
       "green",
-      "orange",
     ]);
     expect(DEFAULT_ACCENTS.map((accent) => accent.order)).toEqual([0, 1, 2, 3]);
+  });
+
+  it("leads with the default accent so choosing it restores the default", () => {
+    expect(DEFAULT_ACCENTS[0]!.color).toBe(DEFAULT_ACCENT);
   });
 
   it("names one distinct brand color for every built-in accent", () => {
