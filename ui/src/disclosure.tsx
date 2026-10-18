@@ -55,10 +55,13 @@ const styles = stylex.create({
   row: {
     paddingInline: layout.cardPadding,
     paddingBlock: space.s3,
-    backgroundColor: {
-      default: "transparent",
-      ":hover": { "@media (hover: hover)": surface.hover },
-    },
+  },
+  rowTrigger: {
+    marginInline: `calc(-1 * ${space.s2})`,
+    paddingInline: space.s2,
+    maxWidth: "none",
+    borderWidth: 0,
+    lineHeight: "inherit",
   },
   trigger: {
     width: "auto",
@@ -223,9 +226,14 @@ export function Disclosure({
         <CollapsiblePrimitive.Trigger
           render={
             <Button
-              variant={variant === "row" ? "bare" : "ghost"}
+              variant="ghost"
               size="sm"
-              styles={styles.trigger}
+              press={variant === "row" ? "none" : undefined}
+              styles={
+                variant === "row"
+                  ? [styles.trigger, styles.rowTrigger]
+                  : styles.trigger
+              }
             />
           }
         >

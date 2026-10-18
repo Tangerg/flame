@@ -108,14 +108,13 @@ const styles = stylex.create({
     maxWidth: "75ch",
   },
   facts: {
-    display: "flex",
-    flexWrap: "wrap",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,12rem),1fr))",
     minWidth: 0,
     gap: layout.fieldGap,
     paddingBlock: space.s2,
   },
   fact: {
-    flex: "1 1 max-content",
     display: "grid",
     gap: space.s1,
     alignContent: "start",

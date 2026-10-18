@@ -46,7 +46,10 @@ Page actions belong to the persistent `Panel.controls` zone, alongside filters.
 `PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface, corners
 and separators. Its `cards` variant provides the responsive schedule grid;
 `ListRow variant="card"` owns each independent card surface.
-`Disclosure variant="row"` owns resource summaries that expand directly.
+`Disclosure variant="row"` owns resource summaries that expand directly. Hover
+feedback belongs to its summary trigger; the expanded reading body remains
+untinted while the pointer moves through it. Header and body keep the shared row
+insets and existing sticky-header geometry.
 `RecordSummary` owns the optional identity mark, copy and state alignment.
 `RecordBody` preserves recorded line breaks and allows selecting its complete text.
 `FilterBar` owns the control zone in three meanings, in reading order: the
@@ -77,9 +80,10 @@ update this local presentation without tracking the current file or scroll posit
 `ActionMenu` owns secondary action presentation, keyboard behavior and focus return; each command
 receives its actual trigger as the opener for an inline editor. `triggerContent`
 replaces the default ellipsis with a text trigger for named action menus.
-`Facts` keeps labels with their values and wraps complete pairs according to their
-content. Short pairs share rows; long identities and paths use the available width
-and remain complete. Visual reading order follows the source order.
+`Facts` keeps labels with their values in equal, container-responsive columns.
+Column edges remain shared across rows; narrow containers reduce the column count.
+Long identities and paths wrap completely inside each pair, and visual reading
+order follows the source order.
 `TileGrid` reserves text space at the tile's font scale plus the shared card
 inset. Filtering retains the column geometry, so a lone result keeps the
 catalog's card width; narrow containers retain complete, wrapping identities.

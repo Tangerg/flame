@@ -1,6 +1,100 @@
 import { READING_BLOCKS_MARKDOWN } from "./agentSessionSnapshots";
 import { expect, test } from "./test";
 
+test("expanded record facts retain shared column edges", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/visual/?fixture=workspace&state=dock-trajectory&theme=light&font-size=14");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const record = page.locator('[data-trajectory-record="model:call_visual_recovered"]');
+  await record.getByRole("button").first().click();
+  const facts = record.locator("dl");
+  const geometry = await facts.evaluate((list) =>
+    [...list.children].map((fact) => {
+      const bounds = fact.getBoundingClientRect();
+      return { left: bounds.left, width: bounds.width };
+    }),
+  );
+  expect(geometry).toHaveLength(7);
+  expect(new Set(geometry.map((fact) => fact.width)).size).toBe(1);
+  expect(new Set(geometry.map((fact) => fact.left)).size).toBe(2);
+  for (const [index, fact] of geometry.entries()) {
+    expect(fact.left).toBe(geometry[index % 2]!.left);
+  }
+
+  await page.evaluate(() => {
+    document.documentElement.dir = "rtl";
+  });
+  const mirrored = await facts.evaluate((list) =>
+    [...list.children].map((fact) => fact.getBoundingClientRect().right),
+  );
+  expect(new Set(mirrored).size).toBe(2);
+  expect(mirrored[0]).toBeGreaterThan(mirrored[1]!);
+  for (const [index, edge] of mirrored.entries()) {
+    expect(edge).toBe(mirrored[index % 2]);
+  }
+});
+
+test("a narrow full view keeps complete fact pairs in one readable column", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto(
+    "/visual/?fixture=workspace&state=full-view&full-view=package:visual:trajectory&theme=dark&font-size=18",
+  );
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+  const record = page.locator('[data-trajectory-record="model:call_visual_recovered"]');
+  await record.getByRole("button").first().click();
+  const facts = record.locator("dl");
+  await expect(facts.locator("dt")).toHaveText([
+    "Record ID",
+    "Run ID",
+    "Segment ID",
+    "Recorded settlement",
+    "First output (ms)",
+    "Input tokens",
+    "Output tokens",
+  ]);
+  await expect(facts.locator("dd")).toHaveText([
+    "call_visual_recovered",
+    "run_root",
+    "segment_visual",
+    "2026-07-31T08:01:00.000Z",
+    "Unrecorded",
+    "Unrecorded",
+    "Unrecorded",
+  ]);
+  const reading = await facts.evaluate((list) => ({
+    edges: [...list.children].map((fact) => fact.getBoundingClientRect().left),
+    clipped: [...list.querySelectorAll("dt, dd")]
+      .filter((node) => node.scrollWidth > node.clientWidth)
+      .map((node) => node.textContent),
+  }));
+  expect(new Set(reading.edges).size).toBe(1);
+  expect(reading.clipped).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+});
+
+test("record hover marks its summary without tinting the expanded reading body", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/visual/?fixture=workspace&state=dock-trajectory&theme=light&font-size=14");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const record = page.locator('[data-trajectory-record="model:call_visual_recovered"]');
+  const trigger = record.getByRole("button").first();
+  await trigger.click();
+  await page.mouse.move(0, 0);
+  const background = () => record.evaluate((node) => getComputedStyle(node).backgroundColor);
+  const idle = await background();
+  await record.locator("dt").first().hover();
+  await expect.poll(background).toBe(idle);
+
+  const summaryIdle = await trigger.evaluate((node) => getComputedStyle(node).backgroundColor);
+  await trigger.hover();
+  await expect
+    .poll(() => trigger.evaluate((node) => getComputedStyle(node).backgroundColor))
+    .not.toBe(summaryIdle);
+});
+
 test("narrow Run metadata keeps its complete timestamp on one line", async ({ page }) => {
   await page.setViewportSize({ width: 1472, height: 900 });
   await page.goto("/visual/?fixture=workspace&state=dock-runs&theme=dark&font-size=18");
