@@ -16,7 +16,7 @@ import {
   useToggleWorkspaceTool,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { Icon, ScrollArea, SectionLabel, StatusDot } from "@/ui";
-import { EmptyState, IconButton, RecordSummary, toneInk, vocab } from "@flame/ui";
+import { EmptyState, IconButton, RecordBody, RecordSummary, toneInk, vocab } from "@flame/ui";
 import { AgentSurfaceHeader, AgentWorkspaceView } from "@/ui/agent";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
@@ -42,7 +42,6 @@ const styles = stylex.create({
   status: { display: "flex", alignItems: "flex-start", gap: space.s2 },
   summary: { minWidth: 0, flex: 1 },
   statusAction: { marginInlineStart: "auto" },
-  detail: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
 });
 
 export function SubagentsPanel() {
@@ -163,7 +162,9 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
           )}
         </div>
         {model.detail && (
-          <p {...stylex.props(styles.detail, typeStep.uiSm, toneInk[model.ink])}>{model.detail}</p>
+          <div {...stylex.props(typeStep.uiSm, toneInk[model.ink])}>
+            <RecordBody>{model.detail}</RecordBody>
+          </div>
         )}
         <UnresolvedRunEffects effects={narrative.run.outcome?.unresolvedEffects} />
         {narrative.messages.length === 0 && (

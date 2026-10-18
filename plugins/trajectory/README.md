@@ -31,3 +31,13 @@ Endpoints retain request and known response JSON as strings, preserve original
 caller/parent/origin, and may belong to a Session without a Run. The Session-only
 filter includes them; unknown outcome and failure remain visible. Counts are record
 counts, not additive billing totals.
+
+Run summaries retain their full accepted Run ID alongside provider/model, state
+and time. Expanded Run facts name that identity once and retain the recorded
+root, parent and delegating item relationships.
+
+Message text, non-redacted reasoning and compaction summaries use literal recorded
+prose. Message content keeps its text and image order. When a readable body is
+present, complete JSON remains available under Recorded evidence; structured
+records keep primary JSON evidence. Both projections use the same redacted
+evidence, preserving unknown fields while omitting redacted reasoning text.

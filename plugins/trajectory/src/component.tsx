@@ -36,6 +36,7 @@ import {
   EvidenceImage,
   Facts,
   Metadata,
+  RecordBody,
   RecordGroup,
   RecordSummary,
   SearchField,
@@ -132,6 +133,12 @@ function title(row: TrajectoryEntry) {
       title={title}
       description={
         <>
+          {row.type === "run" && (
+            <>
+              <code>{row.run.id}</code>
+              {" · "}
+            </>
+          )}
           <time dateTime={row.occurredAt}>
             {new Intl.DateTimeFormat(navigator.language, {
               hour: "numeric",
@@ -150,11 +157,43 @@ function title(row: TrajectoryEntry) {
     />
   );
 }
-function Observation({ row }: { row: TrajectoryEntry }) {
-  const facts: Fact[] = [
-    ["Record ID", identity(row)],
-    ["Run ID", runId(row) || "Session only"],
-  ];
+function Observation({ row: recorded }: { row: TrajectoryEntry }) {
+  const row = evidence(recorded);
+  const body: ReactNode[] = [];
+  if (row.type === "item") {
+    const item = row.item;
+    if (item.type === "userMessage" || item.type === "agentMessage") {
+      for (const [index, part] of (item.content ?? []).entries()) {
+        if (part.type === "text") {
+          if (part.text)
+            body.push(<RecordBody key={index}>{part.text}</RecordBody>);
+        } else {
+          body.push(
+            <EvidenceImage
+              key={index}
+              src={`data:${part.mime};base64,${part.data}`}
+              alt={`Recorded ${part.mime} image`}
+            />,
+          );
+        }
+      }
+    } else {
+      const text =
+        item.type === "reasoning"
+          ? item.text
+          : item.type === "compaction"
+            ? item.summary
+            : undefined;
+      if (text) body.push(<RecordBody key="text">{text}</RecordBody>);
+    }
+  }
+  const facts: Fact[] =
+    row.type === "run"
+      ? [["Run ID", row.run.id]]
+      : [
+          ["Record ID", identity(row)],
+          ["Run ID", runId(row) || "Session only"],
+        ];
   const notes: ReactNode[] = [];
   if (row.type === "model") {
     const source = row.model;
@@ -213,26 +252,23 @@ function Observation({ row }: { row: TrajectoryEntry }) {
   }
   if (row.type === "item" && row.item.type === "reasoning" && row.item.redacted)
     notes.push("Reasoning was redacted.");
+  const raw = (
+    <CodeBlock label="Recorded evidence">
+      {JSON.stringify(row, null, 2)}
+    </CodeBlock>
+  );
   return (
     <>
+      {body}
       <Facts values={facts} />
       {notes.map((note, index) => (
         <Metadata key={index}>{note}</Metadata>
       ))}
-      <CodeBlock label="Recorded evidence">
-        {JSON.stringify(evidence(row), null, 2)}
-      </CodeBlock>
-      {row.type === "item" &&
-        "content" in row.item &&
-        row.item.content?.map((part, index) =>
-          part.type === "image" ? (
-            <EvidenceImage
-              key={index}
-              src={`data:${part.mime};base64,${part.data}`}
-              alt={`Recorded ${part.mime} image`}
-            />
-          ) : null,
-        )}
+      {body.length ? (
+        <Disclosure title="Recorded evidence">{raw}</Disclosure>
+      ) : (
+        raw
+      )}
     </>
   );
 }
@@ -447,6 +483,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
       label="Session trajectory"
       header={
         <PanelHeader
+          size="md"
           title="Session trajectory"
           context={
             <Metadata>

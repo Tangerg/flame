@@ -1703,7 +1703,9 @@ interface UnknownToolCall {
 | 掩码过的密钥 | 原样 | **永不解掩码、永不回显、永不据此推原文** |
 
 1. **一个面只用一种截断策略。**
-2. **尺寸不随内容长度跳动** —— 长文本靠截断 + 兜底，**绝不靠换行撑高度**。
+2. Keep controls stable while expanded reading bodies and recorded identities wrap naturally and remain complete.
+
+Workspace reading viewports allow native text selection across their body and blank space, so a pointer click can dismiss a selection. Navigation controls retain their own non-selectable interaction. Recorded prose preserves literal line breaks; trajectory JSON remains available separately and uses the same redacted evidence as its readable body.
 
 ### 8.4 枚举
 

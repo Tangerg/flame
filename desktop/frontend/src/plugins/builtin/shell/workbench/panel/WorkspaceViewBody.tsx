@@ -21,6 +21,7 @@ const styles = stylex.create({
     minHeight: 0,
     overflowY: "auto",
     overscrollBehavior: "contain",
+    userSelect: "text",
   },
 });
 
