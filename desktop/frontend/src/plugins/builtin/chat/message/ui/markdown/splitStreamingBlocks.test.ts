@@ -26,6 +26,11 @@ const CASES: readonly [name: string, markdown: string, blocks: readonly string[]
   ],
   ["a footnote reference keeps the document whole", "see[^a]\n\nbeta", ["see[^a]\n\nbeta"]],
   ["a footnote definition keeps the document whole", "[^a]: note\n\nbeta", ["[^a]: note\n\nbeta"]],
+  [
+    "a non-Latin footnote label keeps its definition with the reference",
+    "see[^来源]\n\n[^来源]: supporting evidence",
+    ["see[^来源]\n\n[^来源]: supporting evidence"],
+  ],
   ["a void element opens nothing", "<img src=x>\n\npara", ["<img src=x>", "\n\n", "para"]],
   ["a self-closing element opens nothing", "<div />\n\npara", ["<div />", "\n\n", "para"]],
   [

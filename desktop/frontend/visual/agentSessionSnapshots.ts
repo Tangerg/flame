@@ -34,6 +34,7 @@ export const VISUAL_AGENT_STATES = [
   "delegated",
   "long-content",
   "prose-blocks",
+  "reference-notes",
   "math-content",
   "callouts",
   "narrative",
@@ -928,6 +929,26 @@ export const READING_BLOCKS_MARKDOWN = [
   "Review README.md:15:2 before publishing, then inspect desktop/frontend/package.json. The sentence keeps its final punctuation.",
 ].join("\n");
 
+const REFERENCE_NOTES_MARKDOWN = [
+  "## A clear answer with supporting notes",
+  "",
+  "The consumer keeps the accepted observation next to the decision it supports.[^边界] The explanation continues along the same reading edge, without turning the reference into a separate object.",
+  "",
+  "### What to verify",
+  "",
+  "- Keep the original request with its accepted result.",
+  "- Read the surrounding context before advancing the next state.",
+  "- Preserve the public contract when the view becomes narrower.",
+  "",
+  "中文说明也应保留完整的引用关系，第二次引用返回到它自己所在的位置。[^边界]",
+  "",
+  'The [protocol guide](https://example.test/runtime-guide "Read the recorded contract") supplies the public vocabulary. The answer then resumes in ordinary prose.',
+  "",
+  "[^边界]: The Runtime owns the durable fact. The client reads an accepted projection.",
+  "",
+  "    Supporting context stays in a second paragraph, with enough room to distinguish it from the main answer.",
+].join("\n");
+
 const CALLOUT_RESPONSE = message(
   "agentMessage",
   "item_callout_response",
@@ -1574,6 +1595,24 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [PROMPT, message("agentMessage", "item_reading_blocks", READING_BLOCKS_MARKDOWN)],
     pendingInterruptSets: [],
   },
+  "reference-notes": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:12.000Z",
+        outcome: { type: "completed" },
+      }),
+    ],
+    items: [
+      PROMPT,
+      message("agentMessage", "item_notes_1", REFERENCE_NOTES_MARKDOWN),
+      message(
+        "agentMessage",
+        "item_notes_2",
+        REFERENCE_NOTES_MARKDOWN.replace("A clear answer", "Another answer"),
+      ),
+    ],
+    pendingInterruptSets: [],
+  },
   callouts: {
     runs: [
       run("finished", {
@@ -1883,6 +1922,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   delegated: [],
   "long-content": [],
   "prose-blocks": [],
+  "reference-notes": [],
   "math-content": [],
   callouts: [],
   narrative: [],

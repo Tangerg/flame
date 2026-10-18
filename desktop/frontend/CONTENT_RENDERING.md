@@ -672,6 +672,8 @@ interface BlockCtx {
 - Provisional text enters the work narrative. A terminal Item replaces all of its provisional blocks with the complete ordered `content`, including images and empty text. `finalAnswer` moves that Item into its stable independent row; commentary remains in the work narrative. Live completion, replay, and cold history use the same projection and cannot retain stale preview text or duplicate media.
 - commentary、canceled/waiting work narrative 不挂 context menu/message actions；只有 `finalAnswer` 拥有 Copy/Regenerate/Good/Poor。若同 Run 的 final answer 紧邻 commentary，presentation planner 只折叠前一行的 reasoning/tools wave，不合并两个 message identity。
 - Markdown 包裹层用 `<div>` 不是 `<p>`（渲染器自己会产出 `<p>`，嵌套是非法 HTML，浏览器会静默拆开外层）。
+- Generated footnotes keep document-local reference, definition and label identities across streaming completion. Repeated references return to their own occurrence; another message with the same authored identifier has a separate identity.
+- Footnotes form supporting content, with the generated label retained for assistive reading. Selection copy keeps the answer and note text while omitting the hidden label and return controls. Fragment links stay in the document; external links retain the shared safe-opening policy.
 
 ---
 

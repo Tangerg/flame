@@ -29,6 +29,7 @@ const STATE_LABELS: Record<VisualAgentState, string> = {
   delegated: "Delegated tree",
   "long-content": "Long content",
   "prose-blocks": "Reading blocks",
+  "reference-notes": "Reference notes",
   "math-content": "Mathematics",
   callouts: "Callouts",
   narrative: "Narrative",

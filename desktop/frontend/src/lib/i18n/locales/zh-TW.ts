@@ -139,6 +139,8 @@ export const zhTW: Record<string, string> = {
   "workspace.view.openBeside": "在內容面板中開啟",
   "workspace.view.unavailable.title": "檢視不可用",
   "workspace.view.unavailable.body": '未註冊 "{{id}}" 檢視。請關閉此分頁或重新啟用其外掛。',
+  "message.markdown.footnotes": "註腳",
+  "message.markdown.backReference": "返回引用 {{reference}}",
   "message.image.view": "檢視附帶的圖片",
   "message.image.preview": "開啟圖片預覽",
   "message.image.previewTitle": "圖片預覽",

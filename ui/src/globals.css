@@ -431,6 +431,23 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
     text-decoration-color: var(--color-accent);
   }
 }
+:where([data-prose]) :where([data-footnotes]) {
+  margin-block-start: calc(var(--prose-space) * 8);
+  padding-block-start: calc(var(--prose-space) * 4);
+  border-block-start: 1px solid var(--color-divider);
+  color: var(--color-text-muted);
+  font-size: var(--fs-ui-sm);
+}
+:where([data-prose]) :where([data-footnotes] > ol) {
+  margin-block: 0;
+}
+:where([data-prose]) :where([data-footnote-ref], [data-footnote-backref]) {
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+:where([data-prose]) :where([data-footnote-backref]) {
+  white-space: nowrap;
+}
 :where([data-prose]) :where(hr) {
   clear: both;
   border: 0;

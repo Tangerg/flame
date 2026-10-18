@@ -143,6 +143,8 @@ export const es: Record<string, string> = {
   "workspace.view.unavailable.title": "Vista no disponible",
   "workspace.view.unavailable.body":
     'La vista "{{id}}" no está registrada. Cierra esta pestaña o reactiva su plugin.',
+  "message.markdown.footnotes": "Notas al pie",
+  "message.markdown.backReference": "Volver a la referencia {{reference}}",
   "message.image.view": "Ver imagen adjunta",
   "message.image.preview": "Abrir vista previa de la imagen",
   "message.image.previewTitle": "Vista previa de la imagen",

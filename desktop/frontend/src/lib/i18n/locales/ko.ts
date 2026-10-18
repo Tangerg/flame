@@ -139,6 +139,8 @@ export const ko: Record<string, string> = {
   "workspace.view.unavailable.title": "뷰를 사용할 수 없음",
   "workspace.view.unavailable.body":
     '"{{id}}" 뷰가 등록되지 않았습니다. 이 탭을 닫거나 플러그인을 다시 활성화하세요.',
+  "message.markdown.footnotes": "각주",
+  "message.markdown.backReference": "참조 {{reference}}(으)로 돌아가기",
   "message.image.view": "첨부 이미지 보기",
   "message.image.preview": "이미지 미리보기 열기",
   "message.image.previewTitle": "이미지 미리보기",

@@ -142,6 +142,8 @@ export const de: Record<string, string> = {
   "workspace.view.unavailable.title": "Ansicht nicht verfügbar",
   "workspace.view.unavailable.body":
     'Die Ansicht "{{id}}" ist nicht registriert. Schließe diesen Tab oder aktiviere das Plugin erneut.',
+  "message.markdown.footnotes": "Fußnoten",
+  "message.markdown.backReference": "Zurück zu Verweis {{reference}}",
   "message.image.view": "Angehängtes Bild ansehen",
   "message.image.preview": "Bildvorschau öffnen",
   "message.image.previewTitle": "Bildvorschau",

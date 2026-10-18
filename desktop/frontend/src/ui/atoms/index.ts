@@ -9,7 +9,7 @@ export { DiffStat } from "./diff-stat";
 export { FailureDetails } from "./failure-details";
 export { FilePath } from "./file-path";
 export { Divider } from "./divider";
-export { ExternalLink } from "./external-link";
+export { TextLink } from "./text-link";
 export { reveal } from "./reveal";
 export { Tree } from "./tree";
 export { HiddenFileInput } from "./hidden-file-input";

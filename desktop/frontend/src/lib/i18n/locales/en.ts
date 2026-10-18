@@ -148,6 +148,8 @@ export const en: Record<string, string> = {
   "workspace.view.unavailable.title": "View unavailable",
   "workspace.view.unavailable.body":
     'The "{{id}}" view isn\'t registered. Close this tab or re-enable its plugin.',
+  "message.markdown.footnotes": "Footnotes",
+  "message.markdown.backReference": "Back to reference {{reference}}",
   "message.image.view": "View attached image",
   "message.image.preview": "Open image preview",
   "message.image.previewTitle": "Image preview",

@@ -141,6 +141,8 @@ export const zh: Record<string, string> = {
   "workspace.view.openBeside": "在上下文面板中打开",
   "workspace.view.unavailable.title": "视图不可用",
   "workspace.view.unavailable.body": '未注册 "{{id}}" 视图。请关闭此标签页或重新启用其插件。',
+  "message.markdown.footnotes": "脚注",
+  "message.markdown.backReference": "返回引用 {{reference}}",
   "message.image.view": "查看附带的图片",
   "message.image.preview": "打开图片预览",
   "message.image.previewTitle": "图片预览",

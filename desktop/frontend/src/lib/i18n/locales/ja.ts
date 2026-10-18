@@ -140,6 +140,8 @@ export const ja: Record<string, string> = {
   "workspace.view.unavailable.title": "ビューを利用できません",
   "workspace.view.unavailable.body":
     '"{{id}}" ビューは登録されていません。このタブを閉じるか、プラグインを再度有効にしてください。',
+  "message.markdown.footnotes": "脚注",
+  "message.markdown.backReference": "参照 {{reference}} に戻る",
   "message.image.view": "添付画像を表示",
   "message.image.preview": "画像プレビューを開く",
   "message.image.previewTitle": "画像プレビュー",

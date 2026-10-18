@@ -142,6 +142,8 @@ export const fr: Record<string, string> = {
   "workspace.view.unavailable.title": "Vue indisponible",
   "workspace.view.unavailable.body":
     'La vue "{{id}}" n\'est pas enregistrée. Fermez cet onglet ou réactivez son plugin.',
+  "message.markdown.footnotes": "Notes de bas de page",
+  "message.markdown.backReference": "Retour à la référence {{reference}}",
   "message.image.view": "Voir l'image jointe",
   "message.image.preview": "Ouvrir l’aperçu de l’image",
   "message.image.previewTitle": "Aperçu de l’image",

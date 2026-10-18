@@ -86,6 +86,8 @@ host's content measure and font size. `data-prose-level` records an authored
 heading level when the host nests its physical heading below a surrounding
 outline. The `inline-code` and `prose-table` data slots also supply those reading
 roles outside a complete prose root, including table lightboxes.
+Generated footnotes use a quiet supporting-text section and retain their native
+reference links. The renderer owns document-local identities and navigation.
 Quotes and loose lists retain paragraph boundaries around nested blocks; quote
 spacing applies to direct content without overriding a nested list's own flow.
 `TaskListItem` renders one recorded task as a list item with an immutable,

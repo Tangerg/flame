@@ -1,7 +1,6 @@
 import { Lexer } from "marked";
 
-const FOOTNOTE_REFERENCE = /\[\^[\w-]{1,200}\](?!:)/;
-const FOOTNOTE_DEFINITION = /\[\^[\w-]{1,200}\]:/;
+const FOOTNOTE = /\[\^[^\]\r\n]+\]/;
 const HTML_BLOCK_TAG = /<([A-Za-z][\w:-]*)[\s>/]/;
 
 const VOID_ELEMENTS = new Set([
@@ -34,7 +33,7 @@ function closingTags(raw: string, tag: string): number {
 const mathFences = (raw: string) => raw.match(/\$\$/g)?.length ?? 0;
 
 export function splitStreamingBlocks(markdown: string): string[] {
-  if (FOOTNOTE_REFERENCE.test(markdown) || FOOTNOTE_DEFINITION.test(markdown)) return [markdown];
+  if (FOOTNOTE.test(markdown)) return [markdown];
 
   const blocks: string[] = [];
   const openTags: string[] = [];

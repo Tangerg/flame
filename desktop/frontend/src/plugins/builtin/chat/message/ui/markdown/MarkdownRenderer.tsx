@@ -1,4 +1,4 @@
-import { memo, useDeferredValue, useEffect, useMemo, useRef } from "react";
+import { memo, useDeferredValue, useEffect, useId, useMemo, useRef } from "react";
 
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import rehypeKatex from "rehype-katex";
@@ -16,11 +16,13 @@ import { handleMarkdownCopy } from "./markdownSelectionCopy";
 import { ensureKatexCss } from "./katexCss";
 import { rehypeFadeIn } from "./rehypeFadeIn";
 import { rehypeFileRefs } from "./rehypeFileRefs";
+import { rehypeFootnoteLabels } from "./rehypeFootnoteLabels";
 import { rehypeStreamCaret } from "./rehypeStreamCaret";
 import { normalizeMarkdownMath } from "./preprocess";
 import { remarkLiteralUnknownHtml } from "./remarkLiteralUnknownHtml";
 import { useCommitThrottle, useStreamReveal, type MarkdownReveal } from "./streamReveal";
 import { useVisibleTextMaterial } from "../messageVisibleMaterial";
+import { useT } from "@/lib/i18n";
 import "remark-github-blockquote-alert/alert.css";
 
 const PARSE_COMMIT_MS = 33;
@@ -42,6 +44,7 @@ interface MarkdownBlockProps {
   text: string;
   streaming: boolean;
   reveal: MarkdownReveal;
+  footnotePrefix: string;
 }
 
 const remarkPlugins = [
@@ -66,6 +69,7 @@ export function MarkdownRenderer(props: MarkdownMessageProps) {
   const streaming = props.streaming ?? false;
   const instant = reveal === "instant";
   const rootRef = useRef<HTMLDivElement>(null);
+  const footnotePrefix = `user-content-${useId()}-`;
   const display = useStreamReveal(text, streaming, reveal);
 
   const committed = useCommitThrottle(display, streaming ? PARSE_COMMIT_MS : 0);
@@ -103,28 +107,44 @@ export function MarkdownRenderer(props: MarkdownMessageProps) {
           text={block}
           streaming={streaming && i === lastIdx}
           reveal={reveal}
+          footnotePrefix={footnotePrefix}
         />
       ))}
     </div>
   );
 }
 
-const MarkdownBlock = memo(function MarkdownBlock({ text, streaming, reveal }: MarkdownBlockProps) {
+const MarkdownBlock = memo(function MarkdownBlock({
+  text,
+  streaming,
+  reveal,
+  footnotePrefix,
+}: MarkdownBlockProps) {
+  const t = useT();
   const hasMath = text.includes("$");
   useEffect(() => {
     if (hasMath) ensureKatexCss();
   }, [hasMath]);
 
   const rehypePlugins = useMemo(() => {
-    if (!streaming) return [rehypeRaw, rehypeFileRefs, rehypeKatex];
-    if (reveal === "typewriter") return [rehypeRaw, rehypeKatex, rehypeStreamCaret];
-    return [rehypeRaw, rehypeFadeIn, rehypeKatex];
-  }, [reveal, streaming]);
+    const labels: [typeof rehypeFootnoteLabels, string] = [rehypeFootnoteLabels, footnotePrefix];
+    if (!streaming) return [rehypeRaw, labels, rehypeFileRefs, rehypeKatex];
+    if (reveal === "typewriter") return [rehypeRaw, labels, rehypeKatex, rehypeStreamCaret];
+    return [rehypeRaw, labels, rehypeFadeIn, rehypeKatex];
+  }, [footnotePrefix, reveal, streaming]);
   const components = useMemo(() => createMarkdownComponents(text), [text]);
 
   return (
     <ReactMarkdown
       remarkPlugins={remarkPlugins}
+      remarkRehypeOptions={{
+        clobberPrefix: footnotePrefix,
+        footnoteLabel: t("message.markdown.footnotes"),
+        footnoteBackLabel: (index, reuse) =>
+          t("message.markdown.backReference", {
+            reference: `${index + 1}${reuse > 1 ? `-${reuse}` : ""}`,
+          }),
+      }}
       rehypePlugins={rehypePlugins}
       components={components}
       allowElement={allowElement}

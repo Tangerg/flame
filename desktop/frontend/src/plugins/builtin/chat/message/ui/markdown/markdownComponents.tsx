@@ -8,7 +8,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { ExternalLink, ShikiCodeBlock } from "@/ui";
+import { TextLink, ShikiCodeBlock } from "@/ui";
 import { cn } from "@/lib/classNames";
 import { FileRefLink } from "@/plugins/builtin/chat/file-references/public/FileRefLink";
 import { MarkdownImage } from "./MarkdownImage";
@@ -152,44 +152,44 @@ const sharedMarkdownComponents: Components = {
       </p>
     );
   },
-  h1({ children }) {
+  h1({ children, node: _node, ...props }) {
     return (
-      <h3 dir="auto" data-prose-level="1">
+      <h3 {...props} dir="auto" data-prose-level="1">
         {children}
       </h3>
     );
   },
-  h2({ children }) {
+  h2({ children, node: _node, ...props }) {
     return (
-      <h3 dir="auto" data-prose-level="2">
+      <h3 {...props} dir="auto" data-prose-level="2">
         {children}
       </h3>
     );
   },
-  h3({ children }) {
+  h3({ children, node: _node, ...props }) {
     return (
-      <h4 dir="auto" data-prose-level="3">
+      <h4 {...props} dir="auto" data-prose-level="3">
         {children}
       </h4>
     );
   },
-  h4({ children }) {
+  h4({ children, node: _node, ...props }) {
     return (
-      <h5 dir="auto" data-prose-level="4">
+      <h5 {...props} dir="auto" data-prose-level="4">
         {children}
       </h5>
     );
   },
-  h5({ children }) {
+  h5({ children, node: _node, ...props }) {
     return (
-      <h6 dir="auto" data-prose-level="5">
+      <h6 {...props} dir="auto" data-prose-level="5">
         {children}
       </h6>
     );
   },
-  h6({ children }) {
+  h6({ children, node: _node, ...props }) {
     return (
-      <h6 dir="auto" data-prose-level="6">
+      <h6 {...props} dir="auto" data-prose-level="6">
         {children}
       </h6>
     );
@@ -304,7 +304,7 @@ const sharedMarkdownComponents: Components = {
       />
     );
   },
-  a({ href, title, children, ...rest }) {
+  a({ href, title, children, node: _node, ...rest }) {
     const r = rest as {
       "data-file-ref"?: string;
       "data-file-line"?: string;
@@ -320,9 +320,14 @@ const sharedMarkdownComponents: Components = {
       );
     }
     return (
-      <ExternalLink href={href} title={title}>
+      <TextLink
+        {...rest}
+        href={href}
+        title={title}
+        data-markdown-copy={Object.hasOwn(rest, "data-footnote-backref") ? "exclude" : undefined}
+      >
         {imagesDeferToTheLink(children)}
-      </ExternalLink>
+      </TextLink>
     );
   },
 };
