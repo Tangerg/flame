@@ -1,25 +1,36 @@
 import { failureText } from "@/lib/rpcErrors";
-import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { useId, useRef, useState } from "react";
-import { Icon, TextButton } from "@/ui";
-import { Button, FormField, ModalDialog, TextArea, vocab } from "@flame/ui";
+import { useId, useLayoutEffect, useRef, useState } from "react";
+import { Icon, SystemMessage, TextButton } from "@/ui";
+import { Button, FormField, ModalDialog, TextArea } from "@flame/ui";
 import { useCreateMCPServer } from "../application/mcpServerConfig";
 import { notifyInfo } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { parseMcpImport } from "../application/mcpImport";
-import { type as typeStep } from "@flame/ui/tokens.stylex";
-import { settingStyles as ss } from "../../kit/settingStyles";
+
+const CONFIG_EXAMPLE = JSON.stringify(
+  {
+    mcpServers: {
+      "my-server": { type: "streamableHttp", url: "https://example.com/mcp" },
+    },
+  },
+  null,
+  2,
+);
 
 export function JsonImport() {
   const t = useT();
   const create = useCreateMCPServer();
   const field = useRef<HTMLTextAreaElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
   const errorId = useId();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>();
+  const [error, setError] = useState<{ message: string }>();
+  useLayoutEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: "nearest" });
+  }, [error]);
 
   const onImport = async () => {
     setBusy(true);
@@ -40,7 +51,7 @@ export function JsonImport() {
       setOpen(false);
     } catch (err) {
       if (wasGenerationRetired(err)) return;
-      setError(failureText(err, t("mcp.import.error")));
+      setError({ message: failureText(err, t("mcp.import.error")) });
     } finally {
       setBusy(false);
     }
@@ -85,20 +96,13 @@ export function JsonImport() {
             rows={10}
             spellCheck={false}
             aria-describedby={error ? errorId : undefined}
-            placeholder={
-              '{"mcpServers": {"my-server": {"type": "streamableHttp", "url": "https://example.com/mcp"}}}'
-            }
+            placeholder={CONFIG_EXAMPLE}
           />
         </FormField>
         {error && (
-          <div
-            id={errorId}
-            role="alert"
-            {...stylex.props(ss.inline, vocab.negative, typeStep.uiMd)}
-          >
-            <Icon name="alert" size="sm" />
-            {error}
-          </div>
+          <SystemMessage ref={errorRef} id={errorId} variant="error">
+            {error.message}
+          </SystemMessage>
         )}
       </ModalDialog>
     </>

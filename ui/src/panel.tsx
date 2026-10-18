@@ -257,7 +257,22 @@ export function Panel({
             {controls}
           </div>
         )}
-        <div data-slot="panel-body" {...stylex.props(styles.body)}>
+        <div
+          data-slot="panel-body"
+          onFocus={(event) => {
+            const controls = controlsRef.current;
+            const target = event.target;
+            if (!controls || !event.currentTarget.contains(target)) return;
+            if (
+              target.getBoundingClientRect().top <
+              controls.getBoundingClientRect().bottom
+            ) {
+              // Native focus scrolling can leave tall fields behind sticky controls.
+              target.scrollIntoView({ block: "start", inline: "nearest" });
+            }
+          }}
+          {...stylex.props(styles.body)}
+        >
           {children}
         </div>
       </div>

@@ -579,7 +579,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                       tone={decision === "reject" ? "negative" : undefined}
                       size="md"
                       key={decision}
-                      disabled={disabled}
+                      pending={disabled}
                       onClick={(event) =>
                         setReview({
                           proposal: structuredClone(item),
