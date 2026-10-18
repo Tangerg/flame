@@ -125,7 +125,7 @@ const sharedMarkdownComponents: Components = {
       <span className={className} {...props} />
     );
   },
-  p({ children }) {
+  p({ children, className }) {
     const images = imageOnlyParagraph(children);
     if (images && images.length > 1) {
       const galleryImages = images.map((image, index) =>
@@ -146,7 +146,11 @@ const sharedMarkdownComponents: Components = {
         </p>
       );
     }
-    return <p dir="auto">{children}</p>;
+    return (
+      <p className={className} dir="auto">
+        {children}
+      </p>
+    );
   },
   h1({ children }) {
     return (

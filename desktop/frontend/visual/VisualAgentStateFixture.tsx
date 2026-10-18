@@ -30,6 +30,7 @@ const STATE_LABELS: Record<VisualAgentState, string> = {
   "long-content": "Long content",
   "prose-blocks": "Reading blocks",
   "math-content": "Mathematics",
+  callouts: "Callouts",
   narrative: "Narrative",
   "tool-shells": "Tool shells",
   "tool-search": "Tool search",

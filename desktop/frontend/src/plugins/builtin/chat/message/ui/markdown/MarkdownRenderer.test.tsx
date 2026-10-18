@@ -444,6 +444,24 @@ describe("markdownMessage", () => {
     expect(container.querySelector('blockquote[dir="auto"]')).toBeTruthy();
   });
 
+  it("preserves generated alert titles and their decorative icons", () => {
+    const { container } = render(
+      <MarkdownRenderer
+        text={
+          "> [!NOTE]\n> Read the evidence.\n\n> [!WARNING]\n> Keep the original result.\n\n> A plain quotation."
+        }
+        reveal="instant"
+      />,
+    );
+    const titles = container.querySelectorAll(".markdown-alert-title");
+    expect(Array.from(titles, (title) => title.textContent)).toEqual(["NOTE", "WARNING"]);
+    for (const title of titles) {
+      expect(title.getAttribute("dir")).toBe("auto");
+      expect(title.querySelector('svg[aria-hidden="true"] path')).toBeTruthy();
+    }
+    expect(container.querySelector("blockquote > p")?.textContent).toBe("A plain quotation.");
+  });
+
   it("keeps unmatched numeric brackets as ordinary prose instead of citation chrome", () => {
     const { container } = render(
       <MarkdownRenderer text="Read values[1] before values[12]." reveal="instant" />,

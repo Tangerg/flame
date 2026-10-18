@@ -35,6 +35,7 @@ export const VISUAL_AGENT_STATES = [
   "long-content",
   "prose-blocks",
   "math-content",
+  "callouts",
   "narrative",
   "tool-shells",
   "tool-search",
@@ -919,6 +920,33 @@ export const READING_BLOCKS_MARKDOWN = [
   "> 2. [ ] Review the next projection",
 ].join("\n");
 
+const CALLOUT_RESPONSE = message(
+  "agentMessage",
+  "item_callout_response",
+  [
+    "## Notes that belong to the answer",
+    "",
+    "The review should read as one answer, with supporting notes kept close to the evidence.",
+    "",
+    "> [!NOTE]",
+    "> Keep the accepted result with the observation that explains it.",
+    ">",
+    "> A second paragraph adds context without starting a separate card.",
+    "",
+    "The explanation resumes along the same reading edge, so the next decision stays easy to follow.",
+    "",
+    "> [!WARNING]",
+    "> 更新之前，请先检查 `runtime.Commit` 的调用边界，并保留本次审阅的上下文。",
+    ">",
+    "> - Confirm the recorded result.",
+    "> - Review the consumer before continuing.",
+    "",
+    "> A plain quotation remains an ordinary part of the review.",
+    "",
+    "The answer ends with its conclusion, rather than another layer of interface chrome.",
+  ].join("\n"),
+);
+
 const MATH_RESPONSE = message(
   "agentMessage",
   "item_math_response",
@@ -1538,6 +1566,16 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [PROMPT, message("agentMessage", "item_reading_blocks", READING_BLOCKS_MARKDOWN)],
     pendingInterruptSets: [],
   },
+  callouts: {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:12.000Z",
+        outcome: { type: "completed" },
+      }),
+    ],
+    items: [PROMPT, CALLOUT_RESPONSE],
+    pendingInterruptSets: [],
+  },
   "math-content": {
     runs: [
       run("finished", {
@@ -1838,6 +1876,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   "long-content": [],
   "prose-blocks": [],
   "math-content": [],
+  callouts: [],
   narrative: [],
   "tool-shells": [],
   "tool-search": [],
