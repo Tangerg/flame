@@ -124,6 +124,9 @@ returns focus to the input and replaces the browser's native cancel action.
 `IconButton` requires either
 `aria-label` or `aria-labelledby`; `title` only overrides the tooltip. `DiffTable`
 requires consumer-supplied region and column labels, including assistive text.
+Every code cell reserves the same nonselectable marker width so context, added
+and deleted source retain a common code column in both layouts. Source text and
+its original indentation remain separate from the decorative marker.
 `ScrollRegion` contains horizontal overscroll while allowing vertical scrolling
 to continue through the enclosing reading viewport. Bounded image and diagram
 viewers explicitly contain both axes in their own viewport styles.

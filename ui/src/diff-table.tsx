@@ -38,6 +38,11 @@ const styles = stylex.create({
     color: color.fgMuted,
     userSelect: "none",
   },
+  marker: {
+    display: "inline-block",
+    inlineSize: "2ch",
+    textAlign: "start",
+  },
   added: { backgroundColor: surface.successWash },
   deleted: { backgroundColor: surface.negativeWash },
   hunk: { backgroundColor: surface.sunken, color: color.fgMuted },
@@ -51,11 +56,9 @@ function CodeCell({
 }) {
   return (
     <td {...stylex.props(styles.cell, kind && styles[kind])}>
-      {kind && (
-        <span aria-hidden="true" {...stylex.props(styles.number)}>
-          {kind === "added" ? "+ " : "− "}
-        </span>
-      )}
+      <span aria-hidden="true" {...stylex.props(styles.number, styles.marker)}>
+        {kind === "added" ? "+" : kind === "deleted" ? "−" : ""}
+      </span>
       <code>{code}</code>
     </td>
   );

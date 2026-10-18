@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { REVIEW_DIFF } from "./diffSnapshot";
 
 for (const theme of ["light", "dark"]) {
   test(`command search keeps its query and last option inside a short viewport in ${theme}`, async ({
@@ -77,6 +78,63 @@ for (const theme of ["light", "dark"]) {
     await expect(file.getByRole("button", { expanded: false }).first()).toBeVisible();
     await view.getByRole("button", { name: "Expand all", exact: true }).click();
     await expect(file.getByRole("button", { expanded: true }).first()).toBeVisible();
+  });
+
+  test(`Diff preserves source columns across row kinds and horizontal scrolling in ${theme}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1120, height: 720 });
+    await page.goto(
+      `/visual/?fixture=workspace&state=dock-review&theme=${theme}&font-size=${theme === "light" ? 14 : 18}`,
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const view = page.locator('[data-dock-view-id="package:visual:diff"]');
+    const source = REVIEW_DIFF.files![0]!.rows.filter((row) => row.type !== "hunk");
+    for (const layout of ["unified", "split"] as const) {
+      if (layout === "split") {
+        await view.getByRole("combobox", { name: "Layout", exact: true }).click();
+        await page.getByRole("option", { name: "Side by side", exact: true }).click();
+      }
+      const code = view
+        .locator("[data-diff-file]")
+        .first()
+        .getByRole("region", { name: /^Scrollable diff for / });
+      await expect(code.locator("table")).toHaveAttribute("data-layout", layout);
+      for (const offset of [0, 80]) {
+        await code.evaluate((node, offset) => {
+          node.scrollLeft = offset;
+        }, offset);
+        const rendered = await code.locator("tbody tr").evaluateAll((rows) =>
+          rows
+            .filter((row) => row.querySelector("code"))
+            .map((row) =>
+              Array.from(row.querySelectorAll("code"), (code) => {
+                const range = document.createRange();
+                range.selectNodeContents(code);
+                return { text: code.textContent, left: range.getBoundingClientRect().left };
+              }),
+            ),
+        );
+        expect(rendered.map((row) => row.map((cell) => cell.text))).toEqual(
+          source.map((row) =>
+            layout === "split"
+              ? [row.type === "added" ? "" : row.code, row.type === "deleted" ? "" : row.code]
+              : [row.code],
+          ),
+        );
+        for (const row of rendered) {
+          for (const [column, cell] of row.entries()) {
+            if (cell.text) {
+              expect(Math.abs(cell.left - rendered[0]![column]!.left)).toBeLessThan(0.5);
+            }
+          }
+        }
+        if (offset) {
+          expect(await code.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
+        }
+      }
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
 
   test(`a narrow file dock preserves its identity and wraps actions in ${theme}`, async ({
