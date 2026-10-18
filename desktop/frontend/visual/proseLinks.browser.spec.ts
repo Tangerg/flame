@@ -51,6 +51,12 @@ for (const [fontSize, theme, width] of [
     await expect(
       reading.getByRole("link", { name: "implementation notes", exact: true }),
     ).toHaveAttribute("href", "https://example.test/runtime/implementation");
+    const richLink = reading.getByRole("link", { name: "Review guide", exact: true });
+    await expect(richLink).toHaveAttribute("href", "https://example.test/runtime/review");
+    await expect(richLink).toHaveAttribute("title", "Accepted evidence and follow-up");
+    const linkColor = await richLink.evaluate((node) => getComputedStyle(node).color);
+    await expect(richLink.locator("strong")).toHaveCSS("color", linkColor);
+    await expect(richLink.locator("code")).toHaveCSS("color", linkColor);
     const unavailable = reading.locator("a").filter({ hasText: "unavailable source" });
     await expect(unavailable).not.toHaveAttribute("href");
     await unavailable.hover();

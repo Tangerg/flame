@@ -487,6 +487,10 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+:where([data-prose])
+  :where(a[href] strong, a[href] b, a[href] code:not(pre > code)) {
+  color: inherit;
+}
 :where([data-slot="document-body"] table, table[data-slot="prose-table"]) {
   width: fit-content;
   min-width: 100%;

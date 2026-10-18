@@ -97,6 +97,7 @@ roles outside a complete prose root, including table lightboxes.
 Generated footnotes use a quiet supporting-text section and retain their native
 reference links. The renderer owns document-local identities and navigation.
 Only anchors with a destination receive the shared link appearance.
+Emphasis and inline code inside those links inherit the link color.
 Quotes and loose lists retain paragraph boundaries around nested blocks; quote
 spacing applies to direct content without overriding a nested list's own flow.
 `TaskListItem` renders one recorded task as a list item with an immutable,

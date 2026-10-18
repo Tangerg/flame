@@ -11,7 +11,7 @@ import { Search } from "@flame/icons/react";
 import type { CapturedToolResult, ComponentContext } from "@flame/plugin-sdk";
 import { Button, IconButton, Metadata } from "@flame/ui";
 
-type Row = { location?: string; number?: number; body: string };
+type Row = { location?: string; number?: number; body?: string };
 
 function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -45,7 +45,7 @@ function rows(tool: CapturedToolResult): Row[] {
       const value = record(hit);
       return {
         location: `${text(value.path)}${value.lineNumber === undefined ? "" : `:${text(value.lineNumber)}`}`,
-        body: text(value.snippet),
+        body: value.snippet === undefined ? undefined : text(value.snippet),
       };
     });
   if (Array.isArray(result.results))
@@ -53,7 +53,7 @@ function rows(tool: CapturedToolResult): Row[] {
       const value = record(hit);
       return {
         location: `${text(value.title || value.url)}\n${text(value.url)}`,
-        body: text(value.snippet),
+        body: value.snippet === undefined ? undefined : text(value.snippet),
       };
     });
   if (tool.name === "http_request" && typeof result.status === "number") {
@@ -116,7 +116,7 @@ function RecordedRows({ tool }: { tool: CapturedToolResult }) {
   const matching = useMemo(
     () =>
       recorded.filter((row) =>
-        `${row.location ?? ""}\n${ansiText(row.body)}`
+        `${row.location ?? ""}\n${ansiText(row.body ?? "")}`
           .toLowerCase()
           .includes(filter.toLowerCase()),
       ),
@@ -234,20 +234,22 @@ function RecordedRows({ tool }: { tool: CapturedToolResult }) {
                 {row.location}
               </Metadata>
             )}
-            <pre
-              style={{
-                whiteSpace: "pre-wrap",
-                overflowWrap: "anywhere",
-                margin: 0,
-                color: /^error\b/.test(row.body)
-                  ? "var(--tone-negative)"
-                  : /^warning\b/.test(row.body)
-                    ? "var(--tone-warning)"
-                    : undefined,
-              }}
-            >
-              {renderAnsi(row.body || " ")}
-            </pre>
+            {row.body !== undefined && (
+              <pre
+                style={{
+                  whiteSpace: "pre-wrap",
+                  overflowWrap: "anywhere",
+                  margin: 0,
+                  color: /^error\b/.test(row.body)
+                    ? "var(--tone-negative)"
+                    : /^warning\b/.test(row.body)
+                      ? "var(--tone-warning)"
+                      : undefined,
+                }}
+              >
+                {renderAnsi(row.body || " ")}
+              </pre>
+            )}
           </div>
         ))}
         {!matching.length && (

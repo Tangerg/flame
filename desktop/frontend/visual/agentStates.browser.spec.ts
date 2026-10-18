@@ -2077,3 +2077,37 @@ test("a collapsed live reasoning row glimpses its newest line, softened only whe
     "a line wider than its row is cut, and the cut is softened",
   ).toBe("16px");
 });
+
+for (const touch of [false, true]) {
+  test.describe(`tool action columns with ${touch ? "touch" : "mouse"}`, () => {
+    test.use({ hasTouch: touch });
+
+    test("tool metadata and action rows share one trailing column", async ({ page }) => {
+      await page.setViewportSize({ width: 1120, height: 900 });
+      await page.goto("/visual/?fixture=agent&state=tool-shells&theme=light&font-size=18");
+      await page.locator("html[data-visual-ready]").waitFor();
+      await page.evaluate(() => document.fonts.ready);
+      await page.getByRole("button", { name: /steps/ }).first().click();
+      const read = page.locator('[data-tool="read"]').first();
+      const command = page.locator('[data-tool="shell"]').first();
+      await expect(read.getByRole("button")).toHaveCount(2);
+      await expect(command.getByRole("button")).toHaveCount(1);
+      const lines = (await read.getByText("6 lines", { exact: true }).boundingBox())!;
+      const duration = (await command.getByText("8.4s", { exact: true }).boundingBox())!;
+      expect(lines.x + lines.width).toBeCloseTo(duration.x + duration.width, 1);
+
+      const readHeader = (await read.locator('[data-slot="agent-activity-header"]').boundingBox())!;
+      const commandHeader = (await command
+        .locator('[data-slot="agent-activity-header"]')
+        .boundingBox())!;
+      expect(readHeader.height).toBeCloseTo(commandHeader.height, 1);
+      if (touch) {
+        for (const row of [read, command]) {
+          const trigger = (await row.getByRole("button").first().boundingBox())!;
+          expect(trigger.height).toBeGreaterThanOrEqual(44);
+        }
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+    });
+  });
+}

@@ -22,7 +22,10 @@ import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   sans: { fontFamily: "var(--font-sans)" },
   failure: { flexShrink: 0, color: color.negative },
-  openSlot: { flexShrink: 0, width: "var(--control-height-xs)" },
+  openSlot: {
+    flexShrink: 0,
+    width: "max(var(--control-height-xs), var(--control-target-min))",
+  },
   failureLine: {
     marginTop: space.s0_5,
     marginLeft: space.s6,

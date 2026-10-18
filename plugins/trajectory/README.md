@@ -38,8 +38,10 @@ canceled tools remain neutral. Attention includes timed-out Runs and retains
 incomplete, refused or errored tools without changing their recorded state.
 
 Run summaries retain their full accepted Run ID alongside provider/model, state
-and time. Expanded Run facts name that identity once and retain the recorded
-root, parent and delegating item relationships.
+and time. Summary metadata groups identities, timestamps and approval decisions
+as separate wrapping values; long identities retain complete wrapping text.
+Expanded Run facts name that identity once and retain the recorded root, parent
+and delegating item relationships.
 
 Message text, non-redacted reasoning and compaction summaries use literal recorded
 prose. Message content keeps its text and image order. When a readable body is

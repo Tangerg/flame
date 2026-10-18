@@ -1,6 +1,30 @@
 import { READING_BLOCKS_MARKDOWN } from "./agentSessionSnapshots";
 import { expect, test } from "./test";
 
+test("narrow Run metadata keeps its complete timestamp on one line", async ({ page }) => {
+  await page.setViewportSize({ width: 1472, height: 900 });
+  await page.goto("/visual/?fixture=workspace&state=dock-runs&theme=dark&font-size=18");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const dock = page.locator('[data-dock-view-id="package:visual:trajectory"]');
+  const run = dock.locator('[data-trajectory-kind="run"]').first();
+  await expect(run).toBeAttached();
+  const resizer = page.locator(".agent-pane-resizer");
+  await resizer.focus();
+  await resizer.press("Home");
+  await expect.poll(() => dock.evaluate((node) => node.getBoundingClientRect().width)).toBe(320);
+  const summary = run.getByRole("button").first();
+  await summary.scrollIntoViewIfNeeded();
+  const time = summary.locator("time");
+  const lines = await time.evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    return [...new Set([...range.getClientRects()].map((rect) => rect.top))];
+  });
+  expect(lines).toHaveLength(1);
+  await expect(summary.locator("code")).toHaveText("run_fan_ok");
+  expect(await dock.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+});
+
 test("collapsed Run summaries retain complete identities and their recorded relationships", async ({
   page,
 }) => {

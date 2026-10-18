@@ -38,6 +38,7 @@ import {
   Metadata,
   RecordBody,
   RecordGroup,
+  RecordMeta,
   RecordSummary,
   SearchField,
   FilterBar,
@@ -183,13 +184,8 @@ function title(row: TrajectoryEntry) {
       }
       title={title}
       description={
-        <>
-          {row.type === "run" && (
-            <>
-              <code>{row.run.id}</code>
-              {" · "}
-            </>
-          )}
+        <RecordMeta>
+          {row.type === "run" && <code>{row.run.id}</code>}
           <time dateTime={row.occurredAt}>
             {new Intl.DateTimeFormat(navigator.language, {
               hour: "numeric",
@@ -197,8 +193,8 @@ function title(row: TrajectoryEntry) {
               second: "2-digit",
             }).format(new Date(row.occurredAt))}
           </time>
-          {decision && ` · Approval: ${decision}`}
-        </>
+          {decision && <span>Approval: {decision}</span>}
+        </RecordMeta>
       }
       status={<Badge tone={statusTone(row)}>{state}</Badge>}
     />

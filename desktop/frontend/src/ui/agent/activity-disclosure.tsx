@@ -44,7 +44,7 @@ const styles = stylex.create({
     paddingBlock: space.s0_5,
     paddingRight: 0,
     paddingLeft: 0,
-    minHeight: "var(--control-height-sm)",
+    minHeight: "max(var(--control-height-sm), var(--control-target-min))",
   },
   triggerCard: {
     gap: space.s3,
