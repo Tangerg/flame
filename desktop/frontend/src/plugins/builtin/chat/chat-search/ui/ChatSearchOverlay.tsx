@@ -5,11 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { IconButton, TextField, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
-import {
-  clearChatSearchHighlights,
-  installChatSearchHighlightStyles,
-  paintChatSearchHighlights,
-} from "../adapters/searchHighlights";
+import { clearChatSearchHighlights, paintChatSearchHighlights } from "../adapters/searchHighlights";
 import { setChatSearchOpener } from "../application/openChatSearch";
 import { findMessageRanges } from "../adapters/messageRanges";
 import { face, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -62,13 +58,7 @@ function SessionChatSearchOverlay() {
     return () => setChatSearchOpener(null);
   }, []);
 
-  useEffect(() => {
-    const uninstallStyles = installChatSearchHighlightStyles();
-    return () => {
-      clearChatSearchHighlights();
-      uninstallStyles();
-    };
-  }, []);
+  useEffect(() => () => clearChatSearchHighlights(), []);
 
   useEffect(() => {
     if (!open) return;

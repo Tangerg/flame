@@ -87,6 +87,8 @@ export function FindField({
           placeholder={fieldLabel}
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          onClear={() => onChange("")}
+          clearLabel="Clear search"
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.preventDefault();
@@ -212,14 +214,16 @@ export function RecordedOutput({ text }: { text: string }) {
   const visible = lines.slice(start, end).map((line, offset) => (
     <div
       key={start + offset}
-      style={{ height: expanded ? metrics.row : undefined, whiteSpace: "pre" }}
+      data-slot="search-line"
+      data-current-match={start + offset === selected ? "" : undefined}
+      style={{
+        height: expanded ? metrics.row : undefined,
+        minWidth: "max-content",
+        paddingInline: frameInset,
+        whiteSpace: "pre",
+      }}
     >
-      <span
-        data-output-line={start + offset}
-        data-current-match={start + offset === selected ? "" : undefined}
-      >
-        {renderAnsi(line || " ")}
-      </span>
+      <span data-output-line={start + offset}>{renderAnsi(line || " ")}</span>
     </div>
   ));
   const earlier = lines.length - PREVIEW_LINES;
@@ -323,10 +327,10 @@ export function RecordedOutput({ text }: { text: string }) {
         </div>
       )}
       <div
+        dir="ltr"
         style={{
           minWidth: 0,
           position: "relative",
-          paddingInline: frameInset,
           paddingBlockEnd: frameInset,
           fontFamily: "var(--font-mono)",
           fontSize: "var(--fs-code)",
@@ -355,7 +359,7 @@ export function RecordedOutput({ text }: { text: string }) {
               minWidth: 0,
               overflow: "auto",
               overflowAnchor: "none",
-              overscrollBehavior: "contain",
+              overscrollBehavior: "contain auto",
             }}
             onScroll={readWindow}
             onKeyDown={(event) => {

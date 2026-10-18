@@ -114,7 +114,7 @@ const styles = stylex.create({
     maxWidth: "100%",
     maxHeight: "min(28rem,60vh)",
     overflow: "auto",
-    overscrollBehavior: "contain",
+    overscrollBehavior: "contain auto",
     whiteSpace: "pre",
     paddingInline: space.s3,
     paddingBlockStart: space.s0_5,

@@ -33,7 +33,7 @@ const styles = stylex.create({
   bounded: {
     maxHeight: "calc(var(--spacing) * 60)",
     overflow: "auto",
-    overscrollBehavior: "contain",
+    overscrollBehavior: "contain auto",
   },
   fallback: { margin: 0 },
 });

@@ -170,6 +170,13 @@ its original indentation remain separate from the decorative marker.
 `ScrollRegion` contains horizontal overscroll while allowing vertical scrolling
 to continue through the enclosing reading viewport. Bounded image and diagram
 viewers explicitly contain both axes in their own viewport styles.
+Read-only code regions follow the same horizontal-only containment policy.
+
+The shared stylesheet owns search emphasis: `search-match` and
+`search-match-active` CSS highlights use the host's selected wash and paired accent
+fill and ink. A `search-line` slot with `data-current-match` marks a line-based
+result with the same wash and a leading accent rule, preserving its ANSI ink and
+fixed row height. Each consumer retains its own query, matching and navigation.
 
 `TextArea autosize` measures its content across supported hosts. The component owns
 height updates for input, controlled values, form reset, width and font changes;

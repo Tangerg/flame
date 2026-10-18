@@ -22,7 +22,10 @@ results read like the generic inspector's captured code: the caption names the
 content and holds Find, expansion, Jump to latest, Collapse and Copy. Copy writes the
 recorded text, without ANSI styling for command output. Result filters open on
 demand beneath the caption, above one bounded scrolling body. A web fetch names its
-format in the caption. Applied-change receipts stay an unframed table whose verbs
+format in the caption. Output search identifies the current matching line with the
+shared search treatment; Enter and Shift+Enter cycle matching lines. Clear empties
+the query and retains search focus; Close and Escape return to the output region.
+Applied-change receipts stay an unframed table whose verbs
 and code-role paths rank below the Tool row. Source lines share a continuous numbered
 layout; located source results keep their context above each snippet. Web results
 and skill summaries separate the primary title, supporting URL and readable body

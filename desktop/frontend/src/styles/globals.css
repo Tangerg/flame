@@ -157,7 +157,6 @@
   --color-text-muted: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #6d635f);
   --color-text-faint: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #716763);
   --color-text-on-accent: #000000;
-  --color-text-on-warning: #000000;
 
   --color-border: #e3dedc;
   --color-border-strong: #d2c9c6;
@@ -504,7 +503,6 @@ html.theme-dark {
   --color-cta: #fb6e30;
   --color-cta-hover: #ff8452;
   --color-cta-text: #000000;
-  --color-text-on-warning: #000000;
 
   --color-border: #2f2a28;
   --color-border-strong: #48403d;

@@ -1,3 +1,16 @@
+::highlight(search-match) {
+  background-color: var(--wash-selected);
+  color: var(--color-text);
+}
+::highlight(search-match-active) {
+  background-color: var(--color-accent);
+  color: var(--color-text-on-accent);
+}
+[data-slot="search-line"][data-current-match] {
+  background-color: var(--wash-selected);
+  box-shadow: inset 2px 0 var(--color-accent);
+}
+
 @layer base {
   *,
   ::before,
