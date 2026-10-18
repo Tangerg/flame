@@ -159,7 +159,7 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "app-header-edge": "inset 0 -0.5px 0 0",
   "app-pane-wash": "inset 12px 0 12px -6px",
   "app-pane-wash-end": "inset -12px 0 12px -6px",
-  "seam-line": "var(--color-border-soft)",
+  "seam-line": "var(--color-border-strong)",
 
   "shadow-control": "0 1px 2px color-mix(in oklab, var(--shadow-cast) 20%, transparent)",
   "shadow-composer-depth":

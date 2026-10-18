@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useId } from "react";
 import { useT } from "@/lib/i18n";
 import { ACCENT, useExtensionPoint } from "@/plugins/sdk";
+import { accentSolid } from "@/plugins/builtin/theme/public/appearance";
 import { useAccentPreference } from "../application/appearancePreferences";
 import { SettingRow } from "../../kit";
 import { ColorPickerInput, Icon, Pressable } from "@/ui";
@@ -108,10 +109,8 @@ function CustomAccentPicker({
 export function AccentSection() {
   const t = useT();
   const accents = useExtensionPoint(ACCENT);
-  const { accent, setAccent, scheme } = useAccentPreference();
-  const light = scheme === "light";
-
-  const isCustom = !accents.some((a) => a.dark === accent);
+  const { accent, setAccent } = useAccentPreference();
+  const isCustom = !accents.some((a) => a.color === accent);
 
   return (
     <SettingRow label={t("settings.accent")} sub={t("settings.accent.sub")}>
@@ -120,20 +119,20 @@ export function AccentSection() {
           <Pressable
             key={swatch.id}
             type="button"
-            onClick={() => setAccent(swatch.dark)}
+            onClick={() => setAccent(swatch.color)}
             title={`${t("settings.accent")}: ${swatch.label}`}
             aria-label={`${t("settings.accent")}: ${swatch.label}`}
-            aria-pressed={accent === swatch.dark}
+            aria-pressed={accent === swatch.color}
             className={stylex.props(a.target, a.noPad, corner.pill).className}
           >
             <span
               aria-hidden
               className={
-                stylex.props(a.chrome, corner.pill, accent === swatch.dark && a.chromeOn).className
+                stylex.props(a.chrome, corner.pill, accent === swatch.color && a.chromeOn).className
               }
-              style={{ background: light ? (swatch.light ?? swatch.dark) : swatch.dark }}
+              style={{ background: accentSolid(swatch.color) }}
             />
-            <SelectionMark selected={accent === swatch.dark} />
+            <SelectionMark selected={accent === swatch.color} />
           </Pressable>
         ))}
         <CustomAccentPicker

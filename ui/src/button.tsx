@@ -306,7 +306,7 @@ const styles = stylex.create({
     color: {
       default: color.fgFaint,
       ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
-        "@media (hover: hover)": color.accent,
+        "@media (hover: hover)": color.accentText,
       },
     },
   },

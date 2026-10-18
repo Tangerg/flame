@@ -38,9 +38,9 @@ func desktopApplicationOptions(host *DesktopHost) application.Options {
 // check-bootstrap verifies these colors against the HTML and stylesheet.
 func desktopWindowBackground() application.RGBA {
 	if !systemPrefersDarkAppearance() {
-		return application.NewRGB(245, 245, 245)
+		return application.NewRGB(244, 245, 247)
 	}
-	return application.NewRGB(6, 6, 7)
+	return application.NewRGB(14, 15, 17)
 }
 
 // Hiding the native titlebar also removes macOS window controls, corners, and shadow.

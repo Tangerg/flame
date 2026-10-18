@@ -1,137 +1,20 @@
 import { describe, expect, it } from "vitest";
-import type { ColorThemePluginSpec } from "./types";
-import { SCHEME_ICON, buildTokenMap } from "./tokens";
+import { SCHEME_ICON, depthStep, inkTracksLadder } from "./tokens";
 
-function makeSpec(overrides: Partial<ColorThemePluginSpec> = {}): ColorThemePluginSpec {
-  return {
-    id: "test",
-    label: "Test",
-    scheme: "dark",
-    brand: { accent: "#1ed760", textOnAccent: "#000000" },
-    surfaces: { bg: "#0a0a0a", surface: "#1a1a1a" },
-    ink: {
-      text: "#eeeeee",
-      textBright: "#ffffff",
-      textSoft: "#cccccc",
-      textMuted: "#999999",
-      textFaint: "#666666",
-    },
-    borders: {
-      border: "#2a2a2a",
-      borderSoft: "#3a3a3a",
-      divider: "#1f1f1f",
-    },
-    semantic: {
-      negative: "#ff5555",
-      warning: "#ffaa00",
-      info: "#5599ff",
-      success: "#55cc55",
-    },
-    ...overrides,
-  };
-}
-
-describe("buildTokenMap", () => {
-  it("emits all brand + ink + border + semantic tokens", () => {
-    const tokens = buildTokenMap(makeSpec());
-    expect(tokens["color-accent"]).toBe("#1ed760");
-    expect(tokens["color-text-on-accent"]).toBe("#000000");
-    expect(tokens["color-bg"]).toBe("#0a0a0a");
-    expect(tokens["color-surface"]).toBe("#1a1a1a");
-    expect(tokens["color-text"]).toBe("#eeeeee");
-    expect(tokens["color-text-faint"]).toContain("#666666");
-    expect(tokens["color-border"]).toBe("#2a2a2a");
-    expect(tokens["color-negative"]).toBe("#ff5555");
-  });
-
-  it("defaults CTA trio from accent (accent fill + ctaText = textOnAccent)", () => {
-    const tokens = buildTokenMap(makeSpec());
-    expect(tokens["color-cta"]).toBe("#1ed760");
-    expect(tokens["color-cta-text"]).toBe("#000000");
-    expect(tokens["color-cta-hover"]).toBe("#19b350");
-  });
-
-  it("spec.cta overrides CTA per-field", () => {
-    const tokens = buildTokenMap(makeSpec({ cta: { cta: "#000000", ctaText: "#ffffff" } }));
-    expect(tokens["color-cta"]).toBe("#000000");
-    expect(tokens["color-cta-text"]).toBe("#ffffff");
-    expect(tokens["color-cta-hover"]).toMatch(/^#[0-9a-f]{6}$/i);
-  });
-
-  it("never emits the derived surface ladder steps", () => {
-    const tokens = buildTokenMap(makeSpec({ surfaces: { bg: "#0a0a0a", surface: "#1a1a1a" } }));
-    expect(tokens["color-surface"]).toBe("#1a1a1a");
-    expect(tokens).not.toHaveProperty("color-surface-2");
-    expect(tokens).not.toHaveProperty("color-surface-3");
-  });
-
-  it("never emits visual-style tokens", () => {
-    const tokens = buildTokenMap(makeSpec());
-    expect(Object.keys(tokens).filter((key) => key.startsWith("style-shape-"))).toEqual([]);
-    expect(Object.keys(tokens).filter((key) => key.startsWith("shadow-"))).toEqual([]);
-  });
-
-  it("never emits the ladder step — the contrast preference owns it", () => {
-    expect(buildTokenMap(makeSpec())).not.toHaveProperty("depth-step");
-  });
-
-  it("elevated falls back to the first ladder rung, sunken to a per-scheme neutral", () => {
-    const dark = buildTokenMap(makeSpec({ scheme: "dark" }));
-    expect(dark["color-elevated"]).toBe("var(--color-surface-2)");
-    expect(dark["color-sunken"]).toBe("#1c1c21");
-    const light = buildTokenMap(makeSpec({ scheme: "light" }));
-    expect(light["color-sunken"]).toBe("#f1f1f4");
-  });
-
-  it("explicit elevated / sunken anchors pass through verbatim", () => {
-    const tokens = buildTokenMap(
-      makeSpec({
-        surfaces: { bg: "#111111", surface: "#1a1a1a", elevated: "#222", sunken: "#000" },
-      }),
-    );
-    expect(tokens["color-elevated"]).toBe("#222");
-    expect(tokens["color-sunken"]).toBe("#000");
-  });
-
-  it("extras spread last → wins on key collision", () => {
-    const tokens = buildTokenMap(makeSpec({ extras: { "color-accent": "#999999" } }));
-    expect(tokens["color-accent"]).toBe("#999999");
-  });
-
-  it("carries the theme's ink, anchored so the default resolves to it", () => {
-    const tokens = buildTokenMap(makeSpec());
-    for (const [rung, ink] of [
-      ["soft", "#cccccc"],
-      ["muted", "#999999"],
-      ["faint", "#666666"],
-    ] as const) {
-      expect(tokens[`color-text-${rung}`]).toBe(
-        `color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)), ${ink})`,
-      );
-    }
-  });
-
+describe("the ink ladder", () => {
   it("anchors the ink to the step its own scheme opens on", () => {
-    const light = buildTokenMap(makeSpec({ scheme: "light" }));
-    const dark = buildTokenMap(makeSpec({ scheme: "dark" }));
-    expect(light["color-text-muted"]).toContain("var(--depth-step) - 4%");
-    expect(dark["color-text-muted"]).toContain("var(--depth-step) - 8%");
-  });
-
-  it("keeps the omitted faint ink at the readable muted fallback", () => {
-    const tokens = buildTokenMap(makeSpec({ ink: { text: "#eeeeee", textBright: "#ffffff" } }));
-    expect(tokens["color-text"]).toBe("#eeeeee");
-    expect(tokens["color-text-soft"]).toContain(
-      "color-mix(in oklab, var(--color-text) 82%, transparent)",
+    expect(inkTracksLadder("light", "#60666d")).toBe(
+      "color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #60666d)",
     );
-    for (const rung of ["muted", "faint"] as const) {
-      expect(tokens[`color-text-${rung}`]).toContain(
-        "color-mix(in oklab, var(--color-text) 56%, transparent)",
-      );
-    }
+    expect(inkTracksLadder("dark", "#9fa4a9")).toContain("var(--depth-step) - 8%");
   });
 
-  it("SCHEME_ICON maps dark/light to moon/sun", () => {
+  it("doubles the dark step so both schemes separate equally", () => {
+    expect(depthStep("light", 25)).toBe("4%");
+    expect(depthStep("dark", 25)).toBe("8%");
+  });
+
+  it("maps dark/light to moon/sun", () => {
     expect(SCHEME_ICON.dark).toBe("moon");
     expect(SCHEME_ICON.light).toBe("sun");
   });

@@ -1,4 +1,3 @@
-import { colord } from "colord";
 import type { StoreApi } from "zustand";
 import type { AppearancePreference, ColorThemeId, VisualStyleId } from "../kit/appearance";
 import {
@@ -11,16 +10,9 @@ import {
 import { densityCssVariables } from "../kit/density";
 import { productIconScaleCssVariables } from "@/lib/productIconScale";
 import { uiTypeLadderCssVariables } from "../kit/typeLadder";
-import { ACCENT, COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
+import { COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
 import { subscribeContributions } from "@/plugins/sdk";
-import { lookupExtensionByKey, lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
-import {
-  WCAG_AA_NON_TEXT,
-  WCAG_AA_TEXT,
-  edgeOnCanvas,
-  focusOnCanvas,
-  inkOnFill,
-} from "../kit/legibility";
+import { lookupExtensionByKey } from "@/plugins/sdk/selectors/extensions";
 import { depthStep } from "../kit/tokens";
 import { visualStyleMotionTokens } from "../visualStyles/tokens";
 import { resolveThemeScheme } from "../application/themeScheme";
@@ -28,11 +20,6 @@ import { subscribeSystemScheme } from "./systemAppearance";
 import { forgetThemePaint, rememberThemePaint } from "./themePaint";
 
 type UiEffectStore<T extends AppearancePreference> = Pick<StoreApi<T>, "getState" | "subscribe">;
-
-function lightAccent(darkHex: string): string {
-  const preset = lookupExtensionPoint(ACCENT).find((accent) => accent.dark === darkHex);
-  return preset?.light ?? preset?.dark ?? colord(darkHex).darken(0.2).toHex();
-}
 
 function replaceTokens(previous: string[], tokens: Record<string, string>): string[] {
   const root = document.documentElement;
@@ -49,7 +36,7 @@ function replaceTokens(previous: string[], tokens: Record<string, string>): stri
 let appliedColorTokens: string[] = [];
 let appliedStyleTokens: string[] = [];
 
-function applyColorTheme(theme: ColorThemeId, preferredAccent: string, contrast: number): void {
+function applyColorTheme(theme: ColorThemeId, contrast: number): void {
   const root = document.documentElement;
   const scheme = resolveThemeScheme(theme);
   const spec = lookupExtensionByKey(COLOR_THEME, theme === "system" ? scheme : theme);
@@ -57,44 +44,13 @@ function applyColorTheme(theme: ColorThemeId, preferredAccent: string, contrast:
   root.classList.remove("theme-light", "theme-dark");
   root.classList.add(`theme-${scheme}`);
 
-  const liveAccent =
-    spec?.accent ?? (scheme === "light" ? lightAccent(preferredAccent) : preferredAccent);
   appliedColorTokens = replaceTokens(appliedColorTokens, {
     ...spec?.tokens,
+    "depth-step": depthStep(scheme, contrast),
   });
 
-  root.style.setProperty("--color-accent", liveAccent);
-  root.style.setProperty("--depth-step", depthStep(scheme, contrast));
-
-  const declaredInk = spec?.tokens?.["color-text-on-accent"] ?? "#ffffff";
-  const resolved = (name: string) => getComputedStyle(root).getPropertyValue(name).trim();
-  root.style.setProperty(
-    "--color-text-on-accent",
-    inkOnFill(declaredInk, resolved("--color-accent"), WCAG_AA_NON_TEXT),
-  );
-  root.style.setProperty(
-    "--color-cta-text",
-    inkOnFill(declaredInk, resolved("--color-cta"), WCAG_AA_TEXT),
-  );
-  root.style.setProperty(
-    "--color-focus-ring",
-    focusOnCanvas(resolved("--color-accent"), resolved("--color-text"), resolved("--color-bg")),
-  );
-  root.style.setProperty(
-    "--color-control-edge",
-    edgeOnCanvas(resolved("--color-text"), resolved("--color-bg")),
-  );
-  appliedColorTokens.push(
-    "--color-accent",
-    "--color-text-on-accent",
-    "--color-cta-text",
-    "--color-focus-ring",
-    "--color-control-edge",
-    "--depth-step",
-  );
-
   publishScheme(scheme);
-  const background = resolved("--color-bg");
+  const background = getComputedStyle(root).getPropertyValue("--color-bg").trim();
   root.style.backgroundColor = background;
   if (spec && theme !== "system") rememberThemePaint(theme, scheme, background);
   else forgetThemePaint();
@@ -164,7 +120,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
   store: UiEffectStore<T>,
 ): () => void {
   const initial = store.getState();
-  applyColorTheme(initial.theme, initial.accent, initial.contrast);
+  applyColorTheme(initial.theme, initial.contrast);
   applyVisualStyle(initial.visualStyle);
   publishTokens();
   applyFonts(
@@ -182,7 +138,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
       state.accent !== previous.accent ||
       state.contrast !== previous.contrast
     ) {
-      applyColorTheme(state.theme, state.accent, state.contrast);
+      applyColorTheme(state.theme, state.contrast);
       applyVisualStyle(state.visualStyle);
       publishTokens();
     } else if (state.visualStyle !== previous.visualStyle) {
@@ -216,7 +172,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
 
   const unsubscribePlugins = subscribeContributions(() => {
     const current = store.getState();
-    applyColorTheme(current.theme, current.accent, current.contrast);
+    applyColorTheme(current.theme, current.contrast);
     applyVisualStyle(current.visualStyle);
     publishTokens();
   });
@@ -224,7 +180,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
   const unsubscribeScheme = subscribeSystemScheme(() => {
     const current = store.getState();
     if (current.theme !== "system") return;
-    applyColorTheme(current.theme, current.accent, current.contrast);
+    applyColorTheme(current.theme, current.contrast);
     applyVisualStyle(current.visualStyle);
     publishTokens();
   });

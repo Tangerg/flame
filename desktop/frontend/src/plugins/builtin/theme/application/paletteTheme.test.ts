@@ -4,6 +4,7 @@ import { lookupExtensionByKey } from "@/plugins/sdk/selectors/extensions";
 import { contributeForTest } from "@/plugins/sdk/testKernel";
 import { installAppearancePreferencePort } from "../adapters/appearancePreferenceBinding";
 import { useAppearanceStore } from "../adapters/appearanceStore";
+import { solidFill } from "../kit/scale";
 import { contributePaletteTheme } from "./paletteTheme";
 
 beforeEach(() => {
@@ -26,5 +27,5 @@ it("re-derives a palette theme from the current accent and contrast", async () =
   useAppearanceStore.setState({ contrast: 90, accent: "#7f52ff" });
 
   expect(tokens()?.["color-surface"]).not.toBe(surface);
-  expect(tokens()?.["color-accent"]).toBe("#7f52ff");
+  expect(tokens()?.["color-accent"]).toBe(solidFill("#7f52ff"));
 });

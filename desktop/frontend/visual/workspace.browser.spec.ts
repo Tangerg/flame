@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "./test";
 import AxeBuilder from "@axe-core/playwright";
 import type { VisualAgentState } from "./agentSessionSnapshots";
 import { en } from "@/lib/i18n/locales/en";
+import { solidFill } from "@/plugins/builtin/theme/kit/scale";
 import {
   DOCK_MIN_WIDTH_PX,
   CONVERSATION_READING_MIN_PX,
@@ -668,7 +669,7 @@ test("accent selection gives an immediate, durable visual acknowledgement", asyn
     .poll(() =>
       page.evaluate(() => document.documentElement.style.getPropertyValue("--color-accent")),
     )
-    .toBe("#6d3ff0");
+    .toBe(solidFill("#7f52ff"));
   await expect
     .poll(() =>
       page.evaluate(() => {

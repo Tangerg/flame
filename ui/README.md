@@ -98,6 +98,10 @@ Generated footnotes use a quiet supporting-text section and retain their native
 reference links. The renderer owns document-local identities and navigation.
 Only anchors with a destination receive the shared link appearance.
 Emphasis and inline code inside those links inherit the link color.
+Prose color comes only from the host's accent roles: headings and inline code use
+`--color-accent-strong`, links and list markers `--color-accent-text`, quote rules
+`--color-accent-line`; body and strong text keep the neutral ink. Panel titles use
+the same heading role.
 Quotes and loose lists retain paragraph boundaries around nested blocks; quote
 spacing applies to direct content without overriding a nested list's own flow.
 `TaskListItem` renders one recorded task as a list item with an immutable,

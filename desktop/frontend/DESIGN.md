@@ -27,10 +27,12 @@ The whole system reduces to five decisions. Everything below elaborates them.
    menus and popovers receive an optical ring and elevation. The composer is
    an input surface with one real border, accented on focus. Boundary mechanisms
    belong to the visual style, never individual call sites.
-2. **Near-monochrome, one restrained accent** — overall black/white/grey; the
-   accent (a calm **blue**, user-selectable) marks live state, progress, focus,
-   and links. Primary actions invert neutral ink against their surface: dark
-   on light, light on dark. Their fill and text belong to the theme's CTA tokens.
+2. **Tinted neutrals, one accent family, readable color in the content** — the
+   neutral scale leans toward the accent hue, and the accent (a calm **blue** by
+   default, user-selectable) carries headings, links, list markers, quote rules,
+   inline code, the user's own messages, selection, focus and primary actions.
+   Every role is a step of one generated scale, so the page gains color without
+   gaining hues. Primary action fill and label belong to the theme's CTA tokens.
 3. **Dual-theme parity, follows the OS** — light and dark are both first-class
    and polished; the default theme is "system" and tracks `prefers-color-scheme`
    live. The two are mirrors of one region algorithm, not two hand-built skins.
@@ -87,107 +89,97 @@ Flame keeps StyleX, Base UI, its own tokens and Runtime ownership.
 
 ### Philosophy
 
-Color carries information, not decoration. The system uses **one chromatic accent**, **four greys for surfaces**, **three greys for hairlines**, and **four semantic colors used sparingly**. Decoration comes from the surface ladder, not from color variation.
+Color carries information and hierarchy. The system is a small set of **role
+scales** in the Radix sense — twelve steps whose position names a job (canvas,
+subtle plane, component fill, hover, selection, separator, border, strong border,
+solid, solid hover, readable ink, high-contrast ink) — projected into
+HeroUI-style semantic roles (canvas, surface, elevated, field, separator,
+accent, success / warning / danger). Components consume roles, never steps.
 
-### Surface anchors
+There is **one neutral scale, one accent scale and four status scales**, generated
+for each scheme by `kit/scale.ts` and mapped to tokens by `kit/palette.ts`. That
+pair is the only place a color value is decided. Built-in Light and Dark, the
+Custom theme and package themes all derive through it; `globals.css` restates the
+built-in result for first paint and a test holds the two equal.
 
-Values live in `themes/flame-*.ts` and are restated for first paint in
-`globals.css`. This table says what each anchor is FOR; it deliberately does not
-repeat the hexes, which is how the previous version of it went stale.
+### Scales
 
-| Token                                              | Role                                                                                                                                                                             |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `canvas` (`--color-bg`)                            | The reading plane — transcript and view bodies, slightly off-white in light and near-black in dark.                                                                              |
-| `surface`                                          | Region chrome — the drawer, the dock, the bars that frame the plane.                                                                                                             |
-| `card` (`--app-card-surface` → `--color-elevated`) | An object placed on a region: a message, a tool card, the composer.                                                                                                              |
-| `sunken` (`--color-sunken`)                        | A well cut into a surface: code bodies, terminals, diff hunks, text fields, progress tracks, and inline code in prose.                                                           |
-| `surface-2` / `-3`                                 | Derived chip rungs above `surface` — badges, kbd, selected rows, resting control fills. Mixed out of the CHROME grey, so they belong on chrome; on the plane they read as grime. |
+- **Neutral.** Steps mix the theme's ink into its canvas at fixed shares that
+  step finer near the canvas, scaled by the contrast preference for the plane and
+  hairline steps. Built-in themes tint every step slightly toward the accent hue
+  (Radix's "natural pairing"), so the whole window follows the accent; a theme
+  that declares its own canvas keeps its exact canvas and ink untinted. Steps 10
+  and 11 are lifted until they read at 4.5:1 on the deepest plane text sits on.
+- **Accent and status.** Step 9 is the solid fill: the seed itself when white or
+  (for pale seeds) black reads on it at 4.5:1, otherwise the seed deepened in
+  lightness, hue and chroma held. Step 10 moves away from the solid's label ink,
+  so a hovered primary action never loses its label. Steps 1–8 follow lightness
+  and relative-chroma templates read off Radix's scales and anchored to the
+  theme's canvas. Steps 11 and 12 are searched until they clear 4.5:1 and 7:1 on
+  every plane text sits on. Light and dark are separate ramps, not reversals.
 
-The light canvas is off-white; editable fields and summary cards are white.
-The dark canvas is near-black; cards lift gently above it. Resource lists use the elevated content surface and one quiet separator between
-adjacent records. Wells remain distinct from cards and list groups.
+### Roles
 
-`surface-2/3/4` derive from `surface` via `color-mix(--depth-step)` so the
-contrast preference moves the chip rungs per scheme — they are never pinned
-inline. **The step is scheme-aware**: dark doubles it, because 4% of a near-white
-ink over a near-black surface moves it a third as far, in perceived lightness, as
-4% of a near-black ink over a near-white one.
+| Role                                             | Step (light / dark)        | Use                                                                      |
+| ------------------------------------------------ | -------------------------- | ------------------------------------------------------------------------ |
+| `--color-bg`                                     | neutral 1                  | The reading plane.                                                       |
+| `--color-surface`, `--color-drawer`              | neutral 2 / 3, 2 / 1       | Region chrome and the drawer.                                            |
+| `--color-elevated`                               | near-white / neutral 3     | Cards, fields, menus.                                                    |
+| `--color-sunken`                                 | neutral 3 / 4              | Wells: code bodies, terminals, tracks.                                   |
+| `--color-divider` / `-border` / `-border-strong` | neutral 4, 5, 7            | Separators, bars, region boundaries (weakest to strongest).              |
+| `--color-text` / `-soft` / `-muted` / `-faint`   | neutral 12 → 10            | Ink ladder; soft/muted/faint track the contrast preference.              |
+| `--color-accent`, `--color-cta`                  | accent 9                   | Marks and primary fills (`--color-cta-hover` is accent 10).              |
+| `--color-accent-line`                            | accent 7                   | Quote rules and other accent strokes.                                    |
+| `--color-accent-text`                            | accent 11                  | Links, file references, list markers, accent-tone labels.                |
+| `--color-accent-strong`                          | accent 12                  | Prose headings, page titles, inline code.                                |
+| `--color-{negative,warning,success,info}`        | status 11                  | Status words and icons.                                                  |
+| `--tone-{accent,negative,warning,success,info}`  | scale 9                    | The fill every `-wash` / `-badge` / `-edge` tint and callout rule mixes. |
+
+`surface-2/3` still derive from `surface` via `--depth-step`, and the focus ring
+and unchecked control edge are derived by the palette to clear 3:1 on the canvas.
 
 ### Hairlines
 
 A hairline is the edge of a **control** — a text field, a chip, the composer — and
 of a **region**: the two are the same primitive at two weights. A change of region
-takes `border-soft`, a bar inside one takes `border`, and the reference weights them
-apart by the same ratio (207 against 225 on a 255 plane). Regions get theirs from
+takes `border-strong`, a bar inside one takes `border`. Regions get theirs from
 `--app-card-edge` / `--app-pane-split` / `--app-header-edge`, whose SHAPE the visual
-style owns; a callsite never draws a region boundary itself.
+style owns; a callsite never draws a region boundary itself. Half a pixel, not one:
+on a 2x panel that is exactly one device pixel.
 
-Half a pixel, not one. On a 2x panel that is exactly one device pixel, which is what
-makes an edge crisp without giving it weight — at 1px the composer carried the
-heaviest line on the screen. The earlier revision of this section spread a
-directional cast at each seam instead; a cast lands ON the reading plane, so all
-three seams read as pressing down on the document.
+The failed-run banner is the one object that **demands attention**; it takes a 1px
+`--color-negative-edge` over a neutral fill. Hairlines are opaque per theme, because
+a semi-transparent border shifts across surface lifts.
 
-There is one other case, and only one: an object that **demands attention** — the
-failed-run banner. It is neither a region nor a control, and it takes a 1px
-`--color-negative-edge` over a neutral fill. The fill stays neutral because it runs
-200px tall and a wash at that size is a lot of colour for "please look"; the small
-inline notices are the inverse, and tint instead. There is exactly one tone token
-for this, because there is exactly one such object: a pending approval is a card
-like any other, and the four other `-edge` tones this once spelled out were a
-palette nothing asked for. This is the only place the language spends a border on
-meaning rather than on affordance. The three-step ramp
-(`border` / `border-soft` / `divider`) uses literal hex per theme, because a
-semi-transparent border shifts across surface lifts and reads as approximate.
+### Accent in content
 
-**Ink, by contrast, may derive.** Unlike hairlines, the ink ramp (`text-soft` / `text-muted` / `text-faint`) _should_ adapt to the surface behind it — that's the Apple label model. A theme can ship just `text` + `text-bright` and let the soft/muted/faint steps derive as `text` at ~82% / ~56% / ~38% alpha over transparent (so they composite against whatever surface they sit on). Palette themes (Solarized, Catppuccin, Tokyo Night, One Dark) instead pin explicit ink hues — their ramp is part of the palette identity, not a single hue at falling opacity. The first-party Flame themes keep explicit values too; the derivation is the low-friction default for third-party themes.
+Prose headings and page titles take `accent-strong`, links and file references
+`accent-text` with a tinted underline, list markers `accent-text`, quote rules
+`accent-line`, inline code `accent-strong` on a 9% accent tint, and the user's
+messages sit on an accent tint (10% light, 18% dark). Strong text and body stay
+neutral so long reading keeps one calm ink. GitHub-style callouts take their
+status scale: a 2px solid rule, the status wash, and a title and list markers in
+the on-tint ink (`--color-*-badge-text`).
 
-### Accent policy
-
-The single accent (`--color-accent`, a calm blue by default, user-selectable with
-green / pink / orange as alternates) is reserved for these uses:
-
-1. Selected navigation and dock tab state
-2. Focus ring (`:focus-visible` — a single thin stroke, **no halo / glow**; one global rule, never drawn at a callsite)
-3. Live indicator (streaming dot, running pill, `tab-dot.running`)
-
-Forbidden surfaces for accent: section background, card fill, avatar background, decorative borders, status icons that are not "live". And **no bright accent ring on input focus or click** — inputs/composer strengthen their border quietly instead (the loud halo read as cheap).
+Forbidden: accent as a section or card fill, decorative borders, a second
+accent hue, and a bright ring or halo on input focus or click — inputs and the
+composer strengthen their border instead.
 
 ### Semantic palette
 
-| Token              | Use                                                                                              |
-| ------------------ | ------------------------------------------------------------------------------------------------ |
-| `--color-success`  | Run finished cleanly, action confirmed. Allowed in: run pill (idle/done), tab dot after success. |
-| `--color-warning`  | User attention required. Allowed in: the approval card, the waiting tab dot.                     |
-| `--color-negative` | Error. Allowed in: the run error banner, a tool call's failed status.                            |
-| `--color-info`     | Information / link. Allowed in: inline links, info badges.                                       |
+| Token              | Use                                                                   |
+| ------------------ | --------------------------------------------------------------------- |
+| `--color-success`  | Run finished cleanly, action confirmed.                               |
+| `--color-warning`  | User attention required: approvals, pending reviews and proposals.    |
+| `--color-negative` | Error: the run error banner, a failed tool call, destructive actions. |
+| `--color-info`     | Informational notes and info badges.                                  |
 
-**Each semantic is two colours, and only one of them is pinned.** The theme
-spells the INK — the tone a status word, an icon or a 6px dot is drawn in, whose
-luminance is pulled until it clears 4.5:1 on the darkest surface it can sit on.
-Every TINT (`-wash` / `-badge` / `-edge`, and the diff row and word tints) mixes
-instead from `--tone-*`, the same hue lifted to L68 at 1.4× chroma. One token
-cannot do both jobs: light `warning` is pinned at L51 C.10, an olive, and a tint
-mixed from an olive reads as dirt rather than as amber. The fill tone is derived,
-not shipped, so the hue is still said once — by the theme, or by the user's accent
-pick — and no palette has to carry a second set. Anything that must be legible on
-its own keeps the ink: these tones are near 1.9:1 on white and would fail 1.4.11
-as a mark.
-
-Badge labels consume the host's `--color-*-badge-text` roles, derived from each
-semantic ink and the main text ink. This keeps the semantic hue readable on the
-badge tint across content and chrome surfaces. These on-tint roles do not replace
-the ordinary semantic ink used by icons, links and actions. Pending Memory
-reviews and Skills proposals use warning because they require user attention;
-their product owners still supply the state and commands.
-
-**Semantic colours are scheme-tuned**, and in both directions. Dark lifts them in
-luminance and pulls the chroma down so they neither vibrate nor edge-bleed on a
-near-black plane; light pushes them the other way, DARKER and deeper than the
-saturated web reds and blues, because on white it is contrast against the plane
-that decides legibility, not brightness. Palette themes (Catppuccin / Tokyo Night
-/ Solarized / One Dark) ship their own canonical semantic tones and are left
-untouched.
+Each status scale is seeded by its Radix step-9 hue (red, amber, green, blue).
+Ink (step 11) is for anything legible on its own; tints mix from `--tone-*`
+(step 9), because a tint mixed from a deepened text ink reads as dirt. Badge
+labels use `--color-*-badge-text`, 70% of the scale's readable ink (step 11, so
+`--color-accent-text` for the accent, never the solid fill) and 30% of the main ink,
+so the hue stays readable on its tint over every host surface.
 
 ## 3. Typography
 
@@ -359,7 +351,7 @@ where there was none; `check-interactive-chrome` fails the build on both that an
 a hand-picked `hover:bg-fg/[…]` alpha.
 
 This holds identically in **both schemes**; the edge takes the scheme's
-`border-soft`, while elevation uses the scheme's `--shadow-cast`.
+`border-strong`, while elevation uses the scheme's `--shadow-cast`.
 Resource lists use one shared surface with separators. Forms and metric summaries
 use bounded cards with a quiet contact shadow; workbench regions retain their seam treatment.
 
@@ -472,26 +464,18 @@ There is no composer cheatsheet. A command that carries a combo is projected int
 the `SHORTCUT` point, and `ShortcutsPane` renders that point — so a shortcut is
 listed because a command declared one, never because a table was kept in step.
 
-## 9. Accent Usage Policy (strict)
+## 9. Accent Usage Policy
 
-Accent (`--color-accent`, user-selectable) appears in:
+Accent comes from one generated scale and appears only through its roles:
 
-2. **Focus ring** — `:focus-visible`, a single thin accent stroke (**no halo / glow**, and never on plain mouse-focus of inputs). One global rule in globals.css draws it for everything; mark `data-focus-inset` where it would land outside the box, `data-chrome-focus` where a row fills instead. A theme retunes it through `--color-focus-ring`. Never drawn at a callsite — `check-interactive-chrome` fails the build
-3. **Live indicator** — the running `StatusDot`, the status pill while a run is
-   live, the reasoning block's pulse dot
-4. **Selection and control fills** — the check on a chosen menu item, a slider or
-   switch that is on, a progress indicator, an active step marker
+1. **Interactive state** — selected navigation and dock tabs, checked and on
+   controls, progress, primary actions (`--color-cta`).
+2. **Focus ring** — `:focus-visible`, a single thin stroke (**no halo / glow**, and never on plain mouse-focus of inputs). One global rule in globals.css draws it; mark `data-focus-inset` where it would land outside the box, `data-chrome-focus` where a row fills instead. The palette derives `--color-focus-ring`. Never drawn at a callsite — `check-interactive-chrome` fails the build.
+3. **Live indicator** — the running `StatusDot`, the live status pill, the reasoning pulse.
+4. **Content hierarchy** — headings, links, list markers, quote rules, inline code and the user bubble (see §2 Accent in content).
 
-That's the entire list. Accent does **not** appear in:
-
-- Avatar backgrounds (use `surface-2/3` + `ink-muted`)
-- Section headers (use `ink`)
-- Active-state list rows (use `surface-2/3` + `ink`)
-- Ordinary iconography — an icon that is only an affordance is `ink-muted` → `ink` on hover. An icon that carries STATE is item 4.
-- Tool-call success status (use `success`, not the accent)
-- Input / composer focus (a quiet border strengthen — no accent ring)
-
-When in doubt: **does this surface convey "the agent is alive and live"?** If yes, accent. If no, grey.
+Accent does **not** appear as avatar backgrounds, ordinary affordance icons,
+tool-call success (use `success`), input focus rings, or decorative fills.
 
 ## 10. Do's and Don'ts
 
@@ -515,8 +499,8 @@ When in doubt: **does this surface convey "the agent is alive and live"?** If ye
 - **Don't add call-site shadows.** Workbench regions stay flush. Resource groups and forms use the shared contact-shadow token; overlays use their elevation role.
 - **Don't hardcode canvas colors at call sites.** The default cool neutral canvas follows the HeroUI palette through `--color-bg`.
 - **Don't flash a bright accent ring/halo on focus or click.** Keyboard focus is one thin stroke; inputs/composer just strengthen their border. The loud glow read as cheap.
-- **Don't introduce a second chromatic accent.** Flame has one accent + four semantic colors. No more.
-- **Don't use accent decoratively.** Focus ring / selected control / live indicator — that's the entire allowed list.
+- **Don't introduce a second chromatic accent.** Flame has one accent scale + four status scales. No more.
+- **Don't use accent decoratively, or a raw step in a component.** Use the role tokens §2 names; a missing role is added to the palette, not mixed at a call site.
 - **Don't set body paragraphs in mono.** Mono is for the technical layer only.
 - **Don't apply atmospheric gradients, mesh backdrops, or dot grids** (the latter was discussed and rejected — Linear explicitly forbids "atmospheric gradients or spotlight cards").
 - **Don't add a fourth glass surface.** Blur is material, not decoration, and it belongs to exactly three tokens — `--floating-backdrop`, `--composer-backdrop`, `--composer-tray-backdrop` (see `DESKTOP_UI_POLISH.md` §Glass). ChatGPT blurs its own composer surface the same way. A raw `backdrop-blur-*` at a call site is how a fourth appears.
@@ -525,22 +509,22 @@ When in doubt: **does this surface convey "the agent is alive and live"?** If ye
 
 Light is full parity, not second-class — and the **default theme follows the OS**
 (`prefers-color-scheme`, live). It runs the same region algorithm mirrored: the
-canvas is off-white, cards, fields and resource groups are white with quiet semantic boundaries. Dark cards lift above their near-black canvas. Values live in `themes/flame-light.ts`.
+canvas is off-white, cards, fields and resource groups are near-white with quiet semantic boundaries. Dark cards lift above a deep, slightly tinted canvas. Values are generated by `kit/palette.ts`.
 
 Two places where light is not a mechanical inversion, both for the same reason —
 ink cannot be:
 
-- **Semantic hues sit one step deeper** than the reference language's. Its greens
-  and ambers land at 3.4–3.9:1 as text on this chrome, and a status word nobody
-  can read is not a status. Hue family preserved, luminance pulled until each
-  clears 4.5:1 on the darkest surface it can sit on.
-- **The accent is the deeper blue.** Same reason; the accent carries link text.
+- **Readable steps are searched, not assumed.** Status and accent inks (step 11)
+  move in lightness until each clears 4.5:1 on the darkest surface it can sit on.
+- **The solid fill may be deeper than the chosen accent.** A seed that cannot
+  carry a white label is deepened in lightness, hue held, in both schemes.
 
 ## 12. References
 
 - **ZCode** — plugin page composition, grouped resource rows, control proportions,
   supporting text hierarchy and desktop resource density.
-- **HeroUI 3.2.6** — default cool neutral palette, blue primary actions, scalable rounded buttons and fields, layered fills and contact shadows. Adaptations retain 24/28/32/36px desktop control roles, native cursors, 3:1 field boundaries and AA text contrast. The application theme owns token values; `@flame/ui` owns their rendering.
+- **Radix Colors** — the twelve-step role scale, separate light and dark ramps, natural gray pairing and step-9 solids.
+- **HeroUI 3.2.6** — semantic color roles (canvas, surface, overlay, field, separator, status), blue primary actions, scalable rounded buttons and fields, layered fills and contact shadows. Adaptations retain 24/28/32/36px desktop control roles, native cursors, 3:1 field boundaries and AA text contrast. The application theme owns token values; `@flame/ui` owns their rendering.
 - **ChatGPT / Codex** — conversation reading measure and tool disclosure behavior.
 - **JetBrains tool windows** — the surrounding workbench region model.
 - Flame Runtime Protocol — `src/rpc/` — drives the shape of the data this UI
@@ -553,7 +537,7 @@ ink cannot be:
 2. Verify BOTH schemes (the default follows the OS) before merging visual changes.
 3. Batch related layout and token changes, then run the repository gates once.
 4. Inspect actual rendered pages in both themes, at narrow widths and increased text size. Screenshot baselines are not an acceptance criterion. Use the inert browser fixtures for review; native packaging needs separate host verification.
-5. Reserve accent for primary actions, active controls and meaningful status; use neutral fills for supporting actions.
+5. Use accent roles for primary actions, active controls, live status and content hierarchy; use neutral fills for supporting actions.
 
 ## Responsive document and shared renderers
 

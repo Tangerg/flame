@@ -19,29 +19,25 @@ export const DEFAULT_ACCENTS: AccentSpec[] = [
   {
     id: "blue",
     label: "Blue",
-    dark: "#0485f7",
-    light: "#006fdb",
+    color: "#0485f7",
     order: 0,
   },
   {
     id: "purple",
     label: "Purple",
-    dark: "#7f52ff",
-    light: "#6d3ff0",
+    color: "#7f52ff",
     order: 1,
   },
   {
     id: "green",
     label: "Green",
-    dark: "#21a179",
-    light: "#177659",
+    color: "#21a179",
     order: 2,
   },
   {
     id: "orange",
     label: "Orange",
-    dark: "#e8590c",
-    light: "#b34208",
+    color: "#e8590c",
     order: 3,
   },
 ];

@@ -6,15 +6,13 @@ export interface ColorThemeSpec {
   scheme: Scheme;
   icon?: string;
   order?: number;
-  accent?: string;
   tokens?: Record<string, string>;
 }
 
 export interface AccentSpec {
   id: string;
   label: string;
-  dark: string;
-  light?: string;
+  color: string;
   order?: number;
 }
 

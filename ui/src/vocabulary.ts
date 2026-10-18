@@ -32,7 +32,7 @@ export const vocab = stylex.create({
   soft: { color: color.fgSoft },
   muted: { color: color.fgMuted },
   faint: { color: color.fgFaint },
-  accent: { color: color.accent },
+  accent: { color: color.accentText },
   success: { color: color.success },
   warning: { color: color.warning },
   negative: { color: color.negative },

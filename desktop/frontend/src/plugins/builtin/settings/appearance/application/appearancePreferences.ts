@@ -1,4 +1,3 @@
-import { resolveThemeScheme } from "@/plugins/builtin/theme/public/scheme";
 import { editAppearance, useAppearance } from "@/plugins/builtin/theme/public/appearance";
 
 export function useThemePreference() {
@@ -9,7 +8,6 @@ export function useAccentPreference() {
   return {
     accent: useAppearance((s) => s.accent),
     setAccent: editAppearance().setAccent,
-    scheme: resolveThemeScheme(useAppearance((s) => s.theme)),
   };
 }
 

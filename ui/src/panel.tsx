@@ -94,6 +94,7 @@ const styles = stylex.create({
   title: {
     margin: 0,
     fontWeight: weight.semibold,
+    color: color.accentStrong,
     flexGrow: 1,
     minWidth: 0,
     overflowWrap: "anywhere",

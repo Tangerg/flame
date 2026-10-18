@@ -124,27 +124,50 @@
 
 .md .markdown-alert {
   --color-border-default: var(--color-border);
-  --color-accent-fg: var(--color-info);
-  --color-accent-emphasis: var(--color-info);
-  --color-danger-fg: var(--color-negative);
-  --color-danger-emphasis: var(--color-negative);
-  --color-attention-fg: var(--color-warning);
-  --color-attention-emphasis: var(--color-warning);
-  --color-done-fg: var(--color-accent);
-  --color-done-emphasis: var(--color-accent);
-  --color-success-fg: var(--color-success);
-  --color-success-emphasis: var(--color-success);
+  --color-accent-fg: var(--alert-ink);
+  --color-accent-emphasis: var(--tone-info);
+  --color-danger-fg: var(--alert-ink);
+  --color-danger-emphasis: var(--tone-negative);
+  --color-attention-fg: var(--alert-ink);
+  --color-attention-emphasis: var(--tone-warning);
+  --color-done-fg: var(--alert-ink);
+  --color-done-emphasis: var(--tone-accent);
+  --color-success-fg: var(--alert-ink);
+  --color-success-emphasis: var(--tone-success);
 
   margin: 16px 0;
-  padding: 10px 14px;
-  border-radius: var(--shape-md);
-  background: color-mix(in oklab, var(--color-text) 3%, transparent);
+  padding: 10px 14px 10px 16px;
+  border-left-width: 2px;
+  border-radius: 0 var(--shape-md) var(--shape-md) 0;
+  background: var(--alert-wash);
+}
+.md .markdown-alert-note {
+  --alert-ink: var(--color-info-badge-text);
+  --alert-wash: var(--color-info-wash);
+}
+.md .markdown-alert-tip {
+  --alert-ink: var(--color-success-badge-text);
+  --alert-wash: var(--color-success-wash);
+}
+.md .markdown-alert-important {
+  --alert-ink: var(--color-accent-badge-text);
+  --alert-wash: var(--color-accent-wash);
+}
+.md .markdown-alert-warning {
+  --alert-ink: var(--color-warning-badge-text);
+  --alert-wash: var(--color-warning-wash);
+}
+.md .markdown-alert-caution {
+  --alert-ink: var(--color-negative-badge-text);
+  --alert-wash: var(--color-negative-wash);
+}
+.md .markdown-alert li::marker {
+  color: var(--alert-ink);
 }
 .md .markdown-alert .markdown-alert-title {
-  font-family: var(--font-mono);
-  font-size: var(--fs-ui-sm);
-  font-weight: 600;
+  font-size: var(--fs-ui-xs);
+  font-weight: var(--fw-semibold);
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  line-height: var(--leading-snug);
   margin-bottom: 4px;
 }

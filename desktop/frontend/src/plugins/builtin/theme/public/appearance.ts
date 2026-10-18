@@ -12,3 +12,4 @@ export function editAppearance(): AppearanceEdit {
 export { UI_DENSITY_MODES, type UiDensity } from "../kit/appearance";
 export { retainThemeSelection } from "../application/themeScheme";
 export { contributePaletteTheme } from "../application/paletteTheme";
+export { solidFill as accentSolid } from "../kit/scale";

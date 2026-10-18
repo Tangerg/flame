@@ -5,10 +5,10 @@ import {
   focusOnCanvas,
   inkOnFill,
   legibleMix,
-  mixOklab,
   WCAG_AA_NON_TEXT,
   WCAG_AA_TEXT,
 } from "./legibility";
+import { mixOklab } from "./oklab";
 
 describe("contrastRatio", () => {
   it("spans black to white at the ratio the criterion names", () => {

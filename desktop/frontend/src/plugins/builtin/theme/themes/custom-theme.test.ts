@@ -3,6 +3,7 @@ import { COLOR_THEME } from "@/plugins/sdk/kernelPoints";
 import { lookupExtensionByKey, lookupExtensionPoint, subscribeContributions } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
+import { solidFill } from "../kit/scale";
 import customTheme from "./custom-theme";
 
 describe("custom theme contribution lifecycle", () => {
@@ -18,7 +19,9 @@ describe("custom theme contribution lifecycle", () => {
     await loadPluginsForTest(customTheme);
 
     expect(lookupExtensionPoint(COLOR_THEME)).toHaveLength(1);
-    expect(lookupExtensionByKey(COLOR_THEME, "custom")?.tokens?.["color-accent"]).toBe("#3574f0");
+    expect(lookupExtensionByKey(COLOR_THEME, "custom")?.tokens?.["color-accent"]).toBe(
+      solidFill("#3574f0"),
+    );
     const observed: string[][] = [];
     const unsubscribe = subscribeContributions(() => {
       observed.push(lookupExtensionPoint(COLOR_THEME).map((theme) => theme.id));
@@ -26,7 +29,9 @@ describe("custom theme contribution lifecycle", () => {
 
     expect(() => useAppearanceStore.getState().setAccent("#7f52ff")).not.toThrow();
     expect(lookupExtensionPoint(COLOR_THEME)).toHaveLength(1);
-    expect(lookupExtensionByKey(COLOR_THEME, "custom")?.tokens?.["color-accent"]).toBe("#7f52ff");
+    expect(lookupExtensionByKey(COLOR_THEME, "custom")?.tokens?.["color-accent"]).toBe(
+      solidFill("#7f52ff"),
+    );
     expect(observed).toEqual([["custom"]]);
     unsubscribe();
 

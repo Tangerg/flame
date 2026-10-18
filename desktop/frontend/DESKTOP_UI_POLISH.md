@@ -29,7 +29,7 @@ reads as a double edge, so each role owns exactly one mechanism — and, crucial
 **which mechanism a role uses is the active visual style's decision, not a call
 site's**. The tool-window style now shipping answers:
 
-- **region boundary** → a 0.5px inset edge in `border-soft` (`--app-card-edge` at the
+- **region boundary** → a 0.5px inset edge in `border-strong` (`--app-card-edge` at the
   drawer, `--app-pane-split` at the dock, `--app-header-edge` under a bar), on top of
   the value step. Half a pixel is one device pixel on a 2x panel: crisp without weight.
 - **card** → fill (`bg-card`) plus the shared, quiet contact shadow. The default HeroUI-inspired resource surface uses no decorative border.

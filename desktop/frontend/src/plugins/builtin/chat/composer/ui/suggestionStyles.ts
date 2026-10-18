@@ -26,7 +26,7 @@ export const suggestionStyles = stylex.create({
     padding: 0,
     fontFamily: "var(--font-mono)",
     fontWeight: weight.medium,
-    color: color.accent,
+    color: color.accentText,
   },
   directory: { color: color.fgFaint },
   name: { fontWeight: weight.medium, color: color.fg },

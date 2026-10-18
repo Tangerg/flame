@@ -1,8 +1,9 @@
-import { colord } from "colord";
 import type { Scheme } from "@/lib/appearance";
 import type { ColorThemeSpec } from "@/plugins/sdk";
-import { colorThemeContribution } from "./colorThemeContribution";
-import { WCAG_AA_TEXT, legibleMix, mixOklab } from "./legibility";
+import { edgeOnCanvas, focusOnCanvas } from "./legibility";
+import { mixOklab, toOklch } from "./oklab";
+import { hueScale, neutralScale, solidInk, step, type Scale } from "./scale";
+import { SCHEME_ICON, inkTracksLadder } from "./tokens";
 
 interface ThemePalette {
   background?: string;
@@ -22,12 +23,30 @@ export interface PaletteTheme {
 }
 
 export const SCHEME_BASE: Record<Scheme, { background: string; foreground: string }> = {
-  dark: { background: "#060607", foreground: "#fcfcfc" },
-  light: { background: "#f5f5f5", foreground: "#18181b" },
+  dark: { background: "#0f0f0f", foreground: "#eeeeee" },
+  light: { background: "#f5f5f5", foreground: "#1b1b1b" },
 };
 
-const mix = (a: string, pct: number, b: string): string =>
-  `color-mix(in oklab, ${a} ${pct}%, ${b})`;
+const STATUS_SEED = {
+  negative: "#e5484d",
+  warning: "#ffc53d",
+  success: "#30a46c",
+  info: "#0090ff",
+} as const;
+
+const PLANE_STEP: Record<
+  Scheme,
+  Record<"drawer" | "surface" | "sunken" | "divider" | "border" | "borderStrong", number>
+> = {
+  light: { drawer: 2, surface: 2, sunken: 3, divider: 4, border: 5, borderStrong: 7 },
+  dark: { drawer: 1, surface: 3, sunken: 4, divider: 4, border: 5, borderStrong: 7 },
+};
+
+function elevatedPlane(scheme: Scheme, neutral: Scale): string {
+  return scheme === "light"
+    ? mixOklab("#ffffff", step(neutral, 1), 85)
+    : step(neutral, PLANE_STEP.dark.surface);
+}
 
 export function paletteThemeContribution(
   theme: PaletteTheme,
@@ -35,44 +54,77 @@ export function paletteThemeContribution(
   contrast: number,
 ): ColorThemeSpec {
   const { scheme, palette } = theme;
-  const bg = palette.background ?? SCHEME_BASE[scheme].background;
-  const fg = palette.foreground ?? SCHEME_BASE[scheme].foreground;
-  const accent = palette.accent ?? preferredAccent;
-  const k = Math.min(100, Math.max(0, contrast)) / 100;
-  const p = (lo: number, hi: number) => Math.round(lo + (hi - lo) * k);
-  const extreme = scheme === "dark" ? "#ffffff" : "#000000";
-  const chromePct = p(4, 12);
-  const chrome = mix(fg, chromePct, bg);
-  const plane = mixOklab(fg, bg, chromePct);
-  const legible = (floorPct: number) => legibleMix(fg, bg, plane, floorPct, WCAG_AA_TEXT);
+  const background = palette.background ?? SCHEME_BASE[scheme].background;
+  const foreground = palette.foreground ?? SCHEME_BASE[scheme].foreground;
+  const seed = palette.accent ?? preferredAccent;
+  const separation = 0.6 + 1.6 * (Math.min(100, Math.max(0, contrast)) / 100);
+  const planes = PLANE_STEP[scheme];
+  const neutral = neutralScale(
+    background,
+    foreground,
+    scheme,
+    palette.background === undefined ? toOklch(seed).h : null,
+    separation,
+    planes.sunken,
+  );
+  const canvas = step(neutral, 1);
+  const textPlanes = [step(neutral, planes.sunken), elevatedPlane(scheme, neutral)];
+  const scale = (color: string) => hueScale(color, scheme, canvas, textPlanes);
+  const accent = scale(seed);
+  const status = {
+    negative: scale(STATUS_SEED.negative),
+    warning: scale(STATUS_SEED.warning),
+    success: scale(STATUS_SEED.success),
+    info: scale(STATUS_SEED.info),
+  };
+  const solid = step(accent, 9);
+  const onSolid = solidInk(solid);
+  const text = step(neutral, 12);
+
   return {
-    ...colorThemeContribution({
-      id: theme.id,
-      label: theme.label,
-      scheme,
-      icon: theme.icon,
-      order: theme.order,
-      brand: { accent, textOnAccent: colord(accent).isDark() ? "#ffffff" : "#000000" },
-      surfaces: {
-        bg,
-        surface: chrome,
-        elevated: scheme === "dark" ? chrome : mix("#ffffff", p(35, 80), bg),
-        sunken: mix("#000000", p(3, 8), bg),
-      },
-      ink: {
-        text: fg,
-        textBright: mix(fg, 80, extreme),
-        textSoft: mix(fg, legible(p(86, 94)), bg),
-        textMuted: palette.muted ?? mix(fg, legible(p(45, 75)), bg),
-        textFaint: mix(fg, legible(p(28, 52)), bg),
-      },
-      borders: {
-        border: palette.border ?? mix(fg, p(8, 22), bg),
-        borderSoft: mix(fg, p(14, 32), bg),
-        divider: mix(fg, p(5, 13), bg),
-      },
-      semantic: { negative: "#e5484d", warning: "#f5a623", info: "#3b82f6", success: "#30a46c" },
-    }),
-    accent: palette.accent,
+    id: theme.id,
+    label: theme.label,
+    scheme,
+    icon: theme.icon ?? SCHEME_ICON[scheme],
+    order: theme.order,
+    tokens: {
+      "color-accent": solid,
+      "color-text-on-accent": onSolid,
+      "color-accent-line": step(accent, 7),
+      "color-accent-text": step(accent, 11),
+      "color-accent-strong": step(accent, 12),
+      "tone-accent": solid,
+
+      "color-bg": canvas,
+      "color-drawer": step(neutral, planes.drawer),
+      "color-surface": step(neutral, planes.surface),
+      "color-elevated": elevatedPlane(scheme, neutral),
+      "color-sunken": step(neutral, planes.sunken),
+
+      "color-text": text,
+      "color-text-bright": mixOklab(text, scheme === "dark" ? "#ffffff" : "#000000", 80),
+      "color-text-soft": inkTracksLadder(scheme, mixOklab(text, step(neutral, 11), 55)),
+      "color-text-muted": inkTracksLadder(scheme, palette.muted ?? step(neutral, 11)),
+      "color-text-faint": inkTracksLadder(scheme, step(neutral, 10)),
+
+      "color-focus-ring": focusOnCanvas(solid, text, canvas),
+      "color-control-edge": edgeOnCanvas(text, canvas),
+      "color-divider": step(neutral, planes.divider),
+      "color-border": palette.border ?? step(neutral, planes.border),
+      "color-border-strong": step(neutral, planes.borderStrong),
+
+      "color-negative": step(status.negative, 11),
+      "color-warning": step(status.warning, 11),
+      "color-success": step(status.success, 11),
+      "color-info": step(status.info, 11),
+      "tone-negative": step(status.negative, 9),
+      "tone-warning": step(status.warning, 9),
+      "tone-success": step(status.success, 9),
+      "tone-info": step(status.info, 9),
+
+      "color-cta": solid,
+      "color-cta-hover": step(accent, 10),
+      "color-cta-text": onSolid,
+    },
   };
 }

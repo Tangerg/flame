@@ -25,7 +25,7 @@ const styles = stylex.create({
     backgroundColor: surface.surface2,
   },
   neutral: { color: color.fgFaint },
-  accent: { color: color.accent },
+  accent: { color: color.accentText },
   label: { minWidth: 0, flexShrink: 0 },
 });
 

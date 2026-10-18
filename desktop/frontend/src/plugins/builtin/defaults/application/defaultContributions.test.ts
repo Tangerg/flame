@@ -16,9 +16,9 @@ describe("DEFAULT_ACCENTS", () => {
     expect(DEFAULT_ACCENTS.map((accent) => accent.order)).toEqual([0, 1, 2, 3]);
   });
 
-  it("uses distinct light and dark values for every built-in accent", () => {
-    expect(DEFAULT_ACCENTS.every((accent) => accent.light && accent.light !== accent.dark)).toBe(
-      true,
+  it("names one distinct brand color for every built-in accent", () => {
+    expect(new Set(DEFAULT_ACCENTS.map((accent) => accent.color)).size).toBe(
+      DEFAULT_ACCENTS.length,
     );
   });
 });

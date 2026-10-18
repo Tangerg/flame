@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { act, render } from "@testing-library/react";
 import { createElement } from "react";
 import { Icon } from "@/ui/icons";
-import { ACCENT, COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
+import { COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
 import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
 import { installDocumentAppearance } from "./documentAppearance";
 import { installSystemAppearance } from "./systemAppearance";
@@ -115,20 +115,13 @@ describe("a theme's own neutrals are what paints", () => {
 describe("accent ownership", () => {
   const painted = () => document.documentElement.style.getPropertyValue("--color-accent");
 
-  it("gives a declared accent to the theme while it is selected, and the preference otherwise", async () => {
+  it("paints the accent its theme derived, never a second one of its own", async () => {
     await contributeForTest((ctx) => {
       ctx.contribute(COLOR_THEME, {
         id: "declared",
         label: "Declared",
         scheme: "light",
-        accent: "#b4004e",
         tokens: { "color-accent": "#b4004e" },
-      });
-      ctx.contribute(COLOR_THEME, {
-        id: "undeclared",
-        label: "Undeclared",
-        scheme: "dark",
-        tokens: { "color-accent": "#3574f0" },
       });
     });
 
@@ -136,9 +129,6 @@ describe("accent ownership", () => {
     expect(painted()).toBe("#b4004e");
     useAppearanceStore.setState({ accent: "#7f52ff" });
     expect(painted()).toBe("#b4004e");
-
-    useAppearanceStore.setState({ theme: "undeclared" });
-    expect(painted()).toBe("#7f52ff");
   });
 });
 
@@ -227,27 +217,6 @@ describe("applyTheme — theme-as-plugin contract", () => {
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--color-bg")).toBe("#fafafa");
     expect(root.style.getPropertyValue("--color-warning")).toBe("");
-  });
-
-  it("resolves accent through the registry for light-scheme themes", async () => {
-    await contributeForTest((ctx) => {
-      ctx.contribute(COLOR_THEME, {
-        id: "light",
-        label: "Light",
-        scheme: "light",
-        tokens: {},
-      });
-      ctx.contribute(ACCENT, {
-        id: "green",
-        label: "Green",
-        dark: "#1ed760",
-        light: "#15883e",
-      });
-    });
-
-    useAppearanceStore.getState().setTheme("light");
-
-    expect(document.documentElement.style.getPropertyValue("--color-accent")).toBe("#15883e");
   });
 
   it("toggleTheme flips to the first registered theme of the opposite scheme", async () => {

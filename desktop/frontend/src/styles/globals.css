@@ -45,7 +45,11 @@
   --color-warning-badge-text: color-mix(in oklab, var(--color-warning) 70%, var(--color-text) 30%);
   --color-success-badge-text: color-mix(in oklab, var(--color-success) 70%, var(--color-text) 30%);
   --color-info-badge-text: color-mix(in oklab, var(--color-info) 70%, var(--color-text) 30%);
-  --color-accent-badge-text: color-mix(in oklab, var(--color-accent) 70%, var(--color-text) 30%);
+  --color-accent-badge-text: color-mix(
+    in oklab,
+    var(--color-accent-text) 70%,
+    var(--color-text) 30%
+  );
   --color-negative-edge: color-mix(in srgb, var(--tone-negative) 38%, transparent);
   --text-ui-2xs--letter-spacing: 0;
   --text-code--letter-spacing: 0;
@@ -110,13 +114,16 @@
 /* prettier-ignore */
 
 :root {
-  --color-accent: #006fdb;
+  --color-accent: #0076de;
+  --color-accent-line: #95c1f7;
+  --color-accent-text: #0e69c2;
+  --color-accent-strong: #0f3560;
 
-  --color-bg: #f5f5f5;
-  --color-surface: #efeff0;
-  --color-elevated: #ffffff;
-  --color-sunken: #eaeaeb;
-  --color-drawer: #efeff0;
+  --color-bg: #f4f5f7;
+  --color-surface: #eef0f3;
+  --color-elevated: #fdfdfe;
+  --color-sunken: #e8eaed;
+  --color-drawer: #eef0f3;
   --depth-step: 4%;
   --color-surface-2: color-mix(
     in oklab,
@@ -144,48 +151,36 @@
 
   --shadow-cast: rgb(0 0 0 / 0.2);
 
-  --color-text: #18181b;
-  --color-text-bright: #000000;
-  --color-text-soft: color-mix(
-    in oklab,
-    var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)),
-    #3f3f46
-  );
-  --color-text-muted: color-mix(
-    in oklab,
-    var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)),
-    #66666f
-  );
-  --color-text-faint: color-mix(
-    in oklab,
-    var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)),
-    #66666f
-  );
+  --color-text: #181b20;
+  --color-text-bright: #0f1115;
+  --color-text-soft: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #373b41);
+  --color-text-muted: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #60666d);
+  --color-text-faint: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #636a72);
   --color-text-on-accent: #ffffff;
   --color-text-on-warning: #000000;
 
-  --color-border: #dedee0;
-  --color-border-soft: #c4c4c9;
-  --color-control-edge: #939495;
-  --color-divider: #e4e4e7;
+  --color-border: #dcdfe4;
+  --color-border-strong: #c6ccd2;
+  --color-control-edge: #8a8c90;
+  --color-divider: #e2e5e9;
   --color-scrim: #00000022;
   --gauge-track: color-mix(in oklab, currentColor 22%, transparent);
   --scrollbar-thumb: color-mix(in oklab, var(--color-text) 17%, transparent);
   --scrollbar-thumb-strong: color-mix(in oklab, var(--color-text) 28%, transparent);
 
-  --color-negative: #b0342b;
-  --color-warning: #84610e;
-  --color-info: #006fdb;
-  --color-success: #2a713e;
+  --color-negative: #be383e;
+  --color-warning: #886400;
+  --color-info: #0e6bbb;
+  --color-success: #10784b;
 
-  --tone-negative: oklch(from var(--color-negative) 68% calc(c * 1.4) h);
-  --tone-warning: oklch(from var(--color-warning) 68% calc(c * 1.4) h);
-  --tone-info: oklch(from var(--color-info) 68% calc(c * 1.4) h);
-  --tone-success: oklch(from var(--color-success) 68% calc(c * 1.4) h);
-  --tone-accent: oklch(from var(--color-accent) 68% calc(c * 1.4) h);
+  --tone-negative: #d83b43;
+  --tone-warning: #ffc53d;
+  --tone-info: #0078d6;
+  --tone-success: #008853;
+  --tone-accent: #0076de;
 
-  --color-cta: #006fdb;
-  --color-cta-hover: #0064c5;
+  --color-cta: #0076de;
+  --color-cta-hover: #006dcf;
   --color-cta-text: #ffffff;
 
   --fs-ui-2xs: 10px;
@@ -348,7 +343,7 @@
   --shadow-surface-card: 0 2px 4px color-mix(in oklab, var(--shadow-cast) 20%, transparent), 0 1px 2px color-mix(in oklab, var(--shadow-cast) 30%, transparent);
   --shadow-live-glow: 0 0 6px var(--color-accent);
   --shadow-swatch-selected: 0 0 0 1.5px var(--color-text);
-  --color-focus-ring: var(--color-accent);
+  --color-focus-ring: #0076de;
 
   --app-drawer-surface: var(--color-drawer);
   --app-content-surface: var(--color-bg);
@@ -371,7 +366,7 @@
     color-mix(in oklab, var(--color-accent) 18%, var(--app-card-surface)),
     color-mix(in oklab, var(--color-accent) 5%, var(--app-card-surface))
   );
-  --app-user-message-surface: color-mix(in srgb, var(--color-text) 5%, transparent);
+  --app-user-message-surface: color-mix(in oklab, var(--tone-accent) 10%, transparent);
   --app-composer-surface: color-mix(in oklab, var(--app-content-surface) 86%, transparent);
   --composer-backdrop: blur(20px) saturate(1.4);
   --app-composer-tray-surface: color-mix(in oklab, var(--app-content-surface) 70%, transparent);
@@ -390,9 +385,9 @@
   --app-header-edge: inset 0 -0.5px 0 0;
   --app-pane-wash: inset 12px 0 12px -6px;
   --app-pane-wash-end: inset -12px 0 12px -6px;
-  --seam-line: var(--color-border-soft);
+  --seam-line: var(--color-border-strong);
   --seam-wash: color-mix(in oklab, var(--shadow-cast) 20%, transparent);
-  --boundary-emphasis: color-mix(in oklab, var(--color-text) 28%, var(--color-border-soft));
+  --boundary-emphasis: color-mix(in oklab, var(--color-text) 28%, var(--color-border-strong));
   --content-max: 768px;
   --reading-column-max: calc(var(--content-max) + 2 * var(--reading-gutter-wide));
   --reading-rail-width: 176px;
@@ -469,52 +464,63 @@ body {
 
 html.theme-dark {
   --wash-step: max(3%, calc(var(--depth-step) / 2));
+  --app-user-message-surface: color-mix(in oklab, var(--tone-accent) 18%, transparent);
 
-  --color-accent: #0485f7;
+  --color-accent: #0076de;
+  --color-accent-line: #245994;
+  --color-accent-text: #80b9ff;
+  --color-accent-strong: #cbe2ff;
+  --tone-accent: #0076de;
+  --color-focus-ring: #0076de;
 
-  --color-bg: #060607;
-  --color-surface: #18181b;
-  --color-elevated: #18181b;
-  --color-sunken: #232325;
-  --color-drawer: #060607;
+  --color-bg: #0e0f11;
+  --color-surface: #1c1e21;
+  --color-elevated: #1c1e21;
+  --color-sunken: #212428;
+  --color-drawer: #0e0f11;
   --depth-step: 8%;
 
   --shadow-cast: rgb(0 0 0 / 0.55);
   --color-media-edge: rgb(255 255 255 / 0.1);
 
-  --color-text: #fcfcfc;
-  --color-text-bright: #ffffff;
+  --color-text: #eceef1;
+  --color-text-bright: #f0f1f4;
   --color-text-soft: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #d4d4d8
+    #c9ccd0
   );
   --color-text-muted: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #9f9fa9
+    #9fa4a9
   );
   --color-text-faint: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #9f9fa9
+    #848b93
   );
   --color-text-on-accent: #ffffff;
-  --color-cta: #006fdb;
-  --color-cta-hover: #0064c5;
+  --color-cta: #0076de;
+  --color-cta-hover: #0c6bc7;
   --color-cta-text: #ffffff;
   --color-text-on-warning: #000000;
 
-  --color-border: #28282c;
-  --color-border-soft: #3f3f46;
-  --color-control-edge: #6a6a6c;
-  --color-divider: #212124;
+  --color-border: #282b30;
+  --color-border-strong: #3e4349;
+  --color-control-edge: #5e6062;
+  --color-divider: #212428;
   --color-scrim: #00000022;
 
-  --color-negative: #e68a8a;
-  --color-warning: #d6a750;
-  --color-info: #6e9bf4;
-  --color-success: #6db473;
+  --color-negative: #ff928d;
+  --color-warning: #d7b05e;
+  --color-info: #7cbaff;
+  --color-success: #83c79f;
+
+  --tone-negative: #d83b43;
+  --tone-warning: #ffc53d;
+  --tone-success: #008853;
+  --tone-info: #0078d6;
 }
 
 * {
@@ -731,7 +737,7 @@ html.theme-dark {
   overflow: clip;
   background: var(--app-content-surface);
   border-radius: 0;
-  --shell-boundary: var(--color-border-soft);
+  --shell-boundary: var(--color-border-strong);
   box-shadow: var(--app-card-edge) var(--shell-boundary);
   transition: box-shadow var(--dur-drawer) var(--ease-drawer);
 }
@@ -809,7 +815,7 @@ html.theme-dark {
 .pane-split {
   position: relative;
   z-index: 1;
-  --split-boundary: var(--color-border-soft);
+  --split-boundary: var(--color-border-strong);
   box-shadow:
     var(--app-pane-split) var(--split-boundary),
     var(--app-pane-wash) var(--seam-wash);

@@ -252,7 +252,7 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
 :where([data-prose]) :where(h1, h2, h3, h4, h5, h6) {
   font-weight: var(--fw-semibold);
   letter-spacing: normal;
-  color: var(--color-text);
+  color: var(--color-accent-strong);
   margin: calc(var(--prose-space) * 7) 0 calc(var(--prose-space) * 2);
   text-wrap: balance;
 }
@@ -280,6 +280,7 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   margin-block-end: 0;
   font-size: var(--fs-prose);
   line-height: calc(var(--prose-space) * 6);
+  color: var(--color-text);
 }
 :where([data-prose])
   :where(h4:not([data-prose-level]), [data-prose-level="4"])
@@ -296,6 +297,7 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   margin: calc(var(--prose-space) * 4) 0 0;
   font-size: var(--fs-prose);
   line-height: var(--leading-prose);
+  color: var(--color-text);
 }
 :where([data-prose]) :where(ul, ol) {
   margin: 0;
@@ -334,7 +336,7 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   margin-block-start: calc(var(--prose-space) * 2);
 }
 :where([data-prose]) :where(li)::marker {
-  color: var(--color-text-muted);
+  color: var(--color-accent-text);
 }
 :where([data-prose]) :where(li > p) {
   margin: 0;
@@ -413,14 +415,14 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   inset-inline-start: 0;
   width: 2px;
   border-radius: var(--shape-2xs);
-  background: var(--color-border-soft);
+  background: var(--color-accent-line);
 }
 :where([data-prose]) :where(a[href]) {
-  color: var(--color-accent);
+  color: var(--color-accent-text);
   text-decoration: underline;
   text-decoration-color: color-mix(
     in oklab,
-    var(--color-accent) 30%,
+    var(--color-accent-text) 35%,
     transparent
   );
   text-underline-offset: 2px;
@@ -428,7 +430,7 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
 }
 @media (hover: hover) {
   :where([data-prose]) :where(a[href]:hover) {
-    text-decoration-color: var(--color-accent);
+    text-decoration-color: var(--color-accent-text);
   }
 }
 :where([data-prose]) :where([data-footnotes]) {
@@ -479,8 +481,8 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   box-decoration-break: slice;
   padding: 0.125em 0.375em;
   border-radius: var(--shape-xs);
-  background: color-mix(in oklab, var(--color-text) 5.5%, transparent);
-  color: var(--color-text);
+  background: color-mix(in oklab, var(--tone-accent) 9%, transparent);
+  color: var(--color-accent-strong);
   font-family: var(--font-mono);
   font-size: var(--fs-code);
   letter-spacing: 0;
@@ -513,7 +515,7 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
 }
 :where([data-slot="document-body"], [data-slot="prose-table"]) th {
   padding-block: calc(var(--fs-prose) * 0.375) calc(var(--fs-prose) * 0.5);
-  border-block-end: 1px solid var(--color-border-soft);
+  border-block-end: 1px solid var(--color-border-strong);
   color: var(--color-text);
   font-weight: var(--fw-semibold);
   overflow-wrap: normal;
