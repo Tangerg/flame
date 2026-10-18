@@ -413,8 +413,10 @@ const LIST_SKILLS_CALL = settledTool(
   "list_skills",
   {},
   [
+    "<available_skills>",
     "<skill><name>review-diff</name><description>Read a change the way a reviewer does, worst risk first.</description></skill>",
     "<skill><name>trace-flaky-test</name><description>Find the shared state behind a test that passes alone.</description></skill>",
+    "</available_skills>",
   ].join("\n"),
 );
 
@@ -529,8 +531,8 @@ const STOP_SHELL_CALL = settledTool(
 const ASK_USER_CALL = settledTool(
   "item_last_ask_user",
   "ask_user",
-  { question: "Which gate should run next?" },
-  JSON.stringify({ answer: "Race detector" }),
+  { questions: [{ question: "Which gate should run next?", header: "Next gate" }] },
+  "Race detector",
 );
 
 const SHELL_READ: Item = {

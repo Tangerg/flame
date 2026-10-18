@@ -152,12 +152,12 @@ test("search results omit absent snippets while preserving recorded empty lines"
   const web = page.locator('[data-slot="recorded-result"]').filter({ hasText: "Recorded blank" });
   const webRows = web.locator('[data-slot="recorded-result-viewport"] > div');
   await expect(webRows).toHaveCount(3);
-  await expect(webRows.nth(0).locator("pre")).toHaveCount(0);
-  await expect(webRows.nth(1).locator("pre")).toHaveText(
+  await expect(webRows.nth(0).locator("p")).toHaveCount(0);
+  await expect(webRows.nth(1).locator("p")).toHaveText(
     "A reader open across the checkpoint keeps frames alive.",
   );
-  await expect(webRows.nth(2).locator("pre")).toHaveText(" ");
-  await expect(webRows.nth(2).locator("pre")).toBeVisible();
+  await expect(webRows.nth(2).locator("p")).toHaveText(" ");
+  await expect(webRows.nth(2).locator("p")).toBeVisible();
   await web.getByRole("button", { name: "Find", exact: true }).click();
   await finding.getByRole("searchbox", { name: "Filter result" }).fill("keeps frames alive");
   await expect(filteredRows).toHaveCount(1);

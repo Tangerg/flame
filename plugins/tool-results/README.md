@@ -16,10 +16,17 @@ navigation, copy, approvals and explicit mutation actions retain their existing 
 Filters, ANSI styles, line numbers and incremental expansion are local presentation.
 Result filters open on demand above one bounded scrolling body; their compact
 Find action follows the result text. Source lines share a continuous numbered
-layout; located results keep their context above each snippet. The host Tool
-disclosure owns identity, status and failure details.
+layout; located source results keep their context above each snippet. Web results
+and skill summaries separate the primary title, supporting URL and readable body
+using the shared record typography. An absent or repeated web title shows its URL
+once. The host Tool disclosure owns identity, status and failure details.
 Missing snippets add no body row; recorded empty snippets and source lines retain
 their blank line.
+Known literal answers, instructions and source results are classified by Tool
+identity before inspecting normalized result shapes. JSON-looking text stays
+complete rather than being mistaken for a different Tool's result envelope.
+Skill summaries decode the producer's XML text once and retain its truncation
+notice. Unknown or malformed summary formats remain complete source text.
 Result viewports contain horizontal overscroll and let vertical scrolling continue
 through the transcript when the result reaches its edge or fits without scrolling.
 Explicit expansion transfers focus once to the new output viewport after its
