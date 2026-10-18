@@ -415,7 +415,7 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   border-radius: var(--shape-2xs);
   background: var(--color-border-soft);
 }
-:where([data-prose]) :where(a) {
+:where([data-prose]) :where(a[href]) {
   color: var(--color-accent);
   text-decoration: underline;
   text-decoration-color: color-mix(
@@ -427,7 +427,7 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   transition: text-decoration-color var(--dur-color) var(--ease-state);
 }
 @media (hover: hover) {
-  :where([data-prose]) :where(a:hover) {
+  :where([data-prose]) :where(a[href]:hover) {
     text-decoration-color: var(--color-accent);
   }
 }

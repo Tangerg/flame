@@ -21,6 +21,9 @@ its license is retained in the namespace resources.
 The preview describes embedded images using their alternative text and a short
 source caption. Complete payloads remain intact in the host Source view.
 Ordinary image URLs remain visible, inert source text.
+Links retain their formatted labels and native title annotations without becoming
+interactive. A destination is shown only when non-empty and different from the
+visible label.
 
 The host file header owns file identity, range metadata and navigation. The
 renderer supplies authored document content within the shared content measure,

@@ -35,11 +35,14 @@ const mathFences = (raw: string) => raw.match(/\$\$/g)?.length ?? 0;
 export function splitStreamingBlocks(markdown: string): string[] {
   if (FOOTNOTE.test(markdown)) return [markdown];
 
+  const tokens = Lexer.lex(markdown, { gfm: true });
+  if (Object.keys(tokens.links).length > 0) return [markdown];
+
   const blocks: string[] = [];
   const openTags: string[] = [];
   let afterCode = false;
 
-  for (const token of Lexer.lex(markdown, { gfm: true })) {
+  for (const token of tokens) {
     const raw = token.raw;
 
     if (openTags.length > 0) {

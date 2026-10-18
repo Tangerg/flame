@@ -1,7 +1,8 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { Element, Root } from "hast";
 import { getHighlighter } from "@/lib/highlight/shiki";
+import { motionScale, publishMotionScale } from "@/lib/appearance";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { rehypeFadeIn } from "./rehypeFadeIn";
 
@@ -472,6 +473,55 @@ describe("markdownMessage", () => {
     expect(container.querySelector("sup[data-citation]")).toBeNull();
     expect(container.textContent).toContain("values[1]");
     expect(container.textContent).toContain("values[12]");
+  });
+
+  it("resolves full, collapsed and shortcut references when streamed definitions arrive", async () => {
+    const body = "Read [Full guide][protocol].\n\nThen [Collapsed guide][] and [Shortcut guide].";
+    const complete = [
+      body,
+      "",
+      '[protocol]: https://example.test/protocol "Protocol guide"',
+      '[Collapsed guide]: https://example.test/implementation "Implementation guide"',
+      '[Shortcut guide]: https://example.test/reading "Reading guide"',
+    ].join("\n");
+    const previousScale = motionScale();
+    publishMotionScale(0);
+    const { container, rerender, unmount } = render(
+      <MarkdownRenderer text={body} reveal="smooth" streaming />,
+    );
+    try {
+      expect(within(container).queryAllByRole("link")).toHaveLength(0);
+      expect(container.textContent).toContain("[Full guide][protocol]");
+      expect(container.textContent).toContain("[Collapsed guide][]");
+      expect(container.textContent).toContain("[Shortcut guide]");
+
+      rerender(<MarkdownRenderer text={complete} reveal="smooth" streaming />);
+      await waitFor(() => {
+        expect(within(container).getAllByRole("link")).toHaveLength(3);
+      });
+
+      for (const streaming of [true, false]) {
+        rerender(<MarkdownRenderer text={complete} reveal="smooth" streaming={streaming} />);
+        const links = within(container).getAllByRole("link");
+        expect(
+          links.map((link) => [
+            link.textContent,
+            link.getAttribute("href"),
+            link.getAttribute("title"),
+          ]),
+        ).toEqual([
+          ["Full guide", "https://example.test/protocol", "Protocol guide"],
+          ["Collapsed guide", "https://example.test/implementation", "Implementation guide"],
+          ["Shortcut guide", "https://example.test/reading", "Reading guide"],
+        ]);
+        expect(
+          [...container.querySelectorAll("p")].map((paragraph) => paragraph.textContent),
+        ).toEqual(["Read Full guide.", "Then Collapsed guide and Shortcut guide."]);
+      }
+    } finally {
+      unmount();
+      publishMotionScale(previousScale);
+    }
   });
 
   it("isolates inline and fenced code as left-to-right inside bidirectional prose", async () => {

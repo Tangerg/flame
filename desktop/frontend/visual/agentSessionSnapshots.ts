@@ -927,6 +927,19 @@ export const READING_BLOCKS_MARKDOWN = [
   "在 src/main.ts:12:3 中检查边界，保持文件引用与中文正文的阅读节奏。",
   "",
   "Review README.md:15:2 before publishing, then inspect desktop/frontend/package.json. The sentence keeps its final punctuation.",
+  "",
+  "### Reference material",
+  "",
+  "Read [the protocol guide][protocol] before continuing. The [implementation notes][] explain how the accepted result reaches its consumer.",
+  "",
+  "The recorded release is available at https://example.test/runtime/releases. Keep its address with the surrounding explanation.",
+  "",
+  'Read the [**Review** `guide`](https://example.test/runtime/review "Accepted evidence and follow-up") before publishing the next result.',
+  "",
+  "An [unavailable source](javascript:alert%281%29) remains part of the recorded explanation.",
+  "",
+  '[protocol]: https://example.test/runtime/protocol "Accepted protocol contract"',
+  "[implementation notes]: https://example.test/runtime/implementation",
 ].join("\n");
 
 const REFERENCE_NOTES_MARKDOWN = [

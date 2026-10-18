@@ -674,6 +674,7 @@ interface BlockCtx {
 - Markdown 包裹层用 `<div>` 不是 `<p>`（渲染器自己会产出 `<p>`，嵌套是非法 HTML，浏览器会静默拆开外层）。
 - Generated footnotes keep document-local reference, definition and label identities across streaming completion. Repeated references return to their own occurrence; another message with the same authored identifier has a separate identity.
 - Footnotes form supporting content, with the generated label retained for assistive reading. Selection copy keeps the answer and note text while omitting the hidden label and return controls. Fragment links stay in the document; external links retain the shared safe-opening policy.
+- Reference-style links retain a document-wide parsing context when definitions arrive. Links without an accepted destination remain ordinary reading text.
 
 ---
 

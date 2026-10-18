@@ -93,10 +93,13 @@ function renderTokens(tokens: Token[]): ReactNode[] {
       }
       case "link": {
         const value = token as Tokens.Link;
+        const label = renderTokens(value.tokens);
         return (
-          <span key={key}>
-            {renderTokens(value.tokens)}
-            <small> ({value.href})</small>
+          <span key={key} title={value.title ?? undefined}>
+            {label}
+            {value.href && visibleText(label) !== value.href && (
+              <small> ({value.href})</small>
+            )}
           </span>
         );
       }

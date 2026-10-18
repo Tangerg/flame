@@ -35,6 +35,41 @@ function renderCapturedMarkdown(content: string) {
   return render(<Markdown context={context} />);
 }
 
+it("keeps captured links complete, non-repeating and inert", () => {
+  const url = "https://example.test/review";
+  const annotation = "Accepted evidence and follow-up";
+  const { container } = renderCapturedMarkdown(
+    [
+      url,
+      `<${url}>`,
+      `[${url}](${url})`,
+      `[**Review** \`guide\`](https://example.test/guide "${annotation}")`,
+      "[Another source](https://example.test/other)",
+      "[Empty destination]()",
+      "[Recorded command](javascript:alert%281%29)",
+    ].join("\n\n"),
+  );
+  const document = container.querySelector('[data-slot="document-body"]')!;
+  const paragraphs = Array.from(document.querySelectorAll(":scope > p"));
+  expect(paragraphs.map((paragraph) => paragraph.textContent)).toEqual([
+    url,
+    url,
+    url,
+    "Review guide (https://example.test/guide)",
+    "Another source (https://example.test/other)",
+    "Empty destination",
+    "Recorded command (javascript:alert%281%29)",
+  ]);
+  const annotated = screen.getByTitle(annotation);
+  expect(annotated.tagName).toBe("SPAN");
+  expect(annotated.querySelector("strong")?.textContent).toBe("Review");
+  expect(annotated.querySelector("code")?.textContent).toBe("guide");
+  expect(document.querySelectorAll("[title]")).toHaveLength(1);
+  expect(
+    document.querySelector("a, button, input, img, iframe, script, [href], [onclick]"),
+  ).toBeNull();
+});
+
 it("preserves authored column alignment in captured Markdown tables", () => {
   renderCapturedMarkdown(
     [

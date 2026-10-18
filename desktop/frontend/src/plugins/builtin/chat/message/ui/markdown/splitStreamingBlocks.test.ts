@@ -31,6 +31,20 @@ const CASES: readonly [name: string, markdown: string, blocks: readonly string[]
     "see[^来源]\n\n[^来源]: supporting evidence",
     ["see[^来源]\n\n[^来源]: supporting evidence"],
   ],
+  [
+    "a link definition keeps the reference and document together",
+    '[guide][id]\n\nA later paragraph.\n\n[id]: https://example.test/protocol "Protocol guide"',
+    ['[guide][id]\n\nA later paragraph.\n\n[id]: https://example.test/protocol "Protocol guide"'],
+  ],
+  [
+    "direct links and fenced definitions retain ordinary block splitting",
+    "[guide](https://example.test)\n\n```md\n[guide][id]\n[id]: https://example.test/literal\n```",
+    [
+      "[guide](https://example.test)",
+      "\n\n",
+      "```md\n[guide][id]\n[id]: https://example.test/literal\n```",
+    ],
+  ],
   ["a void element opens nothing", "<img src=x>\n\npara", ["<img src=x>", "\n\n", "para"]],
   ["a self-closing element opens nothing", "<div />\n\npara", ["<div />", "\n\n", "para"]],
   [
