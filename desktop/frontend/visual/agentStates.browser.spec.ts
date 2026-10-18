@@ -862,13 +862,14 @@ test("code blocks stay readable and expose the wrap control", async ({ context, 
   );
 });
 
-test("code blocks use the Codex caption and source geometry", async ({ page }) => {
+test("reading artifacts share a frame with aligned captions and source", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=long-content");
   await page.locator("html[data-visual-ready]").waitFor();
 
   const block = page.locator(".shiki-block").filter({ hasText: "Execute(context.Context" });
   await block.locator(".shiki").waitFor();
   await block.locator('[data-markdown-copy="exclude"]').waitFor();
+  await expect(page.getByRole("img", { name: "Diagram" })).toBeVisible();
   const geometry = await block.evaluate((root) => {
     const header = root.querySelector<HTMLElement>('[data-markdown-copy="exclude"]');
     const language = Array.from(header?.querySelectorAll("span") ?? []).find(
@@ -890,18 +891,37 @@ test("code blocks use the Codex caption and source geometry", async ({ page }) =
       languageTransform: languageStyle.textTransform,
       sourcePadding: sourceStyle.paddingInlineStart,
       sourceMaxHeight: sourceStyle.maxHeight,
+      languageStart: language.getBoundingClientRect().left,
+      sourceStart: source.getBoundingClientRect().left + Number.parseFloat(sourceStyle.paddingLeft),
+      artifactFrames: Array.from(
+        document.querySelectorAll('.shiki-block, [data-slot="mermaid-stage"]'),
+      ).map((node) => {
+        const frame = node.matches(".shiki-block") ? node : node.parentElement!;
+        const style = getComputedStyle(frame);
+        return {
+          background: style.backgroundColor,
+          border: style.border,
+          radius: style.borderRadius,
+          margin: style.marginBlock,
+        };
+      }),
     };
   });
 
   expect(geometry).not.toBeNull();
   expect.soft(geometry?.headerBackground).toBe("rgba(0, 0, 0, 0)");
   expect.soft(geometry?.blockMargin).toBe("17.5px");
-  expect.soft(geometry?.headerPadding).toBe("4px 8px");
+  expect.soft(geometry?.headerPadding).toBe("4px 12px");
   expect.soft(geometry?.languageFamily).toBe(geometry?.bodyFamily);
-  expect.soft(geometry?.languageSize).toBe("14px");
+  expect.soft(geometry?.languageSize).toBe("12px");
   expect.soft(geometry?.languageTransform).toBe("none");
-  expect.soft(geometry?.sourcePadding).toBe("8px");
+  expect.soft(geometry?.sourcePadding).toBe("12px");
   expect.soft(geometry?.sourceMaxHeight).toBe("none");
+  expect.soft(geometry?.languageStart).toBe(geometry?.sourceStart);
+  expect(geometry!.artifactFrames.length).toBeGreaterThan(1);
+  for (const frame of geometry!.artifactFrames) {
+    expect.soft(frame).toEqual(geometry!.artifactFrames[0]);
+  }
 });
 
 for (const theme of ["light", "dark"] as const) {
@@ -1083,14 +1103,22 @@ test("a finished thought opens into a box that is still bounded", async ({ page 
   await page.locator("html[data-visual-ready]").waitFor();
   await layOutTranscript(page);
 
-  await page
-    .getByRole("button", { name: /read · 1 search · 1 write/ })
-    .first()
-    .click();
+  const process = page.getByRole("button", { name: /read · 1 search · 1 write/ }).first();
+  await process.click();
   const thought = page.getByRole("button", { name: "Thought", exact: true });
   await expect(thought).toHaveAttribute("aria-expanded", "false");
   await thought.click();
   await expect(thought).toHaveAttribute("aria-expanded", "true");
+
+  for (const trigger of [process, thought]) {
+    const gap = await trigger.evaluate((row) => {
+      const label = row.querySelector('[data-slot="agent-activity-label"]')!;
+      const chevron = row.querySelector('[data-slot="agent-activity-chevron"]')!;
+      return chevron.getBoundingClientRect().left - label.getBoundingClientRect().right;
+    });
+    expect.soft(gap).toBeGreaterThanOrEqual(0);
+    expect.soft(gap).toBeLessThanOrEqual(8);
+  }
 
   const box = await page.locator('[data-slot="reasoning-scroller"]').evaluate((node) => {
     const style = getComputedStyle(node);

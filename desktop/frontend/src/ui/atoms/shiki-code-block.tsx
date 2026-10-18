@@ -8,7 +8,8 @@ import { getHighlighter, reportHighlightFailure, resolveLang } from "@/lib/highl
 import { getCachedHighlight, setCachedHighlight } from "@/lib/highlight/shikiCache";
 import { useShikiTheme } from "@/lib/highlight/useCodeHighlight";
 import { cn } from "@/lib/classNames";
-import { color, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
+import { color, space, type, weight } from "@flame/ui/tokens.stylex";
+import { artifactFrame } from "./artifact-frame";
 import { reveal } from "./reveal";
 import { toggleCodeWrapPreference, useCodeWrapPreference } from "./codeWrapPreference";
 import { useT } from "@/lib/i18n";
@@ -39,40 +40,32 @@ interface HighlightedCode {
 
 const styles = stylex.create({
   block: {
-    marginBlock: "calc(var(--md-space) * 5)",
     overflow: "hidden",
-    borderRadius: radius.lg,
     fontFamily: "var(--font-mono)",
   },
-  framed: {
-    borderWidth: "var(--hairline-width)",
-    borderStyle: "solid",
-    borderColor: surface.field,
-    backgroundColor: "transparent",
-  },
-  recessed: { backgroundColor: surface.sunken },
   caption: {
     display: "flex",
     alignItems: "center",
-    gap: space.s2,
-    backgroundColor: "transparent",
-    paddingInline: space.s2,
+    gap: space.s1,
     paddingBlock: space.s1,
+    paddingInlineStart: space.s3,
+    paddingInlineEnd: space.s1_5,
     fontFamily: "var(--font-sans)",
   },
-  lang: { flexShrink: 0, color: color.fgMuted, fontFamily: "var(--font-sans)" },
-  langPlain: {
-    letterSpacing: "var(--tracking-none)",
-    textTransform: "none",
+  lang: {
+    flexShrink: 0,
+    color: color.fgFaint,
+    fontFamily: "var(--font-sans)",
     fontWeight: weight.regular,
+    textTransform: "none",
   },
   spacer: { minWidth: space.s1, flex: 1 },
   previewBody: {
     display: "grid",
-    maxHeight: "calc(15lh + 16px)",
+    maxHeight: "calc(15lh + 24px)",
     placeItems: "center",
     overflow: "auto",
-    padding: space.s2,
+    padding: space.s3,
   },
   fallback: { margin: 0 },
 });
@@ -133,9 +126,10 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
 
   const fallback = stylex.props(styles.fallback);
   const block = stylex.props(
+    artifactFrame.frame,
     styles.block,
     type.code,
-    isPreview ? [reveal.host, styles.framed] : styles.recessed,
+    isPreview && reveal.host,
   );
   return (
     <div
@@ -146,8 +140,8 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
       {...block}
       className={cn(block.className, "shiki-block")}
     >
-      <div data-markdown-copy="exclude" {...stylex.props(styles.caption, type.uiMd)}>
-        <span {...stylex.props(styles.lang, type.uiMd, styles.langPlain)}>{lang || "text"}</span>
+      <div data-markdown-copy="exclude" {...stylex.props(styles.caption, type.uiXs)}>
+        <span {...stylex.props(styles.lang, type.uiXs)}>{lang || "text"}</span>
         <span {...stylex.props(styles.spacer)} />
         {!isPreview && (
           <IconButton

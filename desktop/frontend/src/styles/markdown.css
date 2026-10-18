@@ -326,7 +326,7 @@
 .shiki-block .shiki,
 .shiki-block .shiki-fallback {
   margin: 0;
-  padding: 8px;
+  padding: 2px 12px 12px;
   line-height: var(--leading-relaxed);
   overflow-x: auto;
   font-family: var(--font-mono);

@@ -10,25 +10,20 @@ import { useTokenRevision } from "@/lib/appearance";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { cn } from "@/lib/classNames";
 import { motion, radius, space, surface } from "@flame/ui/tokens.stylex";
+import { artifactFrame } from "@/ui/atoms/artifact-frame";
 import { MermaidViewer } from "./MermaidViewer";
 
 const mb = stylex.create({
   frame: {
     position: "relative",
     isolation: "isolate",
-    marginBlock: "calc(var(--md-space) * 2)",
     minHeight: "calc(var(--spacing) * 25)",
     width: "100%",
-    borderRadius: radius.lg,
-    borderWidth: "var(--hairline-width)",
-    borderStyle: "solid",
-    borderColor: surface.fieldStrong,
-    backgroundColor: surface.surface,
   },
   tools: {
     position: "absolute",
     top: space.s1,
-    right: space.s1,
+    right: space.s1_5,
     zIndex: 1,
     display: "flex",
     gap: space.s1,
@@ -38,18 +33,12 @@ const mb = stylex.create({
   sourceText: { whiteSpace: "pre-wrap" },
   loading: {
     position: "relative",
-    marginBlock: "calc(var(--md-space) * 2)",
     display: "grid",
     height: "calc(var(--spacing) * 60)",
     minHeight: "calc(var(--spacing) * 25)",
     width: "100%",
     placeItems: "center",
     overflow: "hidden",
-    borderRadius: radius.lg,
-    borderWidth: "var(--hairline-width)",
-    borderStyle: "solid",
-    borderColor: surface.fieldStrong,
-    backgroundColor: surface.surface,
   },
   stage: { overflowX: "auto", padding: space.s4, textAlign: "center" },
   pulse: {
@@ -179,7 +168,7 @@ export function MermaidBlock({ code }: Props) {
     const svg = rendered.svg!;
     return (
       <div
-        {...stylex.props(reveal.host, mb.frame)}
+        {...stylex.props(reveal.host, artifactFrame.frame, mb.frame)}
         data-markdown-copy="code-block"
         data-markdown-copy-text={fencedCode}
       >
@@ -230,7 +219,11 @@ export function MermaidBlock({ code }: Props) {
 
   if (rendered.status === "loading") {
     return (
-      <div role="status" aria-label={t("message.mermaid.loading")} {...stylex.props(mb.loading)}>
+      <div
+        role="status"
+        aria-label={t("message.mermaid.loading")}
+        {...stylex.props(artifactFrame.frame, mb.loading)}
+      >
         <span aria-hidden="true" {...stylex.props(mb.pulse)} />
       </div>
     );

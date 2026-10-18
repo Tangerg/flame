@@ -105,6 +105,7 @@ const styles = stylex.create({
     pointerEvents: "none",
     display: "flex",
     flexShrink: 0,
+    marginInlineStart: "calc(var(--spacing) * -1)",
     color: color.fgFaint,
     transitionProperty: "rotate, opacity",
     transitionDuration: motion.fast,
@@ -112,7 +113,6 @@ const styles = stylex.create({
     opacity: { default: "var(--chevron, 1)", "@media (hover: none)": 1 },
   },
   chevronOpen: { opacity: 1 },
-  chevronSlot: { flexShrink: 0, width: "var(--icon-xs)" },
   actions: {
     display: "flex",
     flexShrink: 0,
@@ -240,15 +240,7 @@ export function AgentActivityDisclosure({
           >
             {label}
           </span>
-          {detail != null ? (
-            <span {...stylex.props(styles.detail, line ? type.uiSm : type.uiMd)}>{detail}</span>
-          ) : (
-            <span aria-hidden {...stylex.props(styles.spacer)} />
-          )}
-          {trailing != null && (
-            <span {...stylex.props(styles.trailing, type.uiXs)}>{trailing}</span>
-          )}
-          {children != null ? (
+          {children != null && (
             <span
               aria-hidden
               data-slot="agent-activity-chevron"
@@ -258,8 +250,14 @@ export function AgentActivityDisclosure({
             >
               <Icon name="chevron-down" size="xs" />
             </span>
+          )}
+          {detail != null ? (
+            <span {...stylex.props(styles.detail, line ? type.uiSm : type.uiMd)}>{detail}</span>
           ) : (
-            <span aria-hidden {...stylex.props(styles.chevronSlot)} />
+            <span aria-hidden {...stylex.props(styles.spacer)} />
+          )}
+          {trailing != null && (
+            <span {...stylex.props(styles.trailing, type.uiXs)}>{trailing}</span>
           )}
         </TriggerShell>
         {Children.count(actions) > 0 && (
