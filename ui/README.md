@@ -97,6 +97,9 @@ limits long code to the smaller of 28rem and 60vh, keeping the caption outside
 the scrolling source. A consumer's `styles` override merges on that same `pre`;
 compact Tool inspectors retain their smaller existing bound. Highlighting changes
 only the child `code`, preserving the reading region, scroll position and focus.
+The literal remains natively selectable even inside an otherwise non-selectable
+host. With the region focused, Ctrl/Cmd+A selects only its complete source; the
+browser owns the range and ordinary copy behavior.
 `CodeFrame` is that frame alone, for portable views
 that own their own body, such as recorded Tool results. `CodeCaption` is the one code
 header for every renderer, including the transcript's highlighted blocks: the recorded

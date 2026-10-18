@@ -85,6 +85,28 @@ describe("record form focus ownership", () => {
 describe("recorded code", () => {
   afterEach(() => setCodeWrap(false));
 
+  it("scopes each platform's select-all command to the active literal reader", () => {
+    render(
+      <>
+        <p>Surrounding application text</p>
+        <CodeBlock label="First source">{"first\n  literal"}</CodeBlock>
+        <CodeBlock label="Second source">{"second <literal>"}</CodeBlock>
+      </>,
+    );
+    const first = screen.getByRole("region", { name: "First source" });
+    const second = screen.getByRole("region", { name: "Second source" });
+    first.focus();
+    fireEvent.keyDown(first, { key: "a", ctrlKey: true });
+    expect(document.getSelection()?.toString()).toBe("first\n  literal");
+    expect(document.activeElement).toBe(first);
+
+    second.focus();
+    fireEvent.keyDown(second, { key: "a", metaKey: true });
+    expect(document.getSelection()?.toString()).toBe("second <literal>");
+    expect(document.activeElement).toBe(second);
+    document.getSelection()?.removeAllRanges();
+  });
+
   it("keeps the caption outside the literal keyboard-scrollable source", () => {
     const source =
       '<script>window.example = "literal"</script>\n  <img src="recorded">';

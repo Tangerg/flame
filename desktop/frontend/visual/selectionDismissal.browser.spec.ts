@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "./test";
+import { CODE_READING_SOURCE } from "./agentSessionSnapshots";
 
 async function openConversation(page: Page) {
   await page.setViewportSize({ width: 1472, height: 900 });
@@ -13,6 +14,54 @@ async function hasSelectedText(page: Page) {
     return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
   });
 }
+
+test("a code reader selects its literal source without selecting the surrounding app", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1472, height: 900 });
+  await page.goto("/visual/?fixture=agent&state=code-reading&theme=light");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const source = page.getByRole("region", { name: "Code content", exact: true });
+  await source.focus();
+  await page.keyboard.press("ControlOrMeta+A");
+  await expect
+    .poll(() => page.evaluate(() => getSelection()?.toString()))
+    .toBe(CODE_READING_SOURCE);
+  await expect(source).toBeFocused();
+});
+
+test("clicking the conversation heading dismisses a text selection", async ({ page }) => {
+  await openConversation(page);
+  await page
+    .getByText("The consumer owns persistence policy and transaction scope.", { exact: false })
+    .click();
+  await page.keyboard.press("ControlOrMeta+A");
+  await expect.poll(() => hasSelectedText(page)).toBe(true);
+  await page.getByRole("heading", { name: "Agent · long-content", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => getSelection()?.isCollapsed)).toBe(true);
+});
+
+test("a Dock code reader keeps select all inside its recorded evidence", async ({ page }) => {
+  await page.setViewportSize({ width: 1120, height: 900 });
+  await page.goto(
+    "/visual/?fixture=workspace&state=dock-trajectory&agent-state=code-reading&theme=dark&font-size=18",
+  );
+  await page.locator("html[data-visual-ready]").waitFor();
+  const record = page.locator('[data-trajectory-record="item:item_code_reading"]');
+  await record.getByRole("button").first().click();
+  await record.getByRole("button", { name: "Recorded evidence", exact: true }).click();
+  const evidence = record.getByRole("region", { name: "Recorded evidence", exact: true });
+  const source = await evidence.textContent();
+  expect(JSON.parse(source!)).toMatchObject({ item: { id: "item_code_reading" } });
+  await evidence.focus();
+  await page.keyboard.press("ControlOrMeta+A");
+  await expect.poll(() => page.evaluate(() => getSelection()?.toString())).toBe(source);
+  await expect(evidence).toBeFocused();
+  await record.getByRole("button", { name: "Recorded evidence", exact: true }).click();
+  await expect(
+    record.getByRole("button", { name: "Recorded evidence", exact: true }),
+  ).toHaveAttribute("aria-expanded", "false");
+});
 
 test("clicking conversation whitespace dismisses a keyboard text selection", async ({ page }) => {
   const viewport = await openConversation(page);

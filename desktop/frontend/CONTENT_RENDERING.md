@@ -1723,7 +1723,7 @@ interface UnknownToolCall {
 1. **一个面只用一种截断策略。**
 2. Keep controls stable while expanded reading bodies and recorded identities wrap naturally and remain complete.
 
-Workspace reading viewports allow native text selection across their body and blank space, so a pointer click can dismiss a selection. Navigation controls retain their own non-selectable interaction. Recorded prose preserves literal line breaks; trajectory JSON remains available separately and uses the same redacted evidence as its readable body.
+Readable app content follows native text selection across text and blank space, so a pointer click can dismiss a selection. Navigation controls retain their own non-selectable interaction. A focused literal code reader scopes Ctrl/Cmd+A to its complete source; the browser owns the range without a parallel selection store. Recorded prose preserves literal line breaks; trajectory JSON remains available separately and uses the same redacted evidence as its readable body.
 
 Folded user messages reveal focused descendants and keep them visible above the composer without replacing the recorded content. Enlarged diagrams have one bounded outer frame; their persistent toolbar stays outside the single canvas that owns keyboard and pointer scrolling. Fit preserves the complete diagram, and percentage zoom refers to its natural drawing width.
 

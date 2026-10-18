@@ -446,16 +446,6 @@ body {
   font-feature-settings: "tnum" 1;
 }
 
-body {
-  user-select: none;
-  -webkit-user-select: none;
-}
-.msg-scroll-viewport,
-.msg-content {
-  user-select: text;
-  -webkit-user-select: text;
-}
-
 ::selection {
   background: color-mix(in oklab, var(--color-accent) 30%, transparent);
   color: var(--color-text);

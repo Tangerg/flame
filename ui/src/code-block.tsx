@@ -121,6 +121,7 @@ const styles = stylex.create({
     paddingBlockEnd: space.s3,
     fontFamily: "var(--font-mono)",
     lineHeight: leading.relaxed,
+    userSelect: "text",
   },
   wrapped: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
 });
@@ -215,6 +216,21 @@ export function CodeBody({
       data-slot="code-body"
       data-focus-inset=""
       data-wrap={wrapped}
+      onKeyDown={(event) => {
+        if (
+          event.defaultPrevented ||
+          event.nativeEvent.isComposing ||
+          event.altKey ||
+          event.shiftKey ||
+          (!event.ctrlKey && !event.metaKey) ||
+          event.key.toLowerCase() !== "a"
+        )
+          return;
+        const selection = event.currentTarget.ownerDocument.getSelection();
+        if (!selection) return;
+        event.preventDefault();
+        selection.selectAllChildren(event.currentTarget);
+      }}
       {...stylex.props(
         styles.code,
         type.code,
