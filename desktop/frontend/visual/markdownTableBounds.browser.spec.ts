@@ -1,5 +1,80 @@
 import { expect, test, type Locator, type Page } from "./test";
 
+for (const [width, theme, fontSize] of [
+  [1440, "light", 14],
+  [320, "dark", 18],
+] as const) {
+  test(`expanded table controls and headings remain reachable while reading ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(
+      `/visual/?fixture=agent&state=table-reading&theme=${theme}&font-size=${fontSize}&sidebar=collapsed`,
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const expand = page.getByRole("button", { name: "Expand table", exact: true });
+    const transcript = (await page.locator(".msg-scroll-viewport").boundingBox())!;
+    const control = (await expand.boundingBox())!;
+    const center = transcript.y + transcript.height / 2;
+    await page.mouse.move(transcript.x + transcript.width / 2, center);
+    await page.mouse.wheel(0, control.y - center);
+    await expect(expand).toBeInViewport({ ratio: 1 });
+    const cells = await page
+      .locator("[data-markdown-table] th, [data-markdown-table] td")
+      .allTextContents();
+    await expand.click();
+    const dialog = page.getByRole("dialog", { name: "Table preview", exact: true });
+    await expect(dialog.getByRole("row")).toHaveCount(81);
+    await expect(dialog.locator("th, td")).toHaveText(cells);
+    const close = dialog.getByRole("button", { name: "Close table preview", exact: true });
+    const frame = (await dialog.boundingBox())!;
+    const firstRow = dialog.getByRole("row").nth(1);
+    await page.mouse.move(frame.x + frame.width / 2, frame.y + frame.height / 2);
+    await page.mouse.wheel(0, 600);
+    await expect
+      .poll(async () => {
+        const row = (await firstRow.boundingBox())!;
+        return row.y + row.height;
+      })
+      .toBeLessThan(frame.y);
+    const screenshot = test.info().outputPath("expanded-table-after-scroll.png");
+    await page.screenshot({ path: screenshot });
+    await test.info().attach("expanded-table-after-scroll", { path: screenshot });
+    await expect(close).toBeInViewport({ ratio: 1 });
+    await expect(
+      dialog.getByRole("columnheader", { name: "Observation", exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+    const reader = dialog.getByRole("region", { name: "Table content", exact: true });
+    await expect(reader).toBeFocused();
+    const top = await reader.evaluate((node) => node.scrollTop);
+    await page.keyboard.down("ArrowDown");
+    try {
+      await expect.poll(() => reader.evaluate((node) => node.scrollTop)).toBeGreaterThan(top);
+    } finally {
+      await page.keyboard.up("ArrowDown");
+    }
+    if (width === 320) {
+      await page.keyboard.down("ArrowRight");
+      try {
+        await expect.poll(() => reader.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
+      } finally {
+        await page.keyboard.up("ArrowRight");
+      }
+      await expect(close).toBeInViewport({ ratio: 1 });
+    }
+    await page.keyboard.press("Shift+Tab");
+    await expect(close).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(dialog).toHaveCount(0);
+    await expect(expand).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(reader).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(expand).toBeFocused();
+  });
+}
+
 async function bounds(container: Locator) {
   return container.evaluate((node) => {
     const box = (element: Element) => {

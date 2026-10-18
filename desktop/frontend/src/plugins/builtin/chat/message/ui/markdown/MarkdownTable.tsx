@@ -48,6 +48,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
           title={t("message.table.preview")}
           kind="document"
           closeLabel={t("message.table.closePreview")}
+          contentLabel={t("message.table.content")}
           trigger={
             <IconButton
               icon={iconGlyph("maximize")}

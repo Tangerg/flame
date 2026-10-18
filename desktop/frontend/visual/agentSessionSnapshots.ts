@@ -35,6 +35,7 @@ export const VISUAL_AGENT_STATES = [
   "long-content",
   "prose-blocks",
   "code-reading",
+  "table-reading",
   "reference-notes",
   "math-content",
   "callouts",
@@ -896,6 +897,20 @@ const CODE_READING_MARKDOWN = [
   "The explanation continues with the same reading rhythm.",
 ].join("\n");
 
+const TABLE_READING_MARKDOWN = [
+  "Compare the complete recorded observations.",
+  "",
+  "| Observation | Owner | Checks |",
+  "| --- | --- | ---: |",
+  ...Array.from(
+    { length: 80 },
+    (_, index) =>
+      `| Observation ${index + 1} | Application boundary for recorded observation | ${index + 1} |`,
+  ),
+  "",
+  "The explanation continues after the recorded evidence.",
+].join("\n");
+
 export const READING_BLOCKS_MARKDOWN = [
   "## Reading notes",
   "",
@@ -1637,6 +1652,16 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [PROMPT, message("agentMessage", "item_code_reading", CODE_READING_MARKDOWN)],
     pendingInterruptSets: [],
   },
+  "table-reading": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:12.000Z",
+        outcome: { type: "completed" },
+      }),
+    ],
+    items: [PROMPT, message("agentMessage", "item_table_reading", TABLE_READING_MARKDOWN)],
+    pendingInterruptSets: [],
+  },
   "reference-notes": {
     runs: [
       run("finished", {
@@ -1965,6 +1990,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   "long-content": [],
   "prose-blocks": [],
   "code-reading": [],
+  "table-reading": [],
   "reference-notes": [],
   "math-content": [],
   callouts: [],

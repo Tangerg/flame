@@ -75,6 +75,12 @@
 .md-table-preview > table {
   min-width: max-content;
 }
+.md-table-preview > table > thead {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--layer-card);
+  background-color: var(--color-elevated);
+}
 
 .md-table-scroller,
 .md .katex-display,
