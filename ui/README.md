@@ -49,9 +49,15 @@ and separators. Its `cards` variant provides the responsive schedule grid;
 `Disclosure variant="row"` owns resource summaries that expand directly.
 `RecordSummary` owns the optional identity mark, copy and state alignment.
 `RecordBody` preserves recorded line breaks and allows selecting its complete text.
-`FilterBar` owns the growing search column and wrapping controls. Page actions
-follow the filters in that same zone; multiple actions use a named `Toolbar`
-within it. Scope and catalog navigation keep a separate preceding `Toolbar`.
+`FilterBar` owns the control zone in three meanings, in reading order: the
+growing search column, the page `actions` beside it at the inline end, and the
+refining filters as `children`. Search and actions share a row while they fit and
+the filters follow, joining that row when the width allows; each group wraps as a
+unit, so actions never strand between filters. Multiple actions use one named
+`Toolbar` in the `actions` slot. When a page's actions are creation commands, as in
+Schedules, refresh stays with the filters it re-reads so the creation pair keeps
+one row. Scope and catalog navigation keep a separate
+preceding `Toolbar`.
 `Toolbar.actions` aligns a related trailing action group and lets it wrap with
 the available width. The group shares a row when it fits and preserves each
 control's size role.

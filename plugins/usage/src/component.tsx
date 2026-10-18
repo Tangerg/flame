@@ -270,6 +270,15 @@ export function Usage({ context }: { context: ComponentContext }) {
               onChange={(event) => setFilter(event.target.value)}
             />
           }
+          actions={
+            <IconButton
+              icon={Refresh}
+              aria-label="Refresh"
+              size="md"
+              disabled={read.loading}
+              onClick={() => void refresh()}
+            />
+          }
         >
           <Select
             size="lg"
@@ -286,13 +295,6 @@ export function Usage({ context }: { context: ComponentContext }) {
             value={group}
             onValueChange={setGroup}
             options={options}
-          />
-          <IconButton
-            icon={Refresh}
-            aria-label="Refresh"
-            size="md"
-            disabled={read.loading}
-            onClick={() => void refresh()}
           />
         </FilterBar>
       }

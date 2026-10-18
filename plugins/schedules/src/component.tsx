@@ -420,6 +420,31 @@ export function Schedules({ context }: { context: ComponentContext }) {
               onChange={(event) => setSearch(event.target.value)}
             />
           }
+          actions={
+            <Toolbar label="Schedule actions">
+              <Button
+                variant={editorOpen ? "outline" : "primary"}
+                size="lg"
+                disabled={actionsDisabled}
+                onClick={(event) => add(event.currentTarget)}
+              >
+                <Icon glyph={Plus} size="sm" /> Add schedule
+              </Button>
+              <ActionMenu
+                label="Schedule templates"
+                disabled={actionsDisabled}
+                triggerContent={
+                  <>
+                    Templates <Icon glyph={ChevronDown} size="sm" />
+                  </>
+                }
+                items={templates.map((template) => ({
+                  label: template.title,
+                  onSelect: (opener) => add(opener, template),
+                }))}
+              />
+            </Toolbar>
+          }
         >
           <Select
             size="lg"
@@ -432,36 +457,13 @@ export function Schedules({ context }: { context: ComponentContext }) {
               { value: "disabled", label: "Disabled" },
             ]}
           />
-          <Toolbar label="Schedule actions">
-            <IconButton
-              icon={Refresh}
-              aria-label="Refresh"
-              size="md"
-              disabled={read.loading || busy}
-              onClick={() => void refresh()}
-            />
-            <Button
-              variant={editorOpen ? "outline" : "primary"}
-              size="lg"
-              disabled={actionsDisabled}
-              onClick={(event) => add(event.currentTarget)}
-            >
-              <Icon glyph={Plus} size="sm" /> Add schedule
-            </Button>
-            <ActionMenu
-              label="Schedule templates"
-              disabled={actionsDisabled}
-              triggerContent={
-                <>
-                  Templates <Icon glyph={ChevronDown} size="sm" />
-                </>
-              }
-              items={templates.map((template) => ({
-                label: template.title,
-                onSelect: (opener) => add(opener, template),
-              }))}
-            />
-          </Toolbar>
+          <IconButton
+            icon={Refresh}
+            aria-label="Refresh"
+            size="md"
+            disabled={read.loading || busy}
+            onClick={() => void refresh()}
+          />
         </FilterBar>
       }
     >

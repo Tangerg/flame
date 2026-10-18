@@ -279,6 +279,35 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               onChange={(event) => setFilter(event.target.value)}
             />
           }
+          actions={
+            <Toolbar label="Diff actions">
+              <IconButton
+                icon={Refresh}
+                aria-label="Refresh"
+                size="md"
+                disabled={read.loading}
+                onClick={() => void refresh()}
+              />
+              <IconButton
+                id="expand"
+                icon={UnfoldVertical}
+                aria-label="Expand all"
+                size="md"
+                disabled={!files.length}
+                onClick={() => setCollapsed(new Set())}
+              />
+              <IconButton
+                id="collapse"
+                icon={Fold}
+                aria-label="Collapse all"
+                size="md"
+                disabled={!files.length}
+                onClick={() =>
+                  setCollapsed(new Set(files.map((file) => file.path)))
+                }
+              />
+            </Toolbar>
+          }
         >
           <Select
             label="Comparison"
@@ -299,33 +328,6 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               { value: "split", label: "Side by side" },
             ]}
           />
-          <Toolbar label="Diff actions">
-            <IconButton
-              icon={Refresh}
-              aria-label="Refresh"
-              size="md"
-              disabled={read.loading}
-              onClick={() => void refresh()}
-            />
-            <IconButton
-              id="expand"
-              icon={UnfoldVertical}
-              aria-label="Expand all"
-              size="md"
-              disabled={!files.length}
-              onClick={() => setCollapsed(new Set())}
-            />
-            <IconButton
-              id="collapse"
-              icon={Fold}
-              aria-label="Collapse all"
-              size="md"
-              disabled={!files.length}
-              onClick={() =>
-                setCollapsed(new Set(files.map((file) => file.path)))
-              }
-            />
-          </Toolbar>
         </FilterBar>
       }
     >

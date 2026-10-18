@@ -116,7 +116,24 @@ const styles = stylex.create({
     gap: layout.controlGap,
     minWidth: 0,
   },
-  filterSearch: { flex: "1 1 14rem", minWidth: 0 },
+  filterLead: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: layout.controlGap,
+    flex: "1 1 20rem",
+    minWidth: 0,
+  },
+  filterSearch: { flex: "1 1 12rem", minWidth: 0 },
+  filterActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: layout.controlGap,
+    flexShrink: 0,
+    maxWidth: "100%",
+    marginInlineStart: "auto",
+  },
   filterOptions: {
     display: "flex",
     flexWrap: "wrap",
@@ -378,15 +395,22 @@ export function Toolbar({
 export function FilterBar({
   label,
   search,
+  actions,
   children,
 }: {
   label: string;
   search: ReactNode;
+  actions?: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <div role="group" aria-label={label} {...stylex.props(styles.filters)}>
-      <div {...stylex.props(styles.filterSearch)}>{search}</div>
+      <div {...stylex.props(styles.filterLead)}>
+        <div {...stylex.props(styles.filterSearch)}>{search}</div>
+        {actions && (
+          <div {...stylex.props(styles.filterActions)}>{actions}</div>
+        )}
+      </div>
       {children && (
         <div {...stylex.props(styles.filterOptions)}>{children}</div>
       )}

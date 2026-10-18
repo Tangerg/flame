@@ -157,6 +157,14 @@ export function VisualAtomsFixture() {
                   placeholder="Recorded text or ID"
                 />
               }
+              actions={
+                <Toolbar label="Memory actions">
+                  <IconButton icon={Refresh} size="md" aria-label="Refresh" onClick={noop} />
+                  <Button variant="primary" size="lg" onClick={noop}>
+                    <Icon name="plus" size="sm" /> Add memory
+                  </Button>
+                </Toolbar>
+              }
             >
               <Select
                 size="lg"
@@ -168,12 +176,6 @@ export function VisualAtomsFixture() {
                   { value: "active", label: "Active" },
                 ]}
               />
-              <Toolbar label="Memory actions">
-                <IconButton icon={Refresh} size="md" aria-label="Refresh" onClick={noop} />
-                <Button variant="primary" size="lg" onClick={noop}>
-                  <Icon name="plus" size="sm" /> Add memory
-                </Button>
-              </Toolbar>
             </FilterBar>
           }
         >

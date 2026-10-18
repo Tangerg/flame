@@ -97,3 +97,25 @@ test("a narrow trajectory reads literal multiline text before optional complete 
   expect(await dock.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });
+
+test("a large-font Dock keeps page actions on the search row and filters together", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1120, height: 900 });
+  await page.goto("/visual/?fixture=workspace&state=dock-trajectory&theme=dark&font-size=18");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const controls = page.getByRole("group", { name: "Trajectory controls", exact: true });
+  const search = (await controls
+    .getByRole("searchbox", { name: "Filter this page" })
+    .boundingBox())!;
+  const refresh = (await controls.getByRole("button", { name: "Refresh" }).boundingBox())!;
+  const kind = (await controls.getByRole("combobox", { name: "Observation type" }).boundingBox())!;
+  const run = (await controls.getByRole("combobox", { name: "Run filter" }).boundingBox())!;
+
+  expect(refresh.y + refresh.height / 2).toBeGreaterThan(search.y);
+  expect(refresh.y + refresh.height / 2).toBeLessThan(search.y + search.height);
+  expect(refresh.x).toBeGreaterThan(search.x + search.width);
+  expect(run.y).toBe(kind.y);
+  expect(kind.y).toBeGreaterThan(search.y + search.height);
+  expect(await controls.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+});

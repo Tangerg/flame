@@ -437,15 +437,16 @@ export function Skills({ context }: { context: ComponentContext }) {
                 onChange={(event) => setSearch(event.target.value)}
               />
             }
-          >
-            <IconButton
-              icon={Refresh}
-              aria-label="Refresh"
-              size="md"
-              disabled={read.loading || Boolean(command)}
-              onClick={() => void refresh()}
-            />
-          </FilterBar>
+            actions={
+              <IconButton
+                icon={Refresh}
+                aria-label="Refresh"
+                size="md"
+                disabled={read.loading || Boolean(command)}
+                onClick={() => void refresh()}
+              />
+            }
+          />
         </>
       }
     >

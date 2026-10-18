@@ -552,6 +552,15 @@ export function Trajectory({ context }: { context: ComponentContext }) {
               onChange={(event) => setSearch(event.target.value)}
             />
           }
+          actions={
+            <IconButton
+              icon={Refresh}
+              aria-label="Refresh"
+              size="md"
+              disabled={read.loading}
+              onClick={() => void load()}
+            />
+          }
         >
           <Select
             size="lg"
@@ -576,13 +585,6 @@ export function Trajectory({ context }: { context: ComponentContext }) {
             value={selectedRun}
             onValueChange={setRun}
             options={runOptions}
-          />
-          <IconButton
-            icon={Refresh}
-            aria-label="Refresh"
-            size="md"
-            disabled={read.loading}
-            onClick={() => void load()}
           />
         </FilterBar>
       }

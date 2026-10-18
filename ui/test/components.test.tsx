@@ -20,6 +20,7 @@ import {
   useCopyFeedback,
   Disclosure,
   DiffTable,
+  FilterBar,
   Checkbox,
   Form,
   FormActions,
@@ -224,6 +225,30 @@ describe("recorded code", () => {
         .getAllByRole("region")
         .map((region) => region.getAttribute("data-wrap")),
     ).toEqual(["true", "true"]);
+  });
+});
+
+describe("filter bar", () => {
+  it("reads search, then page actions, then filters", () => {
+    render(
+      <FilterBar
+        label="Page controls"
+        search={<SearchField aria-label="Search this page" />}
+        actions={<button type="button">Refresh</button>}
+      >
+        <button type="button">Status</button>
+      </FilterBar>,
+    );
+    const zone = screen.getByRole("group", { name: "Page controls" });
+    const order = Array.from(
+      zone.querySelectorAll("input, button"),
+      (node) => node.getAttribute("aria-label") ?? node.textContent,
+    );
+    expect(order.filter((name) => name !== "Clear search")).toEqual([
+      "Search this page",
+      "Refresh",
+      "Status",
+    ]);
   });
 });
 
