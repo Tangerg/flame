@@ -29,6 +29,8 @@ interface Props {
   code: string;
   preview?: ReactNode;
   previewLabel?: string;
+  scrollLabel?: string;
+  copyable?: boolean;
 }
 
 interface HighlightedCode {
@@ -43,6 +45,7 @@ const styles = stylex.create({
     overflow: "hidden",
     fontFamily: "var(--font-mono)",
   },
+  embedded: { marginBlock: 0 },
   caption: {
     display: "flex",
     alignItems: "center",
@@ -67,10 +70,22 @@ const styles = stylex.create({
     overflow: "auto",
     padding: space.s3,
   },
+  bounded: {
+    maxHeight: "calc(var(--spacing) * 60)",
+    overflow: "auto",
+    overscrollBehavior: "contain",
+  },
   fallback: { margin: 0 },
 });
 
-export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
+export function ShikiCodeBlock({
+  lang,
+  code,
+  preview,
+  previewLabel,
+  scrollLabel,
+  copyable = true,
+}: Props) {
   const t = useT();
   const shikiTheme = useShikiTheme();
   const isPreview = preview !== undefined;
@@ -125,9 +140,34 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
   const showHighlighted = !isSettling && html !== null;
 
   const fallback = stylex.props(styles.fallback);
+  const source = showHighlighted ? (
+    <div
+      className="shiki-body"
+      data-wrap={wrapCode}
+      ref={
+        scrollLabel === undefined
+          ? undefined
+          : (node) => {
+              // The stable scroll region owns focus across generated source replacements.
+              const pre = node?.querySelector("pre");
+              if (pre) pre.tabIndex = -1;
+            }
+      }
+      dangerouslySetInnerHTML={{ __html: html! }}
+    />
+  ) : (
+    <pre
+      {...fallback}
+      className={cn(fallback.className, "shiki-body shiki-fallback")}
+      data-wrap={wrapCode}
+    >
+      {code}
+    </pre>
+  );
   const block = stylex.props(
     artifactFrame.frame,
     styles.block,
+    scrollLabel !== undefined && styles.embedded,
     type.code,
     isPreview && reveal.host,
   );
@@ -153,15 +193,17 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
             aria-label={t(wrapCode ? "message.code.wrap.disable" : "message.code.wrap.enable")}
           />
         )}
-        <IconButton
-          data-reveal={isPreview ? "hover" : undefined}
-          icon={iconGlyph(copied ? "check" : "copy")}
-          size="xs"
-          onClick={() => void copy()}
-          tone={copied ? "success" : undefined}
-          aria-label={copied ? t("message.code.copied") : t("message.code.copy")}
-          className={cn(isPreview && stylex.props(reveal.shown).className)}
-        />
+        {copyable && (
+          <IconButton
+            data-reveal={isPreview ? "hover" : undefined}
+            icon={iconGlyph(copied ? "check" : "copy")}
+            size="xs"
+            onClick={() => void copy()}
+            tone={copied ? "success" : undefined}
+            aria-label={copied ? t("message.code.copied") : t("message.code.copy")}
+            className={cn(isPreview && stylex.props(reveal.shown).className)}
+          />
+        )}
       </div>
       {isPreview ? (
         <div
@@ -175,20 +217,20 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
         >
           {preview}
         </div>
-      ) : showHighlighted ? (
-        <div
-          className="shiki-body"
-          data-wrap={wrapCode}
-          dangerouslySetInnerHTML={{ __html: html! }}
-        />
+      ) : scrollLabel === undefined ? (
+        source
       ) : (
-        <pre
-          {...fallback}
-          className={cn(fallback.className, "shiki-body shiki-fallback")}
-          data-wrap={wrapCode}
+        <div
+          data-slot="shiki-scroll"
+          data-focus-inset=""
+          role="region"
+          aria-label={scrollLabel}
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+          tabIndex={0}
+          {...stylex.props(styles.bounded)}
         >
-          {code}
-        </pre>
+          {source}
+        </div>
       )}
     </div>
   );

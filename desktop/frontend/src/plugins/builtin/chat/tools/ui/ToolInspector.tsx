@@ -1,49 +1,51 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { SectionLabel, Well } from "@/ui";
-import { vocab } from "@flame/ui";
+import { ShikiCodeBlock } from "@/ui";
+import { Disclosure, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { toolInspectorModel, type ToolInspectorBody } from "../application/toolInspectorModel";
-import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const ti = stylex.create({
-  body: { paddingTop: space.s0_5 },
-  section: { marginBottom: { default: space.s2, ":last-child": 0 } },
-  label: { paddingInline: 0, paddingTop: 0, paddingBottom: space.s1 },
+  body: {
+    display: "flex",
+    flexDirection: "column",
+    gap: space.s2,
+    minWidth: 0,
+    paddingTop: space.s0_5,
+  },
+  empty: { margin: 0 },
 });
+
+const sourceLang = (body: ToolInspectorBody) => (body.isJson ? "json" : "text");
 
 export function ToolInspector({ tool }: { tool: ToolCall }) {
   const t = useT();
   const model = toolInspectorModel(tool);
+  const hasResult = model.result.text !== "";
 
   return (
     <div {...stylex.props(ti.body)}>
-      <InspectorSection title={t("toolInspector.arguments")} body={model.args} />
-      {model.result.text && (
-        <InspectorSection title={t("toolInspector.result")} body={model.result} />
+      {hasResult && (
+        <ShikiCodeBlock
+          lang={sourceLang(model.result)}
+          code={model.result.text}
+          scrollLabel={t("toolInspector.result")}
+        />
       )}
       {model.showNoResult && (
-        <div {...stylex.props(vocab.faint, typeStep.uiSm, face.mono)}>
-          {t("toolInspector.noResult")}
-        </div>
+        <p {...stylex.props(ti.empty, vocab.faint, typeStep.uiSm)}>{t("toolInspector.noResult")}</p>
       )}
-    </div>
-  );
-}
-
-function InspectorSection({ title, body }: { title: string; body: ToolInspectorBody }) {
-  if (!body.text) return null;
-  return (
-    <div {...stylex.props(ti.section)}>
-      <SectionLabel
-        className={stylex.props(ti.label).className}
-        trailing={body.isJson ? <span {...stylex.props(face.mono)}>json</span> : undefined}
-      >
-        {title}
-      </SectionLabel>
-      <Well cap="md" wrap={body.isJson ? "pre" : "anywhere"}>
-        {body.text}
-      </Well>
+      {model.args.text && (
+        <Disclosure title={t("toolInspector.arguments")} defaultOpen={!hasResult}>
+          <ShikiCodeBlock
+            lang={sourceLang(model.args)}
+            code={model.args.text}
+            scrollLabel={t("toolInspector.arguments")}
+            copyable={false}
+          />
+        </Disclosure>
+      )}
     </div>
   );
 }

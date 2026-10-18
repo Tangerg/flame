@@ -528,7 +528,7 @@ export const ja: Record<string, string> = {
   "tools.family.schedules": "スケジュール",
   "tools.family.goals": "ゴール",
 
-  "toolAction.copyCommand": "コマンドをコピー",
+  "toolAction.copyArguments": "引数をコピー",
   "approval.fallbackText": "この操作を承認しますか？",
 
   "shortcuts.sub":

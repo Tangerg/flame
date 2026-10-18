@@ -341,15 +341,26 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.shiki-block [data-slot="shiki-scroll"] .shiki,
+.shiki-block [data-slot="shiki-scroll"] .shiki-fallback {
+  overflow: visible;
+}
+.shiki-block [data-slot="shiki-scroll"] .shiki-body:not([data-wrap="true"]) .shiki,
+.shiki-block [data-slot="shiki-scroll"] .shiki-fallback:not([data-wrap="true"]) {
+  width: max-content;
+  min-width: 100%;
+}
 .md-table-scroller,
 .shiki-block .shiki,
 .shiki-block .shiki-fallback,
+[data-slot="shiki-scroll"],
 [data-slot="mermaid-stage"] {
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 .md-table-scroller::-webkit-scrollbar-thumb,
 .shiki-block .shiki::-webkit-scrollbar-thumb,
 .shiki-block .shiki-fallback::-webkit-scrollbar-thumb,
+[data-slot="shiki-scroll"]::-webkit-scrollbar-thumb,
 [data-slot="mermaid-stage"]::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   background-clip: content-box;

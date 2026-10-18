@@ -684,7 +684,7 @@ export const en: Record<string, string> = {
   "tools.family.schedules": "Schedules",
   "tools.family.goals": "Goals",
 
-  "toolAction.copyCommand": "Copy command",
+  "toolAction.copyArguments": "Copy arguments",
 
   "approval.fallbackText": "Approve this action?",
 

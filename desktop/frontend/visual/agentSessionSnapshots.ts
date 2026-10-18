@@ -74,6 +74,7 @@ const SAFETY_CLASS: Record<string, "safe" | "write" | "exec" | "network"> = {
   grep: "safe",
   glob: "safe",
   lsp: "safe",
+  inspect_workspace: "safe",
   read_shell_output: "safe",
   list_schedules: "safe",
   list_skills: "safe",
@@ -469,6 +470,26 @@ const LSP_CALL = settledTool(
     "runtime/internal/session/atomicity.go:88:14",
     "runtime/internal/run/segment.go:41:9",
   ].join("\n"),
+);
+
+const WORKSPACE_INSPECTION_CALL = settledTool(
+  "item_agentic_inspect_workspace",
+  "inspect_workspace",
+  {
+    workspace: {
+      root: `/Users/visual/Flame workspaces/${"application-boundary-".repeat(12)}review`,
+      include: ["runtime/internal/session/**", "desktop/frontend/src/**"],
+    },
+    checks: ["ownership", "dependency-direction"],
+    notes: "Keep <component> tags and source paths as literal text.",
+  },
+  JSON.stringify({
+    summary: { status: "reviewed", files: 24 },
+    files: Array.from({ length: 24 }, (_, index) => ({
+      path: `runtime/internal/session/state_${index + 1}.go`,
+      status: "reviewed",
+    })),
+  }),
 );
 
 const PROPOSE_SKILL_CALL = settledTool(
@@ -1561,6 +1582,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       SCHEDULES_CALL,
       READ_SHELL_CALL,
       LSP_CALL,
+      WORKSPACE_INSPECTION_CALL,
       RESPONSE,
     ],
     pendingInterruptSets: [],

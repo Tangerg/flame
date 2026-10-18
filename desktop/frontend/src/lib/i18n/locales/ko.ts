@@ -525,7 +525,7 @@ export const ko: Record<string, string> = {
   "tools.family.schedules": "일정",
   "tools.family.goals": "목표",
 
-  "toolAction.copyCommand": "명령 복사",
+  "toolAction.copyArguments": "인수 복사",
   "approval.fallbackText": "이 작업을 승인하시겠습니까?",
 
   "shortcuts.sub":

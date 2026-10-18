@@ -552,7 +552,7 @@ export const fr: Record<string, string> = {
   "tools.family.schedules": "Planifications",
   "tools.family.goals": "Objectifs",
 
-  "toolAction.copyCommand": "Copier la commande",
+  "toolAction.copyArguments": "Copier les paramètres",
   "approval.fallbackText": "Approuver cette action ?",
 
   "shortcuts.sub":

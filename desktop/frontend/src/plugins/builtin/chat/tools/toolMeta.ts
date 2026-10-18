@@ -7,7 +7,10 @@ import { copyToolArgsAction } from "./application/toolActions";
 export const toolActions = definePlugin({
   name: "flame.builtin.tool-actions",
   setup(ctx) {
-    ctx.contribute(TOOL_ACTION, copyToolArgsAction({ title: "toolAction.copyCommand", copyText }));
+    ctx.contribute(
+      TOOL_ACTION,
+      copyToolArgsAction({ title: "toolAction.copyArguments", copyText }),
+    );
   },
 });
 

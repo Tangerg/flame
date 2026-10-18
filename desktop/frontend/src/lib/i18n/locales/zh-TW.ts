@@ -519,7 +519,7 @@ export const zhTW: Record<string, string> = {
   "tools.family.schedules": "排程",
   "tools.family.goals": "目標",
 
-  "toolAction.copyCommand": "複製命令",
+  "toolAction.copyArguments": "複製參數",
   "approval.fallbackText": "核准此操作？",
 
   "shortcuts.sub":

@@ -646,7 +646,7 @@ export const zh: Record<string, string> = {
   "tools.family.schedules": "定时",
   "tools.family.goals": "目标",
 
-  "toolAction.copyCommand": "复制命令",
+  "toolAction.copyArguments": "复制参数",
   "approval.fallbackText": "批准此操作？",
 
   "shortcuts.sub":
