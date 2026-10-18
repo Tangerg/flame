@@ -37,7 +37,6 @@ function TreeItem({ className, style, level, ...props }: TreeItemPrimitiveProps)
     <TreePrimitive.Item
       {...props}
       level={level}
-      data-chrome-focus=""
       className={cn(row.className, className)}
       style={{ paddingLeft: `calc(${space.s1_5} + ${(level - 1) * LEVEL_INDENT_PX}px)`, ...style }}
     />

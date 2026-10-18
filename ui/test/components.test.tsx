@@ -18,6 +18,7 @@ import {
   IconButton,
   Metadata,
   ModalDialog,
+  RecordForm,
   SearchField,
   Segmented,
   Select,
@@ -28,6 +29,44 @@ import {
 import { vocab } from "../dist/vocabulary.js";
 
 afterEach(cleanup);
+describe("record form focus ownership", () => {
+  it("resolves the current return target only after an eligible form removal", () => {
+    let target: HTMLElement | null = null;
+    const resolveOpener = vi.fn(() => target);
+    const content = (open: boolean) => (
+      <>
+        <input aria-label="Search records" />
+        <button>Outside action</button>
+        {open && (
+          <RecordForm aria-label="Edit record" opener={resolveOpener}>
+            <input aria-label="Draft content" />
+          </RecordForm>
+        )}
+      </>
+    );
+    const view = render(content(true));
+    expect(resolveOpener).not.toHaveBeenCalled();
+    view.rerender(content(true));
+    expect(resolveOpener).not.toHaveBeenCalled();
+
+    target = screen.getByRole("textbox", { name: "Search records" });
+    screen.getByRole<HTMLElement>("textbox", { name: "Draft content" }).focus();
+    view.rerender(content(false));
+    expect(resolveOpener).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(target);
+
+    view.rerender(content(true));
+    screen.getByRole<HTMLElement>("textbox", { name: "Draft content" }).focus();
+    const outside = screen.getByRole<HTMLElement>("button", {
+      name: "Outside action",
+    });
+    outside.focus();
+    view.rerender(content(false));
+    expect(resolveOpener).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(outside);
+  });
+});
+
 describe("recorded code", () => {
   it("keeps the caption outside the literal keyboard-scrollable source", () => {
     const source =

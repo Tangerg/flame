@@ -151,7 +151,10 @@ shares its section spacing with `RecordForm`; only `RecordForm` adds a card
 surface and inset. Inline editors pass their captured `opener` to `RecordForm`.
 On unmount it returns focus only when that form owned focus and removal left
 focus on the document body. Restoration follows the DOM commit so the opener
-can be enabled again; another control's focus is preserved. `FormActions` groups
+can be enabled again; another control's focus is preserved. The opener may be an
+element or a resolver returning the current target or null. The resolver runs only
+when restoration is eligible, after removal, so a filtered-out trigger can return
+to its consumer's persistent search field. `FormActions` groups
 inline editor actions, with `auxiliaryAction` leading and children trailing;
 cancellation precedes the primary action. Both groups wrap within the available
 width, using the shared control gap internally and content gap between groups.

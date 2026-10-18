@@ -21,6 +21,9 @@ for (const theme of ["light", "dark"]) {
       const record = panel.locator('[data-memory-id="mem_00000000000000000000000000000001"]');
       const edit = record.getByRole("button", { name: "Edit", exact: true });
       await expect(edit).toBeEnabled();
+      await record.getByRole("button", { name: /Record details/, expanded: false }).click();
+      await expect(record.getByText("Day", { exact: true })).toHaveCount(0);
+      await expect(record.getByText("Source Session", { exact: true })).toBeVisible();
       const add = panel.getByRole("button", { name: "Add memory", exact: true });
       await add.click();
       const editor = panel.getByRole("region", { name: "Add memory", exact: true });
@@ -47,6 +50,18 @@ for (const theme of ["light", "dark"]) {
       await expect(existing.getByRole("textbox", { name: "Memory content" })).toBeFocused();
       await existing.getByRole("button", { name: "Cancel", exact: true }).click();
       await expect(edit).toBeFocused();
+      await edit.click();
+      await expect(existing.getByRole("textbox", { name: "Memory content" })).toBeFocused();
+      const search = panel.getByRole("searchbox", { name: "Search this page", exact: true });
+      const filterQuery = "no-record-matches-this-query";
+      await search.fill(filterQuery);
+      await expect(record).toHaveCount(0);
+      await existing.getByRole("button", { name: "Cancel", exact: true }).click();
+      await expect(existing).toHaveCount(0);
+      await expect(search).toBeFocused();
+      await expect(search).toHaveValue(filterQuery);
+      await search.fill("");
+      await expect(edit).toBeEnabled();
       await actions.click();
       await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
       const confirmation = panel.getByRole("region", {

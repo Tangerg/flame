@@ -504,7 +504,9 @@ export function RecordForm({
   opener,
   ref,
   ...props
-}: ComponentPropsWithRef<"section"> & { opener?: HTMLElement }) {
+}: ComponentPropsWithRef<"section"> & {
+  opener?: HTMLElement | (() => HTMLElement | null);
+}) {
   const element = useRef<HTMLElement>(null);
   const ownedFocus = useRef(false);
   useLayoutEffect(() => {
@@ -523,10 +525,11 @@ export function RecordForm({
       if (
         !form.isConnected &&
         ownedFocus.current &&
-        form.ownerDocument.activeElement === form.ownerDocument.body &&
-        opener.isConnected
-      )
-        opener.focus();
+        form.ownerDocument.activeElement === form.ownerDocument.body
+      ) {
+        const target = typeof opener === "function" ? opener() : opener;
+        if (target?.isConnected) target.focus();
+      }
     };
   }, [opener]);
   return (

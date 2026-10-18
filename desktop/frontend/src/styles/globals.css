@@ -872,13 +872,14 @@ html.theme-dark {
 }
 
 .agent-dock-tabs {
+  --dock-tab-edge: 16px;
   display: flex;
   min-width: 0;
   flex: 1;
   align-items: center;
   gap: 2px;
   overflow-x: auto;
-  scroll-padding-inline: 16px;
+  scroll-padding-inline: var(--dock-tab-edge);
   scrollbar-width: none;
 }
 
@@ -939,28 +940,32 @@ html.theme-dark {
 }
 
 .agent-dock-tabs[data-overflow-end]:not([data-overflow-start]) {
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
-  mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--dock-tab-edge)),
+    transparent
+  );
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--dock-tab-edge)), transparent);
 }
 
 .agent-dock-tabs[data-overflow-start]:not([data-overflow-end]) {
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 16px);
-  mask-image: linear-gradient(to right, transparent, #000 16px);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--dock-tab-edge));
+  mask-image: linear-gradient(to right, transparent, #000 var(--dock-tab-edge));
 }
 
 .agent-dock-tabs[data-overflow-start][data-overflow-end] {
   -webkit-mask-image: linear-gradient(
     to right,
     transparent,
-    #000 16px,
-    #000 calc(100% - 16px),
+    #000 var(--dock-tab-edge),
+    #000 calc(100% - var(--dock-tab-edge)),
     transparent
   );
   mask-image: linear-gradient(
     to right,
     transparent,
-    #000 16px,
-    #000 calc(100% - 16px),
+    #000 var(--dock-tab-edge),
+    #000 calc(100% - var(--dock-tab-edge)),
     transparent
   );
 }

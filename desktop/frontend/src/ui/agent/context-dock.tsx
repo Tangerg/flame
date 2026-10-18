@@ -133,11 +133,11 @@ function reflectDockTabOverflow(element: HTMLElement): void {
 
 function keepActiveDockTabInsideFade(element: HTMLElement): void {
   if (element.clientWidth === 0) return;
-  const active = element.querySelector<HTMLElement>('[role="tab"][data-active]');
-  if (!active) return;
+  const activeRow = element.querySelector<HTMLElement>('[role="tab"][data-active]')?.parentElement;
+  if (!activeRow) return;
   const stripBox = element.getBoundingClientRect();
-  const activeBox = active.getBoundingClientRect();
-  const edgeHint = 16;
+  const activeBox = activeRow.getBoundingClientRect();
+  const edgeHint = Number.parseFloat(getComputedStyle(element).scrollPaddingInlineStart);
   if (activeBox.left < stripBox.left + edgeHint) {
     element.scrollLeft -= stripBox.left + edgeHint - activeBox.left;
   } else if (activeBox.right > stripBox.right - edgeHint) {

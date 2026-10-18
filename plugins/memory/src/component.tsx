@@ -200,8 +200,8 @@ function MemoryReport({
                       "Origin",
                       item.Origin === "auto" ? "Mined" : "User authored",
                     ],
-                    ["Source Session", item.SessionID],
-                    ["Day", item.Day],
+                    ["Source Session", item.SessionID || undefined],
+                    ["Day", item.Day || undefined],
                   ]}
                 />
               </Disclosure>
@@ -260,6 +260,12 @@ export function Memory({ context }: { context: ComponentContext }) {
   const cwd = scope === "project" ? context.workspace?.ref.path : "";
   const [read, setRead] = useState<Read>({ loading: false });
   const [edit, setEdit] = useState<Edit>();
+  const searchElement = useRef<HTMLElement>(null);
+  const editOpener = edit?.opener;
+  const resolveOpener = useCallback(
+    () => (editOpener?.isConnected ? editOpener : searchElement.current),
+    [editOpener],
+  );
   const [pending, setPending] = useState(false);
   const [unknown, setUnknown] = useState<Command>();
   const [message, setMessage] = useState<string>();
@@ -510,6 +516,7 @@ export function Memory({ context }: { context: ComponentContext }) {
             search={
               <SearchField
                 id="search"
+                ref={searchElement}
                 aria-label="Search this page"
                 placeholder="Text or ID on this page"
                 value={search}
@@ -577,7 +584,7 @@ export function Memory({ context }: { context: ComponentContext }) {
         </Toolbar>
       )}
       {edit?.type === "delete" ? (
-        <RecordForm aria-label="Confirm memory deletion" opener={edit.opener}>
+        <RecordForm aria-label="Confirm memory deletion" opener={resolveOpener}>
           <RecordTitle>Delete this memory?</RecordTitle>
           <RecordBody>{edit.item.Content}</RecordBody>
           <Metadata>
@@ -608,7 +615,7 @@ export function Memory({ context }: { context: ComponentContext }) {
       ) : edit ? (
         <RecordForm
           aria-label={edit.type === "add" ? "Add memory" : "Edit memory"}
-          opener={edit.opener}
+          opener={resolveOpener}
         >
           <RecordTitle>
             {edit.type === "add" ? "Add memory" : "Edit memory"}

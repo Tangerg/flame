@@ -377,12 +377,22 @@ test("files browse and preview share one dock tab", async ({ page }) => {
   await dock.getByRole("treeitem", { name: "resizer.ts", exact: true }).click();
   await expect(dock).toContainText("clampDockWidth(currentWidth + delta, row.clientWidth)");
   await expect(dock.getByRole("tab", { name: "Files", exact: true })).toHaveCount(1);
-  await dock.getByRole("button", { name: "Back to files" }).click();
+  const focusAppearance = (node: Element) => {
+    const style = getComputedStyle(node);
+    return { style: style.outlineStyle, width: style.outlineWidth, color: style.outlineColor };
+  };
+  await page.keyboard.press("Tab");
+  const back = dock.getByRole("button", { name: "Back to files" });
+  await back.focus();
+  const controlFocus = await back.evaluate(focusAppearance);
+  await back.press("Enter");
   await expect(dock.getByRole("treeitem", { name: "app", exact: true })).toHaveAttribute(
     "aria-expanded",
     "true",
   );
-  await expect(dock.getByRole("treeitem", { name: "resizer.ts", exact: true })).toBeVisible();
+  const file = dock.getByRole("treeitem", { name: "resizer.ts", exact: true });
+  await expect(file).toBeFocused();
+  expect(await file.evaluate(focusAppearance)).toEqual(controlFocus);
   await expect(page.getByTestId("active-dock-view")).toHaveText("file");
 });
 
@@ -473,6 +483,16 @@ test("the active overflow tab stays visible and both hidden edges remain signpos
   expect(activeBox).not.toBeNull();
   expect(activeBox!.x).toBeGreaterThanOrEqual(stripBox!.x);
   expect(activeBox!.x + activeBox!.width).toBeLessThanOrEqual(stripBox!.x + stripBox!.width);
+  await page.mouse.move(activeBox!.x + activeBox!.width / 2, activeBox!.y + activeBox!.height / 2);
+  const close = page.getByRole("button", { name: "Close Workspace diff", exact: true });
+  await expect(close).toBeVisible();
+  const closeBox = await close.boundingBox();
+  expect(closeBox).not.toBeNull();
+  const edge = await strip.evaluate((node) =>
+    Number.parseFloat(getComputedStyle(node).scrollPaddingInlineStart),
+  );
+  expect(closeBox!.x).toBeGreaterThanOrEqual(stripBox!.x + edge);
+  expect(closeBox!.x + closeBox!.width).toBeLessThanOrEqual(stripBox!.x + stripBox!.width - edge);
 });
 
 test("file and portable trajectory tabs render through their production views", async ({

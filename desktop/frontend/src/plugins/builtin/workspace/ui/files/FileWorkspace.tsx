@@ -1,6 +1,6 @@
 import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
-import { Activity, useLayoutEffect, useRef, useState } from "react";
+import { Activity, useCallback, useLayoutEffect, useRef, useState } from "react";
 import { copyText } from "@/lib/clipboard";
 import { fileExtension } from "@/lib/path";
 import { fileKind } from "@/lib/fileKind";
@@ -54,23 +54,42 @@ function initialWindow(line: number): LineWindow {
 
 export function FileWorkspace() {
   const viewer = useWorkspaceFileViewer();
+  const returnFocus = useRef(false);
+  const restoreFocus = useCallback((item: HTMLElement) => {
+    if (!returnFocus.current) return;
+    returnFocus.current = false;
+    if (item.ownerDocument.activeElement === item.ownerDocument.body) item.focus();
+  }, []);
   return (
     <>
       <Activity mode={viewer ? "hidden" : "visible"}>
-        <FileBrowser />
+        <FileBrowser restoreFocus={restoreFocus} />
       </Activity>
-      {viewer && <FilePreview viewer={viewer} />}
+      {viewer && (
+        <FilePreview
+          viewer={viewer}
+          onBack={() => {
+            returnFocus.current = true;
+            closeWorkspaceFile();
+          }}
+        />
+      )}
     </>
   );
 }
 
-function FileBrowser() {
+function FileBrowser({ restoreFocus }: { restoreFocus: (item: HTMLElement) => void }) {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
   const query = useWorkspaceListFiles(workspace.status === "ready" ? { cwd } : undefined);
+  const scrollPort = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const item = scrollPort.current?.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
+    if (item) restoreFocus(item);
+  }, [query.data, restoreFocus]);
   return (
-    <WorkspaceViewLayout scrollInset="flush">
+    <WorkspaceViewLayout scrollInset="flush" scrollRef={scrollPort}>
       <DataView
         items={query.data}
         isLoading={query.isLoading || workspace.status === "resolving"}
@@ -86,7 +105,7 @@ function FileBrowser() {
   );
 }
 
-function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
+function FilePreview({ viewer, onBack }: { viewer: WorkspaceFileViewer; onBack: () => void }) {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
@@ -192,7 +211,7 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
             icon={iconGlyph("arrow-left")}
             size="sm"
             aria-label={t("file.backToFiles")}
-            onClick={closeWorkspaceFile}
+            onClick={onBack}
           />
         </>
       }
