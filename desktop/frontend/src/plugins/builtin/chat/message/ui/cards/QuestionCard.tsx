@@ -35,6 +35,7 @@ import {
   corner,
   leading,
   motion,
+  radius,
   space,
   surface,
   type as typeStep,
@@ -102,6 +103,7 @@ const qc = stylex.create({
   freeRow: {
     display: "flex",
     minHeight: space.s8,
+    borderRadius: radius.field,
     alignItems: "center",
     gap: space.s2,
     backgroundColor: { default: null, ":focus-within": surface.hover },
@@ -437,7 +439,7 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
         )}
 
         {activeQuestion.type === "choice" && activeQuestion.allowCustom && (
-          <div {...stylex.props(qc.freeRow, corner.pill)}>
+          <div {...stylex.props(qc.freeRow)}>
             <span
               aria-hidden
               {...stylex.props(

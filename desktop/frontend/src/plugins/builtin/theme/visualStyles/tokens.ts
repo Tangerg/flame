@@ -108,7 +108,7 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "field-shadow": "var(--shadow-control)",
   "mark-radius": "var(--shape-sm)",
   "menu-item-radius": "max(0px, calc(var(--floating-panel-radius) - var(--layout-menu-inset)))",
-  "button-radius": "var(--shape-pill)",
+  "button-radius": "var(--shape-xl)",
   "field-radius": "var(--shape-xl)",
   "segmented-radius": "var(--shape-composer)",
   "segment-radius":

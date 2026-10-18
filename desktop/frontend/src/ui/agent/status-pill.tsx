@@ -1,13 +1,15 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import type { DotTone } from "@/lib/tone";
-import { color, corner, space, surface, type, weight } from "@flame/ui/tokens.stylex";
+import { color, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { StatusDot } from "@/ui/atoms/status-dot";
 
 const styles = stylex.create({
   pill: {
     display: "inline-flex",
     height: "22px",
+    borderRadius: radius.button,
+    "corner-shape": "round",
     alignItems: "center",
     gap: space.s1_5,
     backgroundColor: surface.surface2,
@@ -27,7 +29,7 @@ export function AgentStatusPill({
   tone?: DotTone;
 }) {
   return (
-    <span data-slot="agent-status" {...stylex.props(styles.pill, corner.pill, type.uiSm)}>
+    <span data-slot="agent-status" {...stylex.props(styles.pill, type.uiSm)}>
       <StatusDot tone={tone} />
       {children}
     </span>

@@ -1,6 +1,15 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { color, corner, motion, space, surface, type, weight } from "@flame/ui/tokens.stylex";
+import {
+  color,
+  corner,
+  motion,
+  radius,
+  space,
+  surface,
+  type,
+  weight,
+} from "@flame/ui/tokens.stylex";
 import { reveal } from "./reveal";
 import { Icon, type IconName } from "@/ui/icons";
 import { useT } from "@/lib/i18n";
@@ -11,6 +20,8 @@ const chipStyles = stylex.create({
   chip: {
     display: "inline-flex",
     height: "var(--control-height-sm)",
+    borderRadius: radius.button,
+    "corner-shape": "round",
     alignItems: "center",
     gap: space.s1_5,
     borderWidth: "var(--control-edge-width)",
@@ -88,7 +99,7 @@ export function Chip({
       <span
         data-slot="chip"
         data-kind={kind}
-        {...stylex.props(reveal.host, chipStyles.chip, chipStyles[kind], corner.pill, type.uiSm)}
+        {...stylex.props(reveal.host, chipStyles.chip, chipStyles[kind], type.uiSm)}
       >
         {onOpen ? (
           <ButtonPrimitive

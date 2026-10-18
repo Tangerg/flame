@@ -16,7 +16,7 @@ import { LightboxDialog } from "@/ui";
 import { IconButton, ScrollRegion } from "@flame/ui";
 import { saveInlineImage } from "../application/imageSave";
 import { MESSAGE_CONTENT_SELECTOR } from "./messageContent";
-import { color, corner, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
+import { color, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 
 const ig = stylex.create({
   frame: {
@@ -63,6 +63,7 @@ const ig = stylex.create({
     objectFit: "contain",
   },
   tray: {
+    borderRadius: radius.floatingPanel,
     boxShadow: "var(--shadow-overlay)",
     position: "absolute",
     bottom: space.s3,
@@ -361,7 +362,7 @@ function ImageInspector({ item, label }: { item: GalleryItem; label: string }) {
           />
         </div>
       </ScrollRegion>
-      <div {...stylex.props(ig.tray, corner.pill)}>
+      <div {...stylex.props(ig.tray)}>
         <IconButton
           icon={iconGlyph("zoom-out")}
           aria-label={t("message.image.zoomOut")}

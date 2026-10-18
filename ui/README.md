@@ -100,7 +100,10 @@ and the system reduced-motion preference. Both disable motion with zero duration
 they do not manufacture transitions on otherwise static components.
 
 The default host theme follows HeroUI 3.2.6: cool neutrals, blue primary actions,
-capsule buttons, rounded fields and quiet contact shadows. Desktop size roles are
+rounded buttons, fields and quiet contact shadows. Button and field radii follow
+the user's radius scale at every size; text chips and status labels share the
+button role. Fixed circular marks and explicitly round buttons keep their geometry.
+Desktop size roles are
 24/28/32/36px, independent of navigation density. Controls retain native cursors,
 keyboard focus, wrapping labels and the coarse-pointer target floor. Theme values
 remain with the host; the library renders them without a second appearance store.

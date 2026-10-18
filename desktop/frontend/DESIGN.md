@@ -372,7 +372,7 @@ multiplies through.
 
 | Semantic role           | Default                       | Use                                                     |
 | ----------------------- | ----------------------------- | ------------------------------------------------------- |
-| `button-radius`         | Pill                          | Buttons and icon buttons                                |
+| `button-radius`         | 12px                          | Buttons, icon buttons, text chips and status labels      |
 | `field-radius`          | 12px                          | Text, search and select controls at every size          |
 | `mark-radius`           | 6px                           | Checkbox marks                                          |
 | `row-radius`            | 10px                          | Navigation rows                                         |
@@ -389,7 +389,7 @@ are derived from their panel and inset rather than authored independently.
 
 ### Corner curve
 
-Every corner that is not a circle is a **superellipse**, not a circular arc —
+Fields and surfaces use a **superellipse**, not a circular arc —
 `corner-shape: superellipse(1.5)`, which in the CSS parameterisation sits halfway
 between `round` and `squircle`. This is the Codex corner, and it is what makes a
 surface read as drawn rather than clipped.
@@ -400,15 +400,18 @@ radius reads tighter. `--corner-scale: 1.25` buys that back on `md` and up; belo
 and skip the scale. Curve and scale share one `@supports` — each engine gets a
 ladder that agrees with itself.
 
-`pill` opts out. A superellipse at 50% is a rounded square, and an avatar, a
-status dot or the type caret is a circle.
+Buttons and text capsules keep a round curve while their radius follows the
+user's scale. Only geometric circles and explicitly round controls use `pill`
+to opt out. A superellipse at 50% is a rounded square, and an avatar, a status
+dot or the type caret is a circle. The browser bounds large radii by the element's
+dimensions, so Default and Soft can look alike on a short control.
 
-WebKit has no `corner-shape` as of Safari 26.5, so the WKWebView the desktop app
-ships in draws the arc at the base radius today.
+Engines without `corner-shape` support draw the arc at the base radius. Feature
+queries select the curve and its scale together.
 
 ### NEVER
 
-- **No call-site corner values.** Buttons use the shared capsule role; fields use the 12px field role and resource groups use the 16px card role.
+- **No call-site corner values.** Buttons and fields use their shared 12px roles and resource groups use the 16px card role. All ordinary roles follow the user's radius scale.
 - **No mixed scales on one screen.** One corner language, one ladder, no step
   invented at a call site.
 
@@ -507,7 +510,7 @@ When in doubt: **does this surface convey "the agent is alive and live"?** If ye
 ### Don't
 
 - **Don't use ALL-CAPS labels with letter-spacing.** Section labels / eyebrows / table heads are **sentence-case** (mono for dense technical labels like `args` / `attrs`); the ALL-CAPS + wide-tracking eyebrow is the rejected Sonance vocabulary.
-- **Don't assign button geometry at call sites.** Shared controls own the capsule treatment through `--button-radius`.
+- **Don't assign button geometry at call sites.** Shared controls consume the scaled `--button-radius` role; an explicit round shape is reserved for geometric controls.
 - **Don't use weight 700+ for display.** 600 is the ceiling, Linear and Vercel both forbid this.
 - **Don't add call-site shadows.** Workbench regions stay flush. Resource groups and forms use the shared contact-shadow token; overlays use their elevation role.
 - **Don't hardcode canvas colors at call sites.** The default cool neutral canvas follows the HeroUI palette through `--color-bg`.
@@ -537,7 +540,7 @@ ink cannot be:
 
 - **ZCode** — plugin page composition, grouped resource rows, control proportions,
   supporting text hierarchy and desktop resource density.
-- **HeroUI 3.2.6** — default cool neutral palette, blue primary actions, capsule buttons, rounded fields, layered fills and contact shadows. Adaptations retain 24/28/32/36px desktop control roles, native cursors, 3:1 field boundaries and AA text contrast. The application theme owns token values; `@flame/ui` owns their rendering.
+- **HeroUI 3.2.6** — default cool neutral palette, blue primary actions, scalable rounded buttons and fields, layered fills and contact shadows. Adaptations retain 24/28/32/36px desktop control roles, native cursors, 3:1 field boundaries and AA text contrast. The application theme owns token values; `@flame/ui` owns their rendering.
 - **ChatGPT / Codex** — conversation reading measure and tool disclosure behavior.
 - **JetBrains tool windows** — the surrounding workbench region model.
 - Flame Runtime Protocol — `src/rpc/` — drives the shape of the data this UI
