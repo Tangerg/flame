@@ -116,7 +116,9 @@ Field `invalid` owns both error styling and the accessible invalid state. Search
 clear actions require an explicit localized label. Compact controls retain a
 24px minimum target; hover effects run only on hover-capable pointers.
 Text buttons wrap long labels and grow vertically within their available width;
-size tokens define their minimum height. Icon-only controls retain square geometry.
+size tokens define their minimum height. Standalone icon controls retain square
+geometry. Within a flex row, joined controls share the row's actual height and
+their default pressed feedback keeps the seam intact.
 The shared stylesheet owns the 44px coarse-pointer floor; controls and their
 layout hosts include that floor in their geometry.
 

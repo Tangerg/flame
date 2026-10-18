@@ -112,6 +112,7 @@ export function RecordedOutput({ text }: { text: string }) {
   const viewport = useRef<HTMLDivElement>(null);
   const ruler = useRef<HTMLSpanElement>(null);
   const search = useRef<HTMLElement>(null);
+  const expansionOpener = useRef<HTMLButtonElement>(null);
   const matches = useMemo(() => {
     if (!query) return [];
     const needle = query.toLocaleLowerCase();
@@ -153,7 +154,20 @@ export function RecordedOutput({ text }: { text: string }) {
 
   useLayoutEffect(() => {
     if (!expanded) return;
-    const frame = requestAnimationFrame(jumpToLatest);
+    const frame = requestAnimationFrame(() => {
+      jumpToLatest();
+      const opener = expansionOpener.current;
+      expansionOpener.current = null;
+      const node = viewport.current;
+      if (
+        opener &&
+        !opener.isConnected &&
+        node &&
+        node.ownerDocument.activeElement === node.ownerDocument.body
+      ) {
+        node.focus();
+      }
+    });
     return () => cancelAnimationFrame(frame);
   }, [expanded, lines, jumpToLatest]);
 
@@ -327,7 +341,13 @@ export function RecordedOutput({ text }: { text: string }) {
         <>
           {earlier > 0 && (
             <div data-slot="output-controls" style={controlStrip}>
-              <Button size="xs" onClick={() => setExpanded(true)}>
+              <Button
+                size="xs"
+                onClick={(event) => {
+                  expansionOpener.current = event.currentTarget;
+                  setExpanded(true);
+                }}
+              >
                 Show {earlier} earlier {earlier === 1 ? "line" : "lines"} ·{" "}
                 {lines.length} total
               </Button>

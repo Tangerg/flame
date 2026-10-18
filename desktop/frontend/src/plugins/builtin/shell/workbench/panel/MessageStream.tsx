@@ -5,7 +5,7 @@ import { publishStreamFollow } from "./streamFollow";
 import type { BlockCtx } from "@/plugins/builtin/chat/message/public/rendering";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
-import { memo, useEffect } from "react";
+import { memo, useEffect, type PropsWithChildren } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { cn } from "@/lib/classNames";
 import { dayKey, formatDay } from "@/lib/i18n/relativeTime";
@@ -48,6 +48,32 @@ function ControlsRelay() {
     });
   });
   return null;
+}
+
+function TranscriptContent({ children }: PropsWithChildren) {
+  const { scrollRef, state, stopScroll } = useStickToBottomContext();
+  return (
+    <StickToBottom.Content
+      scrollClassName={cn("msg-scroll-viewport", stylex.props(ms.viewport).className)}
+      className={stylex.props(rc.box, ms.content).className}
+      onFocus={(event) => {
+        const viewport = scrollRef.current;
+        const target = event.target;
+        if (!viewport?.contains(target) || !state.isAtBottom) return;
+        const movement = state.targetScrollTop - viewport.scrollTop;
+        if (movement <= 0) return;
+        const bounds = target.getBoundingClientRect();
+        const frame = viewport.getBoundingClientRect();
+        const style = getComputedStyle(viewport);
+        const top = frame.top + parseFloat(style.scrollPaddingTop);
+        const bottom = frame.bottom - parseFloat(style.scrollPaddingBottom);
+        // Native focus can reveal its target before a queued resize-follow tick.
+        if (bounds.top - movement < top || bounds.bottom - movement > bottom) stopScroll();
+      }}
+    >
+      {children}
+    </StickToBottom.Content>
+  );
 }
 
 function DaySeparator({ createdAt }: { createdAt?: string }) {
@@ -162,10 +188,7 @@ export function MessageStream({ rows, ctx, sessionId }: Props) {
       initial="instant"
       resize="instant"
     >
-      <StickToBottom.Content
-        scrollClassName={cn("msg-scroll-viewport", stylex.props(ms.viewport).className)}
-        className={stylex.props(rc.box, ms.content).className}
-      >
+      <TranscriptContent>
         <AnimatePresence initial={false}>
           {rows.map((row, index) => {
             const previous = rows[index - 1]?.message;
@@ -194,7 +217,7 @@ export function MessageStream({ rows, ctx, sessionId }: Props) {
           })}
         </AnimatePresence>
         <div aria-hidden {...stylex.props(rc.clearance)} />
-      </StickToBottom.Content>
+      </TranscriptContent>
       <ControlsRelay />
     </StickToBottom>
   );

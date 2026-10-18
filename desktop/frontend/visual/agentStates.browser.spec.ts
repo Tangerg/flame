@@ -1411,9 +1411,11 @@ for (const { state, inputSurface } of [
       }
       const tail = Array.from(scroller.querySelectorAll("[data-turn-id]")).at(-1);
       if (!tail) return null;
+      const fromBottom = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
       return {
+        // Measure the physical end; tail following can stop one pixel before it.
         clearance: Math.round(
-          input.getBoundingClientRect().top - tail.getBoundingClientRect().bottom,
+          input.getBoundingClientRect().top - tail.getBoundingClientRect().bottom + fromBottom,
         ),
         margin: Math.round(Number.parseFloat(getComputedStyle(document.documentElement).fontSize)),
       };
@@ -1967,6 +1969,47 @@ test("large command output stays fully readable inside the tool card", async ({ 
   await command.getByRole("button", { name: "Collapse" }).click();
   await expect(output).toHaveCount(0);
   await expect(command.locator("[data-output-line]")).toHaveCount(9);
+});
+
+test("keyboard output expansion retains its reading focus and visible controls", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1120, height: 720 });
+  await page.goto(
+    "/visual/?fixture=agent&theme=light&state=tool-shells&long-output=1&font-size=18",
+  );
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.getByRole("button", { name: /steps/ }).first().click();
+  const command = page.locator('[data-tool="shell"]').first();
+  await command.getByRole("button").first().click();
+  const expand = command.getByRole("button", { name: /earlier lines · 50000 total/ });
+  await page.keyboard.press("Tab");
+  await expect(expand).toBeFocused();
+  await page.keyboard.press("Enter");
+  const output = command.getByRole("region", { name: "Tool output", exact: true });
+  await expect(output).toContainText("build output line 49999");
+  await expect(output).toBeFocused();
+  await expect(output).toBeInViewport({ ratio: 1 });
+
+  await page.keyboard.press("Shift+Tab");
+  const collapse = command.getByRole("button", { name: "Collapse", exact: true });
+  await expect(collapse).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  const find = command.getByRole("button", { name: "Find", exact: true });
+  await expect(find).toBeFocused();
+  await expect(find).toBeInViewport({ ratio: 1 });
+  expect(await find.evaluate((node) => node.matches(":focus-visible"))).toBe(true);
+  await page.keyboard.press("Tab");
+  await expect(collapse).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(output).toBeFocused();
+  await expect(output).toBeInViewport({ ratio: 1 });
+  const latest = await output.evaluate((node) => node.scrollTop);
+  const stream = page.locator(".msg-scroll-viewport");
+  const streamTop = await stream.evaluate((node) => node.scrollTop);
+  await page.keyboard.press("PageUp");
+  await expect.poll(() => output.evaluate((node) => node.scrollTop)).toBeLessThan(latest);
+  expect(await stream.evaluate((node) => node.scrollTop)).toBe(streamTop);
 });
 
 test("a collapsed live reasoning row glimpses its newest line, softened only where it is cut", async ({

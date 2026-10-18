@@ -354,6 +354,7 @@ const styles = stylex.create({
     fontWeight: weight.regular,
   },
 
+  joined: { alignSelf: "stretch", height: "auto" },
   joinStart: { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
   joinEnd: {
     position: "relative",
@@ -438,8 +439,9 @@ function pressFor({
   chip,
   shape,
   round,
+  join,
 }: ButtonVariants): "scale" | "nudge" | "none" {
-  if (variant === "link" || variant === "bare") return "none";
+  if (join || variant === "link" || variant === "bare") return "none";
   if (round && variant === "primary") return "nudge";
   return chip || shape === "row" ? "none" : "scale";
 }
@@ -459,7 +461,7 @@ export function dress({
   face: textFace,
 }: ButtonVariants) {
   const chipStep = chip && (size === "sm" || size === "md") ? size : null;
-  const pressStep = press ?? pressFor({ variant, chip, shape, round });
+  const pressStep = press ?? pressFor({ variant, chip, shape, round, join });
   return [
     styles.base,
     tone && toneInk[tone],
@@ -467,6 +469,7 @@ export function dress({
     pressStep === "scale" && styles.press,
     pressStep === "nudge" && styles.nudge,
     round && corner.pill,
+    join && styles.joined,
     join === "start" && styles.joinStart,
     join === "end" && styles.joinEnd,
     VARIANT[variant],

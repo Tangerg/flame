@@ -121,11 +121,12 @@ function SearchOverlayContent({
   const rows = options(query);
   const active = rows.length === 0 ? 0 : Math.min(Math.max(highlight, 0), rows.length - 1);
   const activeId = rows.length === 0 ? undefined : `${baseId}-${active}`;
+  const activeKey = rows[active]?.key;
 
   useLayoutEffect(() => {
     if (!open) return;
     listRef.current?.querySelector("[aria-selected='true']")?.scrollIntoView({ block: "nearest" });
-  }, [activeId, open]);
+  }, [activeId, activeKey, open, query]);
 
   return (
     <div {...stylex.props(styles.contents)}>

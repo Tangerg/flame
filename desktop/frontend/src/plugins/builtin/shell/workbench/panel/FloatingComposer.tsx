@@ -14,17 +14,37 @@ import { space } from "@flame/ui/tokens.stylex";
 import { readingColumn as rc } from "./readingColumn";
 
 const fc = stylex.create({
-  notice: { marginBottom: space.s2 },
+  notice: { flexShrink: 0, marginBottom: space.s2 },
   tray: {
     display: "flex",
     width: "100%",
+    flexShrink: 0,
     flexDirection: "column",
     alignItems: "center",
     paddingTop: { default: null, ":has([data-slot=composer-top-tray-surface])": "1px" },
   },
-  overlay: { pointerEvents: "none", position: "absolute", insetInline: 0, bottom: 0, zIndex: 2 },
-  holder: { pointerEvents: "auto", position: "relative" },
+  overlay: {
+    pointerEvents: "none",
+    position: "absolute",
+    insetInline: 0,
+    bottom: 0,
+    zIndex: 2,
+    display: "flex",
+    // Keep the jump control, its gap, and focus clearance inside the conversation.
+    maxHeight: "calc(100% - max(var(--control-height-md), var(--control-target-min)) - 1rem)",
+    flexDirection: "column",
+  },
+  holder: {
+    pointerEvents: "auto",
+    position: "relative",
+    display: "flex",
+    minHeight: 0,
+    flexDirection: "column",
+  },
   floor: {
+    display: "flex",
+    minHeight: 0,
+    flexDirection: "column",
     paddingBottom: { default: space.s3, "@container conversation (min-width: 640px)": space.s4 },
   },
 });

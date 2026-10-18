@@ -45,6 +45,8 @@ import { messageStyles as ms } from "../messageStyles";
 import { vocab } from "@flame/ui";
 
 const qc = stylex.create({
+  request: { display: "flex", minHeight: 0, flexDirection: "column" },
+  reading: { minHeight: 0, overflowY: "auto", overscrollBehavior: "contain" },
   askBody: { paddingTop: space.s1, paddingBottom: space.s0_5 },
   settledLine: {
     display: "flex",
@@ -78,7 +80,7 @@ const qc = stylex.create({
     gap: space.s1,
     paddingInline: space.s2,
     paddingTop: space.s1,
-    paddingBottom: space.s2,
+    paddingBottom: 0,
   },
   optionLine: {
     display: "flex",
@@ -130,11 +132,13 @@ const qc = stylex.create({
   freeField: { height: space.s5, padding: 0, lineHeight: leading.body },
   footer: {
     display: "flex",
+    flexShrink: 0,
     alignItems: "center",
     justifyContent: "flex-end",
     gap: space.s2,
-    paddingInline: space.s2,
-    paddingBlock: space.s1,
+    paddingInline: space.s4,
+    paddingTop: space.s2,
+    paddingBottom: space.s3,
   },
 });
 
@@ -330,157 +334,158 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
       tabIndex={-1}
       data-slot="question-request-surface"
       data-chrome-focus
-      className={stylex.props(ms.cardClip).className}
+      className={stylex.props(ms.cardClip, qc.request).className}
     >
-      <div {...stylex.props(ms.cardHeadTight)}>
-        <h3 id={promptId} className={stylex.props(ms.cardPromptFlush, typeStep.uiMd).className}>
-          {activeQuestion.prompt}
-        </h3>
-        {questions.length > 1 && (
-          <div {...stylex.props(qc.pager, typeStep.uiXs)}>
-            <IconButton
-              icon={iconGlyph("chevron-left")}
-              size="xs"
-              quiet
-              disabled={activeIndex === 0}
-              focusableWhenDisabled
-              aria-label={t("question.action.previous")}
-              onClick={() => navigateQuestion(activeIndex - 1)}
-            />
-            <span {...stylex.props(qc.pageCount)}>
-              {t("question.progress", { current: activeIndex + 1, total: questions.length })}
-            </span>
-            <IconButton
-              icon={iconGlyph("chevron-right")}
-              size="xs"
-              quiet
-              disabled={isLastQuestion}
-              focusableWhenDisabled
-              aria-label={t("question.action.next")}
-              onClick={() => navigateQuestion(activeIndex + 1)}
-            />
-          </div>
-        )}
-      </div>
-
-      <div ref={activeQuestionRef} {...stylex.props(qc.choices)}>
-        {activeQuestion.type === "choice" && (
-          <ChoiceList
-            multiple={activeQuestion.multiple}
-            value={activeDraft.selected}
-            values={activeQuestion.options.map((option) => option.label)}
-            labelledBy={promptId}
-            disabled={!runtimeAvailable}
-            numbered
-            pending={actions.pending}
-            onValueChange={(selected) => selectOptions(activeQuestion, selected)}
-          >
-            {activeQuestion.options.map((option, optionIndex) => {
-              const selected = activeDraft.selected.includes(option.label);
-              const recommended = option.label.endsWith(RECOMMENDED_SUFFIX);
-              const label = recommended
-                ? option.label.slice(0, -RECOMMENDED_SUFFIX.length)
-                : option.label;
-              return (
-                <ChoiceOption
-                  key={option.label}
-                  multiple={activeQuestion.multiple}
-                  value={option.label}
-                  selected={selected}
-                  ordinal={optionIndex + 1}
-                  label={option.label}
-                  description={option.description}
-                  disabled={!runtimeAvailable}
-                  pending={actions.pending}
-                  onReselect={() => selectOptions(activeQuestion, [option.label])}
-                >
-                  <span {...stylex.props(qc.optionLine)}>
-                    <span {...stylex.props(qc.optionLabel, typeStep.uiMd)}>{label}</span>
-                    {recommended && <Badge>{t("question.recommended")}</Badge>}
-                    {option.description && (
-                      <span
-                        className={
-                          stylex.props(
-                            qc.optionDescription,
-                            ct.bodyLeading,
-                            vocab.muted,
-                            typeStep.uiSm,
-                          ).className
-                        }
-                      >
-                        {option.description}
-                      </span>
-                    )}
-                  </span>
-                </ChoiceOption>
-              );
-            })}
-          </ChoiceList>
-        )}
-
-        {activeQuestion.type === "text" && (
-          <div {...stylex.props(qc.field)}>
-            <TextArea
-              size="sm"
-              rows={4}
-              value={activeDraft.text}
-              aria-label={activeQuestion.prompt}
-              placeholder={t("question.freetext.placeholder")}
-              disabled={!runtimeAvailable}
-              pending={actions.pending}
-              onChange={handleAnswerChange}
-              onCompositionStart={handleCompositionStart}
-              onCompositionEnd={handleCompositionEnd}
-              onKeyDown={handleAnswerKeyDown}
-              onBlur={() => {
-                compositionCommitPendingRef.current = false;
-              }}
-              className={stylex.props(qc.textArea).className}
-            />
-          </div>
-        )}
-
-        {activeQuestion.type === "choice" && activeQuestion.allowCustom && (
-          <div {...stylex.props(qc.freeRow)}>
-            <span
-              aria-hidden
-              {...stylex.props(
-                qc.freeMark,
-                corner.pill,
-                explicitFreeform ? qc.freeMarkOn : qc.freeMarkOff,
-              )}
-            >
-              <Icon name="edit" size="xs" />
-            </span>
-            <TextField
-              variant="bare"
-              value={activeDraft.text}
-              aria-label={activeQuestion.prompt}
-              placeholder={t("question.freetext.placeholder")}
-              disabled={!runtimeAvailable}
-              pending={actions.pending}
-              onChange={handleAnswerChange}
-              onCompositionStart={handleCompositionStart}
-              onCompositionEnd={handleCompositionEnd}
-              onKeyDown={handleAnswerKeyDown}
-              onBlur={() => {
-                compositionCommitPendingRef.current = false;
-              }}
-              styles={qc.freeField}
-            />
-          </div>
-        )}
-
-        <div {...stylex.props(qc.footer)}>
-          <Button
-            variant={actionSkips ? "outline" : "primary"}
-            size="sm"
-            disabled={actions.disabled || !runtimeAvailable}
-            onClick={actionSkips ? skipCurrent : advanceCurrent}
-          >
-            {t(actionSkips ? "question.action.skip" : "question.action.advance")}
-          </Button>
+      <div {...stylex.props(qc.reading)}>
+        <div {...stylex.props(ms.cardHeadTight)}>
+          <h3 id={promptId} className={stylex.props(ms.cardPromptFlush, typeStep.uiMd).className}>
+            {activeQuestion.prompt}
+          </h3>
+          {questions.length > 1 && (
+            <div {...stylex.props(qc.pager, typeStep.uiXs)}>
+              <IconButton
+                icon={iconGlyph("chevron-left")}
+                size="xs"
+                quiet
+                disabled={activeIndex === 0}
+                focusableWhenDisabled
+                aria-label={t("question.action.previous")}
+                onClick={() => navigateQuestion(activeIndex - 1)}
+              />
+              <span {...stylex.props(qc.pageCount)}>
+                {t("question.progress", { current: activeIndex + 1, total: questions.length })}
+              </span>
+              <IconButton
+                icon={iconGlyph("chevron-right")}
+                size="xs"
+                quiet
+                disabled={isLastQuestion}
+                focusableWhenDisabled
+                aria-label={t("question.action.next")}
+                onClick={() => navigateQuestion(activeIndex + 1)}
+              />
+            </div>
+          )}
         </div>
+
+        <div ref={activeQuestionRef} {...stylex.props(qc.choices)}>
+          {activeQuestion.type === "choice" && (
+            <ChoiceList
+              multiple={activeQuestion.multiple}
+              value={activeDraft.selected}
+              values={activeQuestion.options.map((option) => option.label)}
+              labelledBy={promptId}
+              disabled={!runtimeAvailable}
+              numbered
+              pending={actions.pending}
+              onValueChange={(selected) => selectOptions(activeQuestion, selected)}
+            >
+              {activeQuestion.options.map((option, optionIndex) => {
+                const selected = activeDraft.selected.includes(option.label);
+                const recommended = option.label.endsWith(RECOMMENDED_SUFFIX);
+                const label = recommended
+                  ? option.label.slice(0, -RECOMMENDED_SUFFIX.length)
+                  : option.label;
+                return (
+                  <ChoiceOption
+                    key={option.label}
+                    multiple={activeQuestion.multiple}
+                    value={option.label}
+                    selected={selected}
+                    ordinal={optionIndex + 1}
+                    label={option.label}
+                    description={option.description}
+                    disabled={!runtimeAvailable}
+                    pending={actions.pending}
+                    onReselect={() => selectOptions(activeQuestion, [option.label])}
+                  >
+                    <span {...stylex.props(qc.optionLine)}>
+                      <span {...stylex.props(qc.optionLabel, typeStep.uiMd)}>{label}</span>
+                      {recommended && <Badge>{t("question.recommended")}</Badge>}
+                      {option.description && (
+                        <span
+                          className={
+                            stylex.props(
+                              qc.optionDescription,
+                              ct.bodyLeading,
+                              vocab.muted,
+                              typeStep.uiSm,
+                            ).className
+                          }
+                        >
+                          {option.description}
+                        </span>
+                      )}
+                    </span>
+                  </ChoiceOption>
+                );
+              })}
+            </ChoiceList>
+          )}
+
+          {activeQuestion.type === "text" && (
+            <div {...stylex.props(qc.field)}>
+              <TextArea
+                size="sm"
+                rows={4}
+                value={activeDraft.text}
+                aria-label={activeQuestion.prompt}
+                placeholder={t("question.freetext.placeholder")}
+                disabled={!runtimeAvailable}
+                pending={actions.pending}
+                onChange={handleAnswerChange}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
+                onKeyDown={handleAnswerKeyDown}
+                onBlur={() => {
+                  compositionCommitPendingRef.current = false;
+                }}
+                className={stylex.props(qc.textArea).className}
+              />
+            </div>
+          )}
+
+          {activeQuestion.type === "choice" && activeQuestion.allowCustom && (
+            <div {...stylex.props(qc.freeRow)}>
+              <span
+                aria-hidden
+                {...stylex.props(
+                  qc.freeMark,
+                  corner.pill,
+                  explicitFreeform ? qc.freeMarkOn : qc.freeMarkOff,
+                )}
+              >
+                <Icon name="edit" size="xs" />
+              </span>
+              <TextField
+                variant="bare"
+                value={activeDraft.text}
+                aria-label={activeQuestion.prompt}
+                placeholder={t("question.freetext.placeholder")}
+                disabled={!runtimeAvailable}
+                pending={actions.pending}
+                onChange={handleAnswerChange}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
+                onKeyDown={handleAnswerKeyDown}
+                onBlur={() => {
+                  compositionCommitPendingRef.current = false;
+                }}
+                styles={qc.freeField}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+      <div {...stylex.props(qc.footer)}>
+        <Button
+          variant={actionSkips ? "outline" : "primary"}
+          size="sm"
+          disabled={actions.disabled || !runtimeAvailable}
+          onClick={actionSkips ? skipCurrent : advanceCurrent}
+        >
+          {t(actionSkips ? "question.action.skip" : "question.action.advance")}
+        </Button>
       </div>
     </Surface>
   );

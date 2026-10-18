@@ -34,6 +34,39 @@ for (const theme of ["light", "dark"]) {
   });
 }
 
+for (const overlay of ["commands", "finder"]) {
+  test(`${overlay} search reveals its current result after wheel scrolling and filtering`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 560, height: 360 });
+    await page.goto(
+      `/visual/?fixture=shell&state=populated&overlay=${overlay}&theme=dark&font-size=18`,
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const dialog = page.getByRole("dialog");
+    const query = dialog.getByRole("combobox");
+    const list = dialog.getByRole("listbox");
+    const first = dialog.getByRole("option").first();
+    await expect(query).toBeFocused();
+    await first.hover();
+    await expect(first).toHaveAttribute("aria-selected", "true");
+    await page.mouse.wheel(0, 1000);
+    await expect.poll(() => list.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+    await expect(first).not.toBeInViewport();
+
+    await query.fill("e");
+    await expect(first).toHaveAttribute("aria-selected", "true");
+    await expect(query).toHaveAttribute("aria-activedescendant", (await first.getAttribute("id"))!);
+    await expect(first).toBeInViewport({ ratio: 1 });
+    await expect(query).toBeFocused();
+    await query.fill("");
+    await expect(first).toHaveAttribute("aria-selected", "true");
+    await expect(first).toBeInViewport({ ratio: 1 });
+    await query.press("Escape");
+    await expect(dialog).toHaveCount(0);
+  });
+}
+
 for (const theme of ["light", "dark"]) {
   test(`Diff keeps comparison and file controls reachable while the report scrolls in ${theme}`, async ({
     page,
