@@ -21,8 +21,11 @@ interface Props {
 const tc = stylex.create({
   full: { width: "100%" },
   meta: { fontVariantNumeric: "tabular-nums" },
+  secondaryMeta: {
+    display: { default: "none", "@container (min-width: 24rem)": "inline" },
+  },
   status: {
-    display: { default: "none", "@container (min-width: 24rem)": "flex" },
+    display: "flex",
     flexShrink: 0,
     alignItems: "center",
     gap: space.s1_5,
@@ -72,7 +75,12 @@ function ToolMeta({ items }: { items: ToolMetaItem[] }) {
         <span
           key={item.id}
           data-tone={item.tone}
-          {...stylex.props(tc.meta, toolMetaInk.card[item.tone], typeStep.uiXs)}
+          {...stylex.props(
+            tc.meta,
+            item.tone !== "negative" && tc.secondaryMeta,
+            toolMetaInk.card[item.tone],
+            typeStep.uiXs,
+          )}
         >
           {item.label}
         </span>

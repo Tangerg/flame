@@ -10,10 +10,9 @@ import {
   type CompositionEvent,
   type KeyboardEvent,
 } from "react";
-import { ChoiceList, ChoiceOption, Icon, Surface } from "@/ui";
+import { ChoiceList, ChoiceOption, Divider, Icon, Surface } from "@/ui";
 import { Badge, Button, IconButton, TextArea, TextField } from "@flame/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
-import { HitlSettledRow } from "./HitlCard";
 import { useT } from "@/lib/i18n";
 import {
   clearQuestionAnswer,
@@ -204,7 +203,10 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
 
   if (settled.settled) {
     const shown = settled.answers;
-    if (!shown) return <HitlSettledRow label={t("question.settled.dismissed")} />;
+    if (!shown)
+      return (
+        <Divider icon={<Icon name="x" size="xs" />}>{t("question.settled.dismissed")}</Divider>
+      );
     const countLabel = t("question.settled.question", { count: questions.length });
     return (
       <AgentActivityDisclosure

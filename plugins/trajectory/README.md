@@ -32,6 +32,11 @@ caller/parent/origin, and may belong to a Session without a Run. The Session-onl
 filter includes them; unknown outcome and failure remain visible. Counts are record
 counts, not additive billing totals.
 
+Status tones project recorded severity independently of the attention filter and
+counts. Failed, timed-out and lost Runs are failures; canceled Runs and refused or
+canceled tools remain neutral. Attention includes timed-out Runs and retains
+incomplete, refused or errored tools without changing their recorded state.
+
 Run summaries retain their full accepted Run ID alongside provider/model, state
 and time. Expanded Run facts name that identity once and retain the recorded
 root, parent and delegating item relationships.

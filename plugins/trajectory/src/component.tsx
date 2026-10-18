@@ -46,6 +46,7 @@ import {
   Toolbar,
   TextField,
   type Fact,
+  type Tone,
 } from "@flame/ui";
 
 const runId = (row: TrajectoryEntry) =>
@@ -64,13 +65,63 @@ function needsAttention(row: TrajectoryEntry): boolean {
   if (row.type === "run")
     return (
       row.run.status === "waiting" ||
-      ["failed", "lost"].includes(row.run.outcome?.type ?? "")
+      ["failed", "timedOut", "lost"].includes(row.run.outcome?.type ?? "")
     );
   return (
     row.item.status === "incomplete" ||
     (row.item.type === "toolCall" &&
       (row.item.approvalDecision === "deny" || Boolean(row.item.error)))
   );
+}
+function statusTone(row: TrajectoryEntry): Tone {
+  if (row.type === "run") {
+    switch (row.run.outcome?.type ?? row.run.status) {
+      case "running":
+        return "accent";
+      case "waiting":
+        return "warning";
+      case "failed":
+      case "timedOut":
+      case "lost":
+        return "negative";
+      case "completed":
+      case "canceled":
+      case "finished":
+        return "neutral";
+    }
+  }
+  if (row.type === "model" || row.type === "endpoint") {
+    const source = row.type === "model" ? row.model : row.endpoint;
+    switch (source.state) {
+      case "started":
+        return "accent";
+      case "completed":
+        return "neutral";
+      case "failed":
+        return "negative";
+      case "unknown":
+        return "warning";
+    }
+  }
+  const item = row.item;
+  if (item.type === "toolCall") {
+    if (
+      item.approvalDecision === "deny" ||
+      item.error?.type === "denied_by_user" ||
+      item.error?.type === "tool_canceled" ||
+      item.error?.type === "child_run_canceled"
+    )
+      return "neutral";
+    if (item.error) return "negative";
+  }
+  switch (item.status) {
+    case "running":
+      return "accent";
+    case "completed":
+      return "neutral";
+    case "incomplete":
+      return "warning";
+  }
 }
 function evidence(row: TrajectoryEntry): TrajectoryEntry {
   if (
@@ -149,11 +200,7 @@ function title(row: TrajectoryEntry) {
           {decision && ` · Approval: ${decision}`}
         </>
       }
-      status={
-        <Badge tone={needsAttention(row) ? "warning" : "neutral"}>
-          {state}
-        </Badge>
-      }
+      status={<Badge tone={statusTone(row)}>{state}</Badge>}
     />
   );
 }

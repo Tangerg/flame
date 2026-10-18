@@ -167,6 +167,95 @@ it("shows tool execution status independently of its approval decision", () => {
   expect(screen.getByText(row.item.id, { exact: true }).textContent).toBe(row.item.id);
 });
 
+it("keeps timed-out Runs and refused or canceled tools in attention without rewriting their state", () => {
+  const original = visualTrajectory(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle).find(
+    (entry) => entry.type === "run",
+  );
+  if (!original || original.type !== "run") throw new Error("idle snapshot must contain a Run");
+  const timeout: TrajectoryEntry = {
+    ...original,
+    run: {
+      ...original.run,
+      id: "run_timeout",
+      status: "finished",
+      outcome: { type: "timedOut", error: { type: "timeout" } },
+    },
+  };
+  const tool = {
+    type: "toolCall" as const,
+    status: "incomplete" as const,
+    runId: original.run.id,
+    startedAt: original.occurredAt,
+    tool: { name: "shell", arguments: { command: "go test ./..." } },
+  };
+  const refused: TrajectoryEntry = {
+    type: "item",
+    occurredAt: original.occurredAt,
+    item: {
+      ...tool,
+      id: "item_refused",
+      approvalDecision: "deny",
+      error: { type: "denied_by_user" },
+    },
+  };
+  const canceledTool: TrajectoryEntry = {
+    type: "item",
+    occurredAt: original.occurredAt,
+    item: { ...tool, id: "item_canceled", error: { type: "tool_canceled" } },
+  };
+  const canceledRun: TrajectoryEntry = {
+    ...original,
+    run: {
+      ...original.run,
+      id: "run_canceled",
+      status: "finished",
+      outcome: { type: "canceled" },
+    },
+  };
+  const completed: TrajectoryEntry = {
+    ...original,
+    run: {
+      ...original.run,
+      id: "run_completed",
+      status: "finished",
+      outcome: { type: "completed" },
+    },
+  };
+  const { container } = render(
+    <TrajectoryReport
+      page={{ data: [timeout, refused, canceledTool, canceledRun, completed] }}
+      kind="attention"
+      run="all"
+      search=""
+    />,
+  );
+
+  expect(
+    Array.from(container.querySelectorAll("[data-trajectory-record]"), (record) =>
+      record.getAttribute("data-trajectory-record"),
+    ),
+  ).toEqual(["run:run_timeout", "item:item_refused", "item:item_canceled"]);
+  expect(screen.getByText("Needs attention").nextElementSibling?.textContent).toBe("3");
+  const timeoutSummary = screen.getByRole("button", { name: /run_timeout/ });
+  expect(timeoutSummary.textContent).toContain("timedOut");
+  const refusedRecord = within(
+    container.querySelector<HTMLElement>('[data-trajectory-record="item:item_refused"]')!,
+  );
+  const refusedSummary = refusedRecord.getByRole("button", { expanded: false });
+  expect(refusedSummary.textContent).toContain("incomplete");
+  expect(refusedSummary.textContent).toContain("Approval: deny");
+  expect(
+    within(
+      container.querySelector<HTMLElement>('[data-trajectory-record="item:item_canceled"]')!,
+    ).getByRole("button", { expanded: false }).textContent,
+  ).toContain("incomplete");
+  fireEvent.click(timeoutSummary);
+  expect(
+    within(timeoutSummary.closest("section")!).getByRole("region", { name: "Recorded evidence" })
+      .textContent,
+  ).toBe(JSON.stringify(timeout, null, 2));
+});
+
 it("distinguishes same-time Runs before expansion and keeps one Run identity fact", () => {
   const original = visualTrajectory(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle).find(
     (entry) => entry.type === "run",
