@@ -546,7 +546,6 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
 }
 :where([data-slot="document-body"] table, table[data-slot="prose-table"]) {
   width: fit-content;
-  min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: auto;
@@ -566,8 +565,8 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
 }
 :where([data-slot="document-body"], [data-slot="prose-table"]) th {
   padding-block: calc(var(--fs-prose) * 0.375) calc(var(--fs-prose) * 0.5);
-  border-block-end: 1px solid var(--color-border-strong);
-  color: var(--color-text);
+  border-block-end: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   font-weight: var(--fw-semibold);
   overflow-wrap: normal;
   vertical-align: bottom;

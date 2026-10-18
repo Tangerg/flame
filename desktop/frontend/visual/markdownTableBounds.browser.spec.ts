@@ -52,6 +52,16 @@ async function bounds(container: Locator) {
   });
 }
 
+async function wheelTableIntoView(page: Page, table: Locator) {
+  const transcript = page.locator(".msg-scroll-viewport");
+  const frame = (await transcript.boundingBox())!;
+  const box = (await table.boundingBox())!;
+  const center = frame.y + frame.height / 2;
+  await page.mouse.move(frame.x + frame.width / 2, center);
+  await page.mouse.wheel(0, box.y + box.height / 2 - center);
+  await expect(table).toBeInViewport({ ratio: 1 });
+}
+
 async function readTableWithKeyboard(page: Page, container: Locator) {
   await container.evaluate((node) => node.scrollIntoView({ block: "center" }));
   const scroller = container.locator(".md-table-scroller");
@@ -91,7 +101,7 @@ for (const [width, fontSize, theme] of [
     await page.locator("html[data-visual-ready]").waitFor();
     await page.evaluate(() => document.fonts.ready);
     const table = page.locator("[data-markdown-table]").filter({ hasText: "Boundary" });
-    await table.evaluate((node) => node.scrollIntoView({ block: "center" }));
+    await wheelTableIntoView(page, table);
     await table.hover();
     const actions = table.locator(".md-table-actions");
     await expect(actions).toHaveCSS("opacity", "1");
@@ -123,6 +133,15 @@ for (const [width, fontSize, theme] of [
       if (reading.scrollWidth <= reading.clientWidth) {
         expect.soft(reading.table.left).toBeGreaterThanOrEqual(reading.markdown.left);
         expect.soft(reading.table.right).toBeLessThanOrEqual(reading.markdown.right);
+        if (width > 1000) {
+          expect
+            .soft(reading.actions.left, `${reading.state} actions follow the table end`)
+            .toBeGreaterThanOrEqual(reading.table.right);
+          expect
+            .soft(reading.actions.bottom, `${reading.state} actions reserve no row`)
+            .toBeLessThanOrEqual(reading.table.bottom);
+          expect.soft(reading.container.bottom).toBe(reading.table.bottom);
+        }
       } else {
         expect(reading.overflowX).toBe("auto");
       }

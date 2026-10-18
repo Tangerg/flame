@@ -676,6 +676,7 @@ interface BlockCtx {
 - Footnotes form supporting content, with the generated label retained for assistive reading. Selection copy keeps the answer and note text while omitting the hidden label and return controls. Fragment links stay in the document; external links retain the shared safe-opening policy.
 - Reference-style links retain a document-wide parsing context when definitions arrive. Links without an accepted destination remain ordinary reading text.
 - Overflowing answer tables expose one named keyboard scroll region before their actions. Fitting tables add no Tab stop; content and width changes update that same region's reachability.
+- Answer and portable document tables size to their content up to the measure instead of stretching columns apart; header labels use the muted text role over a quiet rule so rows carry the emphasis. A compact answer table carries its revealed actions beside its end edge and reserves no extra row; actions wrap below the table only when the table needs the full measure.
 
 ---
 
