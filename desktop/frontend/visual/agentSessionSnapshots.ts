@@ -918,6 +918,14 @@ export const READING_BLOCKS_MARKDOWN = [
   ">",
   ">    Keep this follow-up paragraph in the same recorded task.",
   "> 2. [ ] Review the next projection",
+  "",
+  "### Source references",
+  "",
+  "The implementation lives in desktop/frontend/src/plugins/builtin/chat/message/ui/markdown/markdownComponents.tsx:12:3. Continue reading the surrounding explanation without a separate block.",
+  "",
+  "在 src/main.ts:12:3 中检查边界，保持文件引用与中文正文的阅读节奏。",
+  "",
+  "Review README.md:15:2 before publishing, then inspect desktop/frontend/package.json. The sentence keeps its final punctuation.",
 ].join("\n");
 
 const CALLOUT_RESPONSE = message(

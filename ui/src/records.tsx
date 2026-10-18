@@ -96,6 +96,7 @@ const styles = stylex.create({
   },
   body: {
     margin: 0,
+    userSelect: "text",
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
     lineHeight: leading.body,

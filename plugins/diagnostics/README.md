@@ -9,6 +9,8 @@ Read returns a detached snapshot of the current bounded buffer: newest traces/lo
 first and metrics in stable key order. The former HTML transport's 256-record/128-KiB
 cutoffs and omission DTO are removed. The telemetry owner still owns buffer capacity;
 older evictions cannot be reconstructed. Displayed rows are labeled as the last read.
+Log identities use the first nonblank line; expanded rows retain the complete
+recorded body, including blank lines and stack indentation.
 
 Refresh rereads that owner. Clear delegates to its existing local clear operation
 and discards the displayed snapshot before reading again. The component does not

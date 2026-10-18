@@ -22,11 +22,18 @@ export function rehypeFileRefs() {
           parts.push({
             type: "element",
             tagName: "a",
-            properties: { dataFileRef: segment.path, dataFileLine: segment.line },
+            properties: {
+              dataFileRef: segment.path,
+              dataFileLine: segment.line,
+              dataFileColumn: segment.column,
+            },
             children: [
               {
                 type: "text",
-                value: segment.line > 0 ? `${segment.path}:${segment.line}` : segment.path,
+                value:
+                  segment.line > 0
+                    ? `${segment.path}:${segment.line}${segment.column > 0 ? `:${segment.column}` : ""}`
+                    : segment.path,
               },
             ],
           });

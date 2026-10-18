@@ -99,12 +99,13 @@ export function parseFileRefs(text: string): RefSegment[] {
   const out: RefSegment[] = [];
   let last = 0;
   for (const m of text.matchAll(TOKEN)) {
-    const path = m[1]!;
+    const rawPath = m[1]!;
+    const path = m[2] || /\/\.{1,2}$/.test(rawPath) ? rawPath : rawPath.replace(/\.+$/, "");
     if (!isFileRef(path)) continue;
     const start = m.index;
     if (start > last) out.push(text.slice(last, start));
     out.push({ path, line: m[2] ? Number(m[2]) : 0, column: m[3] ? Number(m[3]) : 0 });
-    last = start + m[0].length;
+    last = start + m[0].length - (rawPath.length - path.length);
   }
   if (last < text.length) out.push(text.slice(last));
   return out.length > 0 ? out : [text];

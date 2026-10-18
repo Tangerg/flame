@@ -48,7 +48,12 @@ function title(row: Observation) {
     return (
       <RecordSummary
         icon={FileText}
-        title={row.body}
+        title={
+          row.body
+            .split(/\r?\n/)
+            .find((line) => line.trim())
+            ?.trim() ?? row.severity
+        }
         description={
           <time dateTime={new Date(row.timeMs).toISOString()}>
             {new Intl.DateTimeFormat(navigator.language, {
@@ -114,13 +119,16 @@ function DiagnosticsReport({
                 </>
               )}
               {"severity" in row && (
-                <Facts
-                  values={[
-                    ["Recorded", new Date(row.timeMs).toLocaleString()],
-                    ["Trace", row.traceId],
-                    ["Span", row.spanId],
-                  ]}
-                />
+                <>
+                  <RecordBody>{row.body}</RecordBody>
+                  <Facts
+                    values={[
+                      ["Recorded", new Date(row.timeMs).toLocaleString()],
+                      ["Trace", row.traceId],
+                      ["Span", row.spanId],
+                    ]}
+                  />
+                </>
               )}
               {"count" in row && (
                 <Facts

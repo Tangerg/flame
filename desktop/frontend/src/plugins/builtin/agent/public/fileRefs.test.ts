@@ -68,6 +68,43 @@ describe("parseFileRefs", () => {
     expect(paths("edit src/main.go and ./scripts")).toEqual(["src/main.go", "./scripts"]);
   });
 
+  it.each([
+    "README.md",
+    "src/main.ts",
+    "desktop/frontend/src/main.ts",
+    "./src/main.ts",
+    "../src/main.ts",
+    "/Users/visual/scope/src/main.ts",
+    "src/v1.2/main.test.ts",
+  ])("leaves sentence punctuation outside %s", (path) => {
+    expect(parseFileRefs(`Read ${path}. Then continue.`)).toEqual([
+      "Read ",
+      { path, line: 0, column: 0 },
+      ". Then continue.",
+    ]);
+  });
+
+  it("keeps punctuation between references and after line and column suffixes", () => {
+    expect(parseFileRefs("Read src/main.ts. Then desktop/frontend/main.ts:12:3.")).toEqual([
+      "Read ",
+      { path: "src/main.ts", line: 0, column: 0 },
+      ". Then ",
+      { path: "desktop/frontend/main.ts", line: 12, column: 3 },
+      ".",
+    ]);
+  });
+
+  it.each([".github/workflows/ci.yml", "./src/..", "../src/.", "/Users/visual/scope/.."])(
+    "keeps meaningful path dots in %s",
+    (path) => {
+      expect(parseFileRefs(`Read ${path} next`)).toEqual([
+        "Read ",
+        { path, line: 0, column: 0 },
+        " next",
+      ]);
+    },
+  );
+
   it("ignores an email address", () => {
     expect(parseFileRefs("mail a@b.com please")).toEqual(["mail a@b.com please"]);
   });

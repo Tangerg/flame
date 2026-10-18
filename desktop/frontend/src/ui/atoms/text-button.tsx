@@ -47,6 +47,7 @@ const styles = stylex.create({
     },
   },
   link: {
+    display: "inline",
     fontFamily: "var(--font-mono)",
     textDecorationLine: "underline",
     textDecorationColor: {
