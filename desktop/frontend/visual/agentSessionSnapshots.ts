@@ -34,6 +34,7 @@ export const VISUAL_AGENT_STATES = [
   "delegated",
   "long-content",
   "prose-blocks",
+  "math-content",
   "narrative",
   "tool-shells",
   "tool-search",
@@ -918,6 +919,42 @@ export const READING_BLOCKS_MARKDOWN = [
   "> 2. [ ] Review the next projection",
 ].join("\n");
 
+const MATH_RESPONSE = message(
+  "agentMessage",
+  "item_math_response",
+  [
+    "## A readable derivation",
+    "",
+    "计算结果应当与正文沿用同一条阅读边界。Inline math such as $E = mc^2$ stays in its sentence.",
+    "",
+    "$$",
+    "E = mc^2",
+    "$$",
+    "",
+    "### A wide objective",
+    "",
+    "$$",
+    "\\mathcal{L}(\\theta) = \\sum_{i=1}^{N} \\left[-y_i \\log p_{\\theta}(x_i) - (1-y_i)\\log(1-p_{\\theta}(x_i))\\right] + \\lambda\\sum_{j=1}^{M}\\theta_j^2 + \\mu\\sum_{k=1}^{K}\\left|\\theta_{k+1}-\\theta_k\\right| + \\gamma\\operatorname{Var}_{i=1}^{N}\\left[p_{\\theta}(x_i)\\right] \\tag{1}",
+    "$$",
+    "",
+    "The equation remains one mathematical expression. Its first term and final tag both need to stay reachable.",
+    "",
+    "### A wide matrix",
+    "",
+    "$$",
+    "A = \\begin{bmatrix}a_{1,1} & a_{1,2} & a_{1,3} & a_{1,4} & a_{1,5} & a_{1,6} & a_{1,7} & a_{1,8} & a_{1,9} & a_{1,10}\\\\a_{2,1} & a_{2,2} & a_{2,3} & a_{2,4} & a_{2,5} & a_{2,6} & a_{2,7} & a_{2,8} & a_{2,9} & a_{2,10}\\end{bmatrix}",
+    "$$",
+    "",
+    "### A tall expression",
+    "",
+    "$$",
+    "F(x) = \\frac{\\displaystyle\\sum_{i=1}^{N}\\frac{x_i^2}{1+x_i}}{\\sqrt{\\frac{1+\\sum_{j=1}^{M}x_j^2}{1+\\left|\\sum_{j=1}^{M}x_j\\right|}}}",
+    "$$",
+    "",
+    "After the derivation, the explanation resumes in ordinary prose without changing the reading measure.",
+  ].join("\n"),
+);
+
 const NARRATIVE_TURN_1 = message(
   "userMessage",
   "item_n_ask1",
@@ -1501,6 +1538,16 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [PROMPT, message("agentMessage", "item_reading_blocks", READING_BLOCKS_MARKDOWN)],
     pendingInterruptSets: [],
   },
+  "math-content": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:12.000Z",
+        outcome: { type: "completed" },
+      }),
+    ],
+    items: [PROMPT, MATH_RESPONSE],
+    pendingInterruptSets: [],
+  },
   narrative: {
     runs: [run("waiting")],
     items: [
@@ -1790,6 +1837,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   delegated: [],
   "long-content": [],
   "prose-blocks": [],
+  "math-content": [],
   narrative: [],
   "tool-shells": [],
   "tool-search": [],

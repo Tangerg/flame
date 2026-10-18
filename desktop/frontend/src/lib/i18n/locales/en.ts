@@ -173,6 +173,7 @@ export const en: Record<string, string> = {
   "message.table.expand": "Expand table",
   "message.table.preview": "Table preview",
   "message.table.closePreview": "Close table preview",
+  "message.math.expression": "Mathematical expression",
 
   "msgActions.copy": "Copy message",
   "msgActions.copyMarkdown": "Copy markdown",

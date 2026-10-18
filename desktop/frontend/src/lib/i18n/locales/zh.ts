@@ -166,6 +166,7 @@ export const zh: Record<string, string> = {
   "message.table.expand": "展开表格",
   "message.table.preview": "表格预览",
   "message.table.closePreview": "关闭表格预览",
+  "message.math.expression": "数学公式",
 
   "msgActions.copy": "复制消息",
   "msgActions.copyMarkdown": "复制 Markdown",

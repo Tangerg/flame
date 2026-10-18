@@ -25,6 +25,10 @@ describe("markdown math rendering", () => {
       <MarkdownRenderer text={"$$\n\\frac{a}{b}\n$$"} reveal="instant" />,
     );
     expect(container.querySelector(".katex-display")).toBeTruthy();
+    expect(container.querySelector(".katex-display")?.tagName).toBe("SPAN");
+    expect(container.querySelector(".katex-display")?.getAttribute("dir")).toBe("ltr");
+    expect(container.querySelector(".katex-display .katex-mathml math")).toBeTruthy();
+    expect(container.querySelector('.katex-display .katex-html[aria-hidden="true"]')).toBeTruthy();
     expect(container.querySelector(".katex-error")).toBeNull();
     expect(
       container.querySelector('.katex annotation[encoding="application/x-tex"]')?.textContent,

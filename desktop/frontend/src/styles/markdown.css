@@ -15,6 +15,24 @@
   width: 100%;
   max-width: none;
 }
+.md .katex-display {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  /* Positioned fractions need vertical inset inside the horizontal scrollport. */
+  padding-block: calc(var(--prose-space) * 2);
+}
+.md .katex-display > .katex {
+  width: max-content;
+  min-width: 100%;
+}
+.md .katex-display > .katex > .katex-html > .katex-tag {
+  /* The tag must contribute its intrinsic width to the scrollable expression. */
+  position: static;
+  display: inline-block;
+  margin-inline-start: calc(var(--prose-space) * 4);
+}
 .md-table-container {
   width: 100%;
   min-width: 0;
@@ -87,6 +105,7 @@
   min-width: 100%;
 }
 .md-table-scroller,
+.md .katex-display,
 .shiki-block .shiki,
 .shiki-block .shiki-fallback,
 [data-slot="shiki-scroll"],
@@ -94,6 +113,7 @@
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 .md-table-scroller::-webkit-scrollbar-thumb,
+.md .katex-display::-webkit-scrollbar-thumb,
 .shiki-block .shiki::-webkit-scrollbar-thumb,
 .shiki-block .shiki-fallback::-webkit-scrollbar-thumb,
 [data-slot="shiki-scroll"]::-webkit-scrollbar-thumb,

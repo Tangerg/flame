@@ -12,6 +12,7 @@ import { ExternalLink, ShikiCodeBlock } from "@/ui";
 import { cn } from "@/lib/classNames";
 import { FileRefLink } from "@/plugins/builtin/chat/file-references/public/FileRefLink";
 import { MarkdownImage } from "./MarkdownImage";
+import { MarkdownMath } from "./MarkdownMath";
 import { MermaidBlock } from "./MermaidBlock";
 import { MarkdownTable } from "./MarkdownTable";
 import { SvgArtifact } from "./SvgArtifact";
@@ -117,6 +118,13 @@ function taskListContent(children: ReactNode) {
 }
 
 const sharedMarkdownComponents: Components = {
+  span({ className, node: _node, ...props }) {
+    return className?.split(/\s+/).includes("katex-display") ? (
+      <MarkdownMath className={className} {...props} />
+    ) : (
+      <span className={className} {...props} />
+    );
+  },
   p({ children }) {
     const images = imageOnlyParagraph(children);
     if (images && images.length > 1) {

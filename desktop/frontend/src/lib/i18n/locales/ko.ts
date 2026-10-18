@@ -164,6 +164,7 @@ export const ko: Record<string, string> = {
   "message.table.expand": "표 펼치기",
   "message.table.preview": "표 미리보기",
   "message.table.closePreview": "표 미리보기 닫기",
+  "message.math.expression": "수식",
 
   "msgActions.copy": "메시지 복사",
   "msgActions.copyMarkdown": "Markdown 복사",

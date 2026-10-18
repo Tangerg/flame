@@ -168,6 +168,7 @@ export const es: Record<string, string> = {
   "message.table.expand": "Ampliar tabla",
   "message.table.preview": "Vista previa de la tabla",
   "message.table.closePreview": "Cerrar vista previa de la tabla",
+  "message.math.expression": "Expresión matemática",
 
   "msgActions.copy": "Copiar mensaje",
   "msgActions.copyMarkdown": "Copiar Markdown",
