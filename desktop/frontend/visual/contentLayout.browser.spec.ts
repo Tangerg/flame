@@ -68,6 +68,46 @@ for (const overlay of ["commands", "finder"]) {
 }
 
 for (const theme of ["light", "dark"]) {
+  test(`Diff locates the requested file without tinting its reading body in ${theme}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1472, height: 900 });
+    await page.goto(
+      `/visual/?fixture=workspace&state=dock-review&theme=${theme}&font-size=${theme === "light" ? 14 : 18}${theme === "dark" ? "&accent=%238b5cf6" : ""}`,
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const view = page.locator('[data-dock-view-id="package:visual:diff"]');
+    const current = view.locator('[data-diff-file][data-focused="true"]');
+    const other = view.locator('[data-diff-file][data-focused="false"]').first();
+    const title = current.getByRole("button").first();
+    const otherTitle = other.getByRole("button").first();
+    const background = () => current.evaluate((node) => getComputedStyle(node).backgroundColor);
+    const neutral = await other.evaluate((node) => getComputedStyle(node).backgroundColor);
+    await page.mouse.move(0, 0);
+    await expect.poll(background).toBe(neutral);
+    const identityColor = await title.evaluate((node) => getComputedStyle(node).color);
+    expect(identityColor).not.toBe(
+      await otherTitle.evaluate((node) => getComputedStyle(node).color),
+    );
+    await expect(title).toContainText(REVIEW_DIFF.files![0]!.path);
+    const code = current.getByRole("region", { name: /^Scrollable diff for / });
+    const source = REVIEW_DIFF.files![0]!.rows.filter((row) => row.type !== "hunk").map(
+      (row) => row.code,
+    );
+    await expect(code.locator("tbody code")).toHaveText(source);
+    await code.hover();
+    await expect.poll(background).toBe(neutral);
+    await title.focus();
+    await title.press("Enter");
+    await expect(code).toHaveCount(0);
+    await expect(title).toBeFocused();
+    await page.mouse.move(0, 0);
+    expect(await title.evaluate((node) => getComputedStyle(node).color)).toBe(identityColor);
+    await title.press("Enter");
+    await expect(code.locator("tbody code")).toHaveText(source);
+    await expect.poll(background).toBe(neutral);
+  });
+
   test(`Diff keeps comparison and file controls reachable while the report scrolls in ${theme}`, async ({
     page,
   }) => {

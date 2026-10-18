@@ -18,10 +18,6 @@ const styles = stylex.create({
     display: "grid",
     gridTemplateColumns: "minmax(0,1fr)",
     minWidth: 0,
-    backgroundColor: {
-      default: "transparent",
-      ":is([data-focused=true])": surface.selected,
-    },
   },
   header: {
     display: "flex",
@@ -121,6 +117,7 @@ export function Disclosure({
   variant = "plain",
   actions,
   stickyHeader = false,
+  "data-focused": focused,
   ...props
 }: Omit<ComponentPropsWithRef<"section">, "title" | "onChange"> & {
   title: ReactNode;
@@ -130,6 +127,7 @@ export function Disclosure({
   variant?: "plain" | "row";
   actions?: ReactNode;
   stickyHeader?: boolean;
+  "data-focused"?: boolean;
 }) {
   const headerRef = useRef<HTMLDivElement>(null);
   const panelLayout = useContext(PanelLayoutContext);
@@ -211,6 +209,7 @@ export function Disclosure({
       render={
         <section
           {...props}
+          data-focused={focused}
           {...stylex.props(styles.root, variant === "row" && styles.row)}
         />
       }
@@ -228,6 +227,7 @@ export function Disclosure({
             <Button
               variant="ghost"
               size="sm"
+              active={focused}
               press={variant === "row" ? "none" : undefined}
               styles={
                 variant === "row"

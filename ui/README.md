@@ -49,7 +49,9 @@ and separators. Its `cards` variant provides the responsive schedule grid;
 `Disclosure variant="row"` owns resource summaries that expand directly. Hover
 feedback belongs to its summary trigger; the expanded reading body remains
 untinted while the pointer moves through it. Header and body keep the shared row
-insets and existing sticky-header geometry.
+insets and existing sticky-header geometry. A consumer's `data-focused` record
+marker uses the summary button's shared active state; it never tints the expanded
+source or its semantic change colors.
 `RecordSummary` owns the optional identity mark, copy and state alignment.
 `RecordBody` preserves recorded line breaks and allows selecting its complete text.
 `FilterBar` owns the control zone in three meanings, in reading order: the
