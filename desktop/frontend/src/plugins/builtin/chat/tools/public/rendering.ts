@@ -1,2 +1,2 @@
 export { ToolCard } from "../ui/ToolCard";
-export { ToolGroup } from "../ui/ToolGroup";
+export { ToolGroup, ToolGroupRows } from "../ui/ToolGroup";

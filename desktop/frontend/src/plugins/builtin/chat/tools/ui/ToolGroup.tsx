@@ -9,10 +9,13 @@ import { ToolGroupMember } from "./ToolGroupMember";
 import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { vocab } from "@flame/ui";
 
-interface Props {
+interface ToolGroupRowsProps {
   tools: ToolCall[];
   expandedIds: Set<string>;
   onToggleExpand: (id: string) => void;
+}
+
+interface Props extends ToolGroupRowsProps {
   superseded?: boolean;
 }
 
@@ -40,16 +43,22 @@ export function ToolGroup({ tools, expandedIds, onToggleExpand, superseded }: Pr
       onToggle={() => setPinned(model.nextPinned)}
       stickyHeader
     >
-      <div {...stylex.props(tg.members)}>
-        {tools.map((tool) => (
-          <ToolGroupMember
-            key={tool.id}
-            tool={tool}
-            expanded={expandedIds.has(tool.id)}
-            onToggleExpand={() => onToggleExpand(tool.id)}
-          />
-        ))}
-      </div>
+      <ToolGroupRows tools={tools} expandedIds={expandedIds} onToggleExpand={onToggleExpand} />
     </AgentActivityDisclosure>
+  );
+}
+
+export function ToolGroupRows({ tools, expandedIds, onToggleExpand }: ToolGroupRowsProps) {
+  return (
+    <div {...stylex.props(tg.members)}>
+      {tools.map((tool) => (
+        <ToolGroupMember
+          key={tool.id}
+          tool={tool}
+          expanded={expandedIds.has(tool.id)}
+          onToggleExpand={() => onToggleExpand(tool.id)}
+        />
+      ))}
+    </div>
   );
 }

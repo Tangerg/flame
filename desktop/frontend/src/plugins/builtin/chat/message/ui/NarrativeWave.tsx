@@ -7,6 +7,7 @@ import {
   waveToolCalls,
 } from "@/plugins/builtin/agent/public/messagePresentation";
 import { AgentActivityDisclosure } from "@/ui/agent";
+import { ToolGroupRows } from "@/plugins/builtin/chat/tools/public/rendering";
 import { useT } from "@/lib/i18n";
 import type { TurnFacts } from "@/plugins/builtin/agent/public/conversation";
 import { unitSeam } from "../application/renderUnitRhythm";
@@ -41,7 +42,15 @@ export function NarrativeWave({ units, facts, ctx, renderUnit }: Props) {
     >
       {units.map((unit, index) => (
         <div key={index} {...stylex.props(seamStep[unitSeam(units[index - 1], unit) ?? "none"])}>
-          {renderUnit(unit, facts, ctx)}
+          {unit.kind === "toolGroup" ? (
+            <ToolGroupRows
+              tools={unit.tools}
+              expandedIds={ctx.expandedIds}
+              onToggleExpand={ctx.onToggleExpand}
+            />
+          ) : (
+            renderUnit(unit, facts, ctx)
+          )}
         </div>
       ))}
     </AgentActivityDisclosure>

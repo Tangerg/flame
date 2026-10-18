@@ -25,9 +25,9 @@ Links retain their formatted labels and native title annotations without becomin
 interactive. A destination is shown only when non-empty and different from the
 visible label.
 
-The host file header owns file identity, range metadata and navigation. The
-renderer supplies authored document content within the shared content measure,
-without repeating that introduction.
+The host file header owns file identity, range metadata, Source mode and
+navigation. The preview body is reserved for authored document content within
+the shared content measure.
 Code fences retain their captured language info as a text caption outside the
 literal source. Code, inline code and tables consume the same shared reading
 roles as the transcript while file parsing and content trust stay here.

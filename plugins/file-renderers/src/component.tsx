@@ -10,7 +10,6 @@ import type { ComponentContext } from "@flame/plugin-sdk";
 import {
   CodeBlock,
   DocumentBody,
-  Metadata,
   Panel,
   RecordBody,
   ScrollRegion,
@@ -220,10 +219,6 @@ export function Markdown({ context }: { context: ComponentContext }) {
   return (
     <Panel label="Markdown file">
       <DocumentBody>{content}</DocumentBody>
-      <Metadata>
-        Links and images are shown as text. Embedded data is available in
-        Source.
-      </Metadata>
     </Panel>
   );
 }

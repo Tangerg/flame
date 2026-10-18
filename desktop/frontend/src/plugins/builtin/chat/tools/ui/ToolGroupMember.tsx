@@ -26,10 +26,18 @@ const gm = stylex.create({
     minWidth: 0,
     flex: 1,
     alignItems: "baseline",
-    gap: space.s1_5,
+    gap: space.s2,
     paddingBlock: space.s0_5,
     textAlign: "left",
     color: { default: color.fgMuted, ":hover": color.fg },
+  },
+  mark: {
+    display: "grid",
+    flexShrink: 0,
+    alignSelf: "center",
+    placeItems: "center",
+    width: space.s4,
+    height: space.s4,
   },
   actions: { display: "flex", flexShrink: 0, alignItems: "center" },
   rowExpanded: { color: color.fg },
@@ -53,11 +61,9 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
           onClick={onToggleExpand}
           className={stylex.props(gm.row, typeStep.uiSm, expanded && gm.rowExpanded).className}
         >
-          <Icon
-            name={toolCallIconFor(tool)}
-            size="xs"
-            className={stylex.props(vocab.hold, vocab.faint).className}
-          />
+          <span aria-hidden {...stylex.props(gm.mark, vocab.faint)}>
+            <Icon name={toolCallIconFor(tool)} size="sm" />
+          </span>
           <ToolText value={model.intent.label} styles={[vocab.hold, gm.inherit]} />
           {model.detail && <ToolText value={model.detail} styles={[vocab.fill, vocab.faint]} />}
           {model.diffStat && (

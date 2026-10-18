@@ -822,6 +822,10 @@ Plan, Goal, and schedule tools omit their transcript rows only after Runtime rep
 
 一条 turn 在「做」和「答」之间交替，而读者是为**答案**来的。所以：**每一段后面已经有答案的 process 块，折成一行可展开的"它是怎么得出这个答案的"。**
 
+A wave owns one activity summary and disclosure boundary. Read-only groups inside
+it render their existing member rows directly; independent groups retain their own
+disclosure and attention behavior.
+
 ```
 ▸ 4 步工作                                        ← wave 折叠态
 ▾ 4 步工作

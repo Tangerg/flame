@@ -18,6 +18,83 @@ const CTX: BlockCtx = {
 };
 
 describe("activity header semantics", () => {
+  it("owns one wave summary while exposing each read-only tool's disclosure directly", () => {
+    const read: ToolCall = {
+      ...tool("wave-read"),
+      name: "read",
+      fn: "src/first.ts",
+      fnKind: "path",
+      safetyClass: "safe",
+      result: "Captured first file",
+    };
+    const search: ToolCall = {
+      ...tool("wave-search"),
+      name: "grep",
+      fn: "RunInTx",
+      safetyClass: "safe",
+      result: "Captured search results",
+    };
+    const blocks: Message["blocks"] = [
+      {
+        kind: "reasoning",
+        reasoningId: "wave-reasoning",
+        text: "Compare the source and its callers.",
+        status: "complete",
+      },
+      { kind: "tool", toolCallId: read.id },
+      { kind: "tool", toolCallId: search.id },
+      { kind: "text", text: "The source and its callers agree.", status: "complete" },
+    ];
+    const row = {
+      message: { ...message("wave-message", "root-run", read.id), blocks },
+      facts: {
+        toolCalls: { [read.id]: read, [search.id]: search },
+        delegatedRuns: {},
+        awaiting: new Map<string, string>(),
+      },
+    };
+    const onToggleExpand = vi.fn();
+    const ctx: BlockCtx = { ...CTX, onToggleExpand, textReveal: "instant" };
+    const renderRow = () => (
+      <MessageContext.Provider value={{ sessionId: "session-1", message: row.message }}>
+        {renderMessageBlocks(row, ctx)}
+      </MessageContext.Provider>
+    );
+    const { container, rerender } = render(renderRow());
+    const content = within(container);
+    const summary = content.getByRole("button", { name: /1 read · 1 search.*3 steps/ });
+    fireEvent.click(summary);
+
+    expect(content.getAllByText("1 read · 1 search", { exact: true })).toHaveLength(1);
+    const readRow = content.getByRole("button", { name: /^Read.*first\.ts/ });
+    const searchRow = content.getByRole("button", { name: /^Searched.*RunInTx/ });
+    expect(readRow.getAttribute("aria-expanded")).toBe("false");
+    expect(searchRow.getAttribute("aria-expanded")).toBe("false");
+    expect(content.queryByRole("region", { name: "Result" })).toBeNull();
+
+    fireEvent.click(readRow);
+    expect(onToggleExpand).toHaveBeenNthCalledWith(1, read.id);
+    ctx.expandedIds = new Set([read.id]);
+    rerender(renderRow());
+    expect(
+      content.getByRole("button", { name: /^Read.*first\.ts/ }).getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(content.getByRole("region", { name: "Result" }).textContent).toBe(read.result);
+
+    fireEvent.click(content.getByRole("button", { name: /^Searched.*RunInTx/ }));
+    expect(onToggleExpand).toHaveBeenNthCalledWith(2, search.id);
+    expect(onToggleExpand).toHaveBeenCalledTimes(2);
+    ctx.expandedIds = new Set([read.id, search.id]);
+    rerender(renderRow());
+    expect(
+      content.getByRole("button", { name: /^Searched.*RunInTx/ }).getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(
+      content.getAllByRole("region", { name: "Result" }).map((region) => region.textContent),
+    ).toEqual([read.result, search.result]);
+    expect(content.getAllByText("1 read · 1 search", { exact: true })).toHaveLength(1);
+  });
+
   it.each([
     [
       "a mixed wave beginning with search",
