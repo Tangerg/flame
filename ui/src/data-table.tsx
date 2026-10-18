@@ -8,7 +8,7 @@ const styles = stylex.create({
     minWidth: 0,
     maxWidth: "100%",
     overflow: "auto",
-    overscrollBehavior: "contain",
+    overscrollBehavior: "contain auto",
     paddingBlock: space.s1,
   },
   table: {

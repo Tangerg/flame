@@ -118,6 +118,9 @@ returns focus to the input and replaces the browser's native cancel action.
 `IconButton` requires either
 `aria-label` or `aria-labelledby`; `title` only overrides the tooltip. `DiffTable`
 requires consumer-supplied region and column labels, including assistive text.
+`ScrollRegion` contains horizontal overscroll while allowing vertical scrolling
+to continue through the enclosing reading viewport. Bounded image and diagram
+viewers explicitly contain both axes in their own viewport styles.
 
 `TextArea autosize` measures its content across supported hosts. The component owns
 height updates for input, controlled values, form reset, width and font changes;

@@ -46,9 +46,13 @@ for (const theme of ["light", "dark"]) {
     const filter = view.getByRole("searchbox", { name: "Filter files", exact: true });
     await expect(filter).toBeVisible();
     const viewport = view.locator('[data-slot="workspace-view-body"]');
-    await viewport.evaluate((node) => {
-      node.scrollTop = 600;
+    const code = view.getByRole("region", {
+      name: "Scrollable diff for src/generated/module-000.ts",
+      exact: true,
     });
+    const bounds = (await code.boundingBox())!;
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 40);
+    await page.mouse.wheel(0, 600);
     await expect.poll(() => viewport.evaluate((node) => node.scrollTop)).toBe(600);
     for (const control of [
       filter,
@@ -153,6 +157,35 @@ for (const theme of ["light", "dark"]) {
     );
   });
 }
+
+test("captured Markdown tables let the file reading viewport continue scrolling", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1120, height: 720 });
+  await page.goto("/visual/?fixture=workspace&state=dock-files&theme=dark&font-size=18");
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.getByRole("treeitem", { name: "reading-guide.md", exact: true }).click();
+  const view = page.locator('[data-dock-view-id="file"]');
+  const table = view.getByRole("region", { name: /Markdown table/ }).first();
+  await table.scrollIntoViewIfNeeded();
+  const position = () =>
+    table.evaluate((node) => {
+      for (let parent = node.parentElement; parent; parent = parent.parentElement)
+        if (
+          parent.scrollHeight > parent.clientHeight &&
+          ["auto", "scroll"].includes(getComputedStyle(parent).overflowY)
+        )
+          return { top: parent.scrollTop, range: parent.scrollHeight - parent.clientHeight };
+      throw new Error("No vertical file reading viewport");
+    });
+  const before = await position();
+  expect(before.range).toBeGreaterThan(0);
+  const bounds = (await table.boundingBox())!;
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await page.mouse.wheel(0, before.top > 0 ? -240 : 240);
+  await expect.poll(async () => (await position()).top).not.toBe(before.top);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+});
 
 for (const theme of ["light", "dark"]) {
   test(`a horizontal-only code well joins the keyboard scroll path in ${theme}`, async ({

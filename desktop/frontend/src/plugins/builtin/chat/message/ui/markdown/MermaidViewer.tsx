@@ -36,7 +36,7 @@ const styles = stylex.create({
   },
   zoom: { display: "flex", alignItems: "center", gap: space.s1 },
   percent: { minWidth: "4ch", textAlign: "center", fontVariantNumeric: "tabular-nums" },
-  port: { minHeight: 0, flex: 1, padding: 0 },
+  port: { minHeight: 0, flex: 1, padding: 0, overscrollBehavior: "contain" },
   pannable: { cursor: "grab" },
   panning: { cursor: "grabbing", userSelect: "none" },
   fit: {
