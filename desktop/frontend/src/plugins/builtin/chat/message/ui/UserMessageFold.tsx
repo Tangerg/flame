@@ -36,6 +36,17 @@ export function UserMessageFold({ children }: { children: ReactNode }) {
     return () => observer.disconnect();
   }, [expanded, children]);
 
+  useLayoutEffect(() => {
+    const element = frame.current;
+    if (!element) return;
+    if (!expanded) {
+      element.scrollTop = 0;
+      return;
+    }
+    const focused = element.ownerDocument.activeElement;
+    if (focused && element.contains(focused)) focused.scrollIntoView({ block: "nearest" });
+  }, [expanded]);
+
   const folded = !expanded;
   return (
     <>
@@ -43,6 +54,9 @@ export function UserMessageFold({ children }: { children: ReactNode }) {
         ref={frame}
         data-slot="user-message-fold"
         data-folded={folded && overflows ? "" : undefined}
+        onFocusCapture={() => {
+          if (folded && overflows) setExpanded(true);
+        }}
         {...stylex.props(styles.frame, folded && styles.folded, folded && overflows && styles.fade)}
       >
         {children}

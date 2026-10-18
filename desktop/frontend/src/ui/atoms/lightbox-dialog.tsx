@@ -59,15 +59,25 @@ interface LightboxBaseProps {
   title: ReactNode;
   children: ReactNode;
   className?: string;
+  styles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
 }
 
 type LightboxDialogProps = LightboxBaseProps &
   ({ kind?: "figure" | "media" } | { kind: "document"; closeLabel: string });
 
 export function LightboxDialog(props: LightboxDialogProps) {
-  const { open, onOpenChange, onKeyDown, trigger, title, children, className } = props;
+  const {
+    open,
+    onOpenChange,
+    onKeyDown,
+    trigger,
+    title,
+    children,
+    className,
+    styles: extra,
+  } = props;
   const kind = props.kind ?? "figure";
-  const panel = stylex.props(modalPanel(), styles[kind]);
+  const panel = stylex.props(modalPanel(), styles[kind], extra);
   const popupRef = useRef<HTMLDivElement>(null);
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>

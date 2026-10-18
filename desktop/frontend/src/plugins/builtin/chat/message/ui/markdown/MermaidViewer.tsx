@@ -2,31 +2,51 @@ import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { type PointerEvent, useRef, useState } from "react";
 import { useT } from "@/lib/i18n";
-import { Button, IconButton } from "@flame/ui";
-import { space } from "@flame/ui/tokens.stylex";
+import { Button, IconButton, ScrollRegion } from "@flame/ui";
+import { space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2, 3] as const;
 
 const styles = stylex.create({
   root: {
     display: "flex",
-    height: "min(85vh, 900px)",
-    width: "min(92vw, 1400px)",
+    minHeight: 0,
+    minWidth: 0,
+    height: "100%",
+    width: "100%",
     flexDirection: "column",
   },
   bar: {
     display: "flex",
+    flexWrap: "wrap",
+    flexShrink: 0,
     alignItems: "center",
-    justifyContent: "flex-end",
-    gap: space.s1,
-    padding: space.s2,
+    gap: space.s2,
+    paddingInline: space.s3,
+    paddingBlock: space.s2,
   },
+  title: { flex: "1 0 auto", fontWeight: weight.medium },
+  actions: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: space.s2,
+    maxWidth: "100%",
+    marginInlineStart: "auto",
+  },
+  zoom: { display: "flex", alignItems: "center", gap: space.s1 },
   percent: { minWidth: "4ch", textAlign: "center", fontVariantNumeric: "tabular-nums" },
-  port: { minHeight: 0, flex: 1, overflow: "auto", cursor: "grab" },
+  port: { minHeight: 0, flex: 1, padding: 0 },
+  pannable: { cursor: "grab" },
   panning: { cursor: "grabbing", userSelect: "none" },
-  fit: { display: "grid", height: "100%", placeItems: "center", padding: space.s4 },
-  fitSvg: { maxHeight: "100%", maxWidth: "100%" },
-  sized: { padding: space.s4 },
+  fit: {
+    display: "flex",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: space.s4,
+  },
+  sized: { boxSizing: "content-box", padding: space.s4 },
 });
 
 function naturalWidth(svg: string): number | null {
@@ -35,7 +55,7 @@ function naturalWidth(svg: string): number | null {
   return width ? Number(width) : null;
 }
 
-export function MermaidViewer({ svg }: { svg: string }) {
+export function MermaidViewer({ svg, onClose }: { svg: string; onClose: () => void }) {
   const t = useT();
   const [scale, setScale] = useState<number | "fit">("fit");
   const [panning, setPanning] = useState(false);
@@ -75,66 +95,79 @@ export function MermaidViewer({ svg }: { svg: string }) {
   return (
     <div {...stylex.props(styles.root)}>
       <div {...stylex.props(styles.bar)}>
-        <Button
-          variant={scale === "fit" ? "soft" : "ghost"}
-          size="sm"
-          onClick={() => setScale("fit")}
-        >
-          {t("message.mermaid.fit")}
-        </Button>
-        <IconButton
-          icon={iconGlyph("zoom-out")}
-          size="sm"
-          aria-label={t("message.mermaid.zoomOut")}
-          disabled={stepIndex === 0}
-          focusableWhenDisabled
-          onClick={() => zoom(-1)}
-        />
-        <Button
-          variant={scale === 1 ? "soft" : "ghost"}
-          size="sm"
-          title={t("message.mermaid.actualSize")}
-          onClick={() => setScale(1)}
-          className={stylex.props(styles.percent).className}
-        >
-          {`${Math.round((scale === "fit" ? 1 : scale) * 100)}%`}
-        </Button>
-        <IconButton
-          icon={iconGlyph("zoom-in")}
-          size="sm"
-          aria-label={t("message.mermaid.zoomIn")}
-          disabled={stepIndex === ZOOM_STEPS.length - 1}
-          focusableWhenDisabled
-          onClick={() => zoom(1)}
-        />
+        <span {...stylex.props(styles.title, typeStep.uiMd)}>{t("markdown.diagram")}</span>
+        <div {...stylex.props(styles.actions)}>
+          <Button
+            variant={scale === "fit" ? "soft" : "ghost"}
+            size="sm"
+            onClick={() => setScale("fit")}
+          >
+            {t("message.mermaid.fit")}
+          </Button>
+          <div {...stylex.props(styles.zoom)}>
+            <IconButton
+              icon={iconGlyph("zoom-out")}
+              size="sm"
+              aria-label={t("message.mermaid.zoomOut")}
+              disabled={stepIndex === 0}
+              focusableWhenDisabled
+              onClick={() => zoom(-1)}
+            />
+            <Button
+              variant={scale === 1 ? "soft" : "ghost"}
+              size="sm"
+              title={t("message.mermaid.actualSize")}
+              onClick={() => setScale(1)}
+              className={stylex.props(styles.percent).className}
+            >
+              {`${Math.round((scale === "fit" ? 1 : scale) * 100)}%`}
+            </Button>
+            <IconButton
+              icon={iconGlyph("zoom-in")}
+              size="sm"
+              aria-label={t("message.mermaid.zoomIn")}
+              disabled={stepIndex === ZOOM_STEPS.length - 1}
+              focusableWhenDisabled
+              onClick={() => zoom(1)}
+            />
+          </div>
+          <IconButton
+            icon={iconGlyph("x")}
+            size="sm"
+            aria-label={t("common.close")}
+            onClick={onClose}
+          />
+        </div>
       </div>
-      <div
+      <ScrollRegion
         data-slot="mermaid-full"
-        role="img"
-        aria-label={t("markdown.diagram")}
+        data-focus-inset=""
+        label={t("markdown.diagram")}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endPan}
         onPointerCancel={endPan}
-        {...stylex.props(styles.port, panning && styles.panning)}
+        styles={[styles.port, scale !== "fit" && styles.pannable, panning && styles.panning]}
       >
         {scale === "fit" ? (
-          <div {...stylex.props(styles.fit)}>
-            <div
-              {...stylex.props(styles.fitSvg)}
-              data-mermaid-fit=""
-              dangerouslySetInnerHTML={{ __html: svg }}
-            />
-          </div>
+          <div
+            role="img"
+            aria-label={t("markdown.diagram")}
+            {...stylex.props(styles.fit)}
+            data-mermaid-fit=""
+            dangerouslySetInnerHTML={{ __html: svg }}
+          />
         ) : (
           <div
+            role="img"
+            aria-label={t("markdown.diagram")}
             {...stylex.props(styles.sized)}
             style={width ? { width: width * scale } : undefined}
             data-mermaid-scale={scale}
             dangerouslySetInnerHTML={{ __html: svg }}
           />
         )}
-      </div>
+      </ScrollRegion>
     </div>
   );
 }

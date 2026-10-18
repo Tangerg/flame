@@ -1045,7 +1045,8 @@ html.theme-dark {
 }
 [data-mermaid-fit] svg {
   max-width: 100%;
-  max-height: calc(min(85vh, 900px) - 96px);
+  max-height: 100%;
+  width: auto;
   height: auto;
 }
 [data-mermaid-scale] svg {

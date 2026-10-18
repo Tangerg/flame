@@ -41,6 +41,14 @@ const mb = stylex.create({
     overflow: "hidden",
   },
   stage: { overflowX: "auto", padding: space.s4, textAlign: "center" },
+  viewerShell: {
+    width: "min(92vw, 1400px)",
+    height: "min(85dvh, 900px)",
+    maxWidth: "none",
+    maxHeight: "none",
+    padding: 0,
+    overflow: "hidden",
+  },
   pulse: {
     height: space.s8,
     width: space.s8,
@@ -190,6 +198,7 @@ export function MermaidBlock({ code }: Props) {
             open={zoomed}
             onOpenChange={setZoomed}
             title={t("markdown.diagram")}
+            styles={mb.viewerShell}
             trigger={
               <IconButton
                 icon={iconGlyph("maximize")}
@@ -200,7 +209,7 @@ export function MermaidBlock({ code }: Props) {
               />
             }
           >
-            <MermaidViewer svg={svg} />
+            <MermaidViewer svg={svg} onClose={() => setZoomed(false)} />
           </LightboxDialog>
           <IconButton
             icon={iconGlyph(copied ? "check" : "copy")}

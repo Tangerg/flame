@@ -1707,6 +1707,8 @@ interface UnknownToolCall {
 
 Workspace reading viewports allow native text selection across their body and blank space, so a pointer click can dismiss a selection. Navigation controls retain their own non-selectable interaction. Recorded prose preserves literal line breaks; trajectory JSON remains available separately and uses the same redacted evidence as its readable body.
 
+Folded user messages reveal focused descendants and keep them visible above the composer without replacing the recorded content. Enlarged diagrams have one bounded outer frame; their persistent toolbar stays outside the single canvas that owns keyboard and pointer scrolling. Fit preserves the complete diagram, and percentage zoom refers to its natural drawing width.
+
 ### 8.4 枚举
 
 **所有闭合枚举一律查表，不用 `` `prefix.${value}` `` 模板。**
