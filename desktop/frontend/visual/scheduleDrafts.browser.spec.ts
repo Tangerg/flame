@@ -1,6 +1,46 @@
 import { expect, test } from "./test";
 
 for (const width of [1120, 320]) {
+  for (const action of ["Edit", "Delete"] as const) {
+    test(`schedule ${action.toLowerCase()} returns to search when filtering retires its opener ${width}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: width === 1120 ? 720 : 900 });
+      await page.goto(
+        `/visual/?fixture=workspace&state=${width === 1120 ? "dock-schedules" : "full-view&full-view=package:visual:schedules"}&theme=${width === 1120 ? "dark" : "light"}&font-size=18`,
+      );
+      await page.locator("html[data-visual-ready]").waitFor();
+      if (width === 320) {
+        await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+      }
+      const panel = page.getByRole("region", { name: "Schedules", exact: true });
+      const search = panel.getByRole("searchbox", { name: "Search this page", exact: true });
+      const opener = panel.getByRole("button", {
+        name: "More actions for Nightly dependency audit",
+        exact: true,
+      });
+      await opener.press("Enter");
+      await page.getByRole("menuitem", { name: action, exact: true }).press("Enter");
+      const form = panel.getByRole("region", {
+        name: action === "Edit" ? "Schedule editor" : "Confirm schedule deletion",
+        exact: true,
+      });
+      if (action === "Edit") {
+        await expect(form.getByRole("textbox", { name: "Title", exact: true })).toBeFocused();
+      } else {
+        await expect(form.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
+      }
+      const query = "no-record-matches-this-query";
+      await search.fill(query);
+      await expect(opener).toHaveCount(0);
+      await form.getByRole("button", { name: "Cancel", exact: true }).press("Enter");
+      await expect(form).toHaveCount(0);
+      await expect(search).toBeFocused();
+      await expect(search).toHaveValue(query);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+    });
+  }
+
   test(`a new schedule draft keeps its owner until cancellation ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(

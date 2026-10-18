@@ -268,7 +268,10 @@ export function RecordedOutput({ text }: { text: string }) {
                   size="xs"
                   quiet
                   aria-label="Jump to latest"
-                  onClick={jumpToLatest}
+                  onClick={() => {
+                    jumpToLatest();
+                    viewport.current?.focus();
+                  }}
                 />
               )}
               {!finding && (

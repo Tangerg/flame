@@ -18,6 +18,8 @@ Result filters open on demand above one bounded scrolling body; their compact
 Find action follows the result text. Source lines share a continuous numbered
 layout; located results keep their context above each snippet. The host Tool
 disclosure owns identity, status and failure details.
+Explicit Jump to latest returns focus to the output viewport so keyboard reading
+can continue. Automatic tail positioning preserves the current focus.
 Authored result bytes, HTML and URLs render as text. The client preserves generic
 inspection during loading, failure, connection retirement and withdrawal. Opening
 history never downloads or executes the old producer's JavaScript or replays a Tool.

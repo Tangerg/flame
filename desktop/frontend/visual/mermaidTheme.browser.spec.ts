@@ -32,5 +32,11 @@ for (const theme of ["light", "dark"] as const) {
     expect.soft(colors.text).toBe(colors.expectedText);
     expect.soft(colors.node).not.toBe(colors.text);
     expect.soft(colors.font).toContain("system-ui");
+    const alignment = await diagram.evaluate((stage) => {
+      const frame = stage.getBoundingClientRect();
+      const svg = stage.querySelector("svg")!.getBoundingClientRect();
+      return Math.abs((svg.left + svg.right) / 2 - (frame.left + frame.right) / 2);
+    });
+    expect(alignment).toBeLessThan(0.5);
   });
 }

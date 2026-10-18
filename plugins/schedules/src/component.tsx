@@ -114,6 +114,12 @@ export function Schedules({ context }: { context: ComponentContext }) {
     item: Schedule;
     opener: HTMLElement;
   }>();
+  const searchElement = useRef<HTMLElement>(null);
+  const formOpener = edit?.opener ?? deleting?.opener;
+  const resolveOpener = useCallback(
+    () => (formOpener?.isConnected ? formOpener : searchElement.current),
+    [formOpener],
+  );
   const [command, setCommand] = useState<Command>();
   const pending = useRef<Command>(undefined);
   const accepted = useRef<{ page: Page; history: string[] }>(undefined);
@@ -406,6 +412,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
           label="Schedule controls"
           search={
             <SearchField
+              ref={searchElement}
               size="lg"
               aria-label="Search this page"
               placeholder="Title or instructions"
@@ -488,7 +495,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
         </section>
       )}
       {edit && (
-        <RecordForm aria-label="Schedule editor" opener={edit.opener}>
+        <RecordForm aria-label="Schedule editor" opener={resolveOpener}>
           <RecordTitle>
             {edit.basis
               ? `Edit ${edit.basis.Title || "schedule"}`
@@ -670,7 +677,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
       {deleting && (
         <RecordForm
           aria-label="Confirm schedule deletion"
-          opener={deleting.opener}
+          opener={resolveOpener}
         >
           <RecordTitle>
             Delete {deleting.item.Title || deleting.item.ID}?

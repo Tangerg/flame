@@ -56,6 +56,75 @@ async function expectFirstLineVisible(content: Locator) {
   expect(reading.hit).toBe(true);
 }
 
+async function expectFieldContextVisible(content: Locator) {
+  const reading = await content.evaluate((field) => {
+    const label = field.closest("label")!;
+    const caption = label.querySelector("span")!;
+    const labelBounds = label.getBoundingClientRect();
+    const captionBounds = caption.getBoundingClientRect();
+    const controls = field
+      .closest('[data-slot="panel"]')!
+      .querySelector('[data-slot="panel-controls"]')!
+      .getBoundingClientRect();
+    const viewport = field.closest('[data-slot="workspace-view-body"]')!.getBoundingClientRect();
+    return {
+      top: labelBounds.top,
+      bottom: labelBounds.bottom,
+      visibleTop: Math.max(controls.bottom, viewport.top),
+      visibleBottom: Math.min(innerHeight, viewport.bottom),
+      captionHit: caption.contains(
+        document.elementFromPoint(
+          captionBounds.left + captionBounds.width / 2,
+          captionBounds.top + captionBounds.height / 2,
+        ),
+      ),
+    };
+  });
+  expect(reading.top).toBeGreaterThanOrEqual(reading.visibleTop);
+  expect(reading.bottom).toBeLessThanOrEqual(reading.visibleBottom);
+  expect(reading.captionHit).toBe(true);
+}
+
+test("narrow Memory field labels remain visible after autofocus and Tab", async ({ page }) => {
+  const { add, editor, content } = await openMemory(page, "dark", {
+    width: 320,
+    height: 640,
+  });
+  await expectFieldContextVisible(content);
+  await content.press("Tab");
+  const cancel = editor.getByRole("button", { name: "Cancel", exact: true });
+  await expect(cancel).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(content).toBeFocused();
+  await expectFieldContextVisible(content);
+  await cancel.click();
+  await expect(add).toBeFocused();
+});
+
+test("narrow Schedules field labels remain visible after autofocus and Tab", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto(
+    "/visual/?fixture=workspace&state=full-view&full-view=package:visual:schedules&font-size=18&theme=dark",
+  );
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
+  const panel = page.getByRole("region", { name: "Schedules", exact: true });
+  const add = panel.getByRole("button", { name: "Add schedule", exact: true });
+  await expect(add).toBeEnabled();
+  await add.click();
+  const editor = panel.getByRole("region", { name: "Schedule editor", exact: true });
+  const title = editor.getByRole("textbox", { name: "Title", exact: true });
+  await expect(title).toBeFocused();
+  await expectFieldContextVisible(title);
+  await title.press("Tab");
+  await expect(editor.getByRole("textbox", { name: "Instructions", exact: true })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(title).toBeFocused();
+  await expectFieldContextVisible(title);
+  await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(add).toBeFocused();
+});
+
 for (const theme of ["light", "dark"]) {
   test(`panel body focus keeps typed text above the sticky controls after autofocus and Tab ${theme}`, async ({
     page,

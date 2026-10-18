@@ -1917,6 +1917,26 @@ test("large command output stays fully readable inside the tool card", async ({ 
   await expect(output).toContainText("build output line 0");
   expect(await output.locator("[data-output-line]").count()).toBeLessThan(100);
 
+  const jump = command.getByRole("button", { name: "Jump to latest", exact: true });
+  await jump.focus();
+  await jump.press("Enter");
+  await expect(output).toBeFocused();
+  await expect
+    .poll(() =>
+      output.evaluate((element) => element.scrollHeight - element.clientHeight - element.scrollTop),
+    )
+    .toBeLessThanOrEqual(1);
+  const latest = await output.evaluate((element) => element.scrollTop);
+  const messageViewport = page.locator(".msg-scroll-viewport");
+  const messageTop = await messageViewport.evaluate((element) => element.scrollTop);
+  await page.keyboard.press("PageUp");
+  await expect.poll(() => output.evaluate((element) => element.scrollTop)).toBeLessThan(latest);
+  expect(await messageViewport.evaluate((element) => element.scrollTop)).toBe(messageTop);
+  await output.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await expect(output).toContainText("build output line 0");
+
   await output.press("ControlOrMeta+f");
   const find = command.getByRole("searchbox", { name: "Find in output" });
   await expect(find).toBeFocused();

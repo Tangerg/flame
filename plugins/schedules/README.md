@@ -151,6 +151,10 @@ that Provider's last accepted catalog within the captured component context. A
 refresh never replaces a saved selection. Missing and deprecated selections retain
 their exact Provider/Model as labeled items until the user chooses another model.
 
+Editing and deletion confirmations resolve their record opener at retirement. If
+filtering removed that record, the retained page search is the return target and
+keeps its current query.
+
 Templates live in src/templates.ts as authoring content copied into a new draft.
 The generic Domain/loader/Protocol owns no Schedule template or closed view kind.
 The component consumes existing schedule notices and cancels/joins its I/O on

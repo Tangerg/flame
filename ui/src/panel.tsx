@@ -228,7 +228,8 @@ export function Panel({
   const keepBodyFocusVisible = useCallback((target: Element | null) => {
     const panel = panelRef.current;
     const controls = controlsRef.current;
-    if (!panel || !target || !bodyRef.current?.contains(target)) return;
+    const body = bodyRef.current;
+    if (!panel || !target || !body?.contains(target)) return;
     let visibleTop = 0;
     let visibleBottom = panel.ownerDocument.documentElement.clientHeight;
     for (
@@ -244,18 +245,30 @@ export function Panel({
         );
       }
     }
-    const bounds = target.getBoundingClientRect();
     const stickyHeaderHeight =
       Number.parseFloat(
         getComputedStyle(target).getPropertyValue("--disclosure-header-height"),
       ) || 0;
-    if (
-      bounds.top <
-        (controls?.getBoundingClientRect().bottom ?? visibleTop) +
-          stickyHeaderHeight ||
-      bounds.bottom > visibleBottom
-    ) {
-      target.scrollIntoView({ block: "start", inline: "nearest" });
+    const focusTop =
+      Math.max(
+        visibleTop,
+        controls?.getBoundingClientRect().bottom ?? visibleTop,
+      ) + stickyHeaderHeight;
+    let focusUnit = target;
+    const label = target.closest("label");
+    if (label && body.contains(label)) {
+      const scrollMargin =
+        Number.parseFloat(getComputedStyle(label).scrollMarginBlockStart) || 0;
+      if (
+        label.getBoundingClientRect().height <=
+        visibleBottom - Math.max(focusTop, visibleTop + scrollMargin)
+      ) {
+        focusUnit = label;
+      }
+    }
+    const bounds = focusUnit.getBoundingClientRect();
+    if (bounds.top < focusTop || bounds.bottom > visibleBottom) {
+      focusUnit.scrollIntoView({ block: "start", inline: "nearest" });
     }
   }, []);
   const panelLayout = useMemo(

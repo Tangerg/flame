@@ -592,7 +592,7 @@ html[data-flame-ui-theme-paint] * {
   position: relative;
 }
 
-[data-slot="panel-body"] :where(:focus, [id]) {
+[data-slot="panel-body"] :where(:focus, [id], label:focus-within) {
   scroll-margin-block-start: calc(
     var(--panel-controls-height, 0px) + var(--disclosure-header-height, 0px) +
       var(--layout-control-gap)

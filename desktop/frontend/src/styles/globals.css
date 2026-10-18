@@ -1043,6 +1043,7 @@ html.theme-dark {
 [data-slot="mermaid-stage"] svg {
   height: auto;
   max-width: 100%;
+  margin-inline: auto;
 }
 [data-slot="mermaid-full"] svg {
   display: block;

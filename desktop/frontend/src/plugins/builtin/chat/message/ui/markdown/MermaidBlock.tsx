@@ -40,7 +40,7 @@ const mb = stylex.create({
     placeItems: "center",
     overflow: "hidden",
   },
-  stage: { overflowX: "auto", padding: space.s4, textAlign: "center" },
+  stage: { overflowX: "auto", padding: space.s4 },
   viewerShell: {
     width: "min(92vw, 1400px)",
     height: "min(85dvh, 900px)",

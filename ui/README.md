@@ -35,8 +35,10 @@ sticky action and filter zone, and children hold the scrolling content. The host
 keeps its existing scroll viewport. `Panel` measures only its own controls,
 projects their height on its root, and uses it to keep focused content and anchors
 clear of the controls; wrapped controls update through `ResizeObserver`.
-Body focus also respects the host's clipped viewport, so tall fields reveal
-their beginning after native autofocus or a control-zone resize.
+Body focus also respects the host's clipped viewport. A wrapping native label
+and its focused control form one reading unit when they fit below the sticky
+controls and disclosure header. Taller fields still reveal the focused control's
+beginning after native autofocus or a control-zone resize.
 `PanelHeader` owns the page title, description and contextual navigation.
 Its title size can use the smaller existing display roles for workbench views.
 Page actions belong to the persistent `Panel.controls` zone, alongside filters.
