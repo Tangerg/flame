@@ -145,6 +145,7 @@ export const es: Record<string, string> = {
     'La vista "{{id}}" no está registrada. Cierra esta pestaña o reactiva su plugin.',
   "message.image.view": "Ver imagen adjunta",
   "message.image.preview": "Abrir vista previa de la imagen",
+  "message.image.previewTitle": "Vista previa de la imagen",
   "message.image.unavailable": "Imagen no disponible",
   "message.image.previous": "Imagen anterior",
   "message.image.next": "Imagen siguiente",

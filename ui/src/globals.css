@@ -458,8 +458,8 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   [data-slot="inline-code"]
 ) {
   display: inline;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
+  -webkit-box-decoration-break: slice;
+  box-decoration-break: slice;
   padding: 0.125em 0.375em;
   border-radius: var(--shape-xs);
   background: color-mix(in oklab, var(--color-text) 5.5%, transparent);

@@ -144,6 +144,7 @@ export const fr: Record<string, string> = {
     'La vue "{{id}}" n\'est pas enregistrée. Fermez cet onglet ou réactivez son plugin.',
   "message.image.view": "Voir l'image jointe",
   "message.image.preview": "Ouvrir l’aperçu de l’image",
+  "message.image.previewTitle": "Aperçu de l’image",
   "message.image.unavailable": "Image indisponible",
   "message.image.previous": "Image précédente",
   "message.image.next": "Image suivante",

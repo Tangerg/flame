@@ -1049,6 +1049,12 @@ for (const theme of ["light", "dark"] as const) {
 
     const blocked = page.getByRole("img", { name: "Tracking pixel" });
     await expect(blocked, "the reader is still told an image belongs here").toBeVisible();
+    await expect(blocked).toContainText("Tracking pixel");
+    await expect(blocked).toContainText("Image unavailable");
+    const reading = page.locator(".md").filter({ hasText: "Architecture review" });
+    await expect
+      .poll(() => reading.evaluate((node) => node.scrollWidth - node.clientWidth))
+      .toBe(0);
     await expect(
       page.getByRole("button", { name: "Tracking pixel" }),
       "and it is not offered as something to press, since there is nothing to open",

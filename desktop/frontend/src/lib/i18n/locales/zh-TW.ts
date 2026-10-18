@@ -141,6 +141,7 @@ export const zhTW: Record<string, string> = {
   "workspace.view.unavailable.body": '未註冊 "{{id}}" 檢視。請關閉此分頁或重新啟用其外掛。',
   "message.image.view": "檢視附帶的圖片",
   "message.image.preview": "開啟圖片預覽",
+  "message.image.previewTitle": "圖片預覽",
   "message.image.unavailable": "圖片無法使用",
   "message.image.previous": "上一張圖片",
   "message.image.next": "下一張圖片",

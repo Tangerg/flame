@@ -104,7 +104,8 @@ function renderTokens(tokens: Token[]): ReactNode[] {
         const value = token as Tokens.Image;
         return (
           <span key={key}>
-            [Image: {value.text}] ({value.href})
+            [Image{value.text ? `: ${value.text}` : ""}]
+            <small>{` (${/^data:/i.test(value.href) ? "embedded image data" : value.href})`}</small>
           </span>
         );
       }
@@ -216,7 +217,10 @@ export function Markdown({ context }: { context: ComponentContext }) {
   return (
     <Panel label="Markdown file">
       <DocumentBody>{content}</DocumentBody>
-      <Metadata>Links and embedded content are displayed as text.</Metadata>
+      <Metadata>
+        Links and images are shown as text. Embedded data is available in
+        Source.
+      </Metadata>
     </Panel>
   );
 }

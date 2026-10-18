@@ -53,12 +53,12 @@ describe("ImageBlock", () => {
     );
 
     await openPreview(screen.getAllByRole("button", { name: "View attached image" })[0]!);
-    expect(screen.getByRole("dialog", { name: "View attached image" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Image preview" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Next image" }));
 
     expect(
       screen
-        .getByRole("dialog", { name: "View attached image" })
+        .getByRole("dialog", { name: "Image preview" })
         .querySelector("img")
         ?.getAttribute("src"),
     ).toBe(`data:image/gif;base64,${SECOND_GIF}`);
@@ -79,6 +79,52 @@ describe("ImageBlock", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next image" }));
 
     expect(screen.getByRole("dialog", { name: "Inline" })).toBeTruthy();
+  });
+
+  it("uses the current image name when moving from named Markdown to an unnamed attachment", async () => {
+    render(
+      <div className={MESSAGE_CONTENT_CLASS}>
+        <MarkdownRenderer
+          text={`![Architecture](data:image/png;base64,${FIRST_PNG})`}
+          reveal="instant"
+        />
+        <ImageBlock mime="image/gif" data={SECOND_GIF} />
+      </div>,
+    );
+
+    await openPreview(screen.getByRole("button", { name: "Architecture" }));
+    expect(screen.getByRole("dialog", { name: "Architecture" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Architecture" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Next image" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Image preview" });
+    expect(screen.getByRole("region", { name: "Image preview" })).toBeTruthy();
+    expect(dialog.querySelector("img")?.getAttribute("src")).toBe(
+      `data:image/gif;base64,${SECOND_GIF}`,
+    );
+    expect(screen.queryByRole("dialog", { name: "Architecture" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Previous image" }));
+    expect(screen.getByRole("dialog", { name: "Architecture" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Architecture" })).toBeTruthy();
+  });
+
+  it("shows a non-interactive decode failure and restores preview when the source changes", async () => {
+    const { container, rerender } = render(<ImageBlock mime="image/png" data={FIRST_PNG} />);
+    fireEvent.error(container.querySelector("img")!);
+
+    const unavailable = screen.getByRole("img", { name: "Image unavailable" });
+    expect(unavailable.textContent).toContain("Image unavailable");
+    expect(screen.queryByRole("button", { name: "View attached image" })).toBeNull();
+    expect(container.querySelector("img")).toBeNull();
+
+    rerender(<ImageBlock mime="image/gif" data={SECOND_GIF} />);
+    const preview = screen.getByRole("button", { name: "View attached image" });
+    expect(preview.querySelector("img")?.getAttribute("src")).toBe(
+      `data:image/gif;base64,${SECOND_GIF}`,
+    );
+    expect(screen.queryByRole("img", { name: "Image unavailable" })).toBeNull();
+    await openPreview(preview);
+    expect(screen.getByRole("dialog", { name: "Image preview" })).toBeTruthy();
   });
 
   it("does not include images from a nested message body", async () => {

@@ -1,10 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Pressable } from "@/ui";
 import { imageSizeFromBase64 } from "@/plugins/builtin/chat/message/domain/imageHeader";
 import { useT } from "@/lib/i18n";
 import { ImagePreviewGallery } from "../ImagePreviewGallery";
+import { UnavailableImage } from "../UnavailableImage";
 import { radius } from "@flame/ui/tokens.stylex";
 
 const ib = stylex.create({
@@ -29,10 +30,11 @@ export function ImageBlock({ mime, data }: { mime: string; data: string }) {
   const t = useT();
   const src = `data:${mime};base64,${data}`;
   const size = useMemo(() => imageSizeFromBase64(data), [data]);
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  if (failedSource === src) return <UnavailableImage />;
   return (
     <ImagePreviewGallery
       item={{ src, alt: "", width: size?.width, height: size?.height }}
-      titleFallback={t("message.image.view")}
       trigger={(previewProps) => (
         <Pressable
           type="button"
@@ -45,6 +47,7 @@ export function ImageBlock({ mime, data }: { mime: string; data: string }) {
             alt=""
             width={size?.width}
             height={size?.height}
+            onError={() => setFailedSource(src)}
             className={cn("media-edge", stylex.props(ib.image).className)}
           />
         </Pressable>

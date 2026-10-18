@@ -143,6 +143,7 @@ export const zh: Record<string, string> = {
   "workspace.view.unavailable.body": '未注册 "{{id}}" 视图。请关闭此标签页或重新启用其插件。',
   "message.image.view": "查看附带的图片",
   "message.image.preview": "打开图片预览",
+  "message.image.previewTitle": "图片预览",
   "message.image.unavailable": "图片不可用",
   "message.image.previous": "上一张图片",
   "message.image.next": "下一张图片",

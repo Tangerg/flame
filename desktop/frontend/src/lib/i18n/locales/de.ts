@@ -144,6 +144,7 @@ export const de: Record<string, string> = {
     'Die Ansicht "{{id}}" ist nicht registriert. Schließe diesen Tab oder aktiviere das Plugin erneut.',
   "message.image.view": "Angehängtes Bild ansehen",
   "message.image.preview": "Bildvorschau öffnen",
+  "message.image.previewTitle": "Bildvorschau",
   "message.image.unavailable": "Bild nicht verfügbar",
   "message.image.previous": "Vorheriges Bild",
   "message.image.next": "Nächstes Bild",

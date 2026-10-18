@@ -160,6 +160,8 @@ describe("markdownMessage", () => {
     const unavailable = container.querySelector('[aria-label="Tracking pixel"]');
     expect(unavailable, "the reader is still told an image belongs here").toBeTruthy();
     expect(unavailable?.getAttribute("role")).toBe("img");
+    expect(unavailable?.textContent).toContain("Tracking pixel");
+    expect(unavailable?.textContent).toContain("Image unavailable");
     expect(
       container.querySelector('button[aria-label="Tracking pixel"]'),
       "and it is not offered as something to press",

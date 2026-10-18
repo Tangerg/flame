@@ -142,6 +142,7 @@ export const ja: Record<string, string> = {
     '"{{id}}" ビューは登録されていません。このタブを閉じるか、プラグインを再度有効にしてください。',
   "message.image.view": "添付画像を表示",
   "message.image.preview": "画像プレビューを開く",
+  "message.image.previewTitle": "画像プレビュー",
   "message.image.unavailable": "画像を表示できません",
   "message.image.previous": "前の画像",
   "message.image.next": "次の画像",

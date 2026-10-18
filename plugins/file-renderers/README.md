@@ -18,6 +18,10 @@ readable code. This is ordinary trusted workbench code, using shared React, the 
 SDK and `@flame/ui`. Marked is a declared private dependency bundled in the ESM;
 its license is retained in the namespace resources.
 
+The preview describes embedded images using their alternative text and a short
+source caption. Complete payloads remain intact in the host Source view.
+Ordinary image URLs remain visible, inert source text.
+
 The host file header owns file identity, range metadata and navigation. The
 renderer supplies authored document content within the shared content measure,
 without repeating that introduction.

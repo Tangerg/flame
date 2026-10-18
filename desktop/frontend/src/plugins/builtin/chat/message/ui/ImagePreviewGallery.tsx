@@ -113,7 +113,6 @@ interface TriggerProps {
 
 interface Props {
   item: GalleryItem;
-  titleFallback: string;
   trigger: (props: TriggerProps) => ReactElement;
 }
 
@@ -387,7 +386,7 @@ function ImageInspector({ item, label }: { item: GalleryItem; label: string }) {
   );
 }
 
-export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
+export function ImagePreviewGallery({ item, trigger }: Props) {
   const t = useT();
   const [gallery, setGallery] = useState<GalleryState | null>(null);
   const save = useCommandAction({ fallback: t("message.image.downloadFailed") });
@@ -409,6 +408,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
     }
   };
   const active = gallery?.items[gallery.index] ?? item;
+  const activeLabel = active.alt || t("message.image.previewTitle");
   const hasGallery = (gallery?.items.length ?? 0) > 1;
   return (
     <LightboxDialog
@@ -417,7 +417,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
       onOpenChange={(open) => {
         if (!open) setGallery(null);
       }}
-      title={active.alt || titleFallback}
+      title={activeLabel}
       kind="media"
       trigger={trigger({
         "data-message-image-preview-trigger": "true",
@@ -473,11 +473,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
             />
           </>
         )}
-        <ImageInspector
-          key={gallery?.index ?? "closed"}
-          item={active}
-          label={active.alt || titleFallback}
-        />
+        <ImageInspector key={gallery?.index ?? "closed"} item={active} label={activeLabel} />
       </div>
     </LightboxDialog>
   );

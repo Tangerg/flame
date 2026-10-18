@@ -2,9 +2,10 @@ import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
-import { Icon, Pressable } from "@/ui";
+import { Pressable } from "@/ui";
 import { ImagePreviewGallery } from "../ImagePreviewGallery";
-import { color, radius, space, surface } from "@flame/ui/tokens.stylex";
+import { UnavailableImage } from "../UnavailableImage";
+import { radius, space } from "@flame/ui/tokens.stylex";
 
 const mi = stylex.create({
   trigger: {
@@ -24,20 +25,6 @@ const mi = stylex.create({
     maxWidth: "100%",
     borderRadius: radius.card,
     objectFit: "contain",
-  },
-  missing: {
-    marginBlock: space.s3,
-    display: "inline-flex",
-    minHeight: space.s24,
-    minWidth: space.s24,
-    cursor: "default",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.card,
-    borderWidth: 0,
-    backgroundColor: surface.sunken,
-    padding: 0,
-    color: color.fgFaint,
   },
 });
 
@@ -67,16 +54,7 @@ export function MarkdownImage({
   const unavailable = !isInlineMarkdownImage(src) || failedSource === src;
 
   if (unavailable) {
-    return (
-      <span
-        role="img"
-        aria-label={alt || t("message.image.unavailable")}
-        title={title}
-        className={stylex.props(mi.missing).className}
-      >
-        <Icon name="image" size="md" />
-      </span>
-    );
+    return <UnavailableImage alt={alt} title={title} />;
   }
 
   if (linked) {
@@ -98,7 +76,6 @@ export function MarkdownImage({
   return (
     <ImagePreviewGallery
       item={{ src, alt, title }}
-      titleFallback={previewLabel}
       trigger={(previewProps) => (
         <Pressable
           type="button"

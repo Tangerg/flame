@@ -150,6 +150,7 @@ export const en: Record<string, string> = {
     'The "{{id}}" view isn\'t registered. Close this tab or re-enable its plugin.',
   "message.image.view": "View attached image",
   "message.image.preview": "Open image preview",
+  "message.image.previewTitle": "Image preview",
   "message.image.unavailable": "Image unavailable",
   "message.image.previous": "Previous image",
   "message.image.next": "Next image",

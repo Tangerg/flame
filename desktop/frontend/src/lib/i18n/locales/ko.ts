@@ -141,6 +141,7 @@ export const ko: Record<string, string> = {
     '"{{id}}" 뷰가 등록되지 않았습니다. 이 탭을 닫거나 플러그인을 다시 활성화하세요.',
   "message.image.view": "첨부 이미지 보기",
   "message.image.preview": "이미지 미리보기 열기",
+  "message.image.previewTitle": "이미지 미리보기",
   "message.image.unavailable": "이미지를 사용할 수 없음",
   "message.image.previous": "이전 이미지",
   "message.image.next": "다음 이미지",
