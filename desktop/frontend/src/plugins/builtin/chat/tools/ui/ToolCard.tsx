@@ -8,7 +8,7 @@ import { toolCardModel } from "../application/toolCardModel";
 import { toolCallIconFor } from "@/plugins/builtin/agent/public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "@/ui/agent";
-import { face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { toolMetaInk } from "./toolMetaInk";
 import { ToolFailureLine, ToolStatusMarks, useToolRowActions } from "./ToolRowParts";
 
@@ -20,7 +20,7 @@ interface Props {
 
 const tc = stylex.create({
   full: { width: "100%" },
-  meta: { fontWeight: weight.medium },
+  meta: { fontVariantNumeric: "tabular-nums" },
   status: {
     display: { default: "none", "@container (min-width: 24rem)": "flex" },
     flexShrink: 0,
@@ -72,7 +72,7 @@ function ToolMeta({ items }: { items: ToolMetaItem[] }) {
         <span
           key={item.id}
           data-tone={item.tone}
-          {...stylex.props(tc.meta, toolMetaInk.card[item.tone], typeStep.uiXs, face.mono)}
+          {...stylex.props(tc.meta, toolMetaInk.card[item.tone], typeStep.uiXs)}
         >
           {item.label}
         </span>

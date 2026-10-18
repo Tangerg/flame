@@ -3,10 +3,10 @@ import { color, leading, motion, space, weight } from "@flame/ui/tokens.stylex";
 
 export const seamStep = stylex.create({
   none: {},
-  tight: { marginTop: space.s1_5 },
-  close: { marginTop: space.s3 },
-  apart: { marginTop: space.s4 },
-  wide: { marginTop: space.s5 },
+  tight: { marginTop: space.s1 },
+  close: { marginTop: space.s3_5 },
+  apart: { marginTop: space.s5 },
+  wide: { marginTop: space.s6 },
 });
 
 export const messageStyles = stylex.create({

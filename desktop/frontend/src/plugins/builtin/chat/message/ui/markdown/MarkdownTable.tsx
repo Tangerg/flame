@@ -28,11 +28,9 @@ export function MarkdownTable({ markdownSource, children }: Props) {
   return (
     <div className="md-table-container" data-markdown-table tabIndex={-1}>
       <div className="md-table-scroller">
-        <div className="md-table-wrap">
-          <table ref={tableRef} dir="auto">
-            {children}
-          </table>
-        </div>
+        <table ref={tableRef} dir="auto">
+          {children}
+        </table>
       </div>
       <div className="md-table-actions" data-reveal="hover" data-markdown-copy="exclude">
         <LightboxDialog

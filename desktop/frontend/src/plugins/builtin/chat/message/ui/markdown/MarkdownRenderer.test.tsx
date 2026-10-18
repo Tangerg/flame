@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import type { Element, Root } from "hast";
 import { getHighlighter } from "@/lib/highlight/shiki";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { rehypeFadeIn } from "./rehypeFadeIn";
 
 describe("markdownMessage", () => {
   beforeAll(async () => {
@@ -24,6 +26,67 @@ describe("markdownMessage", () => {
       expect(text).toContain("Hello");
       expect(text).toContain("world");
     });
+  });
+
+  it("fades the whole inline code surface with the streaming prose", async () => {
+    const { container } = render(
+      <MarkdownRenderer text="Read `scope.Run` next." streaming reveal="smooth" />,
+    );
+    await waitFor(() => {
+      const code = container.querySelector("p > code");
+      expect(code?.textContent).toBe("scope.Run");
+      expect(code?.classList.contains("fade-in")).toBe(true);
+      expect(code?.children).toHaveLength(0);
+    });
+  });
+
+  it.each(["", "js"])("keeps the streamed %s fence outside word fades", async (language) => {
+    const { container } = render(
+      <MarkdownRenderer
+        text={`\`\`\`${language}\nconst x = 1;\n\`\`\``}
+        streaming
+        reveal="smooth"
+      />,
+    );
+    await waitFor(() => {
+      expect(container.querySelector(".shiki-block pre")?.textContent).toContain("const x = 1;");
+    });
+    expect(container.querySelector(".shiki-block .fade-in")).toBeNull();
+  });
+
+  it("preserves inline code properties and explicit fade opt-outs", () => {
+    const code: Element = {
+      type: "element",
+      tagName: "code",
+      properties: { className: ["existing-code"], title: "Scope run" },
+      children: [{ type: "text", value: "scope.Run" }],
+    };
+    const optedOut: Element = {
+      type: "element",
+      tagName: "span",
+      properties: { dataNoFade: true },
+      children: [
+        { type: "text", value: "Stable " },
+        {
+          type: "element",
+          tagName: "code",
+          properties: {},
+          children: [{ type: "text", value: "scope.Run" }],
+        },
+      ],
+    };
+    const optedOutCode = structuredClone(code);
+    optedOutCode.properties.dataNoFade = true;
+    const originalOptOuts = structuredClone([optedOut, optedOutCode]);
+    const tree: Root = { type: "root", children: [code, optedOut, optedOutCode] };
+    rehypeFadeIn()(tree);
+
+    expect(code.properties).toEqual({
+      className: ["existing-code", "fade-in"],
+      title: "Scope run",
+    });
+    expect(code.children).toEqual([{ type: "text", value: "scope.Run" }]);
+    expect([optedOut, optedOutCode]).toEqual(originalOptOuts);
   });
 
   it("auto-closes an unmatched inline backtick so it renders as code", () => {

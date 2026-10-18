@@ -1081,6 +1081,7 @@ for (const theme of ["light", "dark"] as const) {
 test("a finished thought opens into a box that is still bounded", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=narrative");
   await page.locator("html[data-visual-ready]").waitFor();
+  await layOutTranscript(page);
 
   await page
     .getByRole("button", { name: /read · 1 search · 1 write/ })
@@ -1249,13 +1250,13 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
   expect(styles).not.toBeNull();
   expect.soft(styles?.level2Tag).toBe("H3");
   expect.soft(styles?.level2Size).toBe("18px");
-  expect.soft(styles?.level2Margin).toBe("14px 3.5px");
+  expect.soft(styles?.level2Margin).toBe("0px 7px");
   expect.soft(styles?.level3Tag).toBe("H4");
   expect.soft(styles?.level3Size).toBe("16px");
-  expect.soft(styles?.level3Margin).toBe("14px 3.5px");
+  expect.soft(styles?.level3Margin).toBe("21px 7px");
   expect.soft(styles?.leadParagraphMargin).toBe("7px 3.5px");
-  expect.soft(styles?.leadListMargin).toBe("0px 7px");
-  expect.soft(styles?.tableMargin).toBe("7px 7px");
+  expect.soft(styles?.leadListMargin).toBe("7px 14px");
+  expect.soft(styles?.tableMargin).toBe("14px 0px");
   expect.soft(styles?.tableFontSize).toBe("14px");
   expect.soft(styles?.tableLineHeight).toBe("22.75px");
   expect.soft(styles?.tableHeaderFontSize).toBe("14px");
@@ -1263,7 +1264,7 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
   expect.soft(styles?.proseParagraphMargin).toBe("7px 3.5px");
   expect.soft(styles?.inlineCodeDecoration).toBe("clone");
   expect.soft(styles?.inlineCodeFontSize).toBe("12px");
-  expect.soft(styles?.inlineCodeRadius).toBe("6px");
+  expect.soft(styles?.inlineCodeRadius).toBe("4px");
   expect.soft(styles?.inlineCodeWordBreak).toBe("break-word");
   expect.soft(styles?.inlineCodeWrap).toBe("anywhere");
   expect.soft(styles?.rtlDirection).toBe("rtl");
@@ -1277,8 +1278,8 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
   expect.soft(styles?.looseTaskCheckboxInset).toBe("4px");
   expect.soft(styles?.looseTaskFollowUpColumn).toBe("2");
   expect.soft(styles?.quoteInset).toBe("14px");
-  expect.soft(styles?.quoteRule).toBe("3px");
-  expect.soft(styles?.ruleMargin).toBe("24.5px");
+  expect.soft(styles?.quoteRule).toBe("2px");
+  expect.soft(styles?.ruleMargin).toBe("28px");
 });
 
 for (const theme of ["light", "dark"] as const) {

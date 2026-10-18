@@ -2,7 +2,7 @@ import type { Element, Root, Text } from "hast";
 import { segmentWords } from "@/lib/i18n/segmentWords";
 import { rewriteTextNodes } from "./rewriteTextNodes";
 
-const SKIP_TAGS = new Set(["pre", "code", "script", "style"]);
+const SKIP_TAGS = new Set(["pre", "script", "style"]);
 
 const WHITESPACE = /^\s+$/;
 
@@ -15,7 +15,16 @@ export function rehypeFadeIn() {
   return (tree: Root) => {
     rewriteTextNodes(
       tree,
-      (node) => SKIP_TAGS.has(node.tagName) || optedOut(node),
+      (node) => {
+        if (SKIP_TAGS.has(node.tagName) || optedOut(node)) return true;
+        if (node.tagName !== "code") return false;
+        const className = node.properties.className;
+        node.properties.className = [
+          ...(Array.isArray(className) ? className : className ? [String(className)] : []),
+          "fade-in",
+        ];
+        return true;
+      },
       (value) => {
         if (!value) return null;
         const segments = segmentWords(value);

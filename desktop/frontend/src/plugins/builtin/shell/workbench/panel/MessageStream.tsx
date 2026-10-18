@@ -84,7 +84,7 @@ function transcriptDayBreaks(rows: readonly TranscriptRow[]): readonly boolean[]
 const TURN_GAP = stylex.create({
   none: {},
   continuation: { marginTop: space.s2 },
-  answer: { marginTop: space.s5 },
+  answer: { marginTop: space.s6 },
   turn: { marginTop: space.s6 },
 });
 

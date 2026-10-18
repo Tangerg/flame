@@ -6,8 +6,7 @@ import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { toolGroupModel, type ToolGroupPinnedState } from "../application/toolGroupModel";
 import { ToolGroupMember } from "./ToolGroupMember";
-import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
-import { chatStyles as ct } from "@/ui/agent/chatStyles";
+import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { vocab } from "@flame/ui";
 
 interface Props {
@@ -33,7 +32,7 @@ export function ToolGroup({ tools, expandedIds, onToggleExpand, superseded }: Pr
       contentInset="rows"
       label={model.summary}
       trailing={
-        <span {...stylex.props(ct.medium, vocab.muted, typeStep.uiXs, face.mono)}>
+        <span {...stylex.props(vocab.faint, typeStep.uiXs)}>
           {t("tools.group.calls", { count: model.count })}
         </span>
       }

@@ -40,7 +40,7 @@ const styles = stylex.create({
     lineHeight: leading.body,
   },
   triggerLine: {
-    gap: space.s1_5,
+    gap: space.s2,
     paddingBlock: space.s0_5,
     paddingRight: 0,
     paddingLeft: 0,
@@ -83,7 +83,7 @@ const styles = stylex.create({
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     lineHeight: leading.snug,
-    color: "var(--row-ink)",
+    color: "var(--row-detail-ink)",
   },
   spacer: { minWidth: 0, flex: 1 },
   trailing: {
@@ -92,12 +92,13 @@ const styles = stylex.create({
     flexShrink: 1,
     alignItems: "center",
     gap: space.s1_5,
-    fontFamily: "var(--font-mono)",
     color: color.fgFaint,
+    fontVariantNumeric: "tabular-nums",
   },
   headerPublishes: {
     "--chevron": { default: "0", ":hover": "1" },
     "--row-ink": { default: color.fgMuted, ":hover": color.fg },
+    "--row-detail-ink": { default: color.fgFaint, ":hover": color.fgMuted },
   },
   triggerPublishes: { "--chevron": { default: null, ":focus-visible": "1" } },
   chevron: {
@@ -120,7 +121,13 @@ const styles = stylex.create({
     paddingLeft: space.s0_5,
     paddingRight: space.s2,
   },
-  bodyLine: { paddingRight: 0 },
+  bodyLine: {
+    marginInlineStart: space.s2,
+    borderInlineStartWidth: "var(--control-edge-width)",
+    borderInlineStartStyle: "solid",
+    borderInlineStartColor: surface.field,
+    paddingInlineStart: "calc(var(--spacing) * 4 - var(--control-edge-width))",
+  },
   bodyCard: { paddingInline: space.s3 },
   bodyRows: { paddingBlock: space.s1_5 },
 });
@@ -225,13 +232,16 @@ export function AgentActivityDisclosure({
               toneInk[tone],
             )}
           >
-            {leading ?? (icon ? <Icon name={icon} size="md" /> : null)}
+            {leading ?? (icon ? <Icon name={icon} size={line ? "sm" : "md"} /> : null)}
           </span>
-          <span data-slot="agent-activity-label" {...stylex.props(styles.label, type.uiMd)}>
+          <span
+            data-slot="agent-activity-label"
+            {...stylex.props(styles.label, line ? type.uiSm : type.uiMd)}
+          >
             {label}
           </span>
           {detail != null ? (
-            <span {...stylex.props(styles.detail, type.uiMd)}>{detail}</span>
+            <span {...stylex.props(styles.detail, line ? type.uiSm : type.uiMd)}>{detail}</span>
           ) : (
             <span aria-hidden {...stylex.props(styles.spacer)} />
           )}
@@ -261,19 +271,18 @@ export function AgentActivityDisclosure({
       {progress && <ProgressBar value={progress.value} label={progress.label} weight="seam" />}
       {children != null && (
         <Collapsible open={open}>
-          <div
-            id={panelId}
-            role="region"
-            aria-labelledby={triggerId}
-            className={cn(
-              stylex.props(
-                line ? styles.bodyLine : styles.bodyCard,
-                contentInset === "rows" && styles.bodyRows,
-              ).className,
-              contentClassName,
-            )}
-          >
-            {disclosed && children}
+          <div {...stylex.props(line ? styles.bodyLine : styles.bodyCard)}>
+            <div
+              id={panelId}
+              role="region"
+              aria-labelledby={triggerId}
+              className={cn(
+                stylex.props(contentInset === "rows" && styles.bodyRows).className,
+                contentClassName,
+              )}
+            >
+              {disclosed && children}
+            </div>
           </div>
         </Collapsible>
       )}

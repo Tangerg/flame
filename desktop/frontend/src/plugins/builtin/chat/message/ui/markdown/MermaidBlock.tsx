@@ -62,6 +62,15 @@ const mb = stylex.create({
 });
 
 type MermaidRenderer = typeof import("beautiful-mermaid").renderMermaidSVG;
+
+function withLocalFonts(svg: string): string {
+  // Web font imports defer the SVG's theme rules in WebKit until the remote stylesheet loads.
+  return svg.replace(
+    /<style>([\s\S]*?)<\/style>/g,
+    (_style, css: string) => `<style>${css.replace(/@import\s+url\([^)]*\);/g, "")}</style>`,
+  );
+}
+
 let rendererPromise: Promise<MermaidRenderer> | null = null;
 function loadRenderer(): Promise<MermaidRenderer> {
   if (!rendererPromise) {
@@ -125,16 +134,19 @@ export function MermaidBlock({ code }: Props) {
       try {
         const c = readThemeColors(tokenRevision);
         const start = performance.now();
-        const svg = renderer(debouncedCode, {
-          transparent: true,
-          bg: c.surface,
-          fg: c.fg,
-          line: c.line,
-          accent: c.accent,
-          muted: c.muted,
-          surface: c.surface,
-          border: c.border,
-        });
+        const svg = withLocalFonts(
+          renderer(debouncedCode, {
+            font: "system-ui",
+            transparent: true,
+            bg: c.surface,
+            fg: c.fg,
+            line: c.line,
+            accent: c.accent,
+            muted: c.muted,
+            surface: c.surface,
+            border: c.border,
+          }),
+        );
         measureMermaidRender(performance.now() - start);
         result = { status: "rendered", svg };
       } catch {

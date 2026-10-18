@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
-import { face } from "@flame/ui/tokens.stylex";
+import { face, type as typeStep } from "@flame/ui/tokens.stylex";
 import { FilePath } from "@/ui/atoms/file-path";
 import { vocab } from "@flame/ui/vocabulary";
 
@@ -18,10 +18,18 @@ export function ToolText({
 }) {
   const machine = value.kind !== "prose";
   if (value.kind === "path") {
-    return <FilePath path={value.value} className={stylex.props(face.mono, styles).className} />;
+    return (
+      <FilePath
+        path={value.value}
+        className={stylex.props(face.mono, typeStep.code, styles).className}
+      />
+    );
   }
   return (
-    <span {...stylex.props(vocab.truncate, machine && face.mono, styles)} title={value.value}>
+    <span
+      {...stylex.props(vocab.truncate, machine && [face.mono, typeStep.code], styles)}
+      title={value.value}
+    >
       {value.value}
     </span>
   );

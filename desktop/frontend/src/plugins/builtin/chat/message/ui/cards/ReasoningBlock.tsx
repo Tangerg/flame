@@ -7,7 +7,7 @@ import { vocab } from "@flame/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
-import { face, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
+import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { messageStyles as ms } from "../messageStyles";
 
 const FOLLOW_SLACK = 24;
@@ -35,13 +35,8 @@ const rb = stylex.create({
   },
   glimpseLine: { flexShrink: 0, whiteSpace: "nowrap" },
   aside: {
-    marginLeft: space.s2,
-    borderLeftWidth: "var(--control-edge-width)",
-    borderLeftStyle: "solid",
-    borderLeftColor: surface.field,
     marginTop: space.s3,
     paddingBottom: space.s1_5,
-    paddingLeft: space.s3_5,
   },
   scroller: {
     position: "relative",

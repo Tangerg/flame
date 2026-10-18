@@ -394,7 +394,6 @@
   --seam-wash: color-mix(in oklab, var(--shadow-cast) 20%, transparent);
   --boundary-emphasis: color-mix(in oklab, var(--color-text) 28%, var(--color-border-soft));
   --content-max: 768px;
-  --content-max-wide: 1024px;
   --reading-column-max: calc(var(--content-max) + 2 * var(--reading-gutter-wide));
   --reading-rail-width: 176px;
 }
@@ -457,8 +456,8 @@ body {
   user-select: none;
   -webkit-user-select: none;
 }
-.msg-content,
-.msg-content * {
+.msg-scroll-viewport,
+.msg-content {
   user-select: text;
   -webkit-user-select: text;
 }

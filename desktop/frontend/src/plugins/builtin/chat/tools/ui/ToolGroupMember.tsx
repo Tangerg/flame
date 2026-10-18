@@ -7,7 +7,7 @@ import { headlineToolMetaItem, toolCardModel } from "../application/toolCardMode
 import { toolCallIconFor } from "@/plugins/builtin/agent/public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "@/ui/agent";
-import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { toolMetaInk } from "./toolMetaInk";
 import { ToolFailureLine, ToolStatusMarks, useToolRowActions } from "./ToolRowParts";
 
@@ -33,7 +33,7 @@ const gm = stylex.create({
   },
   actions: { display: "flex", flexShrink: 0, alignItems: "center" },
   rowExpanded: { color: color.fg },
-  meta: { flexShrink: 0 },
+  meta: { flexShrink: 0, fontVariantNumeric: "tabular-nums" },
 });
 
 export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
@@ -51,29 +51,22 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
           type="button"
           aria-expanded={expanded}
           onClick={onToggleExpand}
-          className={stylex.props(gm.row, expanded && gm.rowExpanded).className}
+          className={stylex.props(gm.row, typeStep.uiSm, expanded && gm.rowExpanded).className}
         >
           <Icon
             name={toolCallIconFor(tool)}
             size="xs"
-            className={stylex.props(vocab.hold, vocab.muted).className}
+            className={stylex.props(vocab.hold, vocab.faint).className}
           />
-          <ToolText value={model.intent.label} styles={[vocab.hold, gm.inherit, typeStep.uiMd]} />
-          {model.detail && (
-            <ToolText value={model.detail} styles={[vocab.fill, vocab.faint, typeStep.uiMd]} />
-          )}
+          <ToolText value={model.intent.label} styles={[vocab.hold, gm.inherit]} />
+          {model.detail && <ToolText value={model.detail} styles={[vocab.fill, vocab.faint]} />}
           {model.diffStat && (
             <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />
           )}
           {headline && (
             <span
               data-tone={headline.tone}
-              {...stylex.props(
-                gm.meta,
-                toolMetaInk.member[headline.tone],
-                typeStep.uiXs,
-                face.mono,
-              )}
+              {...stylex.props(gm.meta, toolMetaInk.member[headline.tone], typeStep.uiXs)}
             >
               {headline.label}
             </span>

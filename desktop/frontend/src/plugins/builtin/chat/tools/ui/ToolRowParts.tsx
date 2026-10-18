@@ -25,7 +25,7 @@ const styles = stylex.create({
   openSlot: { flexShrink: 0, width: "var(--control-height-xs)" },
   failureLine: {
     marginTop: space.s0_5,
-    marginLeft: "calc(var(--spacing) * 5.5)",
+    marginLeft: space.s6,
     overflowWrap: "anywhere",
     color: color.fg,
   },
