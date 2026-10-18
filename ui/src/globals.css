@@ -262,24 +262,64 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   border-inline-start: 2px solid var(--color-border);
   color: var(--color-text-muted);
 }
-[data-slot="document-body"] :not(pre) > code {
-  background: var(--color-sunken);
+:where(
+  [data-slot="document-body"] :not(pre) > code,
+  [data-slot="inline-code"]
+) {
+  display: inline;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding: 0.125em 0.375em;
   border-radius: var(--shape-xs);
-  padding-inline: calc(var(--spacing) * 1);
+  background: color-mix(in oklab, var(--color-text) 5.5%, transparent);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-code);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
-[data-slot="document-body"] table {
-  width: 100%;
-  font-size: var(--fs-ui-sm);
+:where([data-slot="document-body"] table, table[data-slot="prose-table"]) {
+  width: fit-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+  font-size: var(--fs-prose);
+  line-height: var(--leading-prose);
+  text-align: start;
 }
-[data-slot="document-body"] :is(td, th) {
-  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
-  border-block-end: var(--hairline-width) solid var(--color-border);
+:where([data-slot="document-body"], [data-slot="prose-table"]) :is(th, td) {
+  padding-inline-end: calc(var(--fs-prose) * 1.5);
   text-align: start;
   vertical-align: top;
+  white-space: normal;
 }
-[data-slot="document-body"] th {
-  font-weight: var(--fw-medium);
-  background: var(--color-sunken);
+:where([data-slot="document-body"], [data-slot="prose-table"])
+  :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+:where([data-slot="document-body"], [data-slot="prose-table"]) th {
+  padding-block: calc(var(--fs-prose) * 0.375) calc(var(--fs-prose) * 0.5);
+  border-block-end: 1px solid var(--color-border-soft);
+  color: var(--color-text);
+  font-weight: var(--fw-semibold);
+  overflow-wrap: normal;
+  vertical-align: bottom;
+}
+:where([data-slot="document-body"], [data-slot="prose-table"]) td {
+  padding-block: calc(var(--fs-prose) * 0.625);
+  overflow-wrap: break-word;
+}
+:where([data-slot="document-body"], [data-slot="prose-table"]) td code {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+:where([data-slot="document-body"], [data-slot="prose-table"])
+  tbody
+  tr:not(:last-child)
+  td {
+  border-block-end: 1px solid var(--color-divider);
 }
 [data-slot="button"] svg:not([data-glyph="full"]) {
   opacity: var(--glyph-step);

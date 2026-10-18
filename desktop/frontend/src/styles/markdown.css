@@ -244,47 +244,6 @@
   opacity: 1;
   pointer-events: auto;
 }
-.md table {
-  border-collapse: separate;
-  border-spacing: 0;
-  table-layout: auto;
-  font-size: var(--fs-prose);
-  line-height: var(--leading-prose);
-  width: fit-content;
-  text-align: start;
-}
-.md table th,
-.md table td {
-  padding-inline-end: calc(var(--md-space) * 6);
-  text-align: start;
-  vertical-align: top;
-  white-space: normal;
-}
-.md table th {
-  padding-block: calc(var(--md-space) * 1.5) calc(var(--md-space) * 2);
-  border-bottom: 1px solid var(--color-border-soft);
-  color: var(--color-text);
-  font-weight: 600;
-  font-size: inherit;
-  line-height: var(--leading-prose);
-  overflow-wrap: normal;
-  vertical-align: bottom;
-}
-.md table td {
-  padding-block: calc(var(--md-space) * 2.5);
-  overflow-wrap: break-word;
-}
-.md table td code {
-  overflow-wrap: break-word;
-  word-break: normal;
-}
-.md table tbody tr:not(:last-child) td {
-  border-bottom: 1px solid var(--color-divider);
-}
-.md table th:last-child,
-.md table td:last-child {
-  padding-inline-end: 0;
-}
 .md table .md-table-cell-numeric {
   min-width: calc(3ch + 24px);
   white-space: nowrap;
@@ -294,20 +253,6 @@
   min-width: max-content;
 }
 
-.md code {
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-  font-family: var(--font-mono);
-  font-size: var(--fs-code);
-  padding: 0.125em 0.375em;
-  background: color-mix(in oklab, var(--color-text) 5.5%, transparent);
-  border-radius: var(--shape-xs);
-  color: var(--color-text);
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  letter-spacing: 0;
-  display: inline;
-}
 .md strong {
   color: var(--color-text-bright);
   font-weight: 600;

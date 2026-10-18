@@ -1155,9 +1155,11 @@ for (const theme of ["light", "dark"] as const) {
     );
     expect(sizes[0]).toBeGreaterThan(sizes[1]!);
     expect(sizes[1]).toBeGreaterThanOrEqual(sizes[2]!);
-    await expect(document.getByRole("region", { name: /Code block/ })).toContainText(
-      'const outcome = "recorded";',
-    );
+    const source = document.getByRole("region", { name: /Code block/ });
+    await expect(document.getByText("ts", { exact: true })).toBeVisible();
+    await expect(source).toHaveText('const outcome = "recorded";');
+    await source.focus();
+    await expect(source).toBeFocused();
     const accessibility = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
       .analyze();

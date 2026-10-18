@@ -28,7 +28,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
   return (
     <div className="md-table-container" data-markdown-table tabIndex={-1}>
       <div className="md-table-scroller">
-        <table ref={tableRef} dir="auto">
+        <table ref={tableRef} dir="auto" data-slot="prose-table">
           {children}
         </table>
       </div>
@@ -51,7 +51,9 @@ export function MarkdownTable({ markdownSource, children }: Props) {
           }
         >
           <div className="md md-table-preview">
-            <table dir="auto">{children}</table>
+            <table dir="auto" data-slot="prose-table">
+              {children}
+            </table>
           </div>
         </LightboxDialog>
         <IconButton

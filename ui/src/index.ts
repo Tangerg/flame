@@ -23,6 +23,7 @@ export { Segmented, type SegmentedOption } from "./segmented";
 export { ActionMenu, type ActionMenuItem } from "./action-menu";
 
 export * from "./control-surface";
+export { ARTIFACT_SURFACE } from "./artifact-surface";
 export { HoverTrack, ItemHighlight, useHoverTrackItem } from "./item-highlight";
 export { selectionTransition } from "./selection-motion";
 export { Switch } from "./switch";

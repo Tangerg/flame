@@ -53,12 +53,18 @@ function renderTokens(tokens: Token[]): ReactNode[] {
         );
       case "codespan":
         return <code key={key}>{(token as Tokens.Codespan).text}</code>;
-      case "code":
+      case "code": {
+        const value = token as Tokens.Code;
         return (
-          <CodeBlock key={key} label={`Code block ${key + 1}`}>
-            {(token as Tokens.Code).text}
+          <CodeBlock
+            key={key}
+            label={`Code block ${key + 1}`}
+            language={value.lang || undefined}
+          >
+            {value.text}
           </CodeBlock>
         );
+      }
       case "link": {
         const value = token as Tokens.Link;
         return (
@@ -103,7 +109,12 @@ function renderTokens(tokens: Token[]): ReactNode[] {
               <thead>
                 <tr>
                   {value.header.map((cell, index) => (
-                    <th key={index}>{renderTokens(cell.tokens)}</th>
+                    <th
+                      key={index}
+                      style={{ textAlign: value.align[index] ?? undefined }}
+                    >
+                      {renderTokens(cell.tokens)}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -111,7 +122,12 @@ function renderTokens(tokens: Token[]): ReactNode[] {
                 {value.rows.map((row, index) => (
                   <tr key={index}>
                     {row.map((cell, column) => (
-                      <td key={column}>{renderTokens(cell.tokens)}</td>
+                      <td
+                        key={column}
+                        style={{ textAlign: value.align[column] ?? undefined }}
+                      >
+                        {renderTokens(cell.tokens)}
+                      </td>
                     ))}
                   </tr>
                 ))}

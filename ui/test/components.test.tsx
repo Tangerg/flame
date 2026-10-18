@@ -5,6 +5,7 @@ import { createRef, useState } from "react";
 import { Brain } from "@flame/icons/react";
 import {
   Button,
+  CodeBlock,
   Disclosure,
   DiffTable,
   Checkbox,
@@ -27,6 +28,31 @@ import {
 import { vocab } from "../dist/vocabulary.js";
 
 afterEach(cleanup);
+describe("recorded code", () => {
+  it("keeps the caption outside the literal keyboard-scrollable source", () => {
+    const source =
+      '<script>window.example = "literal"</script>\n  <img src="recorded">';
+    const { rerender } = render(
+      <CodeBlock label="Captured source" language="html">
+        {source}
+      </CodeBlock>,
+    );
+    const region = screen.getByRole("region", { name: "Captured source" });
+    expect(region.tagName).toBe("PRE");
+    expect(region.tabIndex).toBe(0);
+    expect(region.textContent).toBe(source);
+    expect(region.contains(screen.getByText("html", { exact: true }))).toBe(
+      false,
+    );
+    expect(region.querySelector("script, img")).toBeNull();
+    rerender(<CodeBlock label="Captured source">{source}</CodeBlock>);
+    expect(screen.queryByText("html", { exact: true })).toBeNull();
+    expect(
+      screen.getByRole("region", { name: "Captured source" }).textContent,
+    ).toBe(source);
+  });
+});
+
 describe("modal form ownership", () => {
   it("keeps body fields and footer submission in the same native form", async () => {
     const submit = vi.fn((event: FormEvent<HTMLFormElement>) =>

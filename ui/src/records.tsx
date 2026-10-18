@@ -12,7 +12,7 @@ import {
   weight,
 } from "./tokens.stylex";
 import { CARD_SURFACE } from "./control-surface";
-import { WELL_SURFACE } from "./well-surface";
+import { ARTIFACT_SURFACE } from "./artifact-surface";
 import { Icon, type IconGlyph } from "./font-scale";
 import { IconMark } from "./icon-mark";
 
@@ -150,7 +150,17 @@ const styles = stylex.create({
     fontWeight: weight.medium,
     fontVariantNumeric: "tabular-nums",
   },
+  artifact: { minWidth: 0, maxWidth: "100%", overflow: "hidden" },
+  codeCaption: {
+    paddingInline: space.s3,
+    paddingBlockStart: space.s2,
+    paddingBlockEnd: space.s0_5,
+    color: color.fgFaint,
+    fontFamily: "var(--font-sans)",
+    overflowWrap: "anywhere",
+  },
   code: {
+    margin: 0,
     minWidth: 0,
     maxWidth: "100%",
     maxHeight: "min(28rem,60vh)",
@@ -158,7 +168,12 @@ const styles = stylex.create({
     overscrollBehavior: "contain",
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
+    paddingInline: space.s3,
+    paddingBlock: space.s3,
+    fontFamily: "var(--font-mono)",
+    lineHeight: leading.relaxed,
   },
+  codeAfterCaption: { paddingBlockStart: space.s0_5 },
   image: {
     maxWidth: "100%",
     maxHeight: "20rem",
@@ -375,19 +390,31 @@ export function Stats({
 export function CodeBlock({
   children,
   label,
+  language,
 }: {
   children: ReactNode;
   label: string;
+  language?: string;
 }) {
   return (
-    <pre
-      role="region"
-      aria-label={label}
-      tabIndex={0}
-      {...stylex.props(WELL_SURFACE.face, styles.code, type.code)}
-    >
-      <code>{children}</code>
-    </pre>
+    <div {...stylex.props(ARTIFACT_SURFACE.face, styles.artifact)}>
+      {language && (
+        <div {...stylex.props(styles.codeCaption, type.uiXs)}>{language}</div>
+      )}
+      <pre
+        role="region"
+        aria-label={label}
+        tabIndex={0}
+        data-focus-inset=""
+        {...stylex.props(
+          styles.code,
+          type.code,
+          Boolean(language) && styles.codeAfterCaption,
+        )}
+      >
+        <code>{children}</code>
+      </pre>
+    </div>
   );
 }
 export function EvidenceImage({ src, alt }: { src: string; alt: string }) {

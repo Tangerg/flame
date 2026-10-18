@@ -74,6 +74,13 @@ content-driven columns that wrap with the available width;
 Desktop and portable views. `Form`, `RecordForm`, `FormSection`, `FormRow`, `FormField` and `FormGroup` provide responsive form grouping and visible
 native labels; `DocumentBody` styles already-parsed semantic document content.
 These components own presentation only and do not query or advance product facts.
+`CodeBlock` frames literal recorded source with the same `ARTIFACT_SURFACE` skin
+as the transcript's code and diagram artifacts. Its named `pre` remains the
+bounded keyboard scroll region; an optional recorded language caption stays
+outside that source. Input and output wells retain their own sunken surface.
+`DocumentBody` supplies the prose inline-code and table styles. The shared
+`inline-code` and `prose-table` data slots let other semantic renderers consume
+those same reading roles, including table lightboxes, without a second skin.
 `IconMark` owns the decorative identity frame used by record summaries, empty
 states and modal headers. Its emphasis surface derives from the host accent;
 changing the accent recolors these marks and selected rows together.

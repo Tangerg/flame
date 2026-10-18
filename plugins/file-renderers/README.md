@@ -21,6 +21,10 @@ its license is retained in the namespace resources.
 The host file header owns file identity, range metadata and navigation. The
 renderer supplies authored document content within the shared content measure,
 without repeating that introduction.
+Code fences retain their captured language info as a text caption outside the
+literal source. Code, inline code and tables consume the same shared reading
+roles as the transcript while file parsing and content trust stay here.
+Parsed table column alignment is projected on both header and body cells.
 
 Build shared UI dependencies and rebuild or check the component from the repository:
 

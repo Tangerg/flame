@@ -1,13 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
-import { radius, surface } from "@flame/ui/tokens.stylex";
+import { ARTIFACT_SURFACE } from "@flame/ui";
 
-export const artifactFrame = stylex.create({
-  frame: {
-    marginBlock: "calc(var(--md-space) * 5)",
-    borderRadius: radius.lg,
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    borderColor: surface.field,
-    backgroundColor: surface.card,
-  },
+const transcript = stylex.create({
+  margin: { marginBlock: "calc(var(--md-space) * 5)" },
 });
+
+export const artifactFrame = {
+  frame: [ARTIFACT_SURFACE.face, transcript.margin],
+} as const;

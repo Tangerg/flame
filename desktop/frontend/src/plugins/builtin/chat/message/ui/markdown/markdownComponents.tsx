@@ -206,7 +206,7 @@ const sharedMarkdownComponents: Components = {
     const match = /language-([\w+-]+)/.exec(cls);
     if (!match) {
       return (
-        <code className={cls} dir="ltr">
+        <code className={cls} dir="ltr" data-slot="inline-code">
           {children}
         </code>
       );

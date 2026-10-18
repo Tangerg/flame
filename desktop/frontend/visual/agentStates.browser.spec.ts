@@ -35,6 +35,11 @@ const GPT_5_6_SOL_CAPABILITIES =
   "1.1M context · text + image + pdf input · Reasoning none / low / medium / high / xhigh / max · 922k max input · 128k max output · text output · Tools · Structured output · Knowledge 2026-02-16T00:00:00Z";
 const QWEN_MT_PLUS_CAPABILITIES = "32.8k context · text input · text output";
 
+function clipboardPermissions(browserName: string) {
+  // WebKit does not expose a separate clipboard-write permission.
+  return browserName === "webkit" ? ["clipboard-read"] : ["clipboard-read", "clipboard-write"];
+}
+
 test("every declared state carries an expected attention", () => {
   expect(Object.keys(EXPECTED_ATTENTION).sort()).toEqual([...VISUAL_AGENT_STATES].sort());
 });
@@ -805,8 +810,12 @@ async function expectRevealOnHover(target: Locator, revealed: Locator): Promise<
   }).toPass();
 }
 
-test("code blocks stay readable and expose the wrap control", async ({ context, page }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+test("code blocks stay readable and expose the wrap control", async ({
+  context,
+  page,
+  browserName,
+}) => {
+  await context.grantPermissions(clipboardPermissions(browserName), {
     origin: "http://127.0.0.1:4174",
   });
   await page.goto("/visual/?fixture=agent&theme=light&state=long-content");
@@ -925,8 +934,12 @@ test("reading artifacts share a frame with aligned captions and source", async (
 });
 
 for (const theme of ["light", "dark"] as const) {
-  test(`Mermaid is a semantic, copyable, zoomable artifact ${theme}`, async ({ context, page }) => {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+  test(`Mermaid is a semantic, copyable, zoomable artifact ${theme}`, async ({
+    context,
+    page,
+    browserName,
+  }) => {
+    await context.grantPermissions(clipboardPermissions(browserName), {
       origin: "http://127.0.0.1:4174",
     });
     await page.goto(`/visual/?fixture=agent&theme=${theme}&state=long-content`);
@@ -997,8 +1010,9 @@ for (const theme of ["light", "dark"] as const) {
   test(`tables keep semantic alignment and copy their Markdown source ${theme}`, async ({
     context,
     page,
+    browserName,
   }) => {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    await context.grantPermissions(clipboardPermissions(browserName), {
       origin: "http://127.0.0.1:4174",
     });
     await page.goto(`/visual/?fixture=agent&theme=${theme}&state=long-content`);
