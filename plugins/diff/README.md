@@ -14,6 +14,9 @@ meaning. Host target/focus replacement retires the render instance and joins SDK
 The compact toolbar keeps comparison, layout, refresh and global folding available
 while the report scrolls. File summaries show one complete path with compact status
 and count metadata; directory separators provide natural wrapping points.
+Each file heading stays below the controls while its body scrolls when the reading
+viewport has room for the complete heading and two lines of body. Taller headings
+remain in normal flow. Focus clearance uses the same measured heading height.
 
 The generic material key `diff` participates in the existing workspace navigation
 consumer. Absent/competing candidates open the catalogue. Disablement/uninstall

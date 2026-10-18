@@ -363,6 +363,7 @@ export function visualWorkspaceRuntime(
   state: VisualWorkspaceState,
   requestedAgentState?: VisualAgentState,
   reviewFiles?: number,
+  reviewPath?: string,
 ) {
   const agentState =
     requestedAgentState ??
@@ -378,7 +379,16 @@ export function visualWorkspaceRuntime(
     state === "dock-feature-off"
       ? { ...VISUAL_CAPABILITIES, features: { git: VISUAL_CAPABILITIES.features!.git! } }
       : VISUAL_CAPABILITIES;
-  const review = reviewFiles === undefined ? REVIEW_DIFF : scaledReview(reviewFiles);
+  const capturedReview = reviewFiles === undefined ? REVIEW_DIFF : scaledReview(reviewFiles);
+  const review =
+    reviewPath && capturedReview.files
+      ? {
+          ...capturedReview,
+          files: capturedReview.files.map((file, index) =>
+            index === 0 ? { ...file, path: reviewPath } : file,
+          ),
+        }
+      : capturedReview;
   const readDiff = async (signal?: AbortSignal): Promise<Diff> => {
     if (state === "dock-loading") return pending<Diff>(signal);
     if (state === "dock-error") throw new Error("Visual fixture could not load the workspace diff");

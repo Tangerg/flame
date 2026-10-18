@@ -198,6 +198,7 @@ async function fixtureNode(): Promise<ReactNode> {
         ? (query.get("agent-state") as VisualAgentState)
         : undefined,
       requestedReviewFiles,
+      query.get("review-path") ?? undefined,
     );
     const runtimeClient = await installVisualRuntimeClient(
       runtimeInput.snapshot,

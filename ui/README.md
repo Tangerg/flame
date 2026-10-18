@@ -59,8 +59,14 @@ record identities retain the main text role within each group.
 Management filters use the shared `lg` size for both search and selection; compact
 workbench controls keep their own smaller roles.
 `RecordHeading` groups identity, state and the main action. `Disclosure` owns a
-full-width expanding panel with an optional adjacent action slot. `ActionMenu` owns
-secondary action presentation, keyboard behavior and focus return; each command
+full-width expanding panel with an optional adjacent action slot. Its optional
+`stickyHeader` keeps that same complete summary beneath the enclosing Panel's
+controls in a bounded scroll viewport. It returns to normal flow when fewer than
+two body lines and their leading inset would remain below the header.
+The measured header height also keeps focused body content clear; the header does
+not add its own height to its focus offset. Header, viewport and controls resizing
+update this local presentation without tracking the current file or scroll position.
+`ActionMenu` owns secondary action presentation, keyboard behavior and focus return; each command
 receives its actual trigger as the opener for an inline editor. `triggerContent`
 replaces the default ellipsis with a text trigger for named action menus.
 `Facts` keeps labels with their values and wraps complete pairs according to their

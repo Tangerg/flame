@@ -112,6 +112,7 @@ function DiffReport({
           {matching.map((file) => (
             <Disclosure
               variant="row"
+              stickyHeader
               key={file.path}
               ref={file.path === snapshot.focusPath ? focused : undefined}
               id={file.path === snapshot.focusPath ? focusId : undefined}

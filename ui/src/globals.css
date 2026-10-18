@@ -594,7 +594,8 @@ html[data-flame-ui-theme-paint] * {
 
 [data-slot="panel-body"] :where(:focus, [id]) {
   scroll-margin-block-start: calc(
-    var(--panel-controls-height, 0px) + var(--layout-control-gap)
+    var(--panel-controls-height, 0px) + var(--disclosure-header-height, 0px) +
+      var(--layout-control-gap)
   );
 }
 

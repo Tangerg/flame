@@ -4,11 +4,13 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   type ComponentPropsWithRef,
   type ReactNode,
 } from "react";
 import { CARD_SURFACE } from "./control-surface";
+import { PanelLayoutContext } from "./panel-layout";
 import { clsx } from "clsx";
 import {
   color,
@@ -226,8 +228,8 @@ export function Panel({
   const keepBodyFocusVisible = useCallback((target: Element | null) => {
     const panel = panelRef.current;
     const controls = controlsRef.current;
-    if (!panel || !controls || !target || !bodyRef.current?.contains(target))
-      return;
+    if (!panel || !target || !bodyRef.current?.contains(target)) return;
+    let visibleTop = 0;
     let visibleBottom = panel.ownerDocument.documentElement.clientHeight;
     for (
       let parent = panel.parentElement;
@@ -235,6 +237,7 @@ export function Panel({
       parent = parent.parentElement
     ) {
       if (getComputedStyle(parent).overflowY !== "visible") {
+        visibleTop = Math.max(visibleTop, parent.getBoundingClientRect().top);
         visibleBottom = Math.min(
           visibleBottom,
           parent.getBoundingClientRect().bottom,
@@ -242,13 +245,26 @@ export function Panel({
       }
     }
     const bounds = target.getBoundingClientRect();
+    const stickyHeaderHeight =
+      Number.parseFloat(
+        getComputedStyle(target).getPropertyValue("--disclosure-header-height"),
+      ) || 0;
     if (
-      bounds.top < controls.getBoundingClientRect().bottom ||
+      bounds.top <
+        (controls?.getBoundingClientRect().bottom ?? visibleTop) +
+          stickyHeaderHeight ||
       bounds.bottom > visibleBottom
     ) {
       target.scrollIntoView({ block: "start", inline: "nearest" });
     }
   }, []);
+  const panelLayout = useMemo(
+    () => ({
+      controlsRef: hasControls ? controlsRef : null,
+      keepBodyFocusVisible,
+    }),
+    [hasControls, keepBodyFocusVisible],
+  );
   useLayoutEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
@@ -294,7 +310,9 @@ export function Panel({
           onFocus={(event) => keepBodyFocusVisible(event.target)}
           {...stylex.props(styles.body)}
         >
-          {children}
+          <PanelLayoutContext value={panelLayout}>
+            {children}
+          </PanelLayoutContext>
         </div>
       </div>
     </section>
