@@ -58,6 +58,12 @@ known zeroes and unrecorded counts remain quiet and distinct. A count keeps its
 sign with its digits, and the pair wraps between counts when constrained.
 `RecordSummary` owns the optional identity mark, copy and state alignment.
 `RecordBody` preserves recorded line breaks and allows selecting its complete text.
+`PanelHost` marks an embedded panel whose surrounding chrome already shows the
+view identity. Dock views use compact shared insets and quieter supporting copy;
+their `PanelHeader` title stays in the accessible outline without repeating a
+display heading. Context and descriptions remain complete and visible. Independent
+pages keep their display title and page spacing. The host selects this composition;
+portable components do not inspect viewport width or create another placement state.
 `FilterBar` owns the control zone in three meanings, in reading order: the
 growing search column, the page `actions` beside it at the inline end, and the
 refining filters as `children`. Search and actions share a row while they fit and

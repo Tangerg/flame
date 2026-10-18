@@ -1,6 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import {
   useId,
+  createContext,
+  useContext,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -47,6 +49,10 @@ const styles = stylex.create({
       "@container (max-width: 600px)": layout.compactGutter,
     },
     paddingBlock: layout.pageBlock,
+  },
+  hostedContent: {
+    gap: layout.contentGap,
+    paddingBlock: layout.compactGutter,
   },
   header: {
     display: "grid",
@@ -166,6 +172,7 @@ const styles = stylex.create({
   },
   fieldLabel: { color: color.fgSoft, fontWeight: weight.medium },
   context: { marginTop: space.s2, minWidth: 0 },
+  hostedContext: { marginTop: 0 },
   section: { display: "grid", gap: layout.contentGap, minWidth: 0 },
   sectionHeading: {
     margin: 0,
@@ -228,6 +235,12 @@ const styles = stylex.create({
   formMainActions: { marginInlineStart: "auto", justifyContent: "flex-end" },
 });
 
+const PanelHostContext = createContext(false);
+
+export function PanelHost({ children }: { children: ReactNode }) {
+  return <PanelHostContext value={true}>{children}</PanelHostContext>;
+}
+
 export function Panel({
   children,
   label,
@@ -239,6 +252,7 @@ export function Panel({
   header?: ReactNode;
   controls?: ReactNode;
 }) {
+  const hosted = useContext(PanelHostContext);
   const panelRef = useRef<HTMLElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -324,7 +338,7 @@ export function Panel({
       aria-label={label}
       {...stylex.props(styles.panel, type.uiMd)}
     >
-      <div {...stylex.props(styles.content)}>
+      <div {...stylex.props(styles.content, hosted && styles.hostedContent)}>
         {header}
         {hasControls && (
           <div
@@ -362,13 +376,33 @@ export function PanelHeader({
   context?: ReactNode;
   size?: PanelTitleSize;
 }) {
+  const hosted = useContext(PanelHostContext);
+  const headingOnly = !description && !context;
+  const header = stylex.props(styles.header);
   return (
-    <header {...stylex.props(styles.header)}>
-      <PanelTitle size={size}>{title}</PanelTitle>
+    <header
+      data-slot="panel-header"
+      {...header}
+      className={clsx(header.className, hosted && headingOnly && "sr-only")}
+    >
+      <PanelTitle
+        size={size}
+        className={hosted && !headingOnly ? "sr-only" : undefined}
+      >
+        {title}
+      </PanelTitle>
       {description && (
-        <p {...stylex.props(styles.description, type.uiMd)}>{description}</p>
+        <p
+          {...stylex.props(styles.description, hosted ? type.uiSm : type.uiMd)}
+        >
+          {description}
+        </p>
       )}
-      {context && <div {...stylex.props(styles.context)}>{context}</div>}
+      {context && (
+        <div {...stylex.props(styles.context, hosted && styles.hostedContext)}>
+          {context}
+        </div>
+      )}
     </header>
   );
 }
@@ -420,20 +454,19 @@ export function FilterBar({
 export function PanelTitle({
   children,
   size = "sm",
+  className,
   ...props
 }: ComponentPropsWithRef<"h1"> & { size?: PanelTitleSize }) {
+  const styled = stylex.props(
+    styles.title,
+    size === "lg"
+      ? type.displayLg
+      : size === "md"
+        ? type.displayMd
+        : type.displaySm,
+  );
   return (
-    <h1
-      {...props}
-      {...stylex.props(
-        styles.title,
-        size === "lg"
-          ? type.displayLg
-          : size === "md"
-            ? type.displayMd
-            : type.displaySm,
-      )}
-    >
+    <h1 {...props} {...styled} className={clsx(styled.className, className)}>
       {children}
     </h1>
   );

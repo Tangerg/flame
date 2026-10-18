@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { Activity, Fragment, useCallback, useState, type ReactNode } from "react";
+import { PanelHost } from "@flame/ui/panel";
 import { dockWidthRow } from "./dockWidth";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import { CatalogPicker, knownIconName, type CatalogPickerGroup } from "@/ui";
@@ -273,7 +274,9 @@ export function ChatPanel({ onSend }: Props) {
                 {ownedDockViewIds.map((viewId) => (
                   <Activity key={viewId} mode={viewId === dock.activeViewId ? "visible" : "hidden"}>
                     <div data-dock-view-id={viewId} {...stylex.props(sh.overlay)}>
-                      <WorkspaceViewBody viewId={viewId} />
+                      <PanelHost>
+                        <WorkspaceViewBody viewId={viewId} />
+                      </PanelHost>
                     </div>
                   </Activity>
                 ))}
