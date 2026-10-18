@@ -36,7 +36,7 @@ const styles = stylex.create({
       ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": "currentColor",
     },
   },
-  inline: {},
+  inline: { borderRadius: radius.sm },
   row: {
     width: "100%",
     minHeight: "var(--control-height-sm)",

@@ -62,6 +62,12 @@ for (const theme of ["light", "dark"]) {
             exact: true,
           }),
         ),
+        inline: await shape(
+          page.locator('[data-atom="text-button"]').getByRole("button", {
+            name: "Muted",
+            exact: true,
+          }),
+        ),
         chip: await shape(chip),
         field: await shape(page.getByRole("textbox", { name: "Empty", exact: true })),
         segmented: await shape(segmented),
@@ -126,6 +132,7 @@ for (const theme of ["light", "dark"]) {
     const readings: {
       card: Awaited<ReturnType<typeof shape>>;
       modal: Awaited<ReturnType<typeof shape>>;
+      image: Awaited<ReturnType<typeof shape>>;
     }[] = [];
     for (const choice of ["Sharp", "Soft"]) {
       await chooseCorners(page, theme, choice);
@@ -148,7 +155,11 @@ for (const theme of ["light", "dark"]) {
 
       await open(page, theme, "fixture=agent&state=running");
       expectRound(await shape(page.getByRole("button", { name: "Stop", exact: true })));
-      readings.push({ card, modal });
+      await open(page, theme, "fixture=agent&state=long-content");
+      const preview = page.getByRole("button", { name: "Inline architecture", exact: true });
+      const image = await shape(preview);
+      expect(image.radius).toBe((await shape(preview.locator("img"))).radius);
+      readings.push({ card, modal, image });
     }
     await test.info().attach("corner-surface-readings", {
       body: JSON.stringify(readings, null, 2),
@@ -156,5 +167,6 @@ for (const theme of ["light", "dark"]) {
     });
     expect(readings[0]!.card.paintedRadius).toBeLessThan(readings[1]!.card.paintedRadius);
     expect(readings[0]!.modal.paintedRadius).toBeLessThan(readings[1]!.modal.paintedRadius);
+    expect(readings[0]!.image.paintedRadius).toBeLessThan(readings[1]!.image.paintedRadius);
   });
 }

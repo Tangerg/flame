@@ -13,10 +13,12 @@ const mi = stylex.create({
     display: "inline-block",
     borderWidth: 0,
     backgroundColor: "transparent",
+    borderRadius: radius.card,
     padding: 0,
     verticalAlign: "top",
     cursor: "zoom-in",
   },
+  paragraph: { marginBlock: 0 },
   wide: { maxWidth: "100%" },
   measured: { maxWidth: "min(100%, 44rem)" },
   image: {
@@ -38,7 +40,7 @@ interface Props {
   src?: string;
   alt?: string;
   title?: string;
-  allowWide?: boolean;
+  layout?: "inline" | "paragraph";
   linked?: boolean;
 }
 
@@ -46,15 +48,16 @@ export function MarkdownImage({
   src = "",
   alt = "",
   title,
-  allowWide = false,
+  layout = "inline",
   linked = false,
 }: Props) {
   const t = useT();
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const unavailable = !isInlineMarkdownImage(src) || failedSource === src;
+  const paragraphStyles = layout === "paragraph" && mi.paragraph;
 
   if (unavailable) {
-    return <UnavailableImage alt={alt} title={title} />;
+    return <UnavailableImage alt={alt} title={title} styles={paragraphStyles} />;
   }
 
   if (linked) {
@@ -66,7 +69,7 @@ export function MarkdownImage({
         onError={() => setFailedSource(src)}
         className={cn(
           "media-edge",
-          stylex.props(mi.image, allowWide ? mi.wide : mi.measured).className,
+          stylex.props(mi.image, layout === "paragraph" ? mi.wide : mi.measured).className,
         )}
       />
     );
@@ -81,7 +84,13 @@ export function MarkdownImage({
           type="button"
           aria-label={previewLabel}
           {...previewProps}
-          className={stylex.props(mi.trigger, allowWide ? mi.wide : mi.measured).className}
+          className={
+            stylex.props(
+              mi.trigger,
+              layout === "paragraph" ? mi.wide : mi.measured,
+              paragraphStyles,
+            ).className
+          }
         >
           <img
             src={src}

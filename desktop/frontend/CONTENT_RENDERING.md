@@ -684,6 +684,12 @@ interface BlockCtx {
 **字段** `mime` `data`。
 **要求** 需**预留盒子**（宽高比）避免加载完成后跳版；点击进灯箱。
 
+Media-only Markdown paragraphs own their outer prose spacing and gallery gaps.
+Their direct children contribute no block margins, including unavailable-image
+placeholders; images embedded in ordinary text retain their inline spacing. Image
+preview triggers share the displayed image's corner token so keyboard focus follows
+its outline.
+
 ---
 
 ### 4.4 思考（Reasoning）
@@ -692,9 +698,9 @@ interface BlockCtx {
 **何时** 模型支持推理且 `features.reasoning` 开启。与助手正文可能交错到达。
 
 ```
-折叠态：  ▸ 思考                                   ← 一行，mono header，不大写
-展开态：  ▾ 思考
-          思考正文（mono，次级色，不作 Markdown 渲染）
+Collapsed: ▸ Thought
+Expanded:  ▾ Thought
+             Markdown content in the shared reading typography with secondary ink
 ```
 
 | 字段 | UI | 位置 |
@@ -703,6 +709,9 @@ interface BlockCtx {
 | `status === "running"` | 进行中脉冲 + 一行当前片段（默认收起） | 折叠头 |
 | `redacted === true` | **只画"已思考"的壳，不画正文** | 折叠头 |
 | 展开状态 | 只由读者决定：默认收起，任何状态变化都不自动打开或关闭 | — |
+
+Markdown owns rendered paragraph, list and line breaks. The reasoning reading
+surface must not preserve the source whitespace a second time.
 
 **陷阱**
 

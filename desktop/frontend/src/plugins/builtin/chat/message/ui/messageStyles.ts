@@ -54,7 +54,7 @@ export const messageStyles = stylex.create({
     lineHeight: leading.body,
     color: color.fg,
   },
-  quote: { whiteSpace: "pre-wrap", lineHeight: leading.prose, color: color.fgMuted },
+  quote: { lineHeight: leading.prose, color: color.fgMuted },
   identity: {
     display: "flex",
     minWidth: 0,

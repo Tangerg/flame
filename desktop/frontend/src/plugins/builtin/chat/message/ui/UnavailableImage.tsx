@@ -27,11 +27,24 @@ const styles = stylex.create({
   status: { color: color.fgMuted },
 });
 
-export function UnavailableImage({ alt = "", title }: { alt?: string; title?: string }) {
+export function UnavailableImage({
+  alt = "",
+  title,
+  styles: callerStyles,
+}: {
+  alt?: string;
+  title?: string;
+  styles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
+}) {
   const t = useT();
   const status = t("message.image.unavailable");
   return (
-    <span role="img" aria-label={alt || status} title={title} {...stylex.props(styles.frame)}>
+    <span
+      role="img"
+      aria-label={alt || status}
+      title={title}
+      {...stylex.props(styles.frame, callerStyles)}
+    >
       <Icon name="image" size="md" />
       <span {...stylex.props(styles.copy)}>
         {alt && <span>{alt}</span>}
