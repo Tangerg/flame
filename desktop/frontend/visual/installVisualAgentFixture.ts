@@ -1,4 +1,5 @@
 import type { FlameClient } from "@flame/runtime-contract/client";
+import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import type { CommandResult, ServerCapabilities } from "@flame/runtime-contract/wire";
 import { createMutationPromise } from "@flame/runtime-contract/client/mutation";
 import { subagentsView } from "@/plugins/builtin/chat/message/subagents";
@@ -99,7 +100,7 @@ function visualSession(
     model: VISUAL_MODELS[0]!.id,
     reasoningEffort: VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel,
     workspace: {
-      path: "/Users/visual/scope",
+      path: VISUAL_WORKSPACE_PATH,
       availability: state === "cwd-missing" ? "missing" : "available",
     },
     time: "2026-07-31T08:00:00.000Z",

@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createFlameClient } from "@flame/runtime-contract/client";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
-import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
+import { VISUAL_CAPABILITIES, VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import { VISUAL_SESSION_ID } from "./agentSessionSnapshots";
 import {
   VISUAL_PACKAGES,
@@ -16,6 +16,7 @@ import {
 import { REVIEW_DIFF } from "./diffSnapshot";
 import { commitVisualInterruptResponses } from "./interruptResponses";
 import { VISUAL_MODELS, VISUAL_PROVIDERS } from "./runtimeSnapshots";
+import { VISUAL_SKILL_PROPOSALS } from "./skillSnapshots";
 
 describe("visual Runtime transport", () => {
   it("serves installed views through validated public reads and the same retained Item facts", async () => {
@@ -79,6 +80,106 @@ describe("visual Runtime transport", () => {
       await expect(workspace.skills.listDiscovered()).rejects.toMatchObject({
         data: { type: "capability_not_negotiated" },
       });
+    } finally {
+      await client.close();
+    }
+  });
+
+  it.each(["approveProposal", "rejectProposal"] as const)(
+    "accepts an opted-in %s through its exact public target and rereads the same isolated page",
+    async (decision) => {
+      const transport = createVisualRuntimeTransport(
+        structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+        VISUAL_CAPABILITIES,
+        async () => REVIEW_DIFF,
+        true,
+      );
+      const send = vi.spyOn(transport, "send");
+      const client = createFlameClient(transport);
+      const otherClient = createFlameClient(
+        createVisualRuntimeTransport(
+          structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+          VISUAL_CAPABILITIES,
+          async () => REVIEW_DIFF,
+          true,
+        ),
+      );
+      try {
+        const workspace = await client.workspaces.open({ path: VISUAL_WORKSPACE_PATH });
+        const before = await workspace.skills.listProposals();
+        const proposal = before.data[0]!;
+        const ref = {
+          scope: proposal.scope,
+          name: proposal.name,
+          revision: proposal.revision,
+        };
+        const command = workspace.skills[decision](ref);
+        await expect(command).resolves.toBeUndefined();
+        const method = `skills.proposals.${decision === "approveProposal" ? "approve" : "reject"}`;
+        const call = send.mock.calls.find(([request]) => request.method === method);
+        expect(call?.[0].params).toEqual({ ...ref, workspace: { path: VISUAL_WORKSPACE_PATH } });
+        expect(call?.[2]?.idempotencyKey).toBe(command.idempotencyKey);
+        expect((await workspace.skills.listProposals()).data).toEqual(before.data.slice(1));
+        expect(before.data).toHaveLength(2);
+        const otherWorkspace = await otherClient.workspaces.open({ path: VISUAL_WORKSPACE_PATH });
+        expect(await otherWorkspace.skills.listProposals()).toEqual(VISUAL_SKILL_PROPOSALS);
+        expect(VISUAL_SKILL_PROPOSALS.data).toHaveLength(2);
+      } finally {
+        await Promise.all([client.close(), otherClient.close()]);
+      }
+    },
+  );
+
+  it.each(["approveProposal", "rejectProposal"] as const)(
+    "keeps %s refused unless the fixture opts in",
+    async (decision) => {
+      const client = createFlameClient(
+        createVisualRuntimeTransport(
+          structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+          VISUAL_CAPABILITIES,
+          async () => REVIEW_DIFF,
+        ),
+      );
+      try {
+        const workspace = await client.workspaces.open({ path: VISUAL_WORKSPACE_PATH });
+        const { scope, name, revision } = VISUAL_SKILL_PROPOSALS.data[0]!;
+        await expect(workspace.skills[decision]({ scope, name, revision })).rejects.toThrow(
+          "Visual Runtime has no response",
+        );
+        expect(await workspace.skills.listProposals()).toEqual(VISUAL_SKILL_PROPOSALS);
+      } finally {
+        await client.close();
+      }
+    },
+  );
+
+  it("refuses a mismatched workspace, scope, name or revision without changing the proposal page", async () => {
+    const client = createFlameClient(
+      createVisualRuntimeTransport(
+        structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+        VISUAL_CAPABILITIES,
+        async () => REVIEW_DIFF,
+        true,
+      ),
+    );
+    try {
+      const workspace = await client.workspaces.open({ path: VISUAL_WORKSPACE_PATH });
+      const anotherWorkspace = await client.workspaces.open({ path: "/Users/visual/another" });
+      const { scope, name, revision } = VISUAL_SKILL_PROPOSALS.data[0]!;
+      const ref = { scope, name, revision };
+      await expect(anotherWorkspace.skills.approveProposal(ref)).rejects.toThrow(
+        "another workspace",
+      );
+      for (const changed of [
+        { ...ref, scope: "user" as const },
+        { ...ref, name: "another-skill" },
+        { ...ref, revision: "f".repeat(64) },
+      ]) {
+        await expect(workspace.skills.rejectProposal(changed)).rejects.toThrow(
+          "no matching proposal revision",
+        );
+      }
+      expect(await workspace.skills.listProposals()).toEqual(VISUAL_SKILL_PROPOSALS);
     } finally {
       await client.close();
     }

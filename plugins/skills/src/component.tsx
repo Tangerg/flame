@@ -1,10 +1,12 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { BookOpen, Refresh } from "@flame/icons/react";
 import {
@@ -78,15 +80,42 @@ function SkillRow({
   item,
   review,
   expanded,
+  focusAfterRemoval,
   children,
 }: {
   item: SkillRecord;
   review: boolean;
   expanded: boolean;
+  focusAfterRemoval: RefObject<HTMLElement | null>;
   children?: ReactNode;
 }) {
+  const element = useRef<HTMLElement>(null);
+  const ownedFocus = useRef(false);
+  useLayoutEffect(() => {
+    const row = element.current;
+    if (!row) return;
+    ownedFocus.current = false;
+    return () => {
+      ownedFocus.current = row.contains(row.ownerDocument.activeElement);
+    };
+  }, []);
+  useEffect(() => {
+    const row = element.current;
+    if (!row) return;
+    return () => {
+      const next = focusAfterRemoval.current;
+      if (
+        !row.isConnected &&
+        ownedFocus.current &&
+        row.ownerDocument.activeElement === row.ownerDocument.body &&
+        next?.isConnected
+      )
+        next.focus();
+    };
+  }, [focusAfterRemoval]);
   return (
     <Disclosure
+      ref={element}
       variant="row"
       defaultOpen={expanded}
       actions={children}
@@ -159,6 +188,7 @@ export function Skills({ context }: { context: ComponentContext }) {
   );
   const [name, setName] = useState<string>();
   const [search, setSearch] = useState("");
+  const searchField = useRef<HTMLElement>(null);
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
   const [command, setCommand] = useState<Command>();
@@ -398,6 +428,7 @@ export function Skills({ context }: { context: ComponentContext }) {
             label="Skill controls"
             search={
               <SearchField
+                ref={searchField}
                 size="lg"
                 id="search"
                 aria-label="Search this catalog"
@@ -542,6 +573,7 @@ export function Skills({ context }: { context: ComponentContext }) {
               item={item}
               review={snapshot!.type === "review"}
               expanded={snapshot!.type === "detail"}
+              focusAfterRemoval={searchField}
             >
               {snapshot!.type === "available" && (
                 <Button

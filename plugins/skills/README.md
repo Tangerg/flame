@@ -18,6 +18,9 @@ business result is created. Unknown acknowledgement retains the original mutatio
 key and retry closure and blocks another command or catalog change until reconciled.
 Cross-window/Runtime-generation journal recovery remains a final integration item.
 
+When an accepted read removes a focused catalog row, focus returns to the catalog
+search. Focus already moved to another control is preserved.
+
 Build `src/component.tsx` through `../build-components.mjs`; the declared namespace
 resource is tracked and exact rebuilds are checked. Disablement or uninstall
 withdraws presentation/resources and preserves all canonical Skill business data.

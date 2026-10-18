@@ -8,6 +8,7 @@ import type {
   ServerCapabilities,
   SetApprovalModeRequest,
   SkillDetailRequest,
+  SkillProposalRef,
 } from "@flame/runtime-contract/wire";
 import {
   VISUAL_MEMORY_PAGE,
@@ -17,6 +18,7 @@ import {
   VISUAL_PLUGIN_PROVIDERS,
 } from "./componentSnapshots";
 import { VISUAL_MODELS, VISUAL_PROVIDERS } from "./runtimeSnapshots";
+import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 
 import discovery from "@flame/runtime-contract/samples/method.discover.resp.json";
 import { visualTrajectory } from "./trajectorySnapshot";
@@ -55,8 +57,6 @@ function resultFor(
     }
     case "skills.library.list":
       return VISUAL_SKILL_LIBRARY;
-    case "skills.proposals.list":
-      return VISUAL_SKILL_PROPOSALS;
     case "providers.list":
       return { data: VISUAL_PROVIDERS };
     case "models.list": {
@@ -103,8 +103,10 @@ export function createVisualRuntimeTransport(
   snapshot: RuntimeAgentSessionSnapshot,
   capabilities: ServerCapabilities,
   readDiff: (signal?: AbortSignal) => Promise<Diff>,
+  acceptSkillProposals = false,
 ): Transport {
   const transport = createMemoryTransport();
+  const skillProposals = structuredClone(VISUAL_SKILL_PROPOSALS);
   const approval: ApprovalModeResult = {
     mode: "balanced",
     modes: [
@@ -118,7 +120,30 @@ export function createVisualRuntimeTransport(
     close: transport.close,
     async send(request, signal, options) {
       signal?.throwIfAborted();
-      const result = await resultFor(request, snapshot, capabilities, approval, readDiff, signal);
+      let result: unknown;
+      if (request.method === "skills.proposals.list") {
+        result = structuredClone(skillProposals);
+      } else if (
+        acceptSkillProposals &&
+        (request.method === "skills.proposals.approve" ||
+          request.method === "skills.proposals.reject")
+      ) {
+        const captured = structuredClone(request.params as SkillProposalRef);
+        if (captured.workspace.path !== VISUAL_WORKSPACE_PATH) {
+          throw new Error("Visual Skills cannot decide a proposal in another workspace");
+        }
+        const index = skillProposals.data.findIndex(
+          (proposal) =>
+            proposal.scope === captured.scope &&
+            proposal.name === captured.name &&
+            proposal.revision === captured.revision,
+        );
+        if (index < 0) throw new Error("Visual Skills has no matching proposal revision");
+        skillProposals.data.splice(index, 1);
+        result = {};
+      } else {
+        result = await resultFor(request, snapshot, capabilities, approval, readDiff, signal);
+      }
       await transport.send(request, signal, options);
       transport.inject({ jsonrpc: "2.0", id: request.id, result });
     },

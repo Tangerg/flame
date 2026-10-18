@@ -142,10 +142,12 @@ async function installVisualRuntimeClient(
   snapshot: RuntimeAgentSessionSnapshot,
   capabilities: ServerCapabilities,
   readDiff: (signal?: AbortSignal) => Promise<Diff>,
+  acceptSkillProposals = false,
 ): Promise<FlameClient> {
-  const client = createFlameClient(createVisualRuntimeTransport(snapshot, capabilities, readDiff), {
-    capabilities: () => capabilities,
-  });
+  const client = createFlameClient(
+    createVisualRuntimeTransport(snapshot, capabilities, readDiff, acceptSkillProposals),
+    { capabilities: () => capabilities },
+  );
   await loadPluginsForTest(
     definePlugin({
       name: "flame.visual.runtime-client",
@@ -201,6 +203,7 @@ async function fixtureNode(): Promise<ReactNode> {
       runtimeInput.snapshot,
       runtimeInput.capabilities,
       runtimeInput.readDiff,
+      query.get("skills-commands") === "accept",
     );
     await installVisualWorkspaceFixture(() => runtimeClient, workspaceState, theme, runtimeInput, {
       pane: settingsPane,

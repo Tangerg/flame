@@ -3,6 +3,7 @@ import type { ServerCapabilities } from "@flame/runtime-contract/wire";
 
 export const VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW = 1_050_000;
 export const VISUAL_CONTEXT_TOKENS = 96_000;
+export const VISUAL_WORKSPACE_PATH = "/Users/visual/scope";
 
 export const VISUAL_NOW = Date.parse("2026-07-31T14:30:00Z");
 
