@@ -8,7 +8,8 @@ import type { ReactNode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
 import "@flame/ui/styles.css";
-import { TooltipProvider, FontScaleProvider } from "@flame/ui";
+import { CodeHighlightProvider, TooltipProvider, FontScaleProvider } from "@flame/ui";
+import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
 import { publishMotionScale } from "@/lib/appearance";
 import { queryClient } from "@/lib/queryClient";
 import { LOCALE, lookupExtensionByKey } from "@/plugins/sdk";
@@ -295,7 +296,9 @@ createRoot(container).render(
   <QueryClientProvider client={queryClient}>
     <MotionConfig reducedMotion="user">
       <FontScaleProvider fontSize={useAppearanceStore.getState().fontSize ?? 14}>
-        <TooltipProvider>{node}</TooltipProvider>
+        <CodeHighlightProvider component={HighlightedCodeSource}>
+          <TooltipProvider>{node}</TooltipProvider>
+        </CodeHighlightProvider>
       </FontScaleProvider>
     </MotionConfig>
   </QueryClientProvider>,

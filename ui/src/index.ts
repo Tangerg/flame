@@ -14,9 +14,12 @@ export * from "./records";
 export {
   CodeBlock,
   CodeCaption,
+  CodeHighlightProvider,
   setCodeWrap,
   useCodeWrap,
   type CodeActionLabels,
+  type CodeSourceComponent,
+  type CodeSourceProps,
 } from "./code-block";
 export { copyText, useCopyFeedback } from "./clipboard";
 export { TaskListItem } from "./task-list-item";

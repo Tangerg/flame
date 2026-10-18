@@ -31,7 +31,9 @@ navigation. The preview body is reserved for authored document content within
 the shared content measure.
 Code fences render through the shared `CodeBlock`: the captured language info is
 a caption outside the literal source, copy writes exactly the captured text, and
-wrapping follows the same page-wide preference as transcript code. Code, inline code and tables consume the same shared reading
+wrapping follows the same page-wide preference as transcript code. Syntax color
+comes from the host's code highlighter; it paints escaped text and never runs or
+loads authored code, and the literal stays visible until it is ready. Code, inline code and tables consume the same shared reading
 roles as the transcript while file parsing and content trust stay here.
 Parsed table column alignment is projected on both header and body cells.
 Paragraphs, headings, nested lists, quotes and rules use the shared `data-prose`

@@ -90,7 +90,14 @@ renderer, including the transcript's highlighted blocks: the recorded language
 (or `text`), a wrap toggle bound to the single page-wide `useCodeWrap` preference,
 and a copy action that writes the exact literal and reports success only after
 the clipboard accepts it. Callers supply localized `CodeActionLabels`; portable
-packages use the English defaults. `copyText` and `useCopyFeedback` are the shared
+packages use the English defaults. Syntax color is a host capability:
+`CodeHighlightProvider` supplies one `CodeSourceComponent`, which React renders
+inside the stable `pre` region as `<Source source language />` and which returns
+the `code` element for exactly that source: escaped highlighted markup when ready,
+the plain literal until then. The copied text is always the original literal;
+without a provider `CodeBlock` renders it plain. The Desktop installs its single Shiki pipeline
+here, so transcript code, captured file previews and recorded evidence share one
+highlighter, cache and scheme-following theme. `copyText` and `useCopyFeedback` are the shared
 plain-text clipboard owner. Input and output wells retain their own sunken surface.
 `DocumentBody` opts into the shared `data-prose` reading grammar: paragraph and
 heading rhythm, nested list markers, quotes, rules, emphasis, inline code and

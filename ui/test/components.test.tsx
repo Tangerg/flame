@@ -12,6 +12,8 @@ import { Brain } from "@flame/icons/react";
 import {
   Button,
   CodeBlock,
+  CodeHighlightProvider,
+  type CodeSourceProps,
   ImageNotice,
   readCalloutMarker,
   setCodeWrap,
@@ -124,6 +126,83 @@ describe("recorded code", () => {
     await act(async () => accepted.resolve());
     expect(screen.getByRole("button", { name: "Copied" })).toBeTruthy();
     vi.unstubAllGlobals();
+  });
+
+  it("paints a host source component for the same literal and keeps copy on the original text", async () => {
+    const writeText = vi
+      .fn<(text: string) => Promise<void>>()
+      .mockResolvedValue();
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const seen: [string, string][] = [];
+    function TintedSource({ source, language }: CodeSourceProps) {
+      seen.push([source, language]);
+      return (
+        <code>
+          <span style={{ color: "#0550ae" }}>{source}</span>
+        </code>
+      );
+    }
+    render(
+      <CodeHighlightProvider component={TintedSource}>
+        <CodeBlock label="Highlighted" language="ts">
+          {"a < b"}
+        </CodeBlock>
+        <CodeBlock label="Untagged">{"plain"}</CodeBlock>
+      </CodeHighlightProvider>,
+    );
+    const highlighted = screen.getByRole("region", { name: "Highlighted" });
+    expect(highlighted.textContent).toBe("a < b");
+    expect(highlighted.querySelector("span")).not.toBeNull();
+    expect(seen).toContainEqual(["a < b", "ts"]);
+    expect(seen).toContainEqual(["plain", "text"]);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Copy code" })[0]!);
+    await act(async () => {});
+    expect(writeText).toHaveBeenCalledWith("a < b");
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps the same source surface when the host highlighter changes under a mounted block", () => {
+    function PlainSource({ source }: CodeSourceProps) {
+      return <code>{source}</code>;
+    }
+    function StatefulSource({ source }: CodeSourceProps) {
+      const [tint] = useState("#0550ae");
+      return (
+        <code>
+          <span style={{ color: tint }}>{source}</span>
+        </code>
+      );
+    }
+    const block = (
+      <CodeBlock label="Mounted" language="go">
+        {"func main() {}"}
+      </CodeBlock>
+    );
+    const view = render(
+      <CodeHighlightProvider component={PlainSource}>
+        {block}
+      </CodeHighlightProvider>,
+    );
+    const region = screen.getByRole("region", { name: "Mounted" });
+
+    view.rerender(
+      <CodeHighlightProvider component={StatefulSource}>
+        {block}
+      </CodeHighlightProvider>,
+    );
+    expect(screen.getByRole("region", { name: "Mounted" })).toBe(region);
+    expect(region.textContent).toBe("func main() {}");
+    expect(region.querySelector("span")).not.toBeNull();
+
+    view.rerender(
+      <CodeHighlightProvider component={PlainSource}>
+        {block}
+      </CodeHighlightProvider>,
+    );
+    expect(screen.getByRole("region", { name: "Mounted" })).toBe(region);
+    expect(region.textContent).toBe("func main() {}");
+    expect(region.querySelector("span")).toBeNull();
   });
 
   it("shares one wrap preference across every block on the page", () => {

@@ -1,4 +1,5 @@
-import { FontScaleProvider } from "@flame/ui";
+import { CodeHighlightProvider, FontScaleProvider } from "@flame/ui";
+import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
 import { useUiFontSize } from "@/lib/appearance";
 import type { AnyPlugin } from "dougong";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -14,7 +15,9 @@ function App({ plugins }: { plugins: AnyPlugin[] }) {
       <MotionConfig reducedMotion="user">
         <PluginProvider plugins={plugins}>
           <FontScaleProvider fontSize={fontSize}>
-            <AppRouter />
+            <CodeHighlightProvider component={HighlightedCodeSource}>
+              <AppRouter />
+            </CodeHighlightProvider>
           </FontScaleProvider>
         </PluginProvider>
       </MotionConfig>

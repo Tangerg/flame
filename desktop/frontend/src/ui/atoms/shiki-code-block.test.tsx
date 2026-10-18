@@ -1,7 +1,8 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getHighlighter } from "@/lib/highlight/shiki";
-import { CodeBlock, setCodeWrap } from "@flame/ui";
+import { CodeBlock, CodeHighlightProvider, setCodeWrap } from "@flame/ui";
+import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
 import { ShikiCodeBlock } from "./shiki-code-block";
 
 const LONG_CODE = Array.from({ length: 30 }, (_, index) => `line ${index + 1}`).join("\n");
@@ -47,6 +48,26 @@ describe("ShikiCodeBlock", () => {
 
     expect(container.querySelector(".shiki-body")?.getAttribute("data-wrap")).toBe("true");
     expect(screen.getByRole("region", { name: "Captured" }).getAttribute("data-wrap")).toBe("true");
+  });
+
+  it("colors captured code through the host highlighter without executing authored markup", async () => {
+    const source =
+      '<script>parent.postMessage("ran")</script>\n<img src="https://tracker.example/a.png">';
+    render(
+      <CodeHighlightProvider component={HighlightedCodeSource}>
+        <CodeBlock label="Captured html" language="html">
+          {source}
+        </CodeBlock>
+      </CodeHighlightProvider>,
+    );
+    const region = screen.getByRole("region", { name: "Captured html" });
+    expect(region.textContent).toBe(source);
+
+    await waitFor(() => expect(region.querySelector("span[style*='color']")).not.toBeNull());
+    expect(
+      Array.from(region.querySelectorAll(".line"), (line) => line.textContent).join("\n"),
+    ).toBe(source);
+    expect(region.querySelector("script, img")).toBeNull();
   });
 
   it("shares the Codex wrap preference across code blocks", async () => {
