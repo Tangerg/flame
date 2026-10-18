@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import {
   useId,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -87,6 +88,7 @@ const styles = stylex.create({
     gap: layout.controlGap,
     minWidth: 0,
   },
+  toolbarActions: { marginInlineStart: "auto" },
   title: {
     margin: 0,
     fontWeight: weight.semibold,
@@ -219,7 +221,34 @@ export function Panel({
 }) {
   const panelRef = useRef<HTMLElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const hasControls = Boolean(controls);
+  const keepBodyFocusVisible = useCallback((target: Element | null) => {
+    const panel = panelRef.current;
+    const controls = controlsRef.current;
+    if (!panel || !controls || !target || !bodyRef.current?.contains(target))
+      return;
+    let visibleBottom = panel.ownerDocument.documentElement.clientHeight;
+    for (
+      let parent = panel.parentElement;
+      parent;
+      parent = parent.parentElement
+    ) {
+      if (getComputedStyle(parent).overflowY !== "visible") {
+        visibleBottom = Math.min(
+          visibleBottom,
+          parent.getBoundingClientRect().bottom,
+        );
+      }
+    }
+    const bounds = target.getBoundingClientRect();
+    if (
+      bounds.top < controls.getBoundingClientRect().bottom ||
+      bounds.bottom > visibleBottom
+    ) {
+      target.scrollIntoView({ block: "start", inline: "nearest" });
+    }
+  }, []);
   useLayoutEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
@@ -229,6 +258,8 @@ export function Panel({
         "--panel-controls-height",
         `${controls?.getBoundingClientRect().height ?? 0}px`,
       );
+      // Controls can resize in the same commit that autofocus places a field.
+      keepBodyFocusVisible(panel.ownerDocument.activeElement);
     };
     measure();
     if (!controls) return;
@@ -238,7 +269,7 @@ export function Panel({
       observer.disconnect();
       panel.style.setProperty("--panel-controls-height", "0px");
     };
-  }, [hasControls]);
+  }, [hasControls, keepBodyFocusVisible]);
   return (
     <section
       ref={panelRef}
@@ -258,19 +289,9 @@ export function Panel({
           </div>
         )}
         <div
+          ref={bodyRef}
           data-slot="panel-body"
-          onFocus={(event) => {
-            const controls = controlsRef.current;
-            const target = event.target;
-            if (!controls || !event.currentTarget.contains(target)) return;
-            if (
-              target.getBoundingClientRect().top <
-              controls.getBoundingClientRect().bottom
-            ) {
-              // Native focus scrolling can leave tall fields behind sticky controls.
-              target.scrollIntoView({ block: "start", inline: "nearest" });
-            }
-          }}
+          onFocus={(event) => keepBodyFocusVisible(event.target)}
           {...stylex.props(styles.body)}
         >
           {children}
@@ -279,18 +300,22 @@ export function Panel({
     </section>
   );
 }
+type PanelTitleSize = "sm" | "md" | "lg";
+
 export function PanelHeader({
   title,
   description,
   context,
+  size = "lg",
 }: {
   title: ReactNode;
   description?: ReactNode;
   context?: ReactNode;
+  size?: PanelTitleSize;
 }) {
   return (
     <header {...stylex.props(styles.header)}>
-      <PanelTitle size="lg">{title}</PanelTitle>
+      <PanelTitle size={size}>{title}</PanelTitle>
       {description && (
         <p {...stylex.props(styles.description, type.uiMd)}>{description}</p>
       )}
@@ -301,13 +326,20 @@ export function PanelHeader({
 export function Toolbar({
   children,
   label,
+  actions,
 }: {
   children: ReactNode;
   label: string;
+  actions?: ReactNode;
 }) {
   return (
     <div role="group" aria-label={label} {...stylex.props(styles.toolbar)}>
       {children}
+      {actions && (
+        <div {...stylex.props(styles.actions, styles.toolbarActions)}>
+          {actions}
+        </div>
+      )}
     </div>
   );
 }
@@ -333,7 +365,7 @@ export function PanelTitle({
   children,
   size = "sm",
   ...props
-}: ComponentPropsWithRef<"h1"> & { size?: "sm" | "md" | "lg" }) {
+}: ComponentPropsWithRef<"h1"> & { size?: PanelTitleSize }) {
   return (
     <h1
       {...props}

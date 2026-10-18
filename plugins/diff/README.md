@@ -11,6 +11,10 @@ cancels the prior read. Failed reads retain the accepted snapshot and label its
 actual comparison. Renames, binary evidence and partial reads retain their canonical
 meaning. Host target/focus replacement retires the render instance and joins SDK I/O.
 
+The compact toolbar keeps comparison, layout, refresh and global folding available
+while the report scrolls. File summaries show one complete path with compact status
+and count metadata; directory separators provide natural wrapping points.
+
 The generic material key `diff` participates in the existing workspace navigation
 consumer. Absent/competing candidates open the catalogue. Disablement/uninstall
 withdraws registrations and package resources without changing files, Git history,

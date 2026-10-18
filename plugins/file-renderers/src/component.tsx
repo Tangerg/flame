@@ -6,7 +6,6 @@ import {
   DocumentBody,
   Metadata,
   Panel,
-  PanelHeader,
   RecordBody,
   ScrollRegion,
 } from "@flame/ui";
@@ -153,14 +152,6 @@ export function Markdown({ context }: { context: ComponentContext }) {
     );
   return (
     <Panel label="Markdown file">
-      <PanelHeader
-        title={<code>{file.path}</code>}
-        description="Captured file content"
-      />
-      <Metadata>
-        {file.workspace?.path ?? "Runtime default workspace"} ·{" "}
-        {file.totalLines} recorded lines
-      </Metadata>
       <DocumentBody>{content}</DocumentBody>
       <Metadata>Links and embedded content are displayed as text.</Metadata>
     </Panel>

@@ -256,6 +256,7 @@ export function Memory({ context }: { context: ComponentContext }) {
   const [status, setStatus] = useState("all");
   const [origin, setOrigin] = useState("all");
   const [pinned, setPinned] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const cwd = scope === "project" ? context.workspace?.ref.path : "";
   const [read, setRead] = useState<Read>({ loading: false });
   const [edit, setEdit] = useState<Edit>();
@@ -351,6 +352,17 @@ export function Memory({ context }: { context: ComponentContext }) {
       ? read.accepted
       : undefined;
   const locked = pending || Boolean(unknown) || context.signal.aborted;
+  const activeFilters =
+    Number(status !== "all") + Number(origin !== "all") + Number(pinned);
+  function clearFilters() {
+    setStatus("all");
+    setOrigin("all");
+    setPinned(false);
+  }
+  function beginEdit(next: Edit) {
+    setFiltersOpen(false);
+    setEdit(next);
+  }
   function observerSignal(): AbortSignal | undefined {
     const owner = lifetime.current;
     if (!owner || owner.signal.aborted || context.signal.aborted) return;
@@ -431,6 +443,7 @@ export function Memory({ context }: { context: ComponentContext }) {
       label="Agent memory"
       header={
         <PanelHeader
+          size="md"
           title="Agent memory"
           context={
             <Metadata>
@@ -441,12 +454,41 @@ export function Memory({ context }: { context: ComponentContext }) {
                   : "Choose a Session with a workspace, or select User memory."}
             </Metadata>
           }
-          description="Facts and preferences the agent can use in future work."
         />
       }
       controls={
         <>
-          <Toolbar label="Memory navigation">
+          <Toolbar
+            label="Memory navigation"
+            actions={
+              <>
+                <IconButton
+                  icon={Refresh}
+                  aria-label="Refresh"
+                  size="md"
+                  disabled={read.loading || cwd === undefined || pending}
+                  onClick={() => {
+                    const owner = observerSignal();
+                    if (owner) void load(owner);
+                  }}
+                />
+                <Button
+                  variant={edit ? "outline" : "primary"}
+                  size="md"
+                  disabled={locked || cwd === undefined || Boolean(edit)}
+                  onClick={(event) => {
+                    beginEdit({
+                      type: "add",
+                      content: "",
+                      opener: event.currentTarget,
+                    });
+                  }}
+                >
+                  <Icon glyph={Plus} size="sm" /> Add memory
+                </Button>
+              </>
+            }
+          >
             <Segmented
               ariaLabel="Memory scope"
               value={scope}
@@ -457,9 +499,7 @@ export function Memory({ context }: { context: ComponentContext }) {
               onChange={(value) => {
                 if (edit || command.current || observing.current) return;
                 setSearch("");
-                setStatus("all");
-                setOrigin("all");
-                setPinned(false);
+                clearFilters();
                 setScope(value as Scope);
               }}
               disabled={locked || Boolean(edit)}
@@ -469,68 +509,56 @@ export function Memory({ context }: { context: ComponentContext }) {
             label="Memory controls"
             search={
               <SearchField
-                size="lg"
                 id="search"
                 aria-label="Search this page"
-                placeholder="Recorded text or ID"
+                placeholder="Text or ID on this page"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
             }
           >
-            <Select
-              size="lg"
-              label="Memory status"
-              value={status}
-              onValueChange={setStatus}
-              options={[
-                { value: "all", label: "All statuses" },
-                { value: "pending", label: "Pending review" },
-                { value: "active", label: "Active" },
-              ]}
-            />
-            <Select
-              size="lg"
-              label="Memory origin"
-              value={origin}
-              onValueChange={setOrigin}
-              options={[
-                { value: "all", label: "All origins" },
-                { value: "auto", label: "Mined" },
-                { value: "user", label: "User authored" },
-              ]}
-            />
-            <Checkbox
-              checked={pinned}
-              onCheckedChange={setPinned}
-              label="Pinned only"
-            />
-            <Toolbar label="Memory actions">
-              <IconButton
-                icon={Refresh}
-                aria-label="Refresh"
-                size="md"
-                disabled={read.loading || cwd === undefined || pending}
-                onClick={() => {
-                  const owner = observerSignal();
-                  if (owner) void load(owner);
-                }}
-              />
-              <Button
-                variant={edit ? "outline" : "primary"}
-                size="lg"
-                disabled={locked || cwd === undefined || Boolean(edit)}
-                onClick={(event) => {
-                  setEdit({
-                    type: "add",
-                    content: "",
-                    opener: event.currentTarget,
-                  });
-                }}
-              >
-                <Icon glyph={Plus} size="sm" /> Add memory
-              </Button>
-            </Toolbar>
+            <Disclosure
+              open={filtersOpen}
+              onOpenChange={setFiltersOpen}
+              title={
+                activeFilters ? `Filters · ${activeFilters} active` : "Filters"
+              }
+              actions={
+                activeFilters > 0 && (
+                  <Button size="sm" variant="ghost" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                )
+              }
+            >
+              <Toolbar label="Memory filters">
+                <Select
+                  label="Memory status"
+                  value={status}
+                  onValueChange={setStatus}
+                  options={[
+                    { value: "all", label: "All statuses" },
+                    { value: "pending", label: "Pending review" },
+                    { value: "active", label: "Active" },
+                  ]}
+                />
+                <Select
+                  label="Memory origin"
+                  value={origin}
+                  onValueChange={setOrigin}
+                  options={[
+                    { value: "all", label: "All origins" },
+                    { value: "auto", label: "Mined" },
+                    { value: "user", label: "User authored" },
+                  ]}
+                />
+                <Checkbox
+                  checked={pinned}
+                  onCheckedChange={setPinned}
+                  label="Pinned only"
+                />
+              </Toolbar>
+            </Disclosure>
           </FilterBar>
         </>
       }
@@ -651,7 +679,7 @@ export function Memory({ context }: { context: ComponentContext }) {
             authoring={Boolean(edit)}
             disabled={locked || read.loading || Boolean(read.error)}
             edit={(item, opener) => {
-              setEdit({
+              beginEdit({
                 type: "update",
                 item: structuredClone(item),
                 content: item.Content,
@@ -659,7 +687,11 @@ export function Memory({ context }: { context: ComponentContext }) {
               });
             }}
             remove={(item, opener) => {
-              setEdit({ type: "delete", item: structuredClone(item), opener });
+              beginEdit({
+                type: "delete",
+                item: structuredClone(item),
+                opener,
+              });
             }}
             command={change}
           />

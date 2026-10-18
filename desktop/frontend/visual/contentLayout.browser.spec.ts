@@ -65,6 +65,14 @@ for (const theme of ["light", "dark"]) {
       "data-diff-file",
       "src/generated/module-199.ts",
     );
+    const file = view.locator("[data-diff-file]");
+    const summary = file.getByRole("button", { expanded: true }).first();
+    await expect(summary).toContainText("src/generated/module-199.ts");
+    expect((await summary.innerText()).split("module-199.ts")).toHaveLength(2);
+    await view.getByRole("button", { name: "Collapse all", exact: true }).click();
+    await expect(file.getByRole("button", { expanded: false }).first()).toBeVisible();
+    await view.getByRole("button", { name: "Expand all", exact: true }).click();
+    await expect(file.getByRole("button", { expanded: true }).first()).toBeVisible();
   });
 
   test(`a narrow file dock preserves its identity and wraps actions in ${theme}`, async ({

@@ -1126,9 +1126,26 @@ for (const theme of ["light", "dark"] as const) {
     await openWorkspace(page, { state: "dock-files", theme });
     await page.getByRole("treeitem", { name: "README.md", exact: true }).click();
     const document = page.locator('[data-slot="document-body"]');
+    const view = page.locator('[data-dock-view-id="file"]');
+    await expect(view.getByRole("heading", { name: "README.md", exact: true })).toHaveCount(0);
+    await expect(view.getByText("Captured file content", { exact: true })).toHaveCount(0);
+    const header = view.locator('[data-slot="workspace-view-header"]');
+    await expect(header).toContainText("24 lines");
     await expect(
       document.getByRole("heading", { name: "Workspace notes", exact: true }),
     ).toBeVisible();
+    const introduction = await document.evaluate((node) => {
+      const host = node.closest('[data-dock-view-id="file"]')!;
+      const header = host.querySelector('[data-slot="workspace-view-header"]')!;
+      const content = node.closest('[data-slot="panel"]')!.firstElementChild!;
+      return {
+        gap:
+          node.querySelector("h1")!.getBoundingClientRect().top -
+          header.getBoundingClientRect().bottom,
+        inset: Number.parseFloat(getComputedStyle(content).paddingBlockStart),
+      };
+    });
+    expect(Math.abs(introduction.gap - introduction.inset)).toBeLessThanOrEqual(1);
     await expect(document.getByRole("listitem")).toHaveCount(3);
     await expect(document.getByRole("table")).toContainText("Memory");
     const sizes = await document.evaluate((node) =>

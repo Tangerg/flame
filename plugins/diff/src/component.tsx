@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
   useId,
@@ -7,11 +8,10 @@ import {
   useState,
 } from "react";
 import type { ComponentContext } from "@flame/plugin-sdk";
-import { FileDiff, Refresh } from "@flame/icons/react";
+import { FileDiff, Fold, Refresh, UnfoldVertical } from "@flame/icons/react";
 import type { Diff, DiffMode } from "@flame/runtime-contract/wire";
 import {
   Badge,
-  Button,
   DiffTable,
   Disclosure,
   EmptyState,
@@ -29,6 +29,28 @@ import {
 } from "@flame/ui";
 
 export type DiffSnapshot = { diff: Diff; focusPath?: string };
+
+function FilePath({ path }: { path: string }) {
+  const cut = path.lastIndexOf("/") + 1;
+  return (
+    <span dir="ltr">
+      {cut > 0 && (
+        <span style={{ color: "var(--color-text-muted)" }}>
+          {path
+            .slice(0, cut)
+            .split("/")
+            .slice(0, -1)
+            .map((segment, index) => (
+              <Fragment key={index}>
+                {segment}/<wbr />
+              </Fragment>
+            ))}
+        </span>
+      )}
+      {path.slice(cut)}
+    </span>
+  );
+}
 function DiffReport({
   snapshot,
   filter,
@@ -99,20 +121,17 @@ function DiffReport({
               onOpenChange={(open) => onOpenChange(file.path, open)}
               title={
                 <RecordSummary
-                  icon={FileDiff}
-                  title={file.path.split("/").at(-1)}
+                  title={<FilePath path={file.path} />}
                   description={
-                    <code>
-                      {file.status} · {file.path}
-                    </code>
-                  }
-                  status={
-                    !file.binary && (
-                      <Badge
-                        tone="neutral"
-                        face="mono"
-                      >{`+${file.added ?? "?"} −${file.removed ?? "?"}`}</Badge>
-                    )
+                    <>
+                      {file.status}{" "}
+                      {!file.binary && (
+                        <Badge
+                          tone="neutral"
+                          face="mono"
+                        >{`+${file.added ?? "?"} −${file.removed ?? "?"}`}</Badge>
+                      )}
+                    </>
                   }
                 />
               }
@@ -238,13 +257,13 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       label="Workspace diff"
       header={
         <PanelHeader
+          size="md"
           title="Workspace diff"
           context={
             <Metadata>
               <code>{workspace.ref.path}</code>
             </Metadata>
           }
-          description="Review changes in your workspace."
         />
       }
       controls={
@@ -252,7 +271,6 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
           label="Diff controls"
           search={
             <SearchField
-              size="lg"
               id="filter"
               aria-label="Filter files"
               placeholder="File path"
@@ -262,7 +280,6 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
           }
         >
           <Select
-            size="lg"
             label="Comparison"
             value={mode}
             options={[
@@ -272,7 +289,6 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
             onValueChange={(value) => setMode(value as DiffMode)}
           />
           <Select
-            size="lg"
             id="layout"
             label="Layout"
             value={layout}
@@ -290,26 +306,24 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               disabled={read.loading}
               onClick={() => void refresh()}
             />
-            <Button
+            <IconButton
               id="expand"
-              size="sm"
-              variant="ghost"
+              icon={UnfoldVertical}
+              aria-label="Expand all"
+              size="md"
               disabled={!files.length}
               onClick={() => setCollapsed(new Set())}
-            >
-              Expand all
-            </Button>
-            <Button
+            />
+            <IconButton
               id="collapse"
-              size="sm"
-              variant="ghost"
+              icon={Fold}
+              aria-label="Collapse all"
+              size="md"
               disabled={!files.length}
               onClick={() =>
                 setCollapsed(new Set(files.map((file) => file.path)))
               }
-            >
-              Collapse all
-            </Button>
+            />
           </Toolbar>
         </FilterBar>
       }

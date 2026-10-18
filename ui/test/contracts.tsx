@@ -1,5 +1,5 @@
 import { Brain } from "@flame/icons/react";
-import { IconButton, SearchField } from "../src/index";
+import { IconButton, PanelHeader, SearchField, Toolbar } from "../src/index";
 
 void (<IconButton icon={Brain} aria-label="Memory" />);
 void (
@@ -18,3 +18,12 @@ void (<SearchField value="" aria-label="Search" readOnly />);
 void (<SearchField defaultValue="uncontrolled" aria-label="Search" />);
 // @ts-expect-error A missing value cannot describe clear-action availability.
 void (<SearchField aria-label="Search" />);
+void (<PanelHeader title="Agent memory" size="md" />);
+void (
+  <Toolbar
+    label="Memory navigation"
+    actions={<IconButton icon={Brain} aria-label="Inspect memory" />}
+  >
+    Current project
+  </Toolbar>
+);

@@ -147,6 +147,11 @@ adapters translate this client into their own application ports.
 
 ## Shared presentation
 
+Scope and primary actions share the workbench toolbar, with search always visible.
+Secondary filters retain a visible active count and clear action while folded.
+Entering an editor folds those controls without changing the selected filters,
+so the form remains readable in short viewports.
+
 The resource is ordinary prebuilt ESM from `src/component.tsx`, using shared React,
 public SDK and UI provider context. Build `icons` and `ui`, install plugin dependencies,
 and use `node plugins/build-components.mjs` (or `--check` for exact reproduction).

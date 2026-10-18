@@ -1,6 +1,10 @@
 import { expect, test, type Locator, type Page } from "./test";
 
-async function openMemory(page: Page, theme: string, width = 560, height = 360) {
+async function openMemory(
+  page: Page,
+  theme: string,
+  { width = 560, height = 360, filters = false } = {},
+) {
   await page.setViewportSize({ width, height });
   await page.goto(
     `/visual/?fixture=workspace&state=full-view&full-view=package:visual:memory&font-size=18&theme=${theme}`,
@@ -9,6 +13,11 @@ async function openMemory(page: Page, theme: string, width = 560, height = 360) 
   await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
   await page.evaluate(() => document.fonts.ready);
   const panel = page.getByRole("region", { name: "Agent memory", exact: true });
+  if (filters) {
+    await panel.getByRole("button", { name: /^Filters\b/ }).click();
+    await panel.getByRole("combobox", { name: "Memory status", exact: true }).click();
+    await page.getByRole("option", { name: "Pending review", exact: true }).click();
+  }
   const add = panel.getByRole("button", { name: "Add memory", exact: true });
   await expect(add).toBeEnabled();
   await add.press("Enter");
@@ -70,7 +79,10 @@ for (const theme of ["light", "dark"]) {
 }
 
 test("visible body and toolbar controls keep their existing scroll position", async ({ page }) => {
-  const { panel, editor, content } = await openMemory(page, "light", 1120, 720);
+  const { panel, editor, content } = await openMemory(page, "light", {
+    width: 1120,
+    height: 720,
+  });
   const viewport = page.locator('[data-slot="workspace-view-body"]').filter({ has: panel });
   const before = await viewport.evaluate((node) => node.scrollTop);
   await content.focus();
@@ -81,6 +93,22 @@ test("visible body and toolbar controls keep their existing scroll position", as
   await expect(search).toBeFocused();
   expect(await viewport.evaluate((node) => node.scrollTop)).toBe(before);
   await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+});
+
+test.describe("compact Memory editing", () => {
+  test.use({ hasTouch: true });
+  test("opening a Memory editor with expanded filters keeps its first line readable", async ({
+    page,
+  }) => {
+    const { panel, content } = await openMemory(page, "dark", {
+      width: 360,
+      height: 360,
+      filters: true,
+    });
+    await expect(panel.getByRole("button", { name: /^Filters\b/ })).toContainText("1 active");
+    await expect(content).toBeFocused();
+    await expectFirstLineVisible(content);
+  });
 });
 
 test("a body-owned Select portal retains its own focus and scrolling", async ({ page }) => {

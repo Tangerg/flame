@@ -1,11 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
-import { space } from "@flame/ui/tokens.stylex";
+import { space, surface } from "@flame/ui/tokens.stylex";
 import type { ReactNode, Ref } from "react";
 import { ScrollArea } from "@/ui";
 import { AgentWorkspaceView } from "@/ui/agent";
 import { ViewHeader, type ViewHeaderProps } from "./ViewHeader";
 
 const wl = stylex.create({
+  viewport: { backgroundColor: surface.canvas },
   rows: { paddingBlock: space.s1 },
 });
 
@@ -26,7 +27,7 @@ export function WorkspaceViewLayout({
       <ViewHeader {...header} />
       <ScrollArea
         ref={scrollRef}
-        className={stylex.props(scrollInset === "rows" && wl.rows).className}
+        className={stylex.props(wl.viewport, scrollInset === "rows" && wl.rows).className}
       >
         {children}
       </ScrollArea>
