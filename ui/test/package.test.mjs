@@ -43,9 +43,9 @@ test("packed UI and icons work without the host or a StyleX compiler", async () 
       path.join(dir, "consumer.mjs"),
       `import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Button, FontScaleProvider, IconButton, Segmented, Slider, Switch, TooltipProvider } from '@flame/ui';
+import { Button, DiffStat, FontScaleProvider, IconButton, Segmented, Slider, Switch, TooltipProvider } from '@flame/ui';
 import { Brain } from '@flame/icons/react';
-console.log(renderToStaticMarkup(createElement(FontScaleProvider, {fontSize: 18}, createElement(TooltipProvider, null, createElement(Button, null, 'Review'), createElement(IconButton, {icon: Brain, 'aria-label': 'Memory'}), createElement(Segmented, {value: 'list', ariaLabel: 'View mode', options: [{value: 'list', label: 'List'}, {value: 'grid', label: 'Grid'}], onChange() {}}), createElement(Switch, {checked: true, ariaLabel: 'Enable memory', onCheckedChange() {}}), createElement(Slider, {value: 40, ariaLabel: 'Contrast', onValueChange() {}})))));
+console.log(renderToStaticMarkup(createElement(FontScaleProvider, {fontSize: 18}, createElement(TooltipProvider, null, createElement(Button, null, 'Review'), createElement(DiffStat, {added: 18, removed: 6}), createElement(IconButton, {icon: Brain, 'aria-label': 'Memory'}), createElement(Segmented, {value: 'list', ariaLabel: 'View mode', options: [{value: 'list', label: 'List'}, {value: 'grid', label: 'Grid'}], onChange() {}}), createElement(Switch, {checked: true, ariaLabel: 'Enable memory', onCheckedChange() {}}), createElement(Slider, {value: 40, ariaLabel: 'Contrast', onValueChange() {}})))));
 `,
     );
     const html = execFileSync(process.execPath, ["consumer.mjs"], {
@@ -54,6 +54,8 @@ console.log(renderToStaticMarkup(createElement(FontScaleProvider, {fontSize: 18}
       env: { ...process.env, NODE_ENV: "production" },
     });
     assert.match(html, /Review/);
+    assert.match(html, />\+18</);
+    assert.match(html, />−6</);
     assert.match(html, /aria-label="View mode"/);
     assert.match(html, /data-slot="item-highlight"/);
     assert.match(html, /aria-label="Enable memory"/);

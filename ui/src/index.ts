@@ -30,6 +30,7 @@ export { ImageNotice } from "./image-notice";
 export * from "./disclosure";
 export * from "./data-table";
 export * from "./diff-table";
+export { DiffStat } from "./diff-stat";
 export { Checkbox } from "./checkbox";
 export { Select } from "./select";
 export { vocab, gap } from "./vocabulary";

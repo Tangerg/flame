@@ -77,11 +77,10 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
   return items;
 }
 
-export function toolDiffStat(tool: ToolCall): { added: number; removed: number } | undefined {
+export function toolDiffStat(tool: ToolCall): Pick<ToolCall, "added" | "removed"> | undefined {
   if (tool.status === "denied" || tool.status === "err") return undefined;
-  const added = tool.added ?? 0;
-  const removed = tool.removed ?? 0;
-  if (tool.added == null && tool.removed == null) return undefined;
+  const { added, removed } = tool;
+  if (added === undefined && removed === undefined) return undefined;
   if (added === 0 && removed === 0) return undefined;
   return { added, removed };
 }

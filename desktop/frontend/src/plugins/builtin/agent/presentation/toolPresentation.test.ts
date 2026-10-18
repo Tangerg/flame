@@ -127,9 +127,16 @@ describe("toolPresentation", () => {
 
   it("reports a diffstat only when it has something to say", () => {
     expect(toolDiffStat(tool({ added: 3, removed: 2 }))).toEqual({ added: 3, removed: 2 });
-    expect(toolDiffStat(tool({ added: 4 }))).toEqual({ added: 4, removed: 0 });
+    expect(toolDiffStat(tool({ added: 4 }))).toEqual({ added: 4, removed: undefined });
     expect(toolDiffStat(tool({ added: 0, removed: 0 }))).toBeUndefined();
     expect(toolDiffStat(tool({}))).toBeUndefined();
+  });
+
+  it("preserves an unrecorded side beside a known change count", () => {
+    expect(toolDiffStat(tool({ added: 4 }))).toEqual({ added: 4, removed: undefined });
+    expect(toolDiffStat(tool({ removed: 3 }))).toEqual({ added: undefined, removed: 3 });
+    expect(toolDiffStat(tool({ added: 0 }))).toEqual({ added: 0, removed: undefined });
+    expect(toolDiffStat(tool({ removed: 0 }))).toEqual({ added: undefined, removed: 0 });
   });
 
   it("does not dress a refused or failed call in the size of the change it proposed", () => {

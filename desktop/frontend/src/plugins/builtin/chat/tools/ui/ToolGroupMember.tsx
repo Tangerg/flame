@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { DiffStat, Icon, Pressable, reveal } from "@/ui";
-import { vocab } from "@flame/ui";
+import { Icon, Pressable, reveal } from "@/ui";
+import { DiffStat, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { headlineToolMetaItem, toolCardModel } from "../application/toolCardModel";
 import { toolCallIconFor } from "@/plugins/builtin/agent/public/toolIcon";

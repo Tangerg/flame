@@ -5,8 +5,8 @@ import { type WorkspaceFileChange, useWorkspaceFileChanges } from "./workspaceQu
 
 export interface WorkingTreeChanges {
   files: number;
-  added: number;
-  removed: number;
+  added: number | undefined;
+  removed: number | undefined;
 }
 
 function useChangedFiles(): WorkspaceFileChange[] | undefined {
@@ -27,15 +27,24 @@ export function useWorkingTreeFiles(): ReadonlyMap<string, WorkspaceFileChange> 
   );
 }
 
-export function useWorkingTreeChanges(): WorkingTreeChanges | null {
-  const data = useChangedFiles();
+export function summarizeWorkingTreeChanges(
+  data: readonly WorkspaceFileChange[] | undefined,
+): WorkingTreeChanges | null {
   if (!data || data.length === 0) return null;
-  return data.reduce(
+  return data.reduce<WorkingTreeChanges>(
     (sum, file) => ({
       files: sum.files,
-      added: sum.added + (file.added ?? 0),
-      removed: sum.removed + (file.removed ?? 0),
+      added:
+        sum.added === undefined || file.added === undefined ? undefined : sum.added + file.added,
+      removed:
+        sum.removed === undefined || file.removed === undefined
+          ? undefined
+          : sum.removed + file.removed,
     }),
     { files: data.length, added: 0, removed: 0 },
   );
+}
+
+export function useWorkingTreeChanges(): WorkingTreeChanges | null {
+  return summarizeWorkingTreeChanges(useChangedFiles());
 }

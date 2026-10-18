@@ -7,7 +7,6 @@ import {
   ChoiceList,
   ChoiceOption,
   Chip,
-  DiffStat,
   Divider,
   FilePath,
   Gauge,
@@ -46,6 +45,7 @@ import {
   TextArea,
   TextField,
   Toolbar,
+  DiffStat,
 } from "@flame/ui";
 import { Icon } from "@/ui/icons";
 
@@ -372,6 +372,13 @@ export function VisualAtomsFixture() {
           <Gauge value={0.62} label="Context" />
           <DiffStat added={12} removed={4} />
         </div>
+      </Specimen>
+      <Specimen name="diff-stat">
+        <DiffStat added={12} removed={4} />
+        <DiffStat added={0} removed={0} />
+        <DiffStat added={0} removed={undefined} />
+        <DiffStat added={undefined} removed={undefined} />
+        <DiffStat added={1234567} removed={7654321} />
       </Specimen>
       <Specimen name="progress">
         <div {...stylex.props(styles.column, styles.fill)}>

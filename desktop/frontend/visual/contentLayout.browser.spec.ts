@@ -68,6 +68,72 @@ for (const overlay of ["commands", "finder"]) {
 }
 
 for (const theme of ["light", "dark"]) {
+  test(`Diff change counts share the worktree summary's semantic ink in ${theme}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1472, height: 900 });
+    await page.goto(
+      `/visual/?fixture=workspace&state=dock-review&theme=${theme}&font-size=${theme === "light" ? 14 : 18}&accent=${theme === "light" ? "%23FB6E30" : "%238b5cf6"}`,
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const summary = page
+      .locator('[data-diff-file][data-focused="true"]')
+      .getByRole("button")
+      .first();
+    const worktree = page.getByRole("button", {
+      name: "Review 2 changed files in the working tree",
+      exact: true,
+    });
+    const inks = async (root: typeof summary, added: string, removed: string) =>
+      root.evaluate(
+        (node, values) =>
+          values.map((value) => {
+            const label = [...node.querySelectorAll("span")].find(
+              (element) => element.textContent === value,
+            );
+            return label ? getComputedStyle(label).color : null;
+          }),
+        [added, removed],
+      );
+    const file = await inks(summary, "+18", "−6");
+    expect(file).not.toContain(null);
+    expect(file[0]).not.toBe(file[1]);
+    expect(file).toEqual(await inks(worktree, "+25", "−9"));
+    await summary.focus();
+    await summary.press("Enter");
+    await expect(summary).toHaveAttribute("aria-expanded", "false");
+    expect(await inks(summary, "+18", "−6")).toEqual(file);
+  });
+
+  test(`Diff statistics distinguish known zeroes and unrecorded counts in ${theme}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1120, height: 900 });
+    await page.goto(`/visual/?fixture=atoms&theme=${theme}&font-size=18`);
+    await page.locator("html[data-visual-ready]").waitFor();
+    const specimen = page.locator('[data-atom="diff-stat"]');
+    await specimen.scrollIntoViewIfNeeded();
+    const counts = specimen.locator('[data-slot="diff-stat"]');
+    await expect(counts).toHaveText(["+12 −4", "+0 −0", "+0 −?", "+? −?", "+1234567 −7654321"]);
+    const partial = counts.nth(2);
+    const quiet = await partial
+      .getByText("+0", { exact: true })
+      .evaluate((node) => getComputedStyle(node).color);
+    expect(
+      await partial
+        .getByText("−?", { exact: true })
+        .evaluate((node) => getComputedStyle(node).color),
+    ).toBe(quiet);
+    const large = counts.last();
+    await large.evaluate((node) => {
+      node.style.inlineSize = "10ch";
+    });
+    const added = (await large.getByText("+1234567", { exact: true }).boundingBox())!;
+    const removed = (await large.getByText("−7654321", { exact: true }).boundingBox())!;
+    expect(removed.y).toBeGreaterThanOrEqual(added.y + added.height);
+    expect(await large.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+  });
+
   test(`Diff locates the requested file without tinting its reading body in ${theme}`, async ({
     page,
   }) => {

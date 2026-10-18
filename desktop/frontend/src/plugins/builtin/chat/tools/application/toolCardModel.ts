@@ -16,7 +16,7 @@ export interface ToolCardModel {
   intent: ToolIntent;
   detail?: ToolDetail;
   error?: string;
-  diffStat?: { added: number; removed: number };
+  diffStat?: ReturnType<typeof toolDiffStat>;
   metaItems: ToolMetaItem[];
 }
 

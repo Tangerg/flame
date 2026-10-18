@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { DiffStat } from "@/ui";
+import { DiffStat } from "@flame/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { type ToolMetaItem } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useT } from "@/lib/i18n";

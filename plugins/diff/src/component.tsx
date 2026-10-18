@@ -11,7 +11,7 @@ import type { ComponentContext } from "@flame/plugin-sdk";
 import { FileDiff, Fold, Refresh, UnfoldVertical } from "@flame/icons/react";
 import type { Diff, DiffMode } from "@flame/runtime-contract/wire";
 import {
-  Badge,
+  DiffStat,
   DiffTable,
   Disclosure,
   EmptyState,
@@ -127,10 +127,7 @@ function DiffReport({
                     <>
                       {file.status}{" "}
                       {!file.binary && (
-                        <Badge
-                          tone="neutral"
-                          face="mono"
-                        >{`+${file.added ?? "?"} −${file.removed ?? "?"}`}</Badge>
+                        <DiffStat added={file.added} removed={file.removed} />
                       )}
                     </>
                   }
