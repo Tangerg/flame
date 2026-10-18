@@ -296,7 +296,7 @@ function Observation({ row: recorded }: { row: TrajectoryEntry }) {
   if (row.type === "item" && row.item.type === "reasoning" && row.item.redacted)
     notes.push("Reasoning was redacted.");
   const raw = (
-    <CodeBlock label="Recorded evidence">
+    <CodeBlock label="Recorded evidence" language="json">
       {JSON.stringify(row, null, 2)}
     </CodeBlock>
   );

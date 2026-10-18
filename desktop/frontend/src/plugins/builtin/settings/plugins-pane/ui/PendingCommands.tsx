@@ -17,6 +17,7 @@ import {
 } from "@flame/ui";
 import { SystemMessage } from "@/ui";
 import { useT } from "@/lib/i18n";
+import { useCodeActionLabels } from "@/ui";
 import { failureText } from "@/lib/rpcErrors";
 import type { PackageOperations } from "../application/packages";
 
@@ -27,6 +28,7 @@ type Outcome =
 
 export function PendingCommands({ operations }: { operations: PackageOperations }) {
   const t = useT();
+  const codeLabels = useCodeActionLabels();
   const [observation, setObservation] = useState<{
     operations: PackageOperations;
     checking?: string;
@@ -158,7 +160,10 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
             {t(`packages.commands.${current.outcome.type}`, { id: current.outcome.key })}
           </p>
           {current.outcome.type === "confirmed" ? (
-            <CodeBlock label={t("packages.commands.confirmed", { id: current.outcome.key })}>
+            <CodeBlock
+              label={t("packages.commands.confirmed", { id: current.outcome.key })}
+              labels={codeLabels}
+            >
               {current.outcome.output}
             </CodeBlock>
           ) : current.outcome.type !== "retired" ? (

@@ -154,7 +154,7 @@ function DiagnosticsReport({
                 </PanelSection>
               )}
               <Disclosure title="Raw observation">
-                <CodeBlock label="Local observation details">
+                <CodeBlock label="Local observation details" language="json">
                   {JSON.stringify(row, null, 2)}
                 </CodeBlock>
               </Disclosure>

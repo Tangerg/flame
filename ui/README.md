@@ -83,10 +83,15 @@ content-driven columns that wrap with the available width;
 Desktop and portable views. `Form`, `RecordForm`, `FormSection`, `FormRow`, `FormField` and `FormGroup` provide responsive form grouping and visible
 native labels; `DocumentBody` styles already-parsed semantic document content.
 These components own presentation only and do not query or advance product facts.
-`CodeBlock` frames literal recorded source with the same `ARTIFACT_SURFACE` skin
+`CodeBlock` frames its single literal string child with the same `ARTIFACT_SURFACE` skin
 as the transcript's code and diagram artifacts. Its named `pre` remains the
-bounded keyboard scroll region; an optional recorded language caption stays
-outside that source. Input and output wells retain their own sunken surface.
+bounded keyboard scroll region. `CodeCaption` is the one code header for every
+renderer, including the transcript's highlighted blocks: the recorded language
+(or `text`), a wrap toggle bound to the single page-wide `useCodeWrap` preference,
+and a copy action that writes the exact literal and reports success only after
+the clipboard accepts it. Callers supply localized `CodeActionLabels`; portable
+packages use the English defaults. `copyText` and `useCopyFeedback` are the shared
+plain-text clipboard owner. Input and output wells retain their own sunken surface.
 `DocumentBody` opts into the shared `data-prose` reading grammar: paragraph and
 heading rhythm, nested list markers, quotes, rules, emphasis, inline code and
 tables. Other semantic renderers use that same root marker while retaining their

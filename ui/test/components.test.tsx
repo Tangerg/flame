@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FormEvent } from "react";
 import { createRef, useState } from "react";
@@ -8,6 +14,8 @@ import {
   CodeBlock,
   ImageNotice,
   readCalloutMarker,
+  setCodeWrap,
+  useCopyFeedback,
   Disclosure,
   DiffTable,
   Checkbox,
@@ -70,6 +78,8 @@ describe("record form focus ownership", () => {
 });
 
 describe("recorded code", () => {
+  afterEach(() => setCodeWrap(false));
+
   it("keeps the caption outside the literal keyboard-scrollable source", () => {
     const source =
       '<script>window.example = "literal"</script>\n  <img src="recorded">';
@@ -87,10 +97,116 @@ describe("recorded code", () => {
     );
     expect(region.querySelector("script, img")).toBeNull();
     rerender(<CodeBlock label="Captured source">{source}</CodeBlock>);
-    expect(screen.queryByText("html", { exact: true })).toBeNull();
+    expect(screen.getByText("text", { exact: true })).toBeTruthy();
     expect(
       screen.getByRole("region", { name: "Captured source" }).textContent,
     ).toBe(source);
+  });
+
+  it("shows and copies the literal child an installed renderer passes, reporting success only after acceptance", async () => {
+    const writeText = vi.fn<(text: string) => Promise<void>>();
+    const accepted = Promise.withResolvers<void>();
+    writeText.mockReturnValue(accepted.promise);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const source = "type Executor interface {\n\tRun()\n}";
+    render(
+      <CodeBlock label="Go source" language="go">
+        {source}
+      </CodeBlock>,
+    );
+    expect(screen.getByRole("region", { name: "Go source" }).textContent).toBe(
+      source,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy code" }));
+    expect(writeText).toHaveBeenCalledWith(source);
+    expect(screen.queryByRole("button", { name: "Copied" })).toBeNull();
+    await act(async () => accepted.resolve());
+    expect(screen.getByRole("button", { name: "Copied" })).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+
+  it("shares one wrap preference across every block on the page", () => {
+    render(
+      <>
+        <CodeBlock label="First">a</CodeBlock>
+        <CodeBlock label="Second">b</CodeBlock>
+      </>,
+    );
+    const [first] = screen.getAllByRole("button", { name: "Enable word wrap" });
+    fireEvent.click(first!);
+    expect(
+      screen
+        .getAllByRole("button", { name: "Disable word wrap" })
+        .map((button) => button.getAttribute("aria-pressed")),
+    ).toEqual(["true", "true"]);
+    expect(
+      screen
+        .getAllByRole("region")
+        .map((region) => region.getAttribute("data-wrap")),
+    ).toEqual(["true", "true"]);
+  });
+});
+
+describe("copy feedback", () => {
+  function CopyHarness({
+    material,
+    copyMaterial,
+  }: {
+    material: string;
+    copyMaterial: (text: string) => Promise<boolean>;
+  }) {
+    const feedback = useCopyFeedback(material, 1500, copyMaterial);
+    return (
+      <button
+        type="button"
+        aria-label={feedback.copied ? "copied" : "copy"}
+        onClick={feedback.copy}
+      >
+        {material}
+      </button>
+    );
+  }
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it("lets only the latest intent publish feedback for the same material", async () => {
+    const older = Promise.withResolvers<boolean>();
+    const latest = Promise.withResolvers<boolean>();
+    const copyMaterial = vi
+      .fn<(text: string) => Promise<boolean>>()
+      .mockReturnValueOnce(older.promise)
+      .mockReturnValueOnce(latest.promise);
+    render(<CopyHarness material="same" copyMaterial={copyMaterial} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "copy" }));
+    fireEvent.click(screen.getByRole("button", { name: "copy" }));
+    await act(async () => latest.resolve(false));
+    await act(async () => older.resolve(true));
+
+    expect(screen.getByRole("button", { name: "copy" })).toBeTruthy();
+  });
+
+  it("retires the feedback timer with its mounted owner", async () => {
+    vi.useFakeTimers();
+    const copyMaterial = vi
+      .fn<(text: string) => Promise<boolean>>()
+      .mockResolvedValueOnce(true);
+    const view = render(
+      <CopyHarness material="same" copyMaterial={copyMaterial} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "copy" }));
+    await act(async () => {});
+    expect(screen.getByRole("button", { name: "copied" })).toBeTruthy();
+    expect(vi.getTimerCount()).toBe(1);
+
+    view.unmount();
+
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
 

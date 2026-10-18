@@ -179,6 +179,25 @@ it("reads captured alert markers as the shared callout and keeps other quotes an
   expect(view.container.querySelector("pre code")?.textContent).toBe("> [!NOTE]");
 });
 
+it("gives captured code fences the shared code header while keeping the source literal", () => {
+  const source = '<script>alert("x")</script>\n<img src="https://tracker.example/a.png">';
+  const view = renderCapturedMarkdown(
+    ["```html", source, "```", "", "```", "plain", "```"].join("\n"),
+  );
+
+  const regions = view.getAllByRole("region", { name: /Code block/ });
+  expect(regions.map((region) => region.textContent)).toEqual([source, "plain"]);
+  expect(view.container.querySelector("script, img")).toBeNull();
+  expect(
+    Array.from(
+      view.container.querySelectorAll('[data-slot="code-caption"]'),
+      (caption) => caption.firstElementChild?.textContent,
+    ),
+  ).toEqual(["html", "text"]);
+  expect(view.getAllByRole("button", { name: "Copy code" })).toHaveLength(2);
+  expect(view.getAllByRole("button", { name: "Enable word wrap" })).toHaveLength(2);
+});
+
 it("shows tool execution status independently of its approval decision", () => {
   const row = visualTrajectory(RUNTIME_AGENT_SESSION_SNAPSHOTS.waiting).find(
     (entry) => entry.type === "item" && entry.item.type === "toolCall",

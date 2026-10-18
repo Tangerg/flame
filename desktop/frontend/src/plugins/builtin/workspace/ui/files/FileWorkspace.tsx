@@ -1,7 +1,7 @@
 import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { Activity, useCallback, useLayoutEffect, useRef, useState } from "react";
-import { copyText } from "@/lib/clipboard";
+import { copyText } from "@flame/ui";
 import { fileExtension } from "@/lib/path";
 import { fileKind } from "@/lib/fileKind";
 import { isImeKey } from "@/lib/ime";

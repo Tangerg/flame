@@ -11,6 +11,14 @@ export * from "./font-scale";
 export * from "./panel";
 export * from "./modal-dialog";
 export * from "./records";
+export {
+  CodeBlock,
+  CodeCaption,
+  setCodeWrap,
+  useCodeWrap,
+  type CodeActionLabels,
+} from "./code-block";
+export { copyText, useCopyFeedback } from "./clipboard";
 export { TaskListItem } from "./task-list-item";
 export { Callout, readCalloutMarker, type CalloutKind } from "./callout";
 export { ImageNotice } from "./image-notice";

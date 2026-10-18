@@ -2,7 +2,7 @@ import { iconGlyph } from "@/ui/icons";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { copyRichText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
-import { useCopyFeedback } from "@/lib/useCopyFeedback";
+import { useCopyFeedback } from "@flame/ui";
 import { LightboxDialog } from "@/ui";
 import { IconButton } from "@flame/ui";
 import { useScrollReach } from "@/ui/atoms/use-scroll-reach";

@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
+import { useCodeActionLabels } from "@/ui";
 import type { AgentUnresolvedEffect } from "@/plugins/sdk/types/agentSessionView";
 import {
   CodeBlock,
@@ -24,6 +25,7 @@ const styles = stylex.create({
 
 export function UnresolvedRunEffects({ effects }: { effects?: AgentUnresolvedEffect[] }) {
   const t = useT();
+  const codeLabels = useCodeActionLabels();
   if (!effects?.length) return null;
   return (
     <div {...stylex.props(styles.root)}>
@@ -48,7 +50,9 @@ export function UnresolvedRunEffects({ effects }: { effects?: AgentUnresolvedEff
                 <p {...stylex.props(styles.explanation, vocab.muted, typeStep.uiSm)}>
                   {t("agent.unresolved.output")}
                 </p>
-                <CodeBlock label={t("agent.unresolved.output")}>{effect.output}</CodeBlock>
+                <CodeBlock label={t("agent.unresolved.output")} labels={codeLabels}>
+                  {effect.output}
+                </CodeBlock>
               </>
             )}
           </RecordGroup>

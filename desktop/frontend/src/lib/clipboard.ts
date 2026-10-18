@@ -1,14 +1,5 @@
+import { copyText } from "@flame/ui";
 import { toast } from "sonner";
-
-export async function copyText(text: string): Promise<boolean> {
-  if (!text || typeof navigator === "undefined" || !navigator.clipboard) return false;
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export interface RichClipboardText {
   plainText: string;

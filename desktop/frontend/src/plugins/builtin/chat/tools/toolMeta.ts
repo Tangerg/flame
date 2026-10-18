@@ -1,5 +1,5 @@
 import { defaultToolIconContributions } from "@/plugins/builtin/agent/public/toolIcon";
-import { copyText } from "@/lib/clipboard";
+import { copyText } from "@flame/ui";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_ACTION, TOOL_ICON } from "@/plugins/sdk/kernelPoints";
 import { copyToolArgsAction } from "./application/toolActions";

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { copyText } from "@/lib/clipboard";
+import { copyText } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { space } from "@flame/ui/tokens.stylex";
 import { TextButton } from "./text-button";

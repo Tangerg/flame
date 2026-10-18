@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getHighlighter } from "@/lib/highlight/shiki";
-import { setCodeWrapPreference } from "./codeWrapPreference";
+import { CodeBlock, setCodeWrap } from "@flame/ui";
 import { ShikiCodeBlock } from "./shiki-code-block";
 
 const LONG_CODE = Array.from({ length: 30 }, (_, index) => `line ${index + 1}`).join("\n");
@@ -11,7 +11,7 @@ describe("ShikiCodeBlock", () => {
     await getHighlighter();
   });
 
-  beforeEach(() => setCodeWrapPreference(false));
+  beforeEach(() => setCodeWrap(false));
 
   it("keeps long code readable in its scrolling surface instead of replacing it with a fold row", async () => {
     const { container } = render(<ShikiCodeBlock lang="text" code={LONG_CODE} />);
@@ -33,6 +33,20 @@ describe("ShikiCodeBlock", () => {
       screen.getByRole("button", { name: "Disable word wrap" }).getAttribute("aria-pressed"),
     ).toBe("true");
     expect(container.querySelector(".shiki-body")?.getAttribute("data-wrap")).toBe("true");
+  });
+
+  it("shares one wrap preference with captured code blocks rendered by the shared owner", async () => {
+    const { container } = render(
+      <>
+        <ShikiCodeBlock lang="text" code="transcript" />
+        <CodeBlock label="Captured">captured</CodeBlock>
+      </>,
+    );
+    await act(async () => Promise.resolve());
+    fireEvent.click(screen.getAllByRole("button", { name: "Enable word wrap" })[0]!);
+
+    expect(container.querySelector(".shiki-body")?.getAttribute("data-wrap")).toBe("true");
+    expect(screen.getByRole("region", { name: "Captured" }).getAttribute("data-wrap")).toBe("true");
   });
 
   it("shares the Codex wrap preference across code blocks", async () => {

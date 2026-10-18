@@ -12,6 +12,7 @@ import type {
   PluginRequest,
 } from "@flame/runtime-contract/wire";
 import { useT } from "@/lib/i18n";
+import { useCodeActionLabels } from "@/ui";
 import { DataView, SystemMessage, TextEditorDialog } from "@/ui";
 import {
   ActionMenu,
@@ -152,6 +153,7 @@ function PackageRow({
   refresh: () => Promise<unknown>;
 }) {
   const t = useT();
+  const codeLabels = useCodeActionLabels();
   const [edit, setEdit] = useState<PackageEdit>();
   const { feedback, reset, run: runFeedback } = useAsyncFeedback(operations.signal);
   const busy = feedback.state === "busy";
@@ -306,7 +308,9 @@ function PackageRow({
         />
         <ContributionRequirements installation={installation} operations={operations} />
         <PointInspection installation={installation} operations={operations} />
-        <CodeBlock label={t("packages.details")}>{preview}</CodeBlock>
+        <CodeBlock label={t("packages.details")} language="json" labels={codeLabels}>
+          {preview}
+        </CodeBlock>
       </Disclosure>
       {realizationMessages(t, installation.realization).map((message) => (
         <SystemMessage key={message} variant="warning">

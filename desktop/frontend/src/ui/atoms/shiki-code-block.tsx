@@ -1,19 +1,16 @@
-import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState, type ReactNode } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { useCopyFeedback } from "@/lib/useCopyFeedback";
+import { CodeCaption, useCodeWrap } from "@flame/ui";
 import { measureShikiHighlight } from "@/lib/metrics";
 import { getHighlighter, reportHighlightFailure, resolveLang } from "@/lib/highlight/shiki";
 import { getCachedHighlight, setCachedHighlight } from "@/lib/highlight/shikiCache";
 import { useShikiTheme } from "@/lib/highlight/useCodeHighlight";
 import { cn } from "@/lib/classNames";
-import { color, space, type, weight } from "@flame/ui/tokens.stylex";
+import { space, type } from "@flame/ui/tokens.stylex";
 import { artifactFrame } from "./artifact-frame";
 import { reveal } from "./reveal";
-import { toggleCodeWrapPreference, useCodeWrapPreference } from "./codeWrapPreference";
-import { useT } from "@/lib/i18n";
-import { IconButton } from "@flame/ui/icon-button";
+import { useCodeActionLabels } from "./codeActionLabels";
 import type { ShikiTransformer } from "shiki";
 
 const FOCUS_INSET: ShikiTransformer[] = [
@@ -46,23 +43,6 @@ const styles = stylex.create({
     fontFamily: "var(--font-mono)",
   },
   embedded: { marginBlock: 0 },
-  caption: {
-    display: "flex",
-    alignItems: "center",
-    gap: space.s1,
-    paddingBlock: space.s1,
-    paddingInlineStart: space.s3,
-    paddingInlineEnd: space.s1_5,
-    fontFamily: "var(--font-sans)",
-  },
-  lang: {
-    flexShrink: 0,
-    color: color.fgFaint,
-    fontFamily: "var(--font-sans)",
-    fontWeight: weight.regular,
-    textTransform: "none",
-  },
-  spacer: { minWidth: space.s1, flex: 1 },
   previewBody: {
     display: "grid",
     maxHeight: "calc(15lh + 24px)",
@@ -86,7 +66,7 @@ export function ShikiCodeBlock({
   scrollLabel,
   copyable = true,
 }: Props) {
-  const t = useT();
+  const labels = useCodeActionLabels();
   const shikiTheme = useShikiTheme();
   const isPreview = preview !== undefined;
 
@@ -106,8 +86,7 @@ export function ShikiCodeBlock({
     highlighted.code === debouncedCode
       ? highlighted.html
       : null);
-  const wrapCode = useCodeWrapPreference();
-  const { copied, copy } = useCopyFeedback(code);
+  const wrapCode = useCodeWrap();
 
   useEffect(() => {
     if (cachedHtml !== undefined) return;
@@ -180,31 +159,19 @@ export function ShikiCodeBlock({
       {...block}
       className={cn(block.className, "shiki-block")}
     >
-      <div data-markdown-copy="exclude" {...stylex.props(styles.caption, type.uiXs)}>
-        <span {...stylex.props(styles.lang, type.uiXs)}>{lang || "text"}</span>
-        <span {...stylex.props(styles.spacer)} />
-        {!isPreview && (
-          <IconButton
-            icon={iconGlyph(wrapCode ? "wrap-text" : "unfold-horizontal")}
-            size="xs"
-            active={wrapCode}
-            aria-pressed={wrapCode}
-            onClick={toggleCodeWrapPreference}
-            aria-label={t(wrapCode ? "message.code.wrap.disable" : "message.code.wrap.enable")}
-          />
-        )}
-        {copyable && (
-          <IconButton
-            data-reveal={isPreview ? "hover" : undefined}
-            icon={iconGlyph(copied ? "check" : "copy")}
-            size="xs"
-            onClick={() => void copy()}
-            tone={copied ? "success" : undefined}
-            aria-label={copied ? t("message.code.copied") : t("message.code.copy")}
-            className={cn(isPreview && stylex.props(reveal.shown).className)}
-          />
-        )}
-      </div>
+      <CodeCaption
+        data-markdown-copy="exclude"
+        language={lang}
+        code={code}
+        labels={labels}
+        wrappable={!isPreview}
+        copyable={copyable}
+        copyReveal={
+          isPreview
+            ? { "data-reveal": "hover", className: stylex.props(reveal.shown).className ?? "" }
+            : undefined
+        }
+      />
       {isPreview ? (
         <div
           data-slot="shiki-preview-body"

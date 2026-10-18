@@ -6,7 +6,7 @@ import { formatClock } from "@/lib/i18n/relativeTime";
 import { useState } from "react";
 import { Icon, TextButton } from "@/ui";
 import { Button, Badge, IconButton, PanelSection, vocab } from "@flame/ui";
-import { copyText } from "@/lib/clipboard";
+import { copyText } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { useInstalledPlugins, usePluginErrorStore } from "@/plugins/sdk";
 import {

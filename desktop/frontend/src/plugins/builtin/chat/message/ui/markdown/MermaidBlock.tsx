@@ -7,7 +7,7 @@ import { IconButton } from "@flame/ui";
 import { measureMermaidRender } from "@/lib/metrics";
 import { useT } from "@/lib/i18n";
 import { useTokenRevision } from "@/lib/appearance";
-import { useCopyFeedback } from "@/lib/useCopyFeedback";
+import { useCopyFeedback } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { motion, radius, space, surface } from "@flame/ui/tokens.stylex";
 import { artifactFrame } from "@/ui/atoms/artifact-frame";

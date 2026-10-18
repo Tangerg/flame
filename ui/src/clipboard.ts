@@ -1,5 +1,15 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { copyText } from "./clipboard";
+
+export async function copyText(text: string): Promise<boolean> {
+  if (!text || typeof navigator === "undefined" || !navigator.clipboard)
+    return false;
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 type CopyMaterial = (material: string) => Promise<boolean>;
 
@@ -27,7 +37,10 @@ export function useCopyFeedback(
     mounted: true,
     resetTimer: undefined,
   });
-  const [accepted, setAccepted] = useState<{ material: string; lease: object } | null>(null);
+  const [accepted, setAccepted] = useState<{
+    material: string;
+    lease: object;
+  } | null>(null);
 
   useLayoutEffect(() => {
     const owner = ownerRef.current;
@@ -55,14 +68,24 @@ export function useCopyFeedback(
     setAccepted(null);
 
     const accepted = await copyMaterial(material);
-    if (!accepted || !owner.mounted || owner.material !== material || owner.lease !== lease) {
+    if (
+      !accepted ||
+      !owner.mounted ||
+      owner.material !== material ||
+      owner.lease !== lease
+    ) {
       return false;
     }
 
     setAccepted({ material, lease });
     owner.resetTimer = setTimeout(() => {
       owner.resetTimer = undefined;
-      if (!owner.mounted || owner.material !== material || owner.lease !== lease) return;
+      if (
+        !owner.mounted ||
+        owner.material !== material ||
+        owner.lease !== lease
+      )
+        return;
       setAccepted(null);
     }, resetAfterMs);
     return true;

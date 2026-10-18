@@ -19,6 +19,7 @@ import {
 import { TextArea } from "@flame/ui/text-field";
 import { SystemMessage } from "@/ui";
 import { useT } from "@/lib/i18n";
+import { useCodeActionLabels } from "@/ui";
 import type { PackageOperations } from "../application/packages";
 import { pointMetadata } from "../adapters/pointContracts";
 
@@ -56,6 +57,7 @@ function InspectPoint({
   operations: PackageOperations;
 }) {
   const t = useT();
+  const codeLabels = useCodeActionLabels();
   const metadata = pointMetadata(point.contract);
   const [reference, setReference] = useState(
     metadata.scope === "installation" ? installation.id : "",
@@ -159,7 +161,7 @@ function InspectPoint({
       {current?.accepted ? (
         <>
           <Metadata>{t("packages.points.lastInspected")}</Metadata>
-          <CodeBlock label={t("packages.points.lastInspected")}>
+          <CodeBlock label={t("packages.points.lastInspected")} language="json" labels={codeLabels}>
             {JSON.stringify(
               {
                 target: current.accepted.request.target,

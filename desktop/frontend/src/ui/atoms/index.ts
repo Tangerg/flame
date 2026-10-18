@@ -31,6 +31,7 @@ export { SelectTrigger } from "./select-trigger";
 export { Segmented } from "@flame/ui";
 export type { SegmentedOption } from "@flame/ui";
 export { ShikiCodeBlock } from "./shiki-code-block";
+export { useCodeActionLabels } from "./codeActionLabels";
 export { SkeletonControl, SkeletonList } from "./skeleton";
 export { SystemMessage } from "./system-message";
 export { Tag } from "./tag";
