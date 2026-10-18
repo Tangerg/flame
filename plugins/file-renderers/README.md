@@ -24,7 +24,7 @@ intact in the host Source view. Ordinary image URLs remain visible, inert source
 text in the caption.
 Links retain their formatted labels and native title annotations without becoming
 interactive. A destination is shown only when non-empty and different from the
-visible label.
+visible label, in the shared muted `link-destination` role.
 
 The host file header owns file identity, range metadata, Source mode and
 navigation. The preview body is reserved for authored document content within

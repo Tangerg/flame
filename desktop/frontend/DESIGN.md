@@ -156,7 +156,9 @@ a semi-transparent border shifts across surface lifts.
 Prose headings and page titles take `accent-strong`, links and file references
 `accent-text` with a tinted underline, list markers `accent-text`, quote rules
 `accent-line`, inline code `accent-strong` on a 9% accent tint, and the user's
-messages sit on an accent tint (10% light, 18% dark). Strong text and body stay
+messages sit on an accent tint (10% light, 18% dark). File references and inline
+code are one data voice: the mono face at the code size, so a path never reads
+larger than the code beside it. Strong text and body stay
 neutral so long reading keeps one calm ink. GitHub-style callouts take their
 status scale: a 2px solid rule, the status wash, and a title and list markers in
 the on-tint ink (`--color-*-badge-text`). Titles read in natural case ("Note",

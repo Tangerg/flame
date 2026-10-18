@@ -136,7 +136,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
           <span key={key} title={value.title ?? undefined}>
             {label}
             {value.href && visibleText(label) !== value.href && (
-              <small> ({value.href})</small>
+              <small data-slot="link-destination"> ({value.href})</small>
             )}
           </span>
         );

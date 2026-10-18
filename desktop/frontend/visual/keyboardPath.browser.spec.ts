@@ -18,6 +18,7 @@ const sameRow = (next: Box, previous: Box) =>
 const advancedColumn = (next: Box, previous: Box) => next.left >= previous.right;
 
 const ROUTE_BUDGET_MS = 120_000;
+const DOCK_TABLIST = "Right workspace panels";
 
 interface Box {
   top: number;
@@ -127,7 +128,8 @@ test("focus survives closing the panel that holds it", async ({ page }) => {
   const panels = page.getByRole("combobox", { name: "Find a panel…" });
   await panels.fill("Agent memory");
   await page.getByRole("option", { name: "Agent memory", exact: true }).click();
-  await expect(page.getByRole("tab")).toHaveCount(4);
+  const dockTabs = page.getByRole("tablist", { name: DOCK_TABLIST, exact: true }).getByRole("tab");
+  await expect(dockTabs).toHaveCount(4);
 
   const focused = () =>
     page.evaluate(() => {
@@ -144,7 +146,14 @@ test("focus survives closing the panel that holds it", async ({ page }) => {
         .slice(0, 26);
     });
 
-  const onTab = () => page.evaluate(() => document.activeElement?.getAttribute("role") === "tab");
+  const onTab = () =>
+    page.evaluate((label) => {
+      const active = document.activeElement;
+      return (
+        active?.getAttribute("role") === "tab" &&
+        active.closest('[role="tablist"]')?.getAttribute("aria-label") === label
+      );
+    }, DOCK_TABLIST);
 
   for (let press = 0; press < 60; press += 1) {
     await page.keyboard.press("Tab");
@@ -165,7 +174,7 @@ test("focus survives closing the panel that holds it", async ({ page }) => {
   }
 
   expect(closed, "no tab was closed").toBeGreaterThan(3);
-  expect(await page.locator('[role="tab"]').count(), "the dock never emptied").toBe(0);
+  expect(await dockTabs.count(), "the dock never emptied").toBe(0);
   expect(lost, "focus fell out of the document when its tab was removed").toEqual([]);
 });
 

@@ -46,6 +46,16 @@ for (const [width, fontSize, theme] of [
         overflow: paragraph.scrollWidth - paragraph.clientWidth,
       };
     });
+    const voice = (node: Element) => {
+      const style = getComputedStyle(node);
+      return { fontFamily: style.fontFamily, fontSize: style.fontSize };
+    };
+    expect(await reference.evaluate(voice)).toEqual(
+      await reading.locator('[data-slot="inline-code"]').first().evaluate(voice),
+    );
+    await expect(reference).toHaveCSS("text-decoration-line", "underline");
+    await expect(reference).not.toHaveCSS("text-decoration-color", "rgba(0, 0, 0, 0)");
+
     expect(flow.firstLineOffset).toBeLessThan(fontSize / 2);
     expect(flow.hasWrapped).toBe(true);
     expect(flow.fits).toBe(true);

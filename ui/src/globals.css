@@ -468,7 +468,7 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
 [data-slot="callout"] li::marker {
   color: var(--callout-ink);
 }
-:where([data-prose]) :where(a[href]) {
+:where([data-prose]) :where(a[href], [data-slot="file-reference"]) {
   color: var(--color-accent-text);
   text-decoration: underline;
   text-decoration-color: color-mix(
@@ -480,9 +480,14 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   transition: text-decoration-color var(--dur-color) var(--ease-state);
 }
 @media (hover: hover) {
-  :where([data-prose]) :where(a[href]:hover) {
+  :where([data-prose])
+    :where(a[href]:hover, [data-slot="file-reference"]:hover) {
     text-decoration-color: var(--color-accent-text);
   }
+}
+:where([data-prose]) :where([data-slot="link-destination"]) {
+  color: var(--color-text-muted);
+  font-size: var(--fs-ui-sm);
 }
 :where([data-prose]) :where([data-footnotes]) {
   margin-block-start: calc(var(--prose-space) * 8);
@@ -525,6 +530,15 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
 }
 :where(
   [data-slot="document-body"] :not(pre) > code,
+  [data-slot="inline-code"],
+  [data-slot="file-reference"]
+) {
+  font-family: var(--font-mono);
+  font-size: var(--fs-code);
+  letter-spacing: 0;
+}
+:where(
+  [data-slot="document-body"] :not(pre) > code,
   [data-slot="inline-code"]
 ) {
   display: inline;
@@ -534,9 +548,6 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   border-radius: var(--shape-xs);
   background: color-mix(in oklab, var(--tone-accent) 9%, transparent);
   color: var(--color-accent-strong);
-  font-family: var(--font-mono);
-  font-size: var(--fs-code);
-  letter-spacing: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
 }

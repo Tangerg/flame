@@ -114,8 +114,15 @@ outline. The `inline-code` and `prose-table` data slots also supply those readin
 roles outside a complete prose root, including table lightboxes.
 Generated footnotes use a quiet supporting-text section and retain their native
 reference links. The renderer owns document-local identities and navigation.
-Only anchors with a destination receive the shared link appearance.
-Emphasis and inline code inside those links inherit the link color.
+The link appearance marks content that navigates: anchors with a destination
+and actionable workspace file references, which mark themselves as the
+`file-reference` slot. Both read as accent text with a tinted underline that
+strengthens on hover; an anchor without a destination remains ordinary text.
+Emphasis and inline code inside a link anchor inherit the link color. A file
+reference also uses inline code's mono family and code size, without the code
+tint, so a path never reads larger than the code beside it. Captured documents
+do not navigate: their link labels remain ordinary text, and a destination shown
+beside a label uses the muted `link-destination` slot.
 Prose color comes only from the host's accent roles: headings and inline code use
 `--color-accent-strong`, links and list markers `--color-accent-text`, quote rules
 `--color-accent-line`; body and strong text keep the neutral ink. Panel titles use

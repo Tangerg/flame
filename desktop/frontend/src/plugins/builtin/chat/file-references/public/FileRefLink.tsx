@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { openWorkspaceFile } from "@/plugins/builtin/workspace/public/navigation";
-import { TextButton } from "@/ui";
+import { Pressable } from "@/ui";
 
 export function FileRefLink({
   path,
@@ -13,11 +13,10 @@ export function FileRefLink({
 }) {
   const label = line > 0 ? `${path}:${line}${column > 0 ? `:${column}` : ""}` : path;
   return (
-    <TextButton
+    <Pressable
       render={<span />}
       nativeButton={false}
-      shape="link"
-      tone="accent"
+      data-slot="file-reference"
       aria-label={label}
       onClick={() => openWorkspaceFile(path, line)}
     >
@@ -28,6 +27,6 @@ export function FileRefLink({
           {segment}
         </Fragment>
       ))}
-    </TextButton>
+    </Pressable>
   );
 }
