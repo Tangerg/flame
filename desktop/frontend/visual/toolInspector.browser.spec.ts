@@ -26,7 +26,7 @@ for (const [theme, fontSize, width] of [
     await trigger.click();
     const result = page.getByRole("region", { name: "Result", exact: true });
     const argumentsButton = page.getByRole("button", { name: "Arguments", exact: true });
-    const source = () => result.locator("pre");
+    const source = () => result;
     const assertResult = async () => {
       const value = JSON.parse(await source().innerText());
       expect(value).toHaveProperty("summary", { status: "reviewed", files: 24 });
@@ -47,13 +47,13 @@ for (const [theme, fontSize, width] of [
     try {
       await expect.poll(() => requested).toBe(true);
       await expect(argumentsButton).toHaveAttribute("aria-expanded", "false");
-      await expect(source()).toHaveClass(/shiki-fallback/);
+      await expect(source().locator("code .line")).toHaveCount(0);
       await assertResult();
       const before = (await result.boundingBox())!;
       await result.focus();
       await expect(result).toBeFocused();
       releaseHighlight();
-      await result.locator("pre.shiki").waitFor();
+      await result.locator("code .line").first().waitFor();
       await assertResult();
       const after = (await result.boundingBox())!;
       expect({ width: after.width, height: after.height }).toEqual({
@@ -85,8 +85,8 @@ for (const [theme, fontSize, width] of [
 
       await argumentsButton.click();
       const args = page.getByRole("region", { name: "Arguments", exact: true });
-      await args.locator("pre.shiki").waitFor();
-      const value = JSON.parse(await args.locator("pre").innerText());
+      await args.locator("code .line").first().waitFor();
+      const value = JSON.parse(await args.innerText());
       expect(value).toEqual({
         workspace: {
           root: `/Users/visual/Flame workspaces/${"application-boundary-".repeat(12)}review`,

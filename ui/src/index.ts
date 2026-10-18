@@ -13,6 +13,7 @@ export * from "./modal-dialog";
 export * from "./records";
 export {
   CodeBlock,
+  CodeBody,
   CodeCaption,
   CodeFrame,
   CodeHighlightProvider,

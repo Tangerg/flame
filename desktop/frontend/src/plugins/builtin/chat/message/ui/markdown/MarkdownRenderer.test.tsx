@@ -137,7 +137,7 @@ describe("markdownMessage", () => {
     expect(image!.getAttribute("src")).toMatch(/^data:image\/svg\+xml/);
     expect(container.querySelector("script")).toBeNull();
     expect(container.querySelector('.shiki-block button[aria-label="Copy code"]')).toBeTruthy();
-    expect(container.querySelector(".shiki-body code")).toBeNull();
+    expect(container.querySelector('.shiki-block [data-slot="code-body"]')).toBeNull();
     expect(container.querySelector('.shiki-block[data-variant="preview"]')).toBeTruthy();
     expect(container.querySelector('[data-slot="shiki-preview-body"][tabindex="0"]')).toBeTruthy();
   });

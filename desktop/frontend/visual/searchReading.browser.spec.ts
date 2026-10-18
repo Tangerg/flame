@@ -189,7 +189,7 @@ test("bounded output, inspector code and Dock evidence release vertical scrollin
   await page.getByRole("button", { name: /calls/ }).first().click();
   await page.locator('[data-tool="inspect_workspace"]').click();
   const result = page.getByRole("region", { name: "Result", exact: true });
-  await expect(result.locator("pre.shiki")).toBeVisible();
+  await expect(result.locator("code .line").first()).toBeVisible();
   await expectVerticalContinuation(page, result, page.locator(".msg-scroll-viewport"));
 
   await page.goto(

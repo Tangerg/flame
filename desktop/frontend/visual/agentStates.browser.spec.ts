@@ -22,6 +22,7 @@ const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
   delegated: "running",
   "long-content": "finished",
   "prose-blocks": "finished",
+  "code-reading": "finished",
   "reference-notes": "finished",
   "math-content": "finished",
   callouts: "finished",
@@ -835,7 +836,9 @@ test("code blocks stay readable and expose the wrap control", async ({
   const wrappedControls = page.getByRole("button", { name: "Disable word wrap" });
   await expect(wrappedControls).toHaveCount(3);
   await expect(wrappedControls.first()).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator('.shiki-body[data-wrap="true"]')).toHaveCount(3);
+  await expect(page.locator('.shiki-block [data-slot="code-body"][data-wrap="true"]')).toHaveCount(
+    3,
+  );
   await expect(page.locator("iframe")).toHaveCount(0);
   await expect(page.locator(".shiki-block").filter({ hasText: "parent.postMessage" })).toHaveCount(
     1,
@@ -880,7 +883,7 @@ test("reading artifacts share a frame with aligned captions and source", async (
   await page.locator("html[data-visual-ready]").waitFor();
 
   const block = page.locator(".shiki-block").filter({ hasText: "Execute(context.Context" });
-  await block.locator(".shiki").waitFor();
+  await block.locator("code .line").first().waitFor();
   await block.locator('[data-markdown-copy="exclude"]').waitFor();
   await expect(page.getByRole("img", { name: "Diagram" })).toBeVisible();
   const geometry = await block.evaluate((root) => {
@@ -888,7 +891,7 @@ test("reading artifacts share a frame with aligned captions and source", async (
     const language = Array.from(header?.querySelectorAll("span") ?? []).find(
       (element) => element.textContent?.trim() === "go",
     );
-    const source = root.querySelector<HTMLElement>(".shiki");
+    const source = root.querySelector<HTMLElement>('[data-slot="code-body"]');
     if (!header || !language || !source) return null;
     const headerStyle = getComputedStyle(header);
     const languageStyle = getComputedStyle(language);
@@ -904,6 +907,7 @@ test("reading artifacts share a frame with aligned captions and source", async (
       languageTransform: languageStyle.textTransform,
       sourcePadding: sourceStyle.paddingInlineStart,
       sourceMaxHeight: sourceStyle.maxHeight,
+      sourceHeightLimit: `${Math.min(28 * Number.parseFloat(getComputedStyle(document.documentElement).fontSize), innerHeight * 0.6)}px`,
       languageStart: language.getBoundingClientRect().left,
       sourceStart: source.getBoundingClientRect().left + Number.parseFloat(sourceStyle.paddingLeft),
       artifactFrames: Array.from(
@@ -929,7 +933,7 @@ test("reading artifacts share a frame with aligned captions and source", async (
   expect.soft(geometry?.languageSize).toBe("12px");
   expect.soft(geometry?.languageTransform).toBe("none");
   expect.soft(geometry?.sourcePadding).toBe("12px");
-  expect.soft(geometry?.sourceMaxHeight).toBe("none");
+  expect.soft(geometry?.sourceMaxHeight).toBe(geometry?.sourceHeightLimit);
   expect.soft(geometry?.languageStart).toBe(geometry?.sourceStart);
   expect(geometry!.artifactFrames.length).toBeGreaterThan(1);
   for (const frame of geometry!.artifactFrames) {
@@ -1481,7 +1485,7 @@ test("async transcript materialization follows only while the reader stays at th
 }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=long-content");
   await page.locator("html[data-visual-ready]").waitFor();
-  await expect(page.locator(".shiki-block .shiki")).toHaveCount(3);
+  await expect(page.locator(".shiki-block [data-slot=code-body] > code:has(.line)")).toHaveCount(3);
   await expect(page.getByRole("img", { name: "Diagram" })).toBeVisible();
 
   const measured = await page.evaluate(async () => {

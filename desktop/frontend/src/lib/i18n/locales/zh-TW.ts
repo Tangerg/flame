@@ -158,6 +158,7 @@ export const zhTW: Record<string, string> = {
   "message.mermaid.copy": "複製 Mermaid",
   "message.mermaid.copied": "已複製",
   "message.mermaid.source": "Mermaid 原始碼",
+  "message.code.content": "程式碼內容",
   "message.code.copy": "複製程式碼",
   "message.code.copied": "已複製",
   "message.code.wrap.enable": "啟用自動換行",

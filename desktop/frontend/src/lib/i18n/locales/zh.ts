@@ -160,6 +160,7 @@ export const zh: Record<string, string> = {
   "message.mermaid.copy": "复制 Mermaid",
   "message.mermaid.copied": "已复制",
   "message.mermaid.source": "Mermaid 源代码",
+  "message.code.content": "代码内容",
   "message.code.copy": "复制代码",
   "message.code.copied": "已复制",
   "message.code.wrap.enable": "启用自动换行",

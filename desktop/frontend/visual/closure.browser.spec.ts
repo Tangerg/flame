@@ -109,7 +109,9 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   await page.locator("html[data-visual-ready]").waitFor();
 
   if (route.fixture === "agent" && route.state === "long-content") {
-    await expect(page.locator(".shiki-block .shiki")).toHaveCount(3);
+    await expect(page.locator(".shiki-block [data-slot=code-body] > code:has(.line)")).toHaveCount(
+      3,
+    );
     await expect(page.getByRole("img", { name: "Diagram" })).toBeVisible();
     const transcript = page.locator(".msg-scroll-viewport");
     await expect
@@ -974,7 +976,9 @@ test("maximum UI text keeps long code readable through its own horizontal scroll
     fontSize: 18,
   });
 
-  const code = page.locator(".shiki-block .shiki").filter({ hasText: "parent.postMessage" });
+  const code = page
+    .locator(".shiki-block [data-slot=code-body]")
+    .filter({ hasText: "parent.postMessage" });
   await expect(code).toHaveCSS("overflow-x", "auto");
   expect(
     await code.evaluate((element) => element.scrollWidth - element.clientWidth),

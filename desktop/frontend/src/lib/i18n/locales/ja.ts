@@ -159,6 +159,7 @@ export const ja: Record<string, string> = {
   "message.mermaid.copy": "Mermaid をコピー",
   "message.mermaid.copied": "コピーしました",
   "message.mermaid.source": "Mermaid ソースコード",
+  "message.code.content": "コードの内容",
   "message.code.copy": "コードをコピー",
   "message.code.copied": "コピーしました",
   "message.code.wrap.enable": "折り返しを有効にする",

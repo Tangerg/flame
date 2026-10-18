@@ -162,6 +162,7 @@ export const es: Record<string, string> = {
   "message.mermaid.copy": "Copiar Mermaid",
   "message.mermaid.copied": "Copiado",
   "message.mermaid.source": "Código fuente Mermaid",
+  "message.code.content": "Contenido del código",
   "message.code.copy": "Copiar código",
   "message.code.copied": "Copiado",
   "message.code.wrap.enable": "Activar ajuste de línea",

@@ -193,6 +193,40 @@ export function CodeCaption({
   );
 }
 
+export function CodeBody({
+  children,
+  label,
+  language = "text",
+  styles: extra,
+}: {
+  children: string;
+  label: string;
+  language?: string;
+  styles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
+}) {
+  const wrapped = useCodeWrap();
+  const Source = useContext(CodeSource);
+  return (
+    <pre
+      dir="ltr"
+      role="region"
+      aria-label={label}
+      tabIndex={0}
+      data-slot="code-body"
+      data-focus-inset=""
+      data-wrap={wrapped}
+      {...stylex.props(
+        styles.code,
+        type.code,
+        wrapped && styles.wrapped,
+        extra,
+      )}
+    >
+      <Source source={children} language={language} />
+    </pre>
+  );
+}
+
 export function CodeBlock({
   children,
   label,
@@ -204,22 +238,12 @@ export function CodeBlock({
   language?: string;
   labels?: CodeActionLabels;
 }) {
-  const wrapped = useCodeWrap();
-  const Source = useContext(CodeSource);
   return (
     <CodeFrame data-slot="code-block">
       <CodeCaption language={language} code={children} labels={labels} />
-      <pre
-        dir="ltr"
-        role="region"
-        aria-label={label}
-        tabIndex={0}
-        data-focus-inset=""
-        data-wrap={wrapped}
-        {...stylex.props(styles.code, type.code, wrapped && styles.wrapped)}
-      >
-        <Source source={children} language={language || "text"} />
-      </pre>
+      <CodeBody label={label} language={language || "text"}>
+        {children}
+      </CodeBody>
     </CodeFrame>
   );
 }

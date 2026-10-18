@@ -34,6 +34,7 @@ export const VISUAL_AGENT_STATES = [
   "delegated",
   "long-content",
   "prose-blocks",
+  "code-reading",
   "reference-notes",
   "math-content",
   "callouts",
@@ -877,6 +878,24 @@ export const LONG_RESPONSE_MARKDOWN = [
 ].join("\n");
 const LONG_RESPONSE = message("agentMessage", "item_long_response", LONG_RESPONSE_MARKDOWN);
 
+export const CODE_READING_SOURCE = Array.from(
+  { length: 48 },
+  (_, index) =>
+    `const observation${String(index + 1).padStart(2, "0")} = { owner: "Runtime", accepted: true };`,
+).join("\n");
+
+const CODE_READING_MARKDOWN = [
+  "## Captured boundary review",
+  "",
+  "Read the accepted observations, then continue with the conclusion.",
+  "",
+  "```typescript",
+  CODE_READING_SOURCE,
+  "```",
+  "",
+  "The explanation continues with the same reading rhythm.",
+].join("\n");
+
 export const READING_BLOCKS_MARKDOWN = [
   "## Reading notes",
   "",
@@ -1608,6 +1627,16 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [PROMPT, message("agentMessage", "item_reading_blocks", READING_BLOCKS_MARKDOWN)],
     pendingInterruptSets: [],
   },
+  "code-reading": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:12.000Z",
+        outcome: { type: "completed" },
+      }),
+    ],
+    items: [PROMPT, message("agentMessage", "item_code_reading", CODE_READING_MARKDOWN)],
+    pendingInterruptSets: [],
+  },
   "reference-notes": {
     runs: [
       run("finished", {
@@ -1935,6 +1964,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   delegated: [],
   "long-content": [],
   "prose-blocks": [],
+  "code-reading": [],
   "reference-notes": [],
   "math-content": [],
   callouts: [],

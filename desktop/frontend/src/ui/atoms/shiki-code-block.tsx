@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { CodeCaption, useCodeWrap } from "@flame/ui";
-import { useHighlightedCode } from "@/lib/highlight/useCodeHighlight";
+import { CodeBody, CodeCaption } from "@flame/ui";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { space, type } from "@flame/ui/tokens.stylex";
 import { artifactFrame } from "./artifact-frame";
@@ -30,12 +30,7 @@ const styles = stylex.create({
     overflow: "auto",
     padding: space.s3,
   },
-  bounded: {
-    maxHeight: "calc(var(--spacing) * 60)",
-    overflow: "auto",
-    overscrollBehavior: "contain auto",
-  },
-  fallback: { margin: 0 },
+  compact: { maxHeight: "calc(var(--spacing) * 60)" },
 });
 
 export function ShikiCodeBlock({
@@ -47,36 +42,8 @@ export function ShikiCodeBlock({
   copyable = true,
 }: Props) {
   const labels = useCodeActionLabels();
+  const t = useT();
   const isPreview = preview !== undefined;
-  const html = useHighlightedCode(code, lang);
-  const wrapCode = useCodeWrap();
-  const showHighlighted = html !== null;
-
-  const fallback = stylex.props(styles.fallback);
-  const source = showHighlighted ? (
-    <div
-      className="shiki-body"
-      data-wrap={wrapCode}
-      ref={
-        scrollLabel === undefined
-          ? undefined
-          : (node) => {
-              // The stable scroll region owns focus across generated source replacements.
-              const pre = node?.querySelector("pre");
-              if (pre) pre.tabIndex = -1;
-            }
-      }
-      dangerouslySetInnerHTML={{ __html: html! }}
-    />
-  ) : (
-    <pre
-      {...fallback}
-      className={cn(fallback.className, "shiki-body shiki-fallback")}
-      data-wrap={wrapCode}
-    >
-      {code}
-    </pre>
-  );
   const block = stylex.props(
     artifactFrame.frame,
     styles.block,
@@ -118,20 +85,14 @@ export function ShikiCodeBlock({
         >
           {preview}
         </div>
-      ) : scrollLabel === undefined ? (
-        source
       ) : (
-        <div
-          data-slot="shiki-scroll"
-          data-focus-inset=""
-          role="region"
-          aria-label={scrollLabel}
-          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-          tabIndex={0}
-          {...stylex.props(styles.bounded)}
+        <CodeBody
+          label={scrollLabel ?? t("message.code.content")}
+          language={lang}
+          styles={scrollLabel !== undefined && styles.compact}
         >
-          {source}
-        </div>
+          {code}
+        </CodeBody>
       )}
     </div>
   );

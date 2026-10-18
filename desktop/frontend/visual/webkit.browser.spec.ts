@@ -161,7 +161,7 @@ test("WebKit renders long CJK and highlighted content at maximum UI text size", 
   });
 
   await expect(page.locator("body")).toHaveCSS("font-size", "18px");
-  await expect(page.locator(".shiki-block .shiki")).toHaveCount(3);
+  await expect(page.locator(".shiki-block [data-slot=code-body] > code:has(.line)")).toHaveCount(3);
   await expect(page.getByRole("img", { name: "Diagram" })).toBeVisible();
   await expect(page.getByText(/中文混排/)).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Message composer" })).toBeVisible();

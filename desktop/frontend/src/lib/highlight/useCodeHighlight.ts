@@ -1,4 +1,4 @@
-import type { Highlighter, ShikiTransformer } from "shiki";
+import type { Highlighter } from "shiki";
 import { useEffect, useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { measureShikiHighlight } from "@/lib/metrics";
@@ -29,14 +29,6 @@ export function stripCodeWrapper(html: string, fallback: string): string {
   return html.match(/<code[^>]*>([\s\S]*)<\/code>/)?.[1] ?? fallback;
 }
 
-const FOCUS_INSET: ShikiTransformer[] = [
-  {
-    pre(node) {
-      node.properties["data-focus-inset"] = "";
-    },
-  },
-];
-
 interface HighlightedCode {
   lang: string;
   theme: string;
@@ -64,7 +56,6 @@ export function useHighlightedCode(code: string, lang: string): string | null {
           const html = highlighter.codeToHtml(settledCode, {
             lang: resolvedLang,
             theme,
-            transformers: FOCUS_INSET,
           });
           measureShikiHighlight(performance.now() - start, resolvedLang);
           setCachedHighlight(lang, theme, settledCode, html);

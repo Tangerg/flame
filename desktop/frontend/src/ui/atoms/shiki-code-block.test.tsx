@@ -14,16 +14,37 @@ describe("ShikiCodeBlock", () => {
 
   beforeEach(() => setCodeWrap(false));
 
+  it("retains the reading surface and focus while code updates before highlighting settles", async () => {
+    const block = (code: string) => (
+      <CodeHighlightProvider component={HighlightedCodeSource}>
+        <ShikiCodeBlock lang="javascript" code={code} />
+      </CodeHighlightProvider>
+    );
+    const view = render(block("const accepted = true;"));
+    await waitFor(() => expect(view.container.querySelector("code .line")).not.toBeNull());
+    const region = view.container.querySelector("pre")!;
+    region.focus();
+    expect(document.activeElement).toBe(region);
+
+    const next = "const accepted = true;\nconst owner = 'Runtime';";
+    view.rerender(block(next));
+    expect(view.container.querySelector("pre")).toBe(region);
+    expect(region.textContent).toBe(next);
+    expect(document.activeElement).toBe(region);
+    await waitFor(() => expect(region.querySelector("code .line")).not.toBeNull());
+    expect(document.activeElement).toBe(region);
+  });
+
   it("keeps long code readable in its scrolling surface instead of replacing it with a fold row", async () => {
-    const { container } = render(<ShikiCodeBlock lang="text" code={LONG_CODE} />);
+    render(<ShikiCodeBlock lang="text" code={LONG_CODE} />);
     await act(async () => Promise.resolve());
 
-    expect(container.querySelector(".shiki-body")?.textContent).toContain("line 30");
+    expect(screen.getByRole("region", { name: "Code content" }).textContent).toContain("line 30");
     expect(screen.queryByText("Show 30 lines")).toBeNull();
   });
 
   it("offers the Codex code-wrap toggle with pressed-state feedback", async () => {
-    const { container } = render(<ShikiCodeBlock lang="text" code="a very long line" />);
+    render(<ShikiCodeBlock lang="text" code="a very long line" />);
     await act(async () => Promise.resolve());
     const toggle = screen.getByRole("button", { name: "Enable word wrap" });
 
@@ -33,11 +54,13 @@ describe("ShikiCodeBlock", () => {
     expect(
       screen.getByRole("button", { name: "Disable word wrap" }).getAttribute("aria-pressed"),
     ).toBe("true");
-    expect(container.querySelector(".shiki-body")?.getAttribute("data-wrap")).toBe("true");
+    expect(screen.getByRole("region", { name: "Code content" }).getAttribute("data-wrap")).toBe(
+      "true",
+    );
   });
 
   it("shares one wrap preference with captured code blocks rendered by the shared owner", async () => {
-    const { container } = render(
+    render(
       <>
         <ShikiCodeBlock lang="text" code="transcript" />
         <CodeBlock label="Captured">captured</CodeBlock>
@@ -46,7 +69,9 @@ describe("ShikiCodeBlock", () => {
     await act(async () => Promise.resolve());
     fireEvent.click(screen.getAllByRole("button", { name: "Enable word wrap" })[0]!);
 
-    expect(container.querySelector(".shiki-body")?.getAttribute("data-wrap")).toBe("true");
+    expect(screen.getByRole("region", { name: "Code content" }).getAttribute("data-wrap")).toBe(
+      "true",
+    );
     expect(screen.getByRole("region", { name: "Captured" }).getAttribute("data-wrap")).toBe("true");
   });
 
@@ -71,7 +96,7 @@ describe("ShikiCodeBlock", () => {
   });
 
   it("shares the Codex wrap preference across code blocks", async () => {
-    const { container } = render(
+    render(
       <>
         <ShikiCodeBlock lang="text" code="first long line" />
         <ShikiCodeBlock lang="text" code="second long line" />
@@ -82,7 +107,7 @@ describe("ShikiCodeBlock", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Enable word wrap" })[0]!);
 
     expect(screen.getAllByRole("button", { name: "Disable word wrap" })).toHaveLength(2);
-    for (const body of container.querySelectorAll(".shiki-body")) {
+    for (const body of screen.getAllByRole("region", { name: "Code content" })) {
       expect(body.getAttribute("data-wrap")).toBe("true");
     }
   });

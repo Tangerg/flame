@@ -158,6 +158,7 @@ export const ko: Record<string, string> = {
   "message.mermaid.copy": "Mermaid 복사",
   "message.mermaid.copied": "복사됨",
   "message.mermaid.source": "Mermaid 소스 코드",
+  "message.code.content": "코드 내용",
   "message.code.copy": "코드 복사",
   "message.code.copied": "복사됨",
   "message.code.wrap.enable": "자동 줄 바꿈 사용",

@@ -76,53 +76,15 @@
   min-width: max-content;
 }
 
-.shiki-block .shiki,
-.shiki-block .shiki-fallback {
-  margin: 0;
-  padding: 2px 12px 12px;
-  line-height: var(--leading-relaxed);
-  overflow-x: auto;
-  font-family: var(--font-mono);
-  font-size: var(--fs-code);
-  background: transparent !important;
-}
-.shiki-block .shiki code {
-  background: transparent !important;
-  border: 0;
-  padding: 0;
-  font-size: inherit;
-}
-.shiki-block .shiki-fallback {
-  color: var(--color-text-soft);
-  white-space: pre;
-}
-.shiki-block .shiki-body[data-wrap="true"] .shiki,
-.shiki-block .shiki-body.shiki-fallback[data-wrap="true"] {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.shiki-block [data-slot="shiki-scroll"] .shiki,
-.shiki-block [data-slot="shiki-scroll"] .shiki-fallback {
-  overflow: visible;
-}
-.shiki-block [data-slot="shiki-scroll"] .shiki-body:not([data-wrap="true"]) .shiki,
-.shiki-block [data-slot="shiki-scroll"] .shiki-fallback:not([data-wrap="true"]) {
-  width: max-content;
-  min-width: 100%;
-}
 .md-table-scroller,
 .md .katex-display,
-.shiki-block .shiki,
-.shiki-block .shiki-fallback,
-[data-slot="shiki-scroll"],
+[data-slot="code-body"],
 [data-slot="mermaid-stage"] {
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 .md-table-scroller::-webkit-scrollbar-thumb,
 .md .katex-display::-webkit-scrollbar-thumb,
-.shiki-block .shiki::-webkit-scrollbar-thumb,
-.shiki-block .shiki-fallback::-webkit-scrollbar-thumb,
-[data-slot="shiki-scroll"]::-webkit-scrollbar-thumb,
+[data-slot="code-body"]::-webkit-scrollbar-thumb,
 [data-slot="mermaid-stage"]::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   background-clip: content-box;

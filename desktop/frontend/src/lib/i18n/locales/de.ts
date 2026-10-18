@@ -161,6 +161,7 @@ export const de: Record<string, string> = {
   "message.mermaid.copy": "Mermaid kopieren",
   "message.mermaid.copied": "Kopiert",
   "message.mermaid.source": "Mermaid-Quellcode",
+  "message.code.content": "Codeinhalt",
   "message.code.copy": "Code kopieren",
   "message.code.copied": "Kopiert",
   "message.code.wrap.enable": "Zeilenumbruch aktivieren",

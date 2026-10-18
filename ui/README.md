@@ -91,7 +91,13 @@ native labels; `DocumentBody` styles already-parsed semantic document content.
 These components own presentation only and do not query or advance product facts.
 `CodeBlock` frames its single literal string child with the same `ARTIFACT_SURFACE` skin
 as the transcript's code and diagram artifacts. Its named `pre` remains the
-bounded keyboard scroll region. `CodeFrame` is that frame alone, for portable views
+bounded keyboard scroll region. `CodeBody` owns that stable literal source region,
+its code typography, shared wrap preference and host-supplied highlighting. It
+limits long code to the smaller of 28rem and 60vh, keeping the caption outside
+the scrolling source. A consumer's `styles` override merges on that same `pre`;
+compact Tool inspectors retain their smaller existing bound. Highlighting changes
+only the child `code`, preserving the reading region, scroll position and focus.
+`CodeFrame` is that frame alone, for portable views
 that own their own body, such as recorded Tool results. `CodeCaption` is the one code
 header for every renderer, including the transcript's highlighted blocks: the recorded
 label (or `text`), any consumer actions passed as children, a wrap toggle bound to

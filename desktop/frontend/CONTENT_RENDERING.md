@@ -678,6 +678,8 @@ interface BlockCtx {
 - Overflowing answer tables expose one named keyboard scroll region before their actions. Fitting tables add no Tab stop; content and width changes update that same region's reachability.
 - Answer and portable document tables size to their content up to the measure instead of stretching columns apart; header labels use the muted text role over a quiet rule so rows carry the emphasis. A compact answer table carries its revealed actions beside its end edge and reserves no extra row; actions wrap below the table only when the table needs the full measure.
 
+- Fenced source and captured code share `CodeBody`: one named, stable `pre` remains keyboard-readable while literal text becomes highlighted or updates during streaming. Long transcript source uses the shared viewport bound, leaving the caption and following explanation reachable. Tool inspectors keep their compact bound. The complete recorded source remains available through scrolling and exact copy; there is no fold row or truncated substitute.
+
 ---
 
 ### 4.3 图片

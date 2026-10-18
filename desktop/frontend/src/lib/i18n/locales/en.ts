@@ -167,6 +167,7 @@ export const en: Record<string, string> = {
   "message.mermaid.copy": "Copy Mermaid",
   "message.mermaid.copied": "Copied",
   "message.mermaid.source": "Mermaid source code",
+  "message.code.content": "Code content",
   "message.code.copy": "Copy code",
   "message.code.copied": "Copied",
   "message.code.wrap.enable": "Enable word wrap",
