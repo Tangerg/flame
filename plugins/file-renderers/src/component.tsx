@@ -8,12 +8,16 @@ import {
 import { Lexer, type Token, type Tokens } from "marked";
 import type { ComponentContext } from "@flame/plugin-sdk";
 import {
+  Callout,
   CodeBlock,
   DocumentBody,
+  ImageNotice,
   Panel,
   RecordBody,
   ScrollRegion,
   TaskListItem,
+  readCalloutMarker,
+  type CalloutKind,
 } from "@flame/ui";
 
 function visibleText(children: ReactNode): string {
@@ -26,6 +30,34 @@ function visibleText(children: ReactNode): string {
         : "";
     })
     .join("");
+}
+
+function calloutOf(
+  tokens: Token[],
+): { kind: CalloutKind; tokens: Token[] } | null {
+  const [lead, ...rest] = tokens;
+  if (lead?.type !== "paragraph") return null;
+  const authored = readCalloutMarker(lead.raw);
+  if (!authored) return null;
+  const [first, ...inline] = (lead as Tokens.Paragraph).tokens;
+  if (first?.type !== "text") return null;
+  const marker = readCalloutMarker((first as Tokens.Text).text);
+  if (marker?.kind !== authored.kind) return null;
+  const body = marker.rest
+    ? [
+        { ...first, raw: marker.rest, text: marker.rest } as Tokens.Text,
+        ...inline,
+      ]
+    : inline[0]?.type === "br"
+      ? inline.slice(1)
+      : inline;
+  return {
+    kind: marker.kind,
+    tokens:
+      body.length > 0
+        ? [{ ...lead, tokens: body } as Tokens.Paragraph, ...rest]
+        : rest,
+  };
 }
 
 // Parsed file content never supplies HTML or executable URL attributes.
@@ -66,12 +98,19 @@ function renderTokens(tokens: Token[]): ReactNode[] {
         return (
           <del key={key}>{renderTokens((token as Tokens.Del).tokens)}</del>
         );
-      case "blockquote":
-        return (
+      case "blockquote": {
+        const quoted = (token as Tokens.Blockquote).tokens;
+        const callout = calloutOf(quoted);
+        return callout ? (
+          <Callout key={key} kind={callout.kind}>
+            {renderTokens(callout.tokens)}
+          </Callout>
+        ) : (
           <blockquote key={key} dir="auto">
-            {renderTokens((token as Tokens.Blockquote).tokens)}
+            {renderTokens(quoted)}
           </blockquote>
         );
+      }
       case "codespan":
         return (
           <code key={key} dir="ltr">
@@ -105,10 +144,14 @@ function renderTokens(tokens: Token[]): ReactNode[] {
       case "image": {
         const value = token as Tokens.Image;
         return (
-          <span key={key}>
-            [Image{value.text ? `: ${value.text}` : ""}]
-            <small>{` (${/^data:/i.test(value.href) ? "embedded image data" : value.href})`}</small>
-          </span>
+          <ImageNotice
+            key={key}
+            label={value.text || undefined}
+            detail={
+              /^data:/i.test(value.href) ? "Embedded image data" : value.href
+            }
+            title={value.title ?? undefined}
+          />
         );
       }
       case "list": {

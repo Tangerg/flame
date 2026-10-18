@@ -18,9 +18,10 @@ readable code. This is ordinary trusted workbench code, using shared React, the 
 SDK and `@flame/ui`. Marked is a declared private dependency bundled in the ESM;
 its license is retained in the namespace resources.
 
-The preview describes embedded images using their alternative text and a short
-source caption. Complete payloads remain intact in the host Source view.
-Ordinary image URLs remain visible, inert source text.
+The preview describes each image with the shared `ImageNotice`: its alternative
+text and a short source caption, never a loaded image. Complete payloads remain
+intact in the host Source view. Ordinary image URLs remain visible, inert source
+text in the caption.
 Links retain their formatted labels and native title annotations without becoming
 interactive. A destination is shown only when non-empty and different from the
 visible label.
@@ -33,7 +34,10 @@ literal source. Code, inline code and tables consume the same shared reading
 roles as the transcript while file parsing and content trust stay here.
 Parsed table column alignment is projected on both header and body cells.
 Paragraphs, headings, nested lists, quotes and rules use the shared `data-prose`
-grammar. Prose direction follows its content; code remains left to right.
+grammar. A quote that opens with a GitHub alert marker (`[!NOTE]`, `[!TIP]`,
+`[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) renders as the shared `Callout`, read
+by the same `readCalloutMarker` the transcript uses; other quotes and markers stay
+literal. Prose direction follows its content; code remains left to right.
 Task tokens supply one immutable `TaskListItem` marker with the primary visible
 task name and captured checked state. Parser checkbox tokens do not become a
 second text prefix; ordinary checkbox notation inside code stays literal.

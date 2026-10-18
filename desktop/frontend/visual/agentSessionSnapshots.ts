@@ -964,32 +964,30 @@ const REFERENCE_NOTES_MARKDOWN = [
   "    Supporting context stays in a second paragraph, with enough room to distinguish it from the main answer.",
 ].join("\n");
 
-const CALLOUT_RESPONSE = message(
-  "agentMessage",
-  "item_callout_response",
-  [
-    "## Notes that belong to the answer",
-    "",
-    "The review should read as one answer, with supporting notes kept close to the evidence.",
-    "",
-    "> [!NOTE]",
-    "> Keep the accepted result with the observation that explains it.",
-    ">",
-    "> A second paragraph adds context without starting a separate card.",
-    "",
-    "The explanation resumes along the same reading edge, so the next decision stays easy to follow.",
-    "",
-    "> [!WARNING]",
-    "> 更新之前，请先检查 `runtime.Commit` 的调用边界，并保留本次审阅的上下文。",
-    ">",
-    "> - Confirm the recorded result.",
-    "> - Review the consumer before continuing.",
-    "",
-    "> A plain quotation remains an ordinary part of the review.",
-    "",
-    "The answer ends with its conclusion, rather than another layer of interface chrome.",
-  ].join("\n"),
-);
+export const CALLOUT_MARKDOWN = [
+  "## Notes that belong to the answer",
+  "",
+  "The review should read as one answer, with supporting notes kept close to the evidence.",
+  "",
+  "> [!NOTE]",
+  "> Keep the accepted result with the observation that explains it.",
+  ">",
+  "> A second paragraph adds context without starting a separate card.",
+  "",
+  "The explanation resumes along the same reading edge, so the next decision stays easy to follow.",
+  "",
+  "> [!WARNING]",
+  "> 更新之前，请先检查 `runtime.Commit` 的调用边界，并保留本次审阅的上下文。",
+  ">",
+  "> - Confirm the recorded result.",
+  "> - Review the consumer before continuing.",
+  "",
+  "> A plain quotation remains an ordinary part of the review.",
+  "",
+  "The answer ends with its conclusion, rather than another layer of interface chrome.",
+].join("\n");
+
+const CALLOUT_RESPONSE = message("agentMessage", "item_callout_response", CALLOUT_MARKDOWN);
 
 const MATH_RESPONSE = message(
   "agentMessage",

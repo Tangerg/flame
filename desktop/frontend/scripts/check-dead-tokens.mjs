@@ -19,11 +19,9 @@
 //   would have changed the stroke weight of every icon in the product. Any `var(--prefix-${…})`
 //   in the source therefore marks `--prefix-*` live.
 //
-//   A CONSUMER IN A DEPENDENCY. `markdown.css` sets eleven Primer-named variables
-//   (`--color-accent-fg`, `--color-danger-emphasis`, …) scoped to `.md .markdown-alert`, and the
-//   only thing that reads them is `remark-github-blockquote-alert/alert.css`, which the markdown
-//   renderer imports. Nothing in `src` references them. So the stylesheets this app IMPORTS
-//   from dependencies are part of the reference set.
+//   A CONSUMER IN A DEPENDENCY. A variable the app sets may be read only by a stylesheet it
+//   imports from a dependency, with nothing in `src` referencing it. So the stylesheets this
+//   app IMPORTS from dependencies are part of the reference set.
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";

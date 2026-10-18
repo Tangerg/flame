@@ -4,8 +4,7 @@
 // Both are invisible — the rule simply never meets an element.
 //
 // Narrow on purpose: only a selector STARTING with one of this app's classes must be applied
-// by this app. A library's class is styled under a scope the app does apply
-// (`.md .markdown-alert`), so it is not checked.
+// by this app. A library's class styled under a scope the app does apply is not checked.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";

@@ -8,10 +8,10 @@ test("callout titles keep their icons on the same line and inherit the theme col
   await page.locator("html[data-visual-ready]").waitFor();
   await page.evaluate(() => document.fonts.ready);
   const markdown = page.locator(".md").filter({ hasText: "Notes that belong to the answer" });
-  const alerts = markdown.locator(".markdown-alert");
+  const alerts = markdown.locator('[data-slot="callout"]');
   await expect(alerts).toHaveCount(2);
   for (const alert of await alerts.all()) {
-    const title = alert.locator(".markdown-alert-title");
+    const title = alert.locator('[data-slot="callout-title"]');
     await expect(title).toBeVisible();
     const layout = await title.evaluate((node) => {
       const icon = node.querySelector("svg")!;
@@ -28,7 +28,7 @@ test("callout titles keep their icons on the same line and inherit the theme col
         textTop: textBox.top,
         textBottom: textBox.bottom,
         color: getComputedStyle(node).color,
-        fill: getComputedStyle(icon).fill,
+        stroke: getComputedStyle(icon).stroke,
         bodyColor: getComputedStyle(node.nextElementSibling!).color,
       };
     });
@@ -36,7 +36,7 @@ test("callout titles keep their icons on the same line and inherit the theme col
     expect(layout.textLeft - layout.iconRight).toBeLessThanOrEqual(12);
     expect(layout.iconBottom).toBeGreaterThan(layout.textTop);
     expect(layout.textBottom).toBeGreaterThan(layout.iconTop);
-    expect(layout.fill).toBe(layout.color);
+    expect(layout.stroke).toBe(layout.color);
     expect(layout.color).not.toBe(layout.bodyColor);
   }
   await expect(markdown.locator("blockquote > p")).toHaveText(

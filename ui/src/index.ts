@@ -12,6 +12,8 @@ export * from "./panel";
 export * from "./modal-dialog";
 export * from "./records";
 export { TaskListItem } from "./task-list-item";
+export { Callout, readCalloutMarker, type CalloutKind } from "./callout";
+export { ImageNotice } from "./image-notice";
 export * from "./disclosure";
 export * from "./data-table";
 export * from "./diff-table";

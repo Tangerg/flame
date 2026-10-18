@@ -6,7 +6,6 @@ import rehypeRaw from "rehype-raw";
 import remarkBreaks from "remark-breaks";
 import remarkCjkFriendly from "remark-cjk-friendly";
 import remarkGfm from "remark-gfm";
-import remarkAlert from "remark-github-blockquote-alert";
 import remarkMath from "remark-math";
 import remend from "remend";
 import { splitStreamingBlocks } from "./splitStreamingBlocks";
@@ -19,12 +18,11 @@ import { rehypeFileRefs } from "./rehypeFileRefs";
 import { rehypeFootnoteLabels } from "./rehypeFootnoteLabels";
 import { rehypeStreamCaret } from "./rehypeStreamCaret";
 import { normalizeMarkdownMath } from "./preprocess";
-import { remarkAlertTitle } from "./remarkAlertTitle";
+import { remarkCallouts } from "./remarkCallouts";
 import { remarkLiteralUnknownHtml } from "./remarkLiteralUnknownHtml";
 import { useCommitThrottle, useStreamReveal, type MarkdownReveal } from "./streamReveal";
 import { useVisibleTextMaterial } from "../messageVisibleMaterial";
 import { useT } from "@/lib/i18n";
-import "remark-github-blockquote-alert/alert.css";
 
 const PARSE_COMMIT_MS = 33;
 
@@ -53,8 +51,7 @@ const remarkPlugins = [
   remarkBreaks,
   remarkCjkFriendly,
   remarkMath,
-  remarkAlert,
-  remarkAlertTitle,
+  remarkCallouts,
   remarkLiteralUnknownHtml,
 ];
 

@@ -15,9 +15,12 @@ test("file image references keep encoded payloads in Source and out of the readi
   const view = page.locator('[data-dock-view-id="file"]');
   const reading = view.locator('[data-slot="document-body"]');
   await expect(reading.getByRole("heading", { name: "Architecture review" })).toBeVisible();
-  await expect(reading).toContainText("[Image: Inline architecture]");
-  await expect(reading).toContainText("[Image: Inline detail]");
-  await expect(reading.getByText("(embedded image data)", { exact: true })).toHaveCount(2);
+  await expect(reading.getByRole("img", { name: "Inline architecture" })).toBeVisible();
+  await expect(reading.getByRole("img", { name: "Inline detail" })).toBeVisible();
+  await expect(
+    reading.getByRole("img", { name: "Inline architecture" }),
+  ).toHaveAccessibleDescription("Embedded image data");
+  await expect(reading.getByText("Embedded image data", { exact: true })).toHaveCount(2);
   await expect(reading).not.toContainText("data:image/");
   await expect(reading).toContainText("https://tracker.example/pixel.png");
   await expect(reading.locator("img,a,iframe,object,embed")).toHaveCount(0);
@@ -28,7 +31,7 @@ test("file image references keep encoded payloads in Source and out of the readi
   const payload = LONG_RESPONSE_MARKDOWN.match(/data:image\/svg\+xml;base64,[^)]+/)![0];
   await expect(view.locator('[data-quote-source="file"]')).toContainText(payload);
   await view.getByRole("tab", { name: "Preview", exact: true }).click();
-  await expect(reading.getByText("(embedded image data)", { exact: true })).toHaveCount(2);
+  await expect(reading.getByText("Embedded image data", { exact: true })).toHaveCount(2);
   expect(remoteRequests).toEqual([]);
 });
 

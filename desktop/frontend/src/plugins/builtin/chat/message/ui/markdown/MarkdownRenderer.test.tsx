@@ -158,9 +158,11 @@ describe("markdownMessage", () => {
     const { container } = render(<MarkdownRenderer text={src} reveal="instant" />);
 
     expect(container.querySelector('img[src^="https://tracker.example/"]')).toBeNull();
-    const unavailable = container.querySelector('[aria-label="Tracking pixel"]');
+    const unavailable = within(container).queryByRole("img", {
+      name: "Tracking pixel",
+      description: "Image unavailable",
+    });
     expect(unavailable, "the reader is still told an image belongs here").toBeTruthy();
-    expect(unavailable?.getAttribute("role")).toBe("img");
     expect(unavailable?.textContent).toContain("Tracking pixel");
     expect(unavailable?.textContent).toContain("Image unavailable");
     expect(
@@ -456,13 +458,39 @@ describe("markdownMessage", () => {
         reveal="instant"
       />,
     );
-    const titles = container.querySelectorAll(".markdown-alert-title");
+    const callouts = container.querySelectorAll('[data-slot="callout"][role="note"]');
+    expect(Array.from(callouts, (callout) => callout.getAttribute("data-callout"))).toEqual([
+      "note",
+      "warning",
+    ]);
+    expect(callouts[0]?.textContent?.replace(/\s+/g, " ").trim()).toBe("Note Read the evidence.");
+    const titles = container.querySelectorAll('[data-slot="callout-title"]');
     expect(Array.from(titles, (title) => title.textContent)).toEqual(["Note", "Warning"]);
     for (const title of titles) {
       expect(title.getAttribute("dir")).toBe("auto");
       expect(title.querySelector('svg[aria-hidden="true"] path')).toBeTruthy();
     }
     expect(container.querySelector("blockquote > p")?.textContent).toBe("A plain quotation.");
+  });
+
+  it("claims only an authored alert marker and keeps escaped or attached markers literal", () => {
+    const { container } = render(
+      <MarkdownRenderer
+        text={
+          "> [!NOTE]\n> Keep **bold** and `code`.\n\n> \\[!NOTE]\n> keep literal\n\n> [!NOTE]book stays prose"
+        }
+        reveal="instant"
+      />,
+    );
+    const callouts = container.querySelectorAll('[data-slot="callout"]');
+    expect(callouts).toHaveLength(1);
+    expect(callouts[0]?.querySelector("strong")?.textContent).toBe("bold");
+    expect(callouts[0]?.querySelector("code")?.textContent).toBe("code");
+    expect(
+      Array.from(container.querySelectorAll("blockquote"), (quote) =>
+        quote.textContent?.replace(/\s+/g, " ").trim(),
+      ),
+    ).toEqual(["[!NOTE] keep literal", "[!NOTE]book stays prose"]);
   });
 
   it("keeps unmatched numeric brackets as ordinary prose instead of citation chrome", () => {

@@ -140,6 +140,45 @@ it("keeps loose task descriptions, nested lists, ordinary items and literal chec
   expect(container.textContent).not.toContain("[ ] Verify");
 });
 
+it("reads captured alert markers as the shared callout and keeps other quotes and markers literal", () => {
+  const view = renderCapturedMarkdown(
+    [
+      "> [!WARNING]",
+      "> Keep `runtime.Commit` scoped.",
+      ">",
+      "> - Confirm the result.",
+      "",
+      "> [!TIP] Same-line guidance.",
+      "",
+      "> An ordinary [!NOTE] quotation.",
+      "",
+      "> \\[!NOTE]",
+      "> keep literal",
+      "",
+      "> [!NOTE]book stays prose",
+      "",
+      "```md",
+      "> [!NOTE]",
+      "```",
+    ].join("\n"),
+  );
+
+  const callouts = view.container.querySelectorAll('[data-slot="callout"][role="note"]');
+  expect(Array.from(callouts, (callout) => callout.getAttribute("data-callout"))).toEqual([
+    "warning",
+    "tip",
+  ]);
+  expect(callouts[0]?.textContent).toBe("WarningKeep runtime.Commit scoped.Confirm the result.");
+  expect(callouts[1]?.textContent).toBe("TipSame-line guidance.");
+  expect(callouts[0]?.querySelector("code")?.textContent).toBe("runtime.Commit");
+  expect(
+    Array.from(view.container.querySelectorAll("blockquote"), (quote) =>
+      quote.textContent?.replace(/\s+/g, " ").trim(),
+    ),
+  ).toEqual(["An ordinary [!NOTE] quotation.", "[!NOTE] keep literal", "[!NOTE]book stays prose"]);
+  expect(view.container.querySelector("pre code")?.textContent).toBe("> [!NOTE]");
+});
+
 it("shows tool execution status independently of its approval decision", () => {
   const row = visualTrajectory(RUNTIME_AGENT_SESSION_SNAPSHOTS.waiting).find(
     (entry) => entry.type === "item" && entry.item.type === "toolCall",

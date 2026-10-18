@@ -4,7 +4,7 @@ import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { Pressable } from "@/ui";
 import { ImagePreviewGallery } from "../ImagePreviewGallery";
-import { UnavailableImage } from "../UnavailableImage";
+import { ImageNotice } from "@flame/ui";
 import { radius, space } from "@flame/ui/tokens.stylex";
 
 const mi = stylex.create({
@@ -57,7 +57,14 @@ export function MarkdownImage({
   const paragraphStyles = layout === "paragraph" && mi.paragraph;
 
   if (unavailable) {
-    return <UnavailableImage alt={alt} title={title} styles={paragraphStyles} />;
+    return (
+      <ImageNotice
+        label={alt}
+        detail={t("message.image.unavailable")}
+        title={title}
+        styles={paragraphStyles}
+      />
+    );
   }
 
   if (linked) {

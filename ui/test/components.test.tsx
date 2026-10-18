@@ -6,6 +6,8 @@ import { Brain } from "@flame/icons/react";
 import {
   Button,
   CodeBlock,
+  ImageNotice,
+  readCalloutMarker,
   Disclosure,
   DiffTable,
   Checkbox,
@@ -89,6 +91,40 @@ describe("recorded code", () => {
     expect(
       screen.getByRole("region", { name: "Captured source" }).textContent,
     ).toBe(source);
+  });
+});
+
+describe("inert media and callouts", () => {
+  it("names an image notice by its label and describes it with the visible detail", () => {
+    render(
+      <>
+        <ImageNotice label="Inline architecture" detail="Embedded image data" />
+        <ImageNotice detail="Image unavailable" />
+      </>,
+    );
+    const labelled = screen.getByRole("img", {
+      name: "Inline architecture",
+      description: "Embedded image data",
+    });
+    expect(labelled.textContent).toBe(
+      "Inline architecture Embedded image data",
+    );
+    expect(
+      screen.getByRole("img", { name: "Image unavailable" }).textContent,
+    ).toBe("Image unavailable");
+  });
+
+  it("reads an alert marker only when it stands alone or before a space", () => {
+    expect(readCalloutMarker("[!TIP] Same-line guidance.")).toEqual({
+      kind: "tip",
+      rest: "Same-line guidance.",
+    });
+    expect(readCalloutMarker("[!NOTE]\nBody")).toEqual({
+      kind: "note",
+      rest: "Body",
+    });
+    expect(readCalloutMarker("[!NOTE]book")).toBeNull();
+    expect(readCalloutMarker("\\[!NOTE]")).toBeNull();
   });
 });
 

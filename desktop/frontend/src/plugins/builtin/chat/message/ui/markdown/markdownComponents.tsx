@@ -1,5 +1,5 @@
 import type { Components } from "react-markdown";
-import { TaskListItem } from "@flame/ui";
+import { Callout, TaskListItem, type CalloutKind } from "@flame/ui";
 import {
   Children,
   cloneElement,
@@ -226,7 +226,9 @@ const sharedMarkdownComponents: Components = {
       </li>
     );
   },
-  blockquote({ children }) {
+  blockquote({ children, node: _node, ...props }) {
+    const kind = (props as { "data-callout"?: CalloutKind })["data-callout"];
+    if (kind) return <Callout kind={kind}>{children}</Callout>;
     return <blockquote dir="auto">{children}</blockquote>;
   },
   pre({ children }) {

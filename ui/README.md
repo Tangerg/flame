@@ -102,6 +102,11 @@ Prose color comes only from the host's accent roles: headings and inline code us
 `--color-accent-strong`, links and list markers `--color-accent-text`, quote rules
 `--color-accent-line`; body and strong text keep the neutral ink. Panel titles use
 the same heading role.
+`Callout` owns the GitHub alert presentation for every Markdown adapter: the
+marker grammar (`readCalloutMarker`), the natural-case title and icon per kind,
+and the status rule, wash and on-tint ink. `ImageNotice` is the one inert image
+description: an alternative text and a muted detail, used for unavailable
+transcript images and for captured file images that are never loaded.
 Quotes and loose lists retain paragraph boundaries around nested blocks; quote
 spacing applies to direct content without overriding a nested list's own flow.
 `TaskListItem` renders one recorded task as a list item with an immutable,

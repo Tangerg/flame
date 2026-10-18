@@ -5,7 +5,7 @@ import { Pressable } from "@/ui";
 import { imageSizeFromBase64 } from "@/plugins/builtin/chat/message/domain/imageHeader";
 import { useT } from "@/lib/i18n";
 import { ImagePreviewGallery } from "../ImagePreviewGallery";
-import { UnavailableImage } from "../UnavailableImage";
+import { ImageNotice } from "@flame/ui";
 import { radius } from "@flame/ui/tokens.stylex";
 
 const ib = stylex.create({
@@ -33,7 +33,8 @@ export function ImageBlock({ mime, data }: { mime: string; data: string }) {
   const src = `data:${mime};base64,${data}`;
   const size = useMemo(() => imageSizeFromBase64(data), [data]);
   const [failedSource, setFailedSource] = useState<string | null>(null);
-  if (failedSource === src) return <UnavailableImage styles={ib.unavailable} />;
+  if (failedSource === src)
+    return <ImageNotice detail={t("message.image.unavailable")} styles={ib.unavailable} />;
   return (
     <ImagePreviewGallery
       item={{ src, alt: "", width: size?.width, height: size?.height }}
