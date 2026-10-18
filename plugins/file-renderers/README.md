@@ -25,6 +25,12 @@ Code fences retain their captured language info as a text caption outside the
 literal source. Code, inline code and tables consume the same shared reading
 roles as the transcript while file parsing and content trust stay here.
 Parsed table column alignment is projected on both header and body cells.
+Paragraphs, headings, nested lists, quotes and rules use the shared `data-prose`
+grammar. Prose direction follows its content; code remains left to right.
+Task tokens supply one immutable `TaskListItem` marker with the primary visible
+task name and captured checked state. Parser checkbox tokens do not become a
+second text prefix; ordinary checkbox notation inside code stays literal.
+Ordered lists retain their authored starting number and ordinary items.
 
 Build shared UI dependencies and rebuild or check the component from the repository:
 

@@ -78,9 +78,18 @@ These components own presentation only and do not query or advance product facts
 as the transcript's code and diagram artifacts. Its named `pre` remains the
 bounded keyboard scroll region; an optional recorded language caption stays
 outside that source. Input and output wells retain their own sunken surface.
-`DocumentBody` supplies the prose inline-code and table styles. The shared
-`inline-code` and `prose-table` data slots let other semantic renderers consume
-those same reading roles, including table lightboxes, without a second skin.
+`DocumentBody` opts into the shared `data-prose` reading grammar: paragraph and
+heading rhythm, nested list markers, quotes, rules, emphasis, inline code and
+tables. Other semantic renderers use that same root marker while retaining their
+host's content measure and font size. `data-prose-level` records an authored
+heading level when the host nests its physical heading below a surrounding
+outline. The `inline-code` and `prose-table` data slots also supply those reading
+roles outside a complete prose root, including table lightboxes.
+`TaskListItem` renders one recorded task as a list item with an immutable,
+named checkbox marker. Its caller supplies the captured checked state and primary
+visible label; paragraphs and nested lists remain selectable document content.
+The marker follows the reading font size and does not enter the keyboard path.
+Its primitive projects document semantics without registering a form control.
 `IconMark` owns the decorative identity frame used by record summaries, empty
 states and modal headers. Its emphasis surface derives from the host accent;
 changing the accent recolors these marks and selected rows together.

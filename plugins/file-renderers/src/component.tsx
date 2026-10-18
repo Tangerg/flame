@@ -1,4 +1,10 @@
-import { createElement, useMemo, type ReactNode } from "react";
+import {
+  Children,
+  createElement,
+  isValidElement,
+  useMemo,
+  type ReactNode,
+} from "react";
 import { Lexer, type Token, type Tokens } from "marked";
 import type { ComponentContext } from "@flame/plugin-sdk";
 import {
@@ -8,7 +14,20 @@ import {
   Panel,
   RecordBody,
   ScrollRegion,
+  TaskListItem,
 } from "@flame/ui";
+
+function visibleText(children: ReactNode): string {
+  return Children.toArray(children)
+    .map((child) => {
+      if (typeof child === "string" || typeof child === "number")
+        return String(child);
+      return isValidElement<{ children?: ReactNode }>(child)
+        ? visibleText(child.props.children)
+        : "";
+    })
+    .join("");
+}
 
 // Parsed file content never supplies HTML or executable URL attributes.
 function renderTokens(tokens: Token[]): ReactNode[] {
@@ -16,6 +35,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
     switch (token.type) {
       case "space":
       case "def":
+      case "checkbox":
         return null;
       case "hr":
         return <hr key={key} />;
@@ -25,13 +45,15 @@ function renderTokens(tokens: Token[]): ReactNode[] {
         const value = token as Tokens.Heading;
         return createElement(
           ["h1", "h2", "h3", "h4", "h5", "h6"][value.depth - 1] ?? "h6",
-          { key },
+          { key, dir: "auto" },
           renderTokens(value.tokens),
         );
       }
       case "paragraph":
         return (
-          <p key={key}>{renderTokens((token as Tokens.Paragraph).tokens)}</p>
+          <p key={key} dir="auto">
+            {renderTokens((token as Tokens.Paragraph).tokens)}
+          </p>
         );
       case "strong":
         return (
@@ -47,12 +69,16 @@ function renderTokens(tokens: Token[]): ReactNode[] {
         );
       case "blockquote":
         return (
-          <blockquote key={key}>
+          <blockquote key={key} dir="auto">
             {renderTokens((token as Tokens.Blockquote).tokens)}
           </blockquote>
         );
       case "codespan":
-        return <code key={key}>{(token as Tokens.Codespan).text}</code>;
+        return (
+          <code key={key} dir="ltr">
+            {(token as Tokens.Codespan).text}
+          </code>
+        );
       case "code": {
         const value = token as Tokens.Code;
         return (
@@ -84,33 +110,53 @@ function renderTokens(tokens: Token[]): ReactNode[] {
       }
       case "list": {
         const value = token as Tokens.List;
-        const rows = value.items.map((item, index) => (
-          <li key={index}>
-            {item.task ? (item.checked ? "[x] " : "[ ] ") : ""}
-            {renderTokens(item.tokens)}
-          </li>
-        ));
+        const rows = value.items.map((item, index) => {
+          const content = renderTokens(item.tokens);
+          if (!item.task) return <li key={index}>{content}</li>;
+          const primary = item.tokens.find(
+            (part) => part.type === "paragraph" || part.type === "text",
+          );
+          return (
+            <TaskListItem
+              key={index}
+              checked={item.checked === true}
+              label={visibleText(
+                primary ? renderTokens([primary]) : null,
+              ).trim()}
+            >
+              {content}
+            </TaskListItem>
+          );
+        });
+        const className = value.items.some((item) => item.task)
+          ? "contains-task-list"
+          : undefined;
         return value.ordered ? (
           <ol
             key={key}
+            className={className}
+            dir="auto"
             start={typeof value.start === "number" ? value.start : undefined}
           >
             {rows}
           </ol>
         ) : (
-          <ul key={key}>{rows}</ul>
+          <ul key={key} className={className} dir="auto">
+            {rows}
+          </ul>
         );
       }
       case "table": {
         const value = token as Tokens.Table;
         return (
           <ScrollRegion key={key} label={`Markdown table ${key + 1}`}>
-            <table>
+            <table dir="auto">
               <thead>
                 <tr>
                   {value.header.map((cell, index) => (
                     <th
                       key={index}
+                      dir="auto"
                       style={{ textAlign: value.align[index] ?? undefined }}
                     >
                       {renderTokens(cell.tokens)}
@@ -124,6 +170,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
                     {row.map((cell, column) => (
                       <td
                         key={column}
+                        dir="auto"
                         style={{ textAlign: value.align[column] ?? undefined }}
                       >
                         {renderTokens(cell.tokens)}

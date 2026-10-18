@@ -6,6 +6,7 @@ export { TextAreaPrimitive } from "./textarea";
 export type { TextAreaPrimitiveProps } from "./textarea";
 export { TooltipPrimitive } from "./tooltip";
 export { CheckboxPrimitive } from "./checkbox";
+export { TaskListMarkerPrimitive } from "./task-list-marker";
 export { SelectPrimitive } from "./select";
 export { DialogPrimitive } from "./dialog";
 export { SwitchPrimitive } from "./switch";

@@ -224,43 +224,217 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
     translate: none !important;
   }
 }
-[data-slot="document-body"] > * + * {
-  margin-block-start: calc(var(--spacing) * 4);
+:where([data-prose]) {
+  --prose-space: calc(var(--fs-prose) / 4);
+  overflow-wrap: anywhere;
+  line-height: var(--leading-prose);
+  text-wrap: pretty;
 }
-[data-slot="document-body"] :is(h1, h2, h3, h4, h5, h6) {
+:where([data-prose]) > :where(* + *) {
+  margin-block-start: calc(var(--prose-space) * 4);
+}
+:where([data-prose]) :where(p) {
+  margin: 0 0 var(--prose-space);
+  font-size: inherit;
+  line-height: var(--leading-prose);
+  color: inherit;
+  letter-spacing: inherit;
+}
+:where([data-prose]) > :where(p:not(:first-child)) {
+  margin-block-start: calc(var(--prose-space) * 2);
+}
+:where([data-prose]) > :where(p + p) {
+  margin-block: calc(var(--prose-space) * 4);
+}
+:where([data-prose]) :where(p:last-child) {
+  margin-block-end: 0;
+}
+:where([data-prose]) :where(h1, h2, h3, h4, h5, h6) {
   font-weight: var(--fw-semibold);
-  line-height: 1.3;
+  letter-spacing: normal;
+  color: var(--color-text);
+  margin: calc(var(--prose-space) * 7) 0 calc(var(--prose-space) * 2);
   text-wrap: balance;
 }
-[data-slot="document-body"] h1 {
-  font-size: var(--fs-display-md);
-  letter-spacing: var(--tracking-display);
+:where([data-prose])
+  :where(h1:not([data-prose-level]), [data-prose-level="1"]) {
+  margin-block-start: calc(var(--prose-space) * 8);
+  margin-block-end: calc(var(--prose-space) * 3);
+  font-size: round(calc(var(--fs-prose) * 1.5), 1px);
+  line-height: calc(var(--prose-space) * 8);
 }
-[data-slot="document-body"] h2 {
-  font-size: var(--fs-display-sm);
+:where([data-prose])
+  :where(h2:not([data-prose-level]), [data-prose-level="2"]) {
+  font-size: round(calc(var(--fs-prose) * 1.25), 1px);
+  line-height: calc(var(--prose-space) * 7);
 }
-[data-slot="document-body"] :is(h3, h4, h5, h6) {
+:where([data-prose])
+  :where(h3:not([data-prose-level]), [data-prose-level="3"]) {
+  margin-block-start: calc(var(--prose-space) * 6);
+  font-size: round(calc(var(--fs-prose) * 1.125), 1px);
+  line-height: calc(var(--prose-space) * 6.5);
+}
+:where([data-prose])
+  :where(h4:not([data-prose-level]), [data-prose-level="4"]) {
+  margin-block-start: calc(var(--prose-space) * 5);
+  margin-block-end: 0;
   font-size: var(--fs-prose);
+  line-height: calc(var(--prose-space) * 6);
 }
-[data-slot="document-body"] :is(strong, b) {
-  font-weight: var(--fw-semibold);
+:where([data-prose])
+  :where(h4:not([data-prose-level]), [data-prose-level="4"])
+  + p {
+  margin-block-start: 0;
 }
-[data-slot="document-body"] :is(ul, ol) {
-  padding-inline-start: 1.5em;
+:where([data-prose])
+  :where(
+    h5:not([data-prose-level]),
+    h6:not([data-prose-level]),
+    [data-prose-level="5"],
+    [data-prose-level="6"]
+  ) {
+  margin: calc(var(--prose-space) * 4) 0 0;
+  font-size: var(--fs-prose);
+  line-height: var(--leading-prose);
 }
-[data-slot="document-body"] ul {
+:where([data-prose]) :where(ul, ol) {
+  margin: 0;
+  padding-inline-start: calc(var(--fs-prose) * 1.625);
+  list-style-position: outside;
+  font-size: inherit;
+  line-height: var(--leading-prose);
+  color: inherit;
+}
+:where([data-prose]) :where(ul) {
   list-style-type: disc;
 }
-[data-slot="document-body"] ol {
+:where([data-prose]) :where(ol) {
   list-style-type: decimal;
 }
-[data-slot="document-body"] li + li {
-  margin-block-start: calc(var(--spacing) * 1);
+:where([data-prose]) > :where(p + :is(ul, ol)) {
+  margin-block-start: calc(var(--prose-space) * 2);
 }
-[data-slot="document-body"] blockquote {
-  padding-inline-start: calc(var(--spacing) * 4);
-  border-inline-start: 2px solid var(--color-border);
+:where([data-prose]) > :where(:is(ul, ol):not(:last-child)) {
+  margin-block-end: calc(var(--prose-space) * 4);
+}
+:where([data-prose]) :where(ul ul) {
+  list-style-type: circle;
+}
+:where([data-prose]) :where(ul ul ul) {
+  list-style-type: square;
+}
+:where([data-prose]) :where(li) {
+  margin: 0;
+  padding-inline-start: calc(var(--prose-space) / 2);
+}
+:where([data-prose]) :where(li + li) {
+  margin-block-start: var(--prose-space);
+}
+:where([data-prose]) :where(li:has(> p) + li) {
+  margin-block-start: calc(var(--prose-space) * 2);
+}
+:where([data-prose]) :where(li)::marker {
   color: var(--color-text-muted);
+}
+:where([data-prose]) :where(li > p) {
+  margin: 0;
+}
+:where([data-prose]) :where(li > p + p) {
+  margin-block-start: calc(var(--prose-space) * 4);
+}
+:where([data-prose]) :where(li > :is(ul, ol)) {
+  margin-block-start: var(--prose-space);
+  margin-block-end: 0;
+}
+:where([data-prose])
+  :where(ul.contains-task-list:not(:has(> li:not(.task-list-item)))) {
+  padding-inline-start: 0;
+}
+:where([data-prose]) :where(ul > li.task-list-item) {
+  list-style-type: none;
+}
+[data-slot="task-list-item"] {
+  position: relative;
+  padding-inline-start: 1.5em;
+}
+[data-slot="task-list-marker"] {
+  position: absolute;
+  inset-block-start: calc((1lh - 1em) / 2);
+  inset-inline-start: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1em;
+  block-size: 1em;
+  border: 1.5px solid color-mix(in oklab, var(--color-text) 22%, transparent);
+  border-radius: var(--shape-2xs);
+  background: color-mix(in oklab, var(--color-text) 4%, transparent);
+  color: var(--color-text-on-accent);
+  user-select: none;
+}
+[data-slot="task-list-marker"][aria-checked="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+:where([data-prose]) :where(blockquote) {
+  position: relative;
+  margin: calc(var(--prose-space) * 4) 0;
+  padding-inline-start: calc(var(--prose-space) * 4);
+  border: 0;
+  color: var(--color-text-soft);
+  line-height: var(--leading-prose);
+  background: transparent;
+}
+:where([data-prose]) :where(blockquote p) {
+  margin: 0;
+  line-height: inherit;
+}
+:where([data-prose]) :where(blockquote)::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 2px;
+  border-radius: var(--shape-2xs);
+  background: var(--color-border-soft);
+}
+:where([data-prose]) :where(a) {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(
+    in oklab,
+    var(--color-accent) 30%,
+    transparent
+  );
+  text-underline-offset: 2px;
+  transition: text-decoration-color var(--dur-color) var(--ease-state);
+}
+@media (hover: hover) {
+  :where([data-prose]) :where(a:hover) {
+    text-decoration-color: var(--color-accent);
+  }
+}
+:where([data-prose]) :where(hr) {
+  clear: both;
+  border: 0;
+  border-block-start: 1px solid var(--color-divider);
+  margin: calc(var(--prose-space) * 8) 0;
+}
+[data-prose] hr + * {
+  margin-block-start: 0;
+}
+:where([data-prose]) :where(strong, b) {
+  color: var(--color-text-bright);
+  font-weight: var(--fw-semibold);
+}
+:where([data-prose]) :where(em, i) {
+  font-style: italic;
+}
+[data-prose] > :first-child {
+  margin-block-start: 0;
+}
+[data-prose] > :last-child {
+  margin-block-end: 0;
 }
 :where(
   [data-slot="document-body"] :not(pre) > code,

@@ -50,7 +50,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
             />
           }
         >
-          <div className="md md-table-preview">
+          <div className="md md-table-preview" data-prose="">
             <table dir="auto" data-slot="prose-table">
               {children}
             </table>

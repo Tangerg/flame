@@ -1,4 +1,5 @@
 import type { Components } from "react-markdown";
+import { TaskListItem } from "@flame/ui";
 import {
   Children,
   cloneElement,
@@ -65,32 +66,54 @@ function imagesDeferToTheLink(children: ReactNode): ReactNode {
 type MarkdownElementProps = {
   children?: ReactNode;
   node?: { tagName?: string };
-  "aria-label"?: string;
+  checked?: boolean;
+  type?: string;
 };
 
-function codexTaskListChildren(children: ReactNode): ReactNode {
+const BLOCK_TAGS = new Set([
+  "p",
+  "ul",
+  "ol",
+  "blockquote",
+  "pre",
+  "table",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "hr",
+]);
+
+function taskListContent(children: ReactNode) {
   const items = Children.toArray(children).filter(
     (child) => !(typeof child === "string" && WHITESPACE_ONLY.test(child)),
   );
   const lead = items[0];
-  if (!isValidElement<MarkdownElementProps>(lead) || lead.props.node?.tagName !== "p") {
-    return children;
-  }
-
-  const [checkbox, ...paragraphChildren] = Children.toArray(lead.props.children);
+  const paragraph =
+    isValidElement<MarkdownElementProps>(lead) && lead.props.node?.tagName === "p" ? lead : null;
+  const [checkbox, ...content] = paragraph ? Children.toArray(paragraph.props.children) : items;
   if (
     !isValidElement<MarkdownElementProps>(checkbox) ||
-    (checkbox.type !== "input" && checkbox.props.node?.tagName !== "input")
+    (checkbox.type !== "input" && checkbox.props.node?.tagName !== "input") ||
+    checkbox.props.type !== "checkbox"
   ) {
-    return children;
+    return null;
   }
 
-  const label = visibleText(paragraphChildren).trim();
-  return [
-    cloneElement(checkbox, { "aria-label": label }),
-    cloneElement(lead, { children: paragraphChildren }),
-    ...items.slice(1),
-  ];
+  const blockIndex = content.findIndex(
+    (child) =>
+      isValidElement<MarkdownElementProps>(child) &&
+      BLOCK_TAGS.has(child.props.node?.tagName ?? String(child.type)),
+  );
+  return {
+    checked: checkbox.props.checked === true,
+    label: visibleText(paragraph || blockIndex < 0 ? content : content.slice(0, blockIndex)).trim(),
+    children: paragraph
+      ? [cloneElement(paragraph, { children: content }), ...items.slice(1)]
+      : content,
+  };
 }
 
 const sharedMarkdownComponents: Components = {
@@ -119,42 +142,42 @@ const sharedMarkdownComponents: Components = {
   },
   h1({ children }) {
     return (
-      <h3 dir="auto" data-md-level="1">
+      <h3 dir="auto" data-prose-level="1">
         {children}
       </h3>
     );
   },
   h2({ children }) {
     return (
-      <h3 dir="auto" data-md-level="2">
+      <h3 dir="auto" data-prose-level="2">
         {children}
       </h3>
     );
   },
   h3({ children }) {
     return (
-      <h4 dir="auto" data-md-level="3">
+      <h4 dir="auto" data-prose-level="3">
         {children}
       </h4>
     );
   },
   h4({ children }) {
     return (
-      <h5 dir="auto" data-md-level="4">
+      <h5 dir="auto" data-prose-level="4">
         {children}
       </h5>
     );
   },
   h5({ children }) {
     return (
-      <h6 dir="auto" data-md-level="5">
+      <h6 dir="auto" data-prose-level="5">
         {children}
       </h6>
     );
   },
   h6({ children }) {
     return (
-      <h6 dir="auto" data-md-level="6">
+      <h6 dir="auto" data-prose-level="6">
         {children}
       </h6>
     );
@@ -174,10 +197,17 @@ const sharedMarkdownComponents: Components = {
     );
   },
   li({ children, className, node: _node, ...rest }) {
-    const taskListItem = className?.includes("task-list-item") ?? false;
+    const task = className?.includes("task-list-item") ? taskListContent(children) : null;
+    if (task) {
+      return (
+        <TaskListItem {...rest} checked={task.checked} label={task.label}>
+          {task.children}
+        </TaskListItem>
+      );
+    }
     return (
       <li className={className} {...rest}>
-        {taskListItem ? codexTaskListChildren(children) : children}
+        {children}
       </li>
     );
   },

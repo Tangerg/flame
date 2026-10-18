@@ -8,12 +8,7 @@ import { visualTrajectory } from "./trajectorySnapshot";
 
 afterEach(cleanup);
 
-it("preserves authored column alignment in captured Markdown tables", () => {
-  const content = [
-    "| Change | Checks | Owner |",
-    "| :--- | ---: | :---: |",
-    "| `safe()` | 18 | **Runtime** |",
-  ].join("\n");
+function renderCapturedMarkdown(content: string) {
   const context: ComponentContext = {
     component: { installationId: "captured-file", digest: "a".repeat(64), componentId: "markdown" },
     signal: new AbortController().signal,
@@ -21,7 +16,7 @@ it("preserves authored column alignment in captured Markdown tables", () => {
       path: "review.md",
       content,
       startLine: 1,
-      totalLines: 3,
+      totalLines: content.split("\n").length,
       truncated: false,
     },
     get runtime(): never {
@@ -37,7 +32,17 @@ it("preserves authored column alignment in captured Markdown tables", () => {
       throw new Error("Captured Markdown must not compose another component");
     },
   };
-  render(<Markdown context={context} />);
+  return render(<Markdown context={context} />);
+}
+
+it("preserves authored column alignment in captured Markdown tables", () => {
+  renderCapturedMarkdown(
+    [
+      "| Change | Checks | Owner |",
+      "| :--- | ---: | :---: |",
+      "| `safe()` | 18 | **Runtime** |",
+    ].join("\n"),
+  );
   const table = screen.getByRole("table") as HTMLTableElement;
   for (const row of table.rows) {
     expect(Array.from(row.cells, (cell) => cell.style.textAlign)).toEqual([
@@ -48,6 +53,55 @@ it("preserves authored column alignment in captured Markdown tables", () => {
   }
   expect(table.querySelector("code")?.textContent).toBe("safe()");
   expect(table.querySelector("strong")?.textContent).toBe("Runtime");
+});
+
+it("renders each tight captured task once with its primary name and immutable state", () => {
+  const { container } = renderCapturedMarkdown(
+    "- [x] Keep the **durable** fact\n- [ ] Verify `runtime.Commit`",
+  );
+  expect(screen.getAllByRole("checkbox")).toHaveLength(2);
+  const complete = screen.getByRole("checkbox", { name: "Keep the durable fact", checked: true });
+  const pending = screen.getByRole("checkbox", { name: "Verify runtime.Commit", checked: false });
+  fireEvent.click(complete);
+  fireEvent.click(pending);
+  expect(screen.getByRole("checkbox", { name: "Keep the durable fact", checked: true })).toBe(
+    complete,
+  );
+  expect(screen.getByRole("checkbox", { name: "Verify runtime.Commit", checked: false })).toBe(
+    pending,
+  );
+  expect(container.textContent).not.toContain("[x]");
+  expect(container.textContent).not.toContain("[ ]");
+  expect(container.querySelector("strong")?.textContent).toBe("durable");
+});
+
+it("keeps loose task descriptions, nested lists, ordinary items and literal checkbox code", () => {
+  const { container } = renderCapturedMarkdown(
+    [
+      "3. [x] Keep the **durable** fact",
+      "",
+      "   Explain `[x]` as literal code in this follow-up.",
+      "",
+      "   - Nested detail",
+      "4. Ordinary item",
+      "5. [ ] Verify `runtime.Commit`",
+    ].join("\n"),
+  );
+  expect(screen.getAllByRole("checkbox")).toHaveLength(2);
+  expect(
+    screen.getByRole("checkbox", { name: "Keep the durable fact", checked: true }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("checkbox", { name: "Verify runtime.Commit", checked: false }),
+  ).toBeTruthy();
+  const list = container.querySelector("ol")!;
+  expect(list.start).toBe(3);
+  expect(list.querySelectorAll(":scope > li")).toHaveLength(3);
+  expect(screen.getByText("Nested detail", { exact: true }).closest("ul")).not.toBeNull();
+  expect(screen.getByText("Ordinary item", { exact: true }).closest("li")).not.toBeNull();
+  expect(screen.getByText("[x]", { exact: true }).tagName).toBe("CODE");
+  expect(container.textContent).not.toContain("[x] Keep");
+  expect(container.textContent).not.toContain("[ ] Verify");
 });
 
 it("shows tool execution status independently of its approval decision", () => {

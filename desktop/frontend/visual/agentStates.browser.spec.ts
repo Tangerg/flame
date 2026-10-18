@@ -1189,10 +1189,10 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
 
   const markdown = page.locator(".md").filter({ hasText: "Structural primitives" });
   const styles = await markdown.evaluate((root) => {
-    const level2 = Array.from(root.querySelectorAll('[data-md-level="2"]')).find((heading) =>
+    const level2 = Array.from(root.querySelectorAll('[data-prose-level="2"]')).find((heading) =>
       heading.textContent?.includes("Architecture review"),
     );
-    const level3 = Array.from(root.querySelectorAll('[data-md-level="3"]')).find((heading) =>
+    const level3 = Array.from(root.querySelectorAll('[data-prose-level="3"]')).find((heading) =>
       heading.textContent?.includes("Structural primitives"),
     );
     const primaryList = Array.from(root.querySelectorAll("ul")).find((list) =>
@@ -1216,7 +1216,7 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
     );
     const taskList = root.querySelector("ol.contains-task-list");
     const looseTask = taskList?.querySelector("li.task-list-item:has(> p)");
-    const looseTaskCheckbox = looseTask?.firstElementChild;
+    const looseTaskCheckbox = looseTask?.querySelector('[role="checkbox"]');
     const looseTaskParagraphs = looseTask?.querySelectorAll(":scope > p");
     const quote = root.querySelector("blockquote");
     const rule = root.querySelector("hr");
@@ -1235,7 +1235,7 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
       !rtlList ||
       !taskList ||
       !looseTask ||
-      !(looseTaskCheckbox instanceof HTMLInputElement) ||
+      !looseTaskCheckbox ||
       looseTaskParagraphs?.length !== 2 ||
       !quote ||
       !rule
@@ -1251,6 +1251,9 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
     const proseParagraphStyle = getComputedStyle(proseParagraph);
     const inlineCodeStyle = getComputedStyle(inlineCode);
     const rtlListStyle = getComputedStyle(rtlList);
+    const taskMarkerBox = looseTaskCheckbox.getBoundingClientRect();
+    const taskTitleBox = looseTaskParagraphs[0]!.getBoundingClientRect();
+    const taskFollowUpBox = looseTaskParagraphs[1]!.getBoundingClientRect();
     return {
       level2Tag: level2.tagName,
       level2Size: level2Style.fontSize,
@@ -1279,10 +1282,14 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
       nestedMarker: getComputedStyle(nestedList).listStyleType,
       deepMarker: getComputedStyle(deepList).listStyleType,
       taskMarker: getComputedStyle(taskList).listStyleType,
-      looseTaskDisplay: getComputedStyle(looseTask).display,
-      looseTaskColumns: getComputedStyle(looseTask).gridTemplateColumns,
-      looseTaskCheckboxInset: getComputedStyle(looseTaskCheckbox).marginTop,
-      looseTaskFollowUpColumn: getComputedStyle(looseTaskParagraphs[1]!).gridColumnStart,
+      looseTaskMarkerSize: [taskMarkerBox.width, taskMarkerBox.height],
+      looseTaskMarkerGap: taskTitleBox.x - taskMarkerBox.right,
+      looseTaskFollowUpAlignment: Math.abs(taskFollowUpBox.x - taskTitleBox.x),
+      looseTaskFollowUpBelowTitle: taskFollowUpBox.y >= taskTitleBox.bottom,
+      looseTaskMarkerInFirstLine:
+        taskMarkerBox.y >= taskTitleBox.y &&
+        taskMarkerBox.bottom <=
+          taskTitleBox.y + Number.parseFloat(getComputedStyle(looseTask).lineHeight) + 1,
       quoteInset: getComputedStyle(quote).paddingInlineStart,
       quoteRule: getComputedStyle(quote, "::after").width,
       ruleMargin: getComputedStyle(rule).marginBlockStart,
@@ -1314,11 +1321,13 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
   expect.soft(styles?.rtlEndPadding).toBe("0px");
   expect.soft(styles?.nestedMarker).toBe("circle");
   expect.soft(styles?.deepMarker).toBe("square");
-  expect.soft(styles?.taskMarker).toBe("none");
-  expect.soft(styles?.looseTaskDisplay).toBe("grid");
-  expect.soft(styles?.looseTaskColumns).not.toBe("none");
-  expect.soft(styles?.looseTaskCheckboxInset).toBe("4px");
-  expect.soft(styles?.looseTaskFollowUpColumn).toBe("2");
+  expect.soft(styles?.taskMarker).toBe("decimal");
+  expect.soft(styles?.looseTaskMarkerSize).toEqual([14, 14]);
+  expect.soft(styles?.looseTaskMarkerGap).toBeGreaterThan(0);
+  expect.soft(styles?.looseTaskMarkerGap).toBeLessThanOrEqual(14);
+  expect.soft(styles?.looseTaskFollowUpAlignment).toBeLessThanOrEqual(1);
+  expect.soft(styles?.looseTaskFollowUpBelowTitle).toBe(true);
+  expect.soft(styles?.looseTaskMarkerInFirstLine).toBe(true);
   expect.soft(styles?.quoteInset).toBe("14px");
   expect.soft(styles?.quoteRule).toBe("2px");
   expect.soft(styles?.ruleMargin).toBe("28px");
@@ -1773,7 +1782,7 @@ test("the transcript publishes one heading outline, from the session down", asyn
   const outline = await page.evaluate(() =>
     [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) => ({
       level: Number(heading.tagName.slice(1)),
-      authored: heading.getAttribute("data-md-level"),
+      authored: heading.getAttribute("data-prose-level"),
       text: (heading.textContent ?? "").trim().slice(0, 24),
     })),
   );

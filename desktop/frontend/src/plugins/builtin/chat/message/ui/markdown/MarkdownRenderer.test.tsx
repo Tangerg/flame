@@ -379,7 +379,9 @@ describe("markdownMessage", () => {
     const { container } = render(<MarkdownRenderer text={src} reveal="instant" />);
 
     const task = container.querySelector("li.task-list-item");
-    expect(task?.firstElementChild?.matches('input[type="checkbox"]')).toBe(true);
+    expect(task?.firstElementChild).toBe(
+      screen.getByRole("checkbox", { name: "Preserve the durable fact", checked: true }),
+    );
     expect(task?.querySelectorAll(":scope > p")).toHaveLength(2);
     expect(task?.querySelector(":scope > p")?.textContent?.trim()).toBe(
       "Preserve the durable fact",
@@ -395,12 +397,23 @@ describe("markdownMessage", () => {
     ].join("\n");
     render(<MarkdownRenderer text={src} reveal="instant" />);
 
-    const complete = screen.getByRole("checkbox", { name: "Preserve the durable fact" });
-    const pending = screen.getByRole("checkbox", { name: "验证 projected view" });
+    const complete = screen.getByRole("checkbox", {
+      name: "Preserve the durable fact",
+      checked: true,
+    });
+    const pending = screen.getByRole("checkbox", { name: "验证 projected view", checked: false });
     expect(complete.getAttribute("aria-label")).toBe("Preserve the durable fact");
-    expect(complete.getAttribute("checked")).not.toBeNull();
+    expect(complete.getAttribute("aria-disabled")).toBe("true");
     expect(pending.getAttribute("aria-label")).toBe("验证 projected view");
-    expect(pending.getAttribute("checked")).toBeNull();
+    expect(pending.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(complete);
+    fireEvent.click(pending);
+    expect(screen.getByRole("checkbox", { name: "Preserve the durable fact", checked: true })).toBe(
+      complete,
+    );
+    expect(screen.getByRole("checkbox", { name: "验证 projected view", checked: false })).toBe(
+      pending,
+    );
   });
 
   it("preserves paragraph boundaries and automatic direction for multilingual prose", () => {
@@ -419,7 +432,7 @@ describe("markdownMessage", () => {
     ].join("\n");
     const { container } = render(<MarkdownRenderer text={src} reveal="instant" />);
 
-    expect(container.querySelector('h3[dir="auto"][data-md-level="1"]')).toBeTruthy();
+    expect(container.querySelector('h3[dir="auto"][data-prose-level="1"]')).toBeTruthy();
     expect(
       Array.from(
         container.querySelectorAll('.md > p[dir="auto"]'),
@@ -537,8 +550,8 @@ describe("markdownMessage", () => {
     );
     const { container } = render(<MarkdownRenderer text={source} reveal="instant" />);
 
-    const headings = [...container.querySelectorAll<HTMLElement>("[data-md-level]")];
-    expect(headings.map((h) => [h.dataset.mdLevel, h.tagName])).toEqual([
+    const headings = [...container.querySelectorAll<HTMLElement>("[data-prose-level]")];
+    expect(headings.map((h) => [h.dataset.proseLevel, h.tagName])).toEqual([
       ["1", "H3"],
       ["2", "H3"],
       ["3", "H4"],

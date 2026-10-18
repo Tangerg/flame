@@ -96,7 +96,7 @@ export function MarkdownRenderer(props: MarkdownMessageProps) {
   }, []);
 
   return (
-    <div ref={rootRef} className="md" dir="auto">
+    <div ref={rootRef} className="md" data-prose="" dir="auto">
       {blocks.map((block, i) => (
         <MarkdownBlock
           key={i}

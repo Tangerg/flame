@@ -106,9 +106,6 @@ const styles = stylex.create({
     minWidth: 0,
     width: "100%",
     maxWidth: "75ch",
-    lineHeight: leading.prose,
-    overflowWrap: "anywhere",
-    textWrap: "pretty",
   },
   facts: {
     display: "flex",
@@ -350,6 +347,7 @@ export function DocumentBody({ children }: { children: ReactNode }) {
   return (
     <article
       data-slot="document-body"
+      data-prose=""
       {...stylex.props(styles.document, type.prose)}
     >
       {children}
@@ -402,6 +400,7 @@ export function CodeBlock({
         <div {...stylex.props(styles.codeCaption, type.uiXs)}>{language}</div>
       )}
       <pre
+        dir="ltr"
         role="region"
         aria-label={label}
         tabIndex={0}

@@ -52,6 +52,7 @@ import { useShellLayoutStore } from "@/plugins/builtin/workspace/adapters/shellL
 import { navigator } from "@/lib/navigation";
 import {
   RUNTIME_AGENT_SESSION_SNAPSHOTS,
+  LONG_RESPONSE_MARKDOWN,
   VISUAL_SESSION_ID,
   type VisualAgentState,
 } from "./agentSessionSnapshots";
@@ -111,6 +112,12 @@ const README_SOURCE: WorkspaceFileContent = {
   content: README_CONTENT,
   startLine: 1,
   totalLines: README_CONTENT.split("\n").length,
+};
+
+const READING_GUIDE_SOURCE: WorkspaceFileContent = {
+  content: LONG_RESPONSE_MARKDOWN,
+  startLine: 1,
+  totalLines: LONG_RESPONSE_MARKDOWN.split("\n").length,
 };
 
 function pending<T>(signal?: AbortSignal): Promise<T> {
@@ -267,13 +274,23 @@ function workspaceDataPlugin(
                 { path: "app", name: "app", type: "dir" },
                 { path: "go.mod", name: "go.mod", type: "file", sizeBytes: 4_096 },
                 { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
+                {
+                  path: "reading-guide.md",
+                  name: "reading-guide.md",
+                  type: "file",
+                  sizeBytes: new TextEncoder().encode(LONG_RESPONSE_MARKDOWN).byteLength,
+                },
               ] satisfies WorkspaceFileEntry[]),
       });
 
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_READ_FILE_KEY,
-        fetcher: async (params) =>
-          (params as WorkspaceReadFileQuery).path === "README.md" ? README_SOURCE : RESIZER_SOURCE,
+        fetcher: async (params) => {
+          const path = (params as WorkspaceReadFileQuery).path;
+          if (path === "README.md") return README_SOURCE;
+          if (path === "reading-guide.md") return READING_GUIDE_SOURCE;
+          return RESIZER_SOURCE;
+        },
       });
     },
   });

@@ -9,7 +9,7 @@ const MarkdownRenderer = lazy(() => loadRenderer().then((m) => ({ default: m.Mar
 function PendingMarkdown({ text }: { text: string }) {
   useVisibleTextMaterial(false);
   return (
-    <div data-surface-pending="" className="md" dir="auto">
+    <div data-surface-pending="" className="md" data-prose="" dir="auto">
       {text}
     </div>
   );
