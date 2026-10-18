@@ -253,12 +253,12 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   font-weight: var(--fw-semibold);
   letter-spacing: normal;
   color: var(--color-accent-strong);
-  margin: calc(var(--prose-space) * 7) 0 calc(var(--prose-space) * 2);
+  margin: calc(var(--prose-space) * 8) 0 calc(var(--prose-space) * 2);
   text-wrap: balance;
 }
 :where([data-prose])
   :where(h1:not([data-prose-level]), [data-prose-level="1"]) {
-  margin-block-start: calc(var(--prose-space) * 8);
+  margin-block-start: calc(var(--prose-space) * 9);
   margin-block-end: calc(var(--prose-space) * 3);
   font-size: round(calc(var(--fs-prose) * 1.5), 1px);
   line-height: calc(var(--prose-space) * 8);
@@ -270,13 +270,13 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
 }
 :where([data-prose])
   :where(h3:not([data-prose-level]), [data-prose-level="3"]) {
-  margin-block-start: calc(var(--prose-space) * 6);
+  margin-block-start: calc(var(--prose-space) * 7);
   font-size: round(calc(var(--fs-prose) * 1.125), 1px);
   line-height: calc(var(--prose-space) * 6.5);
 }
 :where([data-prose])
   :where(h4:not([data-prose-level]), [data-prose-level="4"]) {
-  margin-block-start: calc(var(--prose-space) * 5);
+  margin-block-start: calc(var(--prose-space) * 6);
   margin-block-end: 0;
   font-size: var(--fs-prose);
   line-height: calc(var(--prose-space) * 6);

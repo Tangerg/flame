@@ -1312,7 +1312,7 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
   expect.soft(styles?.level2Margin).toBe("0px 7px");
   expect.soft(styles?.level3Tag).toBe("H4");
   expect.soft(styles?.level3Size).toBe("16px");
-  expect.soft(styles?.level3Margin).toBe("21px 7px");
+  expect.soft(styles?.level3Margin).toBe("24.5px 7px");
   expect.soft(styles?.leadParagraphMargin).toBe("7px 3.5px");
   expect.soft(styles?.leadListMargin).toBe("7px 14px");
   expect.soft(styles?.tableMargin).toBe("14px 0px");
@@ -1321,7 +1321,7 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
   expect.soft(styles?.tableHeaderFontSize).toBe("14px");
   expect.soft(styles?.tableHeaderLineHeight).toBe("22.75px");
   expect.soft(styles?.proseParagraphMargin).toBe("7px 3.5px");
-  expect.soft(styles?.inlineCodeDecoration).toBe("clone");
+  expect.soft(styles?.inlineCodeDecoration).toBe("slice");
   expect.soft(styles?.inlineCodeFontSize).toBe("12px");
   expect.soft(styles?.inlineCodeRadius).toBe("4px");
   expect.soft(styles?.inlineCodeWordBreak).toBe("break-word");

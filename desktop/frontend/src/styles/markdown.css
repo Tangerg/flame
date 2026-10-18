@@ -135,7 +135,7 @@
   --color-success-fg: var(--alert-ink);
   --color-success-emphasis: var(--tone-success);
 
-  margin: 16px 0;
+  margin: calc(var(--prose-space) * 5) 0;
   padding: 10px 14px 10px 16px;
   border-left-width: 2px;
   border-radius: 0 var(--shape-md) var(--shape-md) 0;
@@ -161,13 +161,18 @@
   --alert-ink: var(--color-negative-badge-text);
   --alert-wash: var(--color-negative-wash);
 }
+.md .markdown-alert > :is(p, ul, ol):not(.markdown-alert-title) {
+  margin-block: 0;
+}
+.md .markdown-alert > :is(p, ul, ol):not(.markdown-alert-title) + :is(p, ul, ol) {
+  margin-block-start: calc(var(--prose-space) * 2);
+}
 .md .markdown-alert li::marker {
   color: var(--alert-ink);
 }
 .md .markdown-alert .markdown-alert-title {
-  font-size: var(--fs-ui-xs);
+  font-size: var(--fs-ui-sm);
   font-weight: var(--fw-semibold);
-  letter-spacing: 0.04em;
   line-height: var(--leading-snug);
-  margin-bottom: 4px;
+  margin-bottom: var(--prose-space);
 }

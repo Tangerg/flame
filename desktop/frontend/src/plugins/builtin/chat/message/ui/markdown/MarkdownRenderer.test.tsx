@@ -457,7 +457,7 @@ describe("markdownMessage", () => {
       />,
     );
     const titles = container.querySelectorAll(".markdown-alert-title");
-    expect(Array.from(titles, (title) => title.textContent)).toEqual(["NOTE", "WARNING"]);
+    expect(Array.from(titles, (title) => title.textContent)).toEqual(["Note", "Warning"]);
     for (const title of titles) {
       expect(title.getAttribute("dir")).toBe("auto");
       expect(title.querySelector('svg[aria-hidden="true"] path')).toBeTruthy();

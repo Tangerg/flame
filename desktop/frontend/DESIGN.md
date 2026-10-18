@@ -159,7 +159,8 @@ Prose headings and page titles take `accent-strong`, links and file references
 messages sit on an accent tint (10% light, 18% dark). Strong text and body stay
 neutral so long reading keeps one calm ink. GitHub-style callouts take their
 status scale: a 2px solid rule, the status wash, and a title and list markers in
-the on-tint ink (`--color-*-badge-text`).
+the on-tint ink (`--color-*-badge-text`). Titles read in natural case ("Note",
+"Warning"), and the body keeps the quote's paragraph rhythm.
 
 Forbidden: accent as a section or card fill, decorative borders, a second
 accent hue, and a bright ring or halo on input focus or click — inputs and the

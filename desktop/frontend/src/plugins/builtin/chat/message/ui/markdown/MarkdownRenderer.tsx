@@ -19,6 +19,7 @@ import { rehypeFileRefs } from "./rehypeFileRefs";
 import { rehypeFootnoteLabels } from "./rehypeFootnoteLabels";
 import { rehypeStreamCaret } from "./rehypeStreamCaret";
 import { normalizeMarkdownMath } from "./preprocess";
+import { remarkAlertTitle } from "./remarkAlertTitle";
 import { remarkLiteralUnknownHtml } from "./remarkLiteralUnknownHtml";
 import { useCommitThrottle, useStreamReveal, type MarkdownReveal } from "./streamReveal";
 import { useVisibleTextMaterial } from "../messageVisibleMaterial";
@@ -53,6 +54,7 @@ const remarkPlugins = [
   remarkCjkFriendly,
   remarkMath,
   remarkAlert,
+  remarkAlertTitle,
   remarkLiteralUnknownHtml,
 ];
 

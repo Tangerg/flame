@@ -28,11 +28,11 @@ const rb = stylex.create({
     display: "flex",
     minWidth: 0,
     flex: 1,
-    justifyContent: "flex-end",
     overflow: "hidden",
     maskImage: `linear-gradient(to right, transparent 0, #000 var(--glimpse-lead, 0px))`,
     WebkitMaskImage: `linear-gradient(to right, transparent 0, #000 var(--glimpse-lead, 0px))`,
   },
+  glimpseTail: { justifyContent: "flex-end" },
   glimpseLine: { flexShrink: 0, whiteSpace: "nowrap" },
   aside: {
     marginTop: space.s3,
@@ -136,7 +136,7 @@ export function ReasoningBlock({ text, status }: Props) {
             data-clipped={glimpseClipped ? "" : undefined}
             aria-hidden
             style={{ "--glimpse-lead": glimpseClipped ? GLIMPSE_LEAD : "0px" } as CSSProperties}
-            {...stylex.props(rb.glimpse)}
+            {...stylex.props(rb.glimpse, glimpseClipped && rb.glimpseTail)}
           >
             <span ref={glimpseLineRef} {...stylex.props(rb.glimpseLine, vocab.faint)}>
               {glimpse}
