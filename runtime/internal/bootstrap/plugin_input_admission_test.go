@@ -17,7 +17,7 @@ func TestReviewTypedInputRefusalPreservesIdentityAcrossExecutableCLI(t *testing.
 	defer runtime.close()
 	installed := poMCPActivate(runtime, reviewExamplePackage(t))
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
-	runtime.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	runtime.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	contribution := installed.Selected.Contributions[0]
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,

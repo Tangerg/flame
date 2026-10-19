@@ -217,7 +217,7 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 		t.Fatalf("example admission = %+v", installed.Selected)
 	}
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
-	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Review example"}, "session").(*protocol.Session)
 	options := func(key string) delivery.Options {
 		return delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
@@ -301,7 +301,7 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 	// existing Interrupt. Its private data and the Runtime checkpoint survive.
 	r.close()
 	r = poMCPOpen(t, cfg)
-	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	accepted := invoke(delivery.RunsResume, request, "update-approved")
 	drain(accepted)
 	item := toolResult(update, "reviews_update_review")

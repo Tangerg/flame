@@ -37,7 +37,7 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
-	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	directory, err := localruntime.DataDirectoryAt(cfg.Stores.DataDirectory)
 	if err != nil {
 		t.Fatal(err)

@@ -75,7 +75,7 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 			t.Cleanup(finish)
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
-			pool, err := Open(ctx, ctx, []mcpserver.Server{server}, nil, registry, nil, func(ctx context.Context, source inframcp.Executable) (ToolCall, func(), error) {
+			pool, err := Open(ctx, ctx, []mcpserver.Server{server}, nil, registry, nil, func(ctx context.Context, source inframcp.Executable, _ ToolHost) (ToolCall, func(), error) {
 				close(prepared)
 				select {
 				case <-resume:

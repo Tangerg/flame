@@ -68,7 +68,7 @@ func TestPreparedToolObservesUncertainReplyOnlyAfterAdmittedDispatch(t *testing.
 	server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("schedules"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 	registry := &mutableSourceRegistry{server: server.Clone()}
 	var settlements atomic.Int32
-	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, func(ctx context.Context, source inframcp.Executable) (ToolCall, func(), error) {
+	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, func(ctx context.Context, source inframcp.Executable, _ ToolHost) (ToolCall, func(), error) {
 		return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
 			defer settlements.Add(1)
 			return source.Call(ctx, invocation)

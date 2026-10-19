@@ -112,7 +112,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 		t.Fatal("current point values bypassed the consumer's frozen collaborators")
 	}
 	r.must(delivery.MCPServersReconnect, protocol.MCPServerRequest{Server: consumerServer}, "refresh-consumer")
-	r.poMCPTools(&consumerServer, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	r.poMCPTools(&consumerServer, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	read(2)
 	other := activate(consumerSource, "other-consumer")
 	wait(other, "reviews")

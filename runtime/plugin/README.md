@@ -695,6 +695,14 @@ arguments; callback authority remains only in `CallbackMetadata` and
 `CallbackFromContext`. Setting Tool context cannot mutate an earlier caller's
 metadata. There is no standing model grant inside the context record.
 
+An ordinary installed model Tool call receives the same canonical call-scoped host
+grant as its public `plugins.call` entry, through the one grant owner. The grant
+carries the Tool call's own invocation and the backend's frozen dependency
+authority, so one business reached through either entry keeps identical host
+capability, declared-dependency reach and call attribution. Memory keeps its
+narrower model/embedding grant and `ToolContext` as its own two-call policy; an
+ordinary backend never declares the Memory contract to reach the host.
+
 `TextEmbeddingMethod`, `NewTextEmbeddingCallback` and `CallTextEmbedding` publish
 `flame.model/embed-texts.v1` for a captured model. Input is a text array and output
 is its corresponding float32 vector array. Empty, missing and inconsistent vector

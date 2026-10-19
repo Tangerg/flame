@@ -95,6 +95,11 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
 			callbacks := pluginsdk.NewCallbacks()
 			t.Cleanup(func() { _ = callbacks.Close() })
+			if err := callbacks.PublishRPC(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				http.Error(w, "unexpected host call", http.StatusBadRequest)
+			})); err != nil {
+				t.Fatal(err)
+			}
 			var calls, notices atomic.Int32
 			embedder := &preparedEmbedder{}
 			var captured pluginsdk.ToolContext
@@ -127,6 +132,14 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 					vectors, err := (rpc.RemoteModels{Grant: capturedGrant, Space: captured.EmbeddingSpace}).Embed(ctx, []string{"rank"})
 					if err != nil || len(vectors) != 1 {
 						return nil, errors.Join(err, errors.New("prepared callback failed"))
+					}
+				} else {
+					ref, err := pluginsdk.CallbackFromContext(ctx)
+					if err != nil {
+						return nil, err
+					}
+					if err := ref.Validate(); err != nil {
+						return nil, err
 					}
 				}
 				return nil, errors.New("response unavailable after dispatch")

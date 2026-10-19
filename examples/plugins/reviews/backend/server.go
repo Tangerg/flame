@@ -27,6 +27,32 @@ func NewServer(store *Store) (*sdk.Server, error) {
 		reviews, err := store.List(ctx)
 		return ListResult{Reviews: reviews}, err
 	}
+	// analyze is one analyzer business reached through either entry: the public
+	// typed query and the model Tool below. Both receive the same call-scoped host
+	// callback and call the same declared analyzer dependency under the same owner.
+	analyze := func(ctx context.Context) (result Analysis, resultErr error) {
+		current, err := store.List(ctx)
+		if err != nil {
+			return Analysis{}, err
+		}
+		if len(current) != 1 {
+			return Analysis{}, fmt.Errorf("reviews: expected the owned example review")
+		}
+		invocation, err := pluginsdk.InvocationFromContext(ctx)
+		if err != nil {
+			return Analysis{}, err
+		}
+		ref, err := pluginsdk.CallbackFromContext(ctx)
+		if err != nil {
+			return Analysis{}, err
+		}
+		client, err := flameruntime.ConnectCallback(ctx, ref)
+		if err != nil {
+			return Analysis{}, err
+		}
+		defer func() { resultErr = errors.Join(resultErr, client.Close()) }()
+		return AnalyzeReview(ctx, client, invocation.Target, current[0])
+	}
 	list, err := tool.NewFunc(tool.FuncConfig{Name: "list_reviews", Description: contracts.List.Descriptor().Description}, func(ctx context.Context, _ struct{}) (ListResult, error) {
 		return read(ctx)
 	})
@@ -64,6 +90,12 @@ func NewServer(store *Store) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	analyzeTool, err := tool.NewFunc(tool.FuncConfig{Name: "analyze_review", Description: contracts.Analyzers.Descriptor().Description}, func(ctx context.Context, _ struct{}) (Analysis, error) {
+		return analyze(ctx)
+	})
+	if err != nil {
+		return nil, err
+	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame-review-example", Version: "1.0.0"}, nil)
 	backend, err := pluginsdk.NewBackend(server)
 	if err != nil {
@@ -94,7 +126,7 @@ func NewServer(store *Store) (*sdk.Server, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := pluginsdk.RegisterTools(server, list, update); err != nil {
+	if err := pluginsdk.RegisterTools(server, list, update, analyzeTool); err != nil {
 		return nil, err
 	}
 	if err := pluginsdk.RegisterServer(backend, pluginsdk.ReceiptMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, request pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
@@ -116,28 +148,8 @@ func NewServer(store *Store) (*sdk.Server, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := contracts.Analyzers.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (result Analysis, resultErr error) {
-		current, err := store.List(ctx)
-		if err != nil {
-			return Analysis{}, err
-		}
-		if len(current) != 1 {
-			return Analysis{}, fmt.Errorf("reviews: expected the owned example review")
-		}
-		invocation, err := pluginsdk.InvocationFromContext(ctx)
-		if err != nil {
-			return Analysis{}, err
-		}
-		ref, err := pluginsdk.CallbackFromContext(ctx)
-		if err != nil {
-			return Analysis{}, err
-		}
-		client, err := flameruntime.ConnectCallback(ctx, ref)
-		if err != nil {
-			return Analysis{}, err
-		}
-		defer func() { resultErr = errors.Join(resultErr, client.Close()) }()
-		return AnalyzeReview(ctx, client, invocation.Target, current[0])
+	if err := contracts.Analyzers.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (Analysis, error) {
+		return analyze(ctx)
 	}); err != nil {
 		return nil, err
 	}

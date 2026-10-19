@@ -134,7 +134,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			defer func() { r.close() }()
 			reviews := poMCPActivate(r, reviewExamplePackage(t))
 			server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: reviews.ID}, Name: "reviews"}
-			r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+			r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 			contract, err := pluginsdk.ToolProposalContract()
 			if err != nil {
 				t.Fatal(err)
@@ -187,7 +187,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 				}
 				r.close()
 				r = poMCPOpen(t, cfg)
-				r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+				r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 				if mode == "failed-proposal" {
 					waitCallContributorState(t, r, contributor.ID, protocol.MCPServerFailed)
 					if err := r.host.application.recoverUncertainExecutions(t.Context()); err != nil {

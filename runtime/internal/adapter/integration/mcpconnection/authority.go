@@ -28,6 +28,7 @@ type authorizedTool struct {
 	source   mcp.Executable
 	config   mcp.ServerConfig
 	prepare  ToolPreparation
+	host     ToolHost
 }
 
 func (t authorizedTool) Unwrap() toolcontract.Tool { return t.Tool }
@@ -53,7 +54,7 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 	if t.prepare == nil {
 		return t.Tool.Call(ctx, invocation)
 	}
-	call, release, err := t.prepare(ctx, t.source)
+	call, release, err := t.prepare(ctx, t.source, t.host)
 	if err != nil {
 		return chat.ToolOutput{}, err
 	}
@@ -117,7 +118,7 @@ func rejected(reason string) error {
 func (p *Pool) authorizedTools(catalog []mcp.Executable) []toolcontract.Tool {
 	result := make([]toolcontract.Tool, 0, len(catalog))
 	for _, executable := range catalog {
-		result = append(result, authorizedTool{Tool: executable, registry: p.registry, source: executable, config: executable.SourceConfig(), prepare: p.prepare})
+		result = append(result, authorizedTool{Tool: executable, registry: p.registry, source: executable, config: executable.SourceConfig(), prepare: p.prepare, host: p.toolHost(executable)})
 	}
 	return result
 }

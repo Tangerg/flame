@@ -38,14 +38,13 @@ func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPrepara
 	if dependency.Missing(config.Installations) || config.Callbacks == nil || config.Embeddings == nil {
 		return nil, errors.New("plugin tools: installations, callbacks and embedding resolver are required")
 	}
-	return func(ctx context.Context, executable mcp.Executable) (mcpconnection.ToolCall, func(), error) {
-		call := func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
-			return executable.Call(ctx, invocation)
-		}
+	return func(ctx context.Context, executable mcp.Executable, host mcpconnection.ToolHost) (mcpconnection.ToolCall, func(), error) {
 		source := executable.SourceConfig().Server
 		id, installed := source.Source.Origin().Installation()
 		if !installed {
-			return call, func() {}, nil
+			return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+				return executable.Call(ctx, invocation)
+			}, func() {}, nil
 		}
 		snapshot, found, err := config.Installations.Get(ctx, id)
 		if err != nil {
@@ -62,22 +61,47 @@ func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPrepara
 			return nil, nil, plugin.ErrUnavailable
 		}
 		if snapshot.Selected.HasImplementation(source.Name, memoryContract) {
-			scoped, release, err := prepareMemoryTool(ctx, executable, config.Callbacks, config.Embeddings)
-			if err != nil {
-				return nil, nil, err
-			}
-			return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
-				return executable.Call(scoped, invocation)
-			}, release, nil
+			return prepareMemoryTool(ctx, executable, config.Callbacks, config.Embeddings)
 		}
-		return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
-			defer config.Invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
-			return call(invocation)
-		}, func() {}, nil
+		return prepareInstalledTool(ctx, executable, host, config.Invalidations)
 	}, nil
 }
 
-func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pluginsdk.Callbacks, embeddings func(context.Context) (models.TextEmbedder, error)) (context.Context, func(), error) {
+// prepareInstalledTool gives an ordinary installed backend the same canonical
+// call-scoped host grant its public plugins.call entry receives, so one business
+// reached through either entry keeps identical host capability and call
+// attribution. The grant's release is owned by the caller; a write invalidates
+// projected reads on return.
+func prepareInstalledTool(ctx context.Context, executable mcp.Executable, host mcpconnection.ToolHost, invalidations invalidation.Publish) (mcpconnection.ToolCall, func(), error) {
+	if host == nil {
+		return nil, nil, errors.New("plugin tools: installed host grant is required")
+	}
+	metadata, release, err := host(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	scoped := scopeCallbacks(ctx, metadata)
+	return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+		defer invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
+		return executable.Call(scoped, invocation)
+	}, release, nil
+}
+
+// scopeCallbacks carries an opened grant's callback reference into the tool request
+// metadata the backend admits, leaving the calling-owner invocation untouched.
+func scopeCallbacks(ctx context.Context, metadata sdk.ParamsBase) context.Context {
+	combined := scopemcp.RequestMetaFromContext(ctx)
+	if combined == nil {
+		combined = make(sdk.Meta)
+	}
+	maps.Copy(combined, metadata.Meta)
+	return scopemcp.WithRequestMeta(ctx, combined)
+}
+
+// prepareMemoryTool keeps Memory's own narrow model/embedding grant and its
+// CWD/embedding-space scope; Memory owns that two-call policy and does not receive
+// the canonical installed grant.
+func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pluginsdk.Callbacks, embeddings func(context.Context) (models.TextEmbedder, error)) (mcpconnection.ToolCall, func(), error) {
 	cwd, attached := executionctx.WorkspaceCWD(ctx)
 	if !attached {
 		return nil, nil, errors.New("memory: Run workspace is required")
@@ -103,15 +127,12 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 		release()
 		return nil, nil, err
 	}
-	combined := scopemcp.RequestMetaFromContext(ctx)
-	if combined == nil {
-		combined = make(sdk.Meta)
-	}
-	maps.Copy(combined, metadata.Meta)
-	scoped, err := pluginsdk.WithToolContext(scopemcp.WithRequestMeta(ctx, combined), pluginsdk.ToolContext{CWD: cwd, EmbeddingSpace: space})
+	scoped, err := pluginsdk.WithToolContext(scopeCallbacks(ctx, metadata), pluginsdk.ToolContext{CWD: cwd, EmbeddingSpace: space})
 	if err != nil {
 		release()
 		return nil, nil, err
 	}
-	return scoped, release, nil
+	return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+		return source.Call(scoped, invocation)
+	}, release, nil
 }

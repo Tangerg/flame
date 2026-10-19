@@ -51,7 +51,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
-	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	contribution := installed.Selected.Contributions[0]
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
@@ -98,7 +98,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	replacement := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: reviewExamplePackage(t)}, "install-replacement").(*protocol.PluginInstallation)
 	replacement = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: replacement.ID, Enabled: true}, "enable-replacement").(*protocol.PluginInstallation)
 	replacementServer := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: replacement.ID}, Name: "reviews"}
-	r.poMCPTools(&replacementServer, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	r.poMCPTools(&replacementServer, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-original")
 	r = reopenCommandRuntime(t, r, &cfg)
 	assertUnresolvedInstallationIsHeld(t, r, installed)
@@ -134,7 +134,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 		t.Fatalf("original identity adopted a replacement target: %+v", result)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable-original")
-	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	recovered := r.must(delivery.PluginsCall, request, options.IdempotencyKey).(*protocol.CallPluginResponse)
 	actual, err := jsoninput.Parse([]byte(recovered.Output))
 	if err != nil || recovered.Failure != nil || actual != expected {
@@ -164,7 +164,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 		}
 	}
 	read(installed, 2, "resolved")
-	r.poMCPTools(&replacementServer, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	r.poMCPTools(&replacementServer, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	read(replacement, 1, "open")
 	runs := r.must(delivery.RunsList, protocol.ListRunsRequest{}, "").(*protocol.Page[protocol.RunRef])
 	if len(runs.Data) != 0 {
@@ -362,7 +362,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	runtime := poMCPOpen(t, cfg)
 	installed := poMCPActivate(runtime, source)
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
-	runtime.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	runtime.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	session := runtime.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Lost review response"}, "session").(*protocol.Session)
 	invoke := func(method delivery.Name, request any, key string) delivery.Result {
 		t.Helper()

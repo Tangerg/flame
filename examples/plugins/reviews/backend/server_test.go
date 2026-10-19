@@ -46,7 +46,7 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 		}
 	})
 	catalog, err := session.ListTools(t.Context(), nil)
-	if err != nil || len(catalog.Tools) != 2 {
+	if err != nil || len(catalog.Tools) != 3 {
 		t.Fatalf("catalog = %+v, %v", catalog, err)
 	}
 	call := func(id string, args any) *sdk.CallToolResult {
