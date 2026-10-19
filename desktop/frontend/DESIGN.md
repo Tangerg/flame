@@ -513,6 +513,13 @@ material result earns a surface only once the row is opened; colouring the
 identity glyph would turn a failure or a refusal back into a status card, which is
 the thing this shape exists to avoid.
 
+Tool groups and narrative waves share `ToolActivitySummary`. Operation counts
+stay on the first line; ongoing calls, settled problems and refusals occupy a
+secondary line when present, including while folded. Each settled call counts
+as one problem if it failed or returned a nonzero exit; refusal stays distinct.
+These counts describe recorded outcomes without changing the existing expansion policy. Individual
+failure marks come from the call status, even when no explanatory text exists.
+
 An earlier revision spelled this as an RPC log entry inside card chrome. The
 narrative line is what replaced it.
 

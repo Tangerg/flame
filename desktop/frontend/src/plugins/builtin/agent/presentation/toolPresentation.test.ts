@@ -5,6 +5,7 @@ import {
   toolDiffStat,
   isReadOnlyTool,
   summarizeActivity,
+  toolActivityStatus,
   toolGroupNeedsAttention,
   toolIntent,
   toolMetaItems,
@@ -198,5 +199,19 @@ describe("toolPresentation", () => {
     expect(toolGroupNeedsAttention([tool({ status: "ok" })])).toBe(false);
     expect(toolGroupNeedsAttention([tool({ status: "running" })])).toBe(true);
     expect(toolGroupNeedsAttention([tool({ status: "err" })])).toBe(true);
+  });
+
+  it("counts settled problems once and distinguishes denials and calls still in flight", () => {
+    expect(
+      toolActivityStatus([
+        tool({ status: "ok", exitCode: 0 }),
+        tool({ status: "ok", exitCode: 1 }),
+        tool({ status: "err", exitCode: 2 }),
+        tool({ status: "err" }),
+        tool({ status: "denied", exitCode: 1 }),
+        tool({ status: "running", exitCode: 1 }),
+      ]),
+    ).toEqual({ running: 1, issues: 3, denied: 1 });
+    expect(toolActivityStatus([])).toEqual({ running: 0, issues: 0, denied: 0 });
   });
 });

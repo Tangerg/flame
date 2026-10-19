@@ -12,6 +12,7 @@ import type { ToolActionSpec, ToolViewOpenerSpec } from "@/plugins/sdk";
 
 export interface ToolCardModel {
   running: boolean;
+  failed: boolean;
   denied: boolean;
   intent: ToolIntent;
   detail?: ToolDetail;
@@ -30,6 +31,7 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
   const diffStat = toolDiffStat(tool);
   return {
     running: tool.status === "running",
+    failed: tool.status === "err",
     denied: tool.status === "denied",
     intent,
     detail: namesOneOfMany(intent.detail, tool) ? undefined : intent.detail,

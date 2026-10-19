@@ -8,7 +8,7 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The shared presentation foundation and many reading and navigation defects have been repaired. The overall product has not yet reached the user's desired quality. Continue improving **visual refinement, typography and layout, and interaction design together**, with the center conversation and right Context Dock as the first priority.
 
-The UI Goal has resumed in this chat. This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, and unified main/delegated message rendering. The broader visual goal remains open. Historical paused or blocked statuses in earlier chats do not describe the current task.
+The UI Goal has resumed in this chat. This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, and made tool outcomes visible before opening their details. The broader visual goal remains open. Historical paused or blocked statuses in earlier chats do not describe the current task.
 
 The original checkout is `/Users/tangerg/Desktop/flame`, on branch `main`. All former local and remote branch tips were checked for ancestry before consolidation; their commits are retained in `main`. Only `main` remains locally and on `origin`. Read current Git state before starting; this document is a checkpoint, not an authority that can overwrite newer work.
 
@@ -106,7 +106,24 @@ Jumping to the bottom transfers focus to that reader before hiding the control.
 The running-status pill keeps one line and grows with text size instead of
 wrapping outside a fixed-height background under narrow-window pressure.
 
+Tool groups and narrative waves now use the same `ToolActivitySummary` in the
+shared message renderer. Their compact secondary line retains ongoing calls,
+settled problems and refusals when folded beside the later answer. A nonzero
+command exit and an error on the same call count once; provisional exit values
+on running calls remain in the running
+count. Refusals remain distinct from execution failures. Individual failure
+marks use the Runtime status independently of optional explanatory text. The
+existing automatic expansion and user-pinning rules remain in force.
+
 ## Verification checkpoint
+
+For shared tool-outcome summaries:
+
+- The complete frontend `npm run check` passed: 373 test files and 2719 tests, including type, lint, formatting, unused-code, boundary, token, style, bootstrap, locale, resource, bundle-budget and production-module checks. Focused checks passed all 64 tests. Regression coverage exercises folded wave outcomes, running-to-failed summary updates without overriding a user's fold, single-count semantics and failure marks without error text.
+- Shared UI `npm run check` passed 38 tests and its independently packed consumer; portable-plugin `npm run check` passed all ten resource checks. The eight locales have complete summary labels. No shared-package or portable-resource source changed.
+- The supported Wails production macOS arm64 build passed with deployment floor 13.0. Actual Wails WKWebView computer use checked Chinese/light/default-size and 18 px scenes, English/dark/18 px scenes, normal and approximately 1120 px native windows, and a pointer-resized 320 px Dock.
+- Native inspection confirmed that the folded wave retains two problems and one refusal, expanding reveals the corresponding nonzero command exit, failed patch and refused operation, and Space/Enter toggles retain summary focus. The status line remains available while scrolling detailed output. Successful waves keep their compact single-line summary beside prose and live tool records. The existing sidebar-matching Dock wash is unchanged.
+- No visual/browser suite was run. The native app exited successfully; the preview, disposable data, bundle, build logs, fixture output and owned WebKit caches were removed. User reference caches and unrelated acceptance resources were retained. Go, Runtime and CLI sources remain unchanged, so their earlier module results below remain applicable.
 
 For shared main/delegated narrative rendering:
 
@@ -143,8 +160,8 @@ These checks cover the changed contracts and representative native scenarios. Th
 
 ## Next work: refine the product, layout and interactions
 
-1. **Extend the task comparison.** Reading-to-file-and-back and overview-to-subagent-and-back now have shared presentation and explicit focus ownership. Continue with richer tool evidence and cross-view navigation; do not restart the implemented typography, file header, shared message renderer or sidebar-matching divider.
-2. **Continue the reading composition around activity.** The shared prose step, paragraph/heading rhythm and disclosure affordance are implemented. Review how running/completed tool groups, recorded evidence and media join an answer, especially where a summary leads into a dense detail view. Preserve the existing bounded table, code and selection owners.
+1. **Extend the task comparison.** Reading-to-file-and-back and overview-to-subagent-and-back now have shared presentation and explicit focus ownership. Native tool inspection still opens the current file in the Dock while leaving keyboard focus on its conversation opener. Review this explicit activation and its return route without breaking the file workspace's intentional outside-focus guard for background updates. Do not restart the implemented typography, file header, shared message renderer or sidebar-matching divider.
+2. **Continue the reading composition around activity.** The shared prose step, paragraph/heading rhythm, disclosure affordance and folded tool-outcome summaries are implemented. Review how recorded evidence and media join an answer, especially where a summary leads into a dense detail view. Preserve the existing bounded table, code and selection owners.
 3. **Refine the remaining Dock forms.** File identity/actions and delegated message reuse, overview continuity and return focus are established. Continue with richer tool details and cross-view navigation: decide which details belong inline or in a persistent pane, and reserve popovers/dialogs for genuinely bounded tasks. Keep the user-requested sidebar-matching divider unchanged, including hover and drag.
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.
 5. **Continue across other pages.** Carry the same layout and interaction grammar into settings, installed plugin pages, forms, resource lists and dialogs. Retain the approved brand and the implemented Composer contracts while checking how the surrounding surfaces fit them.

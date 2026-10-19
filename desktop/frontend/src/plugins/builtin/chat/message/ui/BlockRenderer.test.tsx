@@ -18,6 +18,48 @@ const CTX: BlockCtx = {
 };
 
 describe("activity header semantics", () => {
+  it("keeps problems visible in a folded wave without duplicating their details", () => {
+    const calls: ToolCall[] = [
+      { ...tool("exit"), name: "shell", fn: "Run the suite", safetyClass: "exec", exitCode: 1 },
+      {
+        ...tool("failed"),
+        name: "apply_patch",
+        fn: "Apply the patch",
+        safetyClass: "write",
+        status: "err",
+      },
+      {
+        ...tool("denied"),
+        name: "apply_patch",
+        fn: "Apply another patch",
+        safetyClass: "write",
+        status: "denied",
+      },
+    ];
+    const blocks: Message["blocks"] = calls.map((call) => ({ kind: "tool", toolCallId: call.id }));
+    blocks.push({ kind: "text", text: "Review the recorded result.", status: "complete" });
+    const row = {
+      message: { ...message("wave-problems", "root-run", calls[0]!.id), blocks },
+      facts: {
+        toolCalls: Object.fromEntries(calls.map((call) => [call.id, call])),
+        delegatedRuns: {},
+        awaiting: new Map<string, string>(),
+      },
+    };
+
+    render(renderMessageBlocks(row, CTX));
+    const summary = screen.getByRole("button", { name: /2 issues.*1 denied.*3 steps/ });
+    expect(summary.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Run the suite")).toBeNull();
+
+    fireEvent.click(summary);
+    expect(summary.getAttribute("aria-expanded")).toBe("true");
+    expect(within(summary).getByText("2 issues")).toBeTruthy();
+    expect(screen.getByText("Run the suite")).toBeTruthy();
+    expect(screen.getByText("failed")).toBeTruthy();
+    expect(screen.getByText("denied")).toBeTruthy();
+  });
+
   it("owns one wave summary while exposing each read-only tool's disclosure directly", () => {
     const read: ToolCall = {
       ...tool("wave-read"),

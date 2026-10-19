@@ -35,7 +35,7 @@ export function ToolStatusMarks({ model }: { model: ToolCardModel }) {
   return (
     <>
       {model.running && <StatusDot tone="running" />}
-      {model.error !== undefined && (
+      {model.failed && (
         <span
           data-slot="tool-status"
           data-tone="negative"

@@ -63,4 +63,11 @@ describe("ToolGroupMember", () => {
 
     expect(screen.getByText(/denied/i)).toBeTruthy();
   });
+
+  it("marks a failed call even when the runtime supplied no explanatory text", () => {
+    const { container } = member({ status: "err" });
+
+    expect(screen.getByText("failed").getAttribute("data-tone")).toBe("negative");
+    expect(container.querySelector('[data-slot="tool-error"]')).toBeNull();
+  });
 });

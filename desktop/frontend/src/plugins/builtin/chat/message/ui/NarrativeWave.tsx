@@ -7,7 +7,7 @@ import {
   waveToolCalls,
 } from "@/plugins/builtin/agent/public/messagePresentation";
 import { AgentActivityDisclosure } from "@/ui/agent";
-import { ToolGroupRows } from "@/plugins/builtin/chat/tools/public/rendering";
+import { ToolActivitySummary, ToolGroupRows } from "@/plugins/builtin/chat/tools/public/rendering";
 import { useT } from "@/lib/i18n";
 import type { TurnFacts } from "@/plugins/builtin/agent/public/conversation";
 import { unitSeam } from "../application/renderUnitRhythm";
@@ -34,7 +34,7 @@ export function NarrativeWave({ units, facts, ctx, renderUnit }: Props) {
       shell="line"
       contentInset="rows"
       icon={waveGlyph(units, tools)}
-      label={summary || steps}
+      label={<ToolActivitySummary label={summary || steps} tools={tools} />}
       trailing={summary ? steps : undefined}
       open={open}
       onToggle={() => setOpen((value) => !value)}

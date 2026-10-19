@@ -93,6 +93,17 @@ export function toolGroupNeedsAttention(tools: readonly ToolCall[]): boolean {
   return tools.some((tool) => tool.status === "running" || tool.status === "err");
 }
 
+export function toolActivityStatus(tools: readonly ToolCall[]) {
+  const counts = { running: 0, issues: 0, denied: 0 };
+  for (const tool of tools) {
+    if (tool.status === "running") counts.running += 1;
+    else if (tool.status === "denied") counts.denied += 1;
+    else if (tool.status === "err" || (tool.exitCode != null && tool.exitCode !== 0))
+      counts.issues += 1;
+  }
+  return counts;
+}
+
 const ACTIVITY_FAMILIES = ["read", "search", "lookup", "write", "run", "fetch"] as const;
 
 type ActivityFamily = (typeof ACTIVITY_FAMILIES)[number];

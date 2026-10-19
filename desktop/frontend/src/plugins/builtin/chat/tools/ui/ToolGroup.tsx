@@ -6,6 +6,7 @@ import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { toolGroupModel, type ToolGroupPinnedState } from "../application/toolGroupModel";
 import { ToolGroupMember } from "./ToolGroupMember";
+import { ToolActivitySummary } from "./ToolActivitySummary";
 import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { vocab } from "@flame/ui";
 
@@ -33,7 +34,7 @@ export function ToolGroup({ tools, expandedIds, onToggleExpand, superseded }: Pr
       icon={toolGroupIconFor(tools)}
       shell="line"
       contentInset="rows"
-      label={model.summary}
+      label={<ToolActivitySummary label={model.summary} tools={tools} />}
       trailing={
         <span {...stylex.props(vocab.faint, typeStep.uiXs)}>
           {t("tools.group.calls", { count: model.count })}
