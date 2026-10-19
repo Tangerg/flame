@@ -18,7 +18,17 @@ export function FileRefLink({
       nativeButton={false}
       data-slot="file-reference"
       aria-label={label}
-      onClick={() => openWorkspaceFile(path, line)}
+      onClick={(event) => {
+        const selection = event.currentTarget.ownerDocument.getSelection();
+        if (
+          event.detail > 0 &&
+          selection &&
+          !selection.isCollapsed &&
+          selection.containsNode(event.currentTarget, true)
+        )
+          return;
+        openWorkspaceFile(path, line);
+      }}
     >
       {label.split("/").map((segment, index) => (
         <Fragment key={index}>

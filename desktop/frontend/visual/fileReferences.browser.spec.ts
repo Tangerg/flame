@@ -72,6 +72,77 @@ for (const [width, fontSize, theme] of [
   });
 }
 
+for (const [width, fontSize, theme] of [
+  [1472, 14, "light"],
+  [1120, 18, "dark"],
+] as const) {
+  test(`dragging a file reference keeps selection and copy in ${theme}`, async ({
+    page,
+    context,
+    browserName,
+  }) => {
+    await context.grantPermissions(
+      browserName === "webkit" ? ["clipboard-read"] : ["clipboard-read", "clipboard-write"],
+    );
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto(
+      `/visual/?fixture=workspace&state=dock-files&agent-state=prose-blocks&theme=${theme}&font-size=${fontSize}`,
+    );
+    await page.locator("html[data-visual-ready]").waitFor();
+    const reading = page.locator(".md").filter({ hasText: "Source references" });
+    const fileTree = page.getByRole("treeitem", { name: "reading-guide.md", exact: true });
+
+    for (const label of ["README.md:15:2", REFERENCE]) {
+      const reference = reading.getByRole("button", { name: label, exact: true });
+      await reference.scrollIntoViewIfNeeded();
+      await page.evaluate(() => document.fonts.ready);
+      const points = await reference.evaluate((node) => {
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        const texts: Text[] = [];
+        while (walker.nextNode()) texts.push(walker.currentNode as Text);
+        const start = document.createRange();
+        start.setStart(texts[0]!, 0);
+        start.setEnd(texts[0]!, 1);
+        const end = document.createRange();
+        const last = texts.at(-1)!;
+        end.setStart(last, last.length - 1);
+        end.setEnd(last, last.length);
+        const a = start.getBoundingClientRect();
+        const b = end.getBoundingClientRect();
+        return {
+          start: { x: a.right - 1, y: a.top + a.height / 2 },
+          end: { x: b.right - 1, y: b.top + b.height / 2 },
+        };
+      });
+      await page.mouse.move(points.start.x, points.start.y);
+      await page.mouse.down();
+      await page.mouse.move(points.end.x, points.end.y, { steps: 24 });
+      await page.mouse.up();
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+
+      await expect.poll(() => page.evaluate(() => getSelection()?.toString())).toBe(label.slice(1));
+      await expect(fileTree).toBeVisible();
+      await page.keyboard.press("ControlOrMeta+C");
+      await expect
+        .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+        .toBe(label.slice(1));
+
+      const viewport = page.locator(".msg-scroll-viewport");
+      const bounds = (await viewport.boundingBox())!;
+      await viewport.click({ position: { x: 6, y: points.end.y - bounds.y } });
+      await expect.poll(() => page.evaluate(() => getSelection()?.isCollapsed)).toBe(true);
+      await expect(fileTree).toBeVisible();
+    }
+
+    await reading.getByRole("button", { name: "README.md:15:2", exact: true }).click();
+    await expect(
+      page.locator('[data-quote-source="file"][data-quote-path="README.md"]'),
+    ).toBeVisible();
+  });
+}
+
 test("inline references retain keyboard navigation to the recorded file and line", async ({
   page,
 }) => {
@@ -84,6 +155,12 @@ test("inline references retain keyboard navigation to the recorded file and line
   const reference = reading.getByRole("button", { name: "README.md:15:2", exact: true });
   await reference.focus();
   await expect(reference).toBeFocused();
+  await reference.evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(range);
+  });
   await reference.press("Enter");
   const view = page.locator('[data-dock-view-id="file"]');
   await expect(view.getByRole("tab", { name: "Source", exact: true })).toHaveAttribute(
@@ -97,6 +174,12 @@ test("inline references retain keyboard navigation to the recorded file and line
     exact: true,
   });
   await next.focus();
+  await next.evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(range);
+  });
   await next.press("Space");
   await expect(
     view.locator('[data-quote-source="file"][data-quote-path="desktop/frontend/package.json"]'),
