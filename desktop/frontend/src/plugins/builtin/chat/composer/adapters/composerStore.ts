@@ -7,7 +7,7 @@ import { t } from "@/lib/i18n";
 import { ScopedPersistence } from "@/lib/persistedStore";
 import { notifyError } from "@/plugins/sdk";
 import type { ComposerImage } from "../domain/draft";
-import type { ComposerModelPreference } from "../application/ports/state";
+import type { ComposerModelPreference, ComposerSubmission } from "../application/ports/state";
 import { Composer } from "../domain/composer";
 import { parsePersistedComposer, persistedComposerDrafts } from "./persistedDrafts";
 
@@ -22,6 +22,7 @@ interface ComposerActions {
   setValue: (value: string) => void;
   setModel: (preference: ComposerModelPreference) => void;
   clear: () => void;
+  captureSubmission: () => ComposerSubmission;
   addImages: (images: readonly Omit<ComposerImage, "id">[]) => void;
   addImageFiles: (files: File[]) => void;
   removeImage: (id: string) => void;
@@ -31,13 +32,13 @@ interface ComposerActions {
   restorePaste: (id: string) => void;
   loadSession: (sessionId: string) => void;
   discardSession: (sessionId: string) => void;
-  pushHistory: (text: string) => void;
   historyPrev: () => boolean;
   historyNext: () => boolean;
 }
 
 const persistence = new ScopedPersistence<ComposerState>(STORAGE_KEY);
-let stagingLease: object = {};
+const imageStaging = new Map<string, object>();
+let storageGeneration: object = {};
 
 function emptyComposerState(): ComposerState {
   return { composer: Composer.empty(), modelPreference: { kind: "session" } };
@@ -55,8 +56,25 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
         setValue: (value) => edit((draft) => draft.withValue(value)),
         setModel: (modelPreference) => set({ modelPreference }),
         clear: () => {
-          stagingLease = {};
+          imageStaging.delete(get().composer.activeSessionId);
           set((s) => ({ composer: s.composer.clear() }));
+        },
+        captureSubmission: () => {
+          const generation = storageGeneration;
+          const { activeSessionId: sessionId, draft } = get().composer;
+          return {
+            value: draft.value,
+            images: draft.images,
+            pastes: draft.pastes,
+            consume: (historyText) => {
+              if (generation !== storageGeneration) return false;
+              const current = get().composer;
+              const matches = current.activate(sessionId).draft === draft;
+              set({ composer: current.consumeDraft(sessionId, draft, historyText) });
+              if (matches) imageStaging.delete(sessionId);
+              return matches && current.activeSessionId === sessionId;
+            },
+          };
         },
         addImages: (images) =>
           edit((draft) =>
@@ -66,10 +84,15 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
             ]),
           ),
         addImageFiles: (files) => {
-          const lease = stagingLease;
           const sessionId = get().composer.activeSessionId;
+          const lease = imageStaging.get(sessionId) ?? {};
+          imageStaging.set(sessionId, lease);
           void Promise.allSettled(files.map(fileToInputImage)).then((results) => {
-            if (lease !== stagingLease || get().composer.activeSessionId !== sessionId) return;
+            if (
+              lease !== imageStaging.get(sessionId) ||
+              get().composer.activeSessionId !== sessionId
+            )
+              return;
             const ok = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
             if (ok.length > 0) get().addImages(ok);
             const failed = results.length - ok.length;
@@ -94,9 +117,10 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
         editPaste: (id, text) => edit((draft) => draft.editPaste(id, text)),
         restorePaste: (id) => edit((draft) => draft.restorePaste(id)),
         loadSession: (sessionId) => set((s) => ({ composer: s.composer.activate(sessionId) })),
-        discardSession: (sessionId) =>
-          set((s) => ({ composer: s.composer.discardSession(sessionId) })),
-        pushHistory: (text) => set((s) => ({ composer: s.composer.record(text) })),
+        discardSession: (sessionId) => {
+          imageStaging.delete(sessionId);
+          set((s) => ({ composer: s.composer.discardSession(sessionId) }));
+        },
         historyPrev: () => {
           const recalled = get().composer.recallOlder();
           if (!recalled) return false;
@@ -129,6 +153,7 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
 
 export function activateComposerStorage(endpoint: string): boolean {
   if (persistence.isActive(endpoint)) return false;
-  stagingLease = {};
+  imageStaging.clear();
+  storageGeneration = {};
   return persistence.activate(endpoint, useComposerStore);
 }

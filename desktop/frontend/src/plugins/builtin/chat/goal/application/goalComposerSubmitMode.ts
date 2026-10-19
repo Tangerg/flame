@@ -9,7 +9,6 @@ import { GoalComposerModeOwner } from "./goalComposerMode";
 
 export interface GoalComposerSubmitDependencies {
   getActiveSessionId(): string | null;
-  composerText(): string;
   goalState(sessionId: string): GoalState | undefined;
   runtimeAvailable(): boolean;
   runOptions(): AgentRunStartOptions;
@@ -96,13 +95,7 @@ async function startGoal(
   try {
     await dependencies.start({ sessionId, objective, ...dependencies.runOptions() });
     const committed = owner.finish(sessionId, true);
-    if (
-      committed &&
-      dependencies.getActiveSessionId() === sessionId &&
-      dependencies.composerText() === context.rawText
-    ) {
-      context.accept();
-    }
+    if (committed) context.accept();
   } catch (error) {
     owner.finish(sessionId, false);
     if (!dependencies.retired(error)) dependencies.reportStartError(error);

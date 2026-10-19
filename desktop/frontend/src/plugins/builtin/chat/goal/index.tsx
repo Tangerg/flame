@@ -21,7 +21,6 @@ import { GoalModeIndicator } from "./ui/GoalModeIndicator";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 import { getActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { getAgentSessionSharedMaterial } from "@/plugins/builtin/agent/public/sessionMaterial";
-import { getComposerText } from "@/plugins/builtin/chat/composer/public/draft";
 import { focusComposer } from "@/plugins/builtin/chat/composer/public/focus";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { startGoal } from "./application/goalCommands";
@@ -70,7 +69,6 @@ export function createGoalPlugin(runtimeClient: () => FlameClient) {
         COMPOSER_SUBMIT_MODE,
         createGoalComposerSubmitMode(composerMode, {
           getActiveSessionId,
-          composerText: getComposerText,
           goalState: (sessionId) => getAgentSessionSharedMaterial<GoalState>(sessionId, "goal"),
           runtimeAvailable: runtimeCommandsAvailable,
           runOptions: resolveAgentRunStartOptions,

@@ -298,6 +298,14 @@ Source checks and native packaging alone do not prove rendering or recovery.
 
 ## Shared presentation package
 
+Composer submission captures the authoring owner's exact immutable draft and target.
+Slash handlers explicitly call `accept()` or use a successful `send()` admission;
+completion alone does not accept input. Submit modes use the same settlement.
+Acceptance records history in the captured Session and consumes only that revision,
+without clearing later edits or moving focus back from another control. Replacing
+Runtime storage retires outstanding draft callbacks. Goal mode reports acceptance
+without independently comparing text or clearing drafts.
+
 Dock order belongs to workspace navigation; dragging and menu moves issue the same
 reorder intent. Resize gestures own a temporary preview and captured pointer; only
 release commits a preference. Cancellation, capture loss, replacement and unmount

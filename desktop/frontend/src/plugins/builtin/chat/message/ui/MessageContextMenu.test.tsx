@@ -2,7 +2,7 @@ import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  getComposerText,
+  captureComposerSubmission,
   replaceComposerDraft,
 } from "@/plugins/builtin/chat/composer/public/draft";
 import { drainBrowserTasks } from "@/test/browserTasks";
@@ -100,6 +100,6 @@ describe("messageContextMenu", () => {
     );
     openMenu("user msg");
     fireEvent.click(screen.getByText("Edit in composer"));
-    expect(getComposerText()).toBe("draft me again");
+    expect(captureComposerSubmission().value).toBe("draft me again");
   });
 });

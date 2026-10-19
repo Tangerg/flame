@@ -88,10 +88,11 @@ describe("Runtime target authoring ownership", () => {
   it("preserves each target's drafts and file context when Session IDs coincide", () => {
     const targets = installTargets("roundtrip");
     selectAgentSession("shared");
+    composer().setValue("history on A");
+    composer().captureSubmission().consume("history on A");
     composer().setValue("draft on A");
     composer().addImages([{ mime: "image/png", data: "image-on-A" }]);
     composer().addPaste("paste on A");
-    composer().pushHistory("history on A");
     openWorkspaceFile("src/only-on-A.ts", 12);
     navigator().go({ view: "files", subagent: "child-on-A", settings: "connection" });
     const keyA = useComposerStore.persist.getOptions().name!;

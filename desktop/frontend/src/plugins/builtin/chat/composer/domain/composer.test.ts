@@ -106,3 +106,41 @@ describe("ComposerDraft pastes", () => {
     expect(withPaste.restorePaste("missing")).toBe(withPaste);
   });
 });
+
+describe("captured composer consumption", () => {
+  it("clears only the submitted revision and records its history", () => {
+    const original = typed(Composer.empty().activate("s1"), "original");
+    const accepted = original.consumeDraft("s1", original.draft, "original");
+    expect(accepted.draft.value).toBe("");
+    expect(accepted.recallOlder()?.draft.value).toBe("original");
+    const edited = typed(typed(original, "successor"), "original");
+    const later = edited.consumeDraft("s1", original.draft, "original");
+    expect(later.draft).toBe(edited.draft);
+  });
+
+  it("protects attachment changes even when the text stays the same", () => {
+    const original = typed(Composer.empty().activate("s1"), "original");
+    const attached = original.edit((draft) =>
+      draft.withPastes([{ id: "paste", text: "new", lines: 1 }]),
+    );
+    const accepted = attached.consumeDraft("s1", original.draft, "original");
+    expect(accepted.draft).toBe(attached.draft);
+    expect(accepted.recallOlder()?.draft.value).toBe("original");
+  });
+
+  it("settles the captured session without clearing or recording in its successor", () => {
+    const original = typed(Composer.empty().activate("s1"), "original");
+    const successor = typed(original.activate("s2"), "successor");
+    const accepted = successor.consumeDraft("s1", original.draft, "original");
+    expect(accepted.draft.value).toBe("successor");
+    expect(accepted.recallOlder()).toBeNull();
+    expect(accepted.activate("s1").draft.value).toBe("");
+    expect(accepted.activate("s1").recallOlder()?.draft.value).toBe("original");
+  });
+
+  it("does not recreate a discarded session", () => {
+    const original = typed(Composer.empty().activate("s1"), "original");
+    const discarded = original.discardSession("s1");
+    expect(discarded.consumeDraft("s1", original.draft, "original")).toBe(discarded);
+  });
+});

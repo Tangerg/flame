@@ -13,7 +13,7 @@ import {
   useRestoreComposerPaste,
 } from "@/plugins/builtin/chat/composer/public/attachments";
 import {
-  useClearComposerDraft,
+  captureComposerSubmission,
   useComposerText,
   useSetComposerText,
 } from "@/plugins/builtin/chat/composer/public/draft";
@@ -25,7 +25,6 @@ export const ComposerSurface = memo(function ComposerSurface({
 }) {
   const value = useComposerText();
   const setValue = useSetComposerText();
-  const clear = useClearComposerDraft();
   const images = useComposerImages();
   const removeImage = useRemoveComposerImage();
   const addImageFiles = useAddComposerImageFiles();
@@ -40,7 +39,7 @@ export const ComposerSurface = memo(function ComposerSurface({
     <Composer
       value={value}
       onChange={setValue}
-      onClear={clear}
+      captureSubmission={captureComposerSubmission}
       onSend={onSend}
       images={images}
       onRemoveImage={removeImage}

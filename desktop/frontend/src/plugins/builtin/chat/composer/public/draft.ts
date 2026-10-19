@@ -11,12 +11,8 @@ export function useSetComposerText(): (value: string) => void {
   return composerState().useSetText();
 }
 
-export function useClearComposerDraft(): () => void {
-  return composerState().useClearDraft();
-}
-
-export function getComposerText(): string {
-  return composerState().getText();
+export function captureComposerSubmission() {
+  return composerState().captureSubmission();
 }
 
 export function replaceComposerDraft(input: ComposerDraftInput): void {

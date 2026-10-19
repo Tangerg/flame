@@ -18,7 +18,10 @@ vi.mock("../application/slashSuggestions", () => ({
 vi.mock("@/plugins/builtin/chat/composer/public/submit", () => ({
   submitComposer: () => submitted(),
 }));
-vi.mock("../application/focus", () => ({ setComposerFocusTarget: () => {} }));
+vi.mock("../public/focus", () => ({
+  registerComposerFocusTarget: () => () => {},
+  captureComposerFocus: () => () => {},
+}));
 vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
   runtimeCommandsAvailable: () => true,
 }));
@@ -39,11 +42,10 @@ function mount(options: Partial<Parameters<typeof useComposerInputController>[0]
     useComposerInputController({
       value: "你好",
       onChange: () => {},
-      onClear: () => {},
+      captureSubmission: () => ({ value: "你好", images: [], pastes: [], consume: () => true }),
       onSend: () => true,
       images: [],
       pastes: [],
-      recordHistory: () => {},
       onAddImages: () => {},
       onAddPaste: () => {},
       acceptsImages: true,
@@ -143,9 +145,8 @@ describe("clipboard image admission", () => {
   it.each([true, false])("preserves the draft when image support is %s", (acceptsImages) => {
     vi.mocked(notifyError).mockClear();
     const onAddImages = vi.fn();
-    const onClear = vi.fn();
     const onChange = vi.fn();
-    const { result } = mount({ acceptsImages, onAddImages, onClear, onChange });
+    const { result } = mount({ acceptsImages, onAddImages, onChange });
     const image = new File(["image"], "image.png", { type: "image/png" });
     const preventDefault = vi.fn();
     act(() =>
@@ -157,7 +158,6 @@ describe("clipboard image admission", () => {
     expect(preventDefault).toHaveBeenCalledOnce();
     expect(onAddImages).toHaveBeenCalledTimes(acceptsImages ? 1 : 0);
     expect(notifyError).toHaveBeenCalledTimes(acceptsImages ? 0 : 1);
-    expect(onClear).not.toHaveBeenCalled();
     expect(onChange).not.toHaveBeenCalled();
   });
 

@@ -42,7 +42,6 @@ async function withEnterKeymap() {
 }
 
 const baseProps = {
-  onClear: () => {},
   images: [],
   onRemoveImage: () => {},
   onAddImages: () => {},
@@ -55,6 +54,19 @@ const baseProps = {
   mode: "agent" as const,
   onModeChange: () => {},
 };
+
+function composerProps(value: string) {
+  return {
+    ...baseProps,
+    value,
+    captureSubmission: () => ({
+      value,
+      images: baseProps.images,
+      pastes: baseProps.pastes,
+      consume: () => true,
+    }),
+  };
+}
 
 afterEach(async () => {
   await act(async () => {
@@ -78,7 +90,7 @@ describe("composer", () => {
     );
 
     const { container } = wrap(
-      <Composer {...baseProps} value="" onChange={() => {}} onSend={() => true} />,
+      <Composer {...composerProps("")} onChange={() => {}} onSend={() => true} />,
     );
 
     expect(container.querySelector(".border-b")).toBeNull();
@@ -86,14 +98,14 @@ describe("composer", () => {
 
   it("calls onChange as the user types", () => {
     const onChange = vi.fn();
-    wrap(<Composer {...baseProps} value="" onChange={onChange} onSend={() => true} />);
+    wrap(<Composer {...composerProps("")} onChange={onChange} onSend={() => true} />);
     const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: "hi" } });
     expect(onChange).toHaveBeenCalledWith("hi");
   });
 
   it("does not reference an unmounted mention listbox", () => {
-    wrap(<Composer {...baseProps} value="" onChange={() => {}} onSend={() => true} />);
+    wrap(<Composer {...composerProps("")} onChange={() => {}} onSend={() => true} />);
 
     expect(screen.getByRole("textbox").hasAttribute("aria-controls")).toBe(false);
   });
@@ -102,7 +114,7 @@ describe("composer", () => {
     await withEnterKeymap();
     const onSend = vi.fn(() => true);
     const onChange = vi.fn();
-    wrap(<Composer {...baseProps} value="hello world" onChange={onChange} onSend={onSend} />);
+    wrap(<Composer {...composerProps("hello world")} onChange={onChange} onSend={onSend} />);
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
     expect(onSend).toHaveBeenCalledWith({ parts: [{ kind: "text", text: "hello world" }] });
   });
@@ -110,7 +122,7 @@ describe("composer", () => {
   it("keeps the Enter that immediately follows a WebKit IME composition end inside the composer", async () => {
     await withEnterKeymap();
     const onSend = vi.fn(() => true);
-    wrap(<Composer {...baseProps} value="english" onChange={() => {}} onSend={onSend} />);
+    wrap(<Composer {...composerProps("english")} onChange={() => {}} onSend={onSend} />);
     const textarea = screen.getByRole("textbox");
 
     fireEvent.compositionStart(textarea, { data: "englis" });
@@ -126,7 +138,7 @@ describe("composer", () => {
     try {
       await withEnterKeymap();
       const onSend = vi.fn(() => true);
-      wrap(<Composer {...baseProps} value="中文 english" onChange={() => {}} onSend={onSend} />);
+      wrap(<Composer {...composerProps("中文 english")} onChange={() => {}} onSend={onSend} />);
       const textarea = screen.getByRole("textbox");
 
       fireEvent.compositionStart(textarea, { data: "english" });
@@ -146,7 +158,7 @@ describe("composer", () => {
   it("recovers the same commit ownership when a browser drops compositionend", async () => {
     await withEnterKeymap();
     const onSend = vi.fn(() => true);
-    wrap(<Composer {...baseProps} value="中文 english" onChange={() => {}} onSend={onSend} />);
+    wrap(<Composer {...composerProps("中文 english")} onChange={() => {}} onSend={onSend} />);
     const textarea = screen.getByRole("textbox");
 
     fireEvent.compositionStart(textarea, { data: "english" });
@@ -159,7 +171,7 @@ describe("composer", () => {
   it("does not submit when the textarea is empty / whitespace only", async () => {
     await withEnterKeymap();
     const onSend = vi.fn(() => true);
-    wrap(<Composer {...baseProps} value="   " onChange={() => {}} onSend={onSend} />);
+    wrap(<Composer {...composerProps("   ")} onChange={() => {}} onSend={onSend} />);
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
     expect(onSend).not.toHaveBeenCalled();
   });
@@ -167,8 +179,7 @@ describe("composer", () => {
   it("renders image thumbnails when images are staged", () => {
     wrap(
       <Composer
-        {...baseProps}
-        value=""
+        {...composerProps("")}
         onChange={() => {}}
         onSend={() => true}
         images={[
@@ -187,7 +198,7 @@ describe("composer", () => {
       "composer.input.label": "Prompt",
       "composer.placeholder": "Localized placeholder",
     });
-    wrap(<Composer {...baseProps} value="" onChange={() => {}} onSend={() => true} />);
+    wrap(<Composer {...composerProps("")} onChange={() => {}} onSend={() => true} />);
 
     await act(async () => {
       setLocale("placeholder-test");
@@ -231,7 +242,7 @@ describe("composer", () => {
 
     function Harness({ initial, onSend }: { initial: string; onSend: () => boolean }) {
       const [value, setValue] = useState(initial);
-      return <Composer {...baseProps} value={value} onChange={setValue} onSend={onSend} />;
+      return <Composer {...composerProps(value)} onChange={setValue} onSend={onSend} />;
     }
 
     function typeInto(value: string) {

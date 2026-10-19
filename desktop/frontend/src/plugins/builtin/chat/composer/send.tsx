@@ -4,8 +4,8 @@ import { useIsCurrentRootRunning, useStopCurrentRootRun } from "@/plugins/builti
 import { useT } from "@/lib/i18n";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
 import { useComposerImages, useComposerPastes } from "./public/attachments";
-import { useClearComposerDraft, useComposerText } from "./public/draft";
-import { useRecordComposerHistory } from "./public/history";
+import { captureComposerSubmission, useComposerText } from "./public/draft";
+import { captureComposerFocus } from "./public/focus";
 import { composerActionLayout } from "./application/composerActionLayout";
 import { submitComposer } from "./application/submitComposer";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
@@ -18,8 +18,6 @@ function SendButton() {
   const value = useComposerText();
   const images = useComposerImages();
   const pastes = useComposerPastes();
-  const recordHistory = useRecordComposerHistory();
-  const clear = useClearComposerDraft();
   const send = useChatSend();
   const stop = useStopCurrentRootRun();
   const running = useIsCurrentRootRunning();
@@ -32,12 +30,9 @@ function SendButton() {
   const layout = composerActionLayout({ running, hasInput });
   const submit = () =>
     submitComposer({
-      value,
-      clear,
+      draft: captureComposerSubmission(),
+      restoreFocus: captureComposerFocus(),
       sendInput: send,
-      images,
-      pastes,
-      recordHistory,
       canSend: runtimeCommandsAvailable,
     });
 

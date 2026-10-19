@@ -1,7 +1,6 @@
 import { disposeOnHmr } from "@/lib/hmr";
 import type { AgentSessions } from "@/plugins/builtin/agent/public/services";
 import type { RuntimeServerScope } from "@/plugins/builtin/runtime/public/services";
-import { focusComposer } from "../application/focus";
 import { configureComposerStatePort } from "../application/ports/state";
 import { activateComposerStorage, useComposerStore } from "./composerStore";
 import { joinDraftParts } from "../domain/draft";
@@ -14,23 +13,44 @@ export function installComposerStatePorts(
   scope: RuntimeServerScope,
 ): () => void {
   activateComposerStorage(endpoint());
+  let focusTarget: { element: HTMLTextAreaElement | null } | null = null;
+  const focus = (selectionEnd?: number) => {
+    const element = focusTarget?.element;
+    if (!element) return;
+    element.focus();
+    if (selectionEnd !== undefined) element.setSelectionRange(selectionEnd, selectionEnd);
+  };
   const disposePort = configureComposerStatePort({
+    focus,
+    captureFocus: () => {
+      const origin = document.activeElement;
+      const target = focusTarget;
+      return () => {
+        if (document.activeElement === origin && focusTarget === target) focus();
+      };
+    },
+    registerFocusTarget: (element) => {
+      const target = { element };
+      focusTarget = target;
+      return () => {
+        if (focusTarget === target) focusTarget = null;
+      };
+    },
     useText: () => useComposerStore((state) => state.composer.draft.value),
     useSetText: () => useComposerStore((state) => state.setValue),
-    useClearDraft: () => useComposerStore((state) => state.clear),
-    getText: () => useComposerStore.getState().composer.draft.value,
+    captureSubmission: () => useComposerStore.getState().captureSubmission(),
     replaceDraft: (input) => {
       const store = useComposerStore.getState();
       store.clear();
       store.setValue(input.text);
       if (input.images?.length) store.addImages(input.images);
-      focusComposer(input.text.length);
+      focus(input.text.length);
     },
     appendText: (text) => {
       const store = useComposerStore.getState();
       const value = joinDraftParts([store.composer.draft.value.trimEnd(), text]);
       store.setValue(value);
-      focusComposer(value.length);
+      focus(value.length);
     },
     useImages: () => useComposerStore((state) => state.composer.draft.images),
     usePastes: () => useComposerStore((state) => state.composer.draft.pastes),
@@ -40,7 +60,6 @@ export function installComposerStatePorts(
     useRemovePaste: () => useComposerStore((state) => state.removePaste),
     useEditPaste: () => useComposerStore((state) => state.editPaste),
     useRestorePaste: () => useComposerStore((state) => state.restorePaste),
-    useRecordHistory: () => useComposerStore((state) => state.pushHistory),
     recallPreviousHistory: () => useComposerStore.getState().historyPrev(),
     recallNextHistory: () => useComposerStore.getState().historyNext(),
     getModelPreference: () => {
@@ -51,6 +70,7 @@ export function installComposerStatePorts(
   });
   const disposeSessionSync = installComposerSessionSync(sessions, endpoint, scope);
   return () => {
+    focusTarget = null;
     disposeSessionSync();
     disposePort();
   };

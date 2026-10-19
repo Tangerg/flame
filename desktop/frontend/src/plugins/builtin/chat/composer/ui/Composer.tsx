@@ -1,6 +1,5 @@
 import type { ComposerImage, PastedText } from "@/plugins/builtin/chat/composer/public/attachments";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
-import { useRecordComposerHistory } from "@/plugins/builtin/chat/composer/public/history";
 import { TextArea } from "@flame/ui";
 import { SUGGESTION_LISTBOX_ID, suggestionOptionId } from "../application/suggestions";
 import { AgentComposerFooter, AgentComposerSurface } from "@/ui/agent";
@@ -8,6 +7,7 @@ import { FileMentionPopup } from "./FileMentionPopup";
 import { SlashSuggestions } from "./SlashSuggestions";
 import { composerStyles } from "./composerStyles";
 import { useT } from "@/lib/i18n";
+import type { ComposerSubmission } from "../application/ports/state";
 import { Slot } from "@/plugins/host/Slot";
 import { ComposerAttachments } from "./ComposerAttachments";
 import { ComposerDropCue, useComposerImageDrop } from "./ComposerImageDrop";
@@ -20,7 +20,7 @@ interface Props {
   onSend: (input: AgentInput) => boolean;
   value: string;
   onChange: (v: string) => void;
-  onClear: () => void;
+  captureSubmission: () => ComposerSubmission;
   images: readonly ComposerImage[];
   onRemoveImage: (id: string) => void;
   onAddImages: (files: File[]) => void;
@@ -36,7 +36,7 @@ export function Composer({
   onSend,
   value,
   onChange,
-  onClear,
+  captureSubmission,
   images,
   onRemoveImage,
   onAddImages,
@@ -49,7 +49,6 @@ export function Composer({
 }: Props) {
   const t = useT();
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const recordHistory = useRecordComposerHistory();
   const {
     inputRef,
     mentions,
@@ -69,11 +68,10 @@ export function Composer({
   } = useComposerInputController({
     value,
     onChange,
-    onClear,
+    captureSubmission,
     onSend,
     images,
     pastes,
-    recordHistory,
     onAddImages,
     onAddPaste,
     acceptsImages,

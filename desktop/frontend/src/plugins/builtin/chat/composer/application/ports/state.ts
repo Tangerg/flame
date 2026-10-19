@@ -5,11 +5,20 @@ export type ComposerModelPreference =
   | { kind: "session" }
   | { kind: "explicit"; provider: string; model: string; reasoningEffort?: string };
 
+export interface ComposerSubmission {
+  readonly value: string;
+  readonly images: readonly ComposerImage[];
+  readonly pastes: readonly PastedText[];
+  consume(historyText?: string): boolean;
+}
+
 interface ComposerStatePort {
+  focus(selectionEnd?: number): void;
+  captureFocus(): () => void;
+  registerFocusTarget(element: HTMLTextAreaElement | null): () => void;
   useText(): string;
   useSetText(): (value: string) => void;
-  useClearDraft(): () => void;
-  getText(): string;
+  captureSubmission(): ComposerSubmission;
   replaceDraft(input: ComposerDraftInput): void;
   appendText(text: string): void;
   useImages(): readonly ComposerImage[];
@@ -20,7 +29,6 @@ interface ComposerStatePort {
   useRemovePaste(): (id: string) => void;
   useEditPaste(): (id: string, text: string) => void;
   useRestorePaste(): (id: string) => void;
-  useRecordHistory(): (text: string) => void;
   recallPreviousHistory(): boolean;
   recallNextHistory(): boolean;
   getModelPreference(): ComposerModelPreference;

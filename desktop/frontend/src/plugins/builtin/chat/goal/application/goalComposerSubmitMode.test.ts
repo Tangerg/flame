@@ -22,7 +22,6 @@ beforeEach(() => {
   goalState = { available: true, goal: null };
   dependencies = {
     getActiveSessionId: () => sessionId,
-    composerText: () => composerText,
     goalState: () => goalState,
     runtimeAvailable: () => true,
     runOptions: () => ({
@@ -143,7 +142,7 @@ describe("Goal composer submit mode", () => {
     expect(context.accept).toHaveBeenCalledOnce();
   });
 
-  it("does not consume text edited while the authoritative start is in flight", async () => {
+  it("reports acceptance to the captured submission after a later draft edit", async () => {
     let finish!: () => void;
     dependencies.start = vi.fn(
       () =>
@@ -157,7 +156,7 @@ describe("Goal composer submit mode", () => {
     finish();
 
     await vi.waitFor(() => expect(owner.snapshot().phase).toBe("inactive"));
-    expect(context.accept).not.toHaveBeenCalled();
+    expect(context.accept).toHaveBeenCalledOnce();
   });
 
   it("rejects unsupported Goal attachments without clearing them", () => {

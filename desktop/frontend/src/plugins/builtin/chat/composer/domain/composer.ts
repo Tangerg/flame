@@ -115,6 +115,18 @@ export class Composer {
     return this.replaceDraft(ComposerDraft.empty(), NOT_RECALLING);
   }
 
+  consumeDraft(sessionId: string, draft: ComposerDraft, historyText?: string): Composer {
+    if (!this.drafts.has(sessionId)) return this;
+    const recorded = historyText ? this.record(historyText, sessionId) : this;
+    if (this.drafts.get(sessionId) !== draft) return recorded;
+    return new Composer(
+      new Map(this.drafts).set(sessionId, ComposerDraft.empty()),
+      recorded.rings,
+      this.activeSessionId,
+      sessionId === this.activeSessionId ? NOT_RECALLING : this.recall,
+    );
+  }
+
   activate(sessionId: string): Composer {
     if (sessionId === this.activeSessionId) return this;
     return new Composer(this.drafts, this.rings, sessionId, NOT_RECALLING);
@@ -129,12 +141,15 @@ export class Composer {
     return new Composer(drafts, rings, this.activeSessionId, NOT_RECALLING);
   }
 
-  record(text: string): Composer {
+  record(text: string, sessionId = this.activeSessionId): Composer {
     const value = text.trim();
     if (!value) return this;
-    const ring = this.ring();
-    if (ring[ring.length - 1] === value) return this.withRecall(NOT_RECALLING);
-    return this.withRing([...ring, value].slice(-HISTORY_CAP)).withRecall(NOT_RECALLING);
+    const ring = this.rings.get(sessionId) ?? [];
+    const recorded =
+      ring[ring.length - 1] === value
+        ? this
+        : this.withRing([...ring, value].slice(-HISTORY_CAP), sessionId);
+    return sessionId === this.activeSessionId ? recorded.withRecall(NOT_RECALLING) : recorded;
   }
 
   recallOlder(): Composer | null {
@@ -164,10 +179,10 @@ export class Composer {
     return this.rings.get(this.activeSessionId) ?? [];
   }
 
-  private withRing(ring: readonly string[]): Composer {
+  private withRing(ring: readonly string[], sessionId: string): Composer {
     return new Composer(
       this.drafts,
-      new Map(this.rings).set(this.activeSessionId, ring),
+      new Map(this.rings).set(sessionId, ring),
       this.activeSessionId,
       this.recall,
     );

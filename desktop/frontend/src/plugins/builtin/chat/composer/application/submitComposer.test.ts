@@ -1,83 +1,72 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { COMPOSER_SUBMIT_MODE, definePlugin } from "@/plugins/sdk";
+import {
+  COMPOSER_SUBMIT_MODE,
+  definePlugin,
+  reportPluginError,
+  type SlashCommandRunCtx,
+} from "@/plugins/sdk";
 import { SLASH_COMMAND } from "@/plugins/sdk/kernelPoints";
 import { submitComposer, type SubmitDeps } from "./submitComposer";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
+import { useComposerStore } from "../adapters/composerStore";
+import { captureComposerFocus, registerComposerFocusTarget } from "../public/focus";
+
+vi.mock("@/plugins/sdk", async (original) => ({
+  ...(await original<typeof import("@/plugins/sdk")>()),
+  reportPluginError: vi.fn(),
+}));
+
+function deps(value: string, input: Partial<SubmitDeps> = {}): SubmitDeps {
+  return {
+    draft: { value, images: [], pastes: [], consume: vi.fn(() => true) },
+    sendInput: vi.fn(() => true),
+    canSend: () => true,
+    restoreFocus: () => {},
+    ...input,
+  };
+}
+
+async function command(run: (context: SlashCommandRunCtx) => void | Promise<void>) {
+  await loadPluginsForTest(
+    definePlugin({
+      name: "test.submit.slash",
+      setup: (ctx) => {
+        ctx.contribute(SLASH_COMMAND, { description: "echo", run }, { key: "/echo" });
+      },
+    }),
+  );
+}
 
 describe("submitComposer", () => {
-  afterEach(resetKernelForTest);
-
-  function deps(input: Partial<SubmitDeps>): SubmitDeps {
-    return {
-      value: "",
-      clear: () => {},
-      sendInput: () => true,
-      images: [],
-      pastes: [],
-      recordHistory: () => {},
-      canSend: () => true,
-      ...input,
-    };
-  }
-
-  it("is a no-op on empty / whitespace-only input", () => {
-    const send = vi.fn(() => true);
-    const clear = vi.fn();
-    submitComposer(deps({ value: "   ", clear, sendInput: send }));
-    expect(send).not.toHaveBeenCalled();
-    expect(clear).not.toHaveBeenCalled();
+  afterEach(() => {
+    resetKernelForTest();
+    vi.clearAllMocks();
   });
 
-  it("forwards plain text as user input then clears", () => {
-    const send = vi.fn(() => true);
-    const clear = vi.fn();
-    submitComposer(deps({ value: "hello", clear, sendInput: send }));
-    expect(send).toHaveBeenCalledWith({ parts: [{ kind: "text", text: "hello" }] });
-    expect(clear).toHaveBeenCalledOnce();
+  it("ignores whitespace without consuming the draft", () => {
+    const input = deps("   ");
+    submitComposer(input);
+    expect(input.sendInput).not.toHaveBeenCalled();
+    expect(input.draft.consume).not.toHaveBeenCalled();
   });
 
-  it("keeps a draft intact while the Agent cannot accept a Run", () => {
-    const send = vi.fn();
-    const clear = vi.fn();
-    const recordHistory = vi.fn();
-
-    submitComposer(
-      deps({
-        value: "answer this later",
-        canSend: () => false,
-        clear,
-        sendInput: send,
-        recordHistory,
-      }),
-    );
-
-    expect(send).not.toHaveBeenCalled();
-    expect(clear).not.toHaveBeenCalled();
-    expect(recordHistory).not.toHaveBeenCalled();
+  it("consumes plain text only after admission", () => {
+    const input = deps("hello");
+    submitComposer(input);
+    expect(input.sendInput).toHaveBeenCalledWith({ parts: [{ kind: "text", text: "hello" }] });
+    expect(input.draft.consume).toHaveBeenCalledExactlyOnceWith("hello");
   });
 
-  it("keeps a draft intact when admission changes between render and submit", () => {
-    const send = vi.fn(() => false);
-    const clear = vi.fn();
-    const recordHistory = vi.fn();
-
-    submitComposer(
-      deps({
-        value: "do not lose this race",
-        canSend: () => true,
-        clear,
-        sendInput: send,
-        recordHistory,
-      }),
-    );
-
-    expect(send).toHaveBeenCalledOnce();
-    expect(clear).not.toHaveBeenCalled();
-    expect(recordHistory).not.toHaveBeenCalled();
+  it.each(["unavailable", "refused"])("keeps the draft when input is %s", (state) => {
+    const input = deps("keep this", {
+      canSend: () => state !== "unavailable",
+      sendInput: vi.fn(() => state !== "refused"),
+    });
+    submitComposer(input);
+    expect(input.draft.consume).not.toHaveBeenCalled();
   });
 
-  it("lets one active execution mode claim the existing draft and accept it authoritatively", async () => {
-    const submit = vi.fn((context: { accept(): void }) => context.accept());
+  it("lets an execution mode accept exactly once", async () => {
     await loadPluginsForTest(
       definePlugin({
         name: "test.submit.mode",
@@ -85,106 +74,234 @@ describe("submitComposer", () => {
           ctx.contribute(COMPOSER_SUBMIT_MODE, {
             id: "goal",
             matches: () => true,
-            submit,
+            submit: (context) => {
+              context.accept();
+              context.accept();
+              context.clear();
+            },
           });
         },
       }),
     );
-    const send = vi.fn(() => true);
-    const clear = vi.fn();
-    const recordHistory = vi.fn();
-
-    submitComposer(deps({ value: "ship it", clear, sendInput: send, recordHistory }));
-
-    expect(submit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        rawText: "ship it",
-        text: "ship it",
-        body: "ship it",
-        slash: null,
-        hasImages: false,
-        hasPastes: false,
-        accept: expect.any(Function),
-        clear: expect.any(Function),
-      }),
-    );
-    expect(send).not.toHaveBeenCalled();
-    expect(recordHistory).toHaveBeenCalledWith("ship it");
-    expect(clear).toHaveBeenCalledOnce();
+    const input = deps("ship it");
+    submitComposer(input);
+    expect(input.sendInput).not.toHaveBeenCalled();
+    expect(input.draft.consume).toHaveBeenCalledExactlyOnceWith("ship it");
   });
 
-  it("keeps the draft when a claimed execution mode has not accepted it", async () => {
+  it("does not treat mode completion as acceptance", async () => {
     await loadPluginsForTest(
       definePlugin({
-        name: "test.submit.pending-mode",
+        name: "test.submit.mode",
         setup: (ctx) => {
           ctx.contribute(COMPOSER_SUBMIT_MODE, {
             id: "goal",
             matches: () => true,
-            submit: () => {},
+            submit: async () => {},
           });
         },
       }),
     );
-    const send = vi.fn(() => true);
-    const clear = vi.fn();
-
-    submitComposer(deps({ value: "ship it", clear, sendInput: send }));
-
-    expect(send).not.toHaveBeenCalled();
-    expect(clear).not.toHaveBeenCalled();
+    const input = deps("ship it");
+    submitComposer(input);
+    await Promise.resolve();
+    expect(input.draft.consume).not.toHaveBeenCalled();
   });
 
-  it("routes a registered slash command to its handler — sendInput not called", async () => {
-    const run = vi.fn();
+  it.each(["sync", "async"])(
+    "reports a %s slash failure once and preserves unaccepted input",
+    async (kind) => {
+      const failure = new Error("command rejected");
+      await command(() => {
+        if (kind === "sync") throw failure;
+        return Promise.reject(failure);
+      });
+      const input = deps("/echo retry");
+      expect(() => submitComposer(input)).not.toThrow();
+      await Promise.resolve();
+      expect(reportPluginError).toHaveBeenCalledExactlyOnceWith(
+        "test.submit.slash",
+        "command",
+        failure,
+        "command: /echo",
+      );
+      expect(input.draft.consume).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not treat a resolved command as acceptance", async () => {
+    await command(async () => {});
+    const input = deps("/echo hold");
+    submitComposer(input);
+    await Promise.resolve();
+    expect(input.draft.consume).not.toHaveBeenCalled();
+  });
+
+  it("consumes an accepted slash snapshot once before its long operation completes", async () => {
+    let finish!: () => void;
+    await command((context) => {
+      context.accept();
+      context.accept();
+      return new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const input = deps("/echo long operation");
+    submitComposer(input);
+    expect(input.draft.consume).toHaveBeenCalledExactlyOnceWith("/echo long operation");
+    finish();
+    await Promise.resolve();
+    expect(input.draft.consume).toHaveBeenCalledOnce();
+  });
+
+  it.each([true, false])("projects send admission %s to the slash handler", async (accepted) => {
+    const observed = vi.fn();
+    await command(({ send }) => {
+      observed(send("forwarded"));
+    });
+    const input = deps("/echo forward", { sendInput: vi.fn(() => accepted) });
+    submitComposer(input);
+    expect(observed).toHaveBeenCalledWith(accepted);
+    expect(input.sendInput).toHaveBeenCalledWith({ parts: [{ kind: "text", text: "forwarded" }] });
+    expect(input.draft.consume).toHaveBeenCalledTimes(accepted ? 1 : 0);
+  });
+
+  it("records acceptance without clearing a later revision even if its text is identical", async () => {
+    let accept!: () => void;
+    await command((context) => {
+      accept = context.accept;
+    });
+    const store = () => useComposerStore.getState();
+    store().loadSession("slash-revision");
+    store().setValue("/echo same");
+    const draft = store().captureSubmission();
+    submitComposer(deps("", { draft }));
+    store().setValue("a successor");
+    store().setValue("/echo same");
+    accept();
+    expect(store().composer.draft.value).toBe("/echo same");
+    expect(store().composer.recallOlder()?.draft.value).toBe("/echo same");
+  });
+
+  it("sends an unknown slash as ordinary input", () => {
+    const input = deps("/unknown args");
+    submitComposer(input);
+    expect(input.sendInput).toHaveBeenCalledWith({
+      parts: [{ kind: "text", text: "/unknown args" }],
+    });
+  });
+
+  it.each(["look at this", "   "])("folds pasted content into input %j", (value) => {
+    const input = deps(value);
+    input.draft = { ...input.draft, pastes: [{ id: "p1", text: "PASTED BLOB", lines: 1 }] };
+    submitComposer(input);
+    expect(input.sendInput).toHaveBeenCalledWith({
+      parts: [{ kind: "text", text: value.trim() ? "look at this\n\nPASTED BLOB" : "PASTED BLOB" }],
+    });
+    expect(input.draft.consume).toHaveBeenCalledOnce();
+  });
+});
+
+describe("submission feedback", () => {
+  afterEach(() => {
+    resetKernelForTest();
+    vi.clearAllMocks();
+  });
+
+  it("keeps an accepted command consumed if its execution later fails", async () => {
+    const failure = new Error("execution failed");
+    await command(({ accept }) => {
+      accept();
+      return Promise.reject(failure);
+    });
+    const input = deps("/echo accepted");
+    submitComposer(input);
+    await Promise.resolve();
+    expect(input.draft.consume).toHaveBeenCalledExactlyOnceWith("/echo accepted");
+    expect(reportPluginError).toHaveBeenCalledOnce();
+  });
+
+  it("reports asynchronous mode rejection without consuming the draft", async () => {
+    const failure = new Error("mode rejected");
     await loadPluginsForTest(
       definePlugin({
-        name: "test.submit.slash",
+        name: "test.submit.mode",
         setup: (ctx) => {
-          ctx.contribute(SLASH_COMMAND, { description: "echo", run }, { key: "/echo" });
+          ctx.contribute(COMPOSER_SUBMIT_MODE, {
+            id: "mode",
+            matches: () => true,
+            submit: () => Promise.reject(failure),
+          });
         },
       }),
     );
-    const send = vi.fn(() => true);
-    const clear = vi.fn();
-    submitComposer(deps({ value: "/echo hi there", clear, sendInput: send }));
-    expect(run).toHaveBeenCalledWith({ args: "hi there", send: expect.any(Function) });
-    expect(send).not.toHaveBeenCalled();
-    expect(clear).toHaveBeenCalledOnce();
+    const input = deps("keep this");
+    submitComposer(input);
+    await Promise.resolve();
+    expect(reportPluginError).toHaveBeenCalledExactlyOnceWith(
+      "test.submit.mode",
+      "command",
+      failure,
+      "composer.submitMode:mode",
+    );
+    expect(input.draft.consume).not.toHaveBeenCalled();
   });
 
-  it("falls back to sendInput for an unknown slash command", () => {
-    const send = vi.fn(() => true);
-    submitComposer(deps({ value: "/unknown args", sendInput: send }));
-    expect(send).toHaveBeenCalledWith({ parts: [{ kind: "text", text: "/unknown args" }] });
-  });
-
-  it("folds pasted-text attachments into the message below the typed text", () => {
-    const send = vi.fn(() => true);
-    const clear = vi.fn();
-    submitComposer(
-      deps({
-        value: "look at this",
-        clear,
-        sendInput: send,
-        pastes: [{ id: "p1", text: "PASTED BLOB", lines: 1 }],
+  it("retains the failing command's original plugin owner after replacement", async () => {
+    let reject!: (error: Error) => void;
+    await command(
+      () =>
+        new Promise<void>((_, failed) => {
+          reject = failed;
+        }),
+    );
+    submitComposer(deps("/echo pending"));
+    resetKernelForTest();
+    await loadPluginsForTest(
+      definePlugin({
+        name: "test.replacement",
+        setup: (ctx) => {
+          ctx.contribute(
+            SLASH_COMMAND,
+            { description: "replacement", run: () => {} },
+            { key: "/echo" },
+          );
+        },
       }),
     );
-    expect(send).toHaveBeenCalledWith({
-      parts: [{ kind: "text", text: "look at this\n\nPASTED BLOB" }],
+    const failure = new Error("original execution failed");
+    reject(failure);
+    await Promise.resolve();
+    expect(reportPluginError).toHaveBeenCalledExactlyOnceWith(
+      "test.submit.slash",
+      "command",
+      failure,
+      "command: /echo",
+    );
+  });
+});
+
+it("does not steal focus after a delayed acceptance", async () => {
+  const editor = document.createElement("textarea");
+  const other = document.createElement("button");
+  document.body.append(editor, other);
+  const unregister = registerComposerFocusTarget(editor);
+  try {
+    let accept!: () => void;
+    await command((context) => {
+      accept = context.accept;
     });
-    expect(clear).toHaveBeenCalledOnce();
-  });
-
-  it("allows a paste-only send (no typed text)", () => {
-    const send = vi.fn(() => true);
-    submitComposer(
-      deps({
-        value: "   ",
-        sendInput: send,
-        pastes: [{ id: "p1", text: "ONLY PASTE", lines: 1 }],
-      }),
-    );
-    expect(send).toHaveBeenCalledWith({ parts: [{ kind: "text", text: "ONLY PASTE" }] });
-  });
+    editor.focus();
+    const input = deps("/echo later", { restoreFocus: captureComposerFocus() });
+    submitComposer(input);
+    other.focus();
+    accept();
+    expect(input.draft.consume).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(other);
+  } finally {
+    unregister();
+    editor.remove();
+    other.remove();
+    resetKernelForTest();
+  }
 });

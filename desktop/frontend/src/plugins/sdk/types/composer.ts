@@ -28,12 +28,13 @@ export interface ComposerSubmitModeContext extends ComposerSubmitModeDraft {
 export interface ComposerSubmitModeSpec {
   id: string;
   matches(draft: ComposerSubmitModeDraft): boolean;
-  submit(context: ComposerSubmitModeContext): void;
+  submit(context: ComposerSubmitModeContext): void | Promise<void>;
 }
 
 export interface SlashCommandRunCtx {
   args: string;
-  send: (text: string) => void;
+  accept(): void;
+  send: (text: string) => boolean;
 }
 
 export interface SlashCommandSpec {

@@ -16,7 +16,7 @@ import { useSlashSuggestions } from "../application/slashSuggestions";
 import { useIsCurrentRootRunning } from "@/plugins/builtin/agent/public/run";
 import { COMPOSER_KEY_BINDING, lookupExtensionByKey, notifyError } from "@/plugins/sdk";
 import { submitComposer } from "@/plugins/builtin/chat/composer/public/submit";
-import { setComposerFocusTarget } from "../application/focus";
+import { captureComposerFocus, registerComposerFocusTarget } from "../public/focus";
 import { useT } from "@/lib/i18n";
 import {
   composerCompositionKeyIntent,
@@ -24,17 +24,17 @@ import {
   composerPasteIntent,
 } from "../application/composerInputEvents";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
+import type { ComposerSubmission } from "../application/ports/state";
 
 const COMPOSITION_COMMIT_GRACE_MS = 100;
 
 interface Args {
   value: string;
   onChange: (value: string) => void;
-  onClear: () => void;
+  captureSubmission: () => ComposerSubmission;
   onSend: (input: AgentInput) => boolean;
   images: readonly ComposerImage[];
   pastes: readonly PastedText[];
-  recordHistory: (text: string) => void;
   onAddImages: (files: File[]) => void;
   onAddPaste: (text: string) => void;
   acceptsImages: boolean;
@@ -43,11 +43,10 @@ interface Args {
 export function useComposerInputController({
   value,
   onChange,
-  onClear,
+  captureSubmission,
   onSend,
   images,
   pastes,
-  recordHistory,
   onAddImages,
   onAddPaste,
   acceptsImages,
@@ -55,8 +54,7 @@ export function useComposerInputController({
   const t = useT();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    setComposerFocusTarget(inputRef.current);
-    return () => setComposerFocusTarget(null);
+    return registerComposerFocusTarget(inputRef.current);
   }, []);
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
@@ -90,15 +88,12 @@ export function useComposerInputController({
   const submit = useCallback(
     () =>
       submitComposer({
-        value,
-        clear: onClear,
+        draft: captureSubmission(),
+        restoreFocus: captureComposerFocus(),
         sendInput: onSend,
-        images,
-        pastes,
-        recordHistory,
         canSend: runtimeCommandsAvailable,
       }),
-    [images, onClear, onSend, pastes, recordHistory, value],
+    [captureSubmission, onSend],
   );
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {

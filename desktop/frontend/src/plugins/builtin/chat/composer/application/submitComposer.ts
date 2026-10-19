@@ -1,5 +1,5 @@
-import { buildInput, type InputImage } from "@/plugins/builtin/chat/composer/public/input";
-import type { PastedText } from "../domain/draft";
+import { buildInput } from "@/plugins/builtin/chat/composer/public/input";
+import type { ComposerSubmission } from "./ports/state";
 import { agentTextInput, type AgentInput } from "@/plugins/builtin/agent/public/input";
 import { createComposerSendIntent } from "../domain/sendIntent";
 import {
@@ -11,27 +11,16 @@ import {
   reportPluginError,
   SLASH_COMMAND,
 } from "@/plugins/sdk";
-import { focusComposer } from "./focus";
 
 export interface SubmitDeps {
-  value: string;
-  clear: () => void;
+  draft: ComposerSubmission;
   sendInput: (input: AgentInput) => boolean;
-  images: readonly InputImage[];
-  pastes: readonly PastedText[];
-  recordHistory: (text: string) => void;
   canSend: () => boolean;
+  restoreFocus: () => void;
 }
 
-export function submitComposer({
-  value,
-  clear,
-  sendInput,
-  images,
-  pastes,
-  recordHistory,
-  canSend,
-}: SubmitDeps): void {
+export function submitComposer({ draft, sendInput, canSend, restoreFocus }: SubmitDeps): void {
+  const { value, images, pastes } = draft;
   const intent = createComposerSendIntent({ value, images, pastes });
   if (!intent.shouldSend) return;
 
@@ -43,42 +32,33 @@ export function submitComposer({
     hasImages: images.length > 0,
     hasPastes: pastes.length > 0,
   };
-  const consume = () => {
-    clear();
-    focusComposer();
+  let settled = false;
+  const consume = (record: boolean) => {
+    if (settled) return;
+    settled = true;
+    if (draft.consume(record ? intent.historyText || undefined : undefined)) restoreFocus();
   };
+  const accept = () => consume(true);
 
   for (const mode of lookupExtensionPoint(COMPOSER_SUBMIT_MODE)) {
+    const owner = lookupExtensionOwner(COMPOSER_SUBMIT_MODE, mode.id) ?? "unknown";
     let matches = false;
     try {
       matches = mode.matches(modeDraft);
     } catch (error) {
-      reportPluginError(
-        lookupExtensionOwner(COMPOSER_SUBMIT_MODE, mode.id) ?? "unknown",
-        "command",
-        error,
-        `composer.submitMode:${mode.id}`,
-      );
+      reportPluginError(owner, "command", error, `composer.submitMode:${mode.id}`);
       return;
     }
     if (!matches) continue;
 
-    let accepted = false;
-    const accept = () => {
-      if (accepted) return;
-      accepted = true;
-      if (intent.historyText) recordHistory(intent.historyText);
-      consume();
-    };
+    const report = (error: unknown) =>
+      reportPluginError(owner, "command", error, `composer.submitMode:${mode.id}`);
     try {
-      mode.submit({ ...modeDraft, accept, clear: consume });
+      void Promise.resolve(
+        mode.submit({ ...modeDraft, accept, clear: () => consume(false) }),
+      ).catch(report);
     } catch (error) {
-      reportPluginError(
-        lookupExtensionOwner(COMPOSER_SUBMIT_MODE, mode.id) ?? "unknown",
-        "command",
-        error,
-        `composer.submitMode:${mode.id}`,
-      );
+      report(error);
     }
     return;
   }
@@ -87,20 +67,29 @@ export function submitComposer({
   if (slash) {
     const spec = lookupExtensionByKey(SLASH_COMMAND, slash.cmd);
     if (spec?.run) {
-      if (intent.historyText) recordHistory(intent.historyText);
-      void Promise.resolve(
-        spec.run({ args: slash.args, send: (text: string) => sendInput(agentTextInput(text)) }),
-      ).catch((err) => {
-        console.error(`[plugin] command ${slash.cmd} threw:`, err);
-        const owner = lookupSlashCommandOwner(slash.cmd) ?? "unknown";
+      const owner = lookupSlashCommandOwner(slash.cmd) ?? "unknown";
+      const report = (err: unknown) => {
         reportPluginError(owner, "command", err, `command: ${slash.cmd}`);
-      });
-      consume();
+      };
+      try {
+        void Promise.resolve(
+          spec.run({
+            args: slash.args,
+            accept,
+            send: (text) => {
+              if (!canSend() || !sendInput(agentTextInput(text))) return false;
+              accept();
+              return true;
+            },
+          }),
+        ).catch(report);
+      } catch (error) {
+        report(error);
+      }
       return;
     }
   }
   if (!canSend()) return;
   if (!sendInput(buildInput(intent.body, images))) return;
-  if (intent.historyText) recordHistory(intent.historyText);
-  consume();
+  accept();
 }
