@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"fmt"
 	"slices"
 	"testing"
 
@@ -107,6 +108,9 @@ func TestApprovalChoiceMapsEveryDecisionAndRememberScope(t *testing.T) {
 			if !ok {
 				t.Fatalf("approval action %q was not recognized", test.action)
 			}
+			if got := approvalActionFromAnswer(answer); got != test.action {
+				t.Fatalf("answer round trip = %q, want %q", got, test.action)
+			}
 			if answer.Decision != test.decision || answer.Remember != test.remember {
 				t.Fatalf("approval action %q = %+v", test.action, answer)
 			}
@@ -160,26 +164,60 @@ func TestApprovalDefaultSelectsEveryConfiguredRememberScope(t *testing.T) {
 
 func TestApprovalChoiceNormalizationRespectsRememberability(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		name         string
-		action       approvalAction
-		rememberable bool
-		want         approvalAction
-	}{
-		{name: "rememberable project", action: approvalAllowProject, rememberable: true, want: approvalAllowProject},
-		{name: "one shot project", action: approvalAllowProject, want: approvalAllowOnce},
-		{name: "one shot global", action: approvalAllowGlobal, want: approvalAllowOnce},
-		{name: "one shot deny", action: approvalDenyOnce, want: approvalDenyOnce},
-		{name: "one shot remembered deny", action: approvalDenyGlobal, want: approvalAllowOnce},
-		{name: "one shot edit", action: approvalEditArgs, want: approvalEditArgs},
-		{name: "unknown", action: approvalAction("unexpected"), rememberable: true, want: approvalAllowOnce},
+	for _, option := range approvalOptions(true) {
+		for _, rememberable := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/rememberable=%t", option.Value, rememberable), func(t *testing.T) {
+				got, ok := option.Value.Normalize(rememberable)
+				if !ok {
+					t.Fatalf("known action %q was rejected", option.Value)
+				}
+				if rememberable && got != option.Value {
+					t.Fatalf("changed available action to %q", got)
+				}
+				answer, answers := option.Value.Answer()
+				normalized, normalizedAnswers := got.Answer()
+				if answers != normalizedAnswers || answer.Decision != normalized.Decision {
+					t.Fatalf("normalization changed intent: %+v to %+v", answer, normalized)
+				}
+				if !rememberable && normalized.Remember != "" {
+					t.Fatalf("retained unsupported scope: %+v", normalized)
+				}
+			})
+		}
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			if got := test.action.Normalize(test.rememberable); got != test.want {
-				t.Fatalf("approval action %q normalized for rememberable=%t to %q, want %q", test.action, test.rememberable, got, test.want)
-			}
-		})
+	for _, rememberable := range []bool{true, false} {
+		if action, ok := approvalAction("unexpected").Normalize(rememberable); ok || action != "" {
+			t.Fatalf("unknown action became valid: %q, %t", action, ok)
+		}
+	}
+}
+
+func TestApprovalFormPreservesDenialWhenRememberingBecomesUnavailable(t *testing.T) {
+	view := testTranscriptView(t)
+	application := &app{loop: &program.Runtime{}, transcript: view, status: &statusView{}, execution: executionState{conversation: conversation.New()}}
+	application.dialogs.approvalPane = approvalPane{theme: view.theme, glyphs: view.glyphs}
+	application.dialogs.approval = &conversation.Approval{Rememberable: true}
+	application.setApprovalForm(approvalDenyGlobal)
+	application.dialogs.approval.Rememberable = false
+	application.setApprovalForm(application.dialogs.approvalDraft.choice)
+	if action := application.dialogs.approvalDraft.choice; action != approvalDenyOnce {
+		t.Fatalf("rebuilt denial became %q", action)
+	}
+	previous := application.dialogs.approvalForm
+	application.setApprovalForm(approvalAction("invalid"))
+	previous.Done()
+	if application.dialogs.approvalForm != nil || application.dialogs.approvalPane.form != nil {
+		t.Fatal("unknown action left an answerable approval form")
+	}
+}
+
+func TestUnknownApprovalAnswerCannotBecomeAnAction(t *testing.T) {
+	for _, answer := range []conversation.ApprovalAnswer{
+		{},
+		{Decision: protocol.ApprovalApprove, Remember: protocol.RememberScopeKind("unknown")},
+	} {
+		if action := approvalActionFromAnswer(answer); action != "" {
+			t.Fatalf("invalid answer became %q", action)
+		}
 	}
 }

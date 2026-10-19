@@ -43,7 +43,7 @@ func (a *app) buildCommandPalette(theme kit.Theme, glyphs kit.Glyphs) {
 				a.scheduleDraftPersistence()
 				return
 			}
-			a.runCommand(command.Name, "")
+			a.runCommand(command.Name, "", func() {})
 		},
 	)
 	a.dialogs.commandDialog = newPresentationDialog(kit.DialogConfig{

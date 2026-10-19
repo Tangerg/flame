@@ -445,13 +445,11 @@ func (a *app) submit() {
 		return
 	}
 	if name, arg, command := parseSlashCommand(strings.TrimSpace(message.Text)); command {
-		// A command acts on the staged composer context. Clear its command text but
-		// put attachment elements back so /attachments and /detach can inspect or
-		// mutate them without accidentally sending a user turn.
-		a.restoreComposer(prompt.Message{Attachments: message.Attachments})
-		a.operations.Cancel(completionOperation)
-		a.completion.Dismiss()
-		a.runCommand(name, arg)
+		a.runCommand(name, arg, func() {
+			a.restoreComposer(prompt.Message{Attachments: message.Attachments})
+			a.operations.Cancel(completionOperation)
+			a.completion.Dismiss()
+		})
 		return
 	}
 	a.dispatchPrompt(message)

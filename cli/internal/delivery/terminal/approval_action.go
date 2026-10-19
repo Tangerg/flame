@@ -47,13 +47,20 @@ func approvalOptions(rememberable bool) []headless.Option[approvalAction] {
 	)
 }
 
-func (a approvalAction) Normalize(rememberable bool) approvalAction {
+func (a approvalAction) Normalize(rememberable bool) (approvalAction, bool) {
 	for _, option := range approvalOptions(rememberable) {
 		if option.Value == a {
-			return a
+			return a, true
 		}
 	}
-	return approvalAllowOnce
+	answer, ok := a.Answer()
+	if !ok {
+		return "", false
+	}
+	if answer.Decision == protocol.ApprovalDeny {
+		return approvalDenyOnce, true
+	}
+	return approvalAllowOnce, true
 }
 
 func defaultApprovalAction(preference settings.RememberPreference) approvalAction {
@@ -93,26 +100,11 @@ func (a approvalAction) Answer() (conversation.ApprovalAnswer, bool) {
 }
 
 func approvalActionFromAnswer(answer conversation.ApprovalAnswer) approvalAction {
-	if answer.Decision == protocol.ApprovalDeny {
-		switch answer.Remember {
-		case protocol.RememberSession:
-			return approvalDenySession
-		case protocol.RememberProject:
-			return approvalDenyProject
-		case protocol.RememberGlobal:
-			return approvalDenyGlobal
-		default:
-			return approvalDenyOnce
+	for _, option := range approvalOptions(true) {
+		candidate, ok := option.Value.Answer()
+		if ok && candidate.Decision == answer.Decision && candidate.Remember == answer.Remember {
+			return option.Value
 		}
 	}
-	switch answer.Remember {
-	case protocol.RememberSession:
-		return approvalAllowSession
-	case protocol.RememberProject:
-		return approvalAllowProject
-	case protocol.RememberGlobal:
-		return approvalAllowGlobal
-	default:
-		return approvalAllowOnce
-	}
+	return ""
 }

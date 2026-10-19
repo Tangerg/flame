@@ -2460,6 +2460,10 @@ func TestSlashCommandsEnforceTheirArgumentCardinality(t *testing.T) {
 	host.Type("/status accidental")
 	host.Press(input.Enter)
 	host.Shows(t, "/status does not accept arguments")
+	host.Shows(t, "❯ /status accidental")
+	for range len("/status accidental") {
+		host.Press(input.Backspace)
+	}
 
 	host.Type("/find")
 	host.Press(input.Enter)
@@ -2499,6 +2503,10 @@ func TestAPluginCanAddACommandWithoutChangingTheShell(t *testing.T) {
 	host.Type("/hello")
 	host.Press(input.Enter)
 	host.Shows(t, "unknown command: /hello")
+	host.Shows(t, "❯ /hello")
+	for range len("/hello") {
+		host.Press(input.Backspace)
+	}
 	host.Type("/reload test.greeting")
 	host.Press(input.Enter)
 	host.Shows(t, "reloaded plugin test.greeting")

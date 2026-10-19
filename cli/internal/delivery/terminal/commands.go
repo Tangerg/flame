@@ -8,13 +8,14 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/oolong/components/headless"
 )
 
 type registeredCommand struct {
 	category  string
 	arguments extensions.ArgumentMode
-	run       func(string)
+	run       func(string, func())
 	evaluate  func(*app) extensions.CommandAvailability
 }
 
@@ -42,7 +43,7 @@ func (c *commandCatalog) reset() {
 	}
 }
 
-func (c *commandCatalog) add(owner string, descriptor extensions.CommandDescriptor, run func(string), evaluate func(*app) extensions.CommandAvailability) error {
+func (c *commandCatalog) add(owner string, descriptor extensions.CommandDescriptor, run func(string, func()), evaluate func(*app) extensions.CommandAvailability) error {
 	for _, identity := range descriptor.Identities() {
 		if existing, _, found := c.index.Lookup(identity); found {
 			return fmt.Errorf("plugin %s command /%s conflicts with /%s", owner, descriptor.Name, existing.Name)
@@ -118,7 +119,8 @@ func (a *app) registerCommands() {
 			continue
 		}
 		if err := a.commands.add("terminal", command.Descriptor,
-			func(argument string) {
+			func(argument string, accept func()) {
+				accept()
 				if err := runLocalCommandSafely(command, a, argument); err != nil {
 					a.message(err.Error())
 				}
@@ -146,7 +148,7 @@ func (a *app) registerCommands() {
 			}
 		}
 		if err := a.commands.add(pluginID, command.Descriptor,
-			func(argument string) { a.executeCommand(pluginID, command, argument) },
+			func(argument string, accept func()) { a.executeCommand(pluginID, command, argument, accept) },
 			evaluate,
 		); err != nil {
 			a.message(err.Error())
@@ -223,7 +225,7 @@ func (r *commandOperationRegistry) take(pluginIDs ...string) []commandOperation 
 	return operations
 }
 
-func (a *app) executeCommand(pluginID string, command extensions.SlashCommand, argument string) {
+func (a *app) executeCommand(pluginID string, command extensions.SlashCommand, argument string, accept func()) {
 	name := command.Descriptor.Name
 	a.status.note("running /" + name)
 	request := extensions.CommandRequest{
@@ -261,7 +263,9 @@ func (a *app) executeCommand(pluginID string, command extensions.SlashCommand, a
 	if !started {
 		a.commandOperations.retire(operation)
 		a.message("could not start /" + name)
+		return
 	}
+	accept()
 }
 
 func (a *app) cancelPluginCommands(pluginIDs ...string) {
@@ -288,7 +292,7 @@ func runLocalCommandSafely(command localCommand, host *app, argument string) (er
 	return command.Run(host, argument)
 }
 
-func (a *app) runCommand(name, argument string) {
+func (a *app) runCommand(name, argument string, accept func()) {
 	command, registration, ok := a.commands.index.Lookup(name)
 	if !ok || registration.run == nil {
 		a.message("unknown command: /" + name)
@@ -304,5 +308,17 @@ func (a *app) runCommand(name, argument string) {
 		return
 	}
 	a.commands.used(command.Name)
-	registration.run(argument)
+	registration.run(argument, accept)
+}
+
+func (a *app) commandDraft() (prompt.Message, bool, error) {
+	message, _, err := a.currentDraft()
+	if err != nil {
+		return prompt.Message{}, false, err
+	}
+	// Command text is the invocation, while attachments remain staged prompt context.
+	if _, _, command := parseSlashCommand(strings.TrimSpace(message.Text)); command {
+		message.Text = ""
+	}
+	return message, !message.IsEmpty(), nil
 }

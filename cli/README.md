@@ -111,6 +111,13 @@ workspace exists on the client. Executables must respond with `protocol: 2` and
 declare manifest `schemaVersion: 3`, which rejects older command semantics before
 execution. The extension-host `apiVersion` remains `1`.
 
+Terminal slash commands consume command text only after the command entrance accepts
+the invocation. Unknown, unavailable and argument-cardinality failures preserve the
+editor, attachments and cursor. Contributed commands accept after their cancellable
+session operation starts; subsequent execution failure is reported through that
+operation. Approval choices may lose a remembered scope, but keep their allow or deny
+decision; unknown choices cannot create an answerable approval form.
+
 ## Markdown, formulas, and diagrams
 
 Assistant and reasoning messages render Markdown through Oolong, including fenced

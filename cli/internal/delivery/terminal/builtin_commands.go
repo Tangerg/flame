@@ -263,7 +263,7 @@ func availableForRollback(a *app) extensions.CommandAvailability {
 	if unavailable := availableWithoutActiveRun(a); !unavailable.Enabled() {
 		return unavailable
 	}
-	_, present, err := a.currentDraft()
+	_, present, err := a.commandDraft()
 	if err != nil {
 		return extensions.CommandUnavailable(err.Error())
 	}
@@ -302,7 +302,7 @@ func availableWithReadableSelection(a *app) extensions.CommandAvailability {
 }
 
 func availableWithDraft(a *app) extensions.CommandAvailability {
-	_, present, err := a.currentDraft()
+	_, present, err := a.commandDraft()
 	if err != nil {
 		return extensions.CommandUnavailable(err.Error())
 	}
@@ -313,7 +313,7 @@ func availableWithDraft(a *app) extensions.CommandAvailability {
 }
 
 func availableWithEmptyDraft(a *app) extensions.CommandAvailability {
-	_, present, err := a.currentDraft()
+	_, present, err := a.commandDraft()
 	if err != nil {
 		return extensions.CommandUnavailable(err.Error())
 	}

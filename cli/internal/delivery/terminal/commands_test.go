@@ -163,11 +163,11 @@ func TestCommandCatalogRejectsNameAndAliasConflicts(t *testing.T) {
 	t.Parallel()
 	catalog := newCommandCatalog()
 	first := extensions.CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"look"}}
-	if err := catalog.add("first", first, func(string) {}, nil); err != nil {
+	if err := catalog.add("first", first, func(string, func()) {}, nil); err != nil {
 		t.Fatal(err)
 	}
 	conflicting := extensions.CommandDescriptor{Name: "look", Title: "conflict with an alias"}
-	if err := catalog.add("second", conflicting, func(string) {}, nil); err == nil {
+	if err := catalog.add("second", conflicting, func(string, func()) {}, nil); err == nil {
 		t.Fatal("alias conflict was accepted")
 	}
 }
@@ -251,15 +251,60 @@ func TestBuiltinCommandsOwnTheirCategoryAndAvailabilityPolicy(t *testing.T) {
 func TestCommandCatalogRanksAnExactAliasAheadOfFuzzyNames(t *testing.T) {
 	t.Parallel()
 	catalog := newCommandCatalog()
-	if err := catalog.add("test", extensions.CommandDescriptor{Name: "goal-resume", Title: "resume goal"}, func(string) {}, nil); err != nil {
+	if err := catalog.add("test", extensions.CommandDescriptor{Name: "goal-resume", Title: "resume goal"}, func(string, func()) {}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := catalog.add("test", extensions.CommandDescriptor{Name: "sessions", Title: "resume session", Aliases: []string{"resume"}}, func(string) {}, nil); err != nil {
+	if err := catalog.add("test", extensions.CommandDescriptor{Name: "sessions", Title: "resume session", Aliases: []string{"resume"}}, func(string, func()) {}, nil); err != nil {
 		t.Fatal(err)
 	}
 
 	found := catalog.find("resume")
 	if len(found) == 0 || found[0].Command.Name != "sessions" {
 		t.Fatalf("find exact alias = %v, want sessions first", found)
+	}
+}
+
+func TestRejectedSlashCommandsPreserveTheEditorAndAttachments(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		text         string
+		arguments    extensions.ArgumentMode
+		availability func(*app) extensions.CommandAvailability
+	}{
+		{name: "unknown", text: "/missing argument"},
+		{name: "unavailable", text: "/inspect argument", arguments: extensions.RequiredArguments, availability: func(*app) extensions.CommandAvailability { return extensions.CommandUnavailable("offline") }},
+		{name: "missing argument", text: "/inspect", arguments: extensions.RequiredArguments},
+		{name: "extra argument", text: "/inspect argument"},
+		{name: "availability panic", text: "/inspect", availability: func(*app) extensions.CommandAvailability { panic("availability failed") }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			application := &app{
+				status: &statusView{}, execution: executionState{conversation: conversation.New()},
+				commands: newCommandCatalog(), attachmentElements: make(map[uint64]prompt.Attachment),
+			}
+			if err := application.commands.add("test", extensions.CommandDescriptor{Name: "inspect", Title: "Inspect", Arguments: test.arguments}, func(string, func()) { t.Fatal("rejected command executed") }, test.availability); err != nil {
+				t.Fatal(err)
+			}
+			editor := application.composer.Editor()
+			attachment := editor.InsertElement(fileElement, "@context.txt")
+			application.attachmentElements[attachment.ID] = prompt.Attachment{ID: "context", Kind: protocol.ContentBlockText, Name: "context.txt", MimeType: "text/plain"}
+			editor.Insert(test.text)
+			editor.SetCursor(0, 3)
+			revision := editor.Revision()
+			line, column := editor.Cursor()
+			message, err := application.composerMessage()
+			if err != nil {
+				t.Fatal(err)
+			}
+			application.submit()
+			after, err := application.composerMessage()
+			if err != nil {
+				t.Fatal(err)
+			}
+			gotLine, gotColumn := editor.Cursor()
+			if !after.Equal(message) || editor.Revision() != revision || gotLine != line || gotColumn != column {
+				t.Fatalf("rejected command changed draft or cursor: before=%+v after=%+v", message, after)
+			}
+		})
 	}
 }

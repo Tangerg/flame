@@ -113,7 +113,15 @@ func (a *app) setApprovalForm(initial approvalAction) {
 		a.dialogs.approvalDraft = draft
 	}
 	rememberable := a.dialogs.approval == nil || a.dialogs.approval.Rememberable
-	draft.choice = initial.Normalize(rememberable)
+	choiceValue, ok := initial.Normalize(rememberable)
+	if !ok {
+		a.dialogs.approvalDraft = nil
+		a.dialogs.approvalForm = nil
+		a.dialogs.approvalPane.form = nil
+		a.message("invalid approval action")
+		return
+	}
+	draft.choice = choiceValue
 	choice := headless.NewSelect(headless.SelectConfig[approvalAction]{
 		Same:  headless.Equal[approvalAction],
 		Label: "How should flame proceed?", Value: headless.Bind(&draft.choice), Rows: 3,
