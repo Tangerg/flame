@@ -1,7 +1,7 @@
 # First-party portable packages
 
-Memory, Schedules, Knowledge base, GitHub and Model router are complete optional backends. Memory
-and Schedules use ordinary public components; the other three are backend-only packages.
+Memory, Schedules, Knowledge base, GitHub, Model router and Guardrails are complete optional backends. Memory
+and Schedules use ordinary public components; the other four are backend-only packages.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
 
@@ -73,11 +73,14 @@ and lifecycle contracts, [Knowledge base](knowledgebase/README.md) for document
 publication/retrieval, and [GitHub](github/README.md) for the read-only connector and
 credential/cache boundaries. [Model router](modelrouter/README.md) owns role and
 captured-envelope routing policy while core constructs and prices the model.
+[Guardrails](guardrails/README.md) owns protected phrases and refuses matching
+model-visible inputs before provider dispatch.
 Other packages contain only their declared content or presentation resources.
 
 Backend source is compiled from `runtime/internal/plugins/memory` and
 `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase` and
-`runtime/internal/plugins/github` and `runtime/internal/plugins/modelrouter`
+`runtime/internal/plugins/github`, `runtime/internal/plugins/modelrouter` and
+`runtime/internal/plugins/guardrails`
 inside the local Runtime application module.
 These are separate executables with private facts and process lifetimes, without
 separate published Go modules or first-party version resolution.
