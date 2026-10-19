@@ -3,7 +3,6 @@ import { Activity, Fragment, useCallback, useRef, useState, type ReactNode } fro
 import { PanelHost } from "@flame/ui/panel";
 import { IconButton } from "@flame/ui";
 import { iconGlyph } from "@/ui/icons";
-import { dockWidthRow } from "./dockWidth";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import { CatalogPicker, knownIconName, type CatalogPickerGroup } from "@/ui";
 import {
@@ -52,7 +51,7 @@ import { HeaderDiffStat } from "./HeaderDiffStat";
 import { WorkspaceViewBody } from "./WorkspaceViewBody";
 import { WorkspaceWindowHeader } from "./WorkspaceWindowHeader";
 import { useT } from "@/lib/i18n";
-import { canPresentDock } from "@/lib/shellGeometry";
+import { canPresentDock, defaultDockWidth, dockWidthFromRatio } from "@/lib/shellGeometry";
 import { shellStyles as sh } from "../shellStyles";
 import { useInspectionFocus } from "./useInspectionFocus";
 
@@ -193,7 +192,12 @@ export function ChatPanel({ onSend }: Props) {
   const activeSession = useActiveSession();
   const activeSessionId = useActiveSessionId();
   const t = useT();
-  const [dockAvailable, setDockAvailable] = useState(true);
+  const [rowWidth, setRowWidth] = useState(0);
+  const dockAvailable = canPresentDock(rowWidth);
+  const dockWidth =
+    dockWidthRatio === null
+      ? defaultDockWidth(rowWidth)
+      : dockWidthFromRatio(dockWidthRatio, rowWidth);
 
   const hasDockOwner = activeSessionId !== "";
   const showingCatalog = dock.activeViewId === WORKSPACE_DOCK_CATALOG;
@@ -211,10 +215,7 @@ export function ChatPanel({ onSend }: Props) {
 
   const dockRowRef = useCallback((row: HTMLDivElement | null) => {
     if (!row) return;
-    const reconcile = () => {
-      const available = canPresentDock(row.clientWidth);
-      setDockAvailable((current) => (current === available ? current : available));
-    };
+    const reconcile = () => setRowWidth(row.clientWidth);
     reconcile();
     let delivered = false;
     let queued = 0;
@@ -296,11 +297,7 @@ export function ChatPanel({ onSend }: Props) {
         </>
       )}
       <Activity mode={activeMainView === null ? "visible" : "hidden"}>
-        <AgentDockRow
-          ref={dockRowRef}
-          open={dockOpen && dockAvailable}
-          style={dockWidthRow(dockWidthRatio)}
-        >
+        <AgentDockRow ref={dockRowRef} open={dockOpen && dockAvailable} width={dockWidth}>
           <div
             ref={conversationRef}
             tabIndex={-1}
@@ -323,7 +320,7 @@ export function ChatPanel({ onSend }: Props) {
             <ChatStream onSend={onSend} />
             <RunAnnouncer />
           </div>
-          {dockOpen && dockAvailable && <DockResizer />}
+          {dockOpen && dockAvailable && <DockResizer width={dockWidth} />}
           <SessionOwnedWorkspaceState sessionId={activeSessionId}>
             <AgentContextDock
               ref={dockRef}

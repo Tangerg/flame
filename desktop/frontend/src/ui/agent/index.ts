@@ -6,11 +6,11 @@ export { AgentComposerTopTraySurface } from "./composer-top-tray-surface";
 export { AgentContentCard } from "./content-card";
 export { AgentDockCatalog } from "./dock-catalog";
 export {
-  agentDockElement,
   AgentContextDock,
   AgentDockResizer,
   AgentDockRow,
   AgentDockTabs,
+  DOCK_MEASURE_PROPERTY,
   type AgentDockTab,
 } from "./context-dock";
 export { AgentRow, AgentRowEditor } from "./navigation-row";

@@ -835,18 +835,20 @@ html.theme-dark {
   flex-direction: column;
   overflow: hidden;
   contain: layout paint;
-  margin-inline-end: 0;
   background: var(--app-dock-surface);
   transition:
-    margin-inline-end var(--dur-drawer) var(--ease-drawer),
+    flex-basis var(--dur-drawer) var(--ease-drawer),
     visibility 0s linear 0s;
 }
 .agent-dock-row[data-dock="collapsed"] .agent-context-dock {
   visibility: hidden;
-  margin-inline-end: calc(-1 * var(--dock-measure));
+  flex-basis: 0px;
   transition:
-    margin-inline-end var(--dur-drawer) var(--ease-drawer),
+    flex-basis var(--dur-drawer) var(--ease-drawer),
     visibility 0s linear var(--dur-drawer);
+}
+.agent-dock-row[data-resizing] .agent-context-dock {
+  transition: none;
 }
 
 .agent-dock-row[data-dock="collapsed"] .agent-surface-header[data-window-corner] {

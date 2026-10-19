@@ -2,8 +2,24 @@ package main
 
 /*
 #cgo CFLAGS: -x objective-c
-#cgo LDFLAGS: -framework Cocoa
+#cgo LDFLAGS: -framework Cocoa -framework WebKit
 #import <Cocoa/Cocoa.h>
+#import <WebKit/WebKit.h>
+
+static WKWebView *findWebView(NSView *view) {
+	if ([view isKindOfClass:[WKWebView class]]) return (WKWebView *)view;
+	for (NSView *subview in view.subviews) {
+		WKWebView *found = findWebView(subview);
+		if (found != nil) return found;
+	}
+	return nil;
+}
+
+static WKWebView *windowWebView(void *windowHandle) {
+	NSWindow *window = (__bridge NSWindow *)windowHandle;
+	if (window == nil || window.contentView == nil) return nil;
+	return findWebView(window.contentView);
+}
 
 typedef struct {
 	double controlsCentreY;
@@ -17,17 +33,21 @@ static ChromeMetrics measureOnMain(void *windowHandle) {
 	if (window == nil) return metrics;
 	NSButton *close = [window standardWindowButton:NSWindowCloseButton];
 	NSButton *zoom = [window standardWindowButton:NSWindowZoomButton];
-	if (close == nil || zoom == nil) return metrics;
+	WKWebView *webView = windowWebView(windowHandle);
+	if (close == nil || zoom == nil || webView == nil) return metrics;
+	// AppKit reports points; the page lays out in CSS pixels, which pageZoom scales.
+	double scale = webView.pageZoom;
 
+	// The buttons can keep isHidden false inside the fullscreen titlebar.
 	// Fullscreen takes the marks away with the menu bar, and a gutter reserved for
 	// something that is not there is a hole in the header. Zero says "no gutter",
 	// and leaves the center at zero with it so nothing is aligned to a ghost.
-	if (!close.isHidden && !zoom.isHidden) {
+	if (!(window.styleMask & NSWindowStyleMaskFullScreen) && !close.isHidden && !zoom.isHidden) {
 		NSRect closeFrame = [close.superview convertRect:close.frame toView:nil];
 		NSRect zoomFrame = [zoom.superview convertRect:zoom.frame toView:nil];
-		metrics.controlsInlineEnd = NSMaxX(zoomFrame);
+		metrics.controlsInlineEnd = NSMaxX(zoomFrame) / scale;
 		// Window coordinates are bottom-left; CSS wants the distance down from the top.
-		metrics.controlsCentreY = window.frame.size.height - NSMidY(closeFrame);
+		metrics.controlsCentreY = (window.frame.size.height - NSMidY(closeFrame)) / scale;
 	}
 	metrics.measured = 1;
 	return metrics;
@@ -41,6 +61,28 @@ static ChromeMetrics windowChromeMetrics(void *windowHandle) {
 	__block ChromeMetrics metrics;
 	dispatch_sync(dispatch_get_main_queue(), ^{ metrics = measureOnMain(windowHandle); });
 	return metrics;
+}
+
+// Wails' zoom roles set WKWebView magnification, which scales the viewport
+// without reflowing the page. pageZoom reflows, and it is the only stored factor.
+static void changePageZoomOnMain(void *windowHandle, int change) {
+	WKWebView *webView = windowWebView(windowHandle);
+	if (webView == nil) return;
+	if (change > 0) {
+		webView.pageZoom = webView.pageZoom + 0.05;
+	} else if (change < 0 && webView.pageZoom > 1.05) {
+		webView.pageZoom = webView.pageZoom - 0.05;
+	} else {
+		webView.pageZoom = 1.0;
+	}
+}
+
+static void changePageZoom(void *windowHandle, int change) {
+	if ([NSThread isMainThread]) {
+		changePageZoomOnMain(windowHandle, change);
+		return;
+	}
+	dispatch_sync(dispatch_get_main_queue(), ^{ changePageZoomOnMain(windowHandle, change); });
 }
 
 */
@@ -68,4 +110,16 @@ import "unsafe"
 func nativeWindowChrome(window unsafe.Pointer) (controlsCentreY, controlsInlineEnd float64, measured bool) {
 	metrics := C.windowChromeMetrics(window)
 	return float64(metrics.controlsCentreY), float64(metrics.controlsInlineEnd), metrics.measured != 0
+}
+
+type pageZoomChange int
+
+const (
+	pageZoomReset pageZoomChange = 0
+	pageZoomIn    pageZoomChange = 1
+	pageZoomOut   pageZoomChange = -1
+)
+
+func changeNativePageZoom(window unsafe.Pointer, change pageZoomChange) {
+	C.changePageZoom(window, C.int(change))
 }

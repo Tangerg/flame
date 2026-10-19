@@ -91,8 +91,24 @@ export function ResizeHandle({
       cancelGesture();
       detach();
     },
-    [cancelGesture, detach, value, edge, property],
+    [cancelGesture, detach, edge, property],
   );
+
+  useEffect(() => {
+    const handle = handleRef.current;
+    if (!gestureRef.current || !handle) return;
+    cancelGesture();
+    const pane = paneRef.current;
+    const element = pane.container(handle);
+    if (!element) return;
+    const containerWidth = element.clientWidth;
+    const width = clampWidth(value, pane.minWidth(containerWidth), pane.maxWidth(containerWidth));
+    element.style.setProperty(
+      pane.property,
+      pane.formatProperty(width, containerWidth),
+      element.style.getPropertyPriority(pane.property),
+    );
+  }, [cancelGesture, value]);
 
   useEffect(() => {
     const handle = handleRef.current;
@@ -104,7 +120,7 @@ export function ResizeHandle({
       const max = pane.maxWidth(element.clientWidth);
       handle.setAttribute("aria-valuemin", String(min));
       handle.setAttribute("aria-valuemax", String(max));
-      handle.setAttribute("aria-valuenow", String(clampWidth(pane.read(element), min, max)));
+      handle.setAttribute("aria-valuenow", String(clampWidth(value, min, max)));
     };
     sync();
     const observer = new ResizeObserver(sync);

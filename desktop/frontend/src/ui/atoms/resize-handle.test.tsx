@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { CSSProperties } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ResizeHandle } from "./resize-handle";
 
@@ -31,6 +32,31 @@ function Harness({
   );
 }
 
+function ControlledHarness({
+  value,
+  onCommit,
+}: {
+  value: number;
+  onCommit: (width: number, containerWidth: number) => void;
+}) {
+  return (
+    <div data-testid="container" style={{ [PROPERTY]: `${value}px` } as CSSProperties}>
+      <ResizeHandle
+        aria-label="Resize panel"
+        edge="end"
+        value={value}
+        container={(handle) => handle.parentElement}
+        property={PROPERTY}
+        read={(container) => Number.parseFloat(container.style.getPropertyValue(PROPERTY))}
+        minWidth={() => 240}
+        maxWidth={() => 800}
+        onCommit={onCommit}
+        resizingAttribute="data-resizing"
+      />
+    </div>
+  );
+}
+
 function paneWidth(): string {
   return screen.getByTestId("container").style.getPropertyValue(PROPERTY);
 }
@@ -45,6 +71,26 @@ describe("ResizeHandle", () => {
     expect(handle.getAttribute("aria-valuemin")).toBe("240");
     expect(handle.getAttribute("aria-valuenow")).toBe("320");
     expect(handle.getAttribute("aria-valuemax")).toBe("800");
+  });
+
+  it("reports the committed width while its surface is still transitioning", () => {
+    render(
+      <div>
+        <ResizeHandle
+          aria-label="Resize panel"
+          edge="end"
+          value={500}
+          container={(handle) => handle.parentElement}
+          property={PROPERTY}
+          read={() => 375}
+          minWidth={() => 240}
+          maxWidth={() => 800}
+          onCommit={() => {}}
+        />
+      </div>,
+    );
+
+    expect(screen.getByRole("separator").getAttribute("aria-valuenow")).toBe("500");
   });
 
   it("writes the width straight onto the container during a drag and commits on release", () => {
@@ -202,6 +248,52 @@ describe("ResizeHandle gesture settlement", () => {
     view.rerender(<Harness value={500} onCommit={onCommit} />);
     fireEvent.pointerUp(window);
     expect(onCommit).not.toHaveBeenCalled();
+    expect(paneWidth()).toBe("500px");
     expect(screen.getByRole("separator").getAttribute("aria-valuenow")).toBe("500");
+  });
+
+  it("keeps a controlled parent's committed width over the retired preview", () => {
+    const onCommit = vi.fn();
+    const view = render(<ControlledHarness value={320} onCommit={onCommit} />);
+    const pane = screen.getByTestId("container");
+    fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
+    fireEvent.pointerMove(window, { clientX: 450 });
+    expect(paneWidth()).toBe("450px");
+
+    view.rerender(<ControlledHarness value={500} onCommit={onCommit} />);
+
+    expect(paneWidth()).toBe("500px");
+    expect(pane.hasAttribute("data-resizing")).toBe(false);
+    fireEvent.pointerMove(window, { clientX: 600 });
+    fireEvent.pointerUp(window);
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(paneWidth()).toBe("500px");
+    expect(screen.getByRole("separator").getAttribute("aria-valuenow")).toBe("500");
+  });
+
+  it("leaves the parent's projection alone when a container resize retired the gesture first", () => {
+    const onCommit = vi.fn();
+    let containerWidth = 1200;
+    const width = vi
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockImplementation(() => containerWidth);
+    try {
+      const view = render(<ControlledHarness value={320} onCommit={onCommit} />);
+      fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
+      fireEvent.pointerMove(window, { clientX: 450 });
+      expect(paneWidth()).toBe("450px");
+
+      containerWidth = 1000;
+      fireEvent.pointerMove(window, { clientX: 460 });
+      expect(paneWidth()).toBe("320px");
+
+      view.rerender(<ControlledHarness value={500} onCommit={onCommit} />);
+      expect(paneWidth()).toBe("500px");
+      fireEvent.pointerUp(window);
+      expect(onCommit).not.toHaveBeenCalled();
+      expect(paneWidth()).toBe("500px");
+    } finally {
+      width.mockRestore();
+    }
   });
 });

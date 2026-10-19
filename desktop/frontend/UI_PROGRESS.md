@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. The resumed Memory task review started from clean local and remote `main` at `cd22229a5`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. The workspace zoom review continues from the integrated Memory milestone at `e339c70bf` on `main`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The latest objective explicitly resumes continuous desktop UI work. Complete each evidence-backed batch with native acceptance, the relevant gates, an explicit-path commit and push to `main`, cleanup and an update to this file before selecting the next batch. Memory authoring and operation feedback are now verified at Actual Size in the Dock and main content view. Independent approval and pin commands remain available while a draft is open. The next observed problem is cross-page native Zoom In cropping the workspace; it is recorded below as a failed check, with its owner still to be established. Do not claim zoom acceptance from the passing font-size and narrow-window scenes.
+The latest objective explicitly resumes continuous desktop UI work. Complete each evidence-backed batch with native acceptance, the relevant gates, an explicit-path commit and push to `main`, cleanup and an update to this file before selecting the next batch. Memory authoring and operation feedback are now verified at Actual Size in the Dock and main content view. Independent approval and pin commands remain available while a draft is open. Native View zoom now reflows the workspace, and the Dock uses the existing geometry policy to project an observed row and saved ratio into pixels. The original crop, collapsed-panel overflow, zoomed resize bound and fullscreen clearance defects have native evidence below. The next observed continuity problem is a Memory query being cleared by explicit Dock collapse/reopen or full-width promotion and return; its component lifetime owner still needs tracing.
 
 Task-oriented layout and interaction apply across the conversation, Context Dock, settings and installed views. Preserve the approved brand, shared reading hierarchy, Composer, code/table/selection fixes, sidebar-matching Dock seam and custom-accent theme owner. The earlier `cap`-based inline-icon sizing tip is a suggestion for future typography work, not a global icon redesign.
 
@@ -14,7 +14,7 @@ Recent integrated milestones are `c59e7f470` (scope-first Diff and Usage), `863e
 
 Schedules now uses a bounded Add/Edit dialog and a separate deletion decision over the retained catalog. The existing command, captured revision, provider/model catalogs and original-key reconciliation remain authoritative. Focus retirement accounts for catalog reads temporarily disabling record actions, while Add/Templates remain available. Actual Wails acceptance qualified both the shared modal stacking repair and persistent command feedback after scrolling the fields. Detailed coverage and its limits are below.
 
-The checkout is `/Users/tangerg/Desktop/flame`, on `main`. All former local and remote branch tips were checked for ancestry before consolidation; their commits are retained in `main`, and only `main` remains locally and on `origin` at this checkpoint. Read current Git state before resuming; this document cannot overwrite newer work. Historical paused or blocked states in other chats do not describe the current checkout.
+The checkout is `/Users/tangerg/Desktop/flame`, on `main`. At the earlier branch-consolidation checkpoint, former local and remote tips were checked for ancestry and retained in `main`. Additional worktrees and their processes are outside this UI batch. Read current Git state before resuming; this document cannot overwrite newer work. Historical paused or blocked states in other chats do not describe the current checkout.
 
 ## Integrated brand and authoring work
 
@@ -343,7 +343,63 @@ consumes it without discarding the task. `RecordForm` still owns focus retiremen
 The Memory resolver rejects a disconnected or read-disabled opener and uses
 retained search. A later read never reclaims a subsequent focus choice.
 
+## Native workspace zoom and Dock geometry
+
+macOS View commands retain the default menu roles, shortcuts, 5% steps and
+Actual Size floor. `desktop/window_zoom_darwin.go` replaces only their callbacks;
+`desktop/window_chrome_darwin.go` reads and changes `WKWebView.pageZoom` on the
+AppKit main thread. WebKit owns the scale. The exact window's public content
+view hierarchy supplies its WebView. Native button coordinates are divided by
+that scale before crossing the existing CSS-pixel boundary, and the native
+fullscreen style mask supplies measured zeroes. Other platforms keep their
+Wails menu implementation. Dependencies and IPC methods are unchanged.
+
+The pinned Wails macOS roles used viewport magnification. Production first
+reproduced an outer scroll area and missing sidebar footer after a single Zoom
+In. Switching to page zoom exposed a second problem: at 200%, a collapsed
+320 px Dock had a -640 px margin, making the 720 px conversation 1040 px wide.
+The Dock now collapses its flex basis to zero. While open, the duplicate CSS
+width formula also drifted: at 120%, End painted approximately 518 px in a
+925 px row and left 407 px for reading instead of the existing 440 px floor.
+
+`ChatPanel.tsx` now projects the observed row through `shellGeometry` once,
+using the saved ratio or automatic width. `AgentDockRow` renders that pixel
+measure and `DockResizer` consumes the same committed width. Row observation
+advances no saved preference. The retired `dockWidth.ts` CSS arithmetic and its
+exclusive CSS/TypeScript comparison probes are removed; the independent name
+legibility probe remains. The preferred-width constant is now private to its
+actual algorithm owner.
+
+Direct pointer and keyboard resizing suspend width transitions. Opening and
+closing retain their visibility timing, surfaces and seam. The host structure
+stays mounted; portable view activation has a separate lifetime, whose query
+continuity is the next issue below. `ResizeHandle`
+retires a live preview when a new committed width arrives, preserving the new
+projection after rollback; cancellation without that replacement retains the
+captured value and priority. Its accessible value and Dock gesture origin use
+the committed pixel width, avoiding a cached intermediate animation frame.
+
+Reference evidence: ZCode's read-only preload zoom code uses native content zoom
+and divides macOS control padding by the current factor. The local Apple SDK
+and [Apple pageZoom documentation](https://developer.apple.com/documentation/webkit/wkwebview/pagezoom)
+distinguish content scaling from viewport magnification; page zoom is available
+below the project's macOS 13 floor. Public [Wails menu APIs](https://v3.wails.io/reference/menu/)
+provide the callback boundary; the installed beta.29 source establishes the
+actual behavior. The better-layout/accessibility review drove viewport reflow,
+reachable controls and width semantics. Existing type, color and surface owners
+remain the visual basis.
+
 ## Verification checkpoint
+
+For native zoom and shared geometry:
+
+- The final focused run passed 51 tests across four ChatPanel/ResizeHandle/geometry files. New controlled-width regressions failed against the old preview settlement (500 px was overwritten by 320 px), then passed with the fix. Observed row changes retain the mounted task and saved ratio; accessible values report the committed width while the surface transitions. Existing cancellation, priority restoration, keyboard and Session ownership assertions remain.
+- Desktop `go test ./...` with the supported macOS 13 linker floor and `go vet ./...` passed. The supported Wails arm64 production build passed; the duplicate `-lobjc` linker warning remains non-failing. Windows compilation was checked by the bounded CLI, with no native Windows UI qualification. No dependency, persisted-data or protocol migration is required.
+- The final `VITEST_MAX_WORKERS=2 npm run check` passed all 378 files / 2788 tests and every subsequent type/lint/format, unused-code, architecture, style/token, locale, bootstrap, exact-resource, bundle and production-module gate. Earlier gates caught the retired preferred-width export and a CSS-variable owner map still naming the deleted helper; both now point to their actual owners. One interim Runtime setup exceeded its unchanged 60-second compilation hook, leaving 49 cases unrun. After isolated Runtime/CLI/package precompilation, the focused 49 cases and the final full gate passed. No timeout or assertion was weakened. Non-failing loopback `ECONNREFUSED` diagnostics remain unclassified; no Runtime repair is claimed.
+- Final actual Wails scenes used canonical in-memory reads and production components through the real native asset/IPC host, with temporary read-only viewport diagnostics. English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange covered menu and keyboard zoom, 120% width bounds, 200% reading and material fallback, settings scrolling, a nested language menu's Escape/focus return and explicit Close. At 200% in a 1440-point window, the document and conversation were 720 CSS px wide with no outer overflow; the collapsed Dock was zero width. At 120%, keyboard End and a real mouse drag produced a 485 px Dock beside a 440 px conversation in a 925 px row. Home and arrow adjustments applied immediately. A native mouse drag at Actual Size also changed 523 px to 603 px and retained a ratio.
+- The system window menu produced approximately 1120-point geometry. One Zoom In kept the conversation, Memory controls, record actions and Composer reachable. Fullscreen reported zero native-button clearance; a settled exit restored the scaled values. Actual Size and the existing Zoom Out floor restored a 1.0 content scale. A retained query and mixed CJK/English long-path draft survived enlargement/Actual Size without a write; moving focus later to the sidebar was preserved. Local editor Escape returned to its record. Full-width Memory remained scrollable with keyboard cancellation and a reachable Close, but the separately observed query reset above is not a continuity pass.
+- These are isolated UI and native-host checks. The initial production reproduction read an already-running local Runtime; no business mutation was submitted. Later acceptance used inert canonical providers. Live Runtime recovery, native mid-drag cancellation/resize injection, OS IME, VoiceOver, pixel contrast and other platform GUIs were not requalified. No browser/visual suite or performance benchmark ran. Drag retirement and cancellation order are covered by the component regressions.
+- Cleanup completed: the native app exited, its bundle was unregistered and removed, and its newly created bundle-specific WebKit/cache directories were deleted. This batch's isolated root, fixture assets/data, production and prebuild binaries, overlays, logs and all three completed CLI reports were removed. The timed-out E2E root and builds had already exited and cleaned up. No preview server was started. Read-only Ace reference caches, existing shared build outputs/compiler caches and unrelated worktrees/processes were retained. Claude Code CLI supplied the bounded native and geometry implementation; the primary agent reviewed the diff, corrected the accessible-width projection, performed native acceptance and completed verification.
 
 For Memory authoring and command feedback:
 
@@ -351,7 +407,7 @@ For Memory authoring and command feedback:
 - Portable `npm run build` and `npm run check` passed, including all ten exact ESM resources. The final frontend `VITEST_MAX_WORKERS=2 npm run check` passed 378 files and 2784 tests, followed by all unused-code, boundary, style/token, locale, bootstrap, resource, bundle and production-module gates. Non-failing loopback `ECONNREFUSED` diagnostics were emitted during the full run; no product cause or repair is claimed. An introduced test-selector type error was corrected before this final run.
 - The supported production Wails arm64 build passed; `vtool` confirmed macOS 13.0. Shared UI, Go, Runtime, CLI, SDK and dependencies have no source changes in this batch. Their module suites were not rerun for this presentation-only change; separate Runtime commits are not requalified here. The Memory ESM is rebuilt, but an existing Runtime installation still requires the normal explicit release selection to consume a new package; no live installation was changed.
 - Actual Wails WKWebView first reproduced missing local cancellation and an edit refusal surviving Cancel into a fresh Add task. Final Chinese/light/14 px/Flame Orange and English/dark/18 px/custom-blue scenes checked record identity, literal query/return, keyboard reopen, search-first Escape, failed edit then fresh Add, independent record failure with a retained editable draft, nested menu priority, named deletion/cancellation and source focus. The native system window menu resized the app to approximately 1120 px; keyboard resizing reached a 320 px Dock. Wrapped IDs, mixed CJK/English, long workspace text, scrolling fields/feedback/actions and the unchanged main conversation stayed usable. The full-pane Memory placement also retained its query and record focus on local cancellation, and explicit Close returned to the conversation.
-- **Failed:** after one native View → Zoom In in the narrow/dark/18 px scene, the whole workspace enlarged beyond the window and cropped the right edge, including unrelated chrome. Actual Size restored the layout. No zoom percentage or 200% pass is claimed. Establish the native/viewport/layout owner in the next batch before changing any leaf component.
+- The Memory batch first failed native View → Zoom In in its narrow/dark/18 px scene. That baseline led to the native workspace and shared Dock fixes above; the subsequent zoom qualification is recorded separately below.
 - Native command refusals used the fixture's explicit unsupported-write error through the production component and public client in a real Wails host. Successful acknowledgements, unknown receipts, delayed/failed reads and IME variants are deterministic component/public-client regressions, not native failure injection or OS input-method coverage. VoiceOver and rendered pixel contrast measurements were not run. No browser/visual suite or performance benchmark was run.
 - The owned native app and preview have stopped. The disposable bundle, binaries, fixture output, prompts/logs/data and bundle-qualified WebKit/cache directories are cleaned before delivery. No own preferences, HTTP storage or saved application state were present. Existing prerequisite outputs, user data, read-only references and unrelated processes are retained.
 
@@ -363,7 +419,7 @@ Other management pages and live Runtime writes are outside this fresh review.
 | Domain        | Evidence inspected                                                                                                 | Result                                                |
 | ------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
 | Accessibility | Panel local keyboard owner, shared SearchField/menus/RecordForm, 22 regressions and native focus paths             | Changed task paths verified; VoiceOver not verified   |
-| Layout        | Shared Panel/form/record owners, native Dock at 320 px, actual narrow window and full-pane placement               | Actual Size verified; workspace Zoom In fails         |
+| Layout        | Shared Panel/form/record owners, native Dock at 320 px, actual narrow window and full-pane placement               | Actual Size and recorded native zoom scenes verified  |
 | Writing       | Captured command labels, record/scope identity, refusal/recovery and new-task feedback retirement                  | Changed task copy verified against its actual action  |
 | Typography    | Shared RecordMeta/RecordBody/Metadata, wrapped IDs and mixed-language text at 14/18 px                             | Actual Size verified; no font system changed          |
 | Colors        | Existing text/surface/focus/negative roles, passing palette regressions and light/dark/custom-accent native scenes | Role use retained; rendered pixel ratios not measured |
@@ -373,11 +429,9 @@ Other management pages and live Runtime writes are outside this fresh review.
 | -------- | ------------- | -------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
 | MEDIUM   | Writing       | `plugins/memory/src/component.tsx:263` | One unlabeled message served independent record and draft commands and survived a new form | Captured action/target/origin feedback stays in its corresponding task context | A result must identify the operation it settles                                          |
 | MEDIUM   | Accessibility | `plugins/memory/src/component.tsx:339` | Return attempted a read-disabled opener; editor Escape had no local owner                  | Available-opener/search resolver and composition-safe local cancellation       | Keyboard work must preserve a useful return point and the current task boundary          |
-| HIGH     | Layout        | Native View → Zoom In, whole workspace | Enlarged content is clipped at the window's right edge                                     | Pending owner diagnosis in the next batch                                      | Critical controls must remain reachable under scaling; no Memory-only patch is justified |
+| HIGH     | Layout        | Native View → Zoom In, whole workspace | Enlarged content is clipped at the window's right edge                                     | Native page zoom, CSS-pixel chrome and one Dock width projection               | Critical controls must remain reachable under scaling; no Memory-only patch is justified |
 
-Review verdict: **Block for workspace zoom**. The changed Memory task paths pass at
-Actual Size; this is not approval of the unverified VoiceOver/pixel-contrast work
-or of native zoom. Continue with the recorded cross-page failure.
+Review verdict: **Pass for the changed zoom and geometry contracts in the recorded native scenes**. The original workspace zoom block is resolved. Memory explicit view-activation query continuity remains the next observed issue; VoiceOver and rendered contrast measurements remain unqualified.
 
 For bounded Schedules editing and deletion:
 
@@ -439,11 +493,14 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 ## Future review candidates
 
-The next concrete task is native workspace zoom. A single View → Zoom In in
-Wails cropped unrelated chrome and Memory at approximately 1120 px; Actual Size
-restored it. Reproduce against production and locate the magnification/viewport
-or shell owner before choosing a fix. This is observed evidence, not a request to
-change Memory's already verified authoring model.
+The next concrete task is Memory view continuity. In actual Wails, a retained
+Dock query (`compaction`) survived zooming alone, but explicit Dock
+collapse/reopen cleared it. Opening the same material full width also showed an
+empty query, and Close/Actual Size returned an empty Dock query. Trace the installed component/Activity
+lifetime and its real consumers before choosing the state owner. Draft transfer
+across that promotion was not tested. Preserve the completed local task,
+command settlement and source-focus contracts; do not treat this as evidence to
+make Memory authoring modal.
 
 1. **Extend the task comparison.** Reading-to-file-and-back, overview-to-subagent-and-back, direct narrative task links and nested task/file returns now have shared presentation and focus ownership. Catalogue/picker selection and full-view-to-Dock transitions enter the same inspection flow. Continue with richer captured evidence and the remaining detailed material states. Preserve the distinction between explicit inspection and background updates. Do not restart the implemented typography, file header, shared message renderer, nested return flow or sidebar-matching divider.
 2. **Continue the reading composition around activity.** The shared prose step, paragraph/heading rhythm, disclosure affordance and folded tool-outcome summaries are implemented. Review how recorded evidence and media join an answer, especially where a summary leads into a dense detail view. Preserve the existing bounded table, code and selection owners.

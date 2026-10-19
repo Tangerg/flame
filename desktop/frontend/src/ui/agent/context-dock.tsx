@@ -99,15 +99,17 @@ export function AgentContextDock({ children, className, ...props }: ComponentPro
   );
 }
 
+export const DOCK_MEASURE_PROPERTY = "--dock-measure";
+
 export function AgentDockRow({
   open,
+  width,
   ref,
-  style,
   children,
 }: {
   open: boolean;
+  width: number;
   ref?: Ref<HTMLDivElement>;
-  style?: CSSProperties;
   children: ReactNode;
 }) {
   return (
@@ -115,7 +117,7 @@ export function AgentDockRow({
       ref={ref}
       className={cn("agent-dock-row", stylex.props(styles.row).className)}
       data-dock={open ? "open" : "collapsed"}
-      style={style}
+      style={{ [DOCK_MEASURE_PROPERTY]: `${width}px` } as CSSProperties}
     >
       {children}
     </div>
@@ -124,10 +126,6 @@ export function AgentDockRow({
 
 export function AgentDockResizer(props: Omit<ResizeHandleProps, "edge" | "className">) {
   return <ResizeHandle {...props} edge="start" className="agent-pane-resizer" />;
-}
-
-export function agentDockElement(row: HTMLElement): HTMLElement | null {
-  return row.querySelector<HTMLElement>(".agent-context-dock");
 }
 
 function reflectDockTabOverflow(element: HTMLElement): void {

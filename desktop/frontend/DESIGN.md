@@ -673,8 +673,21 @@ ink cannot be:
 
 ## Responsive document and shared renderers
 
-Native window geometry belongs to the Wails host. The HTML document does not
-enforce those physical minimum dimensions: browser resizing and text zoom can
+Native window geometry belongs to the Wails host. On macOS, the native View
+menu changes `WKWebView.pageZoom` so the content reflows within its viewport.
+WebKit owns that scale; the host converts native window-button geometry from
+AppKit points to CSS pixels using the same value. Native fullscreen supplies
+zero button clearance.
+
+The Context Dock derives its pixel width from the observed row and the saved
+ratio through `shellGeometry`. The same measure positions its content and resize
+handle. It consumes that flex basis while open and zero while collapsed, with
+visibility retiring after the closing transition. The conversation takes the
+released space. Pointer and keyboard
+resizing apply immediately. A new committed width retires an active preview and
+preserves the current layout projection.
+
+The HTML document does not enforce those physical minimum dimensions: browser resizing and text zoom can
 reflow content independently. At narrow widths, work navigation precedes the
 reading pane and Settings navigation precedes its content; each scroll region
 retains keyboard access. Setting rows and segmented choices reflow inside their

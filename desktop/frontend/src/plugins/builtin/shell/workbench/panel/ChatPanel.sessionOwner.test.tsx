@@ -202,6 +202,59 @@ it("measures dock availability when returning from a promoted main view", () => 
   }
 });
 
+it("projects the saved ratio onto the observed row width without saving a new ratio", async () => {
+  let rowWidth = 1440;
+  const width = vi
+    .spyOn(HTMLElement.prototype, "clientWidth", "get")
+    .mockImplementation(() => rowWidth);
+  const observers: ResizeObserverCallback[] = [];
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        observers.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  try {
+    nextInstance = 0;
+    model.width = 0.5;
+    model.sessionId = "ses_first";
+    model.activeMainView = null;
+    model.dock = { open: true, viewIds: ["stateful"], activeViewId: "stateful" };
+    model.views = [
+      { id: "stateful", title: "stateful", icon: "tool", component: StatefulWorkspaceView },
+    ];
+    const view = render(<ChatPanel onSend={() => true} />);
+    const row = view.container.querySelector<HTMLElement>("[data-dock]")!;
+    const measure = () => row.style.getPropertyValue("--dock-measure");
+    expect(row.dataset.dock).toBe("open");
+    expect(measure()).toBe("660px");
+
+    rowWidth = 1000;
+    act(() => observers.forEach((observe) => observe([], {} as ResizeObserver)));
+    expect(measure()).toBe("440px");
+
+    model.width = null;
+    view.rerender(<ChatPanel onSend={() => true} />);
+    expect(measure()).toBe("480px");
+
+    rowWidth = 700;
+    observers.forEach((observe) => observe([], {} as ResizeObserver));
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    expect(row.dataset.dock).toBe("collapsed");
+    expect(screen.getByText("workspace-instance:1")).toBeTruthy();
+    expect(model.setWidth).not.toHaveBeenCalled();
+  } finally {
+    cleanup();
+    vi.unstubAllGlobals();
+    width.mockRestore();
+  }
+});
+
 describe("ChatPanel full-view window controls", () => {
   beforeEach(() => {
     model.sessionId = "ses_window";

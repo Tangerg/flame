@@ -4,7 +4,7 @@ const SIDEBAR_MAX_WIDTH_PX = 520;
 
 export const DOCK_MIN_WIDTH_PX = 320;
 export const CONVERSATION_READING_MIN_PX = 440;
-export const DOCK_PREFERRED_WIDTH_PX = 480;
+const DOCK_PREFERRED_WIDTH_PX = 480;
 
 export function canPresentDock(rowWidth: number): boolean {
   return rowWidth >= DOCK_MIN_WIDTH_PX + CONVERSATION_READING_MIN_PX;
