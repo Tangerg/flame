@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. Pasted-text review continues from the native hidden-zoom qualification at `55db20f41` on `main`, with the ordinary editing/return paths now natively qualified. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. Ordinary pasted-text editing/return is integrated at `d15175820` on `main`. The subsequent oversized-editor investigation now qualifies a native initialization/font interaction; its temporary candidates were removed. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -12,7 +12,7 @@ Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue
 
 Recorded Tool readers now share the literal code reader's local Select All boundary. Whole-reader copy uses the current presented rows or preview excerpt; expanded command output supplies the complete ANSI-stripped captured source, including virtualized lines and trailing newlines. Stable content children keep mutable row trees from shortening the browser's range. Partial selection, editable fields, explicit complete-result copy and Runtime ownership remain separate. Hidden-zoom reading drift reproduces in a plain native HTML scroller without virtualization and remains a platform limitation, qualified below.
 
-Pasted-text review exposed a separate native defect: Put back in message discarded the current edit, restored the original paste and left focus on the document. The repair sends the edited text through one ComposerDraft transition and chooses a close destination from the owner's actual result. Full frontend gates, the supported Wails build and ordinary native editing/return paths pass. The separate 50,002-line preview still loses readable accessibility state, while a plain native textarea handles the exact same content; isolate that difference next without assuming a layout, binding or platform cause.
+Pasted-text review exposed a separate native defect: Put back in message discarded the current edit, restored the original paste and left focus on the document. The repair sends the edited text through one ComposerDraft transition and chooses a close destination from the owner's actual result. Full frontend gates, the supported Wails build and ordinary native editing/return paths pass. The separate 50,002-line preview retains its exact text but still loses readable native accessibility state at the approved typography. Plain native and captured static-DOM controls isolate initialization and font-dependent conditions, qualified below. Neither standalone experiment repairs the production path; no initialization workaround or font substitution was retained.
 
 Task-oriented layout and interaction apply across the conversation, Context Dock, settings and installed views. Preserve the approved brand, shared reading hierarchy, Composer, code/table/selection fixes, sidebar-matching Dock seam and custom-accent theme owner. The earlier `cap`-based inline-icon sizing tip is a suggestion for future typography work, not a global icon redesign.
 
@@ -518,6 +518,29 @@ remain the visual basis.
 
 ## Verification checkpoint
 
+For the oversized native editor investigation:
+
+- Actual Wails on macOS 26.5 used English/dark/18 px/custom blue in a 1440 × 900 viewport, with the production editor over isolated canonical reads. The exact generated source remains **1,188,891 characters / 50,002 lines**, including two trailing newlines. Read-only diagnostics checked direct equality, native value/default value, selection, focus and geometry. No Send, live Runtime mutation or installation update occurred.
+- The final matrix distinguishes conditions that earlier plain-control results did not cover:
+
+  | Native case | Result |
+  | --- | --- |
+  | An already attached plain textarea, including mirrored defaults and a 1,350,078 px autosize constrained by CSS max-height | Readable |
+  | A new plain textarea populated before insertion, with either live value alone or mirrored default/value | Accessibility state unavailable |
+  | A new plain textarea populated after insertion, or cleared/restored after insertion with its selection preserved | Readable |
+  | The latter plain initialization with autosize, modal geometry/semantics, or a separate wrapping-label probe | Readable in the individually tested combinations |
+  | Production editor with a once-per-node controlled-mount normalization, including a temporary native height cap | Accessibility state unavailable |
+  | Captured production dialog DOM/CSS without React or Base UI, with that initialization | Accessibility state unavailable at the product font; readable with only the native font family changed to generic monospace |
+  | Captured static dialog with only normal letter spacing | Accessibility state unavailable |
+  | Original production implementation with only a temporary generic-monospace editor override | Accessibility state unavailable |
+  | Production editor with both temporary controlled-mount normalization and generic monospace | Readable; native end/edit/undo/cancel returned correctly |
+
+- Installed React 19.3.0 source initializes textarea content before insertion; its [textarea contract](https://react.dev/reference/react-dom/components/textarea) leaves controlled updates with React. A temporary native-value trace confirmed the candidate's clear/restore happened while connected, retained the complete default and live values, and restored the original zero-position selection. The approved-font production field still failed. Static DOM/CSS reproduction establishes that React state and Base UI lifecycle are not required to reproduce the remaining failure. Separate passing probes exclude autosize, wrapping labels and modal semantics as sufficient causes on their own. The font-family result is an observed native rendering/accessibility interaction, not a diagnosis of a particular font-file defect, performance bottleneck or upstream WebKit revision.
+- The combined experiment retained full accessible state through Cmd-Down, a trusted `X` insertion to 1,188,892 characters and native Undo back to the exact original at caret 1,188,891. Escape retired the editor and returned to the original attachment chip. This qualifies that disposable combination only. The product's approved-font oversized editor remains unqualified; no truncation, text-length font switch, extra controlled-value owner, delayed retry or loading phase was introduced. The existing manual sizing owner and CSS min/max contract remain intact.
+- Claude Code CLI (`claude-opus-5-5`, no subagents or permission denials) implemented the bounded mount candidate. Its focused baseline exposed one failure with ten passes; the candidate passed eleven tests, and removing its node guard exposed two failures. The primary reviewed and strengthened the tests. The candidate's shared UI gate passed 69 tests plus the independent packed consumer. Because native production acceptance failed, the candidate and its tests were removed rather than delivered as a fix. After restoring the original primitive and removing those tests, the final shared UI `npm run check` passed its retained 58 tests, all build/type/lint/format checks and the independent packed consumer.
+- Isolated fixture builds and the production-tagged native overlay compilation passed with the supported macOS 13 floor and existing non-failing duplicate `-lobjc` warning. A fixture asset-root assembly error was corrected before editor acceptance. No production source, dependency, protocol, persisted-data format or portable resource remains changed. The final delivery is documentation only: the prior frontend and supported Wails production gates remain historical, not newly claimed passes. No browser suite, performance benchmark, VoiceOver, OS IME, other-platform GUI or broader font/theme qualification ran. Native accessibility extraction sometimes reached its tool deadline; this does not prove a general application freeze or physical-keyboard failure.
+- Cleanup: the working plain/combined scenes exited through native Quit. Unreadable instances that remained running were stopped only after checking the exact owned executable/PID. The disposable bundle, data, fixture/static controls, overlays, binaries, diagnostics, candidate backups, CLI reports and logs are removed before delivery, together with newly created bundle-specific WebKit/cache paths checked against the pre-launch inventory and birth times. Shared build outputs/compiler caches, read-only reference assets and unrelated worktrees/processes are retained.
+
 For pasted-text review and return to authoring:
 
 - Actual baseline Wails used English/dark/18 px/custom blue with an isolated canonical Agent fixture. An 18-line CJK paste could be reviewed and cancelled back to its original chip. After replacing the editor with `Edited evidence · 修改后正文` and `Final line`, Put back instead appended the original 18 lines to `Typed prefix · 保留草稿`. Focus fell to the document and subsequent typing did nothing. This reproduced both the stale-text and lost-authoring-focus defects without a live Runtime write or Send action.
@@ -667,12 +690,16 @@ The hidden-zoom investigation is complete at the scope above. Its exact position
 change reproduces without application scrolling code; retain the documented
 platform limitation and revisit it when WebKit behavior changes. The selection
 repair does not fix or claim that condition. The ordinary pasted-text return
-repair is now qualified above. Next isolate the oversized preview's difference
-from the working plain textarea: controlled value/default value/text content,
-autosize, modal rendering and native accessibility remain hypotheses, not
-diagnoses. The exact same generated content worked in the plain native control;
-the application preview still lost readable accessibility state. Do not infer
-a performance bottleneck or start a broader Composer rewrite from that probe.
+repair is now qualified above. The oversized-editor investigation has isolated
+native initialization and font-dependent conditions in plain/static and actual
+production-component controls. Its two standalone candidates failed native
+acceptance and were removed. Preserve that qualification rather than repeating
+the earlier autosize, label or modal hypotheses as diagnoses. Revisit the exact
+large-input scene when native font/accessibility behavior changes or a scoped
+editor typography change has a task-level justification. Keep the approved font,
+React value ownership and original content intact in the meantime. Continue with
+the remaining recorded-material and Dock task paths; this investigation does not
+justify a broader Composer rewrite or speculative performance work.
 
 Memory query/draft continuity, original-command observation and main-only source
 retention are now implemented and qualified above. Do not recreate them or make
