@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { lazy, useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PanelHeader } from "@flame/ui/panel";
 import type { WorkspaceViewSpec } from "@/plugins/sdk";
 import {
   closeWorkspaceView,
@@ -165,11 +166,57 @@ describe("ChatPanel Session-owned workspace view state", () => {
   });
 });
 
-it("measures dock availability when returning from a promoted main view", () => {
+it("switches one mounted view between hosted dock and full-width panel density", () => {
+  nextInstance = 0;
+  model.sessionId = "ses_first";
+  model.activeMainView = null;
+  model.dock = { open: true, viewIds: ["stateful"], activeViewId: "stateful" };
+  model.views = [
+    {
+      id: "stateful",
+      title: "stateful",
+      icon: "tool",
+      component: () => (
+        <>
+          <PanelHeader title="Density heading" />
+          <StatefulWorkspaceView />
+        </>
+      ),
+    },
+  ];
+  const view = render(<ChatPanel onSend={() => true} />);
+  const header = screen.getByText("Density heading").closest("header")!;
+  expect(header.classList.contains("sr-only")).toBe(true);
+
+  model.activeMainView = "stateful";
+  view.rerender(<ChatPanel onSend={() => true} />);
+  expect(screen.getByText("Density heading").closest("header")).toBe(header);
+  expect(header.classList.contains("sr-only")).toBe(false);
+  expect(screen.getByText("workspace-instance:1")).toBeTruthy();
+
+  model.activeMainView = null;
+  view.rerender(<ChatPanel onSend={() => true} />);
+  expect(header.classList.contains("sr-only")).toBe(true);
+  expect(screen.getByText("workspace-instance:1")).toBeTruthy();
+});
+
+it("keeps measuring dock availability while a promoted main view is presented", () => {
   let rowWidth = 600;
   const width = vi
     .spyOn(HTMLElement.prototype, "clientWidth", "get")
     .mockImplementation(() => rowWidth);
+  const observers: ResizeObserverCallback[] = [];
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        observers.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
   try {
     model.width = null;
     model.sessionId = "ses_first";
@@ -190,6 +237,7 @@ it("measures dock availability when returning from a promoted main view", () => 
     model.activeMainView = "stateful";
     view.rerender(<ChatPanel onSend={() => true} />);
     rowWidth = 1440;
+    act(() => observers.forEach((observe) => observe([], {} as ResizeObserver)));
     model.activeMainView = null;
     view.rerender(<ChatPanel onSend={() => true} />);
     expect(
@@ -198,6 +246,7 @@ it("measures dock availability when returning from a promoted main view", () => 
     expect(model.setWidth).not.toHaveBeenCalled();
   } finally {
     cleanup();
+    vi.unstubAllGlobals();
     width.mockRestore();
   }
 });

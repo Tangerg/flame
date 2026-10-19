@@ -25,6 +25,7 @@ import {
 import { shellStyles as sh } from "../shellStyles";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { vocab } from "@flame/ui";
+import { useContentVisible } from "@/ui";
 
 const cst = stylex.create({
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
@@ -121,8 +122,10 @@ export function ChatStream({ onSend }: Props) {
   const paneRef = useRef<HTMLDivElement>(null);
   const composerOverlayRef = useRef<HTMLDivElement>(null);
 
+  const visible = useContentVisible();
+
   useLayoutEffect(() => {
-    if (!started) return;
+    if (!started || !visible) return;
     const pane = paneRef.current;
     const overlay = composerOverlayRef.current;
     if (!pane || !overlay) return;
@@ -140,7 +143,7 @@ export function ChatStream({ onSend }: Props) {
     return () => {
       observer.disconnect();
     };
-  }, [started]);
+  }, [started, visible]);
 
   if (!started) {
     const emptyPane = stylex.props(cst.empty);

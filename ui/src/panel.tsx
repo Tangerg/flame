@@ -238,8 +238,14 @@ const styles = stylex.create({
 
 const PanelHostContext = createContext(false);
 
-export function PanelHost({ children }: { children: ReactNode }) {
-  return <PanelHostContext value={true}>{children}</PanelHostContext>;
+export function PanelHost({
+  hosted = true,
+  children,
+}: {
+  hosted?: boolean;
+  children: ReactNode;
+}) {
+  return <PanelHostContext value={hosted}>{children}</PanelHostContext>;
 }
 
 export function Panel({

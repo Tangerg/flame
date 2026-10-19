@@ -34,6 +34,7 @@ export function useInspectionFocus({
   const dockRef = useRef<HTMLElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
   const mainViewRef = useRef<HTMLDivElement>(null);
+  const previousPresentation = useRef({ sessionId, mainViewId: null as string | null });
 
   useLayoutEffect(() => {
     if (!inspection) {
@@ -99,6 +100,20 @@ export function useInspectionFocus({
     }
     returningRef.current = null;
   }, [inspection, sessionId, mainViewId, dockViewId, dockViewIds, dockVisible, subagentRunId]);
+
+  useLayoutEffect(() => {
+    const previous = previousPresentation.current;
+    previousPresentation.current = { sessionId, mainViewId };
+    if (
+      (previous.sessionId === sessionId && previous.mainViewId === mainViewId) ||
+      returningRef.current
+    )
+      return;
+    const target = (mainViewId ? mainViewRef : dockVisible ? dockRef : conversationRef).current;
+    if (target && target.ownerDocument.activeElement === target.ownerDocument.body) {
+      target.focus({ preventScroll: true });
+    }
+  }, [sessionId, mainViewId, dockVisible]);
 
   const returnToSource = () => {
     if (!inspection) return;

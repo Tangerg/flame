@@ -93,6 +93,96 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+it("hands focus from a removed full-width trigger to the material and back to the conversation", () => {
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
+  openWorkspaceViewInDock("file");
+  render(<ChatPanel onSend={() => true} />);
+  const trigger = screen.getByRole("button", { name: /Open material full width/ });
+  act(() => trigger.focus());
+  fireEvent.click(trigger);
+  expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
+
+  const close = screen.getByRole("button", { name: "Close" });
+  act(() => close.focus());
+  fireEvent.click(close);
+  expect(document.activeElement).toBe(screen.getByRole("region", { name: "Conversation" }));
+});
+
+it("returns focus from a removed main header to the visible Dock", () => {
+  openWorkspaceViewInDock("file");
+  openWorkspaceView("file");
+  render(<ChatPanel onSend={() => true} />);
+  const close = screen.getByRole("button", { name: "Close" });
+  act(() => close.focus());
+  fireEvent.click(close);
+  expect(document.activeElement).toBe(screen.getByRole("complementary", { name: "Files" }));
+});
+
+it("preserves outside focus when a main view is presented", () => {
+  render(
+    <>
+      <button>Outside control</button>
+      <ChatPanel onSend={() => true} />
+    </>,
+  );
+  const outside = screen.getByRole("button", { name: "Outside control" });
+  act(() => outside.focus());
+  act(() => openWorkspaceView("file"));
+  expect(document.activeElement).toBe(outside);
+});
+
+it("retains a main-only source while inspecting a file and restores the same source on return", () => {
+  function SourceMaterial() {
+    const [query, setQuery] = useState("");
+    return (
+      <>
+        <SearchField
+          aria-label="Main material query"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <FileRefLink path="src/full-source.ts" line={8} />
+      </>
+    );
+  }
+  model.views.push({ id: "main-source", title: "Source material", component: SourceMaterial });
+  openWorkspaceView("main-source");
+  render(<ChatPanel onSend={() => true} />);
+  const query = screen.getByRole<HTMLInputElement>("searchbox", { name: "Main material query" });
+  fireEvent.change(query, { target: { value: "retained source" } });
+  const origin = screen.getByRole("button", { name: "src/full-source.ts:8" });
+  act(() => origin.focus());
+  fireEvent.click(origin);
+  expect(navigator().get().view).toBeNull();
+  expect(query.isConnected).toBe(true);
+  expect(screen.queryByRole("searchbox", { name: "Main material query" })).toBeNull();
+
+  const file = screen.getByRole("button", { name: "File controls" });
+  act(() => file.focus());
+  fireEvent.keyDown(file, { key: "Escape" });
+  expect(navigator().get().view).toBe("main-source");
+  expect(screen.getByRole("searchbox", { name: "Main material query" })).toBe(query);
+  expect(query.value).toBe("retained source");
+  expect(document.activeElement).toBe(origin);
+});
+
+it("retires a moved main view when its Dock tab is closed", () => {
+  model.views.push({
+    id: "moved-source",
+    title: "Moved material",
+    dock: "workspace",
+    component: () => <input aria-label="Moved material draft" defaultValue="draft" />,
+  });
+  openWorkspaceView("moved-source");
+  render(<ChatPanel onSend={() => true} />);
+  const draft = screen.getByRole("textbox", { name: "Moved material draft" });
+  fireEvent.click(screen.getByRole("button", { name: "Open in the context dock" }));
+  expect(navigator().get().view).toBeNull();
+  expect(draft.isConnected).toBe(true);
+  fireEvent.keyDown(screen.getByRole("tab", { name: "Moved material" }), { key: "Delete" });
+  expect(draft.isConnected).toBe(false);
+});
+
 describe("material inspection focus", () => {
   function FilteredMaterial() {
     const [query, setQuery] = useState("src/main");

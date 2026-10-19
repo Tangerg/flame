@@ -4,14 +4,24 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import type { BlockCtx } from "@/plugins/builtin/chat/message/public/rendering";
 
-const { root } = vi.hoisted(() => ({
-  root: {
-    current: {
-      running: true,
-      terminalTurnIndex: (): number => -1,
+const { root, follow } = vi.hoisted(() => {
+  const followRef = () => {
+    const ref = (element: HTMLDivElement | null) => {
+      ref.current = element;
+    };
+    ref.current = null as HTMLDivElement | null;
+    return ref;
+  };
+  return {
+    root: {
+      current: {
+        running: true,
+        terminalTurnIndex: (): number => -1,
+      },
     },
-  },
-}));
+    follow: { scrollRef: followRef(), contentRef: followRef() },
+  };
+});
 
 vi.mock("@/plugins/builtin/agent/public/run", () => ({
   useCurrentRootMaterial: () => root.current,
@@ -31,16 +41,21 @@ vi.mock("@/plugins/host/Slot", () => ({
 }));
 
 vi.mock("use-stick-to-bottom", () => {
-  const context = { isAtBottom: true, scrollToBottom: vi.fn() };
-  const StickToBottom = Object.assign(({ children }: PropsWithChildren) => <div>{children}</div>, {
-    Content: ({ children }: PropsWithChildren) => <div>{children}</div>,
-  });
+  const context = {
+    isAtBottom: true,
+    scrollToBottom: vi.fn(),
+    stopScroll: vi.fn(),
+    state: { isAtBottom: true, targetScrollTop: 0 },
+    ...follow,
+  };
+  const StickToBottom = ({ children }: PropsWithChildren) => <div>{children}</div>;
   return {
     StickToBottom,
     useStickToBottomContext: () => context,
   };
 });
 
+import { ContentVisibility } from "@/ui";
 import { MessageStream } from "./MessageStream";
 
 const CTX: BlockCtx = {
@@ -153,5 +168,36 @@ describe("MessageStream terminal footer materialization", () => {
     expect(
       screen.getByTestId("root-run-outcome").closest<HTMLElement>("[data-turn-id]")?.dataset.turnId,
     ).toBe("assistant-terminal-footer");
+  });
+});
+
+describe("MessageStream reading measurement", () => {
+  it("detaches follow measurement while an ancestor host hides the retained transcript", async () => {
+    root.current = { running: false, terminalTurnIndex: () => -1 };
+    const stream = (visible: boolean) => (
+      <ContentVisibility visible={visible}>
+        <ContentVisibility visible>
+          <MessageStream rows={[transcriptRow("complete")]} ctx={CTX} sessionId="session-hidden" />
+        </ContentVisibility>
+      </ContentVisibility>
+    );
+    const { container, rerender } = render(stream(true));
+    await act(async () => vi.dynamicImportSettled());
+    const viewport = container.querySelector<HTMLElement>(".msg-scroll-viewport")!;
+    const content = viewport.firstElementChild as HTMLElement;
+    const turn = container.querySelector("[data-turn-id]");
+    expect(follow.scrollRef.current).toBe(viewport);
+    expect(follow.contentRef.current).toBe(content);
+
+    rerender(stream(false));
+    expect(follow.scrollRef.current).toBeNull();
+    expect(follow.contentRef.current).toBeNull();
+    expect(content.isConnected).toBe(true);
+    expect(container.querySelector("[data-turn-id]")).toBe(turn);
+
+    rerender(stream(true));
+    expect(follow.scrollRef.current).toBe(viewport);
+    expect(follow.contentRef.current).toBe(content);
+    expect(container.querySelector("[data-turn-id]")).toBe(turn);
   });
 });

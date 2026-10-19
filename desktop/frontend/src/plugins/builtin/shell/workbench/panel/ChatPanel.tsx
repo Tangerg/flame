@@ -4,7 +4,7 @@ import { PanelHost } from "@flame/ui/panel";
 import { IconButton } from "@flame/ui";
 import { iconGlyph } from "@/ui/icons";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
-import { CatalogPicker, knownIconName, type CatalogPickerGroup } from "@/ui";
+import { CatalogPicker, ContentVisibility, knownIconName, type CatalogPickerGroup } from "@/ui";
 import {
   AgentContentCard,
   AgentContextDock,
@@ -202,6 +202,7 @@ export function ChatPanel({ onSend }: Props) {
   const hasDockOwner = activeSessionId !== "";
   const showingCatalog = dock.activeViewId === WORKSPACE_DOCK_CATALOG;
   const dockOpen = hasDockOwner && dock.open && (showingCatalog || dock.viewIds.length > 0);
+  const dockVisible = dockOpen && dockAvailable;
   const ownedDockViewIds = hasDockOwner ? dock.viewIds : [];
   const shellVisible = !isLoading || activeMainView !== null || dock.open;
   const { inspection, dockRef, conversationRef, mainViewRef, returnToSource, onDockKeyDown } =
@@ -210,7 +211,7 @@ export function ChatPanel({ onSend }: Props) {
       mainViewId: activeMainView,
       dockViewId: dock.activeViewId,
       dockViewIds: ownedDockViewIds,
-      dockVisible: dockOpen && dockAvailable,
+      dockVisible,
     });
 
   const dockRowRef = useCallback((row: HTMLDivElement | null) => {
@@ -281,31 +282,41 @@ export function ChatPanel({ onSend }: Props) {
     dock.activeViewId && dock.activeViewId !== WORKSPACE_DOCK_CATALOG
       ? dock.activeViewId
       : (ownedDockViewIds[0] ?? "file");
+  const presentedMain = activeMainView !== null;
+  const mountedViewIds = new Set(ownedDockViewIds);
+  if (activeMainView !== null) mountedViewIds.add(activeMainView);
+  for (let source = inspection; source; source = source.previous) {
+    if (source.returnViewId && source.returnViewId !== source.viewId) {
+      mountedViewIds.add(source.returnViewId);
+    }
+  }
+  const presentedViewId = presentedMain ? activeMainView : dock.activeViewId;
 
   return (
     <AgentContentCard label={t("shell.region.workspace")}>
-      {activeMainView !== null && (
-        <>
-          <WorkspaceWindowHeader
-            view={viewsById.get(activeMainView)}
-            onOpenInDock={(origin) => openWorkspaceViewInDock(activeMainView, origin)}
-            onClose={() => closeWorkspaceView(activeMainView)}
-          />
-          <SessionOwnedWorkspaceState sessionId={activeSessionId}>
-            <WorkspaceViewBody ref={mainViewRef} viewId={activeMainView} />
-          </SessionOwnedWorkspaceState>
-        </>
+      {presentedMain && (
+        <WorkspaceWindowHeader
+          view={viewsById.get(activeMainView)}
+          onOpenInDock={(origin) => openWorkspaceViewInDock(activeMainView, origin)}
+          onClose={() => closeWorkspaceView(activeMainView)}
+        />
       )}
-      <Activity mode={activeMainView === null ? "visible" : "hidden"}>
-        <AgentDockRow ref={dockRowRef} open={dockOpen && dockAvailable} width={dockWidth}>
-          <div
-            ref={conversationRef}
-            tabIndex={-1}
-            role="region"
-            aria-label={t("shell.region.conversation")}
-            data-focus-inset=""
-            {...stylex.props(sh.paneNarrow, conversationPane.container)}
-          >
+      <AgentDockRow
+        ref={dockRowRef}
+        open={dockVisible}
+        width={dockWidth}
+        presentation={presentedMain ? "main" : "dock"}
+      >
+        <div
+          ref={conversationRef}
+          hidden={presentedMain}
+          tabIndex={-1}
+          role="region"
+          aria-label={t("shell.region.conversation")}
+          data-focus-inset=""
+          {...stylex.props(sh.paneNarrow, conversationPane.container)}
+        >
+          <ContentVisibility visible={!presentedMain}>
             <AgentSurfaceHeader corner="window">
               <SessionIdentity
                 sessionId={activeSessionId}
@@ -319,58 +330,73 @@ export function ChatPanel({ onSend }: Props) {
             </AgentSurfaceHeader>
             <ChatStream onSend={onSend} />
             <RunAnnouncer />
-          </div>
-          {dockOpen && dockAvailable && <DockResizer width={dockWidth} />}
-          <SessionOwnedWorkspaceState sessionId={activeSessionId}>
-            <AgentContextDock
-              ref={dockRef}
-              tabIndex={-1}
-              aria-label={t(viewsById.get(dock.activeViewId ?? "")?.title ?? "dock.tabs.label")}
-              data-focus-inset=""
-              onKeyDown={onDockKeyDown}
-            >
-              {hasDockOwner && (
-                <DockHeader
-                  tabs={dockTabs}
-                  groups={catalog}
-                  openViewIds={openViewIds}
-                  returnAction={returnAction}
-                />
-              )}
-              <div {...stylex.props(sh.anchor)}>
-                <Activity mode={showingCatalog ? "visible" : "hidden"}>
-                  <div data-dock-view-id={WORKSPACE_DOCK_CATALOG} {...stylex.props(sh.overlay)}>
-                    <DockCatalogPage groups={catalog} openViewIds={openViewIds} />
-                  </div>
-                </Activity>
-                {ownedDockViewIds.map((viewId) => (
-                  <Activity key={viewId} mode={viewId === dock.activeViewId ? "visible" : "hidden"}>
-                    <div data-dock-view-id={viewId} {...stylex.props(sh.overlay)}>
-                      <PanelHost>
-                        <WorkspaceViewBody viewId={viewId} />
-                      </PanelHost>
-                    </div>
-                  </Activity>
-                ))}
-              </div>
-            </AgentContextDock>
-          </SessionOwnedWorkspaceState>
-          {hasDockOwner && (
-            <AgentDockToggle
-              open={dockOpen && dockAvailable}
-              onToggle={
-                !dockAvailable
-                  ? () => openWorkspaceView(fullWidthViewId)
-                  : dockOpen
-                    ? collapseWorkspaceDock
-                    : showWorkspaceDock
-              }
-              showLabel={dockAvailable ? t("dock.action.show") : t("dock.action.openFull")}
-              hideLabel={t("dock.action.hide")}
-            />
-          )}
-        </AgentDockRow>
-      </Activity>
+          </ContentVisibility>
+        </div>
+        {!presentedMain && dockVisible && <DockResizer width={dockWidth} />}
+        <SessionOwnedWorkspaceState sessionId={activeSessionId}>
+          <AgentContextDock
+            ref={dockRef}
+            role={presentedMain ? "presentation" : undefined}
+            tabIndex={presentedMain ? undefined : -1}
+            aria-label={
+              presentedMain
+                ? undefined
+                : t(viewsById.get(dock.activeViewId ?? "")?.title ?? "dock.tabs.label")
+            }
+            data-focus-inset=""
+            onKeyDown={presentedMain ? undefined : onDockKeyDown}
+          >
+            {!presentedMain && hasDockOwner && (
+              <DockHeader
+                tabs={dockTabs}
+                groups={catalog}
+                openViewIds={openViewIds}
+                returnAction={returnAction}
+              />
+            )}
+            <div {...stylex.props(sh.anchor)}>
+              <Activity mode={!presentedMain && showingCatalog ? "visible" : "hidden"}>
+                <div data-dock-view-id={WORKSPACE_DOCK_CATALOG} {...stylex.props(sh.overlay)}>
+                  <DockCatalogPage groups={catalog} openViewIds={openViewIds} />
+                </div>
+              </Activity>
+              {[...mountedViewIds].map((viewId) => (
+                <div
+                  key={viewId}
+                  hidden={viewId !== presentedViewId}
+                  data-dock-view-id={presentedMain ? undefined : viewId}
+                  {...stylex.props(sh.overlay)}
+                >
+                  <ContentVisibility
+                    visible={viewId === presentedViewId && (presentedMain || dockVisible)}
+                  >
+                    <PanelHost hosted={!presentedMain}>
+                      <WorkspaceViewBody
+                        ref={viewId === activeMainView ? mainViewRef : undefined}
+                        viewId={viewId}
+                      />
+                    </PanelHost>
+                  </ContentVisibility>
+                </div>
+              ))}
+            </div>
+          </AgentContextDock>
+        </SessionOwnedWorkspaceState>
+        {!presentedMain && hasDockOwner && (
+          <AgentDockToggle
+            open={dockVisible}
+            onToggle={
+              !dockAvailable
+                ? () => openWorkspaceView(fullWidthViewId)
+                : dockOpen
+                  ? collapseWorkspaceDock
+                  : showWorkspaceDock
+            }
+            showLabel={dockAvailable ? t("dock.action.show") : t("dock.action.openFull")}
+            hideLabel={t("dock.action.hide")}
+          />
+        )}
+      </AgentDockRow>
     </AgentContentCard>
   );
 }

@@ -1,12 +1,14 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. The workspace zoom review continues from the integrated Memory milestone at `e339c70bf` on `main`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. The retained-view review continues from the native zoom milestone at `4e54d4f8e` on `main`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The latest objective explicitly resumes continuous desktop UI work. Complete each evidence-backed batch with native acceptance, the relevant gates, an explicit-path commit and push to `main`, cleanup and an update to this file before selecting the next batch. Memory authoring and operation feedback are now verified at Actual Size in the Dock and main content view. Independent approval and pin commands remain available while a draft is open. Native View zoom now reflows the workspace, and the Dock uses the existing geometry policy to project an observed row and saved ratio into pixels. The original crop, collapsed-panel overflow, zoomed resize bound and fullscreen clearance defects have native evidence below. The next observed continuity problem is a Memory query being cleared by explicit Dock collapse/reopen or full-width promotion and return; its component lifetime owner still needs tracing.
+The latest objective explicitly resumes continuous desktop UI work. Complete each evidence-backed batch with native acceptance, the relevant gates, an explicit-path commit and push to `main`, cleanup and an update to this file before selecting the next batch. Native page zoom and the single Dock width projection remain integrated. Open workspace views now retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
+
+Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The precise scenarios and limits are below. The next concrete investigation is native keyboard focus from a selected Dock tab to the resize handle; do not infer a resize-algorithm defect from keys sent while another control had focus.
 
 Task-oriented layout and interaction apply across the conversation, Context Dock, settings and installed views. Preserve the approved brand, shared reading hierarchy, Composer, code/table/selection fixes, sidebar-matching Dock seam and custom-accent theme owner. The earlier `cap`-based inline-icon sizing tip is a suggestion for future typography work, not a global icon redesign.
 
@@ -343,6 +345,63 @@ consumes it without discarding the task. `RecordForm` still owns focus retiremen
 The Memory resolver rejects a disconnected or read-disabled opener and uses
 retained search. A later read never reclaims a subsequent focus choice.
 
+## Retained workspace and result views
+
+The native Memory query reset had two host causes. Activity hide disconnected
+`RenderingComponent`'s external-store subscription, ending the captured context;
+composition Effect cleanup also retired resolved descendants. Main and Dock
+placements separately rendered the same view. Preserving only a search value
+would have left drafts and original mutation retry closures attached to retired
+contexts.
+
+`ChatPanel.tsx` now renders one keyed body per exact Session/view ID. Its existing
+Dock tabs, active main view and distinct main sources on the inspection chain
+supply retention; there is no second state cache. A same-view return shortcut
+cannot keep a closed moved tab alive. `PanelHost` changes only its context value
+through the optional `hosted` prop, preserving full-pane and Dock density without
+moving children. The stable Dock container is neutral and non-focusable in main
+mode; the named body and persistent window header keep their roles, and main
+content does not inherit Dock containment/clipping.
+
+Conversation results and retained delegated readers use the same mounted-tree
+policy. `src/ui/content-visibility.tsx` projects inherited presentation visibility
+without state, cancellation or I/O. `MessageStream` preserves the public follow
+library's two DOM wrappers and viewport class, attaching its measuring refs only
+while visible. `ChatStream` suspends only its Composer geometry observer, and
+`SubagentTranscript` combines ancestor and local visibility. This matters in real
+WebKit: retained hidden readers otherwise measured zero and jumped to the bottom.
+No scroll-position cache or replacement business lifetime was added.
+
+`useInspectionFocus.ts` gives a removed layout trigger's focus to the presented
+main body, visible Dock or conversation only when focus fell to the document
+body. Existing explicit source returns and later outside focus keep priority.
+Actual tab removal, main-only replacement, exact Session/target replacement and
+resource/contribution retirement retain their cancellation behavior. Runtime,
+receipts, bindings, SDK and portable component sources are unchanged.
+
+Reference evidence: ZCode's read-only `AnimatedSidePanePanel.tsx` retains actual
+tab content with `forceMount` plus inactive hiding and explicit visibility for
+owned side-pane work. ChatGPT's actual `ReviewThreadSidePanelTab` separates its
+review state from the portal target; it is not export-renderer evidence. The
+[React Activity contract](https://react.dev/reference/react/Activity) documents
+Effect cleanup on hide; [Radix Tabs](https://www.radix-ui.com/primitives/docs/components/tabs)
+provides the semantic reference for persistent tab content. Flame retains its
+Base UI/StyleX owners. The better-layout/accessibility review drove instance,
+measurement, landmark and focus boundaries; existing typography, writing and
+semantic color owners were checked in both native themes without a palette or
+prose redesign.
+
+Verification for this contract:
+
+- Final frontend `VITEST_MAX_WORKERS=2 npm run check` passed **381 files / 2,806 tests**, all architecture/style/resource guards, all ten exact ESM resources, production bundling and shared-module linking. Shared UI `npm run check` passed **52 tests** and the independently packed consumer. The supported final Wails arm64 build passed; `file` and `vtool` confirmed arm64 and macOS 13.0. Standalone Go/SDK/portable module suites were not rerun because those sources are unchanged; the frontend gate includes its isolated Runtime lifecycle integration.
+- Normal and StrictMode regressions retain the same query/draft nodes and captured contexts across collapse, tab switching, main promotion and return. A deferred original save settles once while hidden. Real installed conversation/delegated renderers retain state; actual close, Session replacement and hidden resource/lifetime retirement still end them. Measurement tests use public follow refs and a recording ResizeObserver, including hidden ancestors. Main-only source/file return and closing a moved main view are separate regressions.
+- Original host/conversation/nested cases exposed aborted contexts; measuring regressions failed without the visibility gate. Native acceptance then exposed the reader jump and lost main-trigger focus. A final source-return regression exposed main-only source unmount; retaining every self-return would instead keep a closed tab alive, so only distinct inspection sources retain a main-only view. The initial gate correctly rejected cross-context tests inside private builtin folders; they now live in `visual/*InstalledContinuity.test.tsx`. Unsupported role-query options and initial fixture assumptions were corrected without weakening assertions, deadlines or checks. Recurring non-failing localhost `ECONNREFUSED` diagnostics remain unclassified.
+- Actual Wails preserved Memory query `compaction`, mixed CJK/English long-path drafts and input identity through explicit collapse, tab switching, main promotion, Actual Size and return. A delayed refusal across main → Dock → hidden kept one command/key, returned named feedback and left the draft editable. In the light Chinese scene, an unknown original result survived hide and full-pane movement: **one command, two observations, the same key**, with its signal live until actual tab close. Cancel/Save remained blocked while unknown, and local Escape after settlement restored the record action with the query retained.
+- The dark delegated reader kept its search input identity/value and exact **3,300 px** reading position through Files-tab round trips, collapse/show and nested-task Escape return. Before measurement gating the same native path jumped to the bottom. A main-only Subagents view absent from the Dock's tab list also retained its real installed result search through file inspection and returned focus to the original file reference. Moving it into the Dock reused the view; Delete then removed the instance. No native resource-generation/reload test is claimed.
+- Native 200% zoom with a collapsed fixture sidebar produced a 720 × 450 CSS viewport and reachable main controls. Focus entered the named main region; Shift-Tab/Return reached Close and returned to the conversation with its unsent Composer text intact. System Move & Resize produced an approximately 1,122-point narrow window. Real pointer drags changed a 660 px Dock to 620 px and reached 320 px in the light scene, retaining the query/draft and seam. Editor Tab reached Cancel after scrolling, and Escape returned to Edit. Native keyboard resizing was not freshly qualified: the recorded tab-to-handle focus route needs investigation below.
+- These scenes use the production components and shared React graph through actual Wails asset/IPC hosting, canonical in-memory reads and bounded synthetic command observations. They qualify UI continuity and the SDK's original-handle mapping, not a live Runtime installation, durable receipt journal or provider restart. No live package selection or Runtime write was performed. No browser visual suite or performance baseline ran. VoiceOver, real OS IME composition and rendered contrast measurements remain outside this qualification.
+- Cleanup completed: all owned native/CLI/check/build processes exited. The app was unregistered; its bundle, fixture/data, overlays, production binary, logs, all four completed CLI reports and the acceptance root were removed. Newly created bundle-specific WebKit/cache paths were removed with preexistence/birth-time guards. No preview server was started. Existing shared outputs/compiler caches, read-only Ace references and unrelated worktrees/processes were retained. The primary agent owned research, boundaries, review and native acceptance; Claude Code CLI supplied the bounded implementation and regression work.
+
 ## Native workspace zoom and Dock geometry
 
 macOS View commands retain the default menu roles, shortcuts, 5% steps and
@@ -372,8 +431,8 @@ actual algorithm owner.
 
 Direct pointer and keyboard resizing suspend width transitions. Opening and
 closing retain their visibility timing, surfaces and seam. The host structure
-stays mounted; portable view activation has a separate lifetime, whose query
-continuity is the next issue below. `ResizeHandle`
+stays mounted; installed-view continuity is qualified in the section above.
+`ResizeHandle`
 retires a live preview when a new committed width arrives, preserving the new
 projection after rollback; cancellation without that replacement retains the
 captured value and priority. Its accessible value and Dock gesture origin use
@@ -431,7 +490,7 @@ Other management pages and live Runtime writes are outside this fresh review.
 | MEDIUM   | Accessibility | `plugins/memory/src/component.tsx:339` | Return attempted a read-disabled opener; editor Escape had no local owner                  | Available-opener/search resolver and composition-safe local cancellation       | Keyboard work must preserve a useful return point and the current task boundary          |
 | HIGH     | Layout        | Native View → Zoom In, whole workspace | Enlarged content is clipped at the window's right edge                                     | Native page zoom, CSS-pixel chrome and one Dock width projection               | Critical controls must remain reachable under scaling; no Memory-only patch is justified |
 
-Review verdict: **Pass for the changed zoom and geometry contracts in the recorded native scenes**. The original workspace zoom block is resolved. Memory explicit view-activation query continuity remains the next observed issue; VoiceOver and rendered contrast measurements remain unqualified.
+Review verdict: **Pass for the changed zoom and geometry contracts in the recorded native scenes**. The original workspace zoom block is resolved. Subsequent installed-view continuity is qualified above; VoiceOver and rendered contrast measurements remain unqualified.
 
 For bounded Schedules editing and deletion:
 
@@ -493,14 +552,19 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 ## Future review candidates
 
-The next concrete task is Memory view continuity. In actual Wails, a retained
-Dock query (`compaction`) survived zooming alone, but explicit Dock
-collapse/reopen cleared it. Opening the same material full width also showed an
-empty query, and Close/Actual Size returned an empty Dock query. Trace the installed component/Activity
-lifetime and its real consumers before choosing the state owner. Draft transfer
-across that promotion was not tested. Preserve the completed local task,
-command settlement and source-focus contracts; do not treat this as evidence to
-make Memory authoring modal.
+The next concrete investigation is the native keyboard route from a selected Dock
+tab to the resize handle. In the final dark scene, a pointer click did not focus
+the separator; Shift-Tab and Option-Shift-Tab from the selected tab retained that
+tab's focus. Home was therefore not sent to a focused handle and proves no resize
+failure. Mouse dragging, tab Delete, editor Tab/Escape and main-header keyboard
+return worked. Trace the current WebKit/Base UI event and focus behavior before
+changing the geometry owner or declaring a regression. Prior keyboard-resize
+qualification remains historical; this batch makes no fresh native pass claim.
+
+Memory query/draft continuity, original-command observation and main-only source
+retention are now implemented and qualified above. Do not recreate them or make
+Memory authoring modal. Preserve captured-target retirement and true-close
+cancellation while extending other task paths.
 
 1. **Extend the task comparison.** Reading-to-file-and-back, overview-to-subagent-and-back, direct narrative task links and nested task/file returns now have shared presentation and focus ownership. Catalogue/picker selection and full-view-to-Dock transitions enter the same inspection flow. Continue with richer captured evidence and the remaining detailed material states. Preserve the distinction between explicit inspection and background updates. Do not restart the implemented typography, file header, shared message renderer, nested return flow or sidebar-matching divider.
 2. **Continue the reading composition around activity.** The shared prose step, paragraph/heading rhythm, disclosure affordance and folded tool-outcome summaries are implemented. Review how recorded evidence and media join an answer, especially where a summary leads into a dense detail view. Preserve the existing bounded table, code and selection owners.

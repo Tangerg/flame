@@ -9,6 +9,7 @@ import {
   returnFromWorkspaceInspection,
   useWorkspaceInspection,
 } from "@/plugins/builtin/workspace/public/navigation";
+import { ContentVisibility } from "@/ui";
 import { SubagentsPanel } from "./SubagentsPanel";
 
 const material = vi.hoisted(() => ({
@@ -16,7 +17,10 @@ const material = vi.hoisted(() => ({
   available: true,
   cancel: vi.fn(),
 }));
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 vi.mock("@/plugins/builtin/agent/public/run", () => ({ cancelSessionRun: material.cancel }));
 vi.mock("@/plugins/builtin/agent/public/conversation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/plugins/builtin/agent/public/conversation")>()),
@@ -219,6 +223,82 @@ it("retains only the parent readers on the explicit inspection path", async () =
   expect(navigator().get().subagent).toBeNull();
   expect(parent.isConnected).toBe(false);
   expect(inspection.result.current?.origin).toBe(origin);
+  unmount();
+  origin.remove();
+});
+
+it("measures a retained reader only while both its host and its selection show it", async () => {
+  const live = new Set<Set<Element>>();
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      readonly targets = new Set<Element>();
+      observe(target: Element) {
+        this.targets.add(target);
+        live.add(this.targets);
+      }
+      unobserve(target: Element) {
+        this.targets.delete(target);
+      }
+      disconnect() {
+        live.delete(this.targets);
+      }
+    },
+  );
+  const measured = (element: Element) => [...live].some((targets) => targets.has(element));
+  material.rows = rows();
+  const facts = material.rows[0]!.facts;
+  facts.toolCalls.nested = {
+    id: "nested",
+    runId: "child",
+    name: "delegate_task",
+    fn: "Review request headers",
+    args: '{"summary":"Review request headers"}',
+    status: "ok",
+  };
+  facts.delegatedRuns.delegate![0]!.messages[0]!.blocks.push({
+    kind: "tool",
+    toolCallId: "nested",
+  });
+  navigator().go({ session: "session" });
+  const origin = document.createElement("button");
+  document.body.append(origin);
+  openWorkspaceSubagentRun("child", origin);
+  const view = (visible: boolean) => (
+    <div data-dock-view-id="subagents">
+      <ContentVisibility visible={visible}>
+        <SubagentsPanel />
+      </ContentVisibility>
+    </div>
+  );
+  const { rerender, unmount } = render(view(true));
+  const inspection = renderHook(useWorkspaceInspection);
+  await act(async () => vi.dynamicImportSettled());
+  const parent = screen.getByRole("region", { name: "Sub-agent" });
+  expect(measured(parent)).toBe(true);
+
+  rerender(view(false));
+  expect(parent.isConnected).toBe(true);
+  expect(measured(parent)).toBe(false);
+  rerender(view(true));
+  expect(measured(parent)).toBe(true);
+
+  fireEvent.click(within(parent).getByRole("button", { name: /Sub-agent/ }));
+  const nested = screen.getByRole("region", { name: "Review request headers" });
+  expect(measured(parent)).toBe(false);
+  expect(measured(nested)).toBe(true);
+
+  rerender(view(false));
+  expect(measured(nested)).toBe(false);
+  expect(measured(parent)).toBe(false);
+  rerender(view(true));
+  expect(measured(nested)).toBe(true);
+
+  act(() => nested.focus());
+  act(() => returnFromWorkspaceInspection(inspection.result.current!));
+  expect(navigator().get().subagent).toBe("child");
+  expect(screen.getByRole("region", { name: "Sub-agent" })).toBe(parent);
+  expect(measured(parent)).toBe(true);
   unmount();
   origin.remove();
 });

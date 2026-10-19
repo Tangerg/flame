@@ -15,7 +15,7 @@ import {
   useToggleWorkspaceTool,
   useWorkspaceInspection,
 } from "@/plugins/builtin/workspace/public/navigation";
-import { ScrollArea, SectionLabel, StatusDot } from "@/ui";
+import { ScrollArea, SectionLabel, StatusDot, useContentVisible } from "@/ui";
 import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
 import { AgentJumpToBottom, AgentWorkspaceView } from "@/ui/agent";
 import { stopFollowOnReadingFocus } from "@/ui/agent/readingFollow";
@@ -195,21 +195,18 @@ export function SubagentsPanel() {
             narrative.run.id === selectedId || retainedRunIds.has(narrative.run.id),
         )
         .map((entry) => (
-          <Activity
+          <SubagentTranscript
             key={entry.narrative.run.id}
-            mode={entry.narrative.run.id === selectedId ? "visible" : "hidden"}
-          >
-            <SubagentTranscript
-              entry={entry}
-              summary={delegatedRunSummary(
-                t,
-                entry.narrative.run,
-                entry.ordinal,
-                entry.siblingCount,
-                entry.taskLabel,
-              )}
-            />
-          </Activity>
+            hidden={entry.narrative.run.id !== selectedId}
+            entry={entry}
+            summary={delegatedRunSummary(
+              t,
+              entry.narrative.run,
+              entry.ordinal,
+              entry.siblingCount,
+              entry.taskLabel,
+            )}
+          />
         ))}
       {!selected && selectedId ? (
         <EmptyState icon={iconGlyph("bot")} title={t("subagents.unavailable")} />
@@ -242,9 +239,11 @@ function SubagentGroup({ title, entries }: { title: string; entries: SubagentEnt
 function SubagentTranscript({
   entry,
   summary,
+  hidden,
 }: {
   entry: SubagentEntry;
   summary: DelegatedRunSummary;
+  hidden: boolean;
 }) {
   const t = useT();
   const { scrollRef, contentRef, isAtBottom, scrollToBottom, state, stopScroll } = useStickToBottom(
@@ -257,13 +256,17 @@ function SubagentTranscript({
   const onToggleExpand = useToggleWorkspaceTool();
   const textReveal = useStreamRevealStore((state) => state.streamReveal);
   const ctx: BlockCtx = { expandedIds, onToggleExpand, textReveal };
+  const measured = useContentVisible() && !hidden;
   const { narrative, facts } = entry;
   const rows = useMemo(() => delegatedTranscriptRows(narrative, facts), [narrative, facts]);
   return (
-    <div {...stylex.props(styles.reader)}>
-      <ScrollArea ref={scrollRef} className={stylex.props(styles.scroller).className}>
+    <div hidden={hidden} {...stylex.props(styles.reader)}>
+      <ScrollArea
+        ref={measured ? scrollRef : undefined}
+        className={stylex.props(styles.scroller).className}
+      >
         <div
-          ref={contentRef}
+          ref={measured ? contentRef : undefined}
           role="region"
           aria-label={summary.label}
           tabIndex={-1}

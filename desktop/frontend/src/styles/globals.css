@@ -850,6 +850,18 @@ html.theme-dark {
 .agent-dock-row[data-resizing] .agent-context-dock {
   transition: none;
 }
+.agent-dock-row[data-presentation="main"] .agent-context-dock {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  contain: none;
+  visibility: visible;
+  background: none;
+  transition: none;
+}
+.agent-dock-row[data-presentation="main"]::before {
+  content: none;
+}
 
 .agent-dock-row[data-dock="collapsed"] .agent-surface-header[data-window-corner] {
   padding-inline-end: var(--dock-control-span);
@@ -859,7 +871,7 @@ html.theme-dark {
   background: var(--color-bg);
 }
 
-.agent-context-dock .agent-workspace-view {
+.agent-dock-row:not([data-presentation="main"]) .agent-context-dock .agent-workspace-view {
   background: transparent;
 }
 

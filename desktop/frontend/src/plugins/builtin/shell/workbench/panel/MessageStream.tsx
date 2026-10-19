@@ -9,7 +9,7 @@ import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { cn } from "@/lib/classNames";
 import { dayKey, formatDay } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n";
-import { Divider } from "@/ui";
+import { Divider, useContentVisible } from "@/ui";
 import { stopFollowOnReadingFocus } from "@/ui/agent/readingFollow";
 import { readingColumn as rc } from "./readingColumn";
 import {
@@ -21,7 +21,15 @@ import { transcriptTurnContentVisibility } from "./transcriptTurnContentVisibili
 import { space } from "@flame/ui/tokens.stylex";
 
 const ms = stylex.create({
-  viewport: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
+  viewport: {
+    height: "100%",
+    width: "100%",
+    minHeight: 0,
+    flex: 1,
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+    scrollbarGutter: "stable both-edges",
+  },
   dayPad: { paddingBlock: space.s1 },
   content: { position: "relative", display: "flex", flexDirection: "column", paddingTop: space.s8 },
   afterBlock: { marginTop: space.s4 },
@@ -50,15 +58,21 @@ function ControlsRelay() {
 
 function TranscriptContent({ children }: PropsWithChildren) {
   const follow = useStickToBottomContext();
+  const visible = useContentVisible();
   return (
-    <StickToBottom.Content
-      scrollClassName={cn("msg-scroll-viewport", stylex.props(ms.viewport).className)}
-      className={stylex.props(rc.box, ms.content).className}
-      tabIndex={-1}
-      onFocus={(event) => stopFollowOnReadingFocus(event, follow)}
+    <div
+      ref={visible ? follow.scrollRef : undefined}
+      className={cn("msg-scroll-viewport", stylex.props(ms.viewport).className)}
     >
-      {children}
-    </StickToBottom.Content>
+      <div
+        ref={visible ? follow.contentRef : undefined}
+        tabIndex={-1}
+        onFocus={(event) => stopFollowOnReadingFocus(event, follow)}
+        {...stylex.props(rc.box, ms.content)}
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 

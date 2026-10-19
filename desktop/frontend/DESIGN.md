@@ -411,6 +411,22 @@ scrolling, so a hidden floating action never keeps keyboard focus.
   `tablist` is an unallowed child, and Delete on the focused tab is the ARIA
   practice for a closable tab.
 
+An open workspace view has one mounted instance per exact Session and view ID.
+Dock tabs, the main view and distinct main sources on the current inspection path
+retain it. Selection, collapse and presentation change visibility and layout while
+preserving its query, draft and original command observation. A same-view return
+shortcut does not retain a closed tab. Session and captured-target replacement,
+resource retirement and actual removal retain their cancellation contracts.
+Panel density changes through context without moving or duplicating the tree.
+
+The main conversation and retained delegated readers follow the same rule.
+Hidden open trees keep their business subscriptions. A read-only inherited
+visibility projection disconnects scrolling/follow measurement and Composer
+geometry observation while hidden; it does not end a component context. Activity
+suspension would retire those contexts and composed descendants. A removed layout
+trigger hands focus to the presented region only if focus has fallen to the
+document body; explicit inspection returns and later outside focus keep priority.
+
 ### Spacing rhythm
 
 Flame is a **product UI**, not a marketing site. Spacing comes from the `space` steps in
