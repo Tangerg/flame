@@ -1,11 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
 import { Fragment, type ReactNode, type Ref } from "react";
-import { ChevronRight, FileDiff } from "@flame/icons/react";
-import { Button } from "./button";
+import { FileDiff } from "@flame/icons/react";
 import { DiffStat } from "./diff-stat";
 import { Icon } from "./font-scale";
-import { RecordGroup } from "./records";
-import { color, layout, space, surface, type, weight } from "./tokens.stylex";
+import { RecordButton, RecordGroup } from "./records";
+import { color, layout, space, type, weight } from "./tokens.stylex";
 
 export interface DiffFileSummary {
   path: string;
@@ -16,20 +15,6 @@ export interface DiffFileSummary {
 }
 
 const styles = stylex.create({
-  row: {
-    display: "flex",
-    width: "100%",
-    textAlign: "start",
-    justifyContent: "start",
-    alignItems: "start",
-    gap: layout.contentGap,
-    paddingInline: layout.cardPadding,
-    paddingBlock: layout.rowPadding,
-    borderWidth: 0,
-    borderRadius: 0,
-    color: color.fg,
-  },
-  current: { backgroundColor: surface.selected },
   copy: { display: "grid", gap: space.s1, flex: 1, minWidth: 0 },
   identity: {
     display: "flex",
@@ -115,13 +100,11 @@ export function DiffFileList({
       {files.map((file) => {
         const cut = file.path.lastIndexOf("/") + 1;
         return (
-          <Button
+          <RecordButton
             key={file.path}
-            variant="ghost"
             title={file.path}
             data-diff-file={file.path}
             aria-current={file.path === currentPath ? "true" : undefined}
-            styles={[styles.row, file.path === currentPath && styles.current]}
             onClick={(event) => onSelect(file.path, event.currentTarget)}
           >
             <Icon glyph={FileDiff} size="sm" {...stylex.props(styles.glyph)} />
@@ -132,12 +115,7 @@ export function DiffFileList({
               {cut > 0 && <DiffFilePath path={file.path.slice(0, cut - 1)} />}
               <FileState file={file} />
             </span>
-            <Icon
-              glyph={ChevronRight}
-              size="xs"
-              {...stylex.props(styles.glyph)}
-            />
-          </Button>
+          </RecordButton>
         );
       })}
     </RecordGroup>

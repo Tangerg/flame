@@ -22,7 +22,18 @@ export const VISUAL_SKILL_DOCUMENTS: SkillDetail[] = [
     scope: "project",
     path: "/Users/visual/scope/.flame/skills/runtime-boundaries/SKILL.md",
     revision: "2".repeat(64),
-    instructions: "Trace each fact to its semantic owner before editing.",
+    instructions: [
+      "Trace each fact to its semantic owner before editing.",
+      "",
+      "1. Name the owner first. Session, Run, Goal and Plan belong to Runtime; the CLI and Desktop only project them. 在修改任何状态之前，先说明哪一个模块拥有这个事实，以及其他表示只是投影、缓存还是渲染。",
+      "2. Read the declared contract against its implementation. A handled failure whose only report is a tracing span reaches nobody. 如果错误只写进了追踪记录，用户和调用方都看不到它，这本身就是一个缺陷。",
+      "3. Keep one transition path. When two representations can both advance the same fact, repair the ownership instead of adding an arbitration rule. 不要用“哪个值优先”的规则掩盖双重所有权。",
+      "",
+      "Verification:",
+      "- Exercise the public binding or protocol, not a private helper.",
+      "- Cover restart and recovery when the change touches persisted state. 涉及持久化数据时，同时验证重启与恢复路径。",
+      "- Report passed, failed and not-run checks separately; 不要把未运行的检查写成已通过。",
+    ].join("\n"),
   },
 ];
 export const VISUAL_SKILL_DISCOVERY: SkillDiscovery = {

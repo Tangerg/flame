@@ -64,7 +64,12 @@ source or its semantic change colors.
 compact numeric voice. Positive additions and removals use their semantic ink;
 known zeroes and unrecorded counts remain quiet and distinct. A count keeps its
 sign with its digits, and the pair wraps between counts when constrained.
-`DiffFileList` provides whole-row file navigation, a primary filename, complete
+`RecordButton` is a whole-row resource that navigates rather than expands: a
+ghost `Button` with the shared row insets, start alignment, no row corners or
+edge, and a trailing chevron. It accepts the native button ref, events and
+attributes; `aria-current` selects the row with the shared selected state.
+Navigation history, origin focus and the destination belong to the consumer.
+`DiffFileList` renders its files as `RecordButton` rows with a primary filename, complete
 directory and compact state/count metadata. `DiffFileHeader` keeps that same
 identity above a selected reader, while `DiffFilePath` allows complete directory
 segments to wrap. Selection and source-return history belong to the consumer;

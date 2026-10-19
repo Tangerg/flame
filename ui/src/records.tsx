@@ -11,11 +11,28 @@ import {
   type,
   weight,
 } from "./tokens.stylex";
+import { ChevronRight } from "@flame/icons/react";
+import { Button, type ButtonProps, type ButtonVariants } from "./button";
 import { CARD_SURFACE } from "./control-surface";
 import { Icon, type IconGlyph } from "./font-scale";
 import { IconMark } from "./icon-mark";
 
 const styles = stylex.create({
+  recordButton: {
+    display: "flex",
+    width: "100%",
+    minWidth: 0,
+    textAlign: "start",
+    justifyContent: "start",
+    alignItems: "start",
+    gap: layout.contentGap,
+    paddingInline: layout.cardPadding,
+    paddingBlock: layout.rowPadding,
+    borderWidth: 0,
+    borderRadius: 0,
+    color: color.fg,
+  },
+  recordChevron: { color: color.fgMuted, marginBlockStart: space.s0_5 },
   group: {
     display: { default: "grid", ":empty": "none" },
     gridTemplateColumns: "minmax(0,1fr)",
@@ -313,6 +330,27 @@ export function RecordSummary({
         )}
       </span>
     </span>
+  );
+}
+export function RecordButton({
+  children,
+  ...props
+}: Omit<ButtonProps, keyof ButtonVariants | "styles">) {
+  const current = props["aria-current"];
+  return (
+    <Button
+      {...props}
+      variant="ghost"
+      active={current !== undefined && current !== false && current !== "false"}
+      styles={styles.recordButton}
+    >
+      {children}
+      <Icon
+        glyph={ChevronRight}
+        size="xs"
+        {...stylex.props(styles.recordChevron)}
+      />
+    </Button>
   );
 }
 export function RecordBody({ children }: { children: ReactNode }) {

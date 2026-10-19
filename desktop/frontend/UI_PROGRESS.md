@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-19. The latest Diff/Usage batch started from clean local and remote `main` at `71dbe5c81`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-19. The current Skills batch started from clean local and remote `main` at `c59e7f470`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -8,7 +8,9 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The shared presentation foundation and the reading and navigation paths have been refined together. Retain the approved presentation. The latest request makes task-oriented layout and interaction a requirement for every page, including the conversation, Context Dock, settings and installed views. The earlier `cap`-based inline-icon sizing tip remains a suggestion for future typography work, not a request for a global icon redesign.
 
-This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, established a shared material-entry and return flow, unified the searchable Dock directory, picker and full-view entry, and repaired keyboard-reading breaks in captured tool evidence. The current batch gives Diff a scope-first file overview and a single-file reader, preserves the actual entry path when returning, and separates the report range from local Usage filtering. Task links and nested task/file inspection already use the shared source-return owner. Historical paused or blocked statuses in earlier chats do not describe this work.
+This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, established a shared material-entry and return flow, unified the searchable Dock directory, picker and full-view entry, and repaired keyboard-reading breaks in captured tool evidence. Diff has a scope-first file overview and a single-file reader, preserves the actual entry path when returning, and separates comparison scope from local filtering; Usage likewise separates report range from source filtering. Task links and nested task/file inspection already use the shared source-return owner. Historical paused or blocked statuses in earlier chats do not describe this work.
+
+The Diff/Usage batch is committed and pushed at `c59e7f470`. The latest verified path is Skills catalog → instructions → catalog, with separate compositions for available documents, personal library management and proposal review. The original query loss, incorrect entry focus, document filtering and repeated disclosure have been repaired and checked in actual Wails scenes. Continue the remaining page and input-task reviews from these owners rather than rebuilding these flows.
 
 The original checkout is `/Users/tangerg/Desktop/flame`, on branch `main`. All former local and remote branch tips were checked for ancestry before consolidation; their commits are retained in `main`. Only `main` remains locally and on `origin`. Read current Git state before starting; this document is a checkpoint, not an authority that can overwrite newer work.
 
@@ -67,6 +69,11 @@ separate review scope, file navigation and code; they retain continuous small
 reviews and switch large reviews to one file with previous/next navigation.
 Flame adapts the latter navigation to its constrained Dock instead of copying
 unsupported staging, reversion, comments or last-turn semantics.
+
+Skills review traced ZCode's actual `settings/SkillsSection.tsx` and ChatGPT's
+`details-73eaf369a9c5.js`. Both retain the directory beneath a named document and
+make failed document reads distinct from an empty catalog. Flame keeps that
+continuity within its persistent Dock rather than adding another dialog.
 
 For color-system work, retain the user's [Radix Colors](https://www.radix-ui.com/colors) and [HeroUI colors](https://heroui.com/en/docs/react/getting-started/colors) references. The default brand color is **Flame Orange `#FB6E30`**; users can choose their own interface accent through the existing theme owner. Approved brand artwork retains its original color. Avoid recreating the palette, appearance store or brand identity.
 
@@ -193,6 +200,25 @@ report period and refresh precede source search and grouping. A pending or faile
 period change visibly names the accepted period in the persistent control zone.
 Filtering still changes only displayed buckets, never the report totals.
 
+Skills now separates three catalog tasks. Available rows use the shared
+`RecordButton` to enter a named document directly; personal library rows show their
+complete lifecycle information and Archive/Restore without a redundant disclosure;
+proposal rows expand their actual evidence and retain the existing captured
+confirmation. Escape cancels that local confirmation before page navigation and
+returns focus to its action. Runtime command and uncertain-acknowledgement owners
+remain unchanged.
+
+Document navigation keeps the Available catalog, query and canonical refreshes
+alive beneath the reader. Its own cancellable read and persistent name/compact
+scope replace the catalog controls. Literal instructions use `DocumentBody` and
+`RecordBody`; source path and revision are secondary disclosure. Back/Escape
+restores the catalog position and source row, falling back to search if a canonical
+read removed it. Background completion does not take a later focus choice. First
+failures claim no retained data; same-document refresh failures identify the
+accepted document. Document navigation does not recreate the Runtime subscription.
+Diff file rows now consume the same `RecordButton` presentation without changing
+their selection, comparison or return ownership.
+
 The cross-page composition rule is now recorded in `DESIGN.md`: establish location
 and data scope, show a useful summary, then expose the current object's content and
 actions. Source review across the existing pages gives this task map:
@@ -228,6 +254,16 @@ the final native review confirmed a single field edge and the ordinary semantic
 ring on the Dock return button.
 
 ## Verification checkpoint
+
+For Skills catalog, document and proposal tasks:
+
+- The final frontend `VITEST_MAX_WORKERS=2 npm run check` passed: 377 test files and 2754 tests, plus type, lint, formatting, unused-code, boundary, token/style, locale, bootstrap, resource, bundle and production-module checks. The 33 focused Skills/Diff/Usage/transport checks passed. New Skills regressions cover direct row entry, retained query/scroll/source focus, first-read and retained-read failures, cancelled/stale reads, row-removal fallback, local proposal cancellation and the original uncertain command identity/retry.
+- Shared UI `npm run check` passed 38 tests and its independently packed UI/icons consumer. Portable build/check passed all ten exact resources; Skills ESM was rebuilt. `RecordButton` consolidates the actual Diff/Skills navigation-row presentation; the host and Runtime retain their previous navigation and business authority. A type error identified a now-impossible Lifecycle fact in the proposal disclosure after library rows became static; that obsolete fact was removed before the final gates.
+- The supported production Wails macOS arm64 build passed; `vtool` confirmed deployment floor 13.0. No production Go, Runtime, CLI, SDK or dependency source changed, so their earlier module results remain applicable.
+- Actual Wails WKWebView inspection first reproduced query loss, search focus on document entry, catalog filtering hiding instructions, lost return focus and crowded narrow-Dock reading. The final native scenes checked Chinese/light/14 px/Flame Orange and English/dark/18 px/custom blue, at normal and approximately 1120 px widths with a pointer-resized 320 px Dock. Named headings, compact scope, complete source/revision, mixed CJK/English literal instructions, long scrolling and persistent Back remained readable. Explicit Back and local Escape restored the retained query and source row; keyboard Return reopened that document. Main conversation scrolling stayed independent.
+- Native personal-library review confirmed direct lifecycle/Archive/Restore presentation without redundant disclosure. In the full-pane Skills view, local Escape cancelled proposal confirmation and restored Approve focus. A canonical isolated acceptance used the captured workspace/scope/revision, re-read the remaining proposal and returned focus to search when its row disappeared. Closing the full-pane view returned to the conversation. The shared Diff directory was visually rechecked; its existing selection and return regressions passed.
+- Native acceptance used production components through the canonical in-memory fixture in the real Wails host. The fixture deliberately installs a no-op root workspace Escape shortcut; root event propagation is covered by the component regression, while native outer return used the explicit Close action. First document failure and uncertain acknowledgements were exercised in unit regressions rather than claimed as native failure injection. No visual/browser suite or performance benchmark was run.
+- The native app exited successfully. The owned preview, disposable data, bundle, binaries, logs, fixture output and WebKit caches were removed. User reference caches and unrelated resources were retained.
 
 For scope-first Diff review and Usage reports:
 
@@ -322,8 +358,9 @@ These checks cover the changed contracts and representative native scenarios. Th
 3. **Refine the remaining Dock forms.** File identity/actions and delegated message reuse, overview continuity and return focus are established. Continue with richer tool details and cross-view navigation: decide which details belong inline or in a persistent pane, and reserve popovers/dialogs for genuinely bounded tasks. Keep the user-requested sidebar-matching divider unchanged, including hover and drag.
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.
 5. **Continue across other pages.** Apply the recorded task map to settings, installed plugin pages, forms, resource lists and dialogs, checking location, scope, current-object actions and the actual return path. Retain the approved brand and the implemented Composer contracts while checking how the surrounding surfaces fit them.
+6. **Inspect literal search and Escape layers.** Native macOS text correction changed the capitalization of a Skills query on blur. Reproduce whether coded searches or local Escape lose task context before choosing a fix. This is a review candidate, not a classified product defect.
 
-These are future review candidates, not unverified defects or required rewrites. Build a coherent batch from observed problems when further work is requested. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
+These are future review candidates, not unverified defects or required rewrites. Build each next coherent batch from observed problems while the current goal remains active. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 
 ## Working and maintenance practice
 
