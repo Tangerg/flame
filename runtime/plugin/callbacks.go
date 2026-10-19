@@ -548,6 +548,14 @@ func serveCallback(w http.ResponseWriter, r *http.Request, methods map[string]bo
 	_, _ = w.Write(encoded)
 }
 
+// callbackClient reuses one loopback connection pool across every host call; a
+// per-call transport opens and discards a connection per streamed chunk. Redirects
+// never follow: a callback endpoint answers in place or is unreachable.
+var callbackClient = &http.Client{
+	Transport:     &http.Transport{Proxy: nil},
+	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+}
+
 func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, R], id string, input P) (R, error) {
 	var zero R
 	if err := ref.Validate(); err != nil {
@@ -584,10 +592,7 @@ func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, 
 	if err := setCallbackInvocation(request, ctx); err != nil {
 		return zero, err
 	}
-	transport := &http.Transport{Proxy: nil}
-	defer transport.CloseIdleConnections()
-	client := &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	response, err := client.Do(request)
+	response, err := callbackClient.Do(request)
 	if err != nil {
 		if failure, ok := errors.AsType[*url.Error](err); ok {
 			return zero, fmt.Errorf("plugin: callback transport: %w", errors.Join(failure.Err, ctx.Err(), context.Cause(ctx)))

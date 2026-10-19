@@ -200,8 +200,7 @@ func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *Strea
 			fail(err)
 			return
 		}
-		client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-		response, err := client.Do(request)
+		response, err := callbackClient.Do(request)
 		if err != nil {
 			fail(err)
 			return
