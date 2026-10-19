@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-19. Verified UI code baseline: `8d363c859542dd9a76d57d372543405fb67ad9e5`, pushed to remote `main` and integrated into the original checkout. Documentation commits may follow this baseline.
+Updated: 2026-10-19. Verified combined code baseline: `522814022ba8192ac8475f4f4cb790b8218b1514`, including the approved brand, Composer and CLI changes. The original checkout and remote `main` contain this baseline. Documentation commits may follow it.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -10,34 +10,36 @@ The shared presentation foundation and many reading and navigation defects have 
 
 The previous chat's Goal was paused at the user's request to continue in a new chat. Its earlier Mac-lock blocker was resolved, and actual native acceptance of the latest UI code was completed. Historical blocked statuses in temporary logs do not describe unfinished native acceptance.
 
-The original checkout is `/Users/tangerg/Desktop/flame`, on branch `codex/report-root-fixes` at this handoff. Read current Git state before starting; this document is a checkpoint, not an authority that can overwrite newer work.
+The original checkout is `/Users/tangerg/Desktop/flame`, on branch `main`. All former local and remote branch tips were checked for ancestry before consolidation; their commits are retained in `main`. Only `main` remains locally and on `origin`. Read current Git state before starting; this document is a checkpoint, not an authority that can overwrite newer work.
 
-## Preserve the user's unfinished working tree
+## Integrated brand and authoring work
 
-At handoff, the original checkout had **76 modified, deleted or untracked files**, with an empty index. They were preserved across the latest integration, including file bytes, symlink targets and deletions. The latest UI checks qualified isolated committed code; the complete dirty working tree was not tested as one combined release.
+The previously protected **76 modified, deleted or untracked files** have now been committed at the user's request and verified together in an isolated checkout. The original working tree is clean at this checkpoint. These features are implemented; do not recreate them from the older handoff inventory.
 
-The user has confirmed that the brand work is ready. Preserve that accepted direction even though its files remain uncommitted:
+The user has approved the brand direction. Its production assets, settings pane, translations and source artwork are committed:
 
 - `/Users/tangerg/Desktop/flame/brand` contains the primary mark, dimensional companion, plush character and usage guidance.
 - `/Users/tangerg/Desktop/flame/design/branding` contains concept and refinement assets.
 - `/Users/tangerg/Desktop/flame/desktop/frontend/src/lib/brand.ts` and `/Users/tangerg/Desktop/flame/desktop/frontend/src/lib/brand.stylex.ts` connect the assets and brand color.
 - `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/settings/brand` and `/Users/tangerg/Desktop/flame/desktop/frontend/visual/brandSettings.browser.spec.ts` belong to the brand work.
 
-Independent input and execution-control work also remains under `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/chat/composer` and `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/chat/goal`, with related shell, SDK, locale, fixture and test changes. The deletion of `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/chat/composer/application/focus.ts` is part of that work; do not restore it from the committed baseline.
+Composer submission captures the exact immutable draft and Session at the authoring owner. Slash handlers explicitly accept input or admit a send; returning from a handler alone does not clear the draft. Accepted input records history in its captured Session, consumes only the submitted revision, preserves later text and attachment edits, and avoids stealing another control's focus. Replacing Runtime storage retires old callbacks. Goal reports acceptance through this same owner rather than comparing text or clearing independently.
 
-Preserve the other existing CLI terminal, documentation, appearance, plugin-registration and bundle-check changes as well. Inspect the entire current status and relevant diffs before editing. Keep unrelated work outside UI commits, avoid bulk formatting or staging, and verify preservation immediately before and after integration.
+The implementation lives under `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/chat/composer` and `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/chat/goal`, with updated shell and SDK consumers. Focus is owned by the installed Composer state port; the former `application/focus.ts` was intentionally removed. Do not restore the retired clear, text-comparison or global-focus paths.
 
-An isolated worktree starts without these uncommitted files. A missing brand pane or asset there is not evidence that the approved brand work must be implemented again.
+CLI slash commands preserve the editor, attachments and cursor when command lookup, availability or arguments are rejected. Contributed commands accept only after their cancellable Session operation starts. Approval normalization retains an allow or deny decision when remembered scope becomes unavailable; unknown choices cannot create an answerable form.
+
+Start each new task with the actual status and relevant diffs. Preserve any newer unrelated edits, avoid bulk formatting or staging, and do not treat the old unfinished-file inventory as current work.
 
 ## Reference products and example images
 
 Deeply study the two desktop references before choosing the next implementation. Read their actual layout, component and interaction code, and inspect visual evidence. Naming a reference or borrowing a few colors is insufficient.
 
-| Reference | Where to look | What to compare |
-| --- | --- | --- |
-| ZCode | `/Users/tangerg/Desktop/ZCode/packages/ui/src/app-shell`, `/Users/tangerg/Desktop/ZCode/packages/ui/src/ToolCallBlocks`, `/Users/tangerg/Desktop/ZCode/packages/ui/src/v4`, and `/Users/tangerg/Desktop/ZCode/packages/ui/src/settings` | Workspace proportions, reading rhythm, side-pane behavior, resizing, tool summary/detail transitions, contextual actions and settings composition. |
-| ChatGPT desktop reference | `/Users/tangerg/Desktop/study/chatgpt/deob/webview` and `/Users/tangerg/Desktop/study/chatgpt/extracted` | Conversation composition, typography, spacing, progressive disclosure, contextual surfaces, focus and keyboard behavior. This is an extracted reference; establish what each source or asset represents. |
-| HeroUI | `/Users/tangerg/Desktop/heroui` | Shared control surfaces, optical alignment, state treatment and semantic color roles, adapted to desktop density. |
+| Reference                 | Where to look                                                                                                                                                                                                                           | What to compare                                                                                                                                                                                          |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ZCode                     | `/Users/tangerg/Desktop/ZCode/packages/ui/src/app-shell`, `/Users/tangerg/Desktop/ZCode/packages/ui/src/ToolCallBlocks`, `/Users/tangerg/Desktop/ZCode/packages/ui/src/v4`, and `/Users/tangerg/Desktop/ZCode/packages/ui/src/settings` | Workspace proportions, reading rhythm, side-pane behavior, resizing, tool summary/detail transitions, contextual actions and settings composition.                                                       |
+| ChatGPT desktop reference | `/Users/tangerg/Desktop/study/chatgpt/deob/webview` and `/Users/tangerg/Desktop/study/chatgpt/extracted`                                                                                                                                | Conversation composition, typography, spacing, progressive disclosure, contextual surfaces, focus and keyboard behavior. This is an extracted reference; establish what each source or asset represents. |
+| HeroUI                    | `/Users/tangerg/Desktop/heroui`                                                                                                                                                                                                         | Shared control surfaces, optical alignment, state treatment and semantic color roles, adapted to desktop density.                                                                                        |
 
 The user also explicitly requested the Ace Design examples:
 
@@ -52,30 +54,32 @@ The older review at `/Users/tangerg/Desktop/flame/desktop/docs/Flame-Desktop-UI-
 
 ## Implemented foundation to retain
 
-| Product area | Current behavior and ownership |
-| --- | --- |
-| Shared presentation | Panels, persistent controls, resource groups, disclosures, forms, modal geometry, metric summaries and semantic badges share presentation owners. The host owns appearance values; `/Users/tangerg/Desktop/flame/ui` owns reusable presentation rules. Pages compose those rules. |
-| Color and brand | The default accent is Flame Orange. Content headings, references, list markers, quote rules and inline code use semantic accent roles while body text keeps readable neutral ink. Theme customization and the approved brand assets already exist. |
-| Prose and layout | Paragraphs, lists and quotations use a `65ch` reading cap with direction-aware alignment. Code, tables and media retain the host's available width. English, CJK and RTL cases have been checked. Keep these different content measures intentional. |
-| Markdown tables | Long tables stay within a bounded reading viewport. Compact table actions follow the table edge and wrap when necessary. Expanded previews keep controls and column headings reachable. Do not reintroduce page overflow or remove access to long data. |
-| Code and recorded output | One stable bounded code-reading region retains literal selection, scroll and focus as syntax highlighting arrives. Shared captions, wrapping and copy behavior are established. Loading messages no longer expose raw Markdown source as a temporary presentation. |
+| Product area                  | Current behavior and ownership                                                                                                                                                                                                                                                                                         |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared presentation           | Panels, persistent controls, resource groups, disclosures, forms, modal geometry, metric summaries and semantic badges share presentation owners. The host owns appearance values; `/Users/tangerg/Desktop/flame/ui` owns reusable presentation rules. Pages compose those rules.                                      |
+| Color and brand               | The default accent is Flame Orange. Content headings, references, list markers, quote rules and inline code use semantic accent roles while body text keeps readable neutral ink. Theme customization and the approved brand assets already exist.                                                                     |
+| Prose and layout              | Paragraphs, lists and quotations use a `65ch` reading cap with direction-aware alignment. Code, tables and media retain the host's available width. English, CJK and RTL cases have been checked. Keep these different content measures intentional.                                                                   |
+| Markdown tables               | Long tables stay within a bounded reading viewport. Compact table actions follow the table edge and wrap when necessary. Expanded previews keep controls and column headings reachable. Do not reintroduce page overflow or remove access to long data.                                                                |
+| Code and recorded output      | One stable bounded code-reading region retains literal selection, scroll and focus as syntax highlighting arrives. Shared captions, wrapping and copy behavior are established. Loading messages no longer expose raw Markdown source as a temporary presentation.                                                     |
 | Selection and file references | Ordinary action-button drags cannot select the surrounding application. Reading text and inline file references remain selectable. Dragging a file reference preserves selection without navigating the Dock; ordinary clicks and Enter/Space still open its path and line. Native copy and whitespace dismissal work. |
-| Tool rows | Rows reserve action space only when real actions exist. Recorded paths wrap at directory boundaries and retain literal copy. Expanded groups remain visible and clickable as the Dock narrows; the WebKit grid sizing repair preserves reversible transitions. |
-| Context Dock | Shared panels adapt to Dock presentation. File headers, path wrapping, copy feedback, recorded change counts, selected subagent context and navigation focus have been refined. Preserve the distinction between recorded evidence and current workspace files. |
-| Subagent stop controls | Shared filled stop marks and quiet circular controls replace the checkbox-like outline squares. Their placement is consistent across the narrative, Dock list and detail view; terminal entries reserve no dead cancel slot. |
-| Motion and focus | Shared moving item backplates remain interruptible and reversible and consume the host motion tokens. Reduced motion, scoped code Select All, native dismissal and focus return have established owners and regression coverage. |
+| Tool rows                     | Rows reserve action space only when real actions exist. Recorded paths wrap at directory boundaries and retain literal copy. Expanded groups remain visible and clickable as the Dock narrows; the WebKit grid sizing repair preserves reversible transitions.                                                         |
+| Context Dock                  | Shared panels adapt to Dock presentation. File headers, path wrapping, copy feedback, recorded change counts, selected subagent context and navigation focus have been refined. Preserve the distinction between recorded evidence and current workspace files.                                                        |
+| Subagent stop controls        | Shared filled stop marks and quiet circular controls replace the checkbox-like outline squares. Their placement is consistent across the narrative, Dock list and detail view; terminal entries reserve no dead cancel slot.                                                                                           |
+| Motion and focus              | Shared moving item backplates remain interruptible and reversible and consume the host motion tokens. Reduced motion, scoped code Select All, native dismissal and focus return have established owners and regression coverage.                                                                                       |
+| Authoring and acceptance      | One captured submission owns draft consumption and history. Rejected input stays editable; delayed acceptance preserves successor revisions, Session changes, attachment staging and other controls' focus. Goal and slash extensions share this settlement contract.                                                  |
 
-The most recent behavior lives in `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/chat/file-references/public/FileRefLink.tsx`: pointer activation consults the browser's existing selection; keyboard activation remains available. It introduces no separate selection state. Read current callers and coverage before changing this boundary.
+File-reference gesture behavior lives in `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/chat/file-references/public/FileRefLink.tsx`: pointer activation consults the browser's existing selection; keyboard activation remains available. It introduces no separate selection state. Read current callers and coverage before changing this boundary.
 
 ## Verification checkpoint
 
-For the verified UI baseline:
+For the verified combined baseline:
 
-- The complete frontend `npm run check` passed: 372 test files and 2693 tests, plus type, lint, formatting, boundaries, design-system, bundle and production-module checks.
-- Browser coverage included 36 related Chromium/WebKit scenarios across light and dark themes. Thirty-five passed in the initial run. One run was interrupted by rebuilding shared UI output while Vite was reading it; after restarting the preview, all six focused gesture and keyboard checks, including the affected case, passed.
-- The preceding shared reading change passed the UI package check with 38 tests, the portable-plugin checks and 48 existing Chromium/WebKit checks. Those results qualify that committed change, not subsequent user WIP.
+- The complete frontend `npm run check` passed: 372 test files and 2710 tests, plus type, lint, formatting, boundaries, design-system, bundle and production-module checks. The WebKit clipboard-permission correction in the brand browser test also passed focused lint, formatting and type checks.
+- CLI `go test ./...`, `go vet ./...` and `go build ./...` passed with the repository workspace enabled. The initial combined run timed out in the unchanged acceptance-recovery integration case; that case passed in isolation and the subsequent complete CLI gate passed without changing assertions or deadlines.
+- Twenty Chromium/WebKit browser scenarios passed, covering light/dark brand assets at 1120px and 320px, settings search, HEX copying, PNG download, steer/stop admission, compact Goal mode, model/image capability handling and file-reference keyboard navigation.
+- Earlier shared reading verification remains relevant to its unchanged owners: the UI package passed 38 tests, portable-plugin checks passed, and prior browser/native checks qualified path dragging, literal copying, whitespace selection dismissal, table bounds and reading geometry. The latest combined gate also includes the current source for these owners.
 - The supported production macOS arm64 build passed with deployment floor 13.0. The pinned desktop host is Wails v3, not v2.
-- Actual Wails WKWebView acceptance used an isolated in-memory visual fixture with Chinese UI. Short and wrapped path selections retained the file list, native copy/paste preserved the literal, whitespace cleared selection, a click opened README line 15, and Tab/Space opened the next reference.
+- Actual Wails WKWebView acceptance used an isolated in-memory visual fixture with Chinese UI. The three approved brand images and exact color values rendered, the copy action showed focused feedback, native paste and Cmd+A/BackSpace cleared the draft, and Enter on `/goal` cleared the invocation and entered compact mode while retaining Composer focus. No real Runtime configuration or credentials were read.
 - The native app exited successfully. Owned preview services, browser sessions, native bundles, caches, temporary build outputs and managed review worktrees were cleaned. Do not assume an old preview or review app is still available.
 
 These checks cover the changed contracts and representative native scenarios. They do not establish that every page, dialog, layout or interaction meets the final design goal. There is no outstanding known failure introduced by the latest committed UI fix.
@@ -86,7 +90,7 @@ These checks cover the changed contracts and representative native scenarios. Th
 2. **Improve the center reading area as a composition.** Review line lengths, type scale, paragraph and heading rhythm, nested content, tables, code, tool groups and media together. Give content room to breathe while keeping a clear hierarchy. Resolve structural spacing and alignment at the responsible shared owner.
 3. **Refine the Dock's product form.** Decide how summaries lead to details, when a task uses inline expansion, a panel, a popover or a dialog, and how users navigate back. Review tabs, panel headers, filters, action visibility, resizing, scrolling and focus as one interaction flow. More cards or decorative controls do not by themselves improve this flow.
 4. **Check layout under real constraints.** Review different window and Dock widths, body/code font sizes, long paths, translated labels and light/dark themes. Distinguish intentional code/table scrolling from unintended page overflow. Examine optical alignment and whitespace in the actual desktop host.
-5. **Continue across other pages.** Carry the same layout and interaction grammar into settings, installed plugin pages, forms, resource lists and dialogs. Preserve the user's brand and Composer work while checking how the surrounding surfaces fit it.
+5. **Continue across other pages.** Carry the same layout and interaction grammar into settings, installed plugin pages, forms, resource lists and dialogs. Retain the approved brand and the implemented Composer contracts while checking how the surrounding surfaces fit them.
 
 Build a coherent batch from observed problems. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 
