@@ -54,11 +54,11 @@ for (const theme of ["light", "dark"]) {
       await panel.getByRole("button", { name: `${name} Needs input`, exact: true }).click();
       await expect(page.getByTestId("active-main-view")).toHaveText(mainView);
       const transcript = panel.getByRole("region", { name, exact: true });
-      await expectCompleteText(transcript.getByText(name, { exact: true }));
-      await expect(transcript.getByText("Needs input", { exact: true })).toBeVisible();
-      const cancel = transcript
-        .getByRole("button", { name: "Cancel this run", exact: true })
-        .first();
+      await expect(transcript).toBeVisible();
+      const header = panel.locator("header");
+      await expectCompleteText(header.getByText(name, { exact: true }));
+      await expect(header.getByText("Needs input", { exact: true })).toBeVisible();
+      const cancel = header.getByRole("button", { name: "Cancel this run", exact: true }).first();
       await expect(cancel).toBeInViewport({ ratio: 1 });
       const bounds = (await panel.boundingBox())!;
       const action = (await cancel.boundingBox())!;
@@ -68,14 +68,15 @@ for (const theme of ["light", "dark"]) {
       expect(
         await page.locator("html").evaluate((node) => node.scrollWidth - node.clientWidth),
       ).toBe(0);
-      await panel.getByRole("button", { name: "Subagents", exact: true }).click();
+      await panel.getByRole("button", { name: "Back to subagents", exact: true }).click();
       await expect(page.getByTestId("active-main-view")).toHaveText(mainView);
       await expectCompleteText(panel.getByText(name, { exact: true }));
       const longName = "Survey the boundary in parallel · Sub-agent 1 of 4";
       await panel.getByRole("button", { name: longName }).click();
       const completed = panel.getByRole("region", { name: longName, exact: true });
-      await expectCompleteText(completed.getByText(longName, { exact: true }));
-      await expect(completed.getByText("Canceled", { exact: true })).toBeVisible();
+      await expect(completed).toBeVisible();
+      await expectCompleteText(header.getByText(longName, { exact: true }));
+      await expect(header.getByText("Canceled", { exact: true })).toBeVisible();
       await expect(page.getByTestId("active-main-view")).toHaveText(mainView);
     });
   }

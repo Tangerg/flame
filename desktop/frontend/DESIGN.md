@@ -310,6 +310,11 @@ task name takes the available width while the controls remain reachable in a
 narrow Dock. Names take at most two lines; the complete label remains in its
 native title hint, the keyboard-reachable list entry and the transcript's accessible name.
 Detail headers use the reading plane, without a second window-chrome divider.
+Task navigation moves keyboard focus into the selected detail and back to the
+corresponding list entry, including history traversal. Live material does not
+move focus, and a later choice to focus another region takes precedence. Terminal
+tasks share a Finished group while retaining each outcome's own status; rows
+without a stop command return its space to their reading measure.
 
 ### Tabs
 

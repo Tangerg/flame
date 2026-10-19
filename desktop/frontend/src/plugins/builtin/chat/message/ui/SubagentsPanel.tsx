@@ -1,6 +1,6 @@
 import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
@@ -66,6 +66,35 @@ export function SubagentsPanel() {
   const rows = useActiveConversationRows();
   const entries = useMemo(() => subagentEntries(rows), [rows]);
   const selectedId = useWorkspaceSubagentRunId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLButtonElement>(null);
+  const previousRun = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const fromRun = previousRun.current;
+    previousRun.current = selectedId;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const active = panel.ownerDocument.activeElement;
+    const source = active?.closest<HTMLElement>('[data-slot="delegated-run-link"]');
+    if (
+      active !== panel.ownerDocument.body &&
+      !panel.contains(active) &&
+      !(
+        selectedId !== null &&
+        source?.dataset.runId === selectedId &&
+        source.querySelector("button") === active
+      )
+    )
+      return;
+    if (selectedId) {
+      backRef.current?.focus({ preventScroll: true });
+    } else if (fromRun) {
+      const row = [...panel.querySelectorAll<HTMLElement>('[data-slot="delegated-run-link"]')].find(
+        (node) => node.dataset.runId === fromRun,
+      );
+      (row?.querySelector<HTMLButtonElement>("button") ?? panel).focus();
+    }
+  }, [selectedId]);
   const selected = entries.find(({ narrative }) => narrative.run.id === selectedId);
   const summary = selected
     ? delegatedRunSummary(
@@ -78,13 +107,14 @@ export function SubagentsPanel() {
     : null;
   const running = entries.filter(({ narrative }) => narrative.run.status === "running").length;
   return (
-    <AgentWorkspaceView ariaLabel={t("subagents.title")}>
+    <AgentWorkspaceView ref={panelRef} tabIndex={-1} ariaLabel={t("subagents.title")}>
       <header data-slot="subagent-header" {...stylex.props(styles.header)}>
         {selectedId && (
           <IconButton
+            ref={backRef}
             icon={iconGlyph("chevron-left")}
             size="sm"
-            aria-label={t("subagents.title")}
+            aria-label={t("subagents.back")}
             onClick={() => openWorkspaceSubagentRun(null)}
           />
         )}
@@ -147,7 +177,7 @@ export function SubagentsPanel() {
                 entries={entries.filter(({ narrative }) => narrative.run.status !== "finished")}
               />
               <SubagentGroup
-                title={t("subagents.completed")}
+                title={t("subagents.finished")}
                 entries={entries.filter(({ narrative }) => narrative.run.status === "finished")}
               />
             </>

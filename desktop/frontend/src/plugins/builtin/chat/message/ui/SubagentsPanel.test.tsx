@@ -101,13 +101,13 @@ it("projects live child material, returns to the list, and never carries it into
   expect(screen.getByText("Child final answer")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
 
-  fireEvent.click(screen.getByRole("button", { name: "Subagents" }));
+  fireEvent.click(screen.getByRole("button", { name: "Back to subagents" }));
   expect(navigator().get()).toMatchObject({
     session: "session",
     dock: "subagents",
     subagent: null,
   });
-  expect(screen.getByText("Completed · 2")).toBeTruthy();
+  expect(screen.getByText("Finished · 2")).toBeTruthy();
   expect(screen.queryByText("Child final answer")).toBeNull();
   const list = screen.getByRole("region", { name: "Subagents" });
   fireEvent.click(within(list).getAllByRole("button", { name: /Sub-agent/ })[1]!);

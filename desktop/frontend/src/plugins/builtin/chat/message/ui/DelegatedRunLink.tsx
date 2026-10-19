@@ -39,12 +39,6 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
   },
   detail: { display: "flex", flexDirection: "column", gap: space.s0_5, minWidth: 0, flex: 1 },
-  cancelSlot: {
-    display: "flex",
-    flexShrink: 0,
-    justifyContent: "center",
-    width: "var(--control-height-sm)",
-  },
 });
 
 export function DelegatedRunLink({
@@ -97,18 +91,16 @@ export function DelegatedRunLink({
           <Icon name="open" size="sm" />
         </span>
       </Pressable>
-      <span {...stylex.props(styles.cancelSlot)}>
-        {model.cancelable && (
-          <IconButton
-            icon={iconGlyph("stop")}
-            size="sm"
-            quiet
-            disabled={!available}
-            aria-label={t("agent.runTree.action.cancel")}
-            onClick={() => cancelSessionRun({ sessionId: run.sessionId, runId: run.id })}
-          />
-        )}
-      </span>
+      {model.cancelable && (
+        <IconButton
+          icon={iconGlyph("stop")}
+          size="sm"
+          quiet
+          disabled={!available}
+          aria-label={t("agent.runTree.action.cancel")}
+          onClick={() => cancelSessionRun({ sessionId: run.sessionId, runId: run.id })}
+        />
+      )}
     </div>
   );
 }

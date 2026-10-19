@@ -46,6 +46,7 @@ for (const [fontSize, theme] of [
     const header = panel.locator("header");
     const identity = header.getByText(label, { exact: true });
     await expect(identity).toHaveText(label);
+    await expect(resizer).toBeFocused();
     await expect(panel.getByRole("region", { name: label, exact: true })).toBeAttached();
     await expect(header.getByText("Needs input", { exact: true })).toBeInViewport({ ratio: 1 });
     await expect(panel.getByText("6 subagents · 1 running", { exact: true })).toHaveCount(0);
@@ -72,18 +73,21 @@ for (const [fontSize, theme] of [
     }
     expect(await panel.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
     await page.screenshot({ path: testInfo.outputPath("narrow-selected-task.png") });
-    const back = header.getByRole("button", { name: "Subagents", exact: true });
+    const back = header.getByRole("button", { name: "Back to subagents", exact: true });
     await back.focus();
     await back.press("Enter");
     const task = panel.getByRole("button", { name: `${label} Needs input`, exact: true });
     await expect(task.getByText(label, { exact: true })).toBeInViewport({ ratio: 1 });
-    await task.focus();
+    await expect(task).toBeFocused();
     await task.press("Enter");
+    await expect(back).toBeFocused();
     await expect(identity).toBeInViewport({ ratio: 1 });
     await header.getByRole("button", { name: "Cancel this run", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-visual-canceled-run", "run_child");
-    await header.getByRole("button", { name: "Subagents", exact: true }).click();
+    await header.getByRole("button", { name: "Back to subagents", exact: true }).click();
     await expect(header.getByText("6 subagents · 1 running", { exact: true })).toBeVisible();
-    await expect(header.getByRole("button", { name: "Subagents", exact: true })).toHaveCount(0);
+    await expect(
+      header.getByRole("button", { name: "Back to subagents", exact: true }),
+    ).toHaveCount(0);
   });
 }

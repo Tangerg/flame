@@ -956,10 +956,12 @@ test("choosing a subagent swaps the panel's name for the way back", async ({ pag
   await waitForWorkspaceState(page, "dock-subagents");
 
   const panel = page.locator('[data-dock-view-id="subagents"]');
-  await expect(panel.getByRole("button", { name: "Subagents", exact: true })).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: "Back to subagents", exact: true })).toHaveCount(
+    0,
+  );
 
   await panel.locator('[data-slot="delegated-run-link"] button').first().click();
-  await expect(panel.getByRole("button", { name: "Subagents", exact: true })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Back to subagents", exact: true })).toBeVisible();
 
   const placement = await panel.locator("header").evaluate((root) => {
     const name = root.querySelector('[data-slot="subagent-identity"]');
