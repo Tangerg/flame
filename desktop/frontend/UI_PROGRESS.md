@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. The retained-view review continues from the native zoom milestone at `4e54d4f8e` on `main`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. Native keyboard qualification continues from the retained-view milestone at `1a0a1ed27` on `main`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -8,7 +8,7 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The latest objective explicitly resumes continuous desktop UI work. Complete each evidence-backed batch with native acceptance, the relevant gates, an explicit-path commit and push to `main`, cleanup and an update to this file before selecting the next batch. Native page zoom and the single Dock width projection remain integrated. Open workspace views now retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
 
-Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The precise scenarios and limits are below. The next concrete investigation is native keyboard focus from a selected Dock tab to the resize handle; do not infer a resize-algorithm defect from keys sent while another control had focus.
+Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The subsequent native focus investigation qualified the existing keyboard resize path and isolated clicked-label reverse navigation to a WebKit behavior also reproduced by a bare HTML button. No host preference or component workaround was added. The precise scenarios and limits are below.
 
 Task-oriented layout and interaction apply across the conversation, Context Dock, settings and installed views. Preserve the approved brand, shared reading hierarchy, Composer, code/table/selection fixes, sidebar-matching Dock seam and custom-accent theme owner. The earlier `cap`-based inline-icon sizing tip is a suggestion for future typography work, not a global icon redesign.
 
@@ -460,6 +460,14 @@ For native zoom and shared geometry:
 - These are isolated UI and native-host checks. The initial production reproduction read an already-running local Runtime; no business mutation was submitted. Later acceptance used inert canonical providers. Live Runtime recovery, native mid-drag cancellation/resize injection, OS IME, VoiceOver, pixel contrast and other platform GUIs were not requalified. No browser/visual suite or performance benchmark ran. Drag retirement and cancellation order are covered by the component regressions.
 - Cleanup completed: the native app exited, its bundle was unregistered and removed, and its newly created bundle-specific WebKit/cache directories were deleted. This batch's isolated root, fixture assets/data, production and prebuild binaries, overlays, logs and all three completed CLI reports were removed. The timed-out E2E root and builds had already exited and cleaned up. No preview server was started. Read-only Ace reference caches, existing shared build outputs/compiler caches and unrelated worktrees/processes were retained. Claude Code CLI supplied the bounded native and geometry implementation; the primary agent reviewed the diff, corrected the accessible-width projection, performed native acceptance and completed verification.
 
+For the subsequent native keyboard investigation:
+
+- Actual Wails on macOS 26.5 qualified the unchanged default host in English/light/14 px/Flame Orange. Tab from Approval mode reached the resize handle; Tab entered the selected Dock tab and Shift-Tab returned to the handle. Home committed 320 px, End committed 725 px, Right reduced width by 8 px and Shift-Right by 24 px. Focus remained on the named separator and the semantic focus outline was visible. This is focused keyboard qualification, not a fresh pass of every earlier theme/window scenario.
+- Clicking the tab label, by accessibility action or real screenshot-coordinate mouse input, left repeated Shift-Tab on that tab. Read-only event diagnostics showed an unprevented Tab event and no focus transition. Forward Tab to Browse panels, followed by two Shift-Tabs, reached the handle. A disposable bare HTML page with three ordinary buttons and a nested text span reproduced the clicked-label behavior without React, Base UI or Flame's focus handlers; pure keyboard traversal remained reversible there as well.
+- A controlled native A/B explicitly enabled Wails' existing `TabFocusesLinks` preference in an external Go overlay. It did not change the clicked-label result; the normal keyboard path also worked with the production default. The result matches the focus-navigation starting-point issue described in [WHATWG HTML #12514](https://github.com/whatwg/html/issues/12514) and its [proposed specification repair](https://github.com/whatwg/html/pull/12843). This is an evidence-backed platform limitation, not a resize-algorithm failure. Revisit it when the underlying WebKit behavior changes; do not add a competing application Tab order or change users' OS settings.
+- Production source, dependencies and generated resources were unchanged. The isolated fixture build and native overlay compilation passed; the duplicate `-lobjc` warning remained non-failing. Only this documentation changed, so verification used its formatter and `git diff --check`; prior full gates remain historical evidence rather than newly run checks. No browser suite, performance benchmark, OS IME or VoiceOver check ran. No bounded implementation was delegated because the investigation justified no production change.
+- Cleanup completed: all owned native processes exited, the bundle was unregistered, and the acceptance app, bare probe, fixture, overlay, binary, data and logs were removed. Newly created bundle-specific WebKit/cache paths were removed against the pre-launch baseline. No owned preferences, HTTP storage or saved state were present; no preview server was started. Shared outputs, compiler caches, read-only references and unrelated worktrees/processes were retained.
+
 For Memory authoring and command feedback:
 
 - `npx vitest run visual/memoryDrafts.test.tsx` passed all 22 tests. The baseline's existing 10 tests passed before implementation; new task/feedback/focus cases exposed the old behavior. The CLI supplied the initial regression draft but did not complete implementation; its incorrect named-section/selection assumptions were corrected against the real shared components. Coverage retains original mutation identity, same-key reconciliation and independent approval/unpin, and adds local/search-first/nested Escape, IME and legacy 229, pending/unknown blocking, named feedback ownership, read-disabled return targets, scope retirement, results without an accepted catalog and later-focus preservation after a delayed read. No valid assertion was weakened.
@@ -552,14 +560,11 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 ## Future review candidates
 
-The next concrete investigation is the native keyboard route from a selected Dock
-tab to the resize handle. In the final dark scene, a pointer click did not focus
-the separator; Shift-Tab and Option-Shift-Tab from the selected tab retained that
-tab's focus. Home was therefore not sent to a focused handle and proves no resize
-failure. Mouse dragging, tab Delete, editor Tab/Escape and main-header keyboard
-return worked. Trace the current WebKit/Base UI event and focus behavior before
-changing the geometry owner or declaring a regression. Prior keyboard-resize
-qualification remains historical; this batch makes no fresh native pass claim.
+The native tab-to-handle investigation is complete. Pure keyboard traversal and
+resizing are qualified above; clicked-label reverse traversal reproduces in bare
+HTML and remains a platform limitation. Preserve the existing geometry and focus
+owners. Continue with the remaining task-oriented evidence and reading paths,
+selecting scope from current source and actual native observations.
 
 Memory query/draft continuity, original-command observation and main-only source
 retention are now implemented and qualified above. Do not recreate them or make
