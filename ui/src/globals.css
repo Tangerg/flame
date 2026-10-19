@@ -145,6 +145,10 @@
   input:where([type="button"], [type="reset"], [type="submit"]) {
     appearance: button;
   }
+  [data-control="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
   ::placeholder {
     opacity: 1;
     color: color-mix(in oklab, currentcolor 50%, transparent);

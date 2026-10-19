@@ -15,6 +15,33 @@ async function hasSelectedText(page: Page) {
   });
 }
 
+test("dragging a navigation button does not select the surrounding workspace", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(
+    "/visual/?fixture=workspace&state=dock-subagents&agent-state=delegated&theme=light&font-size=18&locale=en",
+  );
+  await page.locator("html[data-visual-ready]").waitFor();
+  const dock = page.locator('[data-dock-view-id="subagents"]');
+  const entry = dock
+    .locator('[data-slot="delegated-run-link"]')
+    .first()
+    .getByRole("button")
+    .first();
+  const start = (await entry.boundingBox())!;
+  const destination = (await page
+    .getByRole("textbox", { name: "Message composer" })
+    .boundingBox())!;
+
+  await page.mouse.move(start.x + 65, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(destination.x + 80, destination.y + destination.height / 2, { steps: 24 });
+  await page.mouse.up();
+
+  await expect.poll(() => hasSelectedText(page)).toBe(false);
+  await expect(entry).toBeVisible();
+  await expect(dock.getByRole("button", { name: "Back to subagents", exact: true })).toHaveCount(0);
+});
+
 test("a code reader selects its literal source without selecting the surrounding app", async ({
   page,
 }) => {

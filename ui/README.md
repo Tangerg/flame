@@ -7,6 +7,10 @@ components use the actual shared React/UI provider context and controlled font s
 the library never chooses or persists a theme. The former HTML guest projection,
 message channel and bootstrap exports are removed.
 
+`ButtonPrimitive` keeps command labels outside native text selection. Dragging a
+navigation or action button cannot begin selecting the surrounding document.
+Reading content and editable fields retain their native selection behavior.
+
 ```tsx
 import { Button, IconButton, FontScaleProvider } from "@flame/ui";
 import { Brain } from "@flame/icons/react";
