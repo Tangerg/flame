@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. The completed Schedules task review started from clean local and remote `main` at `01af05b5f`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. The resumed Memory task review started from clean local and remote `main` at `cd22229a5`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user asked to finish the Schedules batch, organize this handoff and stop. This is the completed final batch before the requested pause; do not start another batch in this session. Native acceptance, the final frontend/module gates and supported production build passed. Owned acceptance resources have been removed. Resume further implementation only on a new user instruction.
+The latest objective explicitly resumes continuous desktop UI work. Complete each evidence-backed batch with native acceptance, the relevant gates, an explicit-path commit and push to `main`, cleanup and an update to this file before selecting the next batch. Memory authoring and operation feedback are now verified at Actual Size in the Dock and main content view. Independent approval and pin commands remain available while a draft is open. The next observed problem is cross-page native Zoom In cropping the workspace; it is recorded below as a failed check, with its owner still to be established. Do not claim zoom acceptance from the passing font-size and narrow-window scenes.
 
 Task-oriented layout and interaction apply across the conversation, Context Dock, settings and installed views. Preserve the approved brand, shared reading hierarchy, Composer, code/table/selection fixes, sidebar-matching Dock seam and custom-accent theme owner. The earlier `cap`-based inline-icon sizing tip is a suggestion for future typography work, not a global icon redesign.
 
@@ -92,26 +92,40 @@ names the affected task and pairs cancellation with the destructive command.
 Flame's constrained Dock needs a bounded editor with persistent actions rather
 than a long inserted form that displaces the retained catalog.
 
+Memory review traced ZCode's `settings/MemorySettingsViewer.tsx` for explicit
+scope, literal search and record actions, and ChatGPT's actual
+`saved-memory-history-83b91672ef74.js` dialog for selected-object identity and
+separate consequential decisions. This is API-backed UI code, not the Markdown
+exporter. Flame retains its existing non-modal draft because independent approval
+and pin/unpin commands remain useful during authoring. The [Radix Dialog model](https://www.radix-ui.com/primitives/docs/components/dialog)
+would make that catalog inert; its boundary is deliberately not applied here.
+HeroUI's local disclosure/form examples and the [Disclosure documentation](https://heroui.com/en/docs/react/components/disclosure)
+guide grouping and state cues. The Ace overviews plus full-size Alpaca connection
+and Marketer activity scenes were inspected for task grouping and reading rhythm;
+they supply no keyboard evidence. Existing semantic text/surface/focus roles
+remain authoritative, consistent with [HeroUI color roles](https://heroui.com/en/docs/react/getting-started/colors)
+and the [Radix scale use cases](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale).
+
 For color-system work, retain the user's [Radix Colors](https://www.radix-ui.com/colors) and [HeroUI colors](https://heroui.com/en/docs/react/getting-started/colors) references. The default brand color is **Flame Orange `#FB6E30`**; users can choose their own interface accent through the existing theme owner. Approved brand artwork retains its original color. Avoid recreating the palette, appearance store or brand identity.
 
 The older review at `/Users/tangerg/Desktop/flame/desktop/docs/Flame-Desktop-UI-Review-ZCode-2026-09-23.md` contains historical observations and reference pointers. Revalidate its findings against current code and behavior before using any item as a new task.
 
 ## Implemented foundation to retain
 
-| Product area                  | Current behavior and ownership                                                                                                                                                                                                                                                                                         |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shared presentation           | Panels, persistent controls, resource groups, disclosures, forms, modal geometry, metric summaries and semantic badges share presentation owners. The host owns appearance values; `/Users/tangerg/Desktop/flame/ui` owns reusable presentation rules. Pages compose those rules.                                      |
-| Color and brand               | The default accent is Flame Orange. Content headings, references, list markers, quote rules and inline code use semantic accent roles while body text keeps readable neutral ink. Theme customization and the approved brand assets already exist.                                                                     |
-| Prose and layout              | Prose takes one reading step above interface text: 16 px with the default 14 px interface, while code keeps its separate preference. Paragraphs use one gap; headings have unitless leading and a visible following gap, including deeper levels. The `65ch` cap and wider code/table/media measures remain intentional. |
-| Markdown tables               | Long tables stay within a bounded reading viewport. Compact table actions follow the table edge and wrap when necessary. Expanded previews keep controls and column headings reachable. Do not reintroduce page overflow or remove access to long data.                                                                |
-| Code and recorded output      | One stable bounded code-reading region retains literal selection, scroll and focus as syntax highlighting arrives. Shared captions, wrapping and copy behavior are established. Loading messages no longer expose raw Markdown source as a temporary presentation.                                                     |
-| Selection and file references | Ordinary action-button drags cannot select the surrounding application. Reading text and inline file references remain selectable. Dragging a file reference preserves selection without navigating the Dock; ordinary clicks and Enter/Space still open its path and line. Native copy and whitespace dismissal work. |
-| Tool rows                     | Rows reserve action space only when real actions exist. Recorded paths wrap at directory boundaries and retain literal copy. Expanded groups remain visible and clickable as the Dock narrows; the WebKit grid sizing repair preserves reversible transitions.                                                         |
+| Product area                  | Current behavior and ownership                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared presentation           | Panels, persistent controls, resource groups, disclosures, forms, modal geometry, metric summaries and semantic badges share presentation owners. The host owns appearance values; `/Users/tangerg/Desktop/flame/ui` owns reusable presentation rules. Pages compose those rules.                                                                              |
+| Color and brand               | The default accent is Flame Orange. Content headings, references, list markers, quote rules and inline code use semantic accent roles while body text keeps readable neutral ink. Theme customization and the approved brand assets already exist.                                                                                                             |
+| Prose and layout              | Prose takes one reading step above interface text: 16 px with the default 14 px interface, while code keeps its separate preference. Paragraphs use one gap; headings have unitless leading and a visible following gap, including deeper levels. The `65ch` cap and wider code/table/media measures remain intentional.                                       |
+| Markdown tables               | Long tables stay within a bounded reading viewport. Compact table actions follow the table edge and wrap when necessary. Expanded previews keep controls and column headings reachable. Do not reintroduce page overflow or remove access to long data.                                                                                                        |
+| Code and recorded output      | One stable bounded code-reading region retains literal selection, scroll and focus as syntax highlighting arrives. Shared captions, wrapping and copy behavior are established. Loading messages no longer expose raw Markdown source as a temporary presentation.                                                                                             |
+| Selection and file references | Ordinary action-button drags cannot select the surrounding application. Reading text and inline file references remain selectable. Dragging a file reference preserves selection without navigating the Dock; ordinary clicks and Enter/Space still open its path and line. Native copy and whitespace dismissal work.                                         |
+| Tool rows                     | Rows reserve action space only when real actions exist. Recorded paths wrap at directory boundaries and retain literal copy. Expanded groups remain visible and clickable as the Dock narrows; the WebKit grid sizing repair preserves reversible transitions.                                                                                                 |
 | Context Dock                  | File identity and return navigation precede a separate wrapping mode/action row. Full directories remain available beneath the filename. Opening from the tree focuses the return action; returning restores the tree cursor without stealing another region's focus. Panels grow through their complete content; fixed pane seams paint above child surfaces. |
-| Subagent stop controls        | Shared filled stop marks and quiet circular controls replace the checkbox-like outline squares. Their placement is consistent across the narrative, Dock list and detail view; terminal entries reserve no dead cancel slot.                                                                                           |
-| Main and delegated messages   | Both use `MessageTurn` and `MessageBlock` for spacing, prose, bubbles, long-input folding, tools, code, tables, media and message actions. Child rows retain their own Run and referenced facts. Their overview keeps its scroll position; returning restores the originating task's focus. |
-| Motion and focus              | Shared moving item backplates remain interruptible and reversible and consume the host motion tokens. Reduced motion, scoped code Select All, native dismissal and focus return have established owners and regression coverage.                                                                                       |
-| Authoring and acceptance      | One captured submission owns draft consumption and history. Rejected input stays editable; delayed acceptance preserves successor revisions, Session changes, attachment staging and other controls' focus. Goal and slash extensions share this settlement contract.                                                  |
+| Subagent stop controls        | Shared filled stop marks and quiet circular controls replace the checkbox-like outline squares. Their placement is consistent across the narrative, Dock list and detail view; terminal entries reserve no dead cancel slot.                                                                                                                                   |
+| Main and delegated messages   | Both use `MessageTurn` and `MessageBlock` for spacing, prose, bubbles, long-input folding, tools, code, tables, media and message actions. Child rows retain their own Run and referenced facts. Their overview keeps its scroll position; returning restores the originating task's focus.                                                                    |
+| Motion and focus              | Shared moving item backplates remain interruptible and reversible and consume the host motion tokens. Reduced motion, scoped code Select All, native dismissal and focus return have established owners and regression coverage.                                                                                                                               |
+| Authoring and acceptance      | One captured submission owns draft consumption and history. Rejected input stays editable; delayed acceptance preserves successor revisions, Session changes, attachment staging and other controls' focus. Goal and slash extensions share this settlement contract.                                                                                          |
 
 File-reference gesture behavior lives in `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/chat/file-references/public/FileRefLink.tsx`: pointer activation consults the browser's existing selection; keyboard activation remains available. It introduces no separate selection state. Read current callers and coverage before changing this boundary.
 
@@ -240,13 +254,13 @@ The cross-page composition rule is now recorded in `DESIGN.md`: establish locati
 and data scope, show a useful summary, then expose the current object's content and
 actions. Source review across the existing pages gives this task map:
 
-| Page family | Task model to preserve |
-| --- | --- |
-| Conversation and Tool evidence | Read the answer, scan outcomes, expand supporting evidence, inspect material and return to its source. |
-| File, Diff and subagent readers | Locate an object, read it persistently, navigate related objects and unwind the actual entry path. A directory command is separate from returning to a narrative source. |
+| Page family                      | Task model to preserve                                                                                                                                                                                                            |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Conversation and Tool evidence   | Read the answer, scan outcomes, expand supporting evidence, inspect material and return to its source.                                                                                                                            |
+| File, Diff and subagent readers  | Locate an object, read it persistently, navigate related objects and unwind the actual entry path. A directory command is separate from returning to a narrative source.                                                          |
 | Settings and resource management | Identify the selected scope/object before editing; keep current state and the primary command visible, with bounded forms and explicit cancellation. Memory, Skills and Schedules retain their existing command and scope owners. |
-| Usage reports | Select the data period before local grouping/filtering; identify retained results by their accepted period. |
-| Trajectory and diagnostics | Scan a linear record summary and expand supporting evidence/provenance without turning every record into a new navigation destination. |
+| Usage reports                    | Select the data period before local grouping/filtering; identify retained results by their accepted period.                                                                                                                       |
+| Trajectory and diagnostics       | Scan a linear record summary and expand supporting evidence/provenance without turning every record into a new navigation destination.                                                                                            |
 
 These are task-specific compositions of shared controls, not a requirement to turn
 all pages into the same card, accordion or modal. The source review does not claim
@@ -311,7 +325,59 @@ refresh does not steal focus. Accepted revisions, model identity, Runtime
 commands, uncertain settlement/retry and read cancellation retain their previous
 owners. This choice does not turn other management forms into modals.
 
+Memory authoring remains one local non-modal task over its retained catalog.
+`plugins/memory/src/component.tsx` shows the captured scope and stable record ID
+in edit/deletion tasks. Each original command captures its action, target and
+editor/record origin. Draft progress, refusal and original-key reconciliation
+stay beside form actions; independent record feedback stays with Saved memory
+without erasing a draft's refusal. Confirmed form results move to that catalog
+context, including when no page could be accepted. New forms clear prior form
+feedback and changing scope retires the previous scope's notices.
+
+Only the original promise settles the task. Its subsequent canonical read has a
+separate lifetime/loading state; it cannot revoke a known result or prolong the
+command guard. No optimistic memory record or new receipt owner is introduced.
+Local Escape cancels the current task after literal search and nested choices
+have handled their key; composition leaves it intact and an unresolved command
+consumes it without discarding the task. `RecordForm` still owns focus retirement.
+The Memory resolver rejects a disconnected or read-disabled opener and uses
+retained search. A later read never reclaims a subsequent focus choice.
+
 ## Verification checkpoint
+
+For Memory authoring and command feedback:
+
+- `npx vitest run visual/memoryDrafts.test.tsx` passed all 22 tests. The baseline's existing 10 tests passed before implementation; new task/feedback/focus cases exposed the old behavior. The CLI supplied the initial regression draft but did not complete implementation; its incorrect named-section/selection assumptions were corrected against the real shared components. Coverage retains original mutation identity, same-key reconciliation and independent approval/unpin, and adds local/search-first/nested Escape, IME and legacy 229, pending/unknown blocking, named feedback ownership, read-disabled return targets, scope retirement, results without an accepted catalog and later-focus preservation after a delayed read. No valid assertion was weakened.
+- Portable `npm run build` and `npm run check` passed, including all ten exact ESM resources. The final frontend `VITEST_MAX_WORKERS=2 npm run check` passed 378 files and 2784 tests, followed by all unused-code, boundary, style/token, locale, bootstrap, resource, bundle and production-module gates. Non-failing loopback `ECONNREFUSED` diagnostics were emitted during the full run; no product cause or repair is claimed. An introduced test-selector type error was corrected before this final run.
+- The supported production Wails arm64 build passed; `vtool` confirmed macOS 13.0. Shared UI, Go, Runtime, CLI, SDK and dependencies have no source changes in this batch. Their module suites were not rerun for this presentation-only change; separate Runtime commits are not requalified here. The Memory ESM is rebuilt, but an existing Runtime installation still requires the normal explicit release selection to consume a new package; no live installation was changed.
+- Actual Wails WKWebView first reproduced missing local cancellation and an edit refusal surviving Cancel into a fresh Add task. Final Chinese/light/14 px/Flame Orange and English/dark/18 px/custom-blue scenes checked record identity, literal query/return, keyboard reopen, search-first Escape, failed edit then fresh Add, independent record failure with a retained editable draft, nested menu priority, named deletion/cancellation and source focus. The native system window menu resized the app to approximately 1120 px; keyboard resizing reached a 320 px Dock. Wrapped IDs, mixed CJK/English, long workspace text, scrolling fields/feedback/actions and the unchanged main conversation stayed usable. The full-pane Memory placement also retained its query and record focus on local cancellation, and explicit Close returned to the conversation.
+- **Failed:** after one native View → Zoom In in the narrow/dark/18 px scene, the whole workspace enlarged beyond the window and cropped the right edge, including unrelated chrome. Actual Size restored the layout. No zoom percentage or 200% pass is claimed. Establish the native/viewport/layout owner in the next batch before changing any leaf component.
+- Native command refusals used the fixture's explicit unsupported-write error through the production component and public client in a real Wails host. Successful acknowledgements, unknown receipts, delayed/failed reads and IME variants are deterministic component/public-client regressions, not native failure injection or OS input-method coverage. VoiceOver and rendered pixel contrast measurements were not run. No browser/visual suite or performance benchmark was run.
+- The owned native app and preview have stopped. The disposable bundle, binaries, fixture output, prompts/logs/data and bundle-qualified WebKit/cache directories are cleaned before delivery. No own preferences, HTTP storage or saved application state were present. Existing prerequisite outputs, user data, read-only references and unrelated processes are retained.
+
+Memory review scope is the add/edit/delete task and its relationship to independent
+catalog commands, using React, shared Base UI controls, StyleX and existing semantic
+tokens. Repository, module, design and desktop-polish instructions were read.
+Other management pages and live Runtime writes are outside this fresh review.
+
+| Domain        | Evidence inspected                                                                                                 | Result                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| Accessibility | Panel local keyboard owner, shared SearchField/menus/RecordForm, 22 regressions and native focus paths             | Changed task paths verified; VoiceOver not verified   |
+| Layout        | Shared Panel/form/record owners, native Dock at 320 px, actual narrow window and full-pane placement               | Actual Size verified; workspace Zoom In fails         |
+| Writing       | Captured command labels, record/scope identity, refusal/recovery and new-task feedback retirement                  | Changed task copy verified against its actual action  |
+| Typography    | Shared RecordMeta/RecordBody/Metadata, wrapped IDs and mixed-language text at 14/18 px                             | Actual Size verified; no font system changed          |
+| Colors        | Existing text/surface/focus/negative roles, passing palette regressions and light/dark/custom-accent native scenes | Role use retained; rendered pixel ratios not measured |
+| UI polish     | Existing surfaces, modal-free authoring, normal-motion controls, nested menus and independent scrolling            | Changed flow verified at Actual Size                  |
+
+| Severity | Domain        | Location                               | Before                                                                                     | After                                                                          | Why                                                                                      |
+| -------- | ------------- | -------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| MEDIUM   | Writing       | `plugins/memory/src/component.tsx:263` | One unlabeled message served independent record and draft commands and survived a new form | Captured action/target/origin feedback stays in its corresponding task context | A result must identify the operation it settles                                          |
+| MEDIUM   | Accessibility | `plugins/memory/src/component.tsx:339` | Return attempted a read-disabled opener; editor Escape had no local owner                  | Available-opener/search resolver and composition-safe local cancellation       | Keyboard work must preserve a useful return point and the current task boundary          |
+| HIGH     | Layout        | Native View → Zoom In, whole workspace | Enlarged content is clipped at the window's right edge                                     | Pending owner diagnosis in the next batch                                      | Critical controls must remain reachable under scaling; no Memory-only patch is justified |
+
+Review verdict: **Block for workspace zoom**. The changed Memory task paths pass at
+Actual Size; this is not approval of the unverified VoiceOver/pixel-contrast work
+or of native zoom. Continue with the recorded cross-page failure.
 
 For bounded Schedules editing and deletion:
 
@@ -373,13 +439,19 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 ## Future review candidates
 
+The next concrete task is native workspace zoom. A single View → Zoom In in
+Wails cropped unrelated chrome and Memory at approximately 1120 px; Actual Size
+restored it. Reproduce against production and locate the magnification/viewport
+or shell owner before choosing a fix. This is observed evidence, not a request to
+change Memory's already verified authoring model.
+
 1. **Extend the task comparison.** Reading-to-file-and-back, overview-to-subagent-and-back, direct narrative task links and nested task/file returns now have shared presentation and focus ownership. Catalogue/picker selection and full-view-to-Dock transitions enter the same inspection flow. Continue with richer captured evidence and the remaining detailed material states. Preserve the distinction between explicit inspection and background updates. Do not restart the implemented typography, file header, shared message renderer, nested return flow or sidebar-matching divider.
 2. **Continue the reading composition around activity.** The shared prose step, paragraph/heading rhythm, disclosure affordance and folded tool-outcome summaries are implemented. Review how recorded evidence and media join an answer, especially where a summary leads into a dense detail view. Preserve the existing bounded table, code and selection owners.
 3. **Refine the remaining Dock forms.** File identity/actions and delegated message reuse, overview continuity and return focus are established. Continue with richer tool details and cross-view navigation: decide which details belong inline or in a persistent pane, and reserve popovers/dialogs for genuinely bounded tasks. Keep the user-requested sidebar-matching divider unchanged, including hover and drag.
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.
-5. **Continue across other pages after resumption.** Memory is a source-reviewed candidate, not a reproduced native defect. Its draft deliberately permits independent approval/unpin work in the catalog; preserve that model rather than applying Schedules' modal choice to every form. Other settings, installed views and dialogs still need task-specific inspection of location, scope, current-object actions and return paths. Retain the approved brand and Composer contracts.
+5. **Continue across other pages.** Memory authoring, command feedback and local cancellation are completed at Actual Size, with verification above. Its draft deliberately permits independent approval/unpin work in the catalog; preserve that model rather than applying Schedules' modal choice to every form. Other settings, installed views and dialogs still need task-specific inspection of location, scope, current-object actions and return paths. Retain the approved brand and Composer contracts.
 
-These are candidates for a later explicitly resumed session, not defects or required rewrites. The user requested stopping after Schedules; no next batch should start now. On resumption, separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
+These are review candidates, not defects or required rewrites. The latest objective resumes work and supersedes the earlier Schedules pause. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 
 ## Working and maintenance practice
 
@@ -392,4 +464,4 @@ These are candidates for a later explicitly resumed session, not defects or requ
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
 - Commit explicit owned paths, push verified milestones to remote `main`, preserve unrelated working files during integration and clean owned resources. Update this file with the new product state and verification scope rather than starting another round log.
-- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction and task model across pages. The user has now asked to stop after the Schedules batch and prepare this handoff; finish its verification, commit/push and cleanup, then pause. Resume further implementation only on a new user instruction.
+- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction and task model across pages. The latest objective resumes continuous batches until the user explicitly stops. Finish verification, commit to `main`, push and clean each batch before advancing.

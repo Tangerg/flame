@@ -170,6 +170,16 @@ captured target and draft. Independent record commands keep that draft; only the
 submitting form's successful original command closes it, including after reconciliation.
 Unknown acknowledgement retains the
 original mutation handle/key, blocks new changes and exposes same-command reconciliation.
+A command retains its action, target and editor/record origin for feedback and
+reconciliation. Draft feedback stays beside the form actions; independent record
+feedback stays with the catalog. An acknowledged form closes before the subsequent
+catalog read, whose loading or failure cannot revoke the known result. Changing
+scope retires the old scope's notices. New forms clear earlier form feedback.
+Editors identify the captured record and scope. Local Escape cancels only the
+current form, after search and nested choices have handled their own key. Pending
+and unknown commands consume that Escape without discarding their task. Composition
+keys leave it untouched. Cancellation returns to the connected available opener or
+retained search; a later read cannot reclaim focus from another control.
 A failed read preserves the accepted page. No optimistic item or competing result
 owner is introduced. The former HTML/Memory-specific carrier/read API is removed.
 The shared client journal preserves the original binding across client generation

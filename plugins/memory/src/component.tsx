@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   bindOperations,
   mutationSettlementIsUnknown,
@@ -41,6 +48,7 @@ import {
   FilterBar,
   Select,
   Toolbar,
+  isImeKey,
 } from "@flame/ui";
 
 type MemoryItem = MethodOutputs["flame.memory/list.v1"]["Rows"][number];
@@ -57,19 +65,25 @@ function MemoryReport({
   status,
   origin,
   pinned,
+  feedback,
 }: {
-  page: MemoryPage;
+  page?: MemoryPage;
   disabled: boolean;
   authoring: boolean;
   edit(item: MemoryItem, opener: HTMLElement): void;
   remove(item: MemoryItem, opener: HTMLElement): void;
-  command<K extends MutationName>(method: K, input: MethodInputs[K]): void;
+  command<K extends MutationName>(
+    method: K,
+    input: MethodInputs[K],
+    label: string,
+  ): void;
   search: string;
   status: string;
   origin: string;
   pinned: boolean;
+  feedback: ReactNode;
 }) {
-  const rows = page.Rows;
+  const rows = page?.Rows ?? [];
   const matching = rows.filter(
     (item) =>
       (status === "all" || item.Status === status) &&
@@ -84,130 +98,138 @@ function MemoryReport({
       <PanelSection
         title="Saved memory"
         description={
-          <>
+          page && (
             <span id="summary">{`${rows.filter((item) => item.Status === "pending").length} pending · ${rows.filter((item) => item.Status === "active").length} active on this page`}</span>
-          </>
+          )
         }
       >
-        <RecordGroup variant="list" id="items" aria-label="Recorded memory">
-          {!matching.length && (
-            <EmptyState
-              icon={Brain}
-              size="compact"
-              title={
-                rows.length
-                  ? "No matching items on this page."
-                  : "No memory items in this target."
-              }
-              sub={
-                rows.length
-                  ? "Clear the search and filters."
-                  : "Use Add memory above to save a fact."
-              }
-            />
-          )}
-          {matching.map((item) => (
-            <ListRow
-              key={item.ID}
-              data-memory-id={item.ID}
-              data-status={item.Status}
-            >
-              <RecordBody>{item.Content}</RecordBody>
-              <Disclosure
+        {feedback}
+        {page && (
+          <RecordGroup variant="list" id="items" aria-label="Recorded memory">
+            {!matching.length && (
+              <EmptyState
+                icon={Brain}
+                size="compact"
                 title={
-                  <RecordMeta>
-                    <span>Record details</span>
-                    <Badge
-                      tone={item.Status === "pending" ? "warning" : "neutral"}
-                    >
-                      {item.Status === "pending" ? "Pending review" : "Active"}
-                    </Badge>
-                    {item.Pinned && <Badge>Pinned</Badge>}
-                  </RecordMeta>
+                  rows.length
+                    ? "No matching items on this page."
+                    : "No memory items in this target."
                 }
-                actions={
-                  <Toolbar label={`Actions for ${item.ID}`}>
-                    {item.Status === "pending" ? (
-                      <>
-                        <Button
-                          variant="soft"
-                          size="md"
-                          disabled={disabled}
-                          onClick={() =>
-                            command("flame.memory/review.v1", {
-                              ID: item.ID,
-                              Decision: "approve",
-                            })
-                          }
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          variant="wash"
-                          tone="negative"
-                          size="md"
-                          disabled={disabled}
-                          onClick={() =>
-                            command("flame.memory/review.v1", {
-                              ID: item.ID,
-                              Decision: "reject",
-                            })
-                          }
-                        >
-                          Reject
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button
-                          variant="soft"
-                          size="md"
-                          disabled={disabled || authoring}
-                          onClick={(event) => edit(item, event.currentTarget)}
-                        >
-                          Edit
-                        </Button>
-                        <ActionMenu
-                          label={`More actions for ${item.ID}`}
-                          disabled={disabled}
-                          items={[
-                            {
-                              label: item.Pinned ? "Unpin" : "Pin",
-                              onSelect: () =>
-                                command("flame.memory/update.v1", {
-                                  ID: item.ID,
-                                  Pinned: !item.Pinned,
-                                }),
-                            },
-                            {
-                              label: "Delete",
-                              tone: "negative",
-                              disabled: authoring,
-                              onSelect: (opener) => remove(item, opener),
-                            },
-                          ]}
-                        />
-                      </>
-                    )}
-                  </Toolbar>
+                sub={
+                  rows.length
+                    ? "Clear the search and filters."
+                    : "Use Add memory above to save a fact."
                 }
+              />
+            )}
+            {matching.map((item) => (
+              <ListRow
+                key={item.ID}
+                data-memory-id={item.ID}
+                data-status={item.Status}
               >
-                <Facts
-                  values={[
-                    ["ID", item.ID],
-                    ["Scope", item.Scope],
-                    [
-                      "Origin",
-                      item.Origin === "auto" ? "Mined" : "User authored",
-                    ],
-                    ["Source Session", item.SessionID || undefined],
-                    ["Day", item.Day || undefined],
-                  ]}
-                />
-              </Disclosure>
-            </ListRow>
-          ))}
-        </RecordGroup>
+                <RecordBody>{item.Content}</RecordBody>
+                <Disclosure
+                  title={
+                    <RecordMeta>
+                      <span>Record details</span>
+                      <Badge
+                        tone={item.Status === "pending" ? "warning" : "neutral"}
+                      >
+                        {item.Status === "pending"
+                          ? "Pending review"
+                          : "Active"}
+                      </Badge>
+                      {item.Pinned && <Badge>Pinned</Badge>}
+                    </RecordMeta>
+                  }
+                  actions={
+                    <Toolbar label={`Actions for ${item.ID}`}>
+                      {item.Status === "pending" ? (
+                        <>
+                          <Button
+                            variant="soft"
+                            size="md"
+                            disabled={disabled}
+                            onClick={() =>
+                              command(
+                                "flame.memory/review.v1",
+                                { ID: item.ID, Decision: "approve" },
+                                `Approve ${item.ID}`,
+                              )
+                            }
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            variant="wash"
+                            tone="negative"
+                            size="md"
+                            disabled={disabled}
+                            onClick={() =>
+                              command(
+                                "flame.memory/review.v1",
+                                { ID: item.ID, Decision: "reject" },
+                                `Reject ${item.ID}`,
+                              )
+                            }
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="soft"
+                            size="md"
+                            disabled={disabled || authoring}
+                            onClick={(event) => edit(item, event.currentTarget)}
+                          >
+                            Edit
+                          </Button>
+                          <ActionMenu
+                            label={`More actions for ${item.ID}`}
+                            disabled={disabled}
+                            items={[
+                              {
+                                label: item.Pinned ? "Unpin" : "Pin",
+                                onSelect: () =>
+                                  command(
+                                    "flame.memory/update.v1",
+                                    { ID: item.ID, Pinned: !item.Pinned },
+                                    `${item.Pinned ? "Unpin" : "Pin"} ${item.ID}`,
+                                  ),
+                              },
+                              {
+                                label: "Delete",
+                                tone: "negative",
+                                disabled: authoring,
+                                onSelect: (opener) => remove(item, opener),
+                              },
+                            ]}
+                          />
+                        </>
+                      )}
+                    </Toolbar>
+                  }
+                >
+                  <Facts
+                    values={[
+                      ["ID", item.ID],
+                      ["Scope", item.Scope],
+                      [
+                        "Origin",
+                        item.Origin === "auto" ? "Mined" : "User authored",
+                      ],
+                      ["Source Session", item.SessionID || undefined],
+                      ["Day", item.Day || undefined],
+                    ]}
+                  />
+                </Disclosure>
+              </ListRow>
+            ))}
+          </RecordGroup>
+        )}
       </PanelSection>
     </>
   );
@@ -236,7 +258,59 @@ type Command = {
   promise: MutationPromise<unknown>;
   // Updates also pin independent records, so the method cannot identify the submitting form.
   source: "editor" | "record";
+  label: string;
 };
+type Feedback = {
+  label: string;
+  state: "submitting" | "unknown" | "refused" | "confirmed";
+  detail?: string;
+};
+
+function MemoryFeedback({
+  feedback,
+  original,
+  pending,
+  reconcile,
+}: {
+  feedback?: Feedback;
+  original?: Command;
+  pending: boolean;
+  reconcile(): void;
+}) {
+  if (!feedback && !original) return null;
+  return (
+    <RecordGroup>
+      <RecordGroup role={feedback?.state === "refused" ? "alert" : "status"}>
+        <RecordBody>
+          {feedback &&
+            `${feedback.label} · ${
+              feedback.state === "submitting"
+                ? "submitting…"
+                : feedback.state === "unknown"
+                  ? "confirmation unknown. Check the original result before submitting another change."
+                  : feedback.state === "refused"
+                    ? "refused."
+                    : "confirmed."
+            }`}
+        </RecordBody>
+        {feedback?.detail && <RecordBody>{feedback.detail}</RecordBody>}
+      </RecordGroup>
+      {feedback?.state === "refused" && (
+        <Metadata>Review the recorded result, then try again.</Metadata>
+      )}
+      {original && (
+        <Toolbar label="Original Memory command">
+          <Metadata>
+            Original command: {original.promise.idempotencyKey}
+          </Metadata>
+          <Button disabled={pending} onClick={reconcile}>
+            Check original result
+          </Button>
+        </Toolbar>
+      )}
+    </RecordGroup>
+  );
+}
 
 export function Memory({ context }: { context: ComponentContext }) {
   const operations = useMemo(() => {
@@ -263,12 +337,17 @@ export function Memory({ context }: { context: ComponentContext }) {
   const searchElement = useRef<HTMLElement>(null);
   const editOpener = edit?.opener;
   const resolveOpener = useCallback(
-    () => (editOpener?.isConnected ? editOpener : searchElement.current),
+    () =>
+      editOpener?.isConnected &&
+      !editOpener.matches(":disabled, [aria-disabled='true']")
+        ? editOpener
+        : searchElement.current,
     [editOpener],
   );
   const [pending, setPending] = useState(false);
   const [unknown, setUnknown] = useState<Command>();
-  const [message, setMessage] = useState<string>();
+  const [editorFeedback, setEditorFeedback] = useState<Feedback>();
+  const [recordFeedback, setRecordFeedback] = useState<Feedback>();
   const reading = useRef<AbortController>(undefined);
   const lifetime = useRef<AbortController>(undefined);
   const command = useRef<Command>(undefined);
@@ -367,7 +446,17 @@ export function Memory({ context }: { context: ComponentContext }) {
   }
   function beginEdit(next: Edit) {
     setFiltersOpen(false);
+    setEditorFeedback(undefined);
     setEdit(next);
+  }
+  function report(
+    original: Command,
+    state: Feedback["state"],
+    detail?: string,
+  ) {
+    const update =
+      original.source === "editor" ? setEditorFeedback : setRecordFeedback;
+    update({ label: original.label, state, detail });
   }
   function observerSignal(): AbortSignal | undefined {
     const owner = lifetime.current;
@@ -378,26 +467,29 @@ export function Memory({ context }: { context: ComponentContext }) {
     if (observing.current) return;
     observing.current = true;
     setPending(true);
-    setMessage(undefined);
+    report(original, "submitting");
     try {
       await original.promise;
       if (owner.aborted) return;
       command.current = undefined;
       setUnknown(undefined);
-      if (original.source === "editor") setEdit(undefined);
-      setMessage("Memory change saved.");
-      await load(owner);
+      if (original.source === "editor") {
+        setEdit(undefined);
+        setEditorFeedback(undefined);
+      }
+      setRecordFeedback({ label: original.label, state: "confirmed" });
+      void load(owner);
     } catch (error) {
       if (owner.aborted) return;
       if (mutationSettlementIsUnknown(error)) {
         setUnknown(() => original);
-        setMessage(
-          "Confirmation is unknown. Check this original command before submitting another change.",
-        );
+        report(original, "unknown");
       } else {
         command.current = undefined;
         setUnknown(undefined);
-        setMessage(
+        report(
+          original,
+          "refused",
           error instanceof Error ? error.message : "The change was refused.",
         );
       }
@@ -409,21 +501,31 @@ export function Memory({ context }: { context: ComponentContext }) {
   function change<K extends MutationName>(
     method: K,
     input: MethodInputs[K],
+    label: string,
     source: Command["source"] = "record",
   ) {
     const owner = observerSignal();
     if (!owner || command.current || observing.current || cwd === undefined)
       return;
     try {
-      const original = { promise: operations.command(method, input), source };
+      const original = {
+        promise: operations.command(method, input),
+        source,
+        label,
+      };
       command.current = original;
       void observe(original, owner);
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "The change could not be submitted.",
-      );
+      const update =
+        source === "editor" ? setEditorFeedback : setRecordFeedback;
+      update({
+        label,
+        state: "refused",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "The change could not be submitted.",
+      });
     }
   }
   function reconcile() {
@@ -437,7 +539,9 @@ export function Memory({ context }: { context: ComponentContext }) {
       command.current = attempt;
       void observe(attempt, owner);
     } catch (error) {
-      setMessage(
+      report(
+        unknown,
+        "unknown",
         error instanceof Error
           ? error.message
           : "The original result could not be checked.",
@@ -447,6 +551,19 @@ export function Memory({ context }: { context: ComponentContext }) {
   return (
     <Panel
       label="Agent memory"
+      onKeyDown={(event) => {
+        if (
+          event.key !== "Escape" ||
+          event.defaultPrevented ||
+          isImeKey(event.nativeEvent) ||
+          !edit
+        )
+          return;
+        // This non-modal task keeps independent catalog actions available.
+        event.preventDefault();
+        event.stopPropagation();
+        if (!locked) setEdit(undefined);
+      }}
       header={
         <PanelHeader
           size="md"
@@ -506,6 +623,8 @@ export function Memory({ context }: { context: ComponentContext }) {
                 if (edit || command.current || observing.current) return;
                 setSearch("");
                 clearFilters();
+                setEditorFeedback(undefined);
+                setRecordFeedback(undefined);
                 setScope(value as Scope);
               }}
               disabled={locked || Boolean(edit)}
@@ -574,24 +693,25 @@ export function Memory({ context }: { context: ComponentContext }) {
     >
       {read.loading && <p role="status">Reading recorded memory…</p>}
       {read.error && <p role="alert">{read.error}</p>}
-      {message && <p role="status">{message}</p>}
-      {unknown && (
-        <Toolbar label="Original Memory command">
-          <Metadata>
-            Original command: {unknown.promise.idempotencyKey}
-          </Metadata>
-          <Button disabled={pending} onClick={reconcile}>
-            Check original result
-          </Button>
-        </Toolbar>
-      )}
       {edit?.type === "delete" ? (
         <RecordForm aria-label="Confirm memory deletion" opener={resolveOpener}>
           <RecordTitle>Delete this memory?</RecordTitle>
+          <RecordMeta>
+            <span>
+              {edit.item.Scope === "project" ? "Project memory" : "User memory"}
+            </span>
+            <span>{edit.item.ID}</span>
+          </RecordMeta>
           <RecordBody>{edit.item.Content}</RecordBody>
           <Metadata>
             This memory will no longer be available to the agent.
           </Metadata>
+          <MemoryFeedback
+            feedback={editorFeedback}
+            original={unknown?.source === "editor" ? unknown : undefined}
+            pending={pending}
+            reconcile={reconcile}
+          />
           <FormActions label="Memory deletion confirmation">
             <Button
               variant="ghost"
@@ -607,7 +727,12 @@ export function Memory({ context }: { context: ComponentContext }) {
               tone="negative"
               disabled={locked}
               onClick={() =>
-                change("flame.memory/delete.v1", { ID: edit.item.ID }, "editor")
+                change(
+                  "flame.memory/delete.v1",
+                  { ID: edit.item.ID },
+                  `Delete ${edit.item.ID}`,
+                  "editor",
+                )
               }
             >
               Delete memory
@@ -622,6 +747,12 @@ export function Memory({ context }: { context: ComponentContext }) {
           <RecordTitle>
             {edit.type === "add" ? "Add memory" : "Edit memory"}
           </RecordTitle>
+          <RecordMeta>
+            <span>
+              {scope === "project" ? "Project memory" : "User memory"}
+            </span>
+            {edit.type === "update" && <span>{edit.item.ID}</span>}
+          </RecordMeta>
           <FormField label="Memory content">
             <TextArea
               aria-label="Memory content"
@@ -635,6 +766,12 @@ export function Memory({ context }: { context: ComponentContext }) {
               }
             />
           </FormField>
+          <MemoryFeedback
+            feedback={editorFeedback}
+            original={unknown?.source === "editor" ? unknown : undefined}
+            pending={pending}
+            reconcile={reconcile}
+          />
           <FormActions label="Save memory content">
             <Button
               disabled={locked}
@@ -660,6 +797,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                         CWD: cwd!,
                         Content: edit.content.trim(),
                       },
+                      `Add ${scope} memory`,
                       "editor",
                     )
                   : change(
@@ -668,6 +806,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                         ID: edit.item.ID,
                         Content: edit.content.trim(),
                       },
+                      `Edit ${edit.item.ID}`,
                       "editor",
                     )
               }
@@ -677,14 +816,22 @@ export function Memory({ context }: { context: ComponentContext }) {
           </FormActions>
         </RecordForm>
       ) : null}
-      {current && (
+      {(current || recordFeedback || unknown?.source === "record") && (
         <>
           <MemoryReport
-            page={current.page}
+            page={current?.page}
             search={search}
             status={status}
             origin={origin}
             pinned={pinned}
+            feedback={
+              <MemoryFeedback
+                feedback={recordFeedback}
+                original={unknown?.source === "record" ? unknown : undefined}
+                pending={pending}
+                reconcile={reconcile}
+              />
+            }
             authoring={Boolean(edit)}
             disabled={locked || read.loading || Boolean(read.error)}
             edit={(item, opener) => {
@@ -704,40 +851,44 @@ export function Memory({ context }: { context: ComponentContext }) {
             }}
             command={change}
           />
-          {(current.cursors.length > 1 || Boolean(current.page.NextCursor)) && (
-            <PanelFooter>
-              <Metadata>
-                Page {current.cursors.length} · {current.page.Rows.length}{" "}
-                recorded items
-              </Metadata>{" "}
-              <Toolbar label="Memory pages">
-                <Button
-                  disabled={
-                    read.loading || pending || current.cursors.length === 1
-                  }
-                  onClick={() => {
-                    const owner = observerSignal();
-                    if (owner) void load(owner, current.cursors.slice(0, -1));
-                  }}
-                >
-                  Previous page
-                </Button>
-                <Button
-                  disabled={read.loading || pending || !current.page.NextCursor}
-                  onClick={() => {
-                    const owner = observerSignal();
-                    if (owner)
-                      void load(owner, [
-                        ...current.cursors,
-                        current.page.NextCursor,
-                      ]);
-                  }}
-                >
-                  Next page
-                </Button>
-              </Toolbar>{" "}
-            </PanelFooter>
-          )}
+          {current &&
+            (current.cursors.length > 1 ||
+              Boolean(current.page.NextCursor)) && (
+              <PanelFooter>
+                <Metadata>
+                  Page {current.cursors.length} · {current.page.Rows.length}{" "}
+                  recorded items
+                </Metadata>{" "}
+                <Toolbar label="Memory pages">
+                  <Button
+                    disabled={
+                      read.loading || pending || current.cursors.length === 1
+                    }
+                    onClick={() => {
+                      const owner = observerSignal();
+                      if (owner) void load(owner, current.cursors.slice(0, -1));
+                    }}
+                  >
+                    Previous page
+                  </Button>
+                  <Button
+                    disabled={
+                      read.loading || pending || !current.page.NextCursor
+                    }
+                    onClick={() => {
+                      const owner = observerSignal();
+                      if (owner)
+                        void load(owner, [
+                          ...current.cursors,
+                          current.page.NextCursor,
+                        ]);
+                    }}
+                  >
+                    Next page
+                  </Button>
+                </Toolbar>{" "}
+              </PanelFooter>
+            )}
         </>
       )}
     </Panel>
