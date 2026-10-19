@@ -31,7 +31,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := composition.PrepareContext(ctx, bindings, selection, request)
+			result, err := composition.PrepareContext(ctx, bindings, selection, request, []chat.Message{chat.NewUserMessage(chat.NewTextPart("host-owned catalog tail"))})
 			if mode == "valid" {
 				if err != nil || len(result) != 2 || result[1].Text() != "previous contributions: 0" {
 					t.Fatalf("context result: %+v, %v", result, err)
@@ -43,7 +43,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 				t.Fatal("contributor changed caller-owned request")
 			}
 			store.snapshot.Installation.Disable()
-			if _, err := composition.PrepareContext(ctx, bindings, selection, request); err == nil {
+			if _, err := composition.PrepareContext(ctx, bindings, selection, request, nil); err == nil {
 				t.Fatal("withdrawn context contributor executed")
 			}
 		})
@@ -61,12 +61,12 @@ func TestInstalledModelContextComposesInCapturedOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	request, _ := chat.NewRequest(chat.NewSystemMessage("original instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
-	result, err := composition.PrepareContext(ctx, bindings, selection, request)
+	result, err := composition.PrepareContext(ctx, bindings, selection, request, nil)
 	if err != nil || len(result) != 4 || result[1].Text() != "previous contributions: 0" || result[3].Text() != "previous contributions: 1" {
 		t.Fatalf("declared context order lost: %+v %v", result, err)
 	}
 	bindings[1].Export = "replaced"
-	if _, err := composition.PrepareContext(ctx, bindings, selection, request); err == nil {
+	if _, err := composition.PrepareContext(ctx, bindings, selection, request, nil); err == nil {
 		t.Fatal("changed captured export was admitted")
 	}
 }
@@ -90,6 +90,9 @@ func installedContextFixture(t *testing.T, mode string) (*CallComposition, []plu
 			}
 			if err := command.Input.Validate(); err != nil {
 				return pluginsdk.ModelContextResult{}, err
+			}
+			if command.Input.UserMessage == nil || command.Input.UserMessage.Text() != "question" {
+				return pluginsdk.ModelContextResult{}, errors.New("host tail replaced the original user input")
 			}
 			if mode == "failure" {
 				return pluginsdk.ModelContextResult{}, errors.New("context unavailable")

@@ -1,0 +1,34 @@
+[
+  {
+    "name": "flame.knowledgebase/delete.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Delete a document and its index at the inspected revision.",
+    "input": "schema.json#/$defs/Method_flame_2eknowledgebase_2fdelete_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eknowledgebase_2fdelete_2ev1Output"
+  },
+  {
+    "name": "flame.knowledgebase/import.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document.",
+    "input": "schema.json#/$defs/Method_flame_2eknowledgebase_2fimport_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eknowledgebase_2fimport_2ev1Output"
+  },
+  {
+    "name": "flame.knowledgebase/list.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List indexed user documents and their revisions.",
+    "input": "schema.json#/$defs/Method_flame_2eknowledgebase_2flist_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eknowledgebase_2flist_2ev1Output"
+  },
+  {
+    "name": "flame.knowledgebase/search.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Retrieve cited chunks from indexed user documents through the configured embedding role.",
+    "input": "schema.json#/$defs/Method_flame_2eknowledgebase_2fsearch_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eknowledgebase_2fsearch_2ev1Output"
+  }
+]

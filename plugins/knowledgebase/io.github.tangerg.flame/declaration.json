@@ -1,0 +1,17 @@
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "contributions": [
+    {
+      "id": "knowledgebase-operations",
+      "server": "knowledgebase",
+      "export": "knowledgebase",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    },
+    {
+      "id": "knowledgebase-context",
+      "server": "knowledgebase",
+      "export": "context",
+      "contract": "io.github.tangerg.flame/contracts/context.generated.json"
+    }
+  ]
+}

@@ -94,7 +94,9 @@ func (c *contextCaptureComposition) ResolveContext(context.Context) ([]plugins.C
 func (*contextCaptureComposition) ValidateContext(context.Context, []plugins.ContributionBinding) error {
 	return nil
 }
-func (c *contextCaptureComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, request *chat.Request) ([]chat.Message, error) {
+func (c *contextCaptureComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, source *chat.Request, tail []chat.Message) ([]chat.Message, error) {
+	request := source.Clone()
+	request.Messages = append(request.Messages, tail...)
 	c.calls++
 	if executionctx.ModelCallsFromContext(ctx) == nil {
 		c.t.Error("context preparation has no original execution publisher")

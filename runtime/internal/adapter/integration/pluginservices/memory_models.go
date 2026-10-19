@@ -68,19 +68,20 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginsdk.Callbacks, sess
 	if err != nil {
 		return pluginsdk.CallbackRef{}, nil, err
 	}
-	embedding, err := pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginsdk.Command[[]string]) ([][]float32, error) {
+	embedding, err := pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginsdk.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
 		texts := command.Input
 		input, err := command.RequestInput()
 		if err != nil {
-			return nil, err
+			return pluginsdk.TextEmbeddings{}, err
 		}
 		if dependency.Missing(embed) || len(texts) == 0 || len(texts) > memorycontract.MaxEmbeddingTexts || int64(len(input.JSON())) > memorycontract.MaxEmbeddingInputBytes {
-			return nil, &capability.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
+			return pluginsdk.TextEmbeddings{}, &capability.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
 		}
 		if err := admission.admit(command.ID, "embedding", input); err != nil {
-			return nil, err
+			return pluginsdk.TextEmbeddings{}, err
 		}
-		return embed.Embed(ctx, texts)
+		vectors, err := embed.Embed(ctx, texts)
+		return pluginsdk.TextEmbeddings{Space: embed.ID(), Vectors: vectors}, err
 	})
 	if err != nil {
 		return pluginsdk.CallbackRef{}, nil, err

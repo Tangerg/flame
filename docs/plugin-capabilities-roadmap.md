@@ -46,11 +46,11 @@ model *selection* is a published contract a plugin may contribute; model
 - Model-facing tools: `RegisterTools`; inside a tool, `CallbackFromContext` →
   `ConnectCallback` → canonical RPC (`CallPlugin` to a declared dependency, core
   ops). Tool arg transformation: `ToolProposalContract`.
-- Context contribution: `ModelContextContract` (`flame.model-context.v1`).
+- Context contribution: `ModelContextContract` (`flame.model-context.v2`).
 - Model selection: `ModelSelectionContract` (`flame.model-selection.v1`).
 - Request transformation: `ModelInputContract`. Transparent observation:
   `ModelObserverContract`.
-- Embeddings: `flame.model/embed-texts.v1` (`NewTextEmbeddingCallback`,
+- Embeddings: `flame.model/embed-texts.v2` (`NewTextEmbeddingCallback`,
   `CallTextEmbedding`). Independent model exchange: `flame.model/selected-call.v1`
   / `selected-stream.v1` (`CallSelectedModel`, `StreamSelectedModel`).
 - Accept a durable Run from a backend: the schedules pattern (canonical RPC).

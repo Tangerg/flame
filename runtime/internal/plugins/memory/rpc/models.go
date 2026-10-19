@@ -43,5 +43,12 @@ func (r RemoteModels) Complete(ctx context.Context, prompt Prompt) (string, erro
 }
 func (r RemoteModels) ID() string { return r.Space }
 func (r RemoteModels) Embed(ctx context.Context, texts []string) ([][]float32, error) {
-	return pluginsdk.CallTextEmbedding(ctx, r.Grant, uuid.NewString(), texts)
+	result, err := pluginsdk.CallTextEmbedding(ctx, r.Grant, uuid.NewString(), texts)
+	if err != nil {
+		return nil, err
+	}
+	if result.Space != r.Space {
+		return nil, errors.New("memory: embedding space differs from the captured model")
+	}
+	return result.Vectors, nil
 }

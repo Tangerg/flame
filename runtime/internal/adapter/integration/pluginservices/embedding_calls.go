@@ -17,20 +17,21 @@ func EmbeddingRoleCallback(resolve func(context.Context) (models.TextEmbedder, e
 	if resolve == nil {
 		return pluginsdk.Callback{}, errors.New("embedding call: role resolver is required")
 	}
-	return pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginsdk.Command[[]string]) ([][]float32, error) {
+	return pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginsdk.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
 		if command.ID == executionctx.InvocationOwner(ctx) {
-			return nil, errors.New("embedding call: independent invocation cannot claim its executing owner identity")
+			return pluginsdk.TextEmbeddings{}, errors.New("embedding call: independent invocation cannot claim its executing owner identity")
 		}
 		model, err := resolve(ctx)
 		if err != nil {
-			return nil, err
+			return pluginsdk.TextEmbeddings{}, err
 		}
 		if model == nil {
-			return nil, &capability.Refusal{Code: "model_role_unconfigured", Message: "embedding call: role is not configured"}
+			return pluginsdk.TextEmbeddings{}, &capability.Refusal{Code: "model_role_unconfigured", Message: "embedding call: role is not configured"}
 		}
 		if dependency.Missing(model) {
-			return nil, errors.New("embedding call: resolved role is typed nil")
+			return pluginsdk.TextEmbeddings{}, errors.New("embedding call: resolved role is typed nil")
 		}
-		return model.Embed(ctx, command.Input)
+		vectors, err := model.Embed(ctx, command.Input)
+		return pluginsdk.TextEmbeddings{Space: model.ID(), Vectors: vectors}, err
 	})
 }

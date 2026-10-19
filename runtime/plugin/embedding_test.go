@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"errors"
+	"math"
 	"slices"
 	"sync/atomic"
 	"testing"
@@ -26,7 +27,7 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 		t.Fatal(err)
 	}
 	var calls atomic.Int32
-	callback, err := NewTextEmbeddingCallback(func(ctx context.Context, command Command[[]string]) ([][]float32, error) {
+	callback, err := NewTextEmbeddingCallback(func(ctx context.Context, command Command[[]string]) (TextEmbeddings, error) {
 		invocation, err := InvocationFromContext(ctx)
 		if err != nil || invocation.ID != command.ID || invocation.Origin != owner.Origin || invocation.Parent != owner.ID || invocation.Target != (capability.Target{Scope: "call", Reference: command.ID}) {
 			t.Errorf("embedding changed original ownership: %+v, %v", invocation, err)
@@ -36,7 +37,7 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 			t.Errorf("embedding changed admitted input: %+v, %v", command, err)
 		}
 		calls.Add(1)
-		return [][]float32{{1, 2}}, nil
+		return TextEmbeddings{Space: "captured-space", Vectors: [][]float32{{1, 2}}}, nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -48,7 +49,7 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 	defer release()
 	for _, id := range []string{"first", "second", "third"} {
 		vectors, err := CallTextEmbedding(t.Context(), ref, id, []string{"captured text"})
-		if err != nil || len(vectors) != 1 || !slices.Equal(vectors[0], []float32{1, 2}) {
+		if err != nil || vectors.Space != "captured-space" || len(vectors.Vectors) != 1 || !slices.Equal(vectors.Vectors[0], []float32{1, 2}) {
 			t.Fatalf("exchange %s: %+v, %v", id, vectors, err)
 		}
 	}
@@ -72,7 +73,9 @@ func TestTextEmbeddingCallbackRejectsMalformedCorrespondence(t *testing.T) {
 		callbacks := NewCallbacks()
 		session := new(sdk.ClientSession)
 		callbacks.AdmitSession(session)
-		callback, err := NewTextEmbeddingCallback(func(context.Context, Command[[]string]) ([][]float32, error) { return vectors, nil })
+		callback, err := NewTextEmbeddingCallback(func(context.Context, Command[[]string]) (TextEmbeddings, error) {
+			return TextEmbeddings{Space: "captured-space", Vectors: vectors}, nil
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -87,6 +90,18 @@ func TestTextEmbeddingCallbackRejectsMalformedCorrespondence(t *testing.T) {
 		}
 		if callErr == nil {
 			t.Fatalf("malformed vectors became success: %+v", vectors)
+		}
+	}
+}
+
+func TestTextEmbeddingResultRequiresItsActualSpaceAndFiniteVectors(t *testing.T) {
+	for _, result := range []TextEmbeddings{
+		{Vectors: [][]float32{{1}}},
+		{Space: "space", Vectors: [][]float32{{float32(math.Inf(1))}}},
+		{Space: "space", Vectors: [][]float32{{float32(math.NaN())}}},
+	} {
+		if err := validateTextEmbeddings([]string{"text"}, result); err == nil {
+			t.Fatalf("unidentified or non-finite result admitted: %+v", result)
 		}
 	}
 }

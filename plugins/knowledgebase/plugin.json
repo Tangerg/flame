@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.knowledgebase",
+  "version": "1.0.0",
+  "description": "Indexes user documents in a private store and retrieves cited chunks through the configured embedding role.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "declaration": "io.github.tangerg.flame/declaration.json"
+    }
+  }
+}

@@ -14,6 +14,8 @@ type ModelContextRequest struct {
 	Provider string       `json:"provider"`
 	Model    string       `json:"model"`
 	Request  chat.Request `json:"request"`
+	// Host-authored user-role trailers cannot identify the original caller input.
+	UserMessage *chat.Message `json:"userMessage,omitzero"`
 }
 
 // ModelContextResult supplies additional instructions/retrieval material. The
@@ -23,7 +25,7 @@ type ModelContextResult struct {
 }
 
 func ModelContextMethod() (*Method[ModelContextRequest, ModelContextResult], error) {
-	return NewMethod[ModelContextRequest, ModelContextResult](MethodConfig{Name: "flame.model-context/contribute.v1", Kind: capability.Query, Target: "call", Description: "Contribute additional system context before the captured model request's capacity admission."})
+	return NewMethod[ModelContextRequest, ModelContextResult](MethodConfig{Name: "flame.model-context/contribute.v2", Kind: capability.Query, Target: "call", Description: "Contribute additional system context using the captured request and its original user input before capacity admission."})
 }
 
 // ModelContextContract orders independent context contributions before the final
@@ -37,7 +39,7 @@ var modelContextContract = sync.OnceValues(func() (*capability.Contract, error) 
 	if err != nil {
 		return nil, err
 	}
-	return capability.New(capability.Config{Reference: "flame.model-context.v1", Composition: capability.Decoration, Scope: "call"}, method.Descriptor())
+	return capability.New(capability.Config{Reference: "flame.model-context.v2", Composition: capability.Decoration, Scope: "call"}, method.Descriptor())
 })
 
 func (r ModelContextResult) Validate() error {
@@ -55,6 +57,14 @@ func (r ModelContextResult) Validate() error {
 func (r ModelContextRequest) Validate() error {
 	if r.Provider == "" || r.Model == "" {
 		return errors.New("model context: captured provider and model are required")
+	}
+	if r.UserMessage != nil {
+		if err := r.UserMessage.Validate(); err != nil {
+			return err
+		}
+		if r.UserMessage.Role != chat.RoleUser {
+			return errors.New("model context: original user input must have the user role")
+		}
 	}
 	return r.Request.Validate()
 }

@@ -25,6 +25,9 @@ func TestModelContextContractAdmitsOnlyAttributedRequestsAndSystemMaterial(t *te
 	if err := (ModelContextRequest{Request: *request}).Validate(); err == nil {
 		t.Fatal("uncaptured model admitted")
 	}
+	if err := (ModelContextRequest{Provider: "provider", Model: "model", Request: *request, UserMessage: new(chat.NewSystemMessage("forged source"))}).Validate(); err == nil {
+		t.Fatal("non-user input projection admitted")
+	}
 	if err := (ModelContextResult{Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("forged input"))}}).Validate(); err == nil {
 		t.Fatal("contributor forged authored conversation")
 	}

@@ -133,8 +133,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		if err != nil {
 			return nil, err
 		}
-		candidate.Messages = append(candidate.Messages, cloneChatMessages(tail)...)
-		material, err = i.session.callComposition.PrepareContext(calling, i.session.modelContexts, i.start.ModelSelection, candidate)
+		material, err = i.session.callComposition.PrepareContext(calling, i.session.modelContexts, i.start.ModelSelection, candidate, tail)
 		if err != nil {
 			return nil, err
 		}

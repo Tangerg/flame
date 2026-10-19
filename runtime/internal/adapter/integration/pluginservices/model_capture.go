@@ -164,7 +164,7 @@ func (c *modelCapture) prepare(ctx context.Context, request *chat.Request) (*cha
 	if err := c.admit(request); err != nil {
 		return nil, err
 	}
-	material, err := c.owner.PrepareContext(ctx, c.contexts, c.resolved.Selection(), request)
+	material, err := c.owner.PrepareContext(ctx, c.contexts, c.resolved.Selection(), request, nil)
 	if err != nil {
 		return nil, err
 	}

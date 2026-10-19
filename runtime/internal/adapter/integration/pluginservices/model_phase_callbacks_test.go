@@ -81,7 +81,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 					case "selection":
 						_, cycle = composition.SelectModel(r.Context(), selection, request)
 					case "context":
-						_, cycle = composition.PrepareContext(r.Context(), bindings, selection, request)
+						_, cycle = composition.PrepareContext(r.Context(), bindings, selection, request, nil)
 					case "input":
 						_, cycle = composition.PrepareInput(r.Context(), bindings, selection, request)
 					}
@@ -183,7 +183,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 					if resolveErr != nil {
 						t.Fatal(resolveErr)
 					}
-					_, err = composition.PrepareContext(ctx, bindings, selection, request)
+					_, err = composition.PrepareContext(ctx, bindings, selection, request, nil)
 				case "input":
 					var resolveErr error
 					bindings, resolveErr = composition.ResolveInput(ctx)

@@ -471,12 +471,21 @@ The backend's existing MCP value/receipt envelopes are unchanged.
 
 ## Primary Interaction context composition
 
-`ModelContextContract` publishes the ordered `flame.model-context.v1` context
+`ModelContextContract` publishes the ordered `flame.model-context.v2` context
 contribution point. An installed backend registers `ModelContextMethod`, binds
 its declared capability export and returns `ModelContextResult`. The query
 receives the captured provider/model and the complete current Scope request;
 its invocation metadata identifies the original model call and parent effect.
 It has no command identity, execution continuation or model-routing authority.
+`userMessage` is the latest user message from the original caller's request,
+captured before the host appends transient material such as deferred-tool catalogs.
+It is absent when that source has no user message. Retrieval consumers use this
+projection instead of inferring authored input from the final request's last role.
+Earlier contributors cannot replace it.
+
+Context v2 replaces the former v1 method and contract without an adapter. Rebuild
+context backends and select the v2 composition explicitly. Finish waiting v1 work
+with its original build; captured bindings are not retargeted.
 
 Only valid system messages may be contributed. Later contributors see earlier
 material in the explicit captured order. Runtime validates exact installation,
@@ -704,9 +713,12 @@ narrower model/embedding grant and `ToolContext` as its own two-call policy; an
 ordinary backend never declares the Memory contract to reach the host.
 
 `TextEmbeddingMethod`, `NewTextEmbeddingCallback` and `CallTextEmbedding` publish
-`flame.model/embed-texts.v1` for a captured model. Input is a text array and output
-is its corresponding float32 vector array. Empty, missing and inconsistent vector
-sets are refused. This is an explicit vector projection; the provider adapter
+`flame.model/embed-texts.v2` for a captured model. Input is a text array; output is
+`TextEmbeddings`, containing `space` and its corresponding float32 `vectors`.
+The model adapter supplies the actual provider/model/endpoint-derived space in the
+same exchange. A plugin never infers it from dimensions or a separately read role.
+Empty, missing, non-finite and inconsistent vector sets are refused. This is an
+explicit vector projection; the provider adapter
 retains its complete response, usage and endpoint evidence. Each physical exchange
 has its own original child identity and retains the caller's origin/parent.
 On ordinary installed Runtime callbacks, this method resolves the configured
@@ -718,10 +730,11 @@ calling or executing owner's logical identity.
 Call admission, resource budgets and workflow counts belong to its caller; the
 shared SDK has no Memory-specific two-call limit and never retries provider work.
 
-The former private Memory scope header and embedding method are removed. Rebuild
-Memory backend and Runtime together for the current public metadata/methods.
-There is no legacy header/method reader. Private databases and command receipts
-keep their formats. Other SDK contracts and the Core wire epoch are unchanged.
+The former vector-only v1 method is removed. `CallTextEmbedding` and
+`NewTextEmbeddingCallback` now return `TextEmbeddings`; external authors must update
+their handlers and consume `Vectors` with its `Space`. Rebuild Memory and Runtime
+together. There is no legacy method reader. Private databases and command receipts
+keep their formats. The Core wire epoch is unchanged.
 
 ## Private SQLite receipts
 

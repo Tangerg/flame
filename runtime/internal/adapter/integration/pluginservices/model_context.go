@@ -45,10 +45,18 @@ func (o *CallComposition) validateCompositionBindings(ctx context.Context, contr
 
 // PrepareContext executes only captured input contributors. Their output remains
 // request context, never authored conversation, model selection or Tool identity.
-func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, request *chat.Request) ([]chat.Message, error) {
-	if request == nil {
+func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, source *chat.Request, tail []chat.Message) ([]chat.Message, error) {
+	if source == nil {
 		return nil, errors.New("model context: request is required")
 	}
+	request := source.Clone()
+	var userMessage *chat.Message
+	for _, message := range request.Messages {
+		if message.Role == chat.RoleUser {
+			userMessage = new(message.Clone())
+		}
+	}
+	request.Messages = append(request.Messages, cloneContextMessages(tail)...)
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
@@ -88,7 +96,7 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 		if err != nil {
 			return nil, err
 		}
-		input, err := jsoninput.Encode(pluginsdk.ModelContextRequest{Provider: selection.Provider(), Model: selection.Model(), Request: *frozen.Clone()})
+		input, err := jsoninput.Encode(pluginsdk.ModelContextRequest{Provider: selection.Provider(), Model: selection.Model(), Request: *frozen.Clone(), UserMessage: userMessage})
 		if err != nil {
 			return nil, err
 		}

@@ -1,6 +1,8 @@
 # First-party portable packages
 
-Memory and Schedules are complete optional backends. Both use ordinary public components; MCP model Tools and human Runtime commands
+Memory, Schedules and Knowledge base are complete optional backends. Memory and
+Schedules use ordinary public components; Knowledge base is a backend-only package.
+MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
 
 The Flame namespace in root plugin.json references one local declaration file.
@@ -48,6 +50,8 @@ node plugins/build.mjs --os darwin --arch arm64 --output /absolute/new/packages
 The output directory must not exist. Supported targets are Darwin, Linux and
 Windows on amd64 or arm64. The output contains the complete first-party catalog,
 including all workspace pages and renderers and compiled Memory/Schedules backends.
+The same build discovers and compiles the Knowledge base backend and copies its
+generated operations/context contracts.
 Memory/Schedules package namespaces also contain canonical contracts generated
 from the typed methods registered by their actual backends. Run
 `go generate ./internal/plugins/memory/rpc ./internal/plugins/schedules/rpc`
@@ -63,10 +67,12 @@ installs dependencies. Executables are shipped in the admitted package. `--repla
 is for replacing an owned build output after the new distribution has been built.
 
 See [Memory](memory/README.md) and [Schedules](schedules/README.md) for fact owners
-and lifecycle contracts. Other packages contain only their declared content or presentation resources.
+and lifecycle contracts, and [Knowledge base](knowledgebase/README.md) for document
+publication and retrieval. Other packages contain only their declared content or presentation resources.
 
 Backend source is compiled from `runtime/internal/plugins/memory` and
-`runtime/internal/plugins/schedules` inside the local Runtime application module.
+`runtime/internal/plugins/schedules`, and from `runtime/internal/plugins/knowledgebase`
+inside the local Runtime application module.
 These are separate executables with private facts and process lifetimes, without
 separate published Go modules or first-party version resolution.
 

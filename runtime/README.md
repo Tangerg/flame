@@ -179,6 +179,13 @@ feature store. Memory publishes its read capacity and owns its maintenance budge
 Generic `plugins.dataChanged` invalidates reads without carrying business results
 or settling a command. `plugins.changed` describes installation lifecycle.
 
+Knowledge base is another ordinary backend with its own document revisions,
+chunk/vector index and private import receipts. Typed operations and MCP search
+share retrieval; context v2 supplies original user input separately from host
+trailers. Embedding v2 returns the actual vector space with its vectors. See
+[`Knowledge base`](../plugins/knowledgebase/README.md) and the public
+[`SDK contracts`](plugin/README.md) for use and coordinated rebuild requirements.
+
 ## Selection, composition and host callbacks
 
 Enablement and selection are independent. `plugins.listProviders` and

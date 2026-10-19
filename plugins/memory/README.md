@@ -30,7 +30,7 @@ before dispatch rather than being treated as an absent model role. The same rule
 applies to human search. Callback references travel only in invocation metadata,
 never in search or maintenance business input or durable routing/receipt records.
 
-Text embedding now uses the public SDK `flame.model/embed-texts.v1` callback.
+Text embedding now uses the public SDK `flame.model/embed-texts.v2` callback.
 Workspace and optional vector-space identity use `plugin.ToolContext`; callback
 credentials travel only in the existing public callback metadata. The private
 Memory scope codec and embedding method are deleted. Rebuild Runtime and this

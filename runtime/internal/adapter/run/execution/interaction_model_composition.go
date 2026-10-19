@@ -26,7 +26,7 @@ type InteractionCallComposition interface {
 	PrepareInput(context.Context, []plugins.ContributionBinding, modelchoice.Selection, *chat.Request) (*chat.Request, error)
 	ResolveContext(context.Context) ([]plugins.ContributionBinding, error)
 	ValidateContext(context.Context, []plugins.ContributionBinding) error
-	PrepareContext(context.Context, []plugins.ContributionBinding, modelchoice.Selection, *chat.Request) ([]chat.Message, error)
+	PrepareContext(context.Context, []plugins.ContributionBinding, modelchoice.Selection, *chat.Request, []chat.Message) ([]chat.Message, error)
 	Resolve(context.Context) ([]plugins.ContributionBinding, error)
 	Validate(context.Context, []plugins.ContributionBinding) error
 	HeldDependencies() []plugin.Dependency

@@ -1974,7 +1974,7 @@
         },
         {
           "name": "CallTextEmbedding",
-          "signature": "func(ctx context.Context, ref CallbackRef, id string, texts []string) ([][]float32, error)"
+          "signature": "func(ctx context.Context, ref CallbackRef, id string, texts []string) (TextEmbeddings, error)"
         },
         {
           "name": "CallbackFromContext",
@@ -2086,7 +2086,7 @@
         },
         {
           "name": "NewTextEmbeddingCallback",
-          "signature": "func(call func(context.Context, Command[[]string]) ([][]float32, error)) (Callback, error)"
+          "signature": "func(call func(context.Context, Command[[]string]) (TextEmbeddings, error)) (Callback, error)"
         },
         {
           "name": "NewToolReceipt",
@@ -2158,7 +2158,7 @@
         },
         {
           "name": "TextEmbeddingMethod",
-          "signature": "func() (*Method[[]string, [][]float32], error)"
+          "signature": "func() (*Method[[]string, TextEmbeddings], error)"
         },
         {
           "name": "ToolCommandID",
@@ -2564,6 +2564,11 @@
               "name": "Request",
               "type": "chat.Request",
               "tag": "json:\"request\""
+            },
+            {
+              "name": "UserMessage",
+              "type": "*chat.Message",
+              "tag": "json:\"userMessage,omitzero\""
             }
           ],
           "methods": [
@@ -2964,6 +2969,22 @@
             {
               "name": "StreamWithMetadata",
               "signature": "func(ctx context.Context, binding *Binding, callbacks *Callbacks, limits CallbackLimits, id string, input P, metadata mcp.ParamsBase) iter.Seq2[StreamValue[C, R], error]"
+            }
+          ]
+        },
+        {
+          "name": "TextEmbeddings",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Space",
+              "type": "string",
+              "tag": "json:\"space\""
+            },
+            {
+              "name": "Vectors",
+              "type": "[][]float32",
+              "tag": "json:\"vectors\""
             }
           ]
         },
