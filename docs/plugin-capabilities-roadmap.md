@@ -1,7 +1,7 @@
 # Plugin capabilities roadmap
 
 Forward-looking TODO for extending Flame's plugin line beyond Memory and Schedules.
-Knowledge base, GitHub and Model router are now implemented as ordinary first-party backends. The architecture refactor is covered
+Knowledge base, GitHub, Model router and Guardrails are now implemented as ordinary first-party backends. The architecture refactor is covered
 by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is about
 *which capabilities to build next as plugins, and in what order.*
 
@@ -14,9 +14,10 @@ by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is ab
   entry now receives the same call-scoped canonical host grant as its public
   `plugins.call` entry, through the single owner `Pool.OpenRPC` (commit
   `a15f2f9e4`). Memory keeps its own narrow model/embedding grant by design.
-- Five first-party backends: `runtime/internal/plugins/memory`,
+- Six first-party backends: `runtime/internal/plugins/memory`,
   `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase`,
-  `runtime/internal/plugins/github`, `runtime/internal/plugins/modelrouter`.
+  `runtime/internal/plugins/github`, `runtime/internal/plugins/modelrouter`,
+  `runtime/internal/plugins/guardrails`.
 - Examples: `examples/plugins/reviews` (backend + typed ops + MCP tools + a
   declared analyzer dependency + board UI; one analyzer business is exposed as
   *both* a typed query and the `analyze_review` Tool), `examples/plugins/composition`
@@ -72,7 +73,7 @@ model *selection* is a published contract a plugin may contribute; model
       UI command *and* model Tool" (the parity just closed in `a15f2f9e4`).
 - [x] **Model router.** A `ModelSelectionContract` contributor that picks
       provider/model per role/budget (cheap model for simple tasks).
-- [ ] **Guardrails / safety.** `ModelInputContract` (e.g. PII redaction) or
+- [x] **Guardrails / safety.** `ModelInputContract` (e.g. PII redaction) or
       `ModelObserverContract` (output classification). Transparent, no new core.
 
 ### Tier 2 — more UI, or needs a new mechanism
@@ -234,6 +235,26 @@ if its scope is genuinely ambiguous, surface it instead of guessing.
   Session preference and accepted retry after policy replacement. A shared Go
   cache lost compiled dependency files during one rerun; the final installed
   acceptance passed with a task-local GOCACHE, without clearing shared caches.
+- `22fe473ab` implements Guardrails through the existing input decoration contract.
+  A private policy admits at most 32 exact protected phrases and atomically owns
+  policy revision/command receipts. Decoded Scope JSON string tokens include
+  composed messages, Tool schemas, options and metadata; a match refuses before
+  physical dispatch. Allowed wire requests remain unchanged. Inspection returns
+  revision/count, refusals expose no protected value, and the backend retains no
+  inspected requests. Exact phrases are the declared scope; arbitrary PII,
+  binary media, application encodings and numeric classification are not inferred.
+  Provider dispatch, authored conversation, final budgets and accounting stay core.
+- Guardrails verification passed: Runtime build/vet, private policy and JSON
+  boundary tests, typed mutation/query/input entries with restart and command
+  replay, architecture gates and installed input composition. The installed
+  regression proves allowed work completes, protected work fails before provider
+  dispatch, original user history remains intact, and failure output discloses
+  no protected phrase. No new core mechanism or host callback was needed.
+- `31a228eb9` tightens model-router restoration: a missing rule list is corrupt,
+  rather than an empty pass-through policy. Guardrails applies the same ownership
+  distinction to its phrase list. Explicit empty arrays remain valid owner facts.
+  Model-router backend/domain regressions passed alongside the changed guardrail
+  packages; no unrelated broad suite was repeated.
 - Main's Memory UI commit `e339c70bf` is rebased into this worktree. Both `plugins`
   check and the complete desktop frontend check passed after this sync, including
   tests, published boundaries, resources and production bundle checks. No plugin
