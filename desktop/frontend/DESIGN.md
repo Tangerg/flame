@@ -286,6 +286,8 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
 
 - Message stream + composer both cap at **`--content-max`**, centered between the
   rails, with a `--reading-gutter` inset.
+- Paragraphs, lists and quotations cap their reading measure at `65ch` within
+  that column. Code, tables and media retain the full available width.
 - A turn is a caption line over a full-width body, not an avatar gutter beside a
   narrowed one: who is speaking is read once, the measure is inhabited for the
   whole turn, and a 38px gutter was taking it from every code block and table.

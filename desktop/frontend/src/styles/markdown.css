@@ -4,6 +4,7 @@
 }
 .md p.md-media-paragraph {
   text-align: left;
+  max-inline-size: none;
 }
 .md p.md-media-grid {
   display: flex;

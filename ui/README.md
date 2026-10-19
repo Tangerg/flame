@@ -138,7 +138,9 @@ plain-text clipboard owner. Input and output wells retain their own sunken surfa
 `DocumentBody` opts into the shared `data-prose` reading grammar: paragraph and
 heading rhythm, nested list markers, quotes, rules, emphasis, inline code and
 tables. Other semantic renderers use that same root marker while retaining their
-host's content measure and font size. `data-prose-level` records an authored
+host's content measure and font size. Paragraphs, lists and quotations cap their
+reading measure at `65ch` within that space, aligned to their text direction;
+media paragraphs can use the host's full width. `data-prose-level` records an authored
 heading level when the host nests its physical heading below a surrounding
 outline. The `inline-code` and `prose-table` data slots also supply those reading
 roles outside a complete prose root, including table lightboxes.
@@ -150,7 +152,9 @@ and actionable workspace file references, which mark themselves as the
 strengthens on hover; an anchor without a destination remains ordinary text.
 Emphasis and inline code inside a link anchor inherit the link color. A file
 reference also uses inline code's mono family and code size, without the code
-tint, so a path never reads larger than the code beside it. Captured documents
+tint, so a path never reads larger than the code beside it. Its text remains
+selectable within the surrounding prose while retaining button activation.
+Captured documents
 do not navigate: their link labels remain ordinary text, and a destination shown
 beside a label uses the muted `link-destination` slot.
 Prose color comes only from the host's accent roles: headings and inline code use
