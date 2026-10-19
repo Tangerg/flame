@@ -11,7 +11,7 @@ import {
 import { ARTIFACT_SURFACE } from "./artifact-surface";
 import { useCopyFeedback } from "./clipboard";
 import { IconButton } from "./icon-button";
-import { isImeKey } from "./keyboard";
+import { selectAllInReader } from "./reader-selection";
 import { color, leading, space, type, weight } from "./tokens.stylex";
 
 let wrapCode = false;
@@ -217,21 +217,7 @@ export function CodeBody({
       data-slot="code-body"
       data-focus-inset=""
       data-wrap={wrapped}
-      onKeyDown={(event) => {
-        if (
-          event.defaultPrevented ||
-          isImeKey(event.nativeEvent) ||
-          event.altKey ||
-          event.shiftKey ||
-          (!event.ctrlKey && !event.metaKey) ||
-          event.key.toLowerCase() !== "a"
-        )
-          return;
-        const selection = event.currentTarget.ownerDocument.getSelection();
-        if (!selection) return;
-        event.preventDefault();
-        selection.selectAllChildren(event.currentTarget);
-      }}
+      onKeyDown={selectAllInReader}
       {...stylex.props(
         styles.code,
         type.code,

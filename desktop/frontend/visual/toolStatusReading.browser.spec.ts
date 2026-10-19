@@ -125,12 +125,12 @@ test("search results omit absent snippets while preserving recorded empty lines"
   const finding = page
     .locator('[data-slot="recorded-result"]')
     .filter({ has: page.getByRole("search", { name: "Result search" }) });
-  const filteredRows = finding.locator('[data-slot="recorded-result-viewport"] > div');
+  const filteredRows = finding.locator('[data-slot="recorded-result-viewport"] > div > div');
   await page.getByRole("button", { name: /^Found files/ }).click();
   const files = page
     .locator('[data-slot="recorded-result"]')
     .filter({ hasText: "runtime/internal/session/store_test.go" });
-  const fileRows = files.locator('[data-slot="recorded-result-viewport"] > div');
+  const fileRows = files.locator('[data-slot="recorded-result-viewport"] > div > div');
   await expect(fileRows).toHaveCount(3);
   await expect(fileRows.nth(0).locator("pre")).toHaveCount(0);
   await expect(fileRows.nth(1).locator("pre")).toHaveText(
@@ -173,7 +173,7 @@ test("search results omit absent snippets while preserving recorded empty lines"
 
   await page.getByRole("button", { name: /^Searched the web/ }).click();
   const web = page.locator('[data-slot="recorded-result"]').filter({ hasText: "Recorded blank" });
-  const webRows = web.locator('[data-slot="recorded-result-viewport"] > div');
+  const webRows = web.locator('[data-slot="recorded-result-viewport"] > div > div');
   await expect(webRows).toHaveCount(3);
   await expect(webRows.nth(0).locator("p")).toHaveCount(0);
   await expect(webRows.nth(1).locator("p")).toHaveText(
@@ -192,7 +192,7 @@ test("search results omit absent snippets while preserving recorded empty lines"
   const source = page
     .locator('[data-slot="recorded-result"]')
     .filter({ hasText: "package session" });
-  const sourceRows = source.locator('[data-slot="recorded-result-viewport"] > div');
+  const sourceRows = source.locator('[data-slot="recorded-result-viewport"] > div > div');
   await expect(sourceRows).toHaveCount(6);
   await expect(sourceRows.nth(1).locator("pre")).toHaveText(" ");
   await expect(sourceRows.nth(1).locator("pre")).toBeVisible();

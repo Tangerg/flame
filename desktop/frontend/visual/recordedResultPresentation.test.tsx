@@ -378,3 +378,309 @@ it("continues paged result reading at the first newly revealed row through the f
   expect(screen.getByText("82 of 82 rows")).toBeTruthy();
   expect(screen.queryByRole("button", { name: /more matching rows/ })).toBeNull();
 });
+
+function selectAll(reader: HTMLElement, modifier: "metaKey" | "ctrlKey" = "metaKey") {
+  reader.focus();
+  return fireEvent.keyDown(reader, { key: "a", [modifier]: true });
+}
+
+function selectedRange() {
+  const selection = document.getSelection()!;
+  expect(selection.rangeCount).toBe(1);
+  return selection.getRangeAt(0);
+}
+
+function copyFrom(target: HTMLElement) {
+  const setData = vi.fn();
+  const proceeded = fireEvent.copy(target, { clipboardData: { setData } });
+  return { proceeded, setData };
+}
+
+function expandOutput(output: string) {
+  document.documentElement.style.setProperty("--leading-relaxed", "20px");
+  vi.spyOn(globalThis, "requestAnimationFrame").mockReturnValue(0);
+  render(
+    <>
+      <p>Surrounding narrative</p>
+      <RecordedResult context={capturedContext("shell", output)} />
+    </>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: /earlier lines/ }));
+  return screen.getByRole("region", { name: "Tool output" });
+}
+
+it("scopes Select All to the presented result rows, outside find and caption controls", () => {
+  const source = Array.from({ length: 82 }, (_, index) => `captured ${index}`).join("\n");
+  render(
+    <>
+      <p>Surrounding narrative</p>
+      <RecordedResult context={capturedContext("read", source)} />
+    </>,
+  );
+  const reader = screen.getByRole("region", { name: "Result" });
+  expect(selectAll(reader, "ctrlKey")).toBe(false);
+  let range = selectedRange();
+  expect(range.startContainer).toBe(reader);
+  expect(range.endContainer).toBe(reader);
+  expect(range.toString()).toContain("captured 39");
+  expect(range.toString()).not.toContain("captured 40");
+  expect(range.toString()).not.toContain("Surrounding narrative");
+  expect(range.intersectsNode(screen.getByRole("button", { name: "Find" }))).toBe(false);
+  expect(document.activeElement).toBe(reader);
+
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  const field = screen.getByRole("searchbox", { name: "Filter result" });
+  fireEvent.change(field, { target: { value: "captured 7" } });
+  expect(selectAll(reader)).toBe(false);
+  range = selectedRange();
+  expect(range.toString()).toContain("captured 79");
+  expect(range.toString()).not.toContain("captured 6");
+  expect(range.intersectsNode(field)).toBe(false);
+  expect(range.intersectsNode(screen.getByRole("button", { name: "Close find" }))).toBe(false);
+  document.getSelection()?.removeAllRanges();
+});
+
+it.each([{ altKey: true }, { shiftKey: true }, { isComposing: true }, { keyCode: 229 }])(
+  "leaves Select All with %o to the platform",
+  (modifier) => {
+    render(<RecordedResult context={capturedContext("read", "alpha\nbeta")} />);
+    const reader = screen.getByRole("region", { name: "Result" });
+    document.getSelection()?.removeAllRanges();
+    reader.focus();
+    expect(fireEvent.keyDown(reader, { key: "a", metaKey: true, ...modifier })).toBe(true);
+    expect(document.getSelection()?.rangeCount).toBe(0);
+  },
+);
+
+it("selects only the preview excerpt and copies its presented lines", () => {
+  const plain = Array.from({ length: 12 }, (_, index) => (index === 6 ? "" : `line ${index}`));
+  const output = plain
+    .map((line, index) => (index === 8 ? `\u001b[32m${line}\u001b[0m` : line))
+    .join("\n");
+  render(
+    <>
+      <p>Surrounding narrative</p>
+      <RecordedResult context={capturedContext("shell", output)} />
+    </>,
+  );
+  const preview = screen.getByRole("region", { name: "Tool output preview" });
+  const selection = document.getSelection()!;
+  selection.selectAllChildren(preview.querySelector('[data-output-line="4"]')!);
+  let copied = copyFrom(preview);
+  expect(copied.proceeded).toBe(true);
+  expect(copied.setData).not.toHaveBeenCalled();
+
+  expect(selectAll(preview)).toBe(false);
+  const range = selectedRange();
+  expect(range.startContainer).toBe(preview);
+  expect(range.toString()).not.toContain("Surrounding narrative");
+  expect(
+    range.intersectsNode(screen.getByRole("button", { name: "Show 3 earlier lines · 12 total" })),
+  ).toBe(false);
+  copied = copyFrom(preview);
+  expect(copied.proceeded).toBe(false);
+  expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", plain.slice(3).join("\n"));
+  selection.removeAllRanges();
+});
+
+it("copies the current numbered, filtered and paged result rows without reader framing", () => {
+  const plain = Array.from({ length: 82 }, (_, index) =>
+    index === 2 ? "" : `Recorded boundary observation ${index + 1} · 中文证据`,
+  );
+  const source = plain
+    .map((line, index) => (index === 4 ? `\u001b[31m${line}\u001b[0m` : line))
+    .join("\n");
+  render(<RecordedResult context={capturedContext("read", source)} />);
+  const reader = screen.getByRole("region", { name: "Result" });
+  const copyAll = () => {
+    expect(selectAll(reader)).toBe(false);
+    const copied = copyFrom(reader);
+    expect(copied.proceeded).toBe(false);
+    return copied.setData;
+  };
+
+  expect(copyAll()).toHaveBeenCalledExactlyOnceWith("text/plain", plain.slice(0, 40).join("\n"));
+
+  fireEvent.click(screen.getByRole("button", { name: "Show 40 more matching rows" }));
+  expect(copyAll()).toHaveBeenCalledExactlyOnceWith("text/plain", plain.slice(0, 80).join("\n"));
+
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  fireEvent.change(screen.getByRole("searchbox", { name: "Filter result" }), {
+    target: { value: "42" },
+  });
+  expect(copyAll()).toHaveBeenCalledExactlyOnceWith(
+    "text/plain",
+    "Recorded boundary observation 42 · 中文证据",
+  );
+
+  document.getSelection()!.selectAllChildren(screen.getByText(/observation 42/));
+  const partial = copyFrom(reader);
+  expect(partial.proceeded).toBe(true);
+  expect(partial.setData).not.toHaveBeenCalled();
+  document.getSelection()?.removeAllRanges();
+});
+
+it.each([
+  {
+    name: "grep",
+    result: JSON.stringify({
+      hits: [
+        { path: "src/a.go", lineNumber: 3, snippet: "\u001b[31mfailed\u001b[0m here" },
+        { path: "src/b.go" },
+      ],
+    }),
+    copied: "src/a.go:3\nfailed here\nsrc/b.go",
+  },
+  {
+    name: "web_search",
+    result: JSON.stringify({
+      results: [
+        { title: "Review", url: "https://example.test/review", snippet: "Recorded excerpt." },
+        { url: "https://example.test/untitled", snippet: "" },
+      ],
+    }),
+    copied:
+      "Review\nhttps://example.test/review\nRecorded excerpt.\nhttps://example.test/untitled\n",
+  },
+  {
+    name: "load_skill",
+    result: "Keep \u001b[1m literal\n\nin prose",
+    copied: "Keep \u001b[1m literal\n\nin prose",
+  },
+])("copies whole $name result rows as their recorded text", ({ name, result, copied }) => {
+  render(<RecordedResult context={capturedContext(name, result)} />);
+  const reader = screen.getByRole("region", { name: "Result" });
+  expect(selectAll(reader)).toBe(false);
+  const { proceeded, setData } = copyFrom(reader);
+  expect(proceeded).toBe(false);
+  expect(setData).toHaveBeenCalledExactlyOnceWith("text/plain", copied);
+  document.getSelection()?.removeAllRanges();
+});
+
+it("copies the complete captured output after Select All in the virtualized reader", () => {
+  const plain = Array.from({ length: 50_000 }, (_, index) => `line ${index}`);
+  const lines = plain.map((line, index) =>
+    index % 1000 === 0 ? `\u001b[31m${line}\u001b[0m` : line,
+  );
+  const output = `${lines.join("\n")}\n\n`;
+  const reader = expandOutput(output);
+  expect(reader.querySelectorAll("[data-output-line]").length).toBeLessThan(100);
+  expect(selectAll(reader)).toBe(false);
+  expect(selectedRange().toString()).not.toContain("line 25000");
+  const { proceeded, setData } = copyFrom(reader);
+  expect(proceeded).toBe(false);
+  expect(setData).toHaveBeenCalledExactlyOnceWith("text/plain", `${plain.join("\n")}\n\n`);
+  document.getSelection()?.removeAllRanges();
+});
+
+it("leaves partial, outside, collapsed and handled output copies native", () => {
+  const output = Array.from({ length: 200 }, (_, index) => `line ${index}`).join("\n");
+  const reader = expandOutput(output);
+  const selection = document.getSelection()!;
+  const line = reader.querySelector("[data-output-line]")!;
+
+  selection.selectAllChildren(line);
+  let copied = copyFrom(reader);
+  expect(copied.proceeded).toBe(true);
+  expect(copied.setData).not.toHaveBeenCalled();
+
+  selection.selectAllChildren(screen.getByText("Surrounding narrative"));
+  copied = copyFrom(reader);
+  expect(copied.proceeded).toBe(true);
+  expect(copied.setData).not.toHaveBeenCalled();
+
+  selection.setBaseAndExtent(reader, 0, reader, 0);
+  copied = copyFrom(reader);
+  expect(copied.proceeded).toBe(true);
+  expect(copied.setData).not.toHaveBeenCalled();
+
+  selection.setBaseAndExtent(
+    screen.getByText("Surrounding narrative"),
+    0,
+    reader,
+    reader.childNodes.length,
+  );
+  copied = copyFrom(reader);
+  expect(copied.proceeded).toBe(true);
+  expect(copied.setData).not.toHaveBeenCalled();
+
+  selectAll(reader);
+  const handled = (event: Event) => event.preventDefault();
+  document.addEventListener("copy", handled, { capture: true });
+  try {
+    copied = copyFrom(reader);
+    expect(copied.setData).not.toHaveBeenCalled();
+  } finally {
+    document.removeEventListener("copy", handled, { capture: true });
+    selection.removeAllRanges();
+  }
+});
+
+it("copies the complete captured output when Select All precedes a virtual-window scroll", () => {
+  const plain = Array.from({ length: 50_000 }, (_, index) => `line ${index}`);
+  const source = `${plain.join("\n")}\n`;
+  const reader = expandOutput(source);
+  Object.defineProperty(reader, "clientHeight", { configurable: true, value: 400 });
+  const scrollTo = (top: number) => {
+    reader.scrollTop = top;
+    fireEvent.scroll(reader);
+  };
+  scrollTo(49_980 * 20);
+  expect(reader.querySelector('[data-output-line="49999"]')).toBeTruthy();
+  expect(selectAll(reader)).toBe(false);
+
+  scrollTo(49_900 * 20);
+  expect(reader.querySelector('[data-output-line="49999"]')).toBeNull();
+  expect(reader.querySelector('[data-output-line="49894"]')).toBeTruthy();
+  let copied = copyFrom(reader);
+  expect(copied.proceeded).toBe(false);
+  expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", source);
+
+  scrollTo(49_980 * 20);
+  copied = copyFrom(reader);
+  expect(copied.proceeded).toBe(false);
+  expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", source);
+
+  document.getSelection()!.selectAllChildren(reader.querySelector('[data-output-line="49990"]')!);
+  scrollTo(49_970 * 20);
+  copied = copyFrom(reader);
+  expect(copied.proceeded).toBe(true);
+  expect(copied.setData).not.toHaveBeenCalled();
+  document.getSelection()?.removeAllRanges();
+});
+
+it("copies the presented result rows when Select All precedes a filter or page change", () => {
+  const plain = Array.from({ length: 82 }, (_, index) => `captured ${index}`);
+  render(<RecordedResult context={capturedContext("read", plain.join("\n"))} />);
+  const reader = screen.getByRole("region", { name: "Result" });
+  const copyWhole = (expected: string) => {
+    const copied = copyFrom(reader);
+    expect(copied.proceeded).toBe(false);
+    expect(copied.setData).toHaveBeenCalledExactlyOnceWith("text/plain", expected);
+  };
+
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  const field = screen.getByRole("searchbox", { name: "Filter result" });
+  fireEvent.change(field, { target: { value: "captured 42" } });
+  expect(selectAll(reader)).toBe(false);
+  fireEvent.change(field, { target: { value: "" } });
+  copyWhole(plain.slice(0, 40).join("\n"));
+
+  fireEvent.change(field, { target: { value: "no such row" } });
+  expect(selectAll(reader)).toBe(false);
+  fireEvent.change(field, { target: { value: "captured 4" } });
+  copyWhole(["captured 4", ...plain.slice(40, 50)].join("\n"));
+
+  fireEvent.change(field, { target: { value: "" } });
+  expect(selectAll(reader)).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Show 40 more matching rows" }));
+  fireEvent.click(screen.getByRole("button", { name: "Show 2 more matching rows" }));
+  copyWhole(plain.join("\n"));
+
+  document.getSelection()!.selectAllChildren(within(reader).getByText("captured 81"));
+  fireEvent.change(field, { target: { value: "captured 8" } });
+  const partial = copyFrom(reader);
+  expect(partial.proceeded).toBe(true);
+  expect(partial.setData).not.toHaveBeenCalled();
+  document.getSelection()?.removeAllRanges();
+});

@@ -31,6 +31,7 @@ import {
   FormGroup,
   FormSection,
   FontScaleProvider,
+  copyWholeReader,
   IconButton,
   Metadata,
   ModalDialog,
@@ -39,6 +40,7 @@ import {
   type SearchFieldProps,
   Segmented,
   Select,
+  selectAllInReader,
   TextArea,
   TextField,
   TooltipProvider,
@@ -127,6 +129,110 @@ describe("recorded code", () => {
       expect(document.activeElement).toBe(reader);
     },
   );
+
+  it.each([
+    { key: "a", metaKey: true, altKey: true },
+    { key: "a", ctrlKey: true, shiftKey: true },
+    { key: "b", metaKey: true },
+    { key: "a" },
+  ])("leaves other keys and modified Select All to the platform %o", (init) => {
+    render(<CodeBlock label="Captured source">{"recorded text"}</CodeBlock>);
+    const reader = screen.getByRole("region", { name: "Captured source" });
+    document.getSelection()?.removeAllRanges();
+    reader.focus();
+    expect(fireEvent.keyDown(reader, init)).toBe(true);
+    expect(document.getSelection()?.rangeCount).toBe(0);
+  });
+
+  it("does not replace a Select All an earlier handler already owns", () => {
+    render(
+      <div onKeyDownCapture={(event) => event.preventDefault()}>
+        <CodeBlock label="Captured source">{"recorded text"}</CodeBlock>
+      </div>,
+    );
+    const reader = screen.getByRole("region", { name: "Captured source" });
+    document.getSelection()?.removeAllRanges();
+    reader.focus();
+    fireEvent.keyDown(reader, { key: "a", ctrlKey: true });
+    expect(document.getSelection()?.rangeCount).toBe(0);
+  });
+
+  it("leaves Select All to a descendant editable and writes presented text only for a whole-reader copy", () => {
+    render(
+      <>
+        <p>Surrounding application text</p>
+        <div
+          role="region"
+          aria-label="Reader"
+          tabIndex={0}
+          onKeyDown={selectAllInReader}
+          onCopy={(event) => copyWholeReader(event, "presented text")}
+        >
+          <span>captured</span>
+          <input aria-label="Nested field" defaultValue="draft" />
+          <span contentEditable suppressContentEditableWarning>
+            <b>editable</b>
+          </span>
+        </div>
+      </>,
+    );
+    const region = screen.getByRole("region", { name: "Reader" });
+    const selection = document.getSelection()!;
+    const copy = () => {
+      const setData = vi.fn();
+      const proceeded = fireEvent.copy(region, { clipboardData: { setData } });
+      return { proceeded, setData };
+    };
+    const expectNativeCopy = () => {
+      const { proceeded, setData } = copy();
+      expect(proceeded).toBe(true);
+      expect(setData).not.toHaveBeenCalled();
+    };
+    selection.removeAllRanges();
+    for (const editable of [
+      screen.getByRole("textbox", { name: "Nested field" }),
+      screen.getByText("editable"),
+    ]) {
+      expect(fireEvent.keyDown(editable, { key: "a", metaKey: true })).toBe(
+        true,
+      );
+      expect(selection.rangeCount).toBe(0);
+    }
+    expectNativeCopy();
+
+    expect(fireEvent.keyDown(region, { key: "a", metaKey: true })).toBe(false);
+    expect(selection.getRangeAt(0).startContainer).toBe(region);
+    expect(selection.toString()).not.toContain("Surrounding");
+    const whole = copy();
+    expect(whole.proceeded).toBe(false);
+    expect(whole.setData).toHaveBeenCalledExactlyOnceWith(
+      "text/plain",
+      "presented text",
+    );
+    for (const editable of [
+      screen.getByRole("textbox", { name: "Nested field" }),
+      screen.getByText("editable"),
+    ]) {
+      const setData = vi.fn();
+      expect(fireEvent.copy(editable, { clipboardData: { setData } })).toBe(
+        true,
+      );
+      expect(setData).not.toHaveBeenCalled();
+    }
+
+    selection.selectAllChildren(screen.getByText("captured"));
+    expectNativeCopy();
+    selection.setBaseAndExtent(region, 0, region, 0);
+    expectNativeCopy();
+    selection.setBaseAndExtent(
+      screen.getByText("Surrounding application text"),
+      0,
+      region,
+      region.childNodes.length,
+    );
+    expectNativeCopy();
+    selection.removeAllRanges();
+  });
 
   it("keeps the caption outside the literal keyboard-scrollable source", () => {
     const source =

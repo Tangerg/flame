@@ -134,6 +134,15 @@ only the child `code`, preserving the reading region, scroll position and focus.
 The literal remains natively selectable even inside an otherwise non-selectable
 host. With the region focused, Ctrl/Cmd+A selects only its complete source; the
 browser owns the range and ordinary copy behavior.
+`selectAllInReader` gives custom read-only viewports that same boundary, leaving
+composition, modified commands, handled events and editable descendants with
+their existing owner. `copyWholeReader` writes its caller's text only for the
+complete native range produced by that command; other ranges and editable
+descendants retain native copy. Custom readers supply their presented content
+without line labels or controls, and virtualized output supplies its complete
+source. Neither helper adds selection state.
+Readers with changing rows keep their contents under one stable child so DOM
+reconciliation cannot shorten the browser's whole-reader range.
 `CodeFrame` is that frame alone, for portable views
 that own their own body, such as recorded Tool results. `CodeCaption` is the one code
 header for every renderer, including the transcript's highlighted blocks: the recorded

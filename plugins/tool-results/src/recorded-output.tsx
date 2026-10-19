@@ -15,8 +15,10 @@ import {
   CodeCaption,
   CodeFrame,
   IconButton,
+  copyWholeReader,
   isImeKey,
   SearchField,
+  selectAllInReader,
   type CodeActionLabels,
 } from "@flame/ui";
 import { ansiText, renderAnsi } from "./ansi";
@@ -227,7 +229,8 @@ export function RecordedOutput({ text }: { text: string }) {
         Math.ceil((metrics.top + metrics.height) / metrics.row) + OVERSCAN,
       )
     : lines.length;
-  const visible = lines.slice(start, end).map((line, offset) => (
+  const presented = lines.slice(start, end);
+  const visible = presented.map((line, offset) => (
     <div
       key={start + offset}
       data-slot="search-line"
@@ -387,11 +390,17 @@ export function RecordedOutput({ text }: { text: string }) {
                 setFinding(true);
                 search.current?.focus();
               }
+              selectAllInReader(event);
             }}
+            onCopy={(event) => copyWholeReader(event, copied)}
           >
-            <div style={{ height: start * metrics.row }} />
-            {visible}
-            <div style={{ height: (lines.length - end) * metrics.row }} />
+            {/* Select All bounds its Range by this region's child offsets, which
+                window reconciliation would shift; one stable child keeps it whole. */}
+            <div>
+              <div style={{ height: start * metrics.row }} />
+              {visible}
+              <div style={{ height: (lines.length - end) * metrics.row }} />
+            </div>
           </div>
         ) : (
           <div
@@ -400,6 +409,10 @@ export function RecordedOutput({ text }: { text: string }) {
             tabIndex={0}
             data-focus-inset=""
             style={{ overflowX: "auto" }}
+            onKeyDown={selectAllInReader}
+            onCopy={(event) =>
+              copyWholeReader(event, presented.map(ansiText).join("\n"))
+            }
           >
             {visible}
           </div>

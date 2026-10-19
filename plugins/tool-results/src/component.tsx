@@ -17,7 +17,9 @@ import {
   IconButton,
   Metadata,
   RecordBody,
+  copyWholeReader,
   RecordSummary,
+  selectAllInReader,
 } from "@flame/ui";
 
 type Row =
@@ -222,6 +224,24 @@ function resultContent(tool: CapturedToolResult): ResultContent {
   };
 }
 
+function rowText(row: Row): string {
+  switch (row.kind) {
+    case "source":
+      return ansiText(row.body);
+    case "located":
+      return [row.location, row.body && ansiText(row.body)]
+        .filter((part) => part !== undefined)
+        .join("\n");
+    case "entry":
+      return [row.title, row.context, row.body]
+        .filter((part) => part !== undefined)
+        .join("\n");
+    case "prose":
+    case "notice":
+      return row.body;
+  }
+}
+
 function RecordedRows({
   label,
   source,
@@ -294,6 +314,7 @@ function RecordedRows({
       }),
     [recorded, filter],
   );
+  const presented = matching.slice(0, visible);
   const lastSource = recorded.findLast((row) => row.kind === "source");
   const numberWidth = `${String(lastSource?.number ?? 1).length}ch`;
   return (
@@ -365,128 +386,140 @@ function RecordedRows({
               setFinding(true);
               search.current?.focus();
             }
+            selectAllInReader(event);
           }}
+          onCopy={(event) =>
+            copyWholeReader(event, presented.map(rowText).join("\n"))
+          }
         >
-          {matching.slice(0, visible).map((row, index) => (
-            <div
-              key={index}
-              ref={
-                index === visible - RESULT_PAGE_ROWS ? firstRevealed : undefined
-              }
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  row.kind === "source"
-                    ? `${numberWidth} minmax(0, 1fr)`
-                    : "minmax(0, 1fr)",
-                columnGap: "var(--layout-content-gap)",
-                rowGap: "var(--layout-label-gap)",
-                paddingBlockStart:
-                  index === 0 ||
-                  (row.kind !== "located" && row.kind !== "entry")
-                    ? undefined
-                    : row.body === undefined
-                      ? "var(--layout-label-gap)"
-                      : "calc(var(--layout-row-padding) * 2)",
-                minWidth: 0,
-                fontFamily:
-                  row.kind === "source" || row.kind === "located"
-                    ? "var(--font-mono)"
-                    : "var(--font-sans)",
-                fontSize:
-                  row.kind === "source" || row.kind === "located"
-                    ? "var(--fs-code)"
-                    : "var(--fs-ui-md)",
-                lineHeight: "var(--leading-relaxed)",
-              }}
-            >
-              {row.kind === "source" && (
-                <span
-                  style={{
-                    color: "var(--color-text-faint)",
-                    textAlign: "end",
-                    userSelect: "none",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  <span className="sr-only">Line </span>
-                  {row.number}
-                </span>
-              )}
-              {row.kind === "located" && row.location !== undefined && (
-                <Metadata
-                  style={{
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {row.location.split("/").map((part, index) => (
-                    <Fragment key={index}>
-                      {index > 0 && "/"}
-                      {index > 0 && <wbr />}
-                      {part}
-                    </Fragment>
-                  ))}
-                </Metadata>
-              )}
-              {row.kind === "entry" && (
-                <RecordSummary
-                  title={
-                    <span style={{ whiteSpace: "pre-wrap" }}>{row.title}</span>
-                  }
-                  description={
-                    row.context === undefined ? undefined : (
-                      <span style={{ whiteSpace: "pre-wrap" }}>
-                        {row.context}
-                      </span>
-                    )
-                  }
-                />
-              )}
-              {row.body !== undefined &&
-                (row.kind === "entry" || row.kind === "prose") && (
-                  <RecordBody>{row.body || " "}</RecordBody>
-                )}
-              {row.kind === "notice" && <Metadata>{row.body}</Metadata>}
-              {row.body !== undefined &&
-                (row.kind === "source" || row.kind === "located") && (
-                  <pre
+          {/* Select All bounds its Range by this region's child offsets, which
+              filtering and paging would shift; one stable child keeps it whole. */}
+          <div>
+            {presented.map((row, index) => (
+              <div
+                key={index}
+                ref={
+                  index === visible - RESULT_PAGE_ROWS
+                    ? firstRevealed
+                    : undefined
+                }
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    row.kind === "source"
+                      ? `${numberWidth} minmax(0, 1fr)`
+                      : "minmax(0, 1fr)",
+                  columnGap: "var(--layout-content-gap)",
+                  rowGap: "var(--layout-label-gap)",
+                  paddingBlockStart:
+                    index === 0 ||
+                    (row.kind !== "located" && row.kind !== "entry")
+                      ? undefined
+                      : row.body === undefined
+                        ? "var(--layout-label-gap)"
+                        : "calc(var(--layout-row-padding) * 2)",
+                  minWidth: 0,
+                  fontFamily:
+                    row.kind === "source" || row.kind === "located"
+                      ? "var(--font-mono)"
+                      : "var(--font-sans)",
+                  fontSize:
+                    row.kind === "source" || row.kind === "located"
+                      ? "var(--fs-code)"
+                      : "var(--fs-ui-md)",
+                  lineHeight: "var(--leading-relaxed)",
+                }}
+              >
+                {row.kind === "source" && (
+                  <span
                     style={{
-                      whiteSpace: "pre-wrap",
-                      overflowWrap: "anywhere",
-                      margin: 0,
-                      color: /^error\b/.test(row.body)
-                        ? "var(--color-negative)"
-                        : /^warning\b/.test(row.body)
-                          ? "var(--color-warning)"
-                          : undefined,
+                      color: "var(--color-text-faint)",
+                      textAlign: "end",
+                      userSelect: "none",
+                      fontVariantNumeric: "tabular-nums",
                     }}
                   >
-                    {renderAnsi(row.body || " ")}
-                  </pre>
+                    <span className="sr-only">Line </span>
+                    {row.number}
+                  </span>
                 )}
-            </div>
-          ))}
-          {!matching.length && (
-            <Metadata>
-              No matching rows. Close find to see the whole result.
-            </Metadata>
-          )}
-          {matching.length > visible && (
-            <Button
-              onClick={(event) => {
-                continuation.current = {
-                  origin: event.currentTarget,
-                  activeElement:
-                    event.currentTarget.ownerDocument.activeElement,
-                };
-                setVisible((current) => current + RESULT_PAGE_ROWS);
-              }}
-              style={{ marginBlockStart: "var(--layout-control-gap)" }}
-            >
-              Show {Math.min(RESULT_PAGE_ROWS, matching.length - visible)} more
-              matching rows
-            </Button>
-          )}
+                {row.kind === "located" && row.location !== undefined && (
+                  <Metadata
+                    style={{
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {row.location.split("/").map((part, index) => (
+                      <Fragment key={index}>
+                        {index > 0 && "/"}
+                        {index > 0 && <wbr />}
+                        {part}
+                      </Fragment>
+                    ))}
+                  </Metadata>
+                )}
+                {row.kind === "entry" && (
+                  <RecordSummary
+                    title={
+                      <span style={{ whiteSpace: "pre-wrap" }}>
+                        {row.title}
+                      </span>
+                    }
+                    description={
+                      row.context === undefined ? undefined : (
+                        <span style={{ whiteSpace: "pre-wrap" }}>
+                          {row.context}
+                        </span>
+                      )
+                    }
+                  />
+                )}
+                {row.body !== undefined &&
+                  (row.kind === "entry" || row.kind === "prose") && (
+                    <RecordBody>{row.body || " "}</RecordBody>
+                  )}
+                {row.kind === "notice" && <Metadata>{row.body}</Metadata>}
+                {row.body !== undefined &&
+                  (row.kind === "source" || row.kind === "located") && (
+                    <pre
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        overflowWrap: "anywhere",
+                        margin: 0,
+                        color: /^error\b/.test(row.body)
+                          ? "var(--color-negative)"
+                          : /^warning\b/.test(row.body)
+                            ? "var(--color-warning)"
+                            : undefined,
+                      }}
+                    >
+                      {renderAnsi(row.body || " ")}
+                    </pre>
+                  )}
+              </div>
+            ))}
+            {!matching.length && (
+              <Metadata>
+                No matching rows. Close find to see the whole result.
+              </Metadata>
+            )}
+            {matching.length > visible && (
+              <Button
+                onClick={(event) => {
+                  continuation.current = {
+                    origin: event.currentTarget,
+                    activeElement:
+                      event.currentTarget.ownerDocument.activeElement,
+                  };
+                  setVisible((current) => current + RESULT_PAGE_ROWS);
+                }}
+                style={{ marginBlockStart: "var(--layout-control-gap)" }}
+              >
+                Show {Math.min(RESULT_PAGE_ROWS, matching.length - visible)}{" "}
+                more matching rows
+              </Button>
+            )}
+          </div>
         </div>
       </CodeFrame>
     </div>

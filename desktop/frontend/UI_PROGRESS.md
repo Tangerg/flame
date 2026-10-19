@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. Native keyboard qualification continues from the retained-view milestone at `1a0a1ed27` on `main`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. Recorded-evidence selection continues from the native keyboard qualification at `309b1e44e` on `main`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -9,6 +9,8 @@ This user-requested file is the maintained progress and handoff record for the d
 The latest objective explicitly resumes continuous desktop UI work. Complete each evidence-backed batch with native acceptance, the relevant gates, an explicit-path commit and push to `main`, cleanup and an update to this file before selecting the next batch. Native page zoom and the single Dock width projection remain integrated. Open workspace views now retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
 
 Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The subsequent native focus investigation qualified the existing keyboard resize path and isolated clicked-label reverse navigation to a WebKit behavior also reproduced by a bare HTML button. No host preference or component workaround was added. The precise scenarios and limits are below.
+
+Recorded Tool readers now share the literal code reader's local Select All boundary. Whole-reader copy uses the current presented rows or preview excerpt; expanded command output supplies the complete ANSI-stripped captured source, including virtualized lines and trailing newlines. Stable content children keep mutable row trees from shortening the browser's range. Partial selection, editable fields, explicit complete-result copy and Runtime ownership remain separate. The next concrete investigation is reading-position drift when native zoom changes while a virtual output reader is hidden, recorded below.
 
 Task-oriented layout and interaction apply across the conversation, Context Dock, settings and installed views. Preserve the approved brand, shared reading hierarchy, Composer, code/table/selection fixes, sidebar-matching Dock seam and custom-accent theme owner. The earlier `cap`-based inline-icon sizing tip is a suggestion for future typography work, not a global icon redesign.
 
@@ -107,6 +109,18 @@ and Marketer activity scenes were inspected for task grouping and reading rhythm
 they supply no keyboard evidence. Existing semantic text/surface/focus roles
 remain authoritative, consistent with [HeroUI color roles](https://heroui.com/en/docs/react/getting-started/colors)
 and the [Radix scale use cases](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale).
+
+Recorded-evidence review traced ZCode's actual `ToolCallBody.tsx` and
+`renderers/ExecuteOutput.tsx` for a bounded content viewport separate from its
+summary and actions, and ChatGPT's `artifact-preview-header-56e5190c3624.js` and
+`artifact-originating-turn-a94e56394ddb.js` for object/source identity around
+material. Flame's existing `CodeBody` supplies the relevant local keyboard
+contract. The [Selection API](https://www.w3.org/TR/selection-api/) describes the
+single browser-owned range and its live DOM boundaries; the
+[Clipboard Event API](https://www.w3.org/TR/clipboard-apis/#clipboard-event-api)
+supplies complete presented text during a trusted copy event. The repair uses
+those native owners rather than storing another selection fact. Static reference
+artwork supplies no keyboard evidence, and no new visual skin was introduced.
 
 For color-system work, retain the user's [Radix Colors](https://www.radix-ui.com/colors) and [HeroUI colors](https://heroui.com/en/docs/react/getting-started/colors) references. The default brand color is **Flame Orange `#FB6E30`**; users can choose their own interface accent through the existing theme owner. Approved brand artwork retains its original color. Avoid recreating the palette, appearance store or brand identity.
 
@@ -302,6 +316,18 @@ same predicate without changing its scoped literal Select All behavior. Recorded
 output Find remains a bounded task: its owner captures Escape to close back to the
 output, while Enter/Shift+Enter cycle matches outside composition.
 
+`ui/src/reader-selection.ts` owns the shared local Select All guard and
+whole-reader copy event. CodeBody retains its existing literal-region behavior.
+Captured result readers supply one presented-row slice to rendering and copy;
+line labels, line numbers and continuation controls are presentation, not copied
+evidence. Preview copy includes only the presented excerpt, preserving real blank
+lines instead of rendering padding. Expanded output copies the complete original
+ANSI-stripped source, including offscreen lines and trailing newlines. Partial,
+outside, collapsed, already-handled and editable-descendant copies stay native.
+The browser range is the only selection owner. Mutable result and virtual-output
+rows sit beneath one stable child so reconciliation cannot shorten its boundary
+offsets; the existing viewport, focus, scroll and measurement owners stay in place.
+
 Segmented tracks use the existing compact navigation shape step. Their items and
 moving backplate share the track radius minus its actual padding; there is no
 track border to subtract. This leaves room for the radius preference to change
@@ -450,6 +476,17 @@ remain the visual basis.
 
 ## Verification checkpoint
 
+For recorded-evidence selection and copy:
+
+- The final complete `VITEST_MAX_WORKERS=2 npm run check` passed 381 files and 2,820 tests, followed by all type, lint, format, unused-code, architecture, style/token, locale, bootstrap, resource, bundle and production React/JSX linkage gates. The preceding full run passed all frontend tests but timed out once in the unchanged Runtime Memory durable-cold-read case. That exact case passed alone in a fresh isolated Runtime in 10.92 seconds, then the complete gate passed with the original assertions and deadlines. The one timeout's cause remains unclassified; recurring loopback `ECONNREFUSED` diagnostics were also present on successful runs.
+- New regressions exposed whole-workspace Select All, copied reader framing and live-range shrinkage during virtual-window/page reconciliation. Review also exposed editable-descendant copy overriding a retained reader range. Each was reproduced before its repair. The final focused recorded-result run passed 29 tests; the CLI's visual-unit run passed 13 files and 124 tests. Ordinary partial/cross-boundary/collapsed/handled copy, composition and modifiers, literal prose, ANSI, real blank lines, filtering, paging and exact complete-source bytes remain covered. Test-only ANSI-regex lint and incorrect overscan/trailing-newline expectations were corrected without relaxing the contracts.
+- Shared UI `npm run check` passed 58 tests and the independently packed UI/icons consumer. Portable build/check passed all ten exact resources after the stable content boundaries; only the Tool-results ESM changed. No production Go, SDK, Runtime or CLI source changed, so their standalone module checks were not rerun. Existing browser row selectors were migrated for the intentional content boundary, but no browser suite or performance benchmark ran.
+- The supported `wails3 task build` production build passed. `file` confirmed arm64 and `vtool` confirmed the macOS 13.0 deployment floor. The duplicate `-lobjc` linker warning remains non-failing. There is no dependency, persisted-data or protocol migration.
+- Actual Wails acceptance used English/dark/18 px/custom blue in a 1440-point window and Chinese/light/14 px/Flame Orange after system Move & Resize produced a 1122 × 950 CSS viewport. A real pointer drag reduced the light Dock from 364 to 320 px. The final rapid expansion → Page Up → Select All → Copy sequence supplied the complete **1,188,891-character** ANSI-stripped source, including two trailing newlines, in both scenes. Only 29–32 output rows were mounted. The earlier structure had fallen back to partial native copy during that same rapid light sequence; the stable content child resolved it without selection state or retries.
+- Native source-result copies contained the presented 40 rows (1,599 characters), 80 rows (3,199) or filtered record 42 (39), excluding the `Line 42` framing that the first candidate actually pasted. The preview's nine presented lines copied 192 characters with a real blank instead of padding spaces. Real mouse selection and system paste preserved exactly one 23-character output line. Full-output system paste produced a 50,002-line Composer text fragment. Find retained native input Select All/Copy, and Escape returned focus to Tool output; subsequent selection, virtual scrolling and complete copy remained correct. Native Tab to paging normally retired the old selection; the app does not recreate it.
+- Acceptance used production components and the captured SDK context with deterministic, read-only providers in an actual native host. It did not execute recorded Tools, mutate a live Runtime, update an existing installation or qualify native resource replacement. Rebuilt sources/resources must still be delivered through the normal installation owner. VoiceOver, OS IME, other platform GUIs and rendered pixel contrast were not qualified. The exploratory hidden-zoom reading change and oversized-paste preview limit below are not passing continuity/preview claims. An unsupported `zh-CN` fixture query was corrected to the registered `zh` locale; it was an acceptance setup error, not a product defect.
+- Cleanup completed: all owned native, CLI, test and build processes exited; the app was unregistered and removed. Its newly created bundle-specific WebKit/cache paths were removed against the pre-launch baseline, with no preferences, HTTP storage or saved state present. The acceptance root, fixture/data, overlays, production binary, logs, all three completed CLI reports and the CLI's guarded temporary baseline copies were removed. No preview server was started. Shared outputs/compiler caches, read-only reference assets and unrelated worktrees/processes were retained. Claude Code CLI (`claude-opus-5-5`) supplied the bounded details and regressions; the primary agent owned research, decisions, review, native qualification and final verification.
+
 For native zoom and shared geometry:
 
 - The final focused run passed 51 tests across four ChatPanel/ResizeHandle/geometry files. New controlled-width regressions failed against the old preview settlement (500 px was overwritten by 320 px), then passed with the fix. Observed row changes retain the mounted task and saved ratio; accessible values report the committed width while the surface transitions. Existing cancellation, priority restoration, keyboard and Session ownership assertions remain.
@@ -565,6 +602,17 @@ resizing are qualified above; clicked-label reverse traversal reproduces in bare
 HTML and remains a platform limitation. Preserve the existing geometry and focus
 owners. Continue with the remaining task-oriented evidence and reading paths,
 selecting scope from current source and actual native observations.
+
+The next concrete investigation is hidden virtual-output reading continuity
+during native page zoom. An exploratory sequence read at 776,985 CSS px, entered
+Files in the main area at 150%, enlarged that hidden reader to 200%, closed the
+main view and restored Actual Size. The same output instance then reported
+582,738 CSS px. This is an observed reading-position change, not a diagnosed
+measurement or Runtime defect; isolate the WebKit/viewport behavior before
+changing an owner. The selection/copy repair does not claim to fix it. A separate
+50,002-line pasted-text preview temporarily made the native accessibility tree
+unavailable until Escape; its content and cause remain unqualified. Do not infer
+a performance bottleneck or start a broader Composer rewrite from that probe.
 
 Memory query/draft continuity, original-command observation and main-only source
 retention are now implemented and qualified above. Do not recreate them or make

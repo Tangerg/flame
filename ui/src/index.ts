@@ -25,6 +25,7 @@ export {
 } from "./code-block";
 export { copyText, useCopyFeedback } from "./clipboard";
 export { isImeKey } from "./keyboard";
+export { copyWholeReader, selectAllInReader } from "./reader-selection";
 export { TaskListItem } from "./task-list-item";
 export { Callout, readCalloutMarker, type CalloutKind } from "./callout";
 export { ImageNotice } from "./image-notice";
