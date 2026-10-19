@@ -17,6 +17,7 @@ import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import shortcutsSettings from "@/plugins/builtin/command/shortcuts";
 import { workbenchSettings } from "@/plugins/builtin/shell/workbench";
 import appearanceSettings from "@/plugins/builtin/settings/appearance";
+import { createBrandPlugin } from "@/plugins/builtin/settings/brand";
 import { createProvidersPlugin } from "@/plugins/builtin/providers";
 import approvalsSettings from "@/plugins/builtin/settings/approvals";
 import connectionSettings from "@/plugins/builtin/settings/connection-settings";
@@ -469,6 +470,7 @@ export async function installVisualWorkspaceFixture(
     fileView,
     workbenchSettings,
     appearanceSettings,
+    createBrandPlugin(createBrowserHost().saveImage),
     createProvidersPlugin(runtimeClient),
     shortcutsSettings,
     approvalsSettings,

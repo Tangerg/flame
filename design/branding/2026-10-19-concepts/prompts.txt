@@ -1,0 +1,70 @@
+Generated using the built-in imagegen tool.
+
+Primary mark
+
+Use case: logo-brand.
+Asset type: primary logo symbol for Flame, an AI agent product; an original anthropomorphic little flame mascot, suitable for desktop app icons and tiny sidebar avatars.
+Primary request: Design one exceptional minimalist Flame brand mark. A little living flame with an intelligent, quietly curious personality, warm and capable.
+Reference direction (conceptual, not images to copy): the very economical character construction of Grok Bot, the companion-like personality of OpenAI Dots, and the tiny-size clarity of Tencent WorkBuddy. Create Flame's own distinctive visual identity.
+Subject: ONE compact warm-orange flame character. Its entire body is a single broad, soft, plump flame silhouette with a rounded base. One elegant asymmetric flame crest curves and leans gently to the right, with one much smaller secondary flame shoulder integrated into the contour. The crest should look like a lively flick of hair. Make the outline proprietary and memorable, with deliberate beautiful Bezier curves and a calm visual center. The face is ONLY two generously spaced short near-black vertical capsule eyes, with a tiny subtle height offset creating a curious attentive gaze. No mouth. The eyes are in the broad lower-middle part of the body.
+Style/medium: immaculate flat vector-like brand design, crisp clean edges, reduced geometric forms, optically balanced, approachable and polished, mature rather than childish. The quality of a carefully designed contemporary software mascot. Single main silhouette plus two eyes only.
+Color palette: one solid warm vermilion-orange close to #FF6A32, eyes deep charcoal close to #242320.
+Composition/framing: square canvas, one centered isolated symbol, the character fills about 70 percent of the canvas height with ample even transparent margin. Front view. Full silhouette visible.
+Scene/backdrop: genuinely transparent background, preserve clean alpha around the mark.
+Text: none.
+Constraints: only one final logo, not a sheet of options; strong fire recognition at 24 pixels; must remain recognizable in one color with eye cutouts; keep one coherent shape. Use the flame itself as the character; no separate head or torso. No letters or hidden monograms.
+Avoid: generic emoji fire, inner yellow nested flame, teardrop or water-drop silhouette, round ball with a flame stuck on it, cat ears, duck bill, ghost tail, game character, arms, legs, props, eyebrows, smile, blush, clothing, glasses, badge, border, app tile, gradients, 3D, texture, shadows, glow, sparks, background, watermark, text, existing company logos.
+
+========================================================================
+
+Primary mark refinement
+
+Use case: logo-brand.
+Input image 1: edit target, the first Flame logo concept. Preserve its identity: one orange flame silhouette, two charcoal capsule eyes, no mouth, no other features.
+Make one targeted refinement to the character's proportions and contour: make the flame much more compact, softer and friendlier. Shorten the large upper crest by approximately one third, make the lower body broad, rounded and slightly squishy, and soften both point tips into smooth gently rounded tips while keeping unmistakable flame recognition. Target total silhouette height about 1.12 times its width. The small side flame shoulder should be quite subtle and integrated. Make the face sit just below the visual center of the overall silhouette, not near the bottom. Both eyes should be precisely matched rounded vertical capsules with only a very small height offset, about 2 percent of body height, conveying an alert gentle companion.
+Keep the logo exceptionally clean and reduced: a single SOLID FLAT orange body (#FF6A32 approximate), two SOLID charcoal eyes (#242320 approximate), absolutely no gradient, shading, texture, noise, glow or contour stroke. Optically balanced professional vector-like brand mark. No mouth, no limbs, no props, no inner flame, no lettering, no tile.
+One centered logo on a genuinely transparent square canvas with comfortable even margin. All of the orange body and eyes fully opaque; transparency only outside the silhouette. The result should read as a charming but capable AI teammate at app-icon size.
+
+========================================================================
+
+01 - Minimal symbol
+
+Use case: logo-brand. Create one polished brand concept presentation for Flame, an AI agent companion whose character is a little living flame.
+Output: one landscape 3:2 design image, clean ivory #F6F5F1 backdrop, generous negative space and refined studio brand-design art direction.
+Presentation system: small charcoal title at upper left reading exactly "FLAME / 01". A single large main mascot mark centered in the upper two thirds; below it the wordmark exactly "flame" in a rounded, confident lowercase modern sans serif. Along the bottom a neat row of THREE small app-icon previews with consistent spacing: one pale tile, one charcoal tile, and one simple one-color symbol. All three repeat the SAME character identity shown above. Tiny captions exactly "LIGHT", "DARK", "MONO". App tiles must be modest, leaving the hero mascot dominant.
+Keep all typography clean and subordinate. Do not include other brands, slogans, mock devices, office scenes, decorative sparks, backgrounds, explanatory paragraphs or watermarks. Distinctive original design, professionally considered silhouette, good negative space, clear tiny-size face. No generic nested yellow fire-emoji interior. This is a logo concept comparison, not a photograph of a paper board.
+Direction 01: MINIMAL SYMBOL.
+Use the attached Flame mark as the design identity reference. Retain the compact plump orange flame body, gently bent asymmetrical crest with a rounded tip, one small integrated shoulder, two charcoal vertical pill eyes, and no mouth. Make the orange absolutely solid and clean with no gradients or texture. Calm curious character, one silhouette plus two eyes, no arms or legs. Warm orange close to #FF6A32 and charcoal #242320. The brand mark is the character itself, highly economical like a tiny software icon. Render the large mark cleanly on ivory; use the exact same shape for the three small application previews. Mono version charcoal with knocked-out eyes.
+
+========================================================================
+
+02 - Flat sprite
+
+Use case: logo-brand. Create one polished brand concept presentation for Flame, an AI agent companion whose character is a little living flame.
+Output: one landscape 3:2 design image, clean ivory #F6F5F1 backdrop, generous negative space and refined studio brand-design art direction.
+Presentation system: small charcoal title at upper left reading exactly "FLAME / 02". A single large main mascot mark centered in the upper two thirds; below it the wordmark exactly "flame" in a rounded, confident lowercase modern sans serif. Along the bottom a neat row of THREE small app-icon previews with consistent spacing: one pale tile, one charcoal tile, and one simple one-color symbol. All three repeat the SAME character identity shown above. Tiny captions exactly "LIGHT", "DARK", "MONO". App tiles must be modest, leaving the hero mascot dominant.
+Keep all typography clean and subordinate. Do not include other brands, slogans, mock devices, office scenes, decorative sparks, backgrounds, explanatory paragraphs or watermarks. Distinctive original design, professionally considered silhouette, good negative space, clear tiny-size face. No generic nested yellow fire-emoji interior. This is a logo concept comparison, not a photograph of a paper board.
+Direction 02: FLAT LITTLE SPRITE.
+Design a joyful original anthropomorphic little flame as a flat graphic mascot. A short, plump body formed by one flame shape, a single charming sideways curl of flame on top and a very small integrated side flick. Two black oval eyes and a very small friendly curved mouth. Two tiny rounded mitten-like arms and two very short rounded feet are part of the character, with an energetic poised walking stance and one tiny arm lifted in greeting. Mature tasteful software mascot, playful but not babyish. Clean solid tangerine-orange, a secondary restrained apricot detail is allowed only where it helps separate an arm; near-black face. No outlines, no shading, no gradients, no texture. Avoid a generic blob, no yellow belly, no white eye surrounds, no cheeks, no clothing, no props. Flame character should feel small, quick, resourceful and friendly. In the icon previews simplify limbs while retaining this exact face and flame crest. The MONO preview must work as one-color silhouette with face cutouts.
+
+========================================================================
+
+03 - Soft 3D companion
+
+Use case: logo-brand. Create one polished brand concept presentation for Flame, an AI agent companion whose character is a little living flame.
+Output: one landscape 3:2 design image, clean ivory #F6F5F1 backdrop, generous negative space and refined studio brand-design art direction.
+Presentation system: small charcoal title at upper left reading exactly "FLAME / 03". A single large main mascot mark centered in the upper two thirds; below it the wordmark exactly "flame" in a rounded, confident lowercase modern sans serif. Along the bottom a neat row of THREE small app-icon previews with consistent spacing: one pale tile, one charcoal tile, and one simple one-color symbol. All three repeat the SAME character identity shown above. Tiny captions exactly "LIGHT", "DARK", "MONO". App tiles must be modest, leaving the hero mascot dominant.
+Keep all typography clean and subordinate. Do not include other brands, slogans, mock devices, office scenes, decorative sparks, backgrounds, explanatory paragraphs or watermarks. Distinctive original design, professionally considered silhouette, good negative space, clear tiny-size face. No generic nested yellow fire-emoji interior. This is a logo concept comparison, not a photograph of a paper board.
+Direction 03: SOFT VINYL COMPANION.
+An original premium 3D mascot rendered as a small soft-touch vinyl or squishy silicone living flame. A compact broad orange body with a signature short asymmetrical swoosh of flame, softly rounded points. Two clean black recessed vertical pill eyes, a tiny subtle friendly smile, two very small pill-shaped arms that are smoothly integrated into the sides, two tiny rounded feet. The mascot feels warm, quietly clever and dependable. Pose is an inviting gentle lean, no jumping. Beautiful simple collectible industrial-design form, tactile matte satin material with restrained realistic highlights and soft ambient occlusion, warm tangerine orange with subtle coral and amber lighting variation. No fuzzy material, no glass, no glossy candy glare, no metallic material, no inner flame patch, no clothing, no props, no blush, no eyebrows. Front three-quarter view with a barely visible grounding shadow on the ivory board. This should still read as a strong logo silhouette, not an elaborate illustration. App icons keep the same 3D identity; MONO preview is an elegant one-color flat silhouette of that exact mascot with eye and mouth cutouts.
+
+========================================================================
+
+04 - Plush companion
+
+Use case: logo-brand. Create one polished brand concept presentation for Flame, an AI agent companion whose character is a little living flame.
+Output: one landscape 3:2 design image, clean ivory #F6F5F1 backdrop, generous negative space and refined studio brand-design art direction.
+Presentation system: small charcoal title at upper left reading exactly "FLAME / 04". A single large main mascot mark centered in the upper two thirds; below it the wordmark exactly "flame" in a rounded, confident lowercase modern sans serif. Along the bottom a neat row of THREE small app-icon previews with consistent spacing: one pale tile, one charcoal tile, and one simple one-color symbol. All three repeat the SAME character identity shown above. Tiny captions exactly "LIGHT", "DARK", "MONO". App tiles must be modest, leaving the hero mascot dominant.
+Keep all typography clean and subordinate. Do not include other brands, slogans, mock devices, office scenes, decorative sparks, backgrounds, explanatory paragraphs or watermarks. Distinctive original design, professionally considered silhouette, good negative space, clear tiny-size face. No generic nested yellow fire-emoji interior. This is a logo concept comparison, not a photograph of a paper board.
+Direction 04: PLUSH LITTLE FLAME.
+An original lovable high-quality 3D plush companion made of very short dense orange fleece. Its entire body is a soft plump flame with a distinctive small leaning flame tuft at the top and one understated side point, like a fuzzy ember come to life. Wide rounded bottom, very short little side arms and tiny rounded feet. Two slightly protruding small warm-ivory oval eyes with black pupils, expressive and attentive, and a tiny restrained charcoal smile. Intelligent companion charm and comforting personality, inspired only by the broad friendliness of tactile agent mascots, not by any existing specific character. Warm burnt tangerine and apricot colored fleece, subtle sculpted volume, short soft pile visible at the silhouette. A friendly nearly front-facing pose and soft realistic studio lighting, very light grounding shadow. Keep the character simple and compact, not a furry animal. No ears, no frog features, no beak, no glasses, no clothing, no yellow belly, no props, no surrounding sparks. The hero is tactile and sculptural; the tiny app previews show the same face and flame tuft; MONO preview is a simplified clean one-color vector silhouette with recognizable facial negative spaces.

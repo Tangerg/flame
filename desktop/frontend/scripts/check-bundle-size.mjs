@@ -97,6 +97,7 @@ const LAZY_FEATURES = [
     label: "settings panes",
     prefixes: [
       "AppearancePane-",
+      "BrandPane-",
       "ApprovalsPane-",
       "ConnectionPane-",
       "HooksPane-",

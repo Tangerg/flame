@@ -3,6 +3,7 @@ import type { createRuntimeConnection } from "./runtimeConnection";
 import { createMessageImagesPlugin } from "@/plugins/builtin/chat/message/images";
 import type { AnyPlugin } from "dougong";
 import appearance from "@/plugins/builtin/settings/appearance";
+import { createBrandPlugin } from "@/plugins/builtin/settings/brand";
 import approvalsPane from "@/plugins/builtin/settings/approvals";
 import personalization from "@/plugins/builtin/settings/personalization";
 import chatSearch from "@/plugins/builtin/chat/chat-search";
@@ -127,6 +128,7 @@ export function createBuiltinPlugins(
 
   const panes: AnyPlugin[] = [
     appearance,
+    createBrandPlugin((source) => host.saveImage(source)),
     approvalsPane,
     personalization,
     connectionSettings,

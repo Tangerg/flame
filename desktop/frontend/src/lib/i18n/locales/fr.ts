@@ -284,6 +284,34 @@ export const fr: Record<string, string> = {
   "settings.title": "Paramètres",
   "settings.searchPlaceholder": "Rechercher dans les paramètres…",
   "settings.pane.appearance": "Apparence",
+  "settings.pane.brand": "Identité de marque",
+  "settings.brand.description": "Une petite flamme à la présence curieuse et chaleureuse.",
+  "settings.brand.assets": "Ressources de marque",
+  "settings.brand.mark.title": "Logo principal",
+  "settings.brand.mark.description":
+    "Une flamme arrondie et deux yeux curieux pour les icônes, avatars et la navigation.",
+  "settings.brand.companion.title": "Compagnon 3D",
+  "settings.brand.companion.description":
+    "Un compagnon doux et en volume pour les présentations de produit et les grandes illustrations.",
+  "settings.brand.plush.title": "Personnage en peluche",
+  "settings.brand.plush.description":
+    "Un compagnon chaleureux et doux pour accueillir et raconter l'histoire de la marque.",
+  "settings.brand.color.title": "Couleur de marque",
+  "settings.brand.color.description":
+    "La couleur de marque reste identique dans tous les thèmes d'apparence.",
+  "settings.brand.color.name": "Orange Flame",
+  "settings.brand.copyFailed":
+    "Impossible de copier la couleur. Sélectionnez la valeur HEX pour la copier.",
+  "settings.brand.download": "Télécharger {{name}}",
+  "settings.brand.downloadPng": "Télécharger le PNG",
+  "settings.brand.downloadFailed": "Impossible d'enregistrer l'image. Réessayez.",
+  "settings.brand.copied": "Copié",
+  "settings.brand.copyHex": "Copier le HEX",
+  "settings.brand.guidelines.title": "Utiliser l'identité",
+  "settings.brand.guidelines.shape":
+    "Conservez les proportions, l'expression et les pointes de la flamme, en laissant de l'espace autour.",
+  "settings.brand.guidelines.color":
+    "Utilisez la couleur exacte pour les aplats et conservez la lumière et les matières des personnages.",
   "settings.pane.plugins": "Plugins",
   "settings.pane.shortcuts": "Raccourcis clavier",
   "settings.pane.personalization": "Personnalisation",

@@ -1,0 +1,24 @@
+Prepared using the built-in imagegen tool.
+Sources: ../design/branding/2026-10-19-rounded-polish/R1-minimal.png, R2-soft-3d.png and R3-plush.png.
+
+mark
+
+Use case: background-extraction.
+Extract ONLY the large hero Flame character from the supplied approved brand board as a clean production asset. Preserve its exact identity, silhouette, facial features, proportions, color, surface material, and viewing angle. This is precise extraction, NOT a redesign. Remove the ivory board background, all text, the wordmark, labels and all bottom-row previews. One single character only, centered on a square 1024x1024 transparent canvas, the full character occupying roughly 78 percent of canvas height with comfortable margin. Genuinely transparent background with clean alpha edges and no background rectangle. No new elements or stylistic changes.
+This target is the flat orange logo with two charcoal pill eyes and NO mouth or limbs. Preserve the rounded two-tip contour exactly. Keep solid orange as close as possible to brand standard #FB6E30 and charcoal #242320. No shadow, gradient or texture. Main mark only.
+
+========================================================================
+
+companion
+
+Use case: background-extraction.
+Extract ONLY the large hero Flame character from the supplied approved brand board as a clean production asset. Preserve its exact identity, silhouette, facial features, proportions, color, surface material, and viewing angle. This is precise extraction, NOT a redesign. Remove the ivory board background, all text, the wordmark, labels and all bottom-row previews. One single character only, centered on a square 1024x1024 transparent canvas, the full character occupying roughly 78 percent of canvas height with comfortable margin. Genuinely transparent background with clean alpha edges and no background rectangle. No new elements or stylistic changes.
+This target is the satin soft-vinyl 3D orange companion with black pill eyes, tiny U smile and tiny rounded arms and feet. Preserve the existing 3D lighting and soft texture, but remove the floor and grounding shadow outside the character. Full main character only.
+
+========================================================================
+
+plush
+
+Use case: background-extraction.
+Extract ONLY the large hero Flame character from the supplied approved brand board as a clean production asset. Preserve its exact identity, silhouette, facial features, proportions, color, surface material, and viewing angle. This is precise extraction, NOT a redesign. Remove the ivory board background, all text, the wordmark, labels and all bottom-row previews. One single character only, centered on a square 1024x1024 transparent canvas, the full character occupying roughly 78 percent of canvas height with comfortable margin. Genuinely transparent background with clean alpha edges and no background rectangle. No new elements or stylistic changes.
+This target is the short orange fleece plush companion with ivory eyes, black pupils, a tiny smile and tiny rounded limbs. Preserve the exact plush fur edges and two flame tips. Remove floor and shadow outside the character. Full main character only.

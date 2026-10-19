@@ -8,6 +8,7 @@ export const VISUAL_REVIEW_VIEWPORT = { width: 1800, height: 1000 } as const;
 
 export const VISUAL_SETTINGS_PANES = [
   "appearance",
+  "brand",
   "personalization",
   "providers",
   "approvals",

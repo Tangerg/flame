@@ -1,0 +1,9 @@
+Flame Orange
+
+Brand standard: #FB6E30 (sRGB)
+RGB: 251, 110, 48
+Source: representative interior orange sampled from ../2026-10-19-concepts/01-minimal.png.
+The RGB channel medians of 119,996 interior orange pixels are (251, 110, 48).
+
+The source image and generated concepts contain minor pixel color variations.
+Use the exact brand standard above for solid brand fills.

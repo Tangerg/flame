@@ -280,6 +280,35 @@ export const de: Record<string, string> = {
   "settings.title": "Einstellungen",
   "settings.searchPlaceholder": "Einstellungen suchen…",
   "settings.pane.appearance": "Darstellung",
+  "settings.pane.brand": "Markenidentität",
+  "settings.brand.description": "Eine kleine Flamme mit neugierigem, freundlichem Ausdruck.",
+  "settings.brand.assets": "Markenmaterial",
+  "settings.brand.mark.title": "Primäres Logo",
+  "settings.brand.mark.description":
+    "Eine runde Flamme mit zwei neugierigen Augen für Symbole, Avatare und Navigation.",
+  "settings.brand.companion.title": "3D-Begleiter",
+  "settings.brand.companion.description":
+    "Ein weicher, plastischer Begleiter für Produktvorstellungen und größere Illustrationen.",
+  "settings.brand.plush.title": "Plüschfigur",
+  "settings.brand.plush.description":
+    "Ein warmer, kuscheliger Begleiter für Begrüßungen und Markengeschichten.",
+  "settings.brand.color.title": "Markenfarbe",
+  "settings.brand.color.description":
+    "Die feste Markenfarbe bleibt in allen Darstellungsthemen gleich.",
+  "settings.brand.color.name": "Flame Orange",
+  "settings.brand.copyFailed":
+    "Die Farbe konnte nicht kopiert werden. Wählen Sie den HEX-Wert zum Kopieren aus.",
+  "settings.brand.download": "{{name}} herunterladen",
+  "settings.brand.downloadPng": "PNG herunterladen",
+  "settings.brand.downloadFailed":
+    "Das Bild konnte nicht gespeichert werden. Versuchen Sie es erneut.",
+  "settings.brand.copied": "Kopiert",
+  "settings.brand.copyHex": "HEX kopieren",
+  "settings.brand.guidelines.title": "Verwendung der Identität",
+  "settings.brand.guidelines.shape":
+    "Behalten Sie Proportionen, Ausdruck und Flammenspitzen bei und lassen Sie Platz um das Logo.",
+  "settings.brand.guidelines.color":
+    "Verwenden Sie für Flächen die genaue Markenfarbe und erhalten Sie Licht und Material der Figuren.",
   "settings.pane.plugins": "Plugins",
   "settings.pane.shortcuts": "Tastenkürzel",
   "settings.pane.personalization": "Personalisierung",

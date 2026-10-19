@@ -293,6 +293,33 @@ export const en: Record<string, string> = {
   "settings.group.integrations": "Integrations",
   "settings.group.advanced": "Advanced",
   "settings.pane.appearance": "Appearance",
+  "settings.pane.brand": "Brand identity",
+  "settings.brand.description": "A little flame with a curious, friendly presence.",
+  "settings.brand.assets": "Brand assets",
+  "settings.brand.mark.title": "Primary logo",
+  "settings.brand.mark.description":
+    "A rounded flame and two curious eyes for icons, avatars and navigation.",
+  "settings.brand.companion.title": "3D companion",
+  "settings.brand.companion.description":
+    "A soft, dimensional companion for product introductions and larger illustrations.",
+  "settings.brand.plush.title": "Plush character",
+  "settings.brand.plush.description":
+    "A warm, tactile companion for welcoming moments and brand storytelling.",
+  "settings.brand.color.title": "Brand color",
+  "settings.brand.color.description":
+    "The fixed brand color stays the same across appearance themes.",
+  "settings.brand.color.name": "Flame Orange",
+  "settings.brand.copyFailed": "Couldn't copy the color. Select the HEX value to copy it.",
+  "settings.brand.download": "Download {{name}}",
+  "settings.brand.downloadPng": "Download PNG",
+  "settings.brand.downloadFailed": "Couldn't save the image. Try again.",
+  "settings.brand.copied": "Copied",
+  "settings.brand.copyHex": "Copy HEX",
+  "settings.brand.guidelines.title": "Using the identity",
+  "settings.brand.guidelines.shape":
+    "Keep the original proportions, expression and flame tips, with room around the mark.",
+  "settings.brand.guidelines.color":
+    "Use the exact brand color for flat fills; keep the original lighting and materials in character images.",
   "settings.pane.plugins": "Plugins",
   "settings.pane.shortcuts": "Keyboard shortcuts",
   "settings.pane.personalization": "Personalization",

@@ -272,6 +272,32 @@ export const ko: Record<string, string> = {
   "settings.title": "설정",
   "settings.searchPlaceholder": "설정 검색…",
   "settings.pane.appearance": "외관",
+  "settings.pane.brand": "브랜드 아이덴티티",
+  "settings.brand.description": "호기심과 친근함을 담은 작고 둥근 불꽃입니다.",
+  "settings.brand.assets": "브랜드 자료",
+  "settings.brand.mark.title": "기본 로고",
+  "settings.brand.mark.description":
+    "둥근 불꽃과 호기심 어린 두 눈. 아이콘, 아바타, 탐색 메뉴에 사용합니다.",
+  "settings.brand.companion.title": "3D 캐릭터",
+  "settings.brand.companion.description":
+    "부드러운 입체감의 동료로, 제품 소개와 큰 일러스트에 사용합니다.",
+  "settings.brand.plush.title": "봉제 캐릭터",
+  "settings.brand.plush.description":
+    "따뜻하고 포근한 동료로, 환영 화면과 브랜드 소개에 사용합니다.",
+  "settings.brand.color.title": "브랜드 색상",
+  "settings.brand.color.description": "브랜드 색상은 화면 테마가 바뀌어도 동일하게 유지됩니다.",
+  "settings.brand.color.name": "Flame 오렌지",
+  "settings.brand.copyFailed": "색상을 복사하지 못했습니다. HEX 값을 선택해 복사하세요.",
+  "settings.brand.download": "{{name}} 다운로드",
+  "settings.brand.downloadPng": "PNG 다운로드",
+  "settings.brand.downloadFailed": "이미지를 저장하지 못했습니다. 다시 시도하세요.",
+  "settings.brand.copied": "복사됨",
+  "settings.brand.copyHex": "HEX 복사",
+  "settings.brand.guidelines.title": "사용 가이드",
+  "settings.brand.guidelines.shape":
+    "원래의 비율, 표정, 불꽃 끝을 유지하고 로고 주변에 여백을 두세요.",
+  "settings.brand.guidelines.color":
+    "단색 면에는 정확한 브랜드 색상을 사용하고 캐릭터의 조명과 재질을 유지하세요.",
   "settings.pane.plugins": "플러그인",
   "settings.pane.shortcuts": "키보드 단축키",
   "settings.pane.personalization": "개인화",

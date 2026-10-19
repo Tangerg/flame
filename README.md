@@ -1,8 +1,26 @@
 # Flame
 
+<p align="center">
+  <img src="brand/flame-mark.png" alt="Flame — a round orange flame with two curious eyes" width="144" />
+</p>
+
 Flame is an agent product with a Go Runtime, a Cobra/Oolong CLI, and a shared Web/Wails application.
 
 Runtime owns durable product semantics and exposes the same behavior through an in-process Go binding and the Runtime Protocol. Clients own interaction and presentation; Scope supplies the agent framework and provider libraries.
+
+## Brand identity
+
+Flame's identity is a small, rounded orange flame with two curious eyes. The primary
+logo, 3D companion and plush character share the same warm, approachable personality.
+
+<p align="center">
+  <img src="brand/flame-companion.png" alt="Flame 3D companion" width="200" />
+  <img src="brand/flame-plush.png" alt="Flame plush character" width="200" />
+</p>
+
+**Flame Orange: `#FB6E30` · RGB `251, 110, 48`.**
+See the [brand guide and downloadable assets](brand/README.md), also available in
+the application under **Settings → Brand identity**.
 
 ## Repository
 

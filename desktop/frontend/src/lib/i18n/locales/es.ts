@@ -283,6 +283,33 @@ export const es: Record<string, string> = {
   "settings.title": "Ajustes",
   "settings.searchPlaceholder": "Buscar ajustes…",
   "settings.pane.appearance": "Apariencia",
+  "settings.pane.brand": "Identidad de marca",
+  "settings.brand.description": "Una pequeña llama con una presencia curiosa y cercana.",
+  "settings.brand.assets": "Recursos de marca",
+  "settings.brand.mark.title": "Logotipo principal",
+  "settings.brand.mark.description":
+    "Una llama redondeada y dos ojos curiosos para iconos, avatares y navegación.",
+  "settings.brand.companion.title": "Compañero 3D",
+  "settings.brand.companion.description":
+    "Un compañero suave y con volumen para presentaciones de producto e ilustraciones grandes.",
+  "settings.brand.plush.title": "Personaje de peluche",
+  "settings.brand.plush.description":
+    "Un compañero cálido y suave para dar la bienvenida y contar historias de la marca.",
+  "settings.brand.color.title": "Color de marca",
+  "settings.brand.color.description":
+    "El color de marca se mantiene fijo en todos los temas de apariencia.",
+  "settings.brand.color.name": "Naranja Flame",
+  "settings.brand.copyFailed": "No se pudo copiar el color. Selecciona el valor HEX para copiarlo.",
+  "settings.brand.download": "Descargar {{name}}",
+  "settings.brand.downloadPng": "Descargar PNG",
+  "settings.brand.downloadFailed": "No se pudo guardar la imagen. Inténtalo de nuevo.",
+  "settings.brand.copied": "Copiado",
+  "settings.brand.copyHex": "Copiar HEX",
+  "settings.brand.guidelines.title": "Uso de la identidad",
+  "settings.brand.guidelines.shape":
+    "Conserva las proporciones, la expresión y las puntas de la llama, dejando espacio alrededor.",
+  "settings.brand.guidelines.color":
+    "Usa el color exacto para rellenos planos y conserva la iluminación y los materiales de los personajes.",
   "settings.pane.plugins": "Plugins",
   "settings.pane.shortcuts": "Atajos de teclado",
   "settings.pane.personalization": "Personalización",

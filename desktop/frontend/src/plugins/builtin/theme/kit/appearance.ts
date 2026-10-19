@@ -1,3 +1,5 @@
+import { FLAME_ORANGE } from "@/lib/brand";
+
 export type ColorThemeId = string;
 export type VisualStyleId = string;
 
@@ -7,7 +9,7 @@ export const DEFAULT_UI_DENSITY: UiDensity = "comfortable";
 
 export const DEFAULT_CONTRAST = 25;
 
-export const DEFAULT_ACCENT = "#fb6e30";
+export const DEFAULT_ACCENT = FLAME_ORANGE;
 
 interface CustomTheme {
   bg: string;
