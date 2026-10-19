@@ -12,8 +12,9 @@ const styles = stylex.create({
     transitionDuration: motionToken.med,
     transitionTimingFunction: "var(--ease-out)",
   },
-  open: { gridTemplateRows: "1fr" },
-  shut: { gridTemplateRows: "0fr" },
+  // The zero minimum keeps WebKit's intrinsic track in sync when open content wraps.
+  open: { gridTemplateRows: "minmax(0, 1fr)" },
+  shut: { gridTemplateRows: "minmax(0, 0fr)" },
   well: {
     minHeight: 0,
     overflow: "clip",
