@@ -1,7 +1,7 @@
 # Plugin capabilities roadmap
 
 Forward-looking TODO for extending Flame's plugin line beyond Memory and Schedules.
-Knowledge base and GitHub are now implemented as ordinary first-party backends. The architecture refactor is covered
+Knowledge base, GitHub and Model router are now implemented as ordinary first-party backends. The architecture refactor is covered
 by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is about
 *which capabilities to build next as plugins, and in what order.*
 
@@ -14,9 +14,9 @@ by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is ab
   entry now receives the same call-scoped canonical host grant as its public
   `plugins.call` entry, through the single owner `Pool.OpenRPC` (commit
   `a15f2f9e4`). Memory keeps its own narrow model/embedding grant by design.
-- Four first-party backends: `runtime/internal/plugins/memory`,
+- Five first-party backends: `runtime/internal/plugins/memory`,
   `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase`,
-  `runtime/internal/plugins/github`.
+  `runtime/internal/plugins/github`, `runtime/internal/plugins/modelrouter`.
 - Examples: `examples/plugins/reviews` (backend + typed ops + MCP tools + a
   declared analyzer dependency + board UI; one analyzer business is exposed as
   *both* a typed query and the `analyze_review` Tool), `examples/plugins/composition`
@@ -48,7 +48,7 @@ model *selection* is a published contract a plugin may contribute; model
   `ConnectCallback` → canonical RPC (`CallPlugin` to a declared dependency, core
   ops). Tool arg transformation: `ToolProposalContract`.
 - Context contribution: `ModelContextContract` (`flame.model-context.v2`).
-- Model selection: `ModelSelectionContract` (`flame.model-selection.v1`).
+- Model selection: `ModelSelectionContract` (`flame.model-selection.v2`).
 - Request transformation: `ModelInputContract`. Transparent observation:
   `ModelObserverContract`.
 - Embeddings: `flame.model/embed-texts.v2` (`NewTextEmbeddingCallback`,
@@ -70,7 +70,7 @@ model *selection* is a published contract a plugin may contribute; model
       + a private credential store (+ optional context contribution). This is the
       largest product-value category; it also validates "same business usable from
       UI command *and* model Tool" (the parity just closed in `a15f2f9e4`).
-- [ ] **Model router.** A `ModelSelectionContract` contributor that picks
+- [x] **Model router.** A `ModelSelectionContract` contributor that picks
       provider/model per role/budget (cheap model for simple tasks).
 - [ ] **Guardrails / safety.** `ModelInputContract` (e.g. PII redaction) or
       `ModelObserverContract` (output classification). Transparent, no new core.
@@ -167,19 +167,19 @@ if its scope is genuinely ambiguous, surface it instead of guessing.
 
 ## Completed rounds and contract lessons
 
-- `bad0b854a` upgrades all 30 Scope modules to v0.53.0 in Runtime, CLI and
+- `c5a031a74` upgrades all 30 Scope modules to v0.53.0 in Runtime, CLI and
   Reviews. Build/vet and the changed dependency consumers passed. The broad CLI
   run had one executable-command timeout; its isolated regression passed.
-- `65bf11c24` repairs two pre-existing acceptance fixtures that assembled an
+- `d3c0407ae` repairs two pre-existing acceptance fixtures that assembled an
   Endpoint without production's required callback publication. The failures
   reproduced with the original Scope dependencies; the unchanged business
   assertions pass with the complete fixture composition.
-- `4eb1c058d` implements Knowledge base. The private owner atomically publishes
+- `b9229530d` implements Knowledge base. The private owner atomically publishes
   document revisions, Unicode-safe chunks, vectors and command receipts. Only
   a newly admitted import may embed; missing settlement cannot authorize replay.
   Deleted document IDs are retired so a stale revision cannot match a reimport.
   Typed search, MCP search and model context share the same retrieval use case.
-- `764f67058` implements GitHub's read-only issue/list/file operations and matching
+- `df62f776a` implements GitHub's read-only issue/list/file operations and matching
   MCP tools. The existing private installation secret-input store owns the current
   token; the backend receives one immutable launch value rather than creating a
   competing credential database. Its private database owns credential-qualified
@@ -215,11 +215,29 @@ if its scope is genuinely ambiguous, surface it instead of guessing.
   The installed regression compares typed and model Tool retrieval, requires the
   original user query to reach embedding, and checks that injected material does
   not become authored Session history. No live SaaS/provider credentials were used.
-- Frontend dependencies were initialized in the new worktree. `plugins` check
-  passed. The desktop check passed types/lint/format and encountered failures in
-  existing SessionRow/search-overlay focus tests; the broad run was stopped.
-  No frontend source changed. Continue with backends; a future actual main/UI
-  sync still requires the frontend gate and the component-props stop rule above.
+- `3c1e245cf` implements Model router. A private immutable policy owns one rule
+  per actual calling use, optional captured-envelope ceilings, revision transitions
+  and atomic command receipts. Runtime's selection query now publishes interaction,
+  utility or independent use and the caller's existing limits. Utility text bytes
+  and independent encoded-request bytes remain distinct units; interaction invents
+  no byte envelope. Model construction, capacity, caller-budget enforcement and
+  pricing remain core. Missing policy matches preserve the original proposal;
+  publisher or selected-provider failures never authorize fallback.
+- Selection v2 replaces v1. Rebuild contributors and explicitly choose the v2
+  role; no compatibility alias or old-query interpretation remains. Accepted Runs
+  retain their exact selection and Session preferences remain separately owned.
+  Policy changes apply to future queries rather than accepted command retries.
+- Model-router verification passed: Runtime build/vet, model/SDK/private-policy
+  tests, changed Run-opening and auxiliary/independent model consumers,
+  pluginservices, architecture gates, durable command/reopen/refusal checks and
+  an installed stdio acceptance covering provider construction, Run identity,
+  Session preference and accepted retry after policy replacement. A shared Go
+  cache lost compiled dependency files during one rerun; the final installed
+  acceptance passed with a task-local GOCACHE, without clearing shared caches.
+- Main's Memory UI commit `e339c70bf` is rebased into this worktree. Both `plugins`
+  check and the complete desktop frontend check passed after this sync, including
+  tests, published boundaries, resources and production bundle checks. No plugin
+  UI compilation stop was triggered. Backend rounds still avoid shared UI edits.
 
 ## Composition and callback baseline
 
