@@ -23,7 +23,7 @@ Icons retain their viewport in flex layouts by default. Explicit layout styles c
 
 Color inherits through `currentColor`. Native SVG props, `className`, `style`, events, `data-*`, ARIA, and a React 19 SVG ref work normally. Decorative icons are hidden from accessibility APIs by default. `aria-label` or `aria-labelledby` makes an icon an image unless explicitly overridden; action controls should carry their own accessible name.
 
-Geometry, strokes, children, and width/height attributes belong to the drawing. Use `size` for dimensions. CSS should change color, opacity, or layout rather than stroke weight, fill, or viewport dimensions. Separate named components express semantic states; `disabled` belongs to the control. The library has no provider, theme registry, runtime name lookup, stroke options, or speculative filled style.
+Geometry, strokes, authored path paint, children, and width/height attributes belong to the drawing. Use `size` for dimensions. CSS should change color, opacity, or layout rather than stroke weight, fill, or viewport dimensions. Stop uses a compact solid square to distinguish the command from an unchecked box. Separate named components express semantic states; `disabled` belongs to the control. The library has no provider, theme registry, runtime name lookup, stroke options, or speculative filled style.
 
 ## Authoring and build
 

@@ -1,14 +1,12 @@
-import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { Icon, Pressable, reveal, StatusDot } from "@/ui";
-import { IconButton, RecordSummary, toneInk, vocab } from "@flame/ui";
+import { RecordSummary, toneInk, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
-import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { openWorkspaceSubagentRun } from "@/plugins/builtin/workspace/public/navigation";
-import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { motion, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { delegatedRunSummary } from "../application/delegatedRunSummary";
+import { SubagentStopButton } from "./SubagentStopButton";
 
 const styles = stylex.create({
   row: {
@@ -39,6 +37,7 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
   },
   detail: { display: "flex", flexDirection: "column", gap: space.s0_5, minWidth: 0, flex: 1 },
+  cancel: { alignSelf: "flex-start", marginBlockStart: space.s2 },
 });
 
 export function DelegatedRunLink({
@@ -53,7 +52,6 @@ export function DelegatedRunLink({
   taskLabel?: string;
 }) {
   const t = useT();
-  const available = useRuntimeCommandsAvailable();
   const model = delegatedRunSummary(t, run, ordinal, siblingCount, taskLabel);
   return (
     <div
@@ -92,14 +90,9 @@ export function DelegatedRunLink({
         </span>
       </Pressable>
       {model.cancelable && (
-        <IconButton
-          icon={iconGlyph("stop")}
-          size="sm"
-          quiet
-          disabled={!available}
-          aria-label={t("agent.runTree.action.cancel")}
-          onClick={() => cancelSessionRun({ sessionId: run.sessionId, runId: run.id })}
-        />
+        <span {...stylex.props(styles.cancel, vocab.firstLine, typeStep.uiMd)}>
+          <SubagentStopButton run={run} />
+        </span>
       )}
     </div>
   );

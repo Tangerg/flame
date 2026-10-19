@@ -18,8 +18,6 @@ import {
 import { ScrollArea, SectionLabel, StatusDot } from "@/ui";
 import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
 import { AgentWorkspaceView } from "@/ui/agent";
-import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
-import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { corner, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "../application/subagents";
 import { delegatedRunSummary, type DelegatedRunSummary } from "../application/delegatedRunSummary";
@@ -29,6 +27,7 @@ import { MESSAGE_CONTENT_CLASS } from "./messageContent";
 import { messageStyles as ms } from "./messageStyles";
 import { UnresolvedRunEffects } from "./UnresolvedRunEffects";
 import { SteerInputStatus } from "./SteerInputStatus";
+import { SubagentStopButton } from "./SubagentStopButton";
 
 const styles = stylex.create({
   header: {
@@ -62,7 +61,6 @@ const styles = stylex.create({
 
 export function SubagentsPanel() {
   const t = useT();
-  const available = useRuntimeCommandsAvailable();
   const rows = useActiveConversationRows();
   const entries = useMemo(() => subagentEntries(rows), [rows]);
   const selectedId = useWorkspaceSubagentRunId();
@@ -146,21 +144,7 @@ export function SubagentsPanel() {
             {running > 0 && ` · ${t("subagents.running", { count: running })}`}
           </span>
         )}
-        {selected && summary?.cancelable && (
-          <IconButton
-            icon={iconGlyph("stop")}
-            size="sm"
-            quiet
-            disabled={!available}
-            aria-label={t("agent.runTree.action.cancel")}
-            onClick={() =>
-              cancelSessionRun({
-                sessionId: selected.narrative.run.sessionId,
-                runId: selected.narrative.run.id,
-              })
-            }
-          />
-        )}
+        {selected && summary?.cancelable && <SubagentStopButton run={selected.narrative.run} />}
       </header>
       {selected && summary ? (
         <SubagentTranscript key={selectedId} entry={selected} summary={summary} />

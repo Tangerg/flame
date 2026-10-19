@@ -30,7 +30,11 @@ export type IconProps = Omit<
 
 export type IconComponent = (props: IconProps) => ReactElement;
 
-type Path = Readonly<{ d: string; strokeWidth?: number }>;
+type Path = Readonly<{
+  d: string;
+  strokeWidth?: number;
+  fill?: "currentColor";
+}>;
 export type Master = Readonly<{
   grid: 16 | 24;
   strokeWidth: number;

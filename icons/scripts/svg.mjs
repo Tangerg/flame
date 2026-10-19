@@ -41,7 +41,7 @@ export function readSvg(text, grid, file) {
     fail("invalid stroke width");
   const paths = [];
   const residue = root[2].replace(/<path([^>]*)\/>/g, (_, text) => {
-    const attrs = attributes(text, ["d", "stroke-width"]);
+    const attrs = attributes(text, ["d", "stroke-width", "fill"]);
     if (!attrs.d || !/^[MmLlHhVvCcSsQqTtAaZz0-9.,+\s-]+$/.test(attrs.d))
       fail("invalid path data");
     const path = { d: attrs.d };
@@ -49,6 +49,11 @@ export function readSvg(text, grid, file) {
       path.strokeWidth = Number(attrs["stroke-width"]);
       if (!Number.isFinite(path.strokeWidth) || path.strokeWidth <= 0)
         fail("invalid path stroke width");
+    }
+    if (attrs.fill !== undefined) {
+      if (attrs.fill !== "currentColor")
+        fail('expected path fill="currentColor"');
+      path.fill = attrs.fill;
     }
     paths.push(path);
     return "";
@@ -62,8 +67,8 @@ export function writeSvg(master) {
   const { grid, strokeWidth, paths } = master;
   const body = paths
     .map(
-      ({ d, strokeWidth }) =>
-        `  <path d="${d}"${strokeWidth === undefined ? "" : ` stroke-width="${strokeWidth}"`}/>`,
+      ({ d, strokeWidth, fill }) =>
+        `  <path d="${d}"${strokeWidth === undefined ? "" : ` stroke-width="${strokeWidth}"`}${fill === undefined ? "" : ` fill="${fill}"`}/>`,
     )
     .join("\n");
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${grid} ${grid}" width="${grid}" height="${grid}" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round">\n${body}\n</svg>\n`;

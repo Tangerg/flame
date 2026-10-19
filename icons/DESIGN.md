@@ -26,7 +26,7 @@ Keep round caps and joins, precise silhouettes, and restrained rounding. Mechani
 
 Author corner transitions in the centerline path; round caps and joins alone leave inner right angles and diagonal tips sharp. Use restrained arcs on larger bodies and short tangent curves at folded shoulders and pencil ends. At 16px, the file, folder, terminal, and compose bodies use 0.75px corner transitions; their 24px drawings use 1.125px, with 1.25px on the larger compose frame. Small internal symbols need less rounding so their counters stay open. Preserve straight runs, object proportions, and recognizable fold lines rather than rounding every point indiscriminately.
 
-Use `currentColor` and outlined SVGs. React is the first supported adapter because Flame already uses it. Filled glyphs, other frameworks, arbitrary themes, optical overrides, and global configuration require demonstrated needs before becoming APIs. Application mappings decide which glyph represents each product concept.
+Use `currentColor` and outlined SVGs. The Stop command uses a compact solid square so it cannot be mistaken for an unchecked box. That paint belongs to its authored paths; consumers have no fill-style option. React is the first supported adapter because Flame already uses it. Other filled glyphs, frameworks, arbitrary themes, optical overrides, and global configuration require demonstrated needs before becoming APIs. Application mappings decide which glyph represents each product concept.
 
 ## Optical construction
 

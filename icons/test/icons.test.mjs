@@ -85,26 +85,20 @@ test("size and authored geometry have one owner even with untyped props", () => 
   }
 });
 
-test("SVG downloads and React components carry the same paths and weights", async () => {
+test("SVG downloads and React components carry the same paths, weights and paint", async () => {
   for (const icon of icons) {
     for (const grid of [16, 24]) {
       const text = await readFile(
         new URL(`../dist/${icon.svg[grid]}`, import.meta.url),
         "utf8",
       );
-      const paths = [
-        ...text.matchAll(/<path d="([^"]+)"(?: stroke-width="([^"]+)")?\/>/g),
-      ];
+      const paths = [...text.matchAll(/<path ([^>]+)\/>/g)];
       const rendered = renderToStaticMarkup(
         createElement(glyphs[icon.component], { size: grid }),
       );
       assert.equal([...rendered.matchAll(/<path /g)].length, paths.length);
-      for (const [, d, weight] of paths)
-        assert.ok(
-          rendered.includes(
-            `d="${d}"${weight ? ` stroke-width="${weight}"` : ""}`,
-          ),
-        );
+      for (const [, attributes] of paths)
+        assert.ok(rendered.includes(`<path ${attributes}`));
       assert.doesNotMatch(text, /mask|filter|clipPath|<image/);
     }
   }
@@ -118,6 +112,8 @@ test("source parser refuses unsupported or unsafe SVG features", () => {
     '<path d="M0 0" onclick="run()"/>',
     '<path d="M0 0"/><image/>',
     '<path d="M0 0" stroke-width="NaN"/>',
+    '<path d="M0 0" fill="red"/>',
+    '<path d="M0 0" fill="url(#paint)"/>',
     '<path d="&quot;"/>',
   ]) {
     assert.throws(() => readSvg(`${root}${drawing}</svg>`, 16, "test.svg"));
