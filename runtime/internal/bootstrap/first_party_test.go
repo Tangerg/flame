@@ -36,9 +36,13 @@ func TestFirstPartyInitializationFailureCannotCommitPartialDefaults(t *testing.T
 	if err := initializeFirstPartyPlugins(t.Context(), stores, firstPartyPackages); err != nil {
 		t.Fatal(err)
 	}
+	sources, err := os.ReadDir(firstPartyPackages)
+	if err != nil {
+		t.Fatal(err)
+	}
 	rows, err = stores.Installations.List(t.Context())
-	if err != nil || len(rows) != 10 {
-		t.Fatalf("valid initialization after failure = (%v, %v)", rows, err)
+	if err != nil || len(rows) != len(sources) {
+		t.Fatalf("valid initialization after failure installed %d of %d packages: %v", len(rows), len(sources), err)
 	}
 	if err := initializeFirstPartyPlugins(t.Context(), stores, filepath.Join(catalog, "absent")); err != nil {
 		t.Fatalf("restart reread the distribution: %v", err)

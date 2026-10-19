@@ -1,7 +1,7 @@
 # First-party portable packages
 
-Memory, Schedules and Knowledge base are complete optional backends. Memory and
-Schedules use ordinary public components; Knowledge base is a backend-only package.
+Memory, Schedules, Knowledge base and GitHub are complete optional backends. Memory
+and Schedules use ordinary public components; Knowledge base and GitHub are backend-only packages.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
 
@@ -52,6 +52,8 @@ Windows on amd64 or arm64. The output contains the complete first-party catalog,
 including all workspace pages and renderers and compiled Memory/Schedules backends.
 The same build discovers and compiles the Knowledge base backend and copies its
 generated operations/context contracts.
+GitHub uses the same package path with a declared optional secret token input;
+its unset configuration supports public reads without blocking catalog initialization.
 Memory/Schedules package namespaces also contain canonical contracts generated
 from the typed methods registered by their actual backends. Run
 `go generate ./internal/plugins/memory/rpc ./internal/plugins/schedules/rpc`
@@ -67,11 +69,13 @@ installs dependencies. Executables are shipped in the admitted package. `--repla
 is for replacing an owned build output after the new distribution has been built.
 
 See [Memory](memory/README.md) and [Schedules](schedules/README.md) for fact owners
-and lifecycle contracts, and [Knowledge base](knowledgebase/README.md) for document
-publication and retrieval. Other packages contain only their declared content or presentation resources.
+and lifecycle contracts, [Knowledge base](knowledgebase/README.md) for document
+publication/retrieval, and [GitHub](github/README.md) for the read-only connector and
+credential/cache boundaries. Other packages contain only their declared content or presentation resources.
 
 Backend source is compiled from `runtime/internal/plugins/memory` and
-`runtime/internal/plugins/schedules`, and from `runtime/internal/plugins/knowledgebase`
+`runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase` and
+`runtime/internal/plugins/github`
 inside the local Runtime application module.
 These are separate executables with private facts and process lifetimes, without
 separate published Go modules or first-party version resolution.

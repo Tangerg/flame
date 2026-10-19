@@ -1,0 +1,21 @@
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "inputs": [
+    {
+      "id": "token",
+      "server": "github",
+      "target": "env",
+      "key": "GITHUB_TOKEN",
+      "secret": true,
+      "required": false
+    }
+  ],
+  "contributions": [
+    {
+      "id": "github-operations",
+      "server": "github",
+      "export": "github",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ]
+}

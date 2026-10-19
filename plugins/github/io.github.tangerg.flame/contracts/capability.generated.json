@@ -1,0 +1,505 @@
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "reference": "flame.github.v1",
+  "composition": "collection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.github/get-issue.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read one GitHub issue or pull request by its repository and issue number.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9naXRodWIvcnBj_IssueInput": {
+            "additionalProperties": false,
+            "properties": {
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "number"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9naXRodWIvcnBj_Issue": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "pullRequest": {
+                "type": "boolean"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "open",
+                  "closed"
+                ],
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number",
+              "title",
+              "body",
+              "state",
+              "url",
+              "author",
+              "pullRequest",
+              "updatedAt"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "pullRequest": {
+            "type": "boolean"
+          },
+          "repository": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "number",
+          "title",
+          "body",
+          "state",
+          "url",
+          "author",
+          "pullRequest",
+          "updatedAt"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/list-issues.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read one explicit page of repository issues and pull requests, exposing the next page number supplied by GitHub.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9naXRodWIvcnBj_ListInput": {
+            "additionalProperties": false,
+            "properties": {
+              "limit": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "maximum": 100,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "page": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "open",
+                  "closed",
+                  "all"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "state",
+              "page",
+              "limit"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "page": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "closed",
+              "all"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "state",
+          "page",
+          "limit"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9naXRodWIvcnBj_Issue": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "pullRequest": {
+                "type": "boolean"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "open",
+                  "closed"
+                ],
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number",
+              "title",
+              "body",
+              "state",
+              "url",
+              "author",
+              "pullRequest",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9naXRodWIvcnBj_IssuePage": {
+            "additionalProperties": false,
+            "properties": {
+              "issues": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9naXRodWIvcnBj_Issue"
+                },
+                "type": "array"
+              },
+              "nextPage": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "required": [
+              "issues"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "issues": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9naXRodWIvcnBj_Issue"
+            },
+            "type": "array"
+          },
+          "nextPage": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "issues"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/read-file.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read a UTF-8 repository file up to one MiB, optionally at an exact Git ref. Directory and binary content are refused.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9naXRodWIvcnBj_FileInput": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              "ref": {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "path"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ref": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "path"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9naXRodWIvcnBj_File": {
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "sha": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "path",
+              "sha",
+              "url",
+              "text"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "repository": {
+            "type": "string"
+          },
+          "sha": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "path",
+          "sha",
+          "url",
+          "text"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "name": "flame.github/get-issue.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one GitHub issue or pull request by its repository and issue number.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fget_2dissue_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fget_2dissue_2ev1Output"
+  },
+  {
+    "name": "flame.github/list-issues.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one explicit page of repository issues and pull requests, exposing the next page number supplied by GitHub.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2flist_2dissues_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2flist_2dissues_2ev1Output"
+  },
+  {
+    "name": "flame.github/read-file.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read a UTF-8 repository file up to one MiB, optionally at an exact Git ref. Directory and binary content are refused.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fread_2dfile_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fread_2dfile_2ev1Output"
+  }
+]
