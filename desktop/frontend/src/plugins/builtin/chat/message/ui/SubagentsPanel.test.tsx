@@ -83,11 +83,12 @@ function rows(run = child, text = "Child streamed output"): TranscriptRow[] {
   ];
 }
 
-it("projects live child material, returns to the list, and never carries it into another session", () => {
+it("projects live child material, returns to the list, and never carries it into another session", async () => {
   material.rows = rows();
   navigator().go({ session: "session" });
   openWorkspaceSubagentRun("child");
   const { rerender } = render(<SubagentsPanel />);
+  await act(async () => vi.dynamicImportSettled());
   expect(screen.getByText("Child streamed output")).toBeTruthy();
   expect(screen.getByText("Running")).toBeTruthy();
 
@@ -120,7 +121,7 @@ it("projects live child material, returns to the list, and never carries it into
   expect(navigator().get().subagent).toBeNull();
 });
 
-it("marks a delegated user message as the same speech bubble the transcript draws", () => {
+it("marks a delegated user message as the same speech bubble the transcript draws", async () => {
   material.rows = rows();
   material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages.unshift({
     id: "child-task",
@@ -132,6 +133,7 @@ it("marks a delegated user message as the same speech bubble the transcript draw
   navigator().go({ session: "session" });
   openWorkspaceSubagentRun("child");
   const { container } = render(<SubagentsPanel />);
+  await act(async () => vi.dynamicImportSettled());
 
   const bubbles = container.querySelectorAll("[data-user-message-bubble]");
   expect(bubbles).toHaveLength(1);

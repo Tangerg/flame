@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
+import { useT } from "@/lib/i18n";
+import { SkeletonText } from "@/ui";
 import type { MarkdownMessageProps } from "./MarkdownRenderer";
 import { useVisibleTextMaterial } from "../messageVisibleMaterial";
 
@@ -6,18 +8,19 @@ const loadRenderer = () => import("./MarkdownRenderer");
 
 const MarkdownRenderer = lazy(() => loadRenderer().then((m) => ({ default: m.MarkdownRenderer })));
 
-function PendingMarkdown({ text }: { text: string }) {
+function PendingMarkdown() {
+  const t = useT();
   useVisibleTextMaterial(false);
   return (
-    <div data-surface-pending="" className="md" data-prose="" dir="auto">
-      {text}
+    <div data-surface-pending="">
+      <SkeletonText label={t("common.loading")} />
     </div>
   );
 }
 
 export function MarkdownMessage(props: MarkdownMessageProps) {
   return (
-    <Suspense fallback={<PendingMarkdown text={props.text} />}>
+    <Suspense fallback={<PendingMarkdown />}>
       <MarkdownRenderer {...props} />
     </Suspense>
   );

@@ -37,6 +37,14 @@ const styles = stylex.create({
     gap: space.s0_5,
     paddingBlock: space.s1,
   },
+  text: {
+    display: "flex",
+    flexDirection: "column",
+    width: "32ch",
+    maxWidth: "100%",
+    gap: space.s2,
+    paddingBlock: space.s1_5,
+  },
   inline: {
     display: "inline-flex",
     height: "var(--control-height-md)",
@@ -48,11 +56,28 @@ const styles = stylex.create({
   },
 });
 
-function SkeletonLine({ width = "100%", height = 10 }: { width?: string; height?: number }) {
+function SkeletonLine({
+  width = "100%",
+  height = 10,
+}: {
+  width?: string;
+  height?: number | string;
+}) {
   return (
     <span {...stylex.props(styles.line)} style={{ width, height }}>
       <span aria-hidden {...stylex.props(styles.sweep)} />
     </span>
+  );
+}
+
+export function SkeletonText({ label = "Loading…" }: { label?: string }) {
+  return (
+    <output {...stylex.props(styles.text)} aria-busy="true" aria-live="polite">
+      <span className="sr-only">{label}</span>
+      <SkeletonLine height="0.65em" />
+      <SkeletonLine width="88%" height="0.65em" />
+      <SkeletonLine width="62%" height="0.65em" />
+    </output>
   );
 }
 

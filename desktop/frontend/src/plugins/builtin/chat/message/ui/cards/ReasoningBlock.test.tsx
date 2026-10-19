@@ -94,7 +94,7 @@ describe("ReasoningBlock disclosure policy", () => {
     );
   });
 
-  it("turns the first user toggle into an explicit override of the automatic state", () => {
+  it("turns the first user toggle into an explicit override of the automatic state", async () => {
     renderReasoning("complete", "Hidden rationale");
     const trigger = screen.getByRole("button", { name: /Thought/ });
 
@@ -105,6 +105,7 @@ describe("ReasoningBlock disclosure policy", () => {
 
     fireEvent.click(trigger);
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    await act(async () => vi.dynamicImportSettled());
     expect(screen.getByRole("region").textContent).toContain("Hidden rationale");
 
     fireEvent.click(trigger);

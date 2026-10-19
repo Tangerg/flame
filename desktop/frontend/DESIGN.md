@@ -289,6 +289,9 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
 - A turn is a caption line over a full-width body, not an avatar gutter beside a
   narrowed one: who is speaking is read once, the measure is inhabited for the
   whole turn, and a 38px gutter was taking it from every code block and table.
+- While the Markdown renderer loads, a compact text skeleton occupies the reading
+  edge. Raw source syntax does not appear as prose. The renderer stays lazy, and
+  the existing visible-material owner keeps message actions pending until it settles.
 - Long code blocks and tables can exceed the measure — they scroll horizontally
   inside their own wrapper; the prose column does not move.
 - Long inline tables keep a bounded reading viewport with pinned column headings.

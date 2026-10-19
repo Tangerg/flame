@@ -157,7 +157,7 @@ describe("MessageBlock turn identity", () => {
     expect(container.querySelector(".font-mono")).toBeNull();
   });
 
-  it("marks only the human turn as the user-message bubble", () => {
+  it("marks only the human turn as the user-message bubble", async () => {
     const { container, rerender } = render(
       <MessageBlock
         row={row("complete", "中文与 English 混排", "user")}
@@ -168,6 +168,7 @@ describe("MessageBlock turn identity", () => {
       />,
     );
 
+    await act(async () => vi.dynamicImportSettled());
     expect(container.querySelector("[data-user-message-bubble]")?.textContent).toContain(
       "中文与 English 混排",
     );
