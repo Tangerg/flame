@@ -32,7 +32,7 @@ type Policy struct {
 func NewPolicy() Policy { return Policy{revision: 1, rules: []Rule{}} }
 
 func Restore(snapshot Snapshot) (Policy, error) {
-	if snapshot.Revision < 1 || len(snapshot.Rules) > 3 {
+	if snapshot.Revision < 1 || snapshot.Rules == nil || len(snapshot.Rules) > 3 {
 		return Policy{}, ErrInvalidPolicy
 	}
 	seen := make(map[model.Use]bool, len(snapshot.Rules))

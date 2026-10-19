@@ -60,7 +60,10 @@ func TestPolicyRefusesAmbiguousRulesInvalidUnitsAndRevisionExhaustion(t *testing
 			t.Fatalf("invalid policy admitted: %+v, %v", rules, err)
 		}
 	}
-	policy, err := Restore(Snapshot{Revision: math.MaxInt64})
+	if _, err := Restore(Snapshot{Revision: 1}); !errors.Is(err, ErrInvalidPolicy) {
+		t.Fatalf("missing rule list became a pass-through policy: %v", err)
+	}
+	policy, err := Restore(Snapshot{Revision: math.MaxInt64, Rules: []Rule{}})
 	if err != nil {
 		t.Fatal(err)
 	}
