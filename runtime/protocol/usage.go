@@ -1,5 +1,7 @@
 package protocol
 
+import "time"
+
 type SessionUsageRequest struct {
 	SessionID string `json:"sessionId"`
 }
@@ -46,6 +48,10 @@ type UsageBucket struct {
 // Session-only and unattached calls. Run totals are not added to these sources.
 type UsageSummary struct {
 	RecordedUsage
+	// The accounting owner publishes its actual range; consumers cannot recreate
+	// a relative query's lower bound from a later client-side clock reading.
+	ObservedAt time.Time     `json:"observedAt"`
+	Since      *time.Time    `json:"since,omitzero"`
 	ByProvider []UsageBucket `json:"byProvider"`
 	ByModel    []UsageBucket `json:"byModel"`
 	ByDay      []UsageBucket `json:"byDay"`

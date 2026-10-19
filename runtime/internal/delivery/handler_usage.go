@@ -34,8 +34,9 @@ func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequ
 	if err != nil {
 		return nil, err
 	}
-	return &protocol.UsageSummary{
+	summary := &protocol.UsageSummary{
 		RecordedUsage: presentRecordedUsage(report.Total, report.RecordedCostUSD, report.Coverage),
+		ObservedAt:    report.ObservedAt,
 		ByProvider:    presentUsageBuckets(report.ByProvider),
 		ByModel:       presentUsageBuckets(report.ByModel),
 		ByDay:         presentUsageBuckets(report.ByDay),
@@ -43,7 +44,11 @@ func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequ
 		ByScope:       presentUsageBuckets(report.ByScope),
 		Sessions:      report.Sessions,
 		Runs:          report.Runs,
-	}, nil
+	}
+	if !report.Since.IsZero() {
+		summary.Since = new(report.Since)
+	}
+	return summary, nil
 }
 
 func presentSessionUsage(report sessions.UsageReport) *protocol.SessionUsage {

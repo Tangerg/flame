@@ -1880,7 +1880,7 @@ const (
 // ring; shared capabilities need an explicit policy instead of an unrestricted
 // internal/* escape hatch. Test fixtures are checked by their dedicated tests.
 func layerOf(rel string) string {
-	for _, feature := range []string{"memory", "schedules", "knowledgebase", "github", "modelrouter", "guardrails", "web"} {
+	for _, feature := range []string{"memory", "schedules", "knowledgebase", "github", "modelrouter", "guardrails", "web", "usagereports"} {
 		owner := "internal/plugins/" + feature
 		if rel == owner {
 			return ringComposition

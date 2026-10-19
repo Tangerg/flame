@@ -13136,6 +13136,16 @@
               "type": "RecordedUsage"
             },
             {
+              "name": "ObservedAt",
+              "type": "time.Time",
+              "tag": "json:\"observedAt\""
+            },
+            {
+              "name": "Since",
+              "type": "*time.Time",
+              "tag": "json:\"since,omitzero\""
+            },
+            {
               "name": "ByProvider",
               "type": "[]UsageBucket",
               "tag": "json:\"byProvider\""

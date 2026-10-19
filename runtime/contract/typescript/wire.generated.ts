@@ -2153,9 +2153,11 @@ export interface UsageSummary {
   byProvider: UsageBucket[];
   byScope: UsageBucket[];
   coverage: UsageCoverage;
+  observedAt: string;
   recordedCostUsd?: number;
   runs: number;
   sessions: number;
+  since?: string;
   total: ModelUsage;
 }
 

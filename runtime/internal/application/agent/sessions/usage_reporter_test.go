@@ -63,6 +63,23 @@ func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
 	}
 }
 
+func TestSummaryPublishesItsSingleCoreClockObservationAndExactRange(t *testing.T) {
+	now := time.Date(2026, 10, 20, 1, 0, 0, 0, time.FixedZone("test", 8*60*60))
+	observations := 0
+	reporter, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{}, Now: func() time.Time { observations++; return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	period, err := RecentUsageDays(7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := reporter.Summary(t.Context(), period)
+	if err != nil || observations != 1 || report.ObservedAt != now.UTC() || report.Since != now.UTC().AddDate(0, 0, -7) {
+		t.Fatalf("published accounting range: %+v observations=%d error=%v", report, observations, err)
+	}
+}
+
 func usd(value float64) *float64 { return &value }
 func usageSource(id, provider, model, state string, at time.Time, reported *chat.Usage, cost *float64) modelref.EndpointObservation {
 	value := modelref.EndpointObservation{Invocation: modelref.EndpointInvocation{ID: id, Kind: modelref.EndpointChat, Provider: provider, Model: model, StartedAt: at, Caller: capability.Invocation{Origin: capability.Automatic}}, ServedModel: model, State: state, CostUSD: cost, Usage: reported}

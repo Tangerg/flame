@@ -1,0 +1,364 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Method_flame_2eusage_2dreports_2fcapture_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fCaptureInput"
+    },
+    "Method_flame_2eusage_2dreports_2fcapture_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fHeader"
+    },
+    "Method_flame_2eusage_2dreports_2fdelete_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fReportInput"
+    },
+    "Method_flame_2eusage_2dreports_2fdelete_2ev1Output": {
+      "type": "boolean"
+    },
+    "Method_flame_2eusage_2dreports_2fget_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fReportInput"
+    },
+    "Method_flame_2eusage_2dreports_2fget_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d"
+    },
+    "Method_flame_2eusage_2dreports_2flist_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Method_flame_2eusage_2dreports_2flist_2ev1Output": {
+      "items": {
+        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fHeader"
+      },
+      "type": "array"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fCaptureInput": {
+      "additionalProperties": false,
+      "properties": {
+        "period": {
+          "enum": [
+            "daily",
+            "weekly"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "period"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fHeader": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "period": {
+          "enum": [
+            "daily",
+            "weekly"
+          ],
+          "type": "string"
+        },
+        "since": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "period",
+        "observedAt"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fReportInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "minLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "period": {
+          "enum": [
+            "daily",
+            "weekly"
+          ],
+          "type": "string"
+        },
+        "since": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "summary": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageSummary"
+        }
+      },
+      "required": [
+        "id",
+        "period",
+        "observedAt",
+        "summary"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "cacheReadTokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "cacheWriteTokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "costUsd": {
+          "type": "number"
+        },
+        "inputTokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "outputTokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "reasoningTokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage"
+        },
+        "key": {
+          "type": "string"
+        },
+        "recordedCostUsd": {
+          "type": "number"
+        },
+        "total": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage"
+        }
+      },
+      "required": [
+        "key",
+        "total",
+        "coverage"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage": {
+      "additionalProperties": false,
+      "properties": {
+        "calls": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "completedCalls": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "failedCalls": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "pricedCalls": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "reportedCalls": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "startedCalls": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "unknownCalls": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "calls",
+        "reportedCalls",
+        "pricedCalls",
+        "startedCalls",
+        "completedCalls",
+        "failedCalls",
+        "unknownCalls"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "byDay": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket"
+          },
+          "type": "array"
+        },
+        "byModel": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket"
+          },
+          "type": "array"
+        },
+        "byOrigin": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket"
+          },
+          "type": "array"
+        },
+        "byProvider": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket"
+          },
+          "type": "array"
+        },
+        "byScope": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket"
+          },
+          "type": "array"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "recordedCostUsd": {
+          "type": "number"
+        },
+        "runs": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "sessions": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "since": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "total": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage"
+        }
+      },
+      "required": [
+        "total",
+        "coverage",
+        "observedAt",
+        "byProvider",
+        "byModel",
+        "byDay",
+        "byOrigin",
+        "byScope",
+        "sessions",
+        "runs"
+      ],
+      "type": "object"
+    }
+  }
+}

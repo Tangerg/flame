@@ -12429,6 +12429,10 @@
         "coverage": {
           "$ref": "#/$defs/UsageCoverage"
         },
+        "observedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
         "recordedCostUsd": {
           "type": "number",
           "minimum": 0
@@ -12441,6 +12445,10 @@
           "type": "integer",
           "minimum": 0
         },
+        "since": {
+          "type": "string",
+          "format": "date-time"
+        },
         "total": {
           "$ref": "#/$defs/ModelUsage"
         }
@@ -12452,6 +12460,7 @@
         "byProvider",
         "byScope",
         "coverage",
+        "observedAt",
         "runs",
         "sessions",
         "total"

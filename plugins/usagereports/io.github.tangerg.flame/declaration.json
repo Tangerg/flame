@@ -1,0 +1,23 @@
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "contributions": [
+    {
+      "id": "usage-reports",
+      "server": "usagereports",
+      "export": "reports",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ],
+  "components": [
+    {
+      "id": "usage-reports",
+      "title": "Saved usage reports",
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "UsageReports",
+      "contribution": "usage-reports",
+      "material": "usage"
+    }
+  ]
+}

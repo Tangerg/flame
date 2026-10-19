@@ -1,0 +1,34 @@
+[
+  {
+    "name": "flame.usage-reports/capture.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Capture a daily or weekly core accounting report with its actual observation time and lower bound. Totals remain core-owned; saved reports are immutable.",
+    "input": "schema.json#/$defs/Method_flame_2eusage_2dreports_2fcapture_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eusage_2dreports_2fcapture_2ev1Output"
+  },
+  {
+    "name": "flame.usage-reports/delete.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Remove one immutable saved report without changing core accounting evidence or totals.",
+    "input": "schema.json#/$defs/Method_flame_2eusage_2dreports_2fdelete_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eusage_2dreports_2fdelete_2ev1Output"
+  },
+  {
+    "name": "flame.usage-reports/get.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one saved core report verbatim, preserving missing usage, unknown prices and recorded zeros.",
+    "input": "schema.json#/$defs/Method_flame_2eusage_2dreports_2fget_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eusage_2dreports_2fget_2ev1Output"
+  },
+  {
+    "name": "flame.usage-reports/list.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List saved accounting report headers in capture order, newest first.",
+    "input": "schema.json#/$defs/Method_flame_2eusage_2dreports_2flist_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eusage_2dreports_2flist_2ev1Output"
+  }
+]

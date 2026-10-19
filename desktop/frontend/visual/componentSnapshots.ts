@@ -94,6 +94,7 @@ export const VISUAL_SCHEDULES_BINDING: PluginOperationBinding = {
 };
 
 export const VISUAL_USAGE: UsageSummary = {
+  observedAt: "2026-10-20T00:00:00Z",
   total: { inputTokens: 128_400, outputTokens: 41_900, costUsd: 4.12 },
   recordedCostUsd: 4.12,
   coverage: {

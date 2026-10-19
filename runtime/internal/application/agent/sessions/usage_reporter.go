@@ -48,6 +48,8 @@ type UsageReport struct {
 
 type UsageSummary struct {
 	UsageReport
+	ObservedAt time.Time
+	Since      time.Time
 	ByProvider []UsageBucket
 	ByDay      []UsageBucket
 	ByOrigin   []UsageBucket
@@ -89,11 +91,17 @@ func (r *UsageReporter) Session(ctx context.Context, sessionID string) (UsageRep
 }
 
 func (r *UsageReporter) Summary(ctx context.Context, period UsageSummaryPeriod) (UsageSummary, error) {
-	since, err := period.Since(r.now())
+	observedAt := r.now().UTC()
+	since, err := period.Since(observedAt)
 	if err != nil {
 		return UsageSummary{}, err
 	}
-	return r.collect(ctx, "", since)
+	report, err := r.collect(ctx, "", since)
+	if err != nil {
+		return UsageSummary{}, err
+	}
+	report.ObservedAt, report.Since = observedAt, since
+	return report, nil
 }
 
 func (r *UsageReporter) collect(ctx context.Context, sessionID string, since time.Time) (UsageSummary, error) {
