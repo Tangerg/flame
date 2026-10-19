@@ -107,7 +107,7 @@ for (const theme of ["light", "dark"]) {
         await expect(header).toBeInViewport({ ratio: 1 });
         const action =
           view === "usage"
-            ? panel.getByRole("searchbox", { name: "Filter", exact: true })
+            ? panel.getByRole("searchbox", { name: "Filter sources", exact: true })
             : panel.getByRole("button", { name: "Refresh", exact: true });
         await action.click();
         await expect(action).toBeFocused();

@@ -75,10 +75,14 @@ Timing, and JS heap. Loads report time from navigation start instead, because
 engine counters do not survive a navigation.
 
 Scenarios use the existing fixtures: a 200-file review
-(`review-files=200` on the `dock-review` state) opened, folded, unfolded,
-scrolled and resized; and the `long-content` transcript loaded and typed into.
+(`review-files=200` on the `dock-review` state) opened, entered one file,
+returned to its list, scrolled and resized; and the `long-content` transcript loaded and typed into.
 Switching between long sessions is not covered — the fixtures render one
 session.
+
+Historical measurements below describe the former all-files-expanded reader,
+not the current overview/detail navigation. No new performance baseline was run
+for that interaction change.
 
 Recorded 2026-09-24 on an Apple M4 (24 GB), Chromium from Playwright 1.63, five
 samples. "Before" is the review without `content-visibility` on its file bodies;
@@ -94,6 +98,6 @@ samples. "Before" is the review without `content-visibility` on its file bodies;
 | Long transcript open | ready | 874 ms (1232) | 874 ms (976) |
 | Long transcript typing | input to paint | 24 ms (80) | 32 ms (56) |
 
-Scrolling the review now lays out file bodies as they enter the viewport, which
-is the p90 cost above; everything that previously restyled all 200 bodies no
-longer does. Expand all is still dominated by highlighting every row.
+At that checkpoint, scrolling laid out file bodies as they entered the viewport,
+and expanding all files still highlighted every row. The current reader mounts
+one selected file; those historical timings do not qualify its navigation cost.

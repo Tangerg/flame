@@ -154,7 +154,7 @@ const REVIEW_URL = `/visual/?fixture=workspace&state=dock-review&theme=light&rev
 
 test.describe.configure({ mode: "serial", timeout: 1_800_000 });
 
-test(`a ${REVIEW_FILES}-file review opens, folds and scrolls`, async ({ page }) => {
+test(`a ${REVIEW_FILES}-file review opens, navigates and scrolls`, async ({ page }) => {
   for (let sample = 0; sample < SAMPLES; sample++) {
     await page.setViewportSize(VISUAL_REVIEW_VIEWPORT);
     const diff = page.locator('[data-dock-view-id="package:visual:diff"]');
@@ -170,18 +170,18 @@ test(`a ${REVIEW_FILES}-file review opens, folds and scrolls`, async ({ page }) 
     const session = await cdp(page);
 
     record(
-      "review: collapse all",
+      "review: open file",
       await measure(page, session, async () => {
-        await diff.getByRole("button", { name: "Collapse all", exact: true }).click();
-        await expect(diffFiles.getByRole("button", { expanded: true })).toHaveCount(0);
+        await diffFiles.first().click();
+        await expect(diff.getByRole("table")).toHaveCount(1);
       }),
     );
-
     record(
-      "review: expand all",
+      "review: return to list",
       await measure(page, session, async () => {
-        await diff.getByRole("button", { name: "Expand all", exact: true }).click();
-        await expect(diffFiles.getByRole("button", { expanded: true })).toHaveCount(REVIEW_FILES);
+        await diff.getByRole("button", { name: "Back to changed files", exact: true }).click();
+        await expect(diffFiles.first()).toBeFocused();
+        await expect(diff.getByRole("table")).toHaveCount(0);
       }),
     );
 

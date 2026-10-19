@@ -76,10 +76,8 @@ for (const theme of ["light", "dark"]) {
       `/visual/?fixture=workspace&state=dock-review&theme=${theme}&font-size=${theme === "light" ? 14 : 18}&accent=${theme === "light" ? "%23FB6E30" : "%238b5cf6"}`,
     );
     await page.locator("html[data-visual-ready]").waitFor();
-    const summary = page
-      .locator('[data-diff-file][data-focused="true"]')
-      .getByRole("button")
-      .first();
+    const view = page.locator('[data-dock-view-id="package:visual:diff"]');
+    const summary = view.locator('[data-slot="panel-controls"]');
     const worktree = page.getByRole("button", {
       name: "Review 2 changed files in the working tree",
       exact: true,
@@ -99,10 +97,10 @@ for (const theme of ["light", "dark"]) {
     expect(file).not.toContain(null);
     expect(file[0]).not.toBe(file[1]);
     expect(file).toEqual(await inks(worktree, "+25", "−9"));
-    await summary.focus();
-    await summary.press("Enter");
-    await expect(summary).toHaveAttribute("aria-expanded", "false");
-    expect(await inks(summary, "+18", "−6")).toEqual(file);
+    await view.getByRole("button", { name: "Show changed files", exact: true }).click();
+    const current = view.locator('[data-diff-file][aria-current="true"]');
+    await expect(current).toBeFocused();
+    expect(await inks(current, "+18", "−6")).toEqual(file);
   });
 
   test(`Diff statistics distinguish known zeroes and unrecorded counts in ${theme}`, async ({
@@ -134,7 +132,7 @@ for (const theme of ["light", "dark"]) {
     expect(await large.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
   });
 
-  test(`Diff locates the requested file without tinting its reading body in ${theme}`, async ({
+  test(`Diff opens the requested file and returns to its list identity in ${theme}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1472, height: 900 });
@@ -143,38 +141,27 @@ for (const theme of ["light", "dark"]) {
     );
     await page.locator("html[data-visual-ready]").waitFor();
     const view = page.locator('[data-dock-view-id="package:visual:diff"]');
-    const current = view.locator('[data-diff-file][data-focused="true"]');
-    const other = view.locator('[data-diff-file][data-focused="false"]').first();
-    const title = current.getByRole("button").first();
-    const otherTitle = other.getByRole("button").first();
-    const background = () => current.evaluate((node) => getComputedStyle(node).backgroundColor);
-    const neutral = await other.evaluate((node) => getComputedStyle(node).backgroundColor);
-    await page.mouse.move(0, 0);
-    await expect.poll(background).toBe(neutral);
-    const identityColor = await title.evaluate((node) => getComputedStyle(node).color);
-    expect(identityColor).not.toBe(
-      await otherTitle.evaluate((node) => getComputedStyle(node).color),
-    );
-    await expect(title).toContainText(REVIEW_DIFF.files![0]!.path);
-    const code = current.getByRole("region", { name: /^Scrollable diff for / });
+    await expect(view.getByRole("heading", { name: "DockResizer.tsx", exact: true })).toBeVisible();
+    await expect(view.getByRole("table")).toHaveCount(1);
+    const code = view.getByRole("region", { name: /^Scrollable diff for / });
     const source = REVIEW_DIFF.files![0]!.rows.filter((row) => row.type !== "hunk").map(
       (row) => row.code,
     );
     await expect(code.locator("tbody code")).toHaveText(source);
+    const background = await code.evaluate((node) => getComputedStyle(node).backgroundColor);
     await code.hover();
-    await expect.poll(background).toBe(neutral);
-    await title.focus();
-    await title.press("Enter");
-    await expect(code).toHaveCount(0);
-    await expect(title).toBeFocused();
-    await page.mouse.move(0, 0);
-    expect(await title.evaluate((node) => getComputedStyle(node).color)).toBe(identityColor);
-    await title.press("Enter");
+    expect(await code.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe(background);
+    await view.getByRole("button", { name: "Show changed files", exact: true }).click();
+    const current = view.locator('[data-diff-file][aria-current="true"]');
+    await expect(current).toHaveAttribute("title", REVIEW_DIFF.files![0]!.path);
+    await expect(current).toBeFocused();
+    await expect(view.getByRole("table")).toHaveCount(0);
+    await current.press("Enter");
     await expect(code.locator("tbody code")).toHaveText(source);
-    await expect.poll(background).toBe(neutral);
+    await expect(view.getByRole("heading", { name: "DockResizer.tsx", exact: true })).toBeFocused();
   });
 
-  test(`Diff keeps comparison and file controls reachable while the report scrolls in ${theme}`, async ({
+  test(`Diff keeps scope and file navigation reachable while its list and reader scroll in ${theme}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1472, height: 900 });
@@ -184,39 +171,34 @@ for (const theme of ["light", "dark"]) {
     await page.locator("html[data-visual-ready]").waitFor();
     const view = page.locator('[data-dock-view-id="package:visual:diff"]');
     const filter = view.getByRole("searchbox", { name: "Filter files", exact: true });
-    await expect(filter).toBeVisible();
     const viewport = view.locator('[data-slot="workspace-view-body"]');
-    const code = view.getByRole("region", {
-      name: "Scrollable diff for src/generated/module-000.ts",
-      exact: true,
-    });
-    const bounds = (await code.boundingBox())!;
-    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 40);
+    await view.locator("[data-diff-file]").first().hover();
     await page.mouse.wheel(0, 600);
-    await expect.poll(() => viewport.evaluate((node) => node.scrollTop)).toBe(600);
+    await expect.poll(() => viewport.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
     for (const control of [
       filter,
       view.getByRole("combobox", { name: "Comparison", exact: true }),
-      view.getByRole("combobox", { name: "Layout", exact: true }),
       view.getByRole("button", { name: "Refresh", exact: true }),
-      view.getByRole("button", { name: "Collapse all", exact: true }),
     ]) {
       await expect(control).toBeInViewport({ ratio: 1 });
     }
     await filter.fill("module-199.ts");
-    await expect(view.locator("[data-diff-file]")).toHaveCount(1);
-    await expect(view.locator("[data-diff-file]")).toHaveAttribute(
-      "data-diff-file",
-      "src/generated/module-199.ts",
-    );
-    const file = view.locator("[data-diff-file]");
-    const summary = file.getByRole("button", { expanded: true }).first();
-    await expect(summary).toContainText("src/generated/module-199.ts");
-    expect((await summary.innerText()).split("module-199.ts")).toHaveLength(2);
-    await view.getByRole("button", { name: "Collapse all", exact: true }).click();
-    await expect(file.getByRole("button", { expanded: false }).first()).toBeVisible();
-    await view.getByRole("button", { name: "Expand all", exact: true }).click();
-    await expect(file.getByRole("button", { expanded: true }).first()).toBeVisible();
+    const row = view.locator("[data-diff-file]");
+    await expect(row).toHaveCount(1);
+    await expect(row).toHaveAttribute("title", "src/generated/module-199.ts");
+    await row.click();
+    await expect(view.getByRole("table")).toHaveCount(1);
+    await expect(view.getByRole("heading", { name: "module-199.ts", exact: true })).toBeFocused();
+    for (const control of [
+      view.getByRole("button", { name: "Back to changed files", exact: true }),
+      view.getByRole("combobox", { name: "Diff layout", exact: true }),
+      view.getByRole("combobox", { name: "Comparison", exact: true }),
+    ]) {
+      await expect(control).toBeInViewport({ ratio: 1 });
+    }
+    await page.keyboard.press("Escape");
+    await expect(filter).toHaveValue("module-199.ts");
+    await expect(row).toBeFocused();
   });
 
   test(`Diff preserves source columns across row kinds and horizontal scrolling in ${theme}`, async ({
@@ -231,13 +213,10 @@ for (const theme of ["light", "dark"]) {
     const source = REVIEW_DIFF.files![0]!.rows.filter((row) => row.type !== "hunk");
     for (const layout of ["unified", "split"] as const) {
       if (layout === "split") {
-        await view.getByRole("combobox", { name: "Layout", exact: true }).click();
+        await view.getByRole("combobox", { name: "Diff layout", exact: true }).click();
         await page.getByRole("option", { name: "Side by side", exact: true }).click();
       }
-      const code = view
-        .locator("[data-diff-file]")
-        .first()
-        .getByRole("region", { name: /^Scrollable diff for / });
+      const code = view.getByRole("region", { name: /^Scrollable diff for / });
       await expect(code.locator("table")).toHaveAttribute("data-layout", layout);
       for (const offset of [0, 80]) {
         await code.evaluate((node, offset) => {
@@ -384,7 +363,7 @@ test("captured Markdown tables let the file reading viewport continue scrolling"
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });
 
-test("Diff file headings retain reading context without covering focused code", async ({
+test("Diff keeps one file identity above focused code while navigating a review", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1120, height: 720 });
@@ -395,114 +374,60 @@ test("Diff file headings retain reading context without covering focused code", 
   const view = page.locator('[data-dock-view-id="package:visual:diff"]');
   const viewport = view.locator('[data-slot="workspace-view-body"]');
   const controls = view.locator('[data-slot="panel-controls"]');
-  const files = view.locator("[data-diff-file]");
-  const first = files.nth(0).getByRole("button", { expanded: true }).first();
-  const firstCode = files.nth(0).getByRole("region", { name: /^Scrollable diff for / });
-  const bounds = (await firstCode.boundingBox())!;
-  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 40);
+  await view.locator("[data-diff-file]").first().click();
+  const heading = view.getByRole("heading", { name: "module-000.ts", exact: true });
+  const code = view.getByRole("region", { name: /^Scrollable diff for / });
+  await code.hover();
   await page.mouse.wheel(0, 600);
-  await expect.poll(() => viewport.evaluate((node) => node.scrollTop)).toBe(600);
+  await expect.poll(() => viewport.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+  await expect(heading).toBeInViewport({ ratio: 1 });
+  await code.focus();
   const controlsBottom = (await controls.boundingBox())!.y + (await controls.boundingBox())!.height;
-  await expect(first).toBeInViewport({ ratio: 1 });
-  expect((await first.boundingBox())!.y).toBeCloseTo(controlsBottom, 0);
-
-  await first.focus();
-  await first.press("Tab");
-  await expect(firstCode).toBeFocused();
-  const titleBottom = (await first.boundingBox())!.y + (await first.boundingBox())!.height;
   await expect
-    .poll(async () => (await firstCode.locator("tbody tr").first().boundingBox())!.y)
-    .toBeGreaterThanOrEqual(titleBottom);
+    .poll(async () => (await code.locator("tbody tr").first().boundingBox())!.y)
+    .toBeGreaterThanOrEqual(controlsBottom);
   await page.keyboard.down("ArrowRight");
   try {
-    await expect.poll(() => firstCode.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
+    await expect.poll(() => code.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
   } finally {
     await page.keyboard.up("ArrowRight");
   }
-
-  const second = files.nth(1).getByRole("button", { expanded: true }).first();
-  await viewport.evaluate((node) => {
-    const file = node.querySelectorAll("[data-diff-file]")[1]!;
-    const controls = node.querySelector('[data-slot="panel-controls"]')!;
-    node.scrollTop +=
-      file.getBoundingClientRect().top - controls.getBoundingClientRect().bottom + 100;
-  });
-  await expect(second).toBeInViewport({ ratio: 1 });
-  expect((await second.boundingBox())!.y).toBeCloseTo(controlsBottom, 0);
-  expect((await first.boundingBox())!.y + (await first.boundingBox())!.height).toBeLessThanOrEqual(
-    controlsBottom,
+  await view.getByRole("button", { name: "Next file", exact: true }).click();
+  await expect(view.getByRole("heading", { name: "module-001.ts", exact: true })).toBeFocused();
+  await expect(view.getByRole("table")).toHaveCount(1);
+  await view.getByRole("button", { name: "Back to changed files", exact: true }).click();
+  await expect(view.locator('[data-diff-file][aria-current="true"]')).toHaveAttribute(
+    "title",
+    "src/generated/module-001.ts",
   );
-  await second.click();
-  await expect(files.nth(1).getByRole("button", { expanded: false }).first()).toBeVisible();
-  await expect(files.nth(1).getByRole("region", { name: /^Scrollable diff for / })).toHaveCount(0);
-  const third = files.nth(2).getByRole("button", { expanded: true }).first();
-  await third.scrollIntoViewIfNeeded();
-  await expect(third).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  await expect(view.locator('[data-diff-file][aria-current="true"]')).toBeFocused();
 });
 
-test("Diff headings remain in flow when their complete path would crowd the reading viewport", async ({
-  page,
-}) => {
+test("Diff keeps long directories outside the sticky file controls", async ({ page }) => {
   const longPath = `node_modules/${"layout-boundary/".repeat(32)}captured-source.ts`;
-  for (const plan of [
-    { width: 320, height: 360, path: undefined },
-    { width: 1120, height: 720, path: longPath },
-  ]) {
-    await page.setViewportSize({ width: plan.width, height: plan.height });
+  for (const width of [1120, 320]) {
+    await page.setViewportSize({ width, height: 900 });
     await page.goto(
-      `/visual/?fixture=workspace&state=dock-review&theme=dark&font-size=18${plan.path ? `&review-path=${encodeURIComponent(plan.path)}` : ""}`,
+      `/visual/?fixture=workspace&state=full-view&full-view=package:visual:diff&sidebar=collapsed&theme=dark&font-size=18&review-path=${encodeURIComponent(longPath)}`,
     );
     await page.locator("html[data-visual-ready]").waitFor();
-    if (plan.width === 320) {
-      await page.getByRole("button", { name: /^Open material full width/ }).click();
-      await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
-    }
-    const viewport = page
-      .locator('[data-slot="workspace-view-body"]:visible')
-      .filter({ has: page.locator("[data-diff-file]") })
-      .first();
-    const file = viewport.locator("[data-diff-file]").first();
-    const title = file.getByRole("button", { expanded: true }).first();
-    if (plan.path) {
-      await expect(title).toContainText(plan.path);
-      expect((await title.innerText()).split(plan.path)).toHaveLength(2);
-    }
-    const code = file.getByRole("region", { name: /^Scrollable diff for / });
+    const viewport = page.locator('[data-slot="workspace-view-body"]:visible').first();
+    await viewport.locator("[data-diff-file]").first().click();
+    const controls = viewport.locator('[data-slot="panel-controls"]');
+    await expect(
+      controls.getByRole("heading", { name: "captured-source.ts", exact: true }),
+    ).toBeVisible();
+    await expect(controls).not.toContainText("layout-boundary");
+    const reader = viewport.getByRole("region", { name: `Changes in ${longPath}`, exact: true });
+    await expect(reader).toContainText(longPath);
+    const code = reader.getByRole("region", { name: /^Scrollable diff for / });
     await code.focus();
-    const controls = (await viewport.locator('[data-slot="panel-controls"]').boundingBox())!;
-    const row = code.locator("tbody tr").first();
-    const rowBounds = (await row.boundingBox())!;
+    const controlsBounds = (await controls.boundingBox())!;
+    const row = (await code.locator("tbody tr").first().boundingBox())!;
     const viewportBounds = (await viewport.boundingBox())!;
-    expect(rowBounds.y).toBeGreaterThanOrEqual(controls.y + controls.height);
-    expect(rowBounds.y + rowBounds.height).toBeLessThanOrEqual(
-      viewportBounds.y + viewportBounds.height,
-    );
-    expect((await title.boundingBox())!.y).toBeLessThan(controls.y + controls.height);
-    if (plan.width === 320) {
-      await page.setViewportSize({ width: 320, height: 900 });
-      await expect(title).toBeInViewport({ ratio: 1 });
-      const titleBounds = (await title.boundingBox())!;
-      await expect
-        .poll(async () => (await row.boundingBox())!.y)
-        .toBeGreaterThanOrEqual(titleBounds.y + titleBounds.height);
-      await expect(code).toBeFocused();
-      await page.setViewportSize({ width: 320, height: 360 });
-      await expect
-        .poll(async () => {
-          const rowBounds = (await row.boundingBox())!;
-          const viewportBounds = (await viewport.boundingBox())!;
-          return rowBounds.y + rowBounds.height <= viewportBounds.y + viewportBounds.height;
-        })
-        .toBe(true);
-      const controlsBounds = (await viewport
-        .locator('[data-slot="panel-controls"]')
-        .boundingBox())!;
-      await expect
-        .poll(async () => (await title.boundingBox())!.y)
-        .toBeLessThan(controlsBounds.y + controlsBounds.height);
-      await expect(code).toBeFocused();
-    }
+    expect(row.y).toBeGreaterThanOrEqual(controlsBounds.y + controlsBounds.height);
+    expect(row.y + row.height).toBeLessThanOrEqual(viewportBounds.y + viewportBounds.height);
+    await expect(code).toBeFocused();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   }
 });

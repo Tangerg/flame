@@ -81,6 +81,22 @@ export const REVIEW_DIFF: Diff = {
   ],
 };
 
+export const BRANCH_REVIEW_DIFF: Diff = {
+  baseline: { type: "mergeBase", commit: "abcdef1234567890abcdef1234567890abcdef12" },
+  files: [
+    REVIEW_DIFF.files![0]!,
+    {
+      path: "docs/layout/导航说明.md",
+      previousPath: "docs/layout/旧导航.md",
+      status: "renamed",
+      added: 0,
+      removed: 0,
+      rows: [],
+    },
+    { path: "assets/flame-logo.png", status: "modified", binary: true, rows: [] },
+  ],
+};
+
 export function scaledReview(fileCount: number): Diff {
   const files = Array.from({ length: fileCount }, (_, index) => {
     const long = index % 10 === 0;

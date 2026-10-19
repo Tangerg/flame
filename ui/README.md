@@ -34,6 +34,8 @@ npm run check --prefix ui
 The package is private and is consumed through repository-local `file:` dependencies. Package verification installs locally packed UI and icon archives into an independent consumer. It never publishes to npm. Source owns styling; generated `dist` and token-name outputs are not committed. Changes to shared components require the Desktop gate and the portable resource build and component lifecycle acceptance.
 
 `Panel` owns the content measure and container-responsive gutters.
+It accepts the native section ref and events, so local navigation can keep its
+focus and scroll path without adding another reading-plane wrapper.
 Its explicit `header` slot holds introductory content, `controls` holds the one
 sticky action and filter zone, and children hold the scrolling content. The host
 keeps its existing scroll viewport. The panel does not shrink inside a column
@@ -62,6 +64,11 @@ source or its semantic change colors.
 compact numeric voice. Positive additions and removals use their semantic ink;
 known zeroes and unrecorded counts remain quiet and distinct. A count keeps its
 sign with its digits, and the pair wraps between counts when constrained.
+`DiffFileList` provides whole-row file navigation, a primary filename, complete
+directory and compact state/count metadata. `DiffFileHeader` keeps that same
+identity above a selected reader, while `DiffFilePath` allows complete directory
+segments to wrap. Selection and source-return history belong to the consumer;
+these components do not query files or own a second navigation model.
 `RecordSummary` owns the optional identity mark, copy and state alignment.
 `RecordBody` preserves recorded line breaks and allows selecting its complete text.
 `PanelHost` marks an embedded panel whose surrounding chrome already shows the

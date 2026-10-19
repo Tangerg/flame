@@ -1,14 +1,14 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-19. The latest task-inspection batch started from clean local and remote `main` at `1fe47a607`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-19. The latest Diff/Usage batch started from clean local and remote `main` at `71dbe5c81`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The shared presentation foundation and the reading and navigation paths have been refined together. Retain the approved presentation. The latest request emphasizes the interaction and typography mental model across the conversation and Context Dock. The earlier `cap`-based inline-icon sizing tip remains a suggestion for future typography work, not a request for a global icon redesign.
+The shared presentation foundation and the reading and navigation paths have been refined together. Retain the approved presentation. The latest request makes task-oriented layout and interaction a requirement for every page, including the conversation, Context Dock, settings and installed views. The earlier `cap`-based inline-icon sizing tip remains a suggestion for future typography work, not a request for a global icon redesign.
 
-This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, established a shared material-entry and return flow, unified the searchable Dock directory, picker and full-view entry, and repaired keyboard-reading breaks in captured tool evidence. The latest batch connects task links and nested task/file inspection to that same return flow. Historical paused or blocked statuses in earlier chats do not describe this work.
+This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, established a shared material-entry and return flow, unified the searchable Dock directory, picker and full-view entry, and repaired keyboard-reading breaks in captured tool evidence. The current batch gives Diff a scope-first file overview and a single-file reader, preserves the actual entry path when returning, and separates the report range from local Usage filtering. Task links and nested task/file inspection already use the shared source-return owner. Historical paused or blocked statuses in earlier chats do not describe this work.
 
 The original checkout is `/Users/tangerg/Desktop/flame`, on branch `main`. All former local and remote branch tips were checked for ancestry before consolidation; their commits are retained in `main`. Only `main` remains locally and on `origin`. Read current Git state before starting; this document is a checkpoint, not an authority that can overwrite newer work.
 
@@ -57,6 +57,16 @@ Ace overviews and relevant full-size PNGs were opened. The useful common pattern
 is a stable reading axis, quiet summaries, and a persistent identity and return
 route above detailed material. The current changes apply that pattern to Flame's
 existing owners rather than copying reference colors or adding a new shell.
+
+The Diff review additionally traced ZCode's `MessageChangeSummaryPanel.tsx`,
+`messageChangeSummaryPreview.ts` and `components/ui/diff-viewer.tsx`: a message's
+summary and file-specific review are distinct from a live workspace comparison.
+ChatGPT's `thread-side-panel-tab-content-2b3cd260bf24.js`,
+`editor-diff-page-7ae498a2f29c.js` and `review-file-tree-side-pane-3e6c9e54ce58.js`
+separate review scope, file navigation and code; they retain continuous small
+reviews and switch large reviews to one file with previous/next navigation.
+Flame adapts the latter navigation to its constrained Dock instead of copying
+unsupported staging, reversion, comments or last-turn semantics.
 
 For color-system work, retain the user's [Radix Colors](https://www.radix-ui.com/colors) and [HeroUI colors](https://heroui.com/en/docs/react/getting-started/colors) references. The default brand color is **Flame Orange `#FB6E30`**; users can choose their own interface accent through the existing theme owner. Approved brand artwork retains its original color. Avoid recreating the palette, appearance store or brand identity.
 
@@ -160,6 +170,45 @@ keeps its existing focus and scroll behavior. The selected-reader focus effect
 recognizes an inspection return and leaves focus settlement to the shared owner;
 otherwise it could override the restored source with the index command.
 
+Diff now distinguishes the general workspace entry from a file-specific entry.
+The former opens a searchable changed-file overview with text-change totals; the
+latter opens its requested file. Rows navigate to one selected reader rather than
+expanding every file into the report. Comparison scope precedes local filtering;
+file identity, layout and previous/next controls remain available while reading.
+Complete directories and rename provenance stay outside the sticky identity zone.
+Binary, metadata-only, partial and absent-file states keep their canonical meaning.
+
+Local Diff history records whether the reader came from its list or directly from
+a narrative source. Escape from the list-owned reader returns to the retained
+query, scroll and current row; Escape from a direct file entry remains with the
+host's source-return owner. The independent Files command always opens the list.
+A popup dismisses before either path unwinds. Refresh retains a still-present file;
+an absent target returns to the list with a notice. Failed scope reads retain the
+accepted file and identify the actual comparison beside the requested scope.
+`DiffFileList`, `DiffFileHeader` and `DiffFilePath` share file presentation in `ui`;
+portable state and Runtime reads remain with their existing owners.
+
+Usage applies the same distinction between query scope and presentation: the
+report period and refresh precede source search and grouping. A pending or failed
+period change visibly names the accepted period in the persistent control zone.
+Filtering still changes only displayed buckets, never the report totals.
+
+The cross-page composition rule is now recorded in `DESIGN.md`: establish location
+and data scope, show a useful summary, then expose the current object's content and
+actions. Source review across the existing pages gives this task map:
+
+| Page family | Task model to preserve |
+| --- | --- |
+| Conversation and Tool evidence | Read the answer, scan outcomes, expand supporting evidence, inspect material and return to its source. |
+| File, Diff and subagent readers | Locate an object, read it persistently, navigate related objects and unwind the actual entry path. A directory command is separate from returning to a narrative source. |
+| Settings and resource management | Identify the selected scope/object before editing; keep current state and the primary command visible, with bounded forms and explicit cancellation. Memory, Skills and Schedules retain their existing command and scope owners. |
+| Usage reports | Select the data period before local grouping/filtering; identify retained results by their accepted period. |
+| Trajectory and diagnostics | Scan a linear record summary and expand supporting evidence/provenance without turning every record into a new navigation destination. |
+
+These are task-specific compositions of shared controls, not a requirement to turn
+all pages into the same card, accordion or modal. The source review does not claim
+that every unchanged page has received fresh native acceptance.
+
 The empty Dock now has a clear title, supporting context and a fixed search field
 above its scrolling groups. The directory and header picker use one `CatalogList`
 for filtering, icons, open marks and keyboard selection, including searching by a
@@ -179,6 +228,15 @@ the final native review confirmed a single field edge and the ordinary semantic
 ring on the Dock return button.
 
 ## Verification checkpoint
+
+For scope-first Diff review and Usage reports:
+
+- The final frontend `VITEST_MAX_WORKERS=2 npm run check` passed: 376 test files and 2745 tests, followed by type, lint, format, unused-code, boundary, token/style, locale, bootstrap, resource, bundle and production-module checks. The new presentation regressions exercise list/detail navigation, direct-source return, query/scroll/focus retention, scope changes, stale/cancelled reads, partial/binary/metadata-only files and truthful retained-report labels. Existing assertions were migrated only for the intentional task-flow changes.
+- Shared UI `npm run check` passed all 38 tests and its independently packed UI/icons consumer. Portable-plugin build/check passed all ten exact resource checks; Diff and Usage ESM resources were rebuilt. The final supported production Wails macOS arm64 build passed, with `vtool` confirming deployment floor 13.0. Go, Runtime and CLI sources are unchanged; their prior module results below remain applicable.
+- Actual Wails WKWebView inspection reproduced the former all-expanded Diff, then checked the new file overview, one-file reader, previous/next navigation, scope switching, direct Tool entry and the separate directory command. Chinese/light/14 px/Flame Orange and English/dark/18 px/custom accent scenes were checked, including approximately 1120 px windows and a pointer-resized 320 px Dock. Complete paths, Chinese rename provenance, binary content and metadata-only changes remain explicit. Native review caught an inapplicable layout selector on files with no code rows; the bounded Claude Code CLI fix was reviewed, covered by regressions and rechecked in the final native fixture.
+- Native keyboard review confirmed that a layout popup consumes Escape first, list-owned detail returns to its retained row, and directly entered detail returns to its actual narrative source. Heading focus follows explicit file navigation. Usage range controls precede local source filtering and grouping; filtering leaves totals intact, and native period selection returns focus to its trigger. The sidebar-matching seam, Composer, code/table, selection and theme owners remain in use.
+- Acceptance used the isolated canonical in-memory Runtime fixture through production components in a real Wails host, not a live Runtime installation. No visual/browser suite or performance benchmark was run. Existing browser/performance probes were updated for the new navigation contract but are not reported as passing. The cross-page task map records source-based review and future scope, not fresh native acceptance of every page.
+- The native app exited successfully. The owned preview, disposable data, bundle, binaries, logs, fixture output and WebKit caches were removed. User reference caches and unrelated resources were retained.
 
 For task-led and nested material inspection:
 
@@ -263,14 +321,14 @@ These checks cover the changed contracts and representative native scenarios. Th
 2. **Continue the reading composition around activity.** The shared prose step, paragraph/heading rhythm, disclosure affordance and folded tool-outcome summaries are implemented. Review how recorded evidence and media join an answer, especially where a summary leads into a dense detail view. Preserve the existing bounded table, code and selection owners.
 3. **Refine the remaining Dock forms.** File identity/actions and delegated message reuse, overview continuity and return focus are established. Continue with richer tool details and cross-view navigation: decide which details belong inline or in a persistent pane, and reserve popovers/dialogs for genuinely bounded tasks. Keep the user-requested sidebar-matching divider unchanged, including hover and drag.
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.
-5. **Continue across other pages.** Carry the same layout and interaction grammar into settings, installed plugin pages, forms, resource lists and dialogs. Retain the approved brand and the implemented Composer contracts while checking how the surrounding surfaces fit them.
+5. **Continue across other pages.** Apply the recorded task map to settings, installed plugin pages, forms, resource lists and dialogs, checking location, scope, current-object actions and the actual return path. Retain the approved brand and the implemented Composer contracts while checking how the surrounding surfaces fit them.
 
 These are future review candidates, not unverified defects or required rewrites. Build a coherent batch from observed problems when further work is requested. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
-- The primary agent should implement directly. The user retired Claude CLI assistance to preserve quota; do not carry forward the obsolete delegation instructions from older handoffs.
+- The latest goal asks the primary agent to own the overall task model and prefer Claude Code CLI for bounded implementation details. This supersedes the earlier no-Claude preference. The primary agent still owns reference research, implementation review, real Wails acceptance, verification, commits, pushes and cleanup; CLI output is evidence to inspect, not approval to skip those responsibilities.
 - Apply relevant better-series skills and inspect the references in depth. Preserve StyleX, Base UI, semantic tokens and one fact/one owner. Runtime owns durable product semantics; layout work does not authorize rebuilding those state machines in the client.
 - Batch meaningful changes, then review their combined visual and interaction result. Prioritize development and actual native computer use. The user explicitly asked not to run visual/browser suites and to avoid meaningless tests; retain necessary regression coverage and module checks, and reuse valid results when source and dependencies have not changed.
 - UI builds clear shared output, and frontend `precheck` rebuilds it. The supported Wails task can also reinstall frontend dependencies. Finish these operations before module scripts and native acceptance; overlapping them produces misleading missing-resource or dependency errors.
@@ -278,4 +336,4 @@ These are future review candidates, not unverified defects or required rewrites.
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
 - Commit explicit owned paths, push verified milestones to remote `main`, preserve unrelated working files during integration and clean owned resources. Update this file with the new product state and verification scope rather than starting another round log.
-- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction. The latest request emphasizes interaction and typography mental models; choose complete, observed reading and inspection paths for further work rather than inventing another cosmetic pass.
+- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction. The latest request requires layouts and interactions across every page to follow the user's task model; choose complete, observed reading, management and inspection paths rather than inventing another cosmetic pass. Continue verified batches until the user asks to stop.

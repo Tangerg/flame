@@ -1,208 +1,105 @@
 import {
-  Fragment,
   useCallback,
   useEffect,
-  useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import type { ComponentContext } from "@flame/plugin-sdk";
-import { FileDiff, Fold, Refresh, UnfoldVertical } from "@flame/icons/react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  FileDiff,
+  List,
+  Refresh,
+} from "@flame/icons/react";
 import type { Diff, DiffMode } from "@flame/runtime-contract/wire";
 import {
+  Button,
+  DiffFileHeader,
+  DiffFileList,
+  DiffFilePath,
   DiffStat,
   DiffTable,
   Disclosure,
   EmptyState,
+  Icon,
+  IconButton,
   Metadata,
   Panel,
   PanelHeader,
   PanelSection,
-  IconButton,
-  RecordSummary,
-  RecordGroup,
   SearchField,
-  FilterBar,
   Select,
   Toolbar,
 } from "@flame/ui";
 
-export type DiffSnapshot = { diff: Diff; focusPath?: string };
-
-function FilePath({ path }: { path: string }) {
-  const cut = path.lastIndexOf("/") + 1;
-  return (
-    <span dir="ltr">
-      {cut > 0 && (
-        <span style={{ color: "var(--color-text-muted)" }}>
-          {path
-            .slice(0, cut)
-            .split("/")
-            .slice(0, -1)
-            .map((segment, index) => (
-              <Fragment key={index}>
-                {segment}/<wbr />
-              </Fragment>
-            ))}
-        </span>
-      )}
-      {path.slice(cut)}
-    </span>
-  );
-}
-function DiffReport({
-  snapshot,
-  filter,
-  layout,
-  collapsed,
-  onOpenChange,
-}: {
-  snapshot: DiffSnapshot;
-  filter: string;
-  layout: "unified" | "split";
-  collapsed: ReadonlySet<string>;
-  onOpenChange: (path: string, open: boolean) => void;
-}) {
-  const focused = useRef<HTMLElement>(null);
-  const focusId = useId();
-  useEffect(() => {
-    focused.current?.scrollIntoView({ block: "nearest" });
-  }, [snapshot]);
-  const files = snapshot.diff.files ?? [];
-  const matching = files.filter((file) =>
-    `${file.path} ${file.previousPath ?? ""}`
-      .toLocaleLowerCase()
-      .includes(filter.toLocaleLowerCase()),
-  );
-  const source = snapshot.diff.baseline;
-  return (
-    <>
-      {snapshot.diff.truncated && (
-        <Metadata>
-          <span id="truncated">
-            This is a partial diff. Some changes were not included in this read.
-          </span>
-        </Metadata>
-      )}
-      <PanelSection
-        title="Changed files"
-        description={`${matching.length} of ${files.length} files in this read`}
-      >
-        {!files.length && !snapshot.diff.truncated && (
-          <EmptyState
-            icon={FileDiff}
-            size="compact"
-            title="No changes in this comparison."
-            sub="Choose another baseline or refresh after editing a file."
-          />
-        )}
-        {files.length > 0 && !matching.length && (
-          <EmptyState
-            size="compact"
-            title="No matching files."
-            sub="Clear the filter to show changed files."
-          />
-        )}
-        {snapshot.focusPath &&
-          !files.some((file) => file.path === snapshot.focusPath) && (
-            <Metadata>The requested file is absent from this diff.</Metadata>
-          )}
-        <RecordGroup variant="list" id="files" aria-label="Changed files">
-          {matching.map((file) => (
-            <Disclosure
-              variant="row"
-              stickyHeader
-              key={file.path}
-              ref={file.path === snapshot.focusPath ? focused : undefined}
-              id={file.path === snapshot.focusPath ? focusId : undefined}
-              data-diff-file={file.path}
-              data-focused={file.path === snapshot.focusPath}
-              open={!collapsed.has(file.path)}
-              onOpenChange={(open) => onOpenChange(file.path, open)}
-              title={
-                <RecordSummary
-                  title={<FilePath path={file.path} />}
-                  description={
-                    <>
-                      {file.status}{" "}
-                      {!file.binary && (
-                        <DiffStat added={file.added} removed={file.removed} />
-                      )}
-                    </>
-                  }
-                />
-              }
-            >
-              {file.previousPath && (
-                <Metadata>
-                  From <code>{file.previousPath}</code>
-                </Metadata>
-              )}
-              {file.binary ? (
-                <Metadata>Binary content is not displayed.</Metadata>
-              ) : (
-                <>
-                  <DiffTable
-                    rows={file.rows}
-                    layout={layout}
-                    label={file.path}
-                    labels={{
-                      region: `Scrollable diff for ${file.path}`,
-                      beforeLine: "Before line",
-                      beforeCode: "Before code",
-                      afterLine: "After line",
-                      afterCode: "After code",
-                      changedCode: "Changed code",
-                    }}
-                  />
-                  <Metadata>Scroll horizontally to read long lines.</Metadata>
-                </>
-              )}
-            </Disclosure>
-          ))}
-        </RecordGroup>
-        <Disclosure title="Comparison details">
-          <Metadata>
-            <span id="baseline">
-              {source.type === "emptyTree"
-                ? "Baseline: empty tree"
-                : `Baseline: ${source.type} · ${source.commit}`}
-            </span>
-          </Metadata>
-        </Disclosure>
-      </PanelSection>
-      <Disclosure title="About this diff">
-        <Metadata>
-          These are current workspace changes, not a stored Tool result. Refresh
-          to read again. This page cannot edit files, stage changes or restore a
-          checkpoint.
-        </Metadata>
-      </Disclosure>
-    </>
-  );
-}
+const COMPARISONS = [
+  { value: "worktree", label: "Uncommitted changes" },
+  { value: "base", label: "Branch changes" },
+];
+const comparisonName = (mode: DiffMode) =>
+  COMPARISONS.find((comparison) => comparison.value === mode)!.label;
 
 type Read = {
   loading: boolean;
-  accepted?: { snapshot: DiffSnapshot; mode: DiffMode };
+  accepted?: { diff: Diff; mode: DiffMode };
   error?: string;
 };
+type Selection =
+  | { view: "files"; path: string | null }
+  | { view: "file"; path: string; returnTo: "files" | "source" };
+type ScrollPosition = { element: HTMLElement; top: number };
+
+function scrollPositions(element: HTMLElement | null): ScrollPosition[] {
+  const positions: ScrollPosition[] = [];
+  for (
+    let parent = element?.parentElement;
+    parent;
+    parent = parent.parentElement
+  ) {
+    if (/(auto|scroll)/.test(getComputedStyle(parent).overflowY))
+      positions.push({ element: parent, top: parent.scrollTop });
+  }
+  return positions;
+}
 
 export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const workspace = useMemo(() => {
     if (!context.workspace || !context.workspace.focus)
       throw new Error("Workspace diff requires a workspace context");
-    return { ...context.workspace, focus: context.workspace.focus };
+    const prefix = context.workspace.ref.path.endsWith("/")
+      ? context.workspace.ref.path
+      : `${context.workspace.ref.path}/`;
+    const path = context.workspace.focus.path;
+    return {
+      ref: context.workspace.ref,
+      focusPath: path.startsWith(prefix) ? path.slice(prefix.length) : path,
+    };
   }, [context]);
   const [mode, setMode] = useState<DiffMode>("worktree");
   const [filter, setFilter] = useState("");
   const [layout, setLayout] = useState<"unified" | "split">("unified");
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
-    () => new Set(),
+  const [selection, setSelection] = useState<Selection>(() =>
+    workspace.focusPath
+      ? { view: "file", path: workspace.focusPath, returnTo: "source" }
+      : { view: "files", path: null },
   );
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
+  const panel = useRef<HTMLElement>(null);
+  const list = useRef<HTMLElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const overviewScroll = useRef<ScrollPosition[]>([]);
+  const lastFocus = useRef<HTMLElement>(null);
+  const pendingFocus = useRef<{
+    target: "file" | "list";
+    active: Element | null;
+  } | null>(null);
+
   const refresh = useCallback(async () => {
     reading.current?.abort();
     const controller = new AbortController();
@@ -215,23 +112,14 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
           .workspace(workspace.ref)
           .diff.get({ mode, format: "rows" }, signal),
       );
-      const prefix = workspace.ref.path.endsWith("/")
-        ? workspace.ref.path
-        : `${workspace.ref.path}/`;
-      const focusPath = workspace.focus.path.startsWith(prefix)
-        ? workspace.focus.path.slice(prefix.length)
-        : workspace.focus.path;
       if (!signal.aborted) {
-        setCollapsed((current) => {
-          if (!current.has(focusPath)) return current;
-          const next = new Set(current);
-          next.delete(focusPath);
-          return next;
-        });
-        setRead({
-          loading: false,
-          accepted: { snapshot: { diff, focusPath }, mode },
-        });
+        setSelection((current) =>
+          current.view === "file" &&
+          !diff.files?.some((file) => file.path === current.path)
+            ? { path: current.path, view: "files" }
+            : current,
+        );
+        setRead({ loading: false, accepted: { diff, mode } });
       }
     } catch (error) {
       if (!signal.aborted)
@@ -249,35 +137,106 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     void refresh();
     return () => reading.current?.abort();
   }, [refresh]);
-  const files = read.accepted?.snapshot.diff.files ?? [];
+
+  const files = read.accepted?.diff.files ?? [];
+  const selected = files.find((file) => file.path === selection.path);
+  const file = selection.view === "file" ? selected : undefined;
+  const matching = files.filter((item) =>
+    `${item.path} ${item.previousPath ?? ""}`
+      .toLocaleLowerCase()
+      .includes(filter.toLocaleLowerCase()),
+  );
+  const navigationFiles = matching.some((item) => item.path === file?.path)
+    ? matching
+    : files;
+  const index = navigationFiles.findIndex((item) => item.path === file?.path);
+  const textFiles = files.filter((item) => !item.binary);
+  const total = (key: "added" | "removed") =>
+    textFiles.every((item) => item[key] !== undefined)
+      ? textFiles.reduce((sum, item) => sum + item[key]!, 0)
+      : undefined;
+
+  function openFile(path: string) {
+    if (!file) overviewScroll.current = scrollPositions(panel.current);
+    pendingFocus.current = { target: "file", active: document.activeElement };
+    setSelection({
+      path,
+      view: "file",
+      returnTo: selection.view === "file" ? selection.returnTo : "files",
+    });
+  }
+  function showFiles() {
+    pendingFocus.current = { target: "list", active: document.activeElement };
+    setSelection((current) => ({ path: current.path, view: "files" }));
+  }
+  useLayoutEffect(() => {
+    const pending = pendingFocus.current;
+    pendingFocus.current = null;
+    const active = document.activeElement;
+    if (!pending) {
+      if (
+        !file &&
+        active === document.body &&
+        lastFocus.current?.isConnected === false
+      )
+        search.current?.focus();
+      return;
+    }
+    if (active !== pending.active && active !== document.body) return;
+    if (pending.target === "file" && file) {
+      for (const position of scrollPositions(panel.current))
+        position.element.scrollTop = 0;
+      heading.current?.focus();
+    } else {
+      for (const position of overviewScroll.current)
+        position.element.scrollTop = position.top;
+      const row = Array.from(
+        list.current?.querySelectorAll<HTMLButtonElement>("[data-diff-file]") ??
+          [],
+      ).find((item) => item.dataset.diffFile === selection.path);
+      (row ?? search.current)?.focus();
+    }
+  }, [file, read.accepted, selection]);
+
+  const accepted = read.accepted;
   return (
     <Panel
+      ref={panel}
       label="Workspace diff"
+      onFocusCapture={(event) => {
+        lastFocus.current = event.target;
+      }}
+      onKeyDown={(event) => {
+        if (
+          event.key !== "Escape" ||
+          event.defaultPrevented ||
+          event.nativeEvent.isComposing ||
+          !file ||
+          selection.view !== "file" ||
+          selection.returnTo !== "files"
+        )
+          return;
+        event.preventDefault();
+        event.stopPropagation();
+        showFiles();
+      }}
       header={
         <PanelHeader
           size="md"
           title="Workspace diff"
+          description="Current workspace changes"
           context={
             <Metadata>
-              <code>{workspace.ref.path}</code>
+              <DiffFilePath path={workspace.ref.path} />
             </Metadata>
           }
         />
       }
       controls={
-        <FilterBar
-          label="Diff controls"
-          search={
-            <SearchField
-              id="filter"
-              aria-label="Filter files"
-              placeholder="File path"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-            />
-          }
-          actions={
-            <Toolbar label="Diff actions">
+        <>
+          <Toolbar
+            label="Comparison scope"
+            actions={
               <IconButton
                 icon={Refresh}
                 aria-label="Refresh"
@@ -285,81 +244,226 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                 disabled={read.loading}
                 onClick={() => void refresh()}
               />
-              <IconButton
-                id="expand"
-                icon={UnfoldVertical}
-                aria-label="Expand all"
-                size="md"
-                disabled={!files.length}
-                onClick={() => setCollapsed(new Set())}
-              />
-              <IconButton
-                id="collapse"
-                icon={Fold}
-                aria-label="Collapse all"
-                size="md"
-                disabled={!files.length}
-                onClick={() =>
-                  setCollapsed(new Set(files.map((file) => file.path)))
+            }
+          >
+            <Select
+              label="Comparison"
+              value={mode}
+              options={COMPARISONS}
+              onValueChange={(value) => setMode(value as DiffMode)}
+            />
+          </Toolbar>
+          {read.loading && (
+            <Metadata role="status">
+              Reading {comparisonName(mode).toLocaleLowerCase()}…
+            </Metadata>
+          )}
+          {read.error && (
+            <Metadata role="alert">
+              Could not read {comparisonName(mode).toLocaleLowerCase()}:{" "}
+              {read.error}
+            </Metadata>
+          )}
+          {accepted &&
+            (read.loading || read.error || accepted.mode !== mode) && (
+              <Metadata role="status">
+                Showing {comparisonName(accepted.mode).toLocaleLowerCase()} from
+                the last successful read.
+              </Metadata>
+            )}
+          {file ? (
+            <>
+              <Toolbar
+                label="Changed file navigation"
+                actions={
+                  <>
+                    <Metadata
+                      aria-live="polite"
+                      aria-label={`File ${index + 1} of ${navigationFiles.length}${filter && navigationFiles === matching ? " matching files" : ""}`}
+                    >
+                      {index + 1} / {navigationFiles.length}
+                    </Metadata>
+                    <IconButton
+                      icon={ChevronLeft}
+                      aria-label="Previous file"
+                      size="sm"
+                      disabled={index <= 0}
+                      onClick={() => openFile(navigationFiles[index - 1]!.path)}
+                    />
+                    <IconButton
+                      icon={ChevronRight}
+                      aria-label="Next file"
+                      size="sm"
+                      disabled={
+                        index < 0 || index >= navigationFiles.length - 1
+                      }
+                      onClick={() => openFile(navigationFiles[index + 1]!.path)}
+                    />
+                  </>
                 }
-              />
-            </Toolbar>
-          }
-        >
-          <Select
-            label="Comparison"
-            value={mode}
-            options={[
-              { value: "worktree", label: "Working tree" },
-              { value: "base", label: "Default branch" },
-            ]}
-            onValueChange={(value) => setMode(value as DiffMode)}
-          />
-          <Select
-            id="layout"
-            label="Layout"
-            value={layout}
-            onValueChange={(value) => setLayout(value as "unified" | "split")}
-            options={[
-              { value: "unified", label: "Unified" },
-              { value: "split", label: "Side by side" },
-            ]}
-          />
-        </FilterBar>
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={
+                    selection.view === "file" && selection.returnTo === "files"
+                      ? "Back to changed files"
+                      : "Show changed files"
+                  }
+                  onClick={showFiles}
+                >
+                  <Icon
+                    glyph={
+                      selection.view === "file" &&
+                      selection.returnTo === "files"
+                        ? ArrowLeft
+                        : List
+                    }
+                    size="sm"
+                  />
+                  Files
+                </Button>
+              </Toolbar>
+              <DiffFileHeader ref={heading} file={file}>
+                {!file.binary && file.rows.length > 0 && (
+                  <Select
+                    size="sm"
+                    label="Diff layout"
+                    value={layout}
+                    onValueChange={(value) =>
+                      setLayout(value as "unified" | "split")
+                    }
+                    options={[
+                      { value: "unified", label: "Unified" },
+                      { value: "split", label: "Side by side" },
+                    ]}
+                  />
+                )}
+              </DiffFileHeader>
+            </>
+          ) : (
+            <SearchField
+              ref={search}
+              aria-label="Filter files"
+              placeholder="Find a changed file"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              disabled={!accepted}
+            />
+          )}
+        </>
       }
     >
-      {read.loading && <p role="status">Reading workspace diff…</p>}
-      {read.error && (
-        <p role="alert">The current diff could not be read: {read.error}</p>
-      )}
-      {read.accepted && (
+      {accepted && (
         <>
-          <Metadata
-            role="status"
-            className={read.accepted.mode === mode ? "sr-only" : undefined}
-          >
-            Workspace diff loaded.{" "}
-            {read.accepted.mode === "worktree"
-              ? "Working tree"
-              : "Default branch"}{" "}
-            comparison.
-            {read.accepted.mode !== mode &&
-              " Showing the last accepted comparison while the selected comparison is unavailable."}
-          </Metadata>
-          <DiffReport
-            snapshot={read.accepted.snapshot}
-            filter={filter}
-            layout={layout}
-            collapsed={collapsed}
-            onOpenChange={(path, open) =>
-              setCollapsed((current) => {
-                const next = new Set(current);
-                if (open) next.delete(path);
-                else next.add(path);
-                return next;
-              })
-            }
-          />
+          {!read.loading && !read.error && accepted.mode === mode && (
+            <Metadata role="status" className="sr-only">
+              Showing {comparisonName(accepted.mode).toLocaleLowerCase()}.
+            </Metadata>
+          )}
+          {accepted.diff.truncated && (
+            <Metadata role="note">
+              Partial diff. Only the included files and line changes are shown.
+            </Metadata>
+          )}
+          {selection.path && !selected && (
+            <Metadata>
+              The requested file is not included in this read:{" "}
+              <DiffFilePath path={selection.path} />
+            </Metadata>
+          )}
+          <div hidden={Boolean(file)}>
+            <PanelSection
+              title={`${files.length} ${accepted.diff.truncated ? "included" : "changed"} ${files.length === 1 ? "file" : "files"}`}
+              description={
+                filter
+                  ? `${matching.length} of ${files.length} files match`
+                  : undefined
+              }
+              actions={
+                textFiles.length > 0 ? (
+                  <DiffStat
+                    title="Line changes in included text files"
+                    added={total("added")}
+                    removed={total("removed")}
+                  />
+                ) : undefined
+              }
+            >
+              {!files.length && !accepted.diff.truncated && (
+                <EmptyState
+                  icon={FileDiff}
+                  size="compact"
+                  title="No changes in this comparison."
+                  sub="Choose another comparison or refresh after editing a file."
+                />
+              )}
+              {files.length > 0 && !matching.length && (
+                <EmptyState
+                  size="compact"
+                  title="No matching files."
+                  sub="Clear the filter to show changed files."
+                />
+              )}
+              <DiffFileList
+                ref={list}
+                files={matching}
+                label="Changed files"
+                currentPath={selection.path}
+                onSelect={openFile}
+              />
+            </PanelSection>
+          </div>
+          {file && (
+            <section aria-label={`Changes in ${file.path}`}>
+              <Metadata>
+                <DiffFilePath path={file.path} />
+              </Metadata>
+              {file.previousPath && (
+                <Metadata>
+                  Renamed from <DiffFilePath path={file.previousPath} />
+                </Metadata>
+              )}
+              {file.binary ? (
+                <Metadata>
+                  Binary content is not displayed. Line counts are unavailable.
+                </Metadata>
+              ) : file.rows.length ? (
+                <DiffTable
+                  key={file.path}
+                  rows={file.rows}
+                  layout={layout}
+                  label={file.path}
+                  labels={{
+                    region: `Scrollable diff for ${file.path}`,
+                    beforeLine: "Before line",
+                    beforeCode: "Before code",
+                    afterLine: "After line",
+                    afterCode: "After code",
+                    changedCode: "Changed code",
+                  }}
+                />
+              ) : (
+                <Metadata>
+                  No line changes. Only file metadata changed.
+                </Metadata>
+              )}
+            </section>
+          )}
+          <Disclosure title="Comparison details">
+            <Metadata>
+              {accepted.diff.baseline.type === "emptyTree"
+                ? "No commits yet. Changes are compared with an empty tree."
+                : accepted.mode === "worktree"
+                  ? "Changes against HEAD, including staged, unstaged and untracked files."
+                  : "Committed and uncommitted tracked changes since the common ancestor with the default branch. Untracked files are excluded."}
+            </Metadata>
+            <Metadata>
+              {accepted.diff.baseline.type === "emptyTree"
+                ? "Baseline: empty tree"
+                : `Baseline: ${accepted.diff.baseline.type === "head" ? "HEAD" : "merge base"} · ${accepted.diff.baseline.commit}`}
+            </Metadata>
+          </Disclosure>
         </>
       )}
     </Panel>

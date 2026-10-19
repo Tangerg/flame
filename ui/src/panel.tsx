@@ -247,12 +247,16 @@ export function Panel({
   label,
   header,
   controls,
-}: {
+  ref,
+  className,
+  ...props
+}: Omit<ComponentPropsWithRef<"section">, "children"> & {
   children: ReactNode;
   label: string;
   header?: ReactNode;
   controls?: ReactNode;
 }) {
+  const styled = stylex.props(styles.panel, type.uiMd);
   const hosted = useContext(PanelHostContext);
   const panelRef = useRef<HTMLElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
@@ -334,10 +338,16 @@ export function Panel({
   }, [hasControls, keepBodyFocusVisible]);
   return (
     <section
-      ref={panelRef}
+      {...props}
+      ref={(node) => {
+        panelRef.current = node;
+        if (typeof ref === "function") return ref(node);
+        if (ref) ref.current = node;
+      }}
       data-slot="panel"
       aria-label={label}
-      {...stylex.props(styles.panel, type.uiMd)}
+      {...styled}
+      className={clsx(styled.className, className)}
     >
       <div {...stylex.props(styles.content, hosted && styles.hostedContent)}>
         {header}

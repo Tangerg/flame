@@ -3,6 +3,7 @@ import type { Transport, TransportRequest } from "@flame/runtime-contract/client
 import type {
   ApprovalModeResult,
   Diff,
+  GetDiffRequest,
   CallPluginRequest,
   ListModelsRequest,
   ServerCapabilities,
@@ -35,12 +36,12 @@ function resultFor(
   snapshot: RuntimeAgentSessionSnapshot,
   capabilities: ServerCapabilities,
   approval: ApprovalModeResult,
-  readDiff: (signal?: AbortSignal) => Promise<Diff>,
+  readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>,
   signal?: AbortSignal,
 ): unknown {
   switch (request.method) {
     case "workspace.diff.get":
-      return readDiff(signal);
+      return readDiff(signal, request.params as GetDiffRequest);
     case "runtime.discover":
       return { ...discovery, capabilities };
     case "sessions.trajectory":
@@ -102,7 +103,7 @@ function resultFor(
 export function createVisualRuntimeTransport(
   snapshot: RuntimeAgentSessionSnapshot,
   capabilities: ServerCapabilities,
-  readDiff: (signal?: AbortSignal) => Promise<Diff>,
+  readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>,
   acceptSkillProposals = false,
 ): Transport {
   const transport = createMemoryTransport();

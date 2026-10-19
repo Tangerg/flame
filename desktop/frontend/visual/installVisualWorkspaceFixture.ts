@@ -5,7 +5,7 @@ import { visualFileRenderers } from "./visualFileRenderers";
 import { Gallery } from "../../../plugins/icon-gallery/src/component";
 import { Diagnostics } from "../../../plugins/diagnostics/src/component";
 import { WorkspaceDiff } from "../../../plugins/diff/src/component";
-import type { Diff } from "@flame/runtime-contract/wire";
+import type { Diff, GetDiffRequest } from "@flame/runtime-contract/wire";
 import { Usage } from "../../../plugins/usage/src/component";
 import { Memory } from "../../../plugins/memory/src/component";
 import { Trajectory } from "../../../plugins/trajectory/src/component";
@@ -36,7 +36,7 @@ import {
   type WorkspaceFileEntry,
   type WorkspaceReadFileQuery,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
-import { REVIEW_DIFF, scaledReview, ACTIVE_DIFF_FILE } from "./diffSnapshot";
+import { REVIEW_DIFF, BRANCH_REVIEW_DIFF, scaledReview, ACTIVE_DIFF_FILE } from "./diffSnapshot";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
 import { VISUAL_MEMORY_BINDING, VISUAL_SCHEDULES_BINDING } from "./componentSnapshots";
 import { Skills } from "../../../plugins/skills/src/component";
@@ -404,10 +404,16 @@ export function visualWorkspaceRuntime(
           ),
         }
       : capturedReview;
-  const readDiff = async (signal?: AbortSignal): Promise<Diff> => {
+  const readDiff = async (signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => {
     if (state === "dock-loading") return pending<Diff>(signal);
     if (state === "dock-error") throw new Error("Visual fixture could not load the workspace diff");
-    return state === "dock-empty" ? { baseline: review.baseline } : review;
+    const comparison =
+      request?.mode === "base"
+        ? reviewFiles === undefined && !reviewPath
+          ? BRANCH_REVIEW_DIFF
+          : { ...review, baseline: BRANCH_REVIEW_DIFF.baseline }
+        : review;
+    return state === "dock-empty" ? { baseline: comparison.baseline } : comparison;
   };
   return { agentState, snapshot, capabilities, readDiff };
 }

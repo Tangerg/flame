@@ -879,14 +879,14 @@ test("the portable Usage page filters recorded buckets without changing totals",
       .getByRole("article"),
   ).toHaveCount(2);
   const totals = await view.locator("#totals").textContent();
-  await view.getByRole("searchbox", { name: "Filter" }).fill("anthropic");
+  await view.getByRole("searchbox", { name: "Filter sources" }).fill("anthropic");
   await expect(
     view
       .getByRole("region", { name: "Recorded usage by source", exact: true })
       .getByRole("article"),
   ).toHaveCount(1);
   await expect(view.locator("#totals")).toHaveText(totals!);
-  await view.getByRole("searchbox", { name: "Filter" }).fill("");
+  await view.getByRole("searchbox", { name: "Filter sources" }).fill("");
   await view.getByRole("combobox", { name: "Group by" }).click();
   await page.getByRole("option", { name: "Model", exact: true }).click();
   await expect(

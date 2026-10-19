@@ -15,6 +15,7 @@ for (const theme of ["light", "dark"]) {
     expect(bounds.width).toBeLessThanOrEqual(1);
     expect(bounds.height).toBeLessThanOrEqual(1);
 
+    await view.getByRole("button", { name: "Show changed files", exact: true }).click();
     for (const narrow of [false, true]) {
       if (narrow) {
         const resizer = page.locator(".agent-pane-resizer");
@@ -23,7 +24,7 @@ for (const theme of ["light", "dark"]) {
         expect((await view.boundingBox())!.width).toBeCloseTo(320, 0);
       }
       await viewport.evaluate((node) => node.scrollTo(0, 0));
-      const context = view.locator("header code");
+      const context = view.locator('header [dir="ltr"]');
       await expect(context).toHaveText("/Users/visual/scope");
       await expect(context).toBeInViewport({ ratio: 1 });
       const filter = view.getByRole("searchbox", { name: "Filter files", exact: true });
@@ -31,13 +32,13 @@ for (const theme of ["light", "dark"]) {
         filter,
         view.getByRole("button", { name: "Refresh", exact: true }),
         view.getByRole("combobox", { name: "Comparison", exact: true }),
-        view.getByRole("combobox", { name: "Layout", exact: true }),
       ]) {
         await expect(control).toBeInViewport({ ratio: 1 });
       }
       await filter.fill("session.go");
       await expect(view.locator("[data-diff-file]")).toHaveCount(1);
-      await expect(view.locator("[data-diff-file]").getByRole("button").first()).toContainText(
+      await expect(view.locator("[data-diff-file]").first()).toHaveAttribute(
+        "title",
         "runtime/protocol/session.go",
       );
       await filter.fill("");
@@ -52,8 +53,8 @@ for (const theme of ["light", "dark"]) {
     const full = page.getByRole("region", { name: "Workspace diff", exact: true });
     const pageTitle = full.getByRole("heading", { name: "Workspace diff", exact: true });
     expect((await pageTitle.boundingBox())!.height).toBeGreaterThan(1);
-    await full.locator("header code").scrollIntoViewIfNeeded();
-    await expect(full.locator("header code")).toHaveText("/Users/visual/scope");
+    await full.locator('header [dir="ltr"]').scrollIntoViewIfNeeded();
+    await expect(full.locator('header [dir="ltr"]')).toHaveText("/Users/visual/scope");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
 }

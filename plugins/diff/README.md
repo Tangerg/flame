@@ -5,18 +5,26 @@ public SDK. Host supplies an immutable workspace reference and file-focus revisi
 Runtime owns confinement, Git baselines and read bounds. The package has no backend
 process, private application import, HTML carrier or own callable contribution.
 
-Comparison mode, layout, filters and folding are local presentation state. A fresh
+Comparison mode, file selection, layout and filters are local presentation state. A fresh
 workspace/focus instance defaults to working-tree comparison. Switching comparison
 cancels the prior read. Failed reads retain the accepted snapshot and label its
 actual comparison. Renames, binary evidence and partial reads retain their canonical
 meaning. Host target/focus replacement retires the render instance and joins SDK I/O.
 
-The compact toolbar keeps comparison, layout, refresh and global folding available
-while the report scrolls. File summaries show one complete path with compact status
-and count metadata; directory separators provide natural wrapping points.
-Each file heading stays below the controls while its body scrolls when the reading
-viewport has room for the complete heading and two lines of body. Taller headings
-remain in normal flow. Focus clearance uses the same measured heading height.
+The general entry starts at a changed-file overview with aggregate text counts.
+A file-specific entry opens that file directly. File rows navigate to one reader;
+they do not expand every file's code into a single report. The comparison and
+refresh controls precede the list filter. In the reader, the current file, position,
+previous/next commands and layout stay in the shared persistent control zone.
+Complete directories and rename provenance remain in the scrolling content.
+
+Returning from a list-owned reader retains its query and scroll and focuses the
+current row. A direct file entry leaves Escape to the host's source-return owner;
+its independent Files command opens the overview. Layout popups consume their own
+dismissal first. Refresh retains the chosen reader when it remains in the accepted
+comparison; an absent file returns to the overview with an explicit notice. Failed
+reads keep the accepted comparison visibly identified beside the scope control.
+The package remains a read-only current-workspace view, not a stored Tool diff.
 
 The generic material key `diff` participates in the existing workspace navigation
 consumer. Absent/competing candidates open the catalogue. Disablement/uninstall

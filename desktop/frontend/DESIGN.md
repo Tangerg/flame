@@ -43,8 +43,8 @@ The whole system reduces to five decisions. Everything below elaborates them.
 5. **Dense, not cramped** — a workbench rhythm: 46px chrome bars, short rows, one
    centred reading measure flanked by navigation rails. Features are first-class
    grouped entries in the sidebar + settings, not buried in the command palette.
-   **No tab strip** — one active session; workspace views open full-pane or in the
-   dock.
+   One active Session; opened materials remain in the existing Dock tabs or a
+   full-pane workspace view.
 
 Constant across all of it: the `@theme` token bridge, plugin-contributed chrome,
 accent _scarcity_, tabular numerals, keyboard-focus discipline, reduced-motion.
@@ -64,6 +64,22 @@ Flame keeps StyleX, Base UI, its own tokens and Runtime ownership.
 
 - Plugin pages share `Panel` and `PanelHeader`, with one content measure and
   container-responsive gutters. Search, filters and content share alignment edges.
+- Every page follows the user's task model: establish location and data scope,
+  summarize the relevant objects, then expose the current object's content and
+  actions. A scope that changes the underlying read precedes local search and
+  grouping. Retained results identify their actual scope beside that control,
+  including during refresh and after a failed scope change.
+- Navigation, inline disclosure and a bounded command are different operations.
+  Use a list-to-detail path for sustained file or task reading; use inline
+  disclosure for supporting evidence that belongs to the current record. Menus
+  contain secondary commands, popovers contain short contextual choices, and
+  dialogs contain a bounded decision or editing task. Do not force every page
+  into an expanding resource card.
+- A detail entered from a list returns to that list's query, position and current
+  object. A detail opened directly from the conversation returns to that actual
+  source; a separate directory command remains available. Escape dismisses a
+  transient layer before unwinding the path the user took. Focus follows that
+  path and remains with the current reader during background updates.
 - Settings, plugin resources and inline editors share the semantic layout roles
   for card insets, row padding, field labels and content gaps. Compact page gutters
   also bound modals. Translated field labels keep their intrinsic height; they do
@@ -71,10 +87,10 @@ Flame keeps StyleX, Base UI, its own tokens and Runtime ownership.
   related commands belong in the shared action zone. Auxiliary actions lead;
   cancellation and the primary action trail. The parent composition owns the
   spacing before this zone.
-- Resource lists use direct summary disclosures: identity and description lead,
-  state and the main action trail, and details expand across the full row width.
-  Secondary commands use the shared action menu. Technical provenance belongs in
-  details; current user-facing state remains visible.
+- Resource identities and descriptions lead; current state and the primary action
+  remain visible. A row either opens sustained detail or expands supporting
+  content according to that task. Secondary commands use the shared action menu.
+  Technical provenance belongs in details; current user-facing state remains visible.
 - Schedules are independent tasks and use a responsive card grid. Dense evidence
   feeds remain linear lists. Neither layout introduces its own business state.
 - Management search and selection share the large control size and radius tokens.

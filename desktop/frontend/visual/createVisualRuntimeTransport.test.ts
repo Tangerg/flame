@@ -13,7 +13,7 @@ import {
   VISUAL_SCHEDULES_PAGE,
   VISUAL_USAGE,
 } from "./componentSnapshots";
-import { REVIEW_DIFF } from "./diffSnapshot";
+import { REVIEW_DIFF, BRANCH_REVIEW_DIFF } from "./diffSnapshot";
 import { commitVisualInterruptResponses } from "./interruptResponses";
 import { VISUAL_MODELS, VISUAL_PROVIDERS } from "./runtimeSnapshots";
 import { VISUAL_SKILL_PROPOSALS } from "./skillSnapshots";
@@ -22,7 +22,9 @@ describe("visual Runtime transport", () => {
   it("serves installed views through validated public reads and the same retained Item facts", async () => {
     const snapshot = structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.waiting);
     const client = createFlameClient(
-      createVisualRuntimeTransport(snapshot, VISUAL_CAPABILITIES, async () => REVIEW_DIFF),
+      createVisualRuntimeTransport(snapshot, VISUAL_CAPABILITIES, async (_signal, request) =>
+        request?.mode === "base" ? BRANCH_REVIEW_DIFF : REVIEW_DIFF,
+      ),
       {
         capabilities: () => VISUAL_CAPABILITIES,
       },
@@ -44,6 +46,9 @@ describe("visual Runtime transport", () => {
       expect(await client.usage.summary()).toEqual(VISUAL_USAGE);
       const workspace = await client.workspaces.open({ path: "/Users/visual/scope" });
       expect(await workspace.diff.get({ mode: "worktree", format: "rows" })).toEqual(REVIEW_DIFF);
+      expect(await workspace.diff.get({ mode: "base", format: "rows" })).toEqual(
+        BRANCH_REVIEW_DIFF,
+      );
       expect((await workspace.skills.listDiscovered()).skills).toHaveLength(2);
       expect((await workspace.skills.listProposals()).data).toHaveLength(2);
       expect((await client.skills.listLibrary()).data).toHaveLength(2);

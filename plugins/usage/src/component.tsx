@@ -21,6 +21,7 @@ import {
   FilterBar,
   Select,
   Stats,
+  Toolbar,
 } from "@flame/ui";
 
 const number = new Intl.NumberFormat("en-US");
@@ -258,61 +259,73 @@ export function Usage({ context }: { context: ComponentContext }) {
         />
       }
       controls={
-        <FilterBar
-          label="Usage controls"
-          search={
-            <SearchField
-              size="lg"
-              id="filter"
-              aria-label="Filter"
-              placeholder="Find a source"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-            />
-          }
-          actions={
-            <IconButton
-              icon={Refresh}
-              aria-label="Refresh"
-              size="md"
-              disabled={read.loading}
-              onClick={() => void refresh()}
-            />
-          }
-        >
-          <Select
-            size="lg"
-            label="Period"
-            value={period.value}
-            options={periods.map(({ value, label }) => ({ value, label }))}
-            onValueChange={(value) =>
-              setPeriod(periods.find((item) => item.value === value)!)
+        <>
+          <Toolbar
+            label="Report scope"
+            actions={
+              <IconButton
+                icon={Refresh}
+                aria-label="Refresh"
+                size="md"
+                disabled={read.loading}
+                onClick={() => void refresh()}
+              />
             }
-          />
-          <Select
-            size="lg"
-            label="Group by"
-            value={group}
-            onValueChange={setGroup}
-            options={options}
-          />
-        </FilterBar>
+          >
+            <Select
+              size="lg"
+              label="Period"
+              value={period.value}
+              options={periods.map(({ value, label }) => ({ value, label }))}
+              onValueChange={(value) =>
+                setPeriod(periods.find((item) => item.value === value)!)
+              }
+            />
+          </Toolbar>
+          {read.loading && <Metadata role="status">Reading usage…</Metadata>}
+          {read.error && (
+            <Metadata role="alert">
+              The current report could not be read: {read.error}
+            </Metadata>
+          )}
+          {read.accepted &&
+            (read.loading || read.error || read.accepted.period !== period) && (
+              <Metadata role="status">
+                Showing {read.accepted.period.label.toLocaleLowerCase()} from
+                the last successful read.
+              </Metadata>
+            )}
+          <FilterBar
+            label="Usage controls"
+            search={
+              <SearchField
+                size="lg"
+                id="filter"
+                aria-label="Filter sources"
+                placeholder="Find a source"
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+              />
+            }
+          >
+            <Select
+              size="lg"
+              label="Group by"
+              value={group}
+              onValueChange={setGroup}
+              options={options}
+            />
+          </FilterBar>
+        </>
       }
     >
-      {read.loading && <p role="status">Reading usage…</p>}
-      {read.error && (
-        <p role="alert">The current report could not be read: {read.error}</p>
-      )}
       {read.accepted && (
         <>
-          <Metadata
-            role="status"
-            className={read.accepted.period === period ? "sr-only" : undefined}
-          >
-            Recorded usage loaded. {read.accepted.period.label}.
-            {read.accepted.period !== period &&
-              " Showing the last accepted period while the selected period is unavailable."}
-          </Metadata>
+          {!read.loading && !read.error && read.accepted.period === period && (
+            <Metadata role="status" className="sr-only">
+              Recorded usage loaded. {read.accepted.period.label}.
+            </Metadata>
+          )}
           <UsageReport
             report={read.accepted.report}
             group={group}
