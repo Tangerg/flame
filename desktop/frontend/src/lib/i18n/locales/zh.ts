@@ -84,6 +84,7 @@ export const zh: Record<string, string> = {
   "shell.region.workspace": "Agent 工作区",
   "shell.region.conversation": "对话",
   "dock.action.returnToConversation": "返回对话",
+  "dock.action.returnToCatalog": "返回面板目录",
   "dock.action.returnToView": "返回{{view}}",
   "workIndex.section.projects": "项目",
   "workIndex.action.addProject": "添加项目",
@@ -131,6 +132,7 @@ export const zh: Record<string, string> = {
 
   "dock.action.browse": "浏览面板",
   "dock.catalog.title": "打开一个面板",
+  "dock.catalog.description": "在对话旁查看工作区资料与会话详情。",
   "dock.picker.placeholder": "查找面板…",
   "dock.picker.empty": "没有匹配的面板",
   "dock.action.hide": "收起右侧工作区",

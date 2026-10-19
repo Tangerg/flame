@@ -87,6 +87,7 @@ export const ko: Record<string, string> = {
   "shell.region.workspace": "에이전트 작업 공간",
   "shell.region.conversation": "대화",
   "dock.action.returnToConversation": "대화로 돌아가기",
+  "dock.action.returnToCatalog": "패널 목록으로 돌아가기",
   "dock.action.returnToView": "{{view}}(으)로 돌아가기",
   "workIndex.section.projects": "프로젝트",
   "workIndex.action.addProject": "프로젝트 추가",
@@ -128,6 +129,7 @@ export const ko: Record<string, string> = {
 
   "dock.action.browse": "패널 탐색",
   "dock.catalog.title": "패널 열기",
+  "dock.catalog.description": "대화 옆에서 작업 공간 자료와 세션 세부 정보를 확인하세요.",
   "dock.picker.placeholder": "패널 검색…",
   "dock.picker.empty": "패널을 찾을 수 없음",
   "dock.action.hide": "오른쪽 작업 영역 접기",

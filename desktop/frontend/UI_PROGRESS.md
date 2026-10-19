@@ -8,7 +8,7 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The shared presentation foundation and many reading and navigation defects have been repaired. The overall product has not yet reached the user's desired quality. Continue improving **visual refinement, typography and layout, and interaction design together**, with the center conversation and right Context Dock as the first priority.
 
-The UI Goal has resumed in this chat. This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, and established a shared material-entry and return flow. The broader visual goal remains open. Historical paused or blocked statuses in earlier chats do not describe the current task.
+The UI Goal has resumed in this chat. This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, established a shared material-entry and return flow, and unified the searchable Dock directory, picker and full-view entry. The broader visual goal remains open. Historical paused or blocked statuses in earlier chats do not describe the current task.
 
 The original checkout is `/Users/tangerg/Desktop/flame`, on branch `main`. All former local and remote branch tips were checked for ancestry before consolidation; their commits are retained in `main`. Only `main` remains locally and on `origin`. Read current Git state before starting; this document is a checkpoint, not an authority that can overwrite newer work.
 
@@ -127,7 +127,35 @@ ephemeral, retired on Session changes or navigation-port reinstallation and excl
 An unchanged child reader no longer replays its initial Back-button focus when
 React Activity resumes it; native acceptance exposed this ownership conflict.
 
+The empty Dock now has a clear title, supporting context and a fixed search field
+above its scrolling groups. The directory and header picker use one `CatalogList`
+for filtering, icons, open marks and keyboard selection, including searching by a
+localized group name. Missing contributed icons keep a stable fallback column.
+The directory is retained within its Session so inspection and return preserve
+the query, results position and originating search control. Picker selections
+retire their popup before entering the selected material; canceling restores the
+trigger. The selection marker remains through Base UI's final focus settlement
+so the trigger cannot steal focus back from the material. Full-view-to-Dock entry
+uses the same inspection owner and returns to its named main reader.
+
+The shared document focus rule now suppresses the browser's native outline on
+`data-chrome-focus` controls. Their existing field edge or row state owns focus;
+ordinary keyboard targets retain the global semantic ring. Native WebKit exposed
+a second blue outline inside the catalog search field during keyboard navigation;
+the final native review confirmed a single field edge and the ordinary semantic
+ring on the Dock return button.
+
 ## Verification checkpoint
+
+For the shared panel directory, picker and full-view entry:
+
+- The frontend gate completed in stages. With `VITEST_MAX_WORKERS=2`, all 374 test files and 2728 tests passed; type, lint, formatting, unused-code, boundary, token, style, bootstrap, locale, resource, bundle-budget and production-module checks passed. A now-unused `--tracking-none` declaration was removed after the dead-token guard identified it. Initial default/four-worker runs hit existing 5000 ms cold-import timeouts; the affected 13 message-rendering tests also passed alone, and no timeout or assertion was weakened.
+- The 41 focused checks cover filtered directory return, search focus and query retention, deferred picker selection, dismissal focus, previous-panel state and full-view return. The picker regression checks the actual destination rather than accepting any focus inside the Dock. The full-view control contract now asserts its captured source element.
+- Shared UI `npm run check` passed 38 tests and its independently packed consumer. Portable-plugin `npm run check` passed all ten resource checks. The supported Wails production macOS arm64 build passed with deployment floor 13.0. No Go, Runtime, CLI or portable-resource source changed.
+- Actual Wails WKWebView computer use checked Chinese/light/default-size and English/dark/18 px scenes at normal and approximately 1120 px window widths, including pointer resizing to a 320 px Dock. The named directory, supporting copy, fallback icon alignment, fixed search and scrolling picker results stayed legible. Chinese label search, localized scope search, empty results, keyboard selection and reaching the final result were exercised.
+- Native entry/return covered directory-to-file-to-directory, picker-to-subagent-to-previous-file and directory-to-portable-trajectory-to-directory. The retained query and originating search/trigger regained focus. Full-view file inspection moved beside the conversation and returned to its named main reader. Base UI's late trigger-focus settlement was reproduced and repaired; canceling a picker still returns to its trigger.
+- Native keyboard navigation exposed WebKit's duplicate blue outline inside a chrome-owned search field. After the shared document-rule repair, only the existing field edge remained; a normal Dock return button retained its semantic keyboard ring. The sidebar-matching seam, shared main/delegated renderer, code, table, selection, Composer and theme owners remain in use. No visual/browser suite was run.
+- The native app exited successfully. The preview, disposable data, bundles, build logs, fixture output and owned WebKit caches were removed; user reference caches and unrelated resources were retained.
 
 For material-entry and return navigation:
 
@@ -181,7 +209,7 @@ These checks cover the changed contracts and representative native scenarios. Th
 
 ## Next work: refine the product, layout and interactions
 
-1. **Extend the task comparison.** Reading-to-file-and-back, overview-to-subagent-and-back and explicit tool/file inspection now have shared presentation and focus ownership. Continue with richer captured tool evidence and the remaining panel entry forms, including catalogue/picker and full-view transitions. Preserve the distinction between explicit inspection and background updates. Do not restart the implemented typography, file header, shared message renderer or sidebar-matching divider.
+1. **Extend the task comparison.** Reading-to-file-and-back, overview-to-subagent-and-back and explicit tool/file inspection now have shared presentation and focus ownership. Catalogue/picker selection and full-view-to-Dock transitions now enter the same inspection flow. Continue with richer captured tool evidence and the remaining detailed material states. Preserve the distinction between explicit inspection and background updates. Do not restart the implemented typography, file header, shared message renderer or sidebar-matching divider.
 2. **Continue the reading composition around activity.** The shared prose step, paragraph/heading rhythm, disclosure affordance and folded tool-outcome summaries are implemented. Review how recorded evidence and media join an answer, especially where a summary leads into a dense detail view. Preserve the existing bounded table, code and selection owners.
 3. **Refine the remaining Dock forms.** File identity/actions and delegated message reuse, overview continuity and return focus are established. Continue with richer tool details and cross-view navigation: decide which details belong inline or in a persistent pane, and reserve popovers/dialogs for genuinely bounded tasks. Keep the user-requested sidebar-matching divider unchanged, including hover and drag.
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.

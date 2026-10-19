@@ -84,6 +84,7 @@ export const zhTW: Record<string, string> = {
   "shell.region.workspace": "Agent 工作區",
   "shell.region.conversation": "對話",
   "dock.action.returnToConversation": "返回對話",
+  "dock.action.returnToCatalog": "返回面板目錄",
   "dock.action.returnToView": "返回{{view}}",
   "workIndex.section.projects": "專案",
   "workIndex.action.addProject": "新增專案",
@@ -129,6 +130,7 @@ export const zhTW: Record<string, string> = {
 
   "dock.action.browse": "瀏覽面板",
   "dock.catalog.title": "開啟一個面板",
+  "dock.catalog.description": "在對話旁檢視工作區資料與對話詳情。",
   "dock.picker.placeholder": "尋找面板…",
   "dock.picker.empty": "找不到符合的面板",
   "dock.action.hide": "收合右側工作區",

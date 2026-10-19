@@ -88,6 +88,7 @@ export const ja: Record<string, string> = {
   "shell.region.workspace": "エージェントワークスペース",
   "shell.region.conversation": "会話",
   "dock.action.returnToConversation": "会話に戻る",
+  "dock.action.returnToCatalog": "パネル一覧に戻る",
   "dock.action.returnToView": "{{view}}に戻る",
   "workIndex.section.projects": "プロジェクト",
   "workIndex.action.addProject": "プロジェクトを追加",
@@ -129,6 +130,7 @@ export const ja: Record<string, string> = {
 
   "dock.action.browse": "パネルを参照",
   "dock.catalog.title": "パネルを開く",
+  "dock.catalog.description": "会話の隣でワークスペースの資料やセッションの詳細を確認できます。",
   "dock.picker.placeholder": "パネルを検索…",
   "dock.picker.empty": "パネルが見つかりません",
   "dock.action.hide": "右ワークスペースを折りたたむ",

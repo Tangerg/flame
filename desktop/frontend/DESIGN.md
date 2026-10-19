@@ -326,6 +326,15 @@ reveals the anchor if resizing moved it out of view. Background file updates
 retain their existing outside-focus guard. Resuming an unchanged subagent reader
 does not replay its initial focus handoff.
 
+The empty Dock presents a named panel directory with supporting copy and a
+persistent search field above its scrolling results. The directory and header
+picker share the same grouped list, fallback glyph, open marks and keyboard
+selection. Returning from inspection preserves the directory's query and search
+focus. A picker selection retires its popup before entering the material;
+dismissal returns to the trigger, while selection hands focus to the destination.
+Moving a full workspace view beside the conversation uses this same inspection
+and return contract.
+
 Prose uses one paragraph gap, unitless heading leading and a visible gap between
 every heading and its following content. Deeper heading levels retain the body
 size and step down through weight and supporting ink. Conversation and captured

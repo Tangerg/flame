@@ -1,4 +1,4 @@
-export { CatalogPicker, RailCatalogPicker } from "./catalog-picker";
+export { CatalogList, CatalogPicker, RailCatalogPicker } from "./catalog-picker";
 export type { CatalogPickerGroup } from "./catalog-picker";
 export { ChoiceList, ChoiceOption } from "./choice-list";
 export { Chip } from "./chip";

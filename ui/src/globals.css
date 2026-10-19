@@ -180,7 +180,8 @@ html:not([data-pointer])
   outline: 1.5px solid var(--color-focus-ring);
   outline-offset: 1px;
 }
-html[data-pointer] :focus-visible {
+html[data-pointer] :focus-visible,
+[data-chrome-focus]:focus-visible {
   outline: none;
 }
 html:not([data-pointer])

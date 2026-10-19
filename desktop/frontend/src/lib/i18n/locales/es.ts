@@ -91,6 +91,7 @@ export const es: Record<string, string> = {
   "shell.region.workspace": "Espacio de trabajo del agente",
   "shell.region.conversation": "Conversación",
   "dock.action.returnToConversation": "Volver a la conversación",
+  "dock.action.returnToCatalog": "Volver a la lista de paneles",
   "dock.action.returnToView": "Volver a {{view}}",
   "workIndex.section.projects": "Proyectos",
   "workIndex.action.addProject": "Añadir proyecto",
@@ -132,6 +133,8 @@ export const es: Record<string, string> = {
 
   "dock.action.browse": "Explorar paneles",
   "dock.catalog.title": "Abrir un panel",
+  "dock.catalog.description":
+    "Consulta el material del espacio de trabajo y los detalles de la sesión junto a la conversación.",
   "dock.picker.placeholder": "Buscar un panel…",
   "dock.picker.empty": "No se encontraron paneles",
   "dock.action.hide": "Contraer espacio derecho",

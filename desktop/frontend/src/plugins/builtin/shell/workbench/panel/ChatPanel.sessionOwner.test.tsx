@@ -308,7 +308,7 @@ describe("ChatPanel full-view window controls", () => {
       expect(openBeside !== null).toBe(dock !== undefined);
       if (openBeside) fireEvent.click(openBeside);
       expect(vi.mocked(openWorkspaceViewInDock).mock.calls).toEqual(
-        dock === undefined ? [] : [["current-view"]],
+        dock === undefined ? [] : [["current-view", openBeside]],
       );
 
       model.activeMainView = "replacement-view";

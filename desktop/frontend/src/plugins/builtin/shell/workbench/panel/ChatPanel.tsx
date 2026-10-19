@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { Activity, Fragment, useCallback, useState, type ReactNode } from "react";
+import { Activity, Fragment, useCallback, useRef, useState, type ReactNode } from "react";
 import { PanelHost } from "@flame/ui/panel";
 import { IconButton } from "@flame/ui";
 import { iconGlyph } from "@/ui/icons";
@@ -81,8 +81,8 @@ function useDockCatalogGroups(
     items: group.destinations.map((destination) => ({
       id: destination.viewId,
       label: t(destination.title),
-      icon: knownIconName(destination.icon),
-      keywords: [destination.viewId, group.id],
+      icon: knownIconName(destination.icon) ?? "panel-r",
+      keywords: [destination.viewId, group.id, t(group.title)],
       active: openViewIds.has(destination.viewId),
     })),
   }));
@@ -91,12 +91,15 @@ function useDockCatalogGroups(
 function AddDockViewPicker({
   groups,
   openViewIds,
+  activeViewId,
 }: {
   groups: ContextDockDestinationGroup[];
   openViewIds: ReadonlySet<string>;
+  activeViewId: string;
 }) {
   const t = useT();
   const pickerGroups = useDockCatalogGroups(groups, openViewIds);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   return (
     <CatalogPicker
@@ -104,7 +107,17 @@ function AddDockViewPicker({
       label={t("dock.action.browse")}
       placeholder={t("dock.picker.placeholder")}
       emptyLabel={t("dock.picker.empty")}
-      onSelect={(item) => openWorkspaceViewInDock(item.id)}
+      trigger={
+        <IconButton
+          ref={triggerRef}
+          icon={iconGlyph("plus")}
+          size="sm"
+          quiet
+          aria-label={t("dock.action.browse")}
+          data-dock-view-id={activeViewId}
+        />
+      }
+      onSelect={(item) => openWorkspaceViewInDock(item.id, triggerRef.current ?? undefined)}
     />
   );
 }
@@ -121,6 +134,9 @@ function DockCatalogPage({
     <AgentDockCatalog
       groups={useDockCatalogGroups(groups, openViewIds)}
       title={t("dock.catalog.title")}
+      description={t("dock.catalog.description")}
+      placeholder={t("dock.picker.placeholder")}
+      emptyLabel={t("dock.picker.empty")}
       onSelect={openWorkspaceViewInDock}
     />
   );
@@ -158,7 +174,11 @@ function DockHeader({
           moveRightLabel: t("dock.tabs.moveRight"),
         }}
       />
-      <AddDockViewPicker groups={groups} openViewIds={openViewIds} />
+      <AddDockViewPicker
+        groups={groups}
+        openViewIds={openViewIds}
+        activeViewId={tabs.find((tab) => tab.active)?.id ?? WORKSPACE_DOCK_CATALOG}
+      />
     </AgentSurfaceHeader>
   );
 }
@@ -224,9 +244,12 @@ export function ChatPanel({ onSend }: Props) {
   const returnTitle = returnViewId ? viewsById.get(returnViewId)?.title : undefined;
   const returnAction = inspection
     ? {
-        label: returnTitle
-          ? t("dock.action.returnToView", { view: t(returnTitle) })
-          : t("dock.action.returnToConversation"),
+        label:
+          returnViewId === WORKSPACE_DOCK_CATALOG
+            ? t("dock.action.returnToCatalog")
+            : returnTitle
+              ? t("dock.action.returnToView", { view: t(returnTitle) })
+              : t("dock.action.returnToConversation"),
         onReturn: returnToSource,
       }
     : undefined;
@@ -262,7 +285,7 @@ export function ChatPanel({ onSend }: Props) {
         <>
           <WorkspaceWindowHeader
             view={viewsById.get(activeMainView)}
-            onOpenInDock={() => openWorkspaceViewInDock(activeMainView)}
+            onOpenInDock={(origin) => openWorkspaceViewInDock(activeMainView, origin)}
             onClose={() => closeWorkspaceView(activeMainView)}
           />
           <SessionOwnedWorkspaceState sessionId={activeSessionId}>
@@ -316,11 +339,11 @@ export function ChatPanel({ onSend }: Props) {
                 />
               )}
               <div {...stylex.props(sh.anchor)}>
-                {showingCatalog && (
-                  <div {...stylex.props(sh.overlay)}>
+                <Activity mode={showingCatalog ? "visible" : "hidden"}>
+                  <div data-dock-view-id={WORKSPACE_DOCK_CATALOG} {...stylex.props(sh.overlay)}>
                     <DockCatalogPage groups={catalog} openViewIds={openViewIds} />
                   </div>
-                )}
+                </Activity>
                 {ownedDockViewIds.map((viewId) => (
                   <Activity key={viewId} mode={viewId === dock.activeViewId ? "visible" : "hidden"}>
                     <div data-dock-view-id={viewId} {...stylex.props(sh.overlay)}>

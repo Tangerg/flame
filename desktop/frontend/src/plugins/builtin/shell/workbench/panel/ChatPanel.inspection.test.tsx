@@ -7,7 +7,9 @@ import { FileRefLink } from "@/plugins/builtin/chat/file-references/public/FileR
 import {
   activateWorkspaceSessionScope,
   openWorkspaceFile,
+  openWorkspaceView,
   openWorkspaceViewInDock,
+  showWorkspaceDock,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { ChatPanel } from "./ChatPanel";
 
@@ -18,7 +20,17 @@ vi.mock("@/plugins/builtin/agent/public/session", () => ({
   useAgentSessions: () => ({ isLoading: false }),
 }));
 vi.mock("@/plugins/builtin/workspace/public/contextDockCatalog", () => ({
-  useContextDockCatalog: () => [],
+  useContextDockCatalog: () => [
+    {
+      id: "workspace",
+      title: "Workspace",
+      destinations: model.views.map((view) => ({
+        viewId: view.id,
+        title: view.title,
+        scope: "workspace",
+      })),
+    },
+  ],
 }));
 vi.mock("@/plugins/sdk", async (original) => ({
   ...(await original<typeof import("@/plugins/sdk")>()),
@@ -70,6 +82,56 @@ afterEach(() => {
 });
 
 describe("material inspection focus", () => {
+  it("retains a filtered catalog and returns to its search control after inspection", () => {
+    showWorkspaceDock();
+    render(<ChatPanel onSend={() => true} />);
+    const search = screen.getByRole("combobox", { name: "Find a panel…" });
+    act(() => search.focus());
+    fireEvent.change(search, { target: { value: "Files" } });
+    fireEvent.click(screen.getByRole("option", { name: "Files" }));
+    const dock = screen.getByRole("complementary", { name: "Files" });
+    expect(document.activeElement).toBe(dock);
+    fireEvent.click(screen.getByRole("button", { name: "Back to panel list" }));
+
+    expect(navigator().get().dock).toBe("catalog");
+    expect(screen.getByRole("combobox", { name: "Find a panel…" })).toBe(search);
+    expect((search as HTMLInputElement).value).toBe("Files");
+    expect(document.activeElement).toBe(search);
+    expect(screen.queryByRole("option", { name: "Subagents" })).toBeNull();
+  });
+
+  it("enters a picker selection after its popup retires and returns to the previous panel", async () => {
+    openWorkspaceViewInDock("subagents");
+    render(<ChatPanel onSend={() => true} />);
+    fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
+    const browse = screen.getByRole("button", { name: "Browse panels" });
+    fireEvent.click(browse);
+    fireEvent.click(await screen.findByRole("option", { name: "Files" }));
+    await vi.waitFor(() => {
+      const dock = screen.getByRole("complementary", { name: "Files" });
+      expect(document.activeElement).toBe(dock);
+      expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Back to Subagents" }));
+
+    expect(navigator().get().dock).toBe("subagents");
+    expect(document.activeElement).toBe(browse);
+    expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
+  });
+
+  it("moves a full view beside the conversation and restores its named reader on return", () => {
+    openWorkspaceView("file");
+    render(<ChatPanel onSend={() => true} />);
+    fireEvent.click(screen.getByRole("button", { name: "Open in the context dock" }));
+    expect(navigator().get().view).toBeNull();
+    const dock = screen.getByRole("complementary", { name: "Files" });
+    expect(document.activeElement).toBe(dock);
+    fireEvent.click(screen.getByRole("button", { name: "Back to Files" }));
+
+    expect(navigator().get().view).toBe("file");
+    expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
+  });
+
   it("enters explicitly opened material and returns to its source without closing the Dock", () => {
     render(<ChatPanel onSend={() => true} />);
     const source = screen.getByRole("button", { name: "src/main.ts:4" });

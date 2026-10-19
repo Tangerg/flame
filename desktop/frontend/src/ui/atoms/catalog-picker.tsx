@@ -12,6 +12,7 @@ import { Pressable } from "./pressable";
 import { vocab } from "@flame/ui/vocabulary";
 
 const styles = stylex.create({
+  content: { display: "flex", flex: 1, minHeight: 0, flexDirection: "column" },
   emptyFlush: { padding: { default: null, ":is([data-empty])": 0 } },
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
   searchBox: {
@@ -240,16 +241,21 @@ function CatalogSearch({ placeholder, ref }: { placeholder: string; ref?: Ref<HT
 
 type CatalogMark = "check" | "tint";
 
-function CatalogRow(item: CatalogPickerItem, mark: CatalogMark, groupLabel?: string) {
+function CatalogRow(
+  item: CatalogPickerItem,
+  mark: CatalogMark,
+  groupLabel?: string,
+  size: "sm" | "md" = "sm",
+) {
   const showCaption = item.caption !== undefined && item.caption !== groupLabel;
   return (
     <ComboboxPrimitive.Item
       key={item.id}
       value={item}
-      title={item.title}
+      title={item.title ?? item.label}
       data-current={item.active ? "" : undefined}
       {...stylex.props(
-        floatingRow("pick", item.description ? "lg" : "sm"),
+        floatingRow("pick", item.description ? "lg" : size),
         styles.row,
         mark === "tint" && styles.rowUnmarked,
         mark === "tint" && item.active && styles.rowCurrent,
@@ -273,6 +279,67 @@ function CatalogRow(item: CatalogPickerItem, mark: CatalogMark, groupLabel?: str
   );
 }
 
+export function CatalogList({
+  groups,
+  label,
+  placeholder,
+  emptyLabel,
+  onSelect,
+  inputRef,
+}: Pick<CatalogSurfaceProps, "label" | "placeholder" | "emptyLabel" | "onSelect"> & {
+  groups: CatalogPickerGroup[];
+  inputRef?: Ref<HTMLInputElement>;
+}) {
+  const [query, setQuery] = useState("");
+  return (
+    <ComboboxPrimitive.Root<CatalogPickerItem>
+      items={groups}
+      value={null}
+      inputValue={query}
+      onInputValueChange={setQuery}
+      onValueChange={(item) => {
+        if (item) onSelect(item);
+      }}
+      itemToStringLabel={(item) => [item.label, ...(item.keywords ?? [])].join(" ")}
+      autoHighlight
+      inline
+      open
+    >
+      <div {...stylex.props(styles.content)}>
+        <CatalogSearch ref={inputRef} placeholder={placeholder} />
+        <ComboboxPrimitive.Empty
+          className={stylex.props(styles.empty, styles.hideWhenEmpty, type.uiSm).className}
+        >
+          {emptyLabel}
+        </ComboboxPrimitive.Empty>
+        <ComboboxPrimitive.List
+          aria-label={label}
+          {...stylex.props(styles.emptyFlush, styles.list)}
+        >
+          {(group: CatalogPickerGroup) => (
+            <ComboboxPrimitive.Group
+              key={group.id}
+              items={group.items}
+              {...stylex.props(styles.group)}
+            >
+              <ComboboxPrimitive.GroupLabel {...stylex.props(styles.groupLabel, type.uiXs)}>
+                {group.leading}
+                <span>{group.label}</span>
+                {group.count !== undefined && (
+                  <span {...stylex.props(styles.groupCount)}>{group.count}</span>
+                )}
+              </ComboboxPrimitive.GroupLabel>
+              <ComboboxPrimitive.Collection>
+                {(item: CatalogPickerItem) => CatalogRow(item, "check", undefined, "md")}
+              </ComboboxPrimitive.Collection>
+            </ComboboxPrimitive.Group>
+          )}
+        </ComboboxPrimitive.List>
+      </div>
+    </ComboboxPrimitive.Root>
+  );
+}
+
 export function CatalogPicker({
   groups,
   label,
@@ -286,22 +353,20 @@ export function CatalogPicker({
   align = "end",
 }: CatalogSurfaceProps & { groups: CatalogPickerGroup[] }) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const pendingSelection = useRef<(() => void) | undefined>(undefined);
+  const selection = useRef<{ deliver: (() => void) | undefined } | null>(null);
 
   return (
     <Popover.Root
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
-        if (nextOpen) pendingSelection.current = undefined;
-        if (!nextOpen) setQuery("");
+        if (nextOpen) selection.current = null;
       }}
       onOpenChangeComplete={(open) => {
         if (open) return;
-        // A consumer may create a native sibling; the popup must finish retiring first.
-        const select = pendingSelection.current;
-        pendingSelection.current = undefined;
+        // Keep the selection marker: Base UI may settle focus after this delivery.
+        const select = selection.current?.deliver;
+        if (selection.current) selection.current.deliver = undefined;
         select?.();
       }}
     >
@@ -310,59 +375,22 @@ export function CatalogPicker({
       <Popover.Content
         surface="options"
         aria-label={label}
+        finalFocus={() => selection.current === null}
         align={align}
         side={side}
         sideOffset={6}
         className={cn(stylex.props(styles.stackedPopup).className, contentClassName)}
       >
-        <ComboboxPrimitive.Root<CatalogPickerItem>
-          items={groups}
-          value={null}
-          inputValue={query}
-          onInputValueChange={setQuery}
-          onValueChange={(item) => {
-            if (!item) return;
-            pendingSelection.current = () => onSelect(item);
+        <CatalogList
+          groups={groups}
+          label={label}
+          placeholder={placeholder}
+          emptyLabel={emptyLabel}
+          onSelect={(item) => {
+            selection.current = { deliver: () => onSelect(item) };
             setOpen(false);
           }}
-          itemToStringLabel={(item) => [item.label, ...(item.keywords ?? [])].join(" ")}
-          autoHighlight
-          inline
-          open
-        >
-          <CatalogSearch placeholder={placeholder} />
-
-          <ComboboxPrimitive.Empty
-            className={stylex.props(styles.empty, styles.hideWhenEmpty, type.uiSm).className}
-          >
-            {emptyLabel}
-          </ComboboxPrimitive.Empty>
-          <ComboboxPrimitive.List
-            className={cn(
-              stylex.props(styles.emptyFlush).className,
-              stylex.props(styles.list).className,
-            )}
-          >
-            {(group: CatalogPickerGroup) => (
-              <ComboboxPrimitive.Group
-                key={group.id}
-                items={group.items}
-                {...stylex.props(styles.group)}
-              >
-                <ComboboxPrimitive.GroupLabel {...stylex.props(styles.groupLabel, type.uiXs)}>
-                  {group.leading}
-                  <span>{group.label}</span>
-                  {group.count !== undefined && (
-                    <span {...stylex.props(styles.groupCount)}>{group.count}</span>
-                  )}
-                </ComboboxPrimitive.GroupLabel>
-                <ComboboxPrimitive.Collection>
-                  {(item: CatalogPickerItem) => CatalogRow(item, "check")}
-                </ComboboxPrimitive.Collection>
-              </ComboboxPrimitive.Group>
-            )}
-          </ComboboxPrimitive.List>
-        </ComboboxPrimitive.Root>
+        />
       </Popover.Content>
     </Popover.Root>
   );

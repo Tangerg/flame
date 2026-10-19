@@ -52,7 +52,11 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
       useContextDockStore.setState({ inspection: null });
       if (inspection.returnViewId) {
         navigator().go({ view: inspection.returnViewId });
-      } else if (inspection.returnDockId && state.dockViewIds.includes(inspection.returnDockId)) {
+      } else if (
+        inspection.returnDockId &&
+        (inspection.returnDockId === WORKSPACE_DOCK_CATALOG ||
+          state.dockViewIds.includes(inspection.returnDockId))
+      ) {
         showDockView(inspection.returnDockId, "alone");
       } else {
         selectChat();

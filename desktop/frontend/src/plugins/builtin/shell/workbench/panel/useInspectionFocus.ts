@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import {
   returnFromWorkspaceInspection,
   useWorkspaceInspection,
+  WORKSPACE_DOCK_CATALOG,
   type WorkspaceInspection,
 } from "@/plugins/builtin/workspace/public/navigation";
 
@@ -65,7 +66,8 @@ export function useInspectionFocus({
     if (
       !request.returnViewId &&
       request.returnDockId &&
-      dockViewIds.includes(request.returnDockId) &&
+      (request.returnDockId === WORKSPACE_DOCK_CATALOG ||
+        dockViewIds.includes(request.returnDockId)) &&
       (dockViewId !== request.returnDockId || !dockVisible)
     )
       return;

@@ -87,6 +87,7 @@ export const en: Record<string, string> = {
   "shell.region.workspace": "Agent workspace",
   "shell.region.conversation": "Conversation",
   "dock.action.returnToConversation": "Back to conversation",
+  "dock.action.returnToCatalog": "Back to panel list",
   "dock.action.returnToView": "Back to {{view}}",
   "workIndex.section.projects": "Projects",
   "workIndex.action.addProject": "Add project",
@@ -137,6 +138,7 @@ export const en: Record<string, string> = {
 
   "dock.action.browse": "Browse panels",
   "dock.catalog.title": "Open a panel",
+  "dock.catalog.description": "Inspect workspace and session material alongside the conversation.",
   "dock.picker.placeholder": "Find a panel…",
   "dock.picker.empty": "No panels found",
   "dock.action.hide": "Collapse right workspace",
