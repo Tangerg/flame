@@ -81,6 +81,7 @@
     "colord": "^2.10.0",
     "dougong": "0.8.2",
     "i18next": "^26.4.3",
+    "jsonc-parser": "3.3.1",
     "katex": "^0.19.0",
     "marked": "^18.1.0",
     "motion": "^14.1.0",

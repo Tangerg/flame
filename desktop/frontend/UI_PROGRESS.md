@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. Ordinary pasted-text editing/return is integrated at `d15175820` on `main`. The subsequent oversized-editor investigation now qualifies a native initialization/font interaction; its temporary candidates were removed. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. Captured Tool JSON now retains its original literal tokens during indentation and copy. Ordinary pasted-text editing/return is integrated at `d15175820`; the oversized-editor qualification at `50015e78c` remains a separate native limit. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -11,6 +11,8 @@ The latest objective explicitly resumes continuous desktop UI work. Complete eac
 Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The subsequent native focus investigation qualified the existing keyboard resize path and isolated clicked-label reverse navigation to a WebKit behavior also reproduced by a bare HTML button. No host preference or component workaround was added. The precise scenarios and limits are below.
 
 Recorded Tool readers now share the literal code reader's local Select All boundary. Whole-reader copy uses the current presented rows or preview excerpt; expanded command output supplies the complete ANSI-stripped captured source, including virtualized lines and trailing newlines. Stable content children keep mutable row trees from shortening the browser's range. Partial selection, editable fields, explicit complete-result copy and Runtime ownership remain separate. Hidden-zoom reading drift reproduces in a plain native HTML scroller without virtualization and remains a platform limitation, qualified below.
+
+The generic Tool inspector also preserves the original JSON tokens in its result and secondary Arguments. Two-space indentation edits source whitespace instead of recreating values: large IDs, precise decimals, exponent spellings, negative zero, duplicate members and string escapes survive both reading and copying. Invalid structured text remains literal. The existing result-first hierarchy, CodeBody selection/copy and direct raw-argument action retain their owners.
 
 Pasted-text review exposed a separate native defect: Put back in message discarded the current edit, restored the original paste and left focus on the document. The repair sends the edited text through one ComposerDraft transition and chooses a close destination from the owner's actual result. Full frontend gates, the supported Wails build and ordinary native editing/return paths pass. The separate 50,002-line preview retains its exact text but still loses readable native accessibility state at the approved typography. Plain native and captured static-DOM controls isolate initialization and font-dependent conditions, qualified below. Neither standalone experiment repairs the production path; no initialization workaround or font substitution was retained.
 
@@ -149,6 +151,17 @@ The existing Base UI 1.9.0 implementation confirms that a function `finalFocus`
 is explicit and bypasses its default outside-focus guard, which the local close
 intent must therefore preserve. No second component system or visual skin was
 introduced.
+
+Tool-inspector review traced ZCode's actual `ToolCallBlocks/renderers/mcp.tsx`
+for a primary result with secondary call details and bounded code reading.
+ChatGPT's actual `mcp-tool-item-content-fdee2352aaf0.js` similarly names results
+and secondary tool material; it is interface code, not the Markdown exporter.
+Their task hierarchy is useful evidence, while value reserialization cannot
+serve as a literal-source guarantee. The existing repository dependency
+[jsonc-parser 3.3.1](https://github.com/microsoft/node-jsonc-parser/blob/v3.3.1/README.md)
+provides formatting edits and their application. Flame uses that source-editing
+API in the existing inspector projection, with strict syntax qualification and
+regressions for token fidelity.
 
 For color-system work, retain the user's [Radix Colors](https://www.radix-ui.com/colors) and [HeroUI colors](https://heroui.com/en/docs/react/getting-started/colors) references. The default brand color is **Flame Orange `#FB6E30`**; users can choose their own interface accent through the existing theme owner. Approved brand artwork retains its original color. Avoid recreating the palette, appearance store or brand identity.
 
@@ -518,6 +531,17 @@ remain the visual basis.
 
 ## Verification checkpoint
 
+For captured Tool JSON fidelity:
+
+- The baseline model changed `9007199254740993` to `9007199254740992`, converted an overflowing exponent to `null`, collapsed negative zero and dropped earlier duplicate members. Actual Wails with the pinned original model reproduced these changes in both Result and Arguments, including a rounded uint64 receipt ID, a shortened precise decimal and decoded string escapes. The existing result Copy button followed by system paste produced the same incorrect text. The captured `argumentsText` and result strings themselves remained intact.
+- `chat/tools/application/toolInspectorModel.ts` now uses the existing `jsonc-parser` formatter's whitespace edits. The parsed object is discarded after JSON syntax qualification; it is never serialized for this view. Expected syntax errors preserve literal text, while unexpected failures propagate. Existing two-space/LF indentation, scalar/plain-text handling, empty-state rules, result-first placement, secondary Arguments and clipboard/selection owners remain. Escapes such as `\u4e2d` now stay visibly escaped, which is intentional source fidelity.
+- Claude Code CLI (`claude-opus-5-5`, no subagents or permission denials) supplied the bounded implementation and regressions. The new baseline failed six cases and passed ten. Final targeted CLI checks passed 16 cases and all 47 Tool cases; the primary focused run passed ten files and 53 tests, including ShikiCodeBlock. Tests use literal expected text for unsafe IDs, uint64, precise decimals, signed exponents, negative zero, duplicate members, nested structures and escaped strings. Strict malformed/JSONC text remains literal, existing markup-safety assertions remain, and the composed Copy button receives the same accurate presented result.
+- The frontend declares an exact direct `jsonc-parser` 3.3.1 dependency, matching the version and integrity already used by the Runtime TypeScript client. Its lockfile changes are only the root dependency and package record; no other version was upgraded. The CLI reported missing optional-peer lock records in an exploratory dry-run at HEAD. Primary dry-runs and the supported Wails build's actual `npm ci` passed with the retained lockfile, so no unrelated lock repair or current build blocker is claimed.
+- The final `VITEST_MAX_WORKERS=2 npm run check` passed **381 files / 2,843 tests**, including isolated Runtime lifecycle integration and every subsequent type, lint, format, unused-code, architecture, style/token, locale, bootstrap, exact-resource, bundle-budget and production-module linkage gate. Non-failing loopback `ECONNREFUSED` diagnostics remained unclassified. The supported `wails3 task build` then passed, including frontend installation, all ten portable ESM builds and production bundling. `file`/`vtool` confirmed arm64 and macOS 13.0; the existing duplicate `-lobjc` warning remained non-failing.
+- Final actual Wails acceptance used English/dark/18 px/custom blue at 1440 × 900 and Chinese/light/14 px/Flame Orange after native Window → Move & Resize → Left produced 1122 × 950. Result and expanded Arguments retained the exact numeric and string tokens. Mouse and keyboard wrap controls remained usable with the long CJK path. Native result-button copy and result-region Select All/Copy both produced the complete 375-character formatted body, with both duplicate members and no framing. The pasted-text review matched the reader text exactly. Escape returned to the attachment; keyboard removal left an empty draft. Tab/Return from the source row copied the original compact 233-character arguments. Main-conversation wheel scrolling, closing Arguments and closing the Tool detail retained the original Tool identity and returned focus to its summary.
+- Initial direct AX clicks on unrevealed hover actions did not invoke those actions; final action qualification used native Tab/Return and observed focus, without treating those automation misses as a product defect. Acceptance used production components and canonical isolated reads with exact raw argument/result strings; it did not execute the recorded Tool, Send, mutate a live Runtime, replace an installation or qualify every typed Tool renderer/wire-number path. No Runtime, CLI, SDK, Go, shared UI or portable component source changed; no protocol or persisted-data migration is needed. Standalone unchanged module suites, browser/visual suites, performance benchmarks, VoiceOver, OS IME, other-platform GUIs and rendered pixel contrast were not run.
+- Cleanup completed before delivery: all owned native, CLI, test and build processes exited. The bundle was unregistered and removed; its newly created bundle-specific WebKit/cache paths were checked against the pre-launch inventory and birth times. The acceptance root, both private homes, pinned baseline, fixture, overlay, production binary, diagnostics, npm logs and CLI reports were removed. Shared outputs/compiler caches, reference repositories/artwork and unrelated worktrees/processes were retained.
+
 For the oversized native editor investigation:
 
 - Actual Wails on macOS 26.5 used English/dark/18 px/custom blue in a 1440 × 900 viewport, with the production editor over isolated canonical reads. The exact generated source remains **1,188,891 characters / 50,002 lines**, including two trailing newlines. Read-only diagnostics checked direct equality, native value/default value, selection, focus and geometry. No Send, live Runtime mutation or installation update occurred.
@@ -700,6 +724,11 @@ editor typography change has a task-level justification. Keep the approved font,
 React value ownership and original content intact in the meantime. Continue with
 the remaining recorded-material and Dock task paths; this investigation does not
 justify a broader Composer rewrite or speculative performance work.
+
+Captured generic Tool JSON fidelity is now implemented and natively qualified
+above. Preserve its whitespace-only projection rather than recreating captured
+values for display. Continue the remaining material and task paths from current
+source; this fix does not requalify every specialized renderer or wire contract.
 
 Memory query/draft continuity, original-command observation and main-only source
 retention are now implemented and qualified above. Do not recreate them or make
