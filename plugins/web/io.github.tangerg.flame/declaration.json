@@ -1,0 +1,29 @@
+{
+  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "inputs": [
+    {
+      "id": "jina-key",
+      "server": "web",
+      "target": "env",
+      "key": "JINA_API_KEY",
+      "secret": true,
+      "required": false
+    },
+    {
+      "id": "tavily-key",
+      "server": "web",
+      "target": "env",
+      "key": "TAVILY_API_KEY",
+      "secret": true,
+      "required": false
+    }
+  ],
+  "contributions": [
+    {
+      "id": "web-operations",
+      "server": "web",
+      "export": "web",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ]
+}

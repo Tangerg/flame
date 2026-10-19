@@ -1,23 +1,17 @@
 package config
 
 import (
-	"cmp"
 	"strings"
 )
 
-// loadOnline reads the optional provider-tool credentials. yaml under
-// `online:`; the FLAME_* env vars take precedence over yaml, matching
-// the overall source ordering (env over file).
+// The host allowlist belongs to the method-selectable HTTP tool. Provider-backed
+// web credentials belong to the installed web backend.
 func loadOnline(source Online) Online {
-	jina := cmp.Or(jinaAPIKeyEnvironment.Value(), source.JinaAPIKey)
-	tavily := cmp.Or(tavilyAPIKeyEnvironment.Value(), source.TavilyAPIKey)
 	hosts := source.HTTPAllowedHosts
 	if env := httpHostsEnvironment.Value(); env != "" {
 		hosts = splitHosts(env)
 	}
 	return Online{
-		JinaAPIKey:       jina,
-		TavilyAPIKey:     tavily,
 		HTTPAllowedHosts: hosts,
 	}
 }

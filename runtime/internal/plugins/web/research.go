@@ -1,0 +1,99 @@
+package main
+
+import (
+	"context"
+	json "encoding/json/v2"
+	"errors"
+
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/plugins/web/domain"
+	"github.com/Tangerg/flame/runtime/internal/plugins/web/rpc"
+	"github.com/Tangerg/scope/tools/web"
+)
+
+type fetchPage func(context.Context, *web.FetchRequest) (*web.FetchResponse, error)
+type searchWeb func(context.Context, *web.SearchRequest) (*web.SearchResponse, error)
+
+type research struct {
+	store  *store
+	fetch  fetchPage
+	search searchWeb
+}
+
+func newResearch(store *store, fetch fetchPage, search searchWeb) (*research, error) {
+	if store == nil || store.db == nil || fetch == nil || search == nil {
+		return nil, errors.New("web: archive, fetch and search boundaries are required")
+	}
+	return &research{store: store, fetch: fetch, search: search}, nil
+}
+
+func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (web.SearchResponse, error) {
+	if len(input.Query) > 8192 {
+		return web.SearchResponse{}, &capability.Refusal{Code: "invalid_request", Message: "web: search query exceeds 8192 bytes"}
+	}
+	prepared, err := input.Prepare()
+	if err != nil {
+		return web.SearchResponse{}, errors.Join(&capability.Refusal{Code: "invalid_request", Message: "web: invalid search request"}, err)
+	}
+	response, err := r.search(ctx, prepared)
+	if err != nil {
+		return web.SearchResponse{}, err
+	}
+	if err := response.Validate(); err != nil {
+		return web.SearchResponse{}, err
+	}
+	if response.Query != prepared.Query {
+		return web.SearchResponse{}, errors.New("web: provider replaced the authored search query")
+	}
+	limit := prepared.MaxResults
+	if limit == 0 {
+		limit = 20
+	}
+	if len(response.Results) > limit {
+		return web.SearchResponse{}, errors.New("web: provider exceeded the requested result count")
+	}
+	encoded, err := json.Marshal(response)
+	if err != nil {
+		return web.SearchResponse{}, err
+	}
+	if len(encoded) > 128<<10 {
+		return web.SearchResponse{}, &capability.Refusal{Code: "response_too_large", Message: "web: search result exceeds 128 KiB"}
+	}
+	return *response, nil
+}
+
+func (r *research) fetchPage(ctx context.Context, input web.FetchRequest) (domain.Page, error) {
+	prepared, err := input.Prepare()
+	if err != nil {
+		return domain.Page{}, errors.Join(&capability.Refusal{Code: "invalid_request", Message: "web: invalid fetch request"}, err)
+	}
+	if err := domain.ValidateURL(prepared.URL); err != nil {
+		return domain.Page{}, err
+	}
+	response, err := r.fetch(ctx, prepared)
+	if err != nil {
+		return domain.Page{}, err
+	}
+	if err := response.Validate(); err != nil {
+		return domain.Page{}, err
+	}
+	if response.Format != prepared.Format {
+		return domain.Page{}, errors.New("web: provider replaced the authored content format")
+	}
+	document, err := domain.NewDocument(domain.Content{URL: prepared.URL, Format: domain.Format(response.Format), Text: response.Content})
+	if err != nil {
+		return domain.Page{}, err
+	}
+	if err := r.store.capture(ctx, document); err != nil {
+		return domain.Page{}, err
+	}
+	return document.Page(0, domain.MaxPageRunes)
+}
+
+func (r *research) browse(ctx context.Context, input rpc.BrowseInput) (domain.Page, error) {
+	document, err := r.store.read(ctx, input.SnapshotID)
+	if err != nil {
+		return domain.Page{}, err
+	}
+	return document.Page(input.Offset, input.Limit)
+}

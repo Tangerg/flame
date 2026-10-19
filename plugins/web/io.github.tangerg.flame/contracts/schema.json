@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Method_flame_2eweb_2fbrowse_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy93ZWIvcnBj_5fBrowseInput"
+    },
+    "Method_flame_2eweb_2fbrowse_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy93ZWIvZG9tYWlu_5fPage"
+    },
+    "Method_flame_2eweb_2ffetch_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fFetchRequest"
+    },
+    "Method_flame_2eweb_2ffetch_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy93ZWIvZG9tYWlu_5fPage"
+    },
+    "Method_flame_2eweb_2fsearch_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchRequest"
+    },
+    "Method_flame_2eweb_2fsearch_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResponse"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy93ZWIvZG9tYWlu_5fPage": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "format": {
+          "enum": [
+            "markdown",
+            "html",
+            "text"
+          ],
+          "type": "string"
+        },
+        "nextOffset": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "offset": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "snapshotId": {
+          "type": "string"
+        },
+        "totalRunes": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshotId",
+        "url",
+        "format",
+        "content",
+        "offset",
+        "totalRunes"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy93ZWIvcnBj_5fBrowseInput": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 8192,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "offset": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        },
+        "snapshotId": {
+          "maxLength": 64,
+          "minLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshotId",
+        "offset",
+        "limit"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fFetchRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "description": "Content format: markdown (default and best for readable structure), html, or text.",
+          "enum": [
+            "markdown",
+            "html",
+            "text"
+          ],
+          "type": "string"
+        },
+        "url": {
+          "description": "Absolute http(s) URL of the page to fetch.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_domains": {
+          "description": "Only include results from at most 20 domains (bare domain names, no protocol). Mutually exclusive with blocked_domains.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "type": "array"
+        },
+        "blocked_domains": {
+          "description": "Exclude results from at most 20 domains (bare domain names, no protocol). Mutually exclusive with allowed_domains.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "type": "array"
+        },
+        "max_results": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "description": "Maximum results to return, from 1 to 20. Omit to use the configured search default (typically 5-10).",
+          "maximum": 20,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "query": {
+          "description": "Non-empty web search query. Include the current year when asking for the latest information.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "recency": {
+          "description": "Optional time window: hour, day, week, month, or year.",
+          "enum": [
+            "hour",
+            "day",
+            "week",
+            "month",
+            "year"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "query",
+        "results"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult": {
+      "additionalProperties": false,
+      "properties": {
+        "favicon_url": {
+          "type": "string"
+        },
+        "published_time": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "snippet": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "url",
+        "snippet"
+      ],
+      "type": "object"
+    }
+  }
+}

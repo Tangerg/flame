@@ -21,7 +21,6 @@ func TestPresenterActivity(t *testing.T) {
 		arguments string
 		want      string
 	}{
-		{name: "web search", ref: testsupport.BuiltInTool(t, tool.WebSearch), arguments: `{}`, want: "Searching the web"},
 		{name: "shell description", ref: testsupport.BuiltInTool(t, tool.Shell), arguments: `{"command":"go test ./...","description":"Run server tests"}`, want: "Run server tests"},
 		{name: "shell invalid description", ref: testsupport.BuiltInTool(t, tool.Shell), arguments: `{"description":" Run server tests"}`, want: "Running command"},
 		{name: "delegation summary", ref: testsupport.BuiltInTool(t, tool.DelegateTask), arguments: `{"summary":"Review tool contracts"}`, want: "Delegating: Review tool contracts"},
@@ -95,20 +94,6 @@ func TestPresenterSearchResult(t *testing.T) {
 	}
 }
 
-func TestPresenterWebSearchResult(t *testing.T) {
-	presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, tool.WebSearch), tool.Arguments{},
-		mustToolResult(t, map[string]any{"results": []any{
-			map[string]any{"title": "Example", "url": "https://example.com", "favicon_url": "https://example.com/icon.png"},
-		}}),
-	)
-	want := map[string]any{"results": []any{
-		map[string]any{"title": "Example", "url": "https://example.com", "faviconUrl": "https://example.com/icon.png"},
-	}}
-	if got := presented.Any(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("presented web search = %#v, want %#v", got, want)
-	}
-}
-
 func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 	contracts := make(map[string]PresentationContract)
 	published := PresentationContracts()
@@ -170,4 +155,22 @@ func mustToolResult(t *testing.T, value any) tool.Result {
 		t.Fatal(err)
 	}
 	return result
+}
+
+func TestHistoricalWebReferencesKeepReadContractsWithoutExecutableMetadata(t *testing.T) {
+	for _, name := range []tool.BuiltInName{tool.WebFetch, tool.WebSearch} {
+		ref, err := tool.BuiltIn(name)
+		if err != nil || ref.Validate() != nil {
+			t.Fatalf("historical reference was lost: %v", err)
+		}
+		if _, current := descriptorFor(ref); current {
+			t.Fatal("historical web identity acquired current dispatch metadata")
+		}
+	}
+	for _, contract := range PresentationContracts() {
+		if contract.ToolName == string(tool.WebSearch) && contract.ResultType == reflect.TypeFor[WebSearchResult]() {
+			return
+		}
+	}
+	t.Fatal("historical web result lost its published read schema")
 }

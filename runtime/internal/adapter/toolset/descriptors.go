@@ -2,7 +2,9 @@ package toolset
 
 import (
 	"iter"
+	"maps"
 	"reflect"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -20,9 +22,8 @@ type resultProjectionContract struct {
 	enums      func() map[reflect.Type][]string
 }
 
-// Built-in membership belongs to the domain; this catalog is keyed by it and a
-// test holds it to exactly the domain's set. It supplies policy and client
-// presentation; tool constructors own model descriptions and schemas.
+// This catalog owns current executable metadata. Durable identities can outlive
+// their executables; retaining an old reference cannot make it dispatchable.
 type builtInDescriptor struct {
 	safety        tool.SafetyClass
 	activityText  string
@@ -56,14 +57,12 @@ var builtInDescriptors = map[tool.BuiltInName]builtInDescriptor{
 	tool.ApplyPatch:        builtInDescriptor{safety: tool.SafetyClassWrite, activityText: "Applying a patch", result: patchResultContract()},
 	tool.Shell:             builtInDescriptor{safety: tool.SafetyClassExec, activity: shellActivity, result: commandResultContract()},
 	tool.StopShell:         builtInDescriptor{safety: tool.SafetyClassExec, activityText: "Stopping command"},
-	tool.WebFetch:          builtInDescriptor{safety: tool.SafetyClassNetwork, activityText: "Fetching a page"},
-	tool.WebSearch:         builtInDescriptor{safety: tool.SafetyClassNetwork, activityText: "Searching the web", result: webSearchResultContract()},
 	tool.HTTPRequest:       builtInDescriptor{safety: tool.SafetyClassNetwork, activity: httpActivity},
 }
 
 func descriptors() iter.Seq2[tool.BuiltInName, builtInDescriptor] {
 	return func(yield func(tool.BuiltInName, builtInDescriptor) bool) {
-		for _, name := range tool.BuiltInNames() {
+		for _, name := range slices.Sorted(maps.Keys(builtInDescriptors)) {
 			if !yield(name, builtInDescriptors[name]) {
 				return
 			}

@@ -165,8 +165,6 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 		ToolResults:    allWiredToolResults{}, // backs read_tool_result
 		SkillProposals: allWiredSkillProposals{},
 		Online: OnlineConfig{
-			JinaAPIKey:       "test-jina",
-			TavilyAPIKey:     "test-tavily",
 			HTTPAllowedHosts: []string{"example.com"}, // backs http_request
 		},
 		Interrupt: func(context.Context, string, runs.Interrupt) (interrupt.Resolution, error) {
@@ -266,18 +264,13 @@ func testApprovalPolicy(t *testing.T) *approvals.RuntimePolicy {
 	return policy
 }
 
-// The descriptor table is keyed by the domain's closed built-in set and must
-// cover exactly that set. This test is the only place the two are compared;
-// construction does not repeat the comparison.
-func TestDescriptorsCoverExactlyTheBuiltInSet(t *testing.T) {
-	for _, name := range tool.BuiltInNames() {
-		if descriptor, ok := builtInDescriptors[name]; !ok || !descriptor.safety.Valid() {
-			t.Errorf("built-in %s has no valid behavior: %+v", name, descriptor)
-		}
-	}
-	for name := range builtInDescriptors {
+func TestCurrentDescriptorsNameKnownDurableIdentities(t *testing.T) {
+	for name, descriptor := range builtInDescriptors {
 		if !slices.Contains(tool.BuiltInNames(), name) {
-			t.Errorf("behavior descriptor %q names no built-in", name)
+			t.Errorf("behavior descriptor %q names no durable built-in identity", name)
+		}
+		if !descriptor.safety.Valid() {
+			t.Errorf("current built-in %s has no valid safety class", name)
 		}
 	}
 }

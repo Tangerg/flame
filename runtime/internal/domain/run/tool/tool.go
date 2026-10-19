@@ -28,11 +28,8 @@ const (
 // Valid reports whether g names one supported Tool surface.
 func (g Group) Valid() bool { return g == GroupRoot || g == GroupDelegated }
 
-// BuiltInName is one member of the closed set of Runtime built-in tools.
-// Names are domain vocabulary: constructors, policy, presentation, execution,
-// and recovery all refer to this single authority instead of keeping
-// caller-local copies, and every consumer that keys behavior by a built-in
-// keys it by this type.
+// BuiltInName is a durable Runtime tool identity. Persisted references can
+// outlive their executable; the adapter catalog owns current dispatch metadata.
 type BuiltInName string
 
 const (
@@ -60,8 +57,9 @@ const (
 	SetPlan           BuiltInName = "set_plan"
 	Shell             BuiltInName = "shell"
 	StopShell         BuiltInName = "stop_shell"
-	WebFetch          BuiltInName = "web_fetch"
-	WebSearch         BuiltInName = "web_search"
+	// Historical web references remain readable after execution moves to a plugin.
+	WebFetch  BuiltInName = "web_fetch"
+	WebSearch BuiltInName = "web_search"
 )
 
 // builtInNames is the set's only enumeration.

@@ -78,10 +78,9 @@ server:
   # /v2/rpc still requires the token. Overridden by FLAME_SERVER_WEBDIRECTORY.
   webDirectory: ""
 
-# Optional provider-backed tool credentials (leave blank to disable).
+# Optional host allowlist for the method-selectable HTTP tool.
+# Web search/fetch credentials are configured on the installed web plugin.
 online:
-  jinaApiKey: ""
-  tavilyApiKey: ""
   httpAllowedHosts: []
 
 # Optional language-server table for the code-intelligence tools

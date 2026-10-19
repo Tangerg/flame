@@ -28,8 +28,8 @@ type PresentationContract struct {
 	EnumValues map[reflect.Type][]string
 }
 
-// PresentationContracts returns the concrete result contracts from the same
-// descriptors Presenter executes. Callers receive fresh slices and maps.
+// Persisted tool results retain their published read contracts after execution
+// moves to a plugin. Historical schemas do not register another executable.
 func PresentationContracts() []PresentationContract {
 	var contracts []PresentationContract
 	for name, descriptor := range descriptors() {
@@ -42,7 +42,7 @@ func PresentationContracts() []PresentationContract {
 		}
 		contracts = append(contracts, contract)
 	}
-	return contracts
+	return append(contracts, PresentationContract{ToolName: string(tool.WebSearch), ResultType: reflect.TypeFor[WebSearchResult]()})
 }
 
 // Activity returns concise progress text for a known concrete tool.
@@ -193,10 +193,6 @@ func presentSearch(_ tool.Arguments, result tool.Result) (tool.Result, string) {
 	return presentSearchResult(result), ""
 }
 
-func presentWebSearch(_ tool.Arguments, result tool.Result) (tool.Result, string) {
-	return presentWebSearchResult(result), ""
-}
-
 func presentApplyPatch(_ tool.Arguments, result tool.Result) (tool.Result, string) {
 	return presentApplyPatchResult(result), ""
 }
@@ -297,22 +293,6 @@ func presentSearchResult(result tool.Result) tool.Result {
 	return projectResult(result, SearchResult{Hits: hits})
 }
 
-func webSearchResultContract() resultProjectionContract {
-	return resultProjectionContract{project: presentWebSearch, resultType: reflect.TypeFor[WebSearchResult]()}
-}
-
-type webSearchExecutionResult struct {
-	Results []webSearchExecutionHit `json:"results"`
-}
-
-type webSearchExecutionHit struct {
-	Title               string `json:"title"`
-	URL                 string `json:"url"`
-	Snippet             string `json:"snippet"`
-	FaviconURLSnakeCase string `json:"favicon_url"`
-	FaviconURLCamelCase string `json:"faviconUrl"`
-}
-
 // WebSearchResult is the transcript result of web_search.
 type WebSearchResult struct {
 	Results []WebSearchHit `json:"results"`
@@ -324,24 +304,6 @@ type WebSearchHit struct {
 	URL        string `json:"url"`
 	Snippet    string `json:"snippet,omitempty"`
 	FaviconURL string `json:"faviconUrl,omitempty"`
-}
-
-func presentWebSearchResult(result tool.Result) tool.Result {
-	raw, ok := decodeResult[webSearchExecutionResult](result, "results")
-	if !ok {
-		return result
-	}
-	items := make([]WebSearchHit, 0, len(raw.Results))
-	for _, item := range raw.Results {
-		faviconURL := item.FaviconURLSnakeCase
-		if faviconURL == "" {
-			faviconURL = item.FaviconURLCamelCase
-		}
-		items = append(items, WebSearchHit{
-			Title: item.Title, URL: item.URL, Snippet: item.Snippet, FaviconURL: faviconURL,
-		})
-	}
-	return projectResult(result, WebSearchResult{Results: items})
 }
 
 func patchResultContract() resultProjectionContract {
@@ -449,7 +411,7 @@ func decodePresentation[T any](data []byte, knownFields ...string) (T, bool) {
 }
 
 type presentationValue interface {
-	CommandResult | SearchResult | WebSearchResult | PatchResult
+	CommandResult | SearchResult | PatchResult
 }
 
 func projectResult[T presentationValue](original tool.Result, value T) tool.Result {

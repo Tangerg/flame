@@ -60,8 +60,6 @@ type Server struct {
 }
 
 type Online struct {
-	JinaAPIKey       string
-	TavilyAPIKey     string
 	HTTPAllowedHosts []string
 }
 

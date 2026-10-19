@@ -1,0 +1,26 @@
+[
+  {
+    "name": "flame.web/browse.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read a bounded page of a previously captured snapshot by ID and Unicode codepoint offset. This reads captured material without network I/O; an evicted snapshot is refused.",
+    "input": "schema.json#/$defs/Method_flame_2eweb_2fbrowse_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eweb_2fbrowse_2ev1Output"
+  },
+  {
+    "name": "flame.web/fetch.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Fetch a URL through configured Jina Reader credentials and capture a private immutable snapshot. Return its first 8192 Unicode codepoints and exact continuation offset.",
+    "input": "schema.json#/$defs/Method_flame_2eweb_2ffetch_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eweb_2ffetch_2ev1Output"
+  },
+  {
+    "name": "flame.web/search.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Search through configured Tavily credentials with a query up to 8192 bytes, honoring explicit domain and supported recency filters. Each call queries the provider; results are bounded to 128 KiB.",
+    "input": "schema.json#/$defs/Method_flame_2eweb_2fsearch_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eweb_2fsearch_2ev1Output"
+  }
+]
