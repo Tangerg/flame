@@ -9,6 +9,8 @@ import { navigator } from "@/lib/navigation";
 import {
   WORKSPACE_DOCK_CATALOG,
   openWorkspaceSubagentRun,
+  openWorkspaceFile,
+  returnFromWorkspaceInspection,
   activateWorkspaceSessionScope,
   adoptWorkspaceSessionScope,
   closeActiveWorkspaceDockView,
@@ -260,6 +262,34 @@ it("keeps subagent selection and the way back in the active full view", () => {
 
   openWorkspaceSubagentRun(null);
   expect(navigator().get()).toMatchObject({ view: "subagents", dock: "diff", subagent: null });
+});
+
+it("restores the file inspected before a task opened a different file", () => {
+  navigator().go({ session: "session", view: null });
+  openWorkspaceFile("src/original.ts", 12);
+  const file = document.createElement("div");
+  file.dataset.dockViewId = "file";
+  const source = document.createElement("button");
+  file.append(source);
+  document.body.append(file);
+  openWorkspaceSubagentRun("child", source);
+  const fromFile = useContextDockStore.getState().inspection!;
+  const task = document.createElement("div");
+  task.dataset.dockViewId = "subagents";
+  const nested = document.createElement("button");
+  task.append(nested);
+  document.body.append(task);
+  openWorkspaceFile("src/evidence.ts", 40, nested);
+  const fromTask = useContextDockStore.getState().inspection!;
+  expect(returnFromWorkspaceInspection(fromTask)).toBe(true);
+  expect(navigator().get()).toMatchObject({ dock: "subagents", subagent: "child" });
+  expect(returnFromWorkspaceInspection(fromFile)).toBe(true);
+  expect(navigator().get()).toMatchObject({ dock: "file", subagent: "child" });
+  expect(useContextDockStore.getState().fileViewer).toEqual({ path: "src/original.ts", line: 12 });
+  expect(useContextDockStore.getState().inspection).toBeNull();
+  expect(returnFromWorkspaceInspection(fromTask)).toBe(false);
+  file.remove();
+  task.remove();
 });
 
 it("opens the contribution catalogue when Diff has no admitted renderer or several choices", async () => {

@@ -181,8 +181,8 @@ export function useWorkspaceSubagentRunId(): string | null {
   return workspaceNavigation().useSubagentRunId();
 }
 
-export function openWorkspaceSubagentRun(runId: string | null): void {
-  workspaceNavigation().openSubagentRun(runId);
+export function openWorkspaceSubagentRun(runId: string | null, origin?: HTMLElement): void {
+  workspaceNavigation().openSubagentRun(runId, origin);
 }
 
 export function openWorkspaceClientDiagnostics(): void {

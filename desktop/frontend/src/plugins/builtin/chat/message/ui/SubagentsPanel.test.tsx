@@ -1,10 +1,14 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Activity } from "react";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { navigator } from "@/lib/navigation";
-import { openWorkspaceSubagentRun } from "@/plugins/builtin/workspace/public/navigation";
+import {
+  openWorkspaceSubagentRun,
+  returnFromWorkspaceInspection,
+  useWorkspaceInspection,
+} from "@/plugins/builtin/workspace/public/navigation";
 import { SubagentsPanel } from "./SubagentsPanel";
 
 const material = vi.hoisted(() => ({
@@ -103,7 +107,7 @@ it("projects live child material, returns to the list, and never carries it into
   expect(screen.getByText("Child final answer")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
 
-  fireEvent.click(screen.getByRole("button", { name: "Back to subagents" }));
+  fireEvent.click(screen.getByRole("button", { name: "All subagents" }));
   expect(navigator().get()).toMatchObject({
     session: "session",
     dock: "subagents",
@@ -160,13 +164,63 @@ it("keeps list position and returns keyboard focus to the opened task", async ()
   const opener = within(group).getAllByRole("button", { name: /Sub-agent/ })[0]!;
   act(() => opener.focus());
   fireEvent.click(opener);
-  const back = screen.getByRole("button", { name: "Back to subagents" });
+  const back = screen.getByRole("button", { name: "All subagents" });
   expect(document.activeElement).toBe(back);
   fireEvent.click(back);
   expect(screen.getByRole("group", { name: "Subagents" }).parentElement).toBe(scroller);
   expect(scroller.scrollTop).toBe(240);
   expect(document.activeElement).toBe(opener);
   await act(async () => vi.dynamicImportSettled());
+});
+
+it("retains only the parent readers on the explicit inspection path", async () => {
+  material.rows = rows();
+  const facts = material.rows[0]!.facts;
+  facts.toolCalls.nested = {
+    id: "nested",
+    runId: "child",
+    name: "delegate_task",
+    fn: "Review request headers",
+    args: '{"summary":"Review request headers"}',
+    status: "ok",
+  };
+  facts.delegatedRuns.delegate![0]!.messages[0]!.blocks.push({
+    kind: "tool",
+    toolCallId: "nested",
+  });
+  navigator().go({ session: "session" });
+  const origin = document.createElement("button");
+  document.body.append(origin);
+  openWorkspaceSubagentRun("child", origin);
+  const { unmount } = render(
+    <div data-dock-view-id="subagents">
+      <SubagentsPanel />
+    </div>,
+  );
+  const inspection = renderHook(useWorkspaceInspection);
+  await act(async () => vi.dynamicImportSettled());
+  const parent = screen.getByText("Child streamed output").closest('[role="region"]')!;
+  const viewport = parent.parentElement!;
+  viewport.scrollTop = 240;
+  const nested = within(parent as HTMLElement).getByRole("button", { name: /Sub-agent/ });
+  fireEvent.click(nested);
+  expect(navigator().get().subagent).toBe("nested");
+  expect(screen.queryByRole("region", { name: "Sub-agent" })).toBeNull();
+  expect(parent.isConnected).toBe(true);
+  act(() => screen.getByRole("region", { name: "Review request headers" }).focus());
+  act(() => returnFromWorkspaceInspection(inspection.result.current!));
+  expect(navigator().get().subagent).toBe("child");
+  expect(screen.getByRole("region", { name: "Sub-agent" })).toBe(parent);
+  expect(parent.parentElement).toBe(viewport);
+  expect(viewport.scrollTop).toBe(240);
+  expect(document.activeElement).toBe(document.body);
+  fireEvent.click(within(parent as HTMLElement).getByRole("button", { name: /Sub-agent/ }));
+  fireEvent.click(screen.getByRole("button", { name: "All subagents" }));
+  expect(navigator().get().subagent).toBeNull();
+  expect(parent.isConnected).toBe(false);
+  expect(inspection.result.current?.origin).toBe(origin);
+  unmount();
+  origin.remove();
 });
 
 it("does not initiate a new focus handoff when the same selected reader resumes", async () => {
@@ -179,7 +233,7 @@ it("does not initiate a new focus handoff when the same selected reader resumes"
     </Activity>,
   );
   await act(async () => vi.dynamicImportSettled());
-  const back = screen.getByRole("button", { name: "Back to subagents" });
+  const back = screen.getByRole("button", { name: "All subagents" });
   expect(document.activeElement).toBe(back);
   rerender(
     <Activity mode="hidden">
@@ -194,7 +248,7 @@ it("does not initiate a new focus handoff when the same selected reader resumes"
       <SubagentsPanel />
     </Activity>,
   );
-  expect(screen.getByRole("button", { name: "Back to subagents" })).toBe(back);
+  expect(screen.getByRole("button", { name: "All subagents" })).toBe(back);
   expect(document.activeElement).toBe(document.body);
 });
 

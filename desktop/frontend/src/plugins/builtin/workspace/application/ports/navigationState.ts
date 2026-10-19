@@ -11,6 +11,9 @@ export interface WorkspaceInspection {
   readonly activeElement: Element | null;
   readonly returnViewId: string | null;
   readonly returnDockId: string | null;
+  readonly returnSubagentRunId: string | null;
+  readonly returnFileViewer: WorkspaceFileViewer | null;
+  readonly previous: WorkspaceInspection | null;
 }
 
 export interface WorkspaceViewMemory {
@@ -51,7 +54,7 @@ interface WorkspaceNavigationPort {
   returnFromInspection(inspection: WorkspaceInspection): boolean;
   useFileFocus(): WorkspaceFileFocusSnapshot;
   useSubagentRunId(): string | null;
-  openSubagentRun(runId: string | null): void;
+  openSubagentRun(runId: string | null, origin?: HTMLElement): void;
   useFileViewer(): WorkspaceFileViewer | null;
   useViewMemory(): WorkspaceViewMemory;
   remember(change: Partial<WorkspaceViewMemory>): void;

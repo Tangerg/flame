@@ -1,14 +1,14 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-19. This continuation started from clean local and remote `main` at `213c44dc8`, including the approved brand, Composer and CLI changes. Git history identifies the subsequent reading and Context Dock batch described below.
+Updated: 2026-10-19. The latest task-inspection batch started from clean local and remote `main` at `1fe47a607`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The shared presentation foundation and the reading and navigation paths have been refined together. The user's latest feedback describes the current presentation as already good. Their `cap`-based inline-icon sizing tip is a suggestion for future typography work; it does not request a global icon redesign. Retain the approved presentation and choose further work from specific observed gaps or new feedback.
+The shared presentation foundation and the reading and navigation paths have been refined together. Retain the approved presentation. The latest request emphasizes the interaction and typography mental model across the conversation and Context Dock. The earlier `cap`-based inline-icon sizing tip remains a suggestion for future typography work, not a request for a global icon redesign.
 
-This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, established a shared material-entry and return flow, and unified the searchable Dock directory, picker and full-view entry. The final batch repairs the reproduced keyboard-reading breaks in captured tool evidence. Historical paused or blocked statuses in earlier chats do not describe this work.
+This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, established a shared material-entry and return flow, unified the searchable Dock directory, picker and full-view entry, and repaired keyboard-reading breaks in captured tool evidence. The latest batch connects task links and nested task/file inspection to that same return flow. Historical paused or blocked statuses in earlier chats do not describe this work.
 
 The original checkout is `/Users/tangerg/Desktop/flame`, on branch `main`. All former local and remote branch tips were checked for ancestry before consolidation; their commits are retained in `main`. Only `main` remains locally and on `origin`. Read current Git state before starting; this document is a checkpoint, not an authority that can overwrite newer work.
 
@@ -140,6 +140,26 @@ ephemeral, retired on Session changes or navigation-port reinstallation and excl
 An unchanged child reader no longer replays its initial Back-button focus when
 React Activity resumes it; native acceptance exposed this ownership conflict.
 
+Task links in the main and child narratives now enter that same inspection owner.
+The currently selected task uses the existing selected surface, a persistent open
+mark and `aria-current`; its name remains owned by the enclosing delegation group
+rather than repeated on every sibling. A task opened from another task retains
+that source reader through React Activity. Only readers on the active inspection
+path remain mounted, and leaving the path releases them. Each explicit step keeps
+its source selection and preceding inspection. Returning restores the source task
+and control; returning to a file also restores the file path and line captured
+before another file replaced it. A new source in the conversation starts a new
+path. The path stays ephemeral and retires with its Session.
+
+The Dock's existing Back action and unhandled Escape return one inspection step.
+Returning to the conversation focuses its original task summary while leaving the
+inspected material available for comparison. The task header's separate **All
+subagents** command opens the retained index and ends the nested task trail; it
+uses a list mark rather than implying another Back action. Overview-to-task entry
+keeps its existing focus and scroll behavior. The selected-reader focus effect
+recognizes an inspection return and leaves focus settlement to the shared owner;
+otherwise it could override the restored source with the index command.
+
 The empty Dock now has a clear title, supporting context and a fixed search field
 above its scrolling groups. The directory and header picker use one `CatalogList`
 for filtering, icons, open marks and keyboard selection, including searching by a
@@ -159,6 +179,14 @@ the final native review confirmed a single field edge and the ordinary semantic
 ring on the Dock return button.
 
 ## Verification checkpoint
+
+For task-led and nested material inspection:
+
+- Native Wails WKWebView computer use reproduced the original missing narrative-return route and the loss of the parent task path after entering a nested task. The repaired flow was reviewed in Chinese/light/default-size and English/dark/18 px scenes, including the normal 1440 px window, an approximately 1120 px window, pointer resizing to a 320 px Dock and a custom blue accent. Selected task summaries, task identity/status, the separate index command, mixed-language prose, nested headings, tables, code, media and file headers remained readable in these scenes. The existing sidebar-matching seam remains unchanged.
+- Native entry/return covered main summary to task, task to file, nested task to parent and parent to conversation. File return focused the exact source reference; both the named return button and Escape restored the parent task anchor; the final return focused the original main summary while retaining the material. The independent All subagents route returned to the task index. Native review caught the selected-reader effect taking focus from a nested return; that conflict was repaired and the complete path was rechecked.
+- Focused regressions cover the nested return chain, original file selection, retained parent reader/scroll state, ending a task trail, source element capture and the current-task accessibility state. The nested focus regression also checks that the selected-reader effect does not take ownership of a return. Existing Session retirement, later focus choice, directory/picker, full-view and delegated-rendering checks remain in scope.
+- The complete frontend `npm run check` passed with `VITEST_MAX_WORKERS=2`: all 374 test files and 2734 tests, plus type, lint, formatting, unused-code, boundary, locale, design-token/style, bootstrap, portable-resource, bundle-budget and production-module checks. The Session-owner fixture was updated to supply the newly consumed selection hook; no assertion or timeout was weakened.
+- The supported Wails production macOS arm64 build passed, and its Mach-O records deployment floor 13.0. The native app exited successfully. Its preview, disposable data, bundle, fixture output, temporary binaries/overlays/build logs and owned WebKit caches were removed; user reference caches and unrelated resources were retained. Browser/visual suites were not run; their existing index-control label expectations were updated for the intentional All subagents wording. No Runtime, CLI, Go, shared UI-package or portable-resource source changed, so their earlier module results below remain applicable.
 
 For continuous captured Tool-evidence reading:
 
@@ -231,7 +259,7 @@ These checks cover the changed contracts and representative native scenarios. Th
 
 ## Future review candidates
 
-1. **Extend the task comparison.** Reading-to-file-and-back, overview-to-subagent-and-back and explicit tool/file inspection now have shared presentation and focus ownership. Catalogue/picker selection and full-view-to-Dock transitions now enter the same inspection flow. Continue with richer captured tool evidence and the remaining detailed material states. Preserve the distinction between explicit inspection and background updates. Do not restart the implemented typography, file header, shared message renderer or sidebar-matching divider.
+1. **Extend the task comparison.** Reading-to-file-and-back, overview-to-subagent-and-back, direct narrative task links and nested task/file returns now have shared presentation and focus ownership. Catalogue/picker selection and full-view-to-Dock transitions enter the same inspection flow. Continue with richer captured evidence and the remaining detailed material states. Preserve the distinction between explicit inspection and background updates. Do not restart the implemented typography, file header, shared message renderer, nested return flow or sidebar-matching divider.
 2. **Continue the reading composition around activity.** The shared prose step, paragraph/heading rhythm, disclosure affordance and folded tool-outcome summaries are implemented. Review how recorded evidence and media join an answer, especially where a summary leads into a dense detail view. Preserve the existing bounded table, code and selection owners.
 3. **Refine the remaining Dock forms.** File identity/actions and delegated message reuse, overview continuity and return focus are established. Continue with richer tool details and cross-view navigation: decide which details belong inline or in a persistent pane, and reserve popovers/dialogs for genuinely bounded tasks. Keep the user-requested sidebar-matching divider unchanged, including hover and drag.
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.
@@ -250,4 +278,4 @@ These are future review candidates, not unverified defects or required rewrites.
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
 - Commit explicit owned paths, push verified milestones to remote `main`, preserve unrelated working files during integration and clean owned resources. Update this file with the new product state and verification scope rather than starting another round log.
-- Keep user-facing replies in Chinese and repository content in English. The latest user feedback accepts the current visual direction; finish the verified evidence-reading batch and retain future refinements as candidates for later feedback.
+- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction. The latest request emphasizes interaction and typography mental models; choose complete, observed reading and inspection paths for further work rather than inventing another cosmetic pass.

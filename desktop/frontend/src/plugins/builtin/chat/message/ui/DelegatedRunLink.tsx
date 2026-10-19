@@ -3,7 +3,10 @@ import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { Icon, Pressable, reveal, StatusDot } from "@/ui";
 import { RecordSummary, toneInk, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
-import { openWorkspaceSubagentRun } from "@/plugins/builtin/workspace/public/navigation";
+import {
+  openWorkspaceSubagentRun,
+  useWorkspaceSubagentRunId,
+} from "@/plugins/builtin/workspace/public/navigation";
 import { motion, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { delegatedRunSummary } from "../application/delegatedRunSummary";
 import { SubagentStopButton } from "./SubagentStopButton";
@@ -21,6 +24,8 @@ const styles = stylex.create({
     transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
   },
+  currentHint: { opacity: 1 },
+  current: { backgroundColor: { default: surface.selected, ":hover": surface.selected } },
   link: {
     display: "flex",
     alignItems: "flex-start",
@@ -45,13 +50,16 @@ export function DelegatedRunLink({
   ordinal,
   siblingCount,
   taskLabel,
+  onOpen,
 }: {
   run: AgentRunView;
   ordinal: number;
   siblingCount: number;
   taskLabel?: string;
+  onOpen?: () => void;
 }) {
   const t = useT();
+  const current = useWorkspaceSubagentRunId() === run.id;
   const model = delegatedRunSummary(t, run, ordinal, siblingCount, taskLabel);
   return (
     <div
@@ -60,8 +68,11 @@ export function DelegatedRunLink({
       {...stylex.props(styles.row, reveal.host)}
     >
       <Pressable
-        onClick={() => openWorkspaceSubagentRun(run.id)}
-        className={stylex.props(styles.link).className}
+        aria-current={current ? "true" : undefined}
+        onClick={(event) =>
+          onOpen ? onOpen() : openWorkspaceSubagentRun(run.id, event.currentTarget)
+        }
+        className={stylex.props(styles.link, current && styles.current).className}
       >
         <span {...stylex.props(vocab.firstLine, typeStep.uiMd)}>
           <Icon name="bot" size="md" />
@@ -83,8 +94,14 @@ export function DelegatedRunLink({
           )}
         </span>
         <span
-          data-reveal="hover"
-          {...stylex.props(vocab.firstLine, typeStep.uiMd, reveal.shown, styles.openHint)}
+          data-reveal={current ? undefined : "hover"}
+          {...stylex.props(
+            vocab.firstLine,
+            typeStep.uiMd,
+            reveal.shown,
+            styles.openHint,
+            current && styles.currentHint,
+          )}
         >
           <Icon name="open" size="sm" />
         </span>

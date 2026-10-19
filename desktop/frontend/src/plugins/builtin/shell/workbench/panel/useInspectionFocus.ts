@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import {
   returnFromWorkspaceInspection,
   useWorkspaceInspection,
+  useWorkspaceSubagentRunId,
   WORKSPACE_DOCK_CATALOG,
   type WorkspaceInspection,
 } from "@/plugins/builtin/workspace/public/navigation";
@@ -26,6 +27,7 @@ export function useInspectionFocus({
   dockVisible: boolean;
 }) {
   const inspection = useWorkspaceInspection();
+  const subagentRunId = useWorkspaceSubagentRunId();
   const delivered = useRef<WorkspaceInspection | null>(null);
   const returningRef = useRef<ReturnFocus | null>(null);
   const dockRef = useRef<HTMLElement>(null);
@@ -35,6 +37,10 @@ export function useInspectionFocus({
   useLayoutEffect(() => {
     if (!inspection) {
       delivered.current = null;
+      return;
+    }
+    if (returningRef.current?.inspection.previous === inspection) {
+      delivered.current = inspection;
       return;
     }
     const dock = dockRef.current;
@@ -58,11 +64,16 @@ export function useInspectionFocus({
     const returning = returningRef.current;
     if (!returning) return;
     const request = returning.inspection;
-    if (returning.sessionId !== sessionId || (inspection && inspection !== request)) {
+    if (returning.sessionId !== sessionId || inspection !== request.previous) {
       returningRef.current = null;
       return;
     }
     if (request.returnViewId ? mainViewId !== request.returnViewId : mainViewId !== null) return;
+    if (
+      (request.returnViewId === "subagents" || request.returnDockId === "subagents") &&
+      subagentRunId !== request.returnSubagentRunId
+    )
+      return;
     if (
       !request.returnViewId &&
       request.returnDockId &&
@@ -75,13 +86,18 @@ export function useInspectionFocus({
     if (doc.activeElement === returning.activeElement || doc.activeElement === doc.body) {
       if (request.origin.isConnected) request.origin.focus();
       if (doc.activeElement !== request.origin) {
-        (request.returnViewId ? mainViewRef : conversationRef).current?.focus({
+        (request.returnViewId
+          ? mainViewRef
+          : request.returnDockId
+            ? dockRef
+            : conversationRef
+        ).current?.focus({
           preventScroll: true,
         });
       }
     }
     returningRef.current = null;
-  }, [inspection, sessionId, mainViewId, dockViewId, dockViewIds, dockVisible]);
+  }, [inspection, sessionId, mainViewId, dockViewId, dockViewIds, dockVisible, subagentRunId]);
 
   const returnToSource = () => {
     if (!inspection) return;

@@ -3,9 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { DelegatedRunLink } from "./DelegatedRunLink";
 
-const actions = vi.hoisted(() => ({ open: vi.fn(), cancel: vi.fn() }));
+const actions = vi.hoisted(() => ({
+  open: vi.fn(),
+  cancel: vi.fn(),
+  selected: null as string | null,
+}));
 vi.mock("@/plugins/builtin/workspace/public/navigation", () => ({
   openWorkspaceSubagentRun: actions.open,
+  useWorkspaceSubagentRunId: () => actions.selected,
 }));
 vi.mock("@/plugins/builtin/agent/public/run", () => ({ cancelSessionRun: actions.cancel }));
 vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
@@ -44,8 +49,9 @@ describe("DelegatedRunLink", () => {
         siblingCount={1}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Sub-agent/ }));
-    expect(actions.open).toHaveBeenCalledWith("child-run");
+    const opener = screen.getByRole("button", { name: /Sub-agent/ });
+    fireEvent.click(opener);
+    expect(actions.open).toHaveBeenLastCalledWith("child-run", opener);
     expect(screen.getByText("Needs input")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
     expect(actions.cancel).toHaveBeenCalledWith({ sessionId: "session-1", runId: "child-run" });
@@ -53,6 +59,10 @@ describe("DelegatedRunLink", () => {
 
   it("reflects authoritative completion without retaining a cancel action", () => {
     const { rerender } = render(<DelegatedRunLink run={run()} ordinal={1} siblingCount={1} />);
+    expect(screen.getByRole("button", { name: /Sub-agent/ }).hasAttribute("aria-current")).toBe(
+      false,
+    );
+    actions.selected = "child-run";
     rerender(
       <DelegatedRunLink
         run={run({ status: "finished", activeSegmentId: null, outcome: { type: "completed" } })}
@@ -62,7 +72,10 @@ describe("DelegatedRunLink", () => {
     );
     expect(screen.getByText("Finished")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Sub-agent/ }));
-    expect(actions.open).toHaveBeenCalledWith("child-run");
+    const opener = screen.getByRole("button", { name: /Sub-agent/ });
+    expect(opener.getAttribute("aria-current")).toBe("true");
+    fireEvent.click(opener);
+    expect(actions.open).toHaveBeenLastCalledWith("child-run", opener);
+    actions.selected = null;
   });
 });

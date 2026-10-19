@@ -39,7 +39,7 @@ test("dragging a navigation button does not select the surrounding workspace", a
 
   await expect.poll(() => hasSelectedText(page)).toBe(false);
   await expect(entry).toBeVisible();
-  await expect(dock.getByRole("button", { name: "Back to subagents", exact: true })).toHaveCount(0);
+  await expect(dock.getByRole("button", { name: "All subagents", exact: true })).toHaveCount(0);
 });
 
 test("a code reader selects its literal source without selecting the surrounding app", async ({

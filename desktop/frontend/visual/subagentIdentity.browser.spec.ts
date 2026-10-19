@@ -68,7 +68,7 @@ for (const theme of ["light", "dark"]) {
       expect(
         await page.locator("html").evaluate((node) => node.scrollWidth - node.clientWidth),
       ).toBe(0);
-      await panel.getByRole("button", { name: "Back to subagents", exact: true }).click();
+      await panel.getByRole("button", { name: "All subagents", exact: true }).click();
       await expect(page.getByTestId("active-main-view")).toHaveText(mainView);
       await expectCompleteText(panel.getByText(name, { exact: true }));
       const longName = "Survey the boundary in parallel · Sub-agent 1 of 4";

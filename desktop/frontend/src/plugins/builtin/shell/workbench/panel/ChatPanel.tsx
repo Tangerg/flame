@@ -245,11 +245,13 @@ export function ChatPanel({ onSend }: Props) {
   const returnAction = inspection
     ? {
         label:
-          returnViewId === WORKSPACE_DOCK_CATALOG
-            ? t("dock.action.returnToCatalog")
-            : returnTitle
-              ? t("dock.action.returnToView", { view: t(returnTitle) })
-              : t("dock.action.returnToConversation"),
+          returnViewId === "subagents" && inspection.returnSubagentRunId
+            ? t("dock.action.returnToTask")
+            : returnViewId === WORKSPACE_DOCK_CATALOG
+              ? t("dock.action.returnToCatalog")
+              : returnTitle
+                ? t("dock.action.returnToView", { view: t(returnTitle) })
+                : t("dock.action.returnToConversation"),
         onReturn: returnToSource,
       }
     : undefined;

@@ -13,6 +13,7 @@ import {
   useWorkspaceSubagentRunId,
   useExpandedWorkspaceToolIds,
   useToggleWorkspaceTool,
+  useWorkspaceInspection,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { ScrollArea, SectionLabel, StatusDot } from "@/ui";
 import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
@@ -73,13 +74,27 @@ export function SubagentsPanel() {
   const rows = useActiveConversationRows();
   const entries = useMemo(() => subagentEntries(rows), [rows]);
   const selectedId = useWorkspaceSubagentRunId();
+  const inspection = useWorkspaceInspection();
+  const retainedRunIds = new Set<string>();
+  for (let source = inspection; source; source = source.previous) {
+    if (
+      source.returnSubagentRunId &&
+      (source.returnDockId === "subagents" || source.returnViewId === "subagents")
+    ) {
+      retainedRunIds.add(source.returnSubagentRunId);
+    }
+  }
   const panelRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
   const previousRun = useRef<string | null>(null);
+  const previousInspection = useRef(inspection);
   useLayoutEffect(() => {
     const fromRun = previousRun.current;
+    const fromInspection = previousInspection.current;
     previousRun.current = selectedId;
-    if (fromRun === selectedId) return;
+    previousInspection.current = inspection;
+    if (fromRun === selectedId || (fromInspection && fromInspection.previous === inspection))
+      return;
     const panel = panelRef.current;
     if (!panel) return;
     const active = panel.ownerDocument.activeElement;
@@ -102,7 +117,7 @@ export function SubagentsPanel() {
       );
       (row?.querySelector<HTMLButtonElement>("button") ?? panel).focus();
     }
-  }, [selectedId]);
+  }, [selectedId, inspection]);
   const selected = entries.find(({ narrative }) => narrative.run.id === selectedId);
   const summary = selected
     ? delegatedRunSummary(
@@ -120,9 +135,9 @@ export function SubagentsPanel() {
         {selectedId && (
           <IconButton
             ref={backRef}
-            icon={iconGlyph("chevron-left")}
+            icon={iconGlyph("list")}
             size="sm"
-            aria-label={t("subagents.back")}
+            aria-label={t("subagents.all")}
             onClick={() => openWorkspaceSubagentRun(null)}
           />
         )}
@@ -174,9 +189,29 @@ export function SubagentsPanel() {
           )}
         </ScrollArea>
       </Activity>
-      {selected && summary ? (
-        <SubagentTranscript key={selectedId} entry={selected} summary={summary} />
-      ) : selectedId ? (
+      {entries
+        .filter(
+          ({ narrative }) =>
+            narrative.run.id === selectedId || retainedRunIds.has(narrative.run.id),
+        )
+        .map((entry) => (
+          <Activity
+            key={entry.narrative.run.id}
+            mode={entry.narrative.run.id === selectedId ? "visible" : "hidden"}
+          >
+            <SubagentTranscript
+              entry={entry}
+              summary={delegatedRunSummary(
+                t,
+                entry.narrative.run,
+                entry.ordinal,
+                entry.siblingCount,
+                entry.taskLabel,
+              )}
+            />
+          </Activity>
+        ))}
+      {!selected && selectedId ? (
         <EmptyState icon={iconGlyph("bot")} title={t("subagents.unavailable")} />
       ) : null}
     </AgentWorkspaceView>
@@ -197,6 +232,7 @@ function SubagentGroup({ title, entries }: { title: string; entries: SubagentEnt
           taskLabel={taskLabel}
           ordinal={ordinal}
           siblingCount={siblingCount}
+          onOpen={() => openWorkspaceSubagentRun(narrative.run.id)}
         />
       ))}
     </div>

@@ -73,7 +73,7 @@ for (const [fontSize, theme] of [
     }
     expect(await panel.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
     await page.screenshot({ path: testInfo.outputPath("narrow-selected-task.png") });
-    const back = header.getByRole("button", { name: "Back to subagents", exact: true });
+    const back = header.getByRole("button", { name: "All subagents", exact: true });
     await back.focus();
     await back.press("Enter");
     const task = panel.getByRole("button", { name: `${label} Needs input`, exact: true });
@@ -84,10 +84,8 @@ for (const [fontSize, theme] of [
     await expect(identity).toBeInViewport({ ratio: 1 });
     await header.getByRole("button", { name: "Cancel this run", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute("data-visual-canceled-run", "run_child");
-    await header.getByRole("button", { name: "Back to subagents", exact: true }).click();
+    await header.getByRole("button", { name: "All subagents", exact: true }).click();
     await expect(header.getByText("6 subagents · 1 running", { exact: true })).toBeVisible();
-    await expect(
-      header.getByRole("button", { name: "Back to subagents", exact: true }),
-    ).toHaveCount(0);
+    await expect(header.getByRole("button", { name: "All subagents", exact: true })).toHaveCount(0);
   });
 }

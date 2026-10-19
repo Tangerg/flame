@@ -235,7 +235,7 @@ test("delegated links keep child conversations in the right dock", async ({ page
     .click();
   await expect(panel.getByText("Package graph verification is still running.")).toBeVisible();
   await expect(root).toBeVisible();
-  await panel.getByRole("button", { name: "Back to subagents", exact: true }).click();
+  await panel.getByRole("button", { name: "All subagents", exact: true }).click();
   await expect(panel.locator('[data-slot="delegated-run-link"]')).toHaveCount(6);
 });
 

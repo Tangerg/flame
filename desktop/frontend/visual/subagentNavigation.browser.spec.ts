@@ -10,7 +10,7 @@ test("subagent navigation keeps keyboard focus with its selected task and restor
   await trigger.focus();
   await trigger.press("Enter");
   const panel = page.locator('[data-dock-view-id="subagents"]');
-  const back = panel.getByRole("button", { name: "Back to subagents", exact: true });
+  const back = panel.getByRole("button", { name: "All subagents", exact: true });
   await expect(back).toBeFocused();
   expect(await back.evaluate((node) => node.matches(":focus-visible"))).toBe(true);
   expect(

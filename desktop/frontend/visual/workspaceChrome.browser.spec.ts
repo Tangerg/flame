@@ -57,7 +57,7 @@ for (const theme of ["light", "dark"]) {
             .getByRole("button", { name: "Audit Agent Framework ownership Needs input" })
             .click();
           await expectBelowWindowControl(
-            panel.getByRole("button", { name: "Back to subagents", exact: true }),
+            panel.getByRole("button", { name: "All subagents", exact: true }),
             toggle,
           );
           return;

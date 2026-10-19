@@ -7,9 +7,11 @@ import { FileRefLink } from "@/plugins/builtin/chat/file-references/public/FileR
 import {
   activateWorkspaceSessionScope,
   openWorkspaceFile,
+  openWorkspaceSubagentRun,
   openWorkspaceView,
   openWorkspaceViewInDock,
   showWorkspaceDock,
+  useWorkspaceSubagentRunId,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { ChatPanel } from "./ChatPanel";
 
@@ -46,6 +48,9 @@ vi.mock("./ChatStream", async () => {
     ChatStream: () => (
       <>
         <FileRefLink path="src/main.ts" line={4} />
+        <button onClick={(event) => openWorkspaceSubagentRun("child", event.currentTarget)}>
+          Inspect task
+        </button>
         <button>Other control</button>
       </>
     ),
@@ -54,9 +59,15 @@ vi.mock("./ChatStream", async () => {
 
 function ChildReader() {
   const [count, setCount] = useState(0);
+  const runId = useWorkspaceSubagentRunId();
   return (
     <>
       <button onClick={() => setCount(count + 1)}>Evidence {count}</button>
+      <span>Selected task: {runId}</span>
+      <button key={runId}>Read {runId}</button>
+      <button onClick={(event) => openWorkspaceSubagentRun("nested", event.currentTarget)}>
+        Inspect nested task
+      </button>
       <FileRefLink path="src/child.ts" line={8} />
     </>
   );
@@ -82,6 +93,37 @@ afterEach(() => {
 });
 
 describe("material inspection focus", () => {
+  it("returns through nested task and file inspections to the original conversation control", () => {
+    render(<ChatPanel onSend={() => true} />);
+    const source = screen.getByRole("button", { name: "Inspect task" });
+    act(() => source.focus());
+    fireEvent.click(source);
+    expect(navigator().get().subagent).toBe("child");
+    expect(screen.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
+    const nested = screen.getByRole("button", { name: "Inspect nested task" });
+    act(() => nested.focus());
+    fireEvent.click(nested);
+    expect(navigator().get().subagent).toBe("nested");
+    const file = screen.getByRole("button", { name: "src/child.ts:8" });
+    act(() => file.focus());
+    fireEvent.click(file);
+    fireEvent.click(screen.getByRole("button", { name: "Back to task" }));
+    expect(navigator().get()).toMatchObject({ dock: "subagents", subagent: "nested" });
+    expect(document.activeElement).toBe(file);
+    act(() => screen.getByRole("button", { name: "Read nested" }).focus());
+    fireEvent.keyDown(screen.getByRole("complementary", { name: "Subagents" }), {
+      key: "Escape",
+    });
+    expect(navigator().get().subagent).toBe("child");
+    expect(document.activeElement).toBe(nested);
+    fireEvent.keyDown(screen.getByRole("complementary", { name: "Subagents" }), {
+      key: "Escape",
+    });
+    expect(document.activeElement).toBe(source);
+    expect(navigator().get()).toMatchObject({ dock: "subagents", subagent: "child" });
+    expect(screen.queryByRole("button", { name: "Back to conversation" })).toBeNull();
+  });
+
   it("retains a filtered catalog and returns to its search control after inspection", () => {
     showWorkspaceDock();
     render(<ChatPanel onSend={() => true} />);
