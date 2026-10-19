@@ -1,7 +1,8 @@
 # Plugin capabilities roadmap
 
 Forward-looking TODO for extending Flame's plugin line beyond Memory and Schedules.
-Knowledge base, GitHub, Model router, Guardrails and Web research are now implemented as ordinary first-party backends. The architecture refactor is covered
+Knowledge base, GitHub, Model router, Guardrails, Web research and Saved usage
+reports are now implemented as ordinary first-party backends. The architecture refactor is covered
 by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is about
 *which capabilities to build next as plugins, and in what order.*
 
@@ -14,10 +15,11 @@ by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is ab
   entry now receives the same call-scoped canonical host grant as its public
   `plugins.call` entry, through the single owner `Pool.OpenRPC` (commit
   `a15f2f9e4`). Memory keeps its own narrow model/embedding grant by design.
-- Seven first-party backends: `runtime/internal/plugins/memory`,
+- Eight first-party backends: `runtime/internal/plugins/memory`,
   `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase`,
   `runtime/internal/plugins/github`, `runtime/internal/plugins/modelrouter`,
-  `runtime/internal/plugins/guardrails`, `runtime/internal/plugins/web`.
+  `runtime/internal/plugins/guardrails`, `runtime/internal/plugins/web`,
+  `runtime/internal/plugins/usagereports`.
 - Examples: `examples/plugins/reviews` (backend + typed ops + MCP tools + a
   declared analyzer dependency + board UI; one analyzer business is exposed as
   *both* a typed query and the `analyze_review` Tool), `examples/plugins/composition`
@@ -95,9 +97,31 @@ model *selection* is a published contract a plugin may contribute; model
    against a concurrent UI refactor.
 2. Use one of them to establish a performance baseline for the composition /
    callback hot path (point resolution + ESM load + backend callbacks +
-   decoration) — currently unmeasured.
+   decoration). Measurements and reproducible workloads are recorded below.
 3. Do plugin UIs *after* the shared design-system component APIs have settled.
 4. Only build the event-ingress contract when a real webhook/event need appears.
+
+### Remaining scope decisions
+
+Both remaining candidates are unchecked pending user choices. Neither decision
+has an inferred default:
+
+- Code execution: reuse the existing macOS Seatbelt environment, refusing other
+  platforms, or build a Docker environment with explicit resource quotas. The
+  current `sandbox.Workspace` owns a temporary copy, scrubs the child environment,
+  confines writes, hides the configured home and denies network access. It bounds
+  captured output and supports cancellation/timeouts; it does not impose CPU,
+  memory or process-count quotas. These choices establish different isolation
+  and platform contracts. A plugin would own its code environment and private
+  job facts; core Run execution remains core.
+- Event ingress: start with a token-protected loopback webhook, workspace file
+  watching, or both. Source authentication, accepted-event identity and delivery
+  failure semantics must follow that choice. Current SDK setup/callback lifetimes
+  and Schedules' captured Run acceptance provide lifecycle and dispatch precedents;
+  they do not provide external ingress. The event plugin would own trigger rules,
+  captured events and dispatch intent; canonical Run acceptance, lifecycle and
+  accounting remain core. No ingress transport has been implemented or disguised
+  as an existing Tool/callback.
 
 ## Workflow: dedicated worktree, sync from main anytime
 
