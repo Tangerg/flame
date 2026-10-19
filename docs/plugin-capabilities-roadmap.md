@@ -97,22 +97,40 @@ model *selection* is a published contract a plugin may contribute; model
 3. Do plugin UIs *after* the shared design-system component APIs have settled.
 4. Only build the event-ingress contract when a real webhook/event need appears.
 
-## Parallel-worktree workflow (if UI refactor runs concurrently on `main`)
+## Workflow: dedicated worktree, sync from main anytime
 
-- Main checkout: UI refactor (edits the shared design system).
-- Plugin worktree: `git worktree add ../flame-plugins -b plugins`. Does Go
-  backends (`runtime/...`) + **new** plugin UI files
+The plugin line runs in its own worktree while `main` carries the concurrent UI
+refactor.
+
+- Worktree: `git worktree add ../flame-plugins -b plugins`. It does Go backends
+  (`runtime/...`) + **new** plugin UI files
   (`desktop/frontend/src/plugins/builtin/<name>/...`) + examples. It **consumes**
-  shared components; it does **not** edit them. This file separation keeps syncs
-  conflict-free.
-- Sync from `main` only at green commits (frontend check passing), frequently:
+  shared design-system components; it does **not** edit them. This file separation
+  keeps syncs conflict-free.
+- Sync from `main` anytime, and often — at green commits (frontend check passing):
   `git fetch && git rebase main` (or merge if the branch is shared). Run the
-  frontend check + plugin tests after each sync.
-- Because the plugin branch stays current, the eventual back-merge to `main` is
-  effectively a fast-forward.
-- Stop signal: if a sync breaks plugin UI compilation (component props changed),
-  the UI refactor is churning APIs, not just tokens — pause plugin UI work and
-  advance only backend plugins until the API seam settles.
+  frontend check + plugin tests after each sync. Because the branch stays current,
+  the eventual back-merge to `main` is effectively a fast-forward.
+- Stop signal for UI work: if a sync breaks plugin UI compilation (component props
+  changed), the UI refactor is churning APIs, not just tokens — pause plugin UI
+  work and advance only backend plugins until the API seam settles.
+
+### Execution loop
+
+Work one candidate per round, in priority order (Tier 1 before Tier 2):
+
+1. Pick the next unchecked candidate.
+2. Read its target contract, the closest existing plugin/example, and tests.
+3. State the design (owner, contract, store, host callbacks), then implement it
+   root-cause — no compatibility patches, breaking allowed.
+4. Verify (see below) and commit on the `plugins` branch via an explicit path.
+5. Check the box here and record anything learned.
+6. Sync from `main`, then go to 1.
+
+Continue round by round until every candidate is done, or the user stops. For any
+candidate that needs a new core mechanism (e.g. the event-ingress gap), design and
+build that mechanism root-cause rather than hacking it onto an existing contract;
+if its scope is genuinely ambiguous, surface it instead of guessing.
 
 ## Working constraints (per AGENTS.md / PROJECT_RULES)
 
