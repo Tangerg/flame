@@ -1,7 +1,7 @@
 # Plugin capabilities roadmap
 
-Forward-looking TODO for extending Flame's plugin line beyond the two shipped
-first-party plugins (`memory`, `schedules`). The architecture refactor is covered
+Forward-looking TODO for extending Flame's plugin line beyond Memory and Schedules.
+Knowledge base is now implemented as the third first-party backend. The architecture refactor is covered
 by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is about
 *which capabilities to build next as plugins, and in what order.*
 
@@ -14,8 +14,8 @@ by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is ab
   entry now receives the same call-scoped canonical host grant as its public
   `plugins.call` entry, through the single owner `Pool.OpenRPC` (commit
   `a15f2f9e4`). Memory keeps its own narrow model/embedding grant by design.
-- Two shipped first-party plugins: `runtime/internal/plugins/memory`,
-  `runtime/internal/plugins/schedules`.
+- Three first-party backends: `runtime/internal/plugins/memory`,
+  `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase`.
 - Examples: `examples/plugins/reviews` (backend + typed ops + MCP tools + a
   declared analyzer dependency + board UI; one analyzer business is exposed as
   *both* a typed query and the `analyze_review` Tool), `examples/plugins/composition`
@@ -62,7 +62,7 @@ model *selection* is a published contract a plugin may contribute; model
 ## Candidate capabilities (prioritized)
 
 ### Tier 1 — UI-light, high reuse, start here
-- [ ] **Knowledge base / RAG over user docs.** Nearly the same shape as Memory:
+- [x] **Knowledge base / RAG over user docs.** Nearly the same shape as Memory:
       embedding callback + private vector store + `ModelContextContract` to inject
       retrieved chunks. Best "third plugin" to prove the pattern generalizes.
 - [ ] **First external connector (pick one SaaS, e.g. Lark or GitHub).** MCP tools
@@ -163,3 +163,63 @@ if its scope is genuinely ambiguous, surface it instead of guessing.
 - `a15f2f9e4` fix: route installed model Tool calls through the one host-grant owner.
 - `342293b3a` refactor: tighten the installed-tool preparation path (lower complexity).
 - `fe169cd65` refactor: share one callback HTTP client instead of per-call transports.
+
+## Completed rounds and contract lessons
+
+- `bad0b854a` upgrades all 30 Scope modules to v0.53.0 in Runtime, CLI and
+  Reviews. Build/vet and the changed dependency consumers passed. The broad CLI
+  run had one executable-command timeout; its isolated regression passed.
+- `65bf11c24` repairs two pre-existing acceptance fixtures that assembled an
+  Endpoint without production's required callback publication. The failures
+  reproduced with the original Scope dependencies; the unchanged business
+  assertions pass with the complete fixture composition.
+- `4eb1c058d` implements Knowledge base. The private owner atomically publishes
+  document revisions, Unicode-safe chunks, vectors and command receipts. Only
+  a newly admitted import may embed; missing settlement cannot authorize replay.
+  Deleted document IDs are retired so a stale revision cannot match a reimport.
+  Typed search, MCP search and model context share the same retrieval use case.
+- Embedding v2 returns the actual vector space with its vectors. Dimensions or a
+  separately read embedding role cannot prove vector compatibility. Memory and
+  all in-repository callback consumers migrated together; external backends must
+  rebuild for `TextEmbeddings` and the v2 method. Private Memory storage is unchanged.
+- Context v2 projects `userMessage` from the original request before adding host
+  trailers. The complete provider-visible request may end with a user-role
+  deferred-tool catalog; a retrieval plugin must not parse private markers or
+  mistake that trailer for the user's question. Rebuild context contributors and
+  explicitly select the v2 composition; finish old waiting work with its old build.
+- Verification passed: Runtime build, SDK and adapter suites, Knowledge base
+  domain/receipt/entry tests, installed stdio retrieval with a local embedding
+  provider, context consumer regressions, affected callback-heavy Memory/Tool
+  integration, Reviews, vet and architecture/public-author compilation checks.
+  The installed regression compares typed and model Tool retrieval, requires the
+  original user query to reach embedding, and checks that injected material does
+  not become authored Session history. No live SaaS/provider credentials were used.
+- Frontend dependencies were initialized in the new worktree. `plugins` check
+  passed. The desktop check passed types/lint/format and encountered failures in
+  existing SessionRow/search-overlay focus tests; the broad run was stopped.
+  No frontend source changed. Continue with backends; a future actual main/UI
+  sync still requires the frontend gate and the component-props stop rule above.
+
+## Composition and callback baseline
+
+Apple M4, darwin/arm64, Go 1.27, default 10 CPUs; median of three 300 ms benchmark
+runs. These are local measurements, not latency guarantees. Reproduce with:
+
+```sh
+go test ./runtime/internal/application/integration/plugins -run '^$' -bench '^BenchmarkInstalledPointResolution$' -benchmem -benchtime=300ms -count=3
+go test ./runtime/plugin -run '^$' -bench '^BenchmarkTextEmbeddingCallback$' -benchmem -benchtime=300ms -count=3
+```
+
+| Boundary | Workload | Median time | Allocation per operation |
+| --- | --- | --- | --- |
+| Point collection resolution | 1 / 8 / 32 members | 5.29 / 14.80 / 65.85 µs | 4.53 / 18.1 / 80.4 KB |
+| Point decoration resolution | 1 / 8 / 32 members | 5.73 / 17.33 / 75.78 µs | 4.53 / 18.1 / 80.3 KB |
+| Embedding callback grant + invocation | 1 × 1,024-byte text, 1,536 dimensions | 1.63 ms | 1.60 MB |
+| Embedding callback grant + invocation | 16 × 1,024-byte texts, 1,536 dimensions | 16.97 ms | 21.8 MB |
+
+Point resolution uses real contract/applicability/order admission over an
+in-memory installation snapshot; it excludes persistence I/O and rendered frames.
+Callbacks use the real loopback grant/transport, contract admission and result
+decoding with deterministic vectors; they exclude provider latency/accounting I/O.
+ESM loading and rendered decoration remain unmeasured and need a separate browser
+sample after the frontend seam is suitable. No speculative optimization was added.
