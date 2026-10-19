@@ -937,6 +937,13 @@ html.theme-dark {
   will-change: transform;
 }
 
+[data-activity-clearance] :where(:focus) {
+  scroll-margin-block-start: calc(
+    var(--panel-controls-height, 0px) + var(--disclosure-header-height, 0px) +
+      var(--layout-control-gap)
+  );
+}
+
 .agent-index-scroll {
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);

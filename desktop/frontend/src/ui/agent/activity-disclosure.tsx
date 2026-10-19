@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { reveal } from "@/ui/atoms/reveal";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
-import { Children, useId } from "react";
+import { Children, useId, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/classNames";
 import { color, leading, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
 import { Collapsible, useDisclosedContent } from "@/ui/atoms/collapsible";
@@ -177,6 +177,28 @@ export function AgentActivityDisclosure({
   const panelId = useId();
   const framed = shell !== "line" && icon !== undefined;
   const disclosed = useDisclosedContent(open);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const disclosable = children != null;
+
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    const body = bodyRef.current;
+    if (!stickyHeader || !header || !body) return;
+    const measure = () => {
+      body.style.setProperty(
+        "--disclosure-header-height",
+        `${header.getBoundingClientRect().height}px`,
+      );
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(header, { box: "border-box" });
+    measure();
+    return () => {
+      observer.disconnect();
+      body.style.removeProperty("--disclosure-header-height");
+    };
+  }, [stickyHeader, disclosable]);
 
   return (
     <div
@@ -190,6 +212,7 @@ export function AgentActivityDisclosure({
       )}
     >
       <div
+        ref={headerRef}
         data-slot="agent-activity-header"
         data-sticky={stickyHeader ? "" : undefined}
         className={cn(
@@ -202,7 +225,7 @@ export function AgentActivityDisclosure({
         )}
       >
         <TriggerShell
-          disclosable={children != null}
+          disclosable={disclosable}
           id={triggerId}
           panelId={panelId}
           open={open}
@@ -232,7 +255,7 @@ export function AgentActivityDisclosure({
           >
             {label}
           </span>
-          {children != null && (
+          {disclosable && (
             <span
               aria-hidden
               data-slot="agent-activity-chevron"
@@ -258,9 +281,13 @@ export function AgentActivityDisclosure({
         )}
       </div>
       {progress && <ProgressBar value={progress.value} label={progress.label} weight="seam" />}
-      {children != null && (
+      {disclosable && (
         <Collapsible open={open}>
-          <div {...stylex.props(line ? styles.bodyLine : styles.bodyCard)}>
+          <div
+            ref={bodyRef}
+            data-activity-clearance={stickyHeader ? "" : undefined}
+            {...stylex.props(line ? styles.bodyLine : styles.bodyCard)}
+          >
             <div
               id={panelId}
               role="region"

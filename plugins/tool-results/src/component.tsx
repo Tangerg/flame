@@ -32,6 +32,8 @@ type ResultContent =
   | { kind: "output"; text: string }
   | { kind: "changes"; changes: Record<string, unknown>[] };
 
+const RESULT_PAGE_ROWS = 40;
+
 function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -231,16 +233,45 @@ function RecordedRows({
 }) {
   const [finding, setFinding] = useState(false);
   const [filter, setFilter] = useState("");
-  const [visible, setVisible] = useState(40);
+  const [visible, setVisible] = useState(RESULT_PAGE_ROWS);
   const viewport = useRef<HTMLDivElement>(null);
   const search = useRef<HTMLElement>(null);
+  const firstRevealed = useRef<HTMLDivElement>(null);
+  const continuation = useRef<{
+    origin: HTMLButtonElement;
+    activeElement: Element | null;
+  } | null>(null);
+  useLayoutEffect(() => {
+    const intent = continuation.current;
+    continuation.current = null;
+    const node = viewport.current;
+    const row = firstRevealed.current;
+    if (
+      !intent ||
+      !node ||
+      !row ||
+      (node.ownerDocument.activeElement !== intent.origin &&
+        node.ownerDocument.activeElement !== intent.activeElement &&
+        !(
+          intent.activeElement === intent.origin &&
+          !intent.origin.isConnected &&
+          node.ownerDocument.activeElement === node.ownerDocument.body
+        ))
+    )
+      return;
+    node.scrollTop +=
+      row.getBoundingClientRect().top -
+      node.getBoundingClientRect().top -
+      node.clientTop;
+    node.focus();
+  }, [visible]);
   useLayoutEffect(() => {
     if (finding) search.current?.focus();
   }, [finding]);
   function closeFind() {
     setFinding(false);
     setFilter("");
-    setVisible(40);
+    setVisible(RESULT_PAGE_ROWS);
     viewport.current?.focus();
   }
   const matching = useMemo(
@@ -281,6 +312,12 @@ function RecordedRows({
           labels={resultActions("Copy result")}
           wrappable={false}
         >
+          {recorded.length > RESULT_PAGE_ROWS && (
+            <span role="status" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {Math.min(visible, matching.length)} of {matching.length}{" "}
+              {filter ? "matches" : "rows"}
+            </span>
+          )}
           {!finding && (
             <IconButton
               icon={Search}
@@ -300,7 +337,7 @@ function RecordedRows({
               fieldRef={search}
               onChange={(value) => {
                 setFilter(value);
-                setVisible(40);
+                setVisible(RESULT_PAGE_ROWS);
               }}
               onClose={closeFind}
             />
@@ -333,6 +370,9 @@ function RecordedRows({
           {matching.slice(0, visible).map((row, index) => (
             <div
               key={index}
+              ref={
+                index === visible - RESULT_PAGE_ROWS ? firstRevealed : undefined
+              }
               style={{
                 display: "grid",
                 gridTemplateColumns:
@@ -433,10 +473,18 @@ function RecordedRows({
           )}
           {matching.length > visible && (
             <Button
-              onClick={() => setVisible((current) => current + 40)}
+              onClick={(event) => {
+                continuation.current = {
+                  origin: event.currentTarget,
+                  activeElement:
+                    event.currentTarget.ownerDocument.activeElement,
+                };
+                setVisible((current) => current + RESULT_PAGE_ROWS);
+              }}
               style={{ marginBlockStart: "var(--layout-control-gap)" }}
             >
-              Show {Math.min(40, matching.length - visible)} more matching rows
+              Show {Math.min(RESULT_PAGE_ROWS, matching.length - visible)} more
+              matching rows
             </Button>
           )}
         </div>

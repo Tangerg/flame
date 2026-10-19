@@ -6,9 +6,9 @@ This user-requested file is the maintained progress and handoff record for the d
 
 ## Current position
 
-The shared presentation foundation and many reading and navigation defects have been repaired. The overall product has not yet reached the user's desired quality. Continue improving **visual refinement, typography and layout, and interaction design together**, with the center conversation and right Context Dock as the first priority.
+The shared presentation foundation and the reading and navigation paths have been refined together. The user's latest feedback describes the current presentation as already good. Their `cap`-based inline-icon sizing tip is a suggestion for future typography work; it does not request a global icon redesign. Retain the approved presentation and choose further work from specific observed gaps or new feedback.
 
-The UI Goal has resumed in this chat. This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, established a shared material-entry and return flow, and unified the searchable Dock directory, picker and full-view entry. The broader visual goal remains open. Historical paused or blocked statuses in earlier chats do not describe the current task.
+This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, established a shared material-entry and return flow, and unified the searchable Dock directory, picker and full-view entry. The final batch repairs the reproduced keyboard-reading breaks in captured tool evidence. Historical paused or blocked statuses in earlier chats do not describe this work.
 
 The original checkout is `/Users/tangerg/Desktop/flame`, on branch `main`. All former local and remote branch tips were checked for ancestry before consolidation; their commits are retained in `main`. Only `main` remains locally and on `origin`. Read current Git state before starting; this document is a checkpoint, not an authority that can overwrite newer work.
 
@@ -115,6 +115,19 @@ count. Refusals remain distinct from execution failures. Individual failure
 marks use the Runtime status independently of optional explanatory text. The
 existing automatic expansion and user-pinning rules remain in force.
 
+The portable tool-result renderer now keeps one text control for output expansion
+and collapse. Explicit expansion enters its bounded reader after positioning,
+while collapse keeps the original control focused; a later user focus choice
+still takes precedence. Long recorded results show their current row count in the
+shared caption. Continuing a page reveals its first new row and focuses the
+existing named result viewport, including the final page where the continuation
+button disappears. Main and delegated messages consume this same renderer.
+Sticky activity summaries now publish their measured height to the reading body,
+using the established disclosure-clearance property. Keyboard targets reserve
+that space when revealed, so output controls remain below a wrapped summary at
+large text sizes. The shared activity component owns measurement and retires its
+observer and scoped value with the component.
+
 File references, tool material actions and the header worktree summary now
 capture their source as an explicit inspection intent in Workspace navigation.
 The Dock receives focus without stealing a later user choice, and its shared
@@ -146,6 +159,15 @@ the final native review confirmed a single field edge and the ordinary semantic
 ring on the Dock return button.
 
 ## Verification checkpoint
+
+For continuous captured Tool-evidence reading:
+
+- The complete frontend `npm run check` passed with `VITEST_MAX_WORKERS=2`: 374 test files and 2731 tests, including type, lint, formatting, unused-code, boundary, token, style, locale, resource, bundle-budget and production-module gates. The final focused result-presentation and activity-disclosure checks passed all 18 tests. The new regressions exposed the former replaced output toggle and misplaced paging focus before the fixes; a controlled animation frame also verifies that a later user focus choice wins.
+- Shared UI `npm run check` passed 38 tests and its independently packed consumer. Portable-plugin `npm run check` passed all ten resource checks, and the Tool-result ESM was rebuilt from source. The final supported Wails production macOS arm64 build passed; the resulting Mach-O records deployment floor 13.0. No Go, Runtime or CLI source changed.
+- Actual Wails WKWebView computer use reproduced both original keyboard failures: collapsing output and revealing the final result page dropped focus to the document. The repaired Chinese/light/default-size scene keeps the same output toggle focused on collapse, enters the output reader on expansion, and returns to that reader after Find/Escape. An 82-row captured source result continued from row 41, retained its named reading region through the final two rows, kept source line 82 when filtered, and updated the shown/matching counts. Keyboard file inspection and Escape return restored the originating Tool action.
+- Native review also caught focus outside the visible conversation after a page was revealed. The final implementation focuses the existing named result viewport and lets native focus reveal the surrounding reader. English/dark/18 px scenes were checked at the normal window and an approximately 1120 px window, including dragging the Dock to 320 px. Keyboard navigation exposed the separate sticky-summary obstruction; measured activity-header clearance now keeps the output caption and its focused collapse control visible. The sidebar-matching seam remains unchanged.
+- A native 50000-line output scene entered its existing bounded reader at line 49999, found line 31415 across ANSI spans, returned from Find to the reader, jumped back to the latest output and collapsed without losing its toggle focus. Main and delegated messages continue to use the common result and activity components; no parallel child rendering path was added. Browser/visual suites were not run.
+- The native app exited successfully. The preview, disposable data, bundles, build logs, fixture output and owned WebKit caches were removed; user reference caches and unrelated resources were retained. The latest user feedback accepts the current presentation and treats `cap` sizing as a future suggestion.
 
 For the shared panel directory, picker and full-view entry:
 
@@ -207,7 +229,7 @@ For the verified combined baseline:
 
 These checks cover the changed contracts and representative native scenarios. They do not establish that every page, dialog, layout or interaction meets the final design goal. No known product failure remains in the changed paths; unrun browser suites are not reported as passing.
 
-## Next work: refine the product, layout and interactions
+## Future review candidates
 
 1. **Extend the task comparison.** Reading-to-file-and-back, overview-to-subagent-and-back and explicit tool/file inspection now have shared presentation and focus ownership. Catalogue/picker selection and full-view-to-Dock transitions now enter the same inspection flow. Continue with richer captured tool evidence and the remaining detailed material states. Preserve the distinction between explicit inspection and background updates. Do not restart the implemented typography, file header, shared message renderer or sidebar-matching divider.
 2. **Continue the reading composition around activity.** The shared prose step, paragraph/heading rhythm, disclosure affordance and folded tool-outcome summaries are implemented. Review how recorded evidence and media join an answer, especially where a summary leads into a dense detail view. Preserve the existing bounded table, code and selection owners.
@@ -215,7 +237,7 @@ These checks cover the changed contracts and representative native scenarios. Th
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.
 5. **Continue across other pages.** Carry the same layout and interaction grammar into settings, installed plugin pages, forms, resource lists and dialogs. Retain the approved brand and the implemented Composer contracts while checking how the surrounding surfaces fit them.
 
-Build a coherent batch from observed problems. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
+These are future review candidates, not unverified defects or required rewrites. Build a coherent batch from observed problems when further work is requested. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 
 ## Working and maintenance practice
 
@@ -228,4 +250,4 @@ Build a coherent batch from observed problems. Separate reproduced defects from 
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
 - Commit explicit owned paths, push verified milestones to remote `main`, preserve unrelated working files during integration and clean owned resources. Update this file with the new product state and verification scope rather than starting another round log.
-- Keep user-facing replies in Chinese and repository content in English. The overall UI goal remains open until the user accepts it or asks to stop.
+- Keep user-facing replies in Chinese and repository content in English. The latest user feedback accepts the current visual direction; finish the verified evidence-reading batch and retain future refinements as candidates for later feedback.

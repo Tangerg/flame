@@ -90,6 +90,24 @@ const workspaceState: VisualWorkspaceState = isVisualWorkspaceState(requestedSta
   : "dock-review";
 const rootElement = document.documentElement;
 const motionScale = query.get("motion") === "full" ? 1 : 0;
+
+function extendRecordedSource(snapshot: RuntimeAgentSessionSnapshot) {
+  if (!query.has("long-result")) return;
+  const read = snapshot.items.find((item) => item.type === "toolCall" && item.tool.name === "read");
+  if (!read || read.type !== "toolCall")
+    throw new Error("The fixture needs a read call to show a long result");
+  read.tool.result = {
+    content: Array.from(
+      { length: 82 },
+      (_, index) =>
+        `Recorded boundary observation ${String(index + 1).padStart(2, "0")} · 中文证据`,
+    ).join("\n"),
+    start_line: 1,
+    end_line: 82,
+    total_lines: 82,
+  };
+}
+
 const requestedFontSize = query.get("font-size");
 const requestedDensity = query.get("density");
 const density = UI_DENSITY_MODES.find((mode) => mode === requestedDensity);
@@ -201,6 +219,7 @@ async function fixtureNode(): Promise<ReactNode> {
       requestedReviewFiles,
       query.get("review-path") ?? undefined,
     );
+    extendRecordedSource(runtimeInput.snapshot);
     const runtimeClient = await installVisualRuntimeClient(
       runtimeInput.snapshot,
       runtimeInput.capabilities,
@@ -250,6 +269,7 @@ async function fixtureNode(): Promise<ReactNode> {
   const snapshot = query.has("resume-ready")
     ? delegatedApprovalSnapshot()
     : structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS[state]);
+  extendRecordedSource(snapshot);
   const runtimeClient = await installVisualRuntimeClient(
     snapshot,
     VISUAL_CAPABILITIES,

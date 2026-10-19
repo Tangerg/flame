@@ -1,9 +1,13 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { CapturedToolResult, ComponentContext } from "@flame/plugin-sdk";
 import { RecordedResult } from "../../../plugins/tool-results/src/component";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  document.documentElement.style.removeProperty("--leading-relaxed");
+});
 
 function capturedContext(
   name: string,
@@ -263,4 +267,72 @@ it("leads each recognised result with its caption actions and copies the recorde
   } finally {
     vi.unstubAllGlobals();
   }
+});
+
+it("keeps one output toggle and returns keyboard focus to it on collapse", () => {
+  document.documentElement.style.setProperty("--leading-relaxed", "20px");
+  const frames: FrameRequestCallback[] = [];
+  vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((callback) => {
+    frames.push(callback);
+    return frames.length;
+  });
+  const output = Array.from({ length: 12 }, (_, index) => `line ${index}`).join("\n");
+  render(<RecordedResult context={capturedContext("shell", output)} />);
+  const toggle = screen.getByRole("button", { name: "Show 3 earlier lines · 12 total" });
+  const preview = screen.getByRole("region", { name: "Tool output preview" });
+  preview.focus();
+  fireEvent.click(toggle);
+  act(() => frames.splice(0).forEach((callback) => callback(0)));
+  const reader = screen.getByRole("region", { name: "Tool output" });
+  expect(document.activeElement).toBe(reader);
+  const collapse = screen.getByRole("button", { name: "Collapse" });
+  expect(collapse).toBe(toggle);
+  expect(collapse.getAttribute("aria-expanded")).toBe("true");
+  collapse.focus();
+  fireEvent.click(collapse);
+  expect(document.activeElement).toBe(toggle);
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByRole("region", { name: "Tool output" })).toBeNull();
+});
+
+it("does not reclaim output focus after a later user choice", () => {
+  document.documentElement.style.setProperty("--leading-relaxed", "20px");
+  const frames: FrameRequestCallback[] = [];
+  vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((callback) => {
+    frames.push(callback);
+    return frames.length;
+  });
+  const output = Array.from({ length: 12 }, (_, index) => `line ${index}`).join("\n");
+  render(
+    <>
+      <RecordedResult context={capturedContext("shell", output)} />
+      <button>Continue working</button>
+    </>,
+  );
+  const toggle = screen.getByRole("button", { name: "Show 3 earlier lines · 12 total" });
+  toggle.focus();
+  fireEvent.click(toggle);
+  const destination = screen.getByRole("button", { name: "Continue working" });
+  destination.focus();
+  act(() => frames.splice(0).forEach((callback) => callback(0)));
+  expect(document.activeElement).toBe(destination);
+});
+
+it("continues paged result reading at the first newly revealed row through the final page", () => {
+  const source = Array.from({ length: 82 }, (_, index) => `captured ${index}`).join("\n");
+  render(<RecordedResult context={capturedContext("read", source)} />);
+  const reader = screen.getByRole("region", { name: "Result" });
+  const more = screen.getByRole("button", { name: "Show 40 more matching rows" });
+  more.focus();
+  fireEvent.click(more);
+  expect(document.activeElement).toBe(reader);
+  expect(within(reader).getByText("captured 40")).toBeTruthy();
+  expect(screen.getByText("80 of 82 rows")).toBeTruthy();
+  const last = screen.getByRole("button", { name: "Show 2 more matching rows" });
+  last.focus();
+  fireEvent.click(last);
+  expect(document.activeElement).toBe(reader);
+  expect(within(reader).getByText("captured 80")).toBeTruthy();
+  expect(screen.getByText("82 of 82 rows")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /more matching rows/ })).toBeNull();
 });

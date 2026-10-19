@@ -9,7 +9,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { ArrowDownToLine, ChevronUp, Search, X } from "@flame/icons/react";
+import { ArrowDownToLine, Search, X } from "@flame/icons/react";
 import {
   Button,
   CodeCaption,
@@ -123,7 +123,10 @@ export function RecordedOutput({ text }: { text: string }) {
   const viewport = useRef<HTMLDivElement>(null);
   const ruler = useRef<HTMLSpanElement>(null);
   const search = useRef<HTMLElement>(null);
-  const expansionOpener = useRef<HTMLButtonElement>(null);
+  const expansion = useRef<{
+    origin: HTMLButtonElement;
+    activeElement: Element | null;
+  } | null>(null);
   const matches = useMemo(() => {
     if (!query) return [];
     const needle = query.toLocaleLowerCase();
@@ -167,14 +170,14 @@ export function RecordedOutput({ text }: { text: string }) {
     if (!expanded) return;
     const frame = requestAnimationFrame(() => {
       jumpToLatest();
-      const opener = expansionOpener.current;
-      expansionOpener.current = null;
+      const intent = expansion.current;
+      expansion.current = null;
       const node = viewport.current;
       if (
-        opener &&
-        !opener.isConnected &&
+        intent &&
         node &&
-        node.ownerDocument.activeElement === node.ownerDocument.body
+        (node.ownerDocument.activeElement === intent.origin ||
+          node.ownerDocument.activeElement === intent.activeElement)
       ) {
         node.focus();
       }
@@ -237,54 +240,57 @@ export function RecordedOutput({ text }: { text: string }) {
         labels={resultActions("Copy output")}
         wrappable={false}
       >
-        {expanded ? (
-          <>
-            {!atLatest && (
-              <IconButton
-                icon={ArrowDownToLine}
-                size="xs"
-                quiet
-                aria-label="Jump to latest"
-                onClick={() => {
-                  jumpToLatest();
-                  viewport.current?.focus();
-                }}
-              />
-            )}
-            {!finding && (
-              <IconButton
-                icon={Search}
-                size="xs"
-                quiet
-                aria-label="Find"
-                onClick={() => setFinding(true)}
-              />
-            )}
-            <IconButton
-              icon={ChevronUp}
-              size="xs"
-              quiet
-              aria-label="Collapse"
-              onClick={() => {
+        {earlier > 0 && (
+          <Button
+            size="xs"
+            aria-expanded={expanded}
+            onClick={(event) => {
+              if (expanded) {
+                event.currentTarget.focus({ preventScroll: true });
+                expansion.current = null;
                 setExpanded(false);
                 setFinding(false);
                 setQuery("");
-              }}
-            />
-          </>
-        ) : (
-          earlier > 0 && (
-            <Button
-              size="xs"
-              onClick={(event) => {
-                expansionOpener.current = event.currentTarget;
+              } else {
+                expansion.current = {
+                  origin: event.currentTarget,
+                  activeElement:
+                    event.currentTarget.ownerDocument.activeElement,
+                };
                 setExpanded(true);
-              }}
-            >
-              Show {earlier} earlier {earlier === 1 ? "line" : "lines"} ·{" "}
-              {lines.length} total
-            </Button>
-          )
+              }
+            }}
+          >
+            {expanded ? (
+              "Collapse"
+            ) : (
+              <>
+                Show {earlier} earlier {earlier === 1 ? "line" : "lines"} ·{" "}
+                {lines.length} total
+              </>
+            )}
+          </Button>
+        )}
+        {expanded && !atLatest && (
+          <IconButton
+            icon={ArrowDownToLine}
+            size="xs"
+            quiet
+            aria-label="Jump to latest"
+            onClick={() => {
+              jumpToLatest();
+              viewport.current?.focus();
+            }}
+          />
+        )}
+        {expanded && !finding && (
+          <IconButton
+            icon={Search}
+            size="xs"
+            quiet
+            aria-label="Find"
+            onClick={() => setFinding(true)}
+          />
         )}
       </CodeCaption>
       {expanded && finding && (

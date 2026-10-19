@@ -22,7 +22,11 @@ results read like the generic inspector's captured code: the caption names the
 content and holds Find, expansion, Jump to latest, Collapse and Copy. Copy writes the
 recorded text, without ANSI styling for command output. Result filters open on
 demand beneath the caption, above one bounded scrolling body. A web fetch names its
-format in the caption. Output search identifies the current matching line with the
+format in the caption. Paged results retain the shown and matching row counts in
+that caption. Continuing a page reveals its first new row and returns focus to the
+named result viewport, including the last page, instead of carrying keyboard focus
+past the new evidence or dropping it when the continuation button disappears.
+Output search identifies the current matching line with the
 shared search treatment; Enter and Shift+Enter cycle matching lines. Clear empties
 the query and retains search focus; Close and Escape return to the output region.
 Applied-change receipts stay an unframed table whose verbs
@@ -41,7 +45,9 @@ notice. Unknown or malformed summary formats remain complete source text.
 Result viewports contain horizontal overscroll and let vertical scrolling continue
 through the transcript when the result reaches its edge or fits without scrolling.
 Explicit expansion transfers focus once to the new output viewport after its
-initial positioning, unless the user has already moved elsewhere. Explicit Jump
+initial positioning, unless the user has already moved elsewhere. One persistent
+text toggle owns both expansion and collapse; collapsing restores focus to that
+control and clears the local search. Explicit Jump
 to latest returns focus to that viewport so keyboard reading can continue.
 The enclosing transcript ends a conflicting tail follow when it would hide new
 reading focus. Automatic output tail positioning preserves the current focus.
