@@ -27,9 +27,8 @@ func NewServer(store *Store) (*sdk.Server, error) {
 		reviews, err := store.List(ctx)
 		return ListResult{Reviews: reviews}, err
 	}
-	// analyze is one analyzer business reached through either entry: the public
-	// typed query and the model Tool below. Both receive the same call-scoped host
-	// callback and call the same declared analyzer dependency under the same owner.
+	// One analyzer business, reached identically through the typed query and the
+	// model Tool below; both call the declared analyzer dependency as host.
 	analyze := func(ctx context.Context) (result Analysis, resultErr error) {
 		current, err := store.List(ctx)
 		if err != nil {

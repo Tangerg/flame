@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
@@ -34,31 +35,19 @@ func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPrepara
 	if err != nil {
 		return nil, err
 	}
-
 	if dependency.Missing(config.Installations) || config.Callbacks == nil || config.Embeddings == nil {
 		return nil, errors.New("plugin tools: installations, callbacks and embedding resolver are required")
 	}
 	return func(ctx context.Context, executable mcp.Executable, host mcpconnection.ToolHost) (mcpconnection.ToolCall, func(), error) {
 		source := executable.SourceConfig().Server
-		id, installed := source.Source.Origin().Installation()
+		snapshot, installed, err := admitInstalledSource(ctx, config.Installations, source)
+		if err != nil {
+			return nil, nil, err
+		}
 		if !installed {
 			return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
 				return executable.Call(ctx, invocation)
 			}, func() {}, nil
-		}
-		snapshot, found, err := config.Installations.Get(ctx, id)
-		if err != nil {
-			return nil, nil, err
-		}
-		if !found || !snapshot.Installation.ServerEnabled(source.Name) {
-			return nil, nil, plugin.ErrUnavailable
-		}
-		current, err := snapshot.Installation.ServerSource(snapshot.Selected, source.Name)
-		if err != nil {
-			return nil, nil, err
-		}
-		if current != source.Source {
-			return nil, nil, plugin.ErrUnavailable
 		}
 		if snapshot.Selected.HasImplementation(source.Name, memoryContract) {
 			return prepareMemoryTool(ctx, executable, config.Callbacks, config.Embeddings)
@@ -67,15 +56,31 @@ func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPrepara
 	}, nil
 }
 
-// prepareInstalledTool gives an ordinary installed backend the same canonical
-// call-scoped host grant its public plugins.call entry receives, so one business
-// reached through either entry keeps identical host capability and call
-// attribution. The grant's release is owned by the caller; a write invalidates
-// projected reads on return.
-func prepareInstalledTool(ctx context.Context, executable mcp.Executable, host mcpconnection.ToolHost, invalidations invalidation.Publish) (mcpconnection.ToolCall, func(), error) {
-	if host == nil {
-		return nil, nil, errors.New("plugin tools: installed host grant is required")
+// installed is false only for a non-plugin MCP server, which carries no Flame host
+// grant; a plugin source whose selected release changed since publication is refused.
+func admitInstalledSource(ctx context.Context, store plugins.Store, source mcpserver.Server) (plugin.Snapshot, bool, error) {
+	id, ok := source.Source.Origin().Installation()
+	if !ok {
+		return plugin.Snapshot{}, false, nil
 	}
+	snapshot, found, err := store.Get(ctx, id)
+	if err != nil {
+		return plugin.Snapshot{}, false, err
+	}
+	if !found || !snapshot.Installation.ServerEnabled(source.Name) {
+		return plugin.Snapshot{}, false, plugin.ErrUnavailable
+	}
+	current, err := snapshot.Installation.ServerSource(snapshot.Selected, source.Name)
+	if err != nil {
+		return plugin.Snapshot{}, false, err
+	}
+	if current != source.Source {
+		return plugin.Snapshot{}, false, plugin.ErrUnavailable
+	}
+	return snapshot, true, nil
+}
+
+func prepareInstalledTool(ctx context.Context, executable mcp.Executable, host mcpconnection.ToolHost, invalidations invalidation.Publish) (mcpconnection.ToolCall, func(), error) {
 	metadata, release, err := host(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -87,8 +92,6 @@ func prepareInstalledTool(ctx context.Context, executable mcp.Executable, host m
 	}, release, nil
 }
 
-// scopeCallbacks carries an opened grant's callback reference into the tool request
-// metadata the backend admits, leaving the calling-owner invocation untouched.
 func scopeCallbacks(ctx context.Context, metadata sdk.ParamsBase) context.Context {
 	combined := scopemcp.RequestMetaFromContext(ctx)
 	if combined == nil {
@@ -98,9 +101,8 @@ func scopeCallbacks(ctx context.Context, metadata sdk.ParamsBase) context.Contex
 	return scopemcp.WithRequestMeta(ctx, combined)
 }
 
-// prepareMemoryTool keeps Memory's own narrow model/embedding grant and its
-// CWD/embedding-space scope; Memory owns that two-call policy and does not receive
-// the canonical installed grant.
+// Memory owns a narrow two-call model/embedding grant, deliberately not the
+// canonical installed grant the ordinary Tool path receives.
 func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pluginsdk.Callbacks, embeddings func(context.Context) (models.TextEmbedder, error)) (mcpconnection.ToolCall, func(), error) {
 	cwd, attached := executionctx.WorkspaceCWD(ctx)
 	if !attached {

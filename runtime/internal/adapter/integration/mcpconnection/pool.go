@@ -400,9 +400,8 @@ func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.Client
 	return metadata, release, nil
 }
 
-// toolHost binds the canonical grant owner to one executable for its model Tool
-// entry. It derives the session that admitted the tool, so a replaced connection
-// generation is refused rather than handed a stale backend's authority.
+// toolHost grants through the session that admitted the tool, so a replaced
+// connection generation is refused rather than handed a stale backend's authority.
 func (p *Pool) toolHost(executable mcp.Executable) ToolHost {
 	return func(ctx context.Context) (sdk.ParamsBase, func(), error) {
 		session, err := executable.CallbackSession()
@@ -429,11 +428,9 @@ func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientS
 
 type ToolCall func(toolcontract.Invocation) (chat.ToolOutput, error)
 
-// ToolHost opens the canonical call-scoped host grant for one installed tool call
-// through Pool.OpenRPC, the single owner of that grant. It preserves the invoking
-// call and the backend's frozen dependency authority, so a backend reached through
-// a model Tool receives the same host capability as its public plugins.call entry.
-// The caller owns release.
+// ToolHost opens one installed tool call's canonical host grant through Pool.OpenRPC,
+// its single owner, so a model Tool reaches the same host capability and frozen
+// dependency authority as the backend's plugins.call entry. The caller owns release.
 type ToolHost func(context.Context) (sdk.ParamsBase, func(), error)
 
 // ToolPreparation captures call collaborators for this exact executable. On
