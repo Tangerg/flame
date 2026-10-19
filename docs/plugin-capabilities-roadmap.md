@@ -1,7 +1,7 @@
 # Plugin capabilities roadmap
 
 Forward-looking TODO for extending Flame's plugin line beyond Memory and Schedules.
-Knowledge base, GitHub, Model router and Guardrails are now implemented as ordinary first-party backends. The architecture refactor is covered
+Knowledge base, GitHub, Model router, Guardrails and Web research are now implemented as ordinary first-party backends. The architecture refactor is covered
 by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is about
 *which capabilities to build next as plugins, and in what order.*
 
@@ -14,10 +14,10 @@ by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is ab
   entry now receives the same call-scoped canonical host grant as its public
   `plugins.call` entry, through the single owner `Pool.OpenRPC` (commit
   `a15f2f9e4`). Memory keeps its own narrow model/embedding grant by design.
-- Six first-party backends: `runtime/internal/plugins/memory`,
+- Seven first-party backends: `runtime/internal/plugins/memory`,
   `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase`,
   `runtime/internal/plugins/github`, `runtime/internal/plugins/modelrouter`,
-  `runtime/internal/plugins/guardrails`.
+  `runtime/internal/plugins/guardrails`, `runtime/internal/plugins/web`.
 - Examples: `examples/plugins/reviews` (backend + typed ops + MCP tools + a
   declared analyzer dependency + board UI; one analyzer business is exposed as
   *both* a typed query and the `analyze_review` Tool), `examples/plugins/composition`
@@ -77,7 +77,7 @@ model *selection* is a published contract a plugin may contribute; model
       `ModelObserverContract` (output classification). Transparent, no new core.
 
 ### Tier 2 — more UI, or needs a new mechanism
-- [ ] **Web search / fetch / browse** (+ cache store) — tool plugin.
+- [x] **Web search / fetch / browse** (+ cache store) — tool plugin.
 - [ ] **Code execution / sandbox** — tool plugin owning its execution environment.
 - [ ] **Usage / cost reports, daily / weekly summaries.** A projection plugin: it
       *reads* core accounting facts and owns its own report store + UI. Accounting
@@ -255,6 +255,29 @@ if its scope is genuinely ambiguous, surface it instead of guessing.
   distinction to its phrase list. Explicit empty arrays remain valid owner facts.
   Model-router backend/domain regressions passed alongside the changed guardrail
   packages; no unrelated broad suite was repeated.
+- `eeab9933d` moves existing Jina/Tavily construction and credential configuration
+  out of core into Web research. Typed operations and MCP search/fetch/browse share
+  one owner. Search and fetch always query their providers; browse reads an exact
+  immutable private capture by content-qualified ID and Unicode offset. Changed
+  source content receives a different identity; eviction or corruption never
+  authorizes a silent refetch or substitution. Logical archive retention is
+  bounded to 32 distinct captures / 64 MiB, with two-MiB source documents.
+- Web migration removes Runtime YAML web keys and the former FLAME credential
+  overlays; configure the package's optional secret inputs instead. Provider
+  redirects retain the prior same-origin restriction and response framing limit.
+  Historical built-in references and normalized result schemas remain readable
+  because persisted facts retain their actual original issuer. Their constructors,
+  current dispatch metadata and normalization producer are removed, with no
+  executable alias or retargeting. The method-selectable HTTP capability retains
+  its distinct host-allowlist policy.
+- Web verification passed: Runtime build/vet, archive identity/Unicode/reopen/
+  eviction/corruption tests, typed/Tool success parity, definite failed read,
+  provider response/redirect/credential boundaries, config migration, current
+  constructor/metadata coverage and architecture gates. Installed stdio acceptance
+  proves parent API-key variables cannot become installation authority and model
+  and typed missing-credential refusals agree. No live provider request was used.
+  The old descriptor test now compares current executable metadata with current
+  constructors; a separate regression retains historical read contracts.
 - Main's Memory UI commit `e339c70bf` is rebased into this worktree. Both `plugins`
   check and the complete desktop frontend check passed after this sync, including
   tests, published boundaries, resources and production bundle checks. No plugin
