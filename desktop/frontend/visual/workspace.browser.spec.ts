@@ -901,7 +901,7 @@ test("the portable Usage page filters recorded buckets without changing totals",
 test("a package template fills a draft without creating a schedule", async ({ page }) => {
   await openWorkspace(page, { state: "dock-schedules" });
   await waitForWorkspaceState(page, "dock-schedules");
-  await page.getByRole("button", { name: "Schedule template" }).click();
+  await page.getByRole("button", { name: "Schedule templates" }).click();
   await page.getByRole("menuitem", { name: "Weekly maintenance review", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Title", exact: true })).toHaveValue(
     "Weekly maintenance review",
@@ -925,7 +925,7 @@ test("deleting a schedule asks first, and a declined ask changes nothing", async
   await trigger.click();
   await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
 
-  const dialog = page.getByRole("region", { name: "Confirm schedule deletion" });
+  const dialog = page.getByRole("alertdialog", { name: "Delete Nightly dependency audit?" });
   await expect(dialog).toContainText("Nightly dependency audit");
   await expect(dialog).toContainText("Captured work and accepted Runs are retained.");
   await expect(dialog.getByRole("button", { name: "Confirm deletion", exact: true })).toBeVisible();
@@ -1106,7 +1106,9 @@ for (const theme of ["light", "dark"] as const) {
     await openWorkspace(page, { state: "dock-schedules", theme });
     await waitForWorkspaceState(page, "dock-schedules");
     await page.getByRole("button", { name: "Add schedule", exact: true }).click();
-    const schedule = page.getByRole("region", { name: "Schedule editor", exact: true });
+    const schedule = page.getByRole("dialog", { name: "New schedule", exact: true });
+    const save = schedule.getByRole("button", { name: "Save schedule", exact: true });
+    const cancel = schedule.getByRole("button", { name: "Cancel", exact: true });
     for (const label of [
       "Title",
       "Instructions",
@@ -1115,12 +1117,16 @@ for (const theme of ["light", "dark"] as const) {
       "Model",
       "Reasoning effort",
     ]) {
-      await expect(schedule.locator("label").getByText(label, { exact: true })).toBeVisible();
+      const field = schedule.locator("label").getByText(label, { exact: true });
+      await field.scrollIntoViewIfNeeded();
+      await expect(field).toBeVisible();
+      await expect(save).toBeVisible();
+      await expect(cancel).toBeVisible();
     }
-    await expect(page.getByRole("button", { name: "Add schedule", exact: true })).toBeDisabled();
-    await expect(schedule.getByRole("button", { name: "Save schedule", exact: true })).toHaveCount(
-      1,
-    );
+    await expect(
+      page.getByRole("button", { name: "Add schedule", exact: true, includeHidden: true }),
+    ).toBeDisabled();
+    await expect(save).toHaveCount(1);
 
     await openWorkspace(page, { state: "dock-agent-memory", theme });
     await waitForWorkspaceState(page, "dock-agent-memory");
@@ -1183,17 +1189,43 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
-test("asynchronously loaded workspace content remains reachable by keyboard", async ({ page }) => {
+test("bounded schedule fields and submission remain reachable by keyboard", async ({ page }) => {
+  await page.setViewportSize({ width: 1120, height: 560 });
   await openWorkspace(page, { state: "dock-schedules" });
   await waitForWorkspaceState(page, "dock-schedules");
   await page.getByRole("button", { name: "Add schedule", exact: true }).click();
-  const viewport = pluginView(page, "schedules").locator('[data-slot="workspace-view-body"]');
+  const editor = page.getByRole("dialog", { name: "New schedule", exact: true });
+  const viewport = editor.locator('[data-slot="dialog-body"]');
+  const title = editor.getByRole("textbox", { name: "Title", exact: true });
+  const instructions = editor.getByRole("textbox", { name: "Instructions", exact: true });
+  const cron = editor.getByRole("textbox", { name: "Cron expression", exact: true });
+  const workspace = editor.getByRole("textbox", { name: "Workspace path", exact: true });
+  const model = editor.getByRole("combobox", { name: "Model", exact: true });
+  const save = editor.getByRole("button", { name: "Save schedule", exact: true });
+  const cancel = editor.getByRole("button", { name: "Cancel", exact: true });
   await expect
     .poll(() => viewport.evaluate((node) => node.scrollHeight - node.clientHeight))
     .toBeGreaterThan(0);
-  await expect(viewport).toHaveAttribute("tabindex", "0");
-  await viewport.focus();
-  await expect(viewport).toBeFocused();
-  await viewport.press("PageDown");
+  await expect(title).toBeFocused();
+  await title.press("Tab");
+  await expect(instructions).toBeFocused();
+  await instructions.fill("Review dependencies and summarize actionable changes.");
+  await instructions.press("Tab");
+  await expect(cron).toBeFocused();
+  await cron.fill("0 9 * * 1");
+  await cron.press("Tab");
+  await expect(workspace).toBeFocused();
+  await workspace.press("Tab");
+  await expect(editor.getByRole("checkbox", { name: "Enabled" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(model).toBeFocused();
   await expect.poll(() => viewport.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+  await expect(save).toBeVisible();
+  await expect(cancel).toBeVisible();
+  await model.press("Tab");
+  await expect(editor.getByRole("button", { name: "Refresh model choices" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(cancel).toBeFocused();
+  await cancel.press("Tab");
+  await expect(save).toBeFocused();
 });

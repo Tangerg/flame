@@ -22,22 +22,20 @@ import {
   Facts,
   ListRow,
   Metadata,
+  ModalDialog,
   Panel,
   PanelHeader,
   PanelSection,
   PanelFooter,
   FormRow,
   FormSection,
-  FormActions,
   ActionMenu,
   IconButton,
   Icon,
   Disclosure,
   FormField,
-  RecordForm,
   RecordBody,
   RecordGroup,
-  RecordTitle,
   RecordHeading,
   SearchField,
   FilterBar,
@@ -72,7 +70,7 @@ type Read = {
   accepted?: { page: Page; history: string[] };
   error?: string;
 };
-type Edit = { basis?: Schedule; draft: Draft; opener: HTMLElement };
+type Edit = { basis?: Schedule; draft: Draft };
 type ModelRead = {
   context: ComponentContext;
   catalogs: Map<string, Model[]>;
@@ -112,13 +110,17 @@ export function Schedules({ context }: { context: ComponentContext }) {
   const [edit, setEdit] = useState<Edit>();
   const [deleting, setDeleting] = useState<{
     item: Schedule;
-    opener: HTMLElement;
   }>();
   const searchElement = useRef<HTMLElement>(null);
-  const formOpener = edit?.opener ?? deleting?.opener;
+  const taskOpener = useRef<HTMLElement>(null);
+  const titleElement = useRef<HTMLInputElement>(null);
+  const deleteCancel = useRef<HTMLButtonElement>(null);
   const resolveOpener = useCallback(
-    () => (formOpener?.isConnected ? formOpener : searchElement.current),
-    [formOpener],
+    () =>
+      taskOpener.current?.isConnected
+        ? taskOpener.current
+        : searchElement.current,
+    [],
   );
   const [command, setCommand] = useState<Command>();
   const pending = useRef<Command>(undefined);
@@ -243,6 +245,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
       const output = await context.track(captured.promise);
       pending.current = undefined;
       if (!context.signal.aborted) {
+        if (edit?.basis || deleting) taskOpener.current = searchElement.current;
         setCommand(undefined);
         setEdit(undefined);
         setDeleting(undefined);
@@ -274,8 +277,10 @@ export function Schedules({ context }: { context: ComponentContext }) {
             ? "The schedule changed. Read its latest revision and open a new edit before saving."
             : failure(error),
         );
-        if (error instanceof OperationFailure && error.code === "revision")
+        if (error instanceof OperationFailure && error.code === "revision") {
+          taskOpener.current = searchElement.current;
           setEdit(undefined);
+        }
         void refresh();
       }
     }
@@ -320,8 +325,9 @@ export function Schedules({ context }: { context: ComponentContext }) {
   }
   function add(opener: HTMLElement, template?: (typeof templates)[number]) {
     if (pending.current) return;
+    taskOpener.current = opener;
+    setNotice(undefined);
     setEdit({
-      opener,
       draft: {
         Title: template?.title ?? "",
         Instructions: template?.instructions ?? "",
@@ -341,7 +347,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
     );
   }
   function save() {
-    if (!edit) return;
+    if (!edit || !canSave) return;
     const draft = {
       ...edit.draft,
       Title: edit.draft.Title.trim(),
@@ -370,6 +376,15 @@ export function Schedules({ context }: { context: ComponentContext }) {
       );
     else submit("flame.schedules/create.v1", draft, "Create schedule");
   }
+  function cancelTask() {
+    if (pending.current) return;
+    // Base UI resolves the target before sibling buttons are re-enabled.
+    // Catalog reads, rather than the retiring editor, can keep them disabled.
+    if ((edit?.basis || deleting) && (read.loading || read.error))
+      taskOpener.current = searchElement.current;
+    setEdit(undefined);
+    setDeleting(undefined);
+  }
 
   const page = read.accepted?.page;
   const rows = page?.Rows ?? [];
@@ -382,6 +397,9 @@ export function Schedules({ context }: { context: ComponentContext }) {
         .includes(search.toLocaleLowerCase()),
   );
   const busy = Boolean(command);
+  const canSave = Boolean(
+    !busy && edit?.draft.Instructions.trim() && edit.draft.Cron.trim(),
+  );
   const editorOpen = Boolean(edit || deleting);
   const actionsDisabled = busy || editorOpen;
   const disabled = actionsDisabled || read.loading || Boolean(read.error);
@@ -397,6 +415,29 @@ export function Schedules({ context }: { context: ComponentContext }) {
           edit.draft.ModelSelection.model,
         ])
       : "default";
+  const feedback = (
+    <>
+      {notice && <p role="status">{notice}</p>}
+      {command && (
+        <section aria-label="Schedule command status">
+          <p role={command.uncertain ? "alert" : "status"}>
+            {command.uncertain
+              ? "The original outcome is not confirmed. Reconcile it before issuing another command."
+              : `${command.label}…`}
+          </p>
+          {command.error && <RecordBody>{command.error}</RecordBody>}
+          {command.uncertain && (
+            <>
+              <Metadata>
+                Original command: {command.promise.idempotencyKey}
+              </Metadata>
+              <Button onClick={reconcile}>Reconcile original command</Button>
+            </>
+          )}
+        </section>
+      )}
+    </>
+  );
 
   return (
     <Panel
@@ -479,47 +520,53 @@ export function Schedules({ context }: { context: ComponentContext }) {
           current schedules.
         </p>
       )}
-      {notice && <p role="status">{notice}</p>}
-      {command && (
-        <section aria-label="Schedule command status">
-          <p role={command.uncertain ? "alert" : "status"}>
-            {command.uncertain
-              ? "The original outcome is not confirmed. Reconcile it before issuing another command."
-              : `${command.label}…`}
-          </p>
-          {command.error && <RecordBody>{command.error}</RecordBody>}
-          {command.uncertain && (
-            <>
-              <Metadata>
-                Original command: {command.promise.idempotencyKey}
-              </Metadata>
-              <Button onClick={reconcile}>Reconcile original command</Button>
-            </>
-          )}
-        </section>
-      )}
+      {!editorOpen && feedback}
       {edit && (
-        <RecordForm aria-label="Schedule editor" opener={resolveOpener}>
-          <RecordTitle>
-            {edit.basis
+        <ModalDialog
+          open
+          title={
+            edit.basis
               ? `Edit ${edit.basis.Title || "schedule"}`
-              : "New schedule"}
-          </RecordTitle>
-          {edit.basis && (
-            <Metadata>
-              Captured revision: {String(edit.basis.Revision)}
-            </Metadata>
-          )}
+              : "New schedule"
+          }
+          description={
+            edit.basis
+              ? `Captured revision: ${String(edit.basis.Revision)}`
+              : "Configure the task and when it should run."
+          }
+          closeLabel="Close schedule editor"
+          size="lg"
+          initialFocus={titleElement}
+          finalFocus={resolveOpener}
+          dismissible={!busy}
+          onOpenChange={(open) => {
+            if (!open) cancelTask();
+          }}
+          onSubmit={(event) => {
+            event.preventDefault();
+            save();
+          }}
+          auxiliaryAction={feedback}
+          footer={
+            <>
+              <Button variant="ghost" disabled={busy} onClick={cancelTask}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" disabled={!canSave}>
+                Save schedule
+              </Button>
+            </>
+          }
+        >
           <FormSection
             title="Task"
             description="What the agent should do when this schedule runs."
           >
             <FormField label="Title">
               <TextField
+                ref={titleElement}
                 size="lg"
                 aria-label="Title"
-                // oxlint-disable-next-line jsx-a11y/no-autofocus
-                autoFocus
                 placeholder="Title"
                 value={edit.draft.Title}
                 disabled={busy}
@@ -656,63 +703,50 @@ export function Schedules({ context }: { context: ComponentContext }) {
               Refresh model choices
             </Button>
           </FormSection>
-          <FormActions label="Editor actions">
-            <Button
-              variant="ghost"
-              disabled={busy}
-              onClick={() => setEdit(undefined)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              disabled={
-                busy ||
-                !edit.draft.Instructions.trim() ||
-                !edit.draft.Cron.trim()
-              }
-              onClick={save}
-            >
-              Save schedule
-            </Button>
-          </FormActions>
-        </RecordForm>
+        </ModalDialog>
       )}
       {deleting && (
-        <RecordForm
-          aria-label="Confirm schedule deletion"
-          opener={resolveOpener}
-        >
-          <RecordTitle>
-            Delete {deleting.item.Title || deleting.item.ID}?
-          </RecordTitle>
-          <RecordBody>Captured work and accepted Runs are retained.</RecordBody>
-          <FormActions label="Deletion confirmation">
-            <Button
-              variant="ghost"
-              disabled={busy}
-              // oxlint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus
-              onClick={() => setDeleting(undefined)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="tonal"
-              tone="negative"
-              disabled={busy}
-              onClick={() =>
-                submit(
-                  "flame.schedules/delete.v1",
-                  { ID: deleting.item.ID },
-                  "Delete schedule",
-                )
-              }
-            >
-              Confirm deletion
-            </Button>
-          </FormActions>
-        </RecordForm>
+        <ModalDialog
+          open
+          role="alertdialog"
+          title={`Delete ${deleting.item.Title || deleting.item.ID}?`}
+          description="Future firings will stop. Captured work and accepted Runs are retained."
+          closeLabel="Close deletion confirmation"
+          size="sm"
+          initialFocus={deleteCancel}
+          finalFocus={resolveOpener}
+          dismissible={!busy}
+          onOpenChange={(open) => {
+            if (!open) cancelTask();
+          }}
+          auxiliaryAction={feedback}
+          footer={
+            <>
+              <Button
+                ref={deleteCancel}
+                variant="ghost"
+                disabled={busy}
+                onClick={cancelTask}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="tonal"
+                tone="negative"
+                disabled={busy}
+                onClick={() =>
+                  submit(
+                    "flame.schedules/delete.v1",
+                    { ID: deleting.item.ID },
+                    "Delete schedule",
+                  )
+                }
+              >
+                Confirm deletion
+              </Button>
+            </>
+          }
+        />
       )}
       <PanelSection
         title="Saved schedules"
@@ -755,8 +789,9 @@ export function Schedules({ context }: { context: ComponentContext }) {
                       {
                         label: "Edit",
                         onSelect: (opener) => {
+                          taskOpener.current = opener;
+                          setNotice(undefined);
                           setEdit({
-                            opener,
                             basis: structuredClone(item),
                             draft: {
                               Title: item.Title,
@@ -792,7 +827,9 @@ export function Schedules({ context }: { context: ComponentContext }) {
                         label: "Delete",
                         tone: "negative",
                         onSelect: (opener) => {
-                          setDeleting({ item: structuredClone(item), opener });
+                          taskOpener.current = opener;
+                          setNotice(undefined);
+                          setDeleting({ item: structuredClone(item) });
                           setEdit(undefined);
                         },
                       },

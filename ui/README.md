@@ -264,10 +264,18 @@ visible; consumers select its tone from the product owner's state. Neutral label
 retain muted ink, while icons, links and actions retain the ordinary semantic ink.
 
 `ModalDialog` owns bounded modal geometry, accessible titles and descriptions,
-header and footer alignment, and internal body scrolling. Its optional submit
+header and footer alignment, and internal body scrolling. Its portal establishes
+the modal stacking context; nested shared menus and selects sit above its local
+panel and scrim without raising unrelated page popups. Its optional submit
 handler makes the popup itself a native form; installed component content keeps
 its own form when no handler is supplied. Desktop dialogs supply their existing
-command handlers and captured targets. `Form` preserves native submission and
+command handlers and captured targets. Native `initialFocus` and `finalFocus`
+configure entry and retirement without a separate focus trap. A resolver can
+return the current connected opener or a retained fallback. `dismissible={false}`
+blocks Escape, outside presses and the close action while an owner retains an
+unresolved command. Ordinary dialogs keep Base UI's nested-popup priorities;
+composition Escape, including legacy keyCode 229, cannot dismiss the dialog.
+`Form` preserves native submission and
 shares its section spacing with `RecordForm`; only `RecordForm` adds a card
 surface and inset. Inline editors pass their captured `opener` to `RecordForm`.
 On unmount it returns focus only when that form owned focus and removal left

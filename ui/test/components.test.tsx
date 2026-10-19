@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FormEvent } from "react";
@@ -417,6 +418,74 @@ describe("inert media and callouts", () => {
 });
 
 describe("modal form ownership", () => {
+  it("resolves return focus after local Escape retires the task", async () => {
+    const target = createRef<HTMLButtonElement>();
+    const initial = createRef<HTMLInputElement>();
+    const resolve = vi.fn(() => target.current);
+    function Task() {
+      const [open, setOpen] = useState(true);
+      return (
+        <>
+          <button ref={target}>Return target</button>
+          <ModalDialog
+            open={open}
+            onOpenChange={setOpen}
+            title="Edit record"
+            initialFocus={initial}
+            finalFocus={resolve}
+          >
+            <input ref={initial} aria-label="Record title" />
+          </ModalDialog>
+        </>
+      );
+    }
+    render(<Task />);
+    await screen.findByRole("dialog", { name: "Edit record" });
+    await waitFor(() => expect(document.activeElement).toBe(initial.current));
+    expect(resolve).not.toHaveBeenCalled();
+    fireEvent.keyDown(initial.current!, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(target.current));
+    expect(resolve).toHaveBeenCalledOnce();
+  });
+
+  it("blocks dismissal while pending and leaves composition Escape to the input", async () => {
+    const change = vi.fn();
+    const content = (dismissible: boolean) => (
+      <ModalDialog
+        open
+        onOpenChange={change}
+        title="Save record"
+        closeLabel="Close record"
+        dismissible={dismissible}
+      >
+        <input aria-label="Draft title" />
+      </ModalDialog>
+    );
+    const view = render(content(false));
+    await screen.findByRole("dialog", { name: "Save record" });
+    const field = screen.getByRole("textbox", { name: "Draft title" });
+    const close = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Close record",
+    });
+    expect(close.disabled).toBe(true);
+    fireEvent.keyDown(field, { key: "Escape" });
+    fireEvent.click(close);
+    expect(change).not.toHaveBeenCalled();
+
+    view.rerender(content(true));
+    expect(close.disabled).toBe(false);
+    expect(fireEvent.keyDown(field, { key: "Escape", isComposing: true })).toBe(
+      true,
+    );
+    expect(fireEvent.keyDown(field, { key: "Escape", keyCode: 229 })).toBe(
+      true,
+    );
+    expect(change).not.toHaveBeenCalled();
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(change).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
   it("keeps body fields and footer submission in the same native form", async () => {
     const submit = vi.fn((event: FormEvent<HTMLFormElement>) =>
       event.preventDefault(),

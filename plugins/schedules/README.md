@@ -151,9 +151,24 @@ that Provider's last accepted catalog within the captured component context. A
 refresh never replaces a saved selection. Missing and deprecated selections retain
 their exact Provider/Model as labeled items until the user chooses another model.
 
-Editing and deletion confirmations resolve their record opener at retirement. If
-filtering removed that record, the retained page search is the return target and
-keeps its current query.
+Add/edit is a bounded dialog with scrolling field groups and persistent task
+identity, Cancel and Save. Deletion is a separate named alert dialog and initially
+focuses Cancel. The catalog remains mounted beneath either task. Explicit
+cancellation, the close action and unhandled Escape return to the captured opener;
+if a canonical refresh removed or disabled it, the retained page search is the fallback and
+keeps its query. Accepted deletion returns directly to search because its record
+will disappear; accepted edits likewise return to search while the record refresh
+keeps its actions disabled. New-task Add/Templates remain available during a
+catalog read and regain focus on creation or cancellation. A later refresh never steals that focus. Nested model
+choices consume their own Escape first.
+
+Command progress, rejection and original-outcome reconciliation render in the
+active task's persistent action zone, so scrolling the fields cannot hide the
+outcome or its next action. Pending or uncertain commands disable dismissal and new submission;
+they retain the exact draft and original command rather than treating cancellation
+as a business rollback. A rejected save keeps the draft editable unless the
+existing revision-conflict rule retires it. The existing command owner alone
+settles acceptance and refreshes the catalog.
 
 Templates live in src/templates.ts as authoring content copied into a new draft.
 The generic Domain/loader/Protocol owns no Schedule template or closed view kind.

@@ -98,7 +98,13 @@ Flame keeps StyleX, Base UI, its own tokens and Runtime ownership.
   content according to that task. Secondary commands use the shared action menu.
   Technical provenance belongs in details; current user-facing state remains visible.
 - Schedules are independent tasks and use a responsive card grid. Dense evidence
-  feeds remain linear lists. Neither layout introduces its own business state.
+  feeds remain linear lists. Add/edit uses a bounded modal with a named task,
+  scrolling fields and persistent Cancel/Save; deletion is a separate named
+  confirmation. The catalog stays mounted beneath both tasks. Cancellation
+  returns to the available opener, with retained search as the fallback; accepted
+  deletion returns to search because its record is removed. An unresolved
+  command keeps its original task, identity and reconciliation controls visible.
+  Neither layout introduces its own business state.
 - Management search and selection share the large control size and radius tokens.
   Compact workbench controls retain the smaller size roles; all sizes respect the
   coarse-pointer floor and grow with translated labels.

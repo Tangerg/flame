@@ -4,11 +4,15 @@ import { X } from "@flame/icons/react";
 import type { ComponentProps, FormEventHandler, ReactNode } from "react";
 import { IconButton } from "./icon-button";
 import { IconMark } from "./icon-mark";
+import { isImeKey } from "./keyboard";
 import { MODAL_SCRIM, modalPanel } from "./floating-surface";
 import { color, layout, surface, type, weight } from "./tokens.stylex";
 
 const styles = stylex.create({
+  portal: { position: "relative", zIndex: "var(--layer-modal)" },
+  backdrop: { zIndex: 0 },
   panel: {
+    zIndex: 1,
     display: "flex",
     flexDirection: "column",
     width: "min(35rem, calc(100dvw - var(--layout-compact-gutter) * 2))",
@@ -80,6 +84,8 @@ export function ModalDialog({
   auxiliaryAction,
   size = "md",
   initialFocus,
+  finalFocus,
+  dismissible = true,
   onSubmit,
   role = "dialog",
   slot,
@@ -96,22 +102,40 @@ export function ModalDialog({
   auxiliaryAction?: ReactNode;
   size?: "sm" | "md" | "lg";
   initialFocus?: ComponentProps<typeof Dialog.Popup>["initialFocus"];
+  finalFocus?: ComponentProps<typeof Dialog.Popup>["finalFocus"];
+  dismissible?: boolean;
   onSubmit?: FormEventHandler<HTMLFormElement>;
   role?: "dialog" | "alertdialog";
   slot?: string;
   backdropSlot?: string;
 }) {
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next, details) => {
+        // Base UI checks only isComposing; WebKit reports some IME keys solely
+        // as keyCode 229. Canceling leaves the composition's own Escape intact.
+        if (
+          !next &&
+          (!dismissible ||
+            (details.reason === "escape-key" && isImeKey(details.event)))
+        ) {
+          details.cancel();
+          return;
+        }
+        onOpenChange(next);
+      }}
+    >
+      <Dialog.Portal {...stylex.props(styles.portal)}>
         <Dialog.Backdrop
           data-slot={backdropSlot}
-          {...stylex.props(MODAL_SCRIM)}
+          {...stylex.props(MODAL_SCRIM, styles.backdrop)}
         />
         <Dialog.Popup
           data-slot={slot}
           role={role}
           initialFocus={initialFocus}
+          finalFocus={finalFocus}
           render={onSubmit ? <form onSubmit={onSubmit} /> : undefined}
           {...stylex.props(
             modalPanel(),
@@ -130,6 +154,7 @@ export function ModalDialog({
             </div>
             {closeLabel && (
               <Dialog.Close
+                disabled={!dismissible}
                 render={
                   <IconButton
                     icon={X}

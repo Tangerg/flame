@@ -1,6 +1,6 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { Model, Page } from "@flame/runtime-contract/wire";
+import type { CallPluginRequest, Model, Page } from "@flame/runtime-contract/wire";
 import { createFlameClient, stringifyJSON } from "@flame/runtime-contract/client";
 import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
 import {
@@ -9,7 +9,11 @@ import {
 } from "@flame/runtime-contract/client/transports/memory.testkit";
 import type { ComponentContext } from "@flame/plugin-sdk";
 import { Schedules } from "../../../../plugins/schedules/src/component";
-import { CAPABILITY_JSON } from "../../../../plugins/schedules/io.github.tangerg.flame/contracts/methods.generated";
+import {
+  CAPABILITY_JSON,
+  type MethodInputs,
+} from "../../../../plugins/schedules/io.github.tangerg.flame/contracts/methods.generated";
+import { VISUAL_SCHEDULES_PAGE } from "../../visual/componentSnapshots";
 
 let transport: ReturnType<typeof createMemoryTransport>;
 let client: ReturnType<typeof createFlameClient>;
@@ -48,12 +52,16 @@ afterEach(async () => {
   await client.close();
 });
 
-async function openEditor(rows: unknown[] = []) {
+async function loadSchedules(rows: unknown[] = []) {
   render(<Schedules context={context} />);
   const read = await waitForRequest(transport, "plugins.call");
   await act(async () =>
     respondSuccess(transport, read.id, { output: stringifyJSON({ Rows: rows, NextCursor: "" }) }),
   );
+}
+
+async function openEditor(rows: unknown[] = []) {
+  await loadSchedules(rows);
   if (rows.length) {
     fireEvent.click(screen.getByRole("button", { name: /^More actions for / }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));
@@ -64,6 +72,20 @@ async function openEditor(rows: unknown[] = []) {
     target: { value: "Retained draft" },
   });
   return waitForRequest(transport, "providers.list");
+}
+
+async function scheduleRequest(method: keyof MethodInputs, after = 0) {
+  const matching = () =>
+    transport
+      .outbox()
+      .slice(after)
+      .filter(
+        (request) =>
+          request.method === "plugins.call" &&
+          (request.params as CallPluginRequest).method === method,
+      );
+  await waitFor(() => expect(matching().length).toBeGreaterThan(0));
+  return matching()[0]!;
 }
 
 async function providerModels() {
@@ -302,5 +324,194 @@ it("shows a catalog refusal without discarding the editor", async () => {
   );
   expect((screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement).value).toBe(
     "Retained draft",
+  );
+});
+
+it("keeps a pending save in its task and preserves the draft after rejection", async () => {
+  const schedule = VISUAL_SCHEDULES_PAGE.Rows[0]!;
+  const providers = await openEditor([schedule]);
+  await act(async () => respondSuccess(transport, providers.id, { data: [] }));
+  const editor = screen.getByRole("dialog", { name: `Edit ${schedule.Title}` });
+  const title = within(editor).getByRole<HTMLInputElement>("textbox", { name: "Title" });
+  fireEvent.click(within(editor).getByRole("button", { name: "Save schedule" }));
+  const request = await scheduleRequest("flame.schedules/update.v1");
+  expect(JSON.parse((request.params as CallPluginRequest).input)).toMatchObject({
+    ID: schedule.ID,
+    ExpectedRevision: schedule.Revision,
+    Title: "Retained draft",
+    ModelSelection: {
+      Provider: schedule.ModelSelection.provider,
+      Model: schedule.ModelSelection.model,
+      ReasoningEffort: schedule.ModelSelection.reasoningEffort,
+    },
+  });
+  fireEvent.keyDown(editor, { key: "Escape" });
+  fireEvent.click(within(editor).getByRole("button", { name: "Cancel" }));
+  fireEvent.click(within(editor).getByRole("button", { name: "Close schedule editor" }));
+  expect(screen.getByRole("dialog")).toBe(editor);
+  expect(title.disabled).toBe(true);
+  expect(within(editor).getByRole("status").textContent).toBe("Save schedule…");
+  await act(async () =>
+    respondSuccess(transport, request.id, {
+      failure: { code: "invalid", message: "The schedule was refused." },
+    }),
+  );
+  expect((await within(editor).findByRole("status")).textContent).toBe("The schedule was refused.");
+  expect(title.value).toBe("Retained draft");
+  expect(title.disabled).toBe(false);
+  expect(
+    within(editor).getByRole<HTMLButtonElement>("button", { name: "Save schedule" }).disabled,
+  ).toBe(false);
+  fireEvent.click(within(editor).getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("searchbox", { name: "Search this page" }),
+    ),
+  );
+});
+
+it("returns an acknowledged save to retained search while its record refreshes", async () => {
+  const schedule = VISUAL_SCHEDULES_PAGE.Rows[0]!;
+  const providers = await openEditor([schedule]);
+  await act(async () => respondSuccess(transport, providers.id, { data: [] }));
+  const opener = screen.getByRole("button", {
+    name: `More actions for ${schedule.Title}`,
+    hidden: true,
+  });
+  const editor = screen.getByRole("dialog", { name: `Edit ${schedule.Title}` });
+  fireEvent.submit(editor);
+  const request = await scheduleRequest("flame.schedules/update.v1");
+  const after = transport.outbox().length;
+  const updated = { ...schedule, Title: "Retained draft", Revision: 2 };
+  await act(async () => respondSuccess(transport, request.id, { output: stringifyJSON(updated) }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect((opener as HTMLButtonElement).disabled).toBe(true);
+  const search = screen.getByRole("searchbox", { name: "Search this page" });
+  await waitFor(() => expect(document.activeElement).toBe(search));
+  expect(screen.getByText("Save schedule completed.")).toBeTruthy();
+  const refresh = await scheduleRequest("flame.schedules/list.v1", after);
+  await act(async () =>
+    respondSuccess(transport, refresh.id, {
+      output: stringifyJSON({ Rows: [updated], NextCursor: "" }),
+    }),
+  );
+  expect(await screen.findByRole("heading", { name: updated.Title })).toBeTruthy();
+  expect(document.activeElement).toBe(search);
+  fireEvent.click(screen.getByRole("button", { name: "Add schedule" }));
+  const next = await screen.findByRole("dialog", { name: "New schedule" });
+  expect(within(next).queryByText("Save schedule completed.")).toBeNull();
+});
+
+it("returns creation and cancellation to Add while a catalog read is pending", async () => {
+  const providers = await openEditor();
+  await act(async () => respondSuccess(transport, providers.id, { data: [] }));
+  const add = screen.getByRole("button", { name: "Add schedule", hidden: true });
+  fireEvent.change(screen.getByRole("textbox", { name: "Instructions" }), {
+    target: { value: "Review the workspace." },
+  });
+  fireEvent.change(screen.getByRole("textbox", { name: "Cron expression" }), {
+    target: { value: "0 9 * * 1" },
+  });
+  fireEvent.submit(screen.getByRole("dialog", { name: "New schedule" }));
+  const request = await scheduleRequest("flame.schedules/create.v1");
+  const after = transport.outbox().length;
+  await act(async () =>
+    respondSuccess(transport, request.id, {
+      output: stringifyJSON({ ...VISUAL_SCHEDULES_PAGE.Rows[1], Title: "Retained draft" }),
+    }),
+  );
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(add));
+  await scheduleRequest("flame.schedules/list.v1", after);
+  expect(screen.getByText("Reading schedules…")).toBeTruthy();
+  fireEvent.click(add);
+  const editor = await screen.findByRole("dialog", { name: "New schedule" });
+  fireEvent.keyDown(within(editor).getByRole("textbox", { name: "Title" }), { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(add));
+});
+
+it("retains an uncertain save and reconciles only the original command", async () => {
+  const send = vi.spyOn(transport, "send");
+  const call = vi.spyOn(client.plugins, "call");
+  const schedule = VISUAL_SCHEDULES_PAGE.Rows[0]!;
+  const providers = await openEditor([schedule]);
+  await act(async () => respondSuccess(transport, providers.id, { data: [] }));
+  const editor = screen.getByRole("dialog", { name: `Edit ${schedule.Title}` });
+  fireEvent.submit(editor);
+  const first = await scheduleRequest("flame.schedules/update.v1");
+  const original = send.mock.calls.find(([request]) => request.id === first.id)!;
+  await act(async () => respondSuccess(transport, first.id, { output: 42 }));
+  expect((await within(editor).findByRole("alert")).textContent).toContain(
+    "The original outcome is not confirmed.",
+  );
+  expect(within(editor).getByText(`Original command: ${original[2]!.idempotencyKey}`)).toBeTruthy();
+  fireEvent.keyDown(editor, { key: "Escape" });
+  fireEvent.click(within(editor).getByRole("button", { name: "Cancel" }));
+  expect(screen.getByRole("dialog")).toBe(editor);
+  expect(within(editor).getByRole<HTMLInputElement>("textbox", { name: "Title" }).value).toBe(
+    "Retained draft",
+  );
+  const after = transport.outbox().length;
+  fireEvent.click(within(editor).getByRole("button", { name: "Reconcile original command" }));
+  const retry = await scheduleRequest("flame.schedules/update.v1", after);
+  expect(retry.params).toEqual(first.params);
+  const repeated = send.mock.calls.find(([request]) => request.id === retry.id)!;
+  expect(repeated[2]!.idempotencyKey).toBe(original[2]!.idempotencyKey);
+  expect(repeated[2]!.idempotencyNamespace).toBe(original[2]!.idempotencyNamespace);
+  expect(
+    call.mock.calls.filter(([request]) => request.method === "flame.schedules/update.v1"),
+  ).toHaveLength(1);
+  await act(async () => respondSuccess(transport, retry.id, { output: stringifyJSON(schedule) }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.getByText("Save schedule completed.")).toBeTruthy();
+});
+
+it("returns to retained search after an acknowledged deletion removes its record", async () => {
+  const schedule = VISUAL_SCHEDULES_PAGE.Rows[0]!;
+  await loadSchedules([schedule]);
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  fireEvent.change(search, { target: { value: "nightly" } });
+  fireEvent.click(screen.getByRole("button", { name: `More actions for ${schedule.Title}` }));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
+  const dialog = await screen.findByRole("alertdialog", { name: `Delete ${schedule.Title}?` });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Confirm deletion" }));
+  const request = await scheduleRequest("flame.schedules/delete.v1");
+  const after = transport.outbox().length;
+  await act(async () => respondSuccess(transport, request.id, { output: "{}" }));
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(search));
+  const refresh = await scheduleRequest("flame.schedules/list.v1", after);
+  await act(async () =>
+    respondSuccess(transport, refresh.id, { output: stringifyJSON({ Rows: [], NextCursor: "" }) }),
+  );
+  expect(screen.queryByRole("heading", { name: schedule.Title })).toBeNull();
+  expect(document.activeElement).toBe(search);
+  expect(search.value).toBe("nightly");
+});
+
+it("resolves a removed editor opener to search after a canonical refresh", async () => {
+  const schedule = VISUAL_SCHEDULES_PAGE.Rows[0]!;
+  const providers = await openEditor([schedule]);
+  await act(async () => respondSuccess(transport, providers.id, { data: [] }));
+  const opener = screen.getByRole("button", {
+    name: `More actions for ${schedule.Title}`,
+    hidden: true,
+  });
+  const subscription = await waitForRequest(transport, "runtime.subscribe");
+  const after = transport.outbox().length;
+  await act(async () => respondSuccess(transport, subscription.id, {}));
+  const refresh = await scheduleRequest("flame.schedules/list.v1", after);
+  await act(async () =>
+    respondSuccess(transport, refresh.id, { output: stringifyJSON({ Rows: [], NextCursor: "" }) }),
+  );
+  expect(opener.isConnected).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("searchbox", { name: "Search this page" }),
+    ),
   );
 });
