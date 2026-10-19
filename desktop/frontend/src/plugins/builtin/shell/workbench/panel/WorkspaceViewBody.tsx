@@ -1,5 +1,5 @@
 import { iconGlyph } from "@/ui/icons";
-import { Suspense } from "react";
+import { Suspense, useCallback, useImperativeHandle, useRef, type Ref } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { useScrollReach } from "@/ui/atoms/use-scroll-reach";
 import { SkeletonList } from "@/ui";
@@ -10,6 +10,7 @@ import { useWorkspaceViews } from "@/plugins/sdk";
 
 interface Props {
   viewId: string;
+  ref?: Ref<HTMLDivElement>;
 }
 
 const styles = stylex.create({
@@ -25,23 +26,29 @@ const styles = stylex.create({
   },
 });
 
-export function WorkspaceViewBody({ viewId }: Props) {
+export function WorkspaceViewBody({ viewId, ref }: Props) {
   const t = useT();
   const scroll = useScrollReach();
+  const element = useRef<HTMLDivElement>(null);
+  const scrollRef = scroll.ref;
+  const attach = useCallback(
+    (node: HTMLDivElement | null) => {
+      element.current = node;
+      return scrollRef(node);
+    },
+    [scrollRef],
+  );
+  useImperativeHandle(ref, () => element.current!, []);
   const workspaceViews = useWorkspaceViews();
-  const Body = workspaceViews.find((v) => v.id === viewId)?.component;
-  if (!Body) {
-    return (
-      <EmptyState
-        icon={iconGlyph("alert")}
-        title={t("workspace.view.unavailable.title")}
-        sub={t("workspace.view.unavailable.body", { id: viewId })}
-      />
-    );
-  }
+  const view = workspaceViews.find((v) => v.id === viewId);
+  const Body = view?.component;
   return (
     <div
+      role="region"
+      aria-label={t(view?.title ?? "plugins.mainView")}
       {...scroll}
+      ref={attach}
+      tabIndex={scroll.tabIndex ?? -1}
       data-focus-inset=""
       data-slot="workspace-view-body"
       {...stylex.props(styles.viewport)}
@@ -54,7 +61,15 @@ export function WorkspaceViewBody({ viewId }: Props) {
             </div>
           }
         >
-          <Body />
+          {Body ? (
+            <Body />
+          ) : (
+            <EmptyState
+              icon={iconGlyph("alert")}
+              title={t("workspace.view.unavailable.title")}
+              sub={t("workspace.view.unavailable.body", { id: viewId })}
+            />
+          )}
         </Suspense>
       </PluginBoundary>
     </div>

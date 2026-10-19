@@ -79,6 +79,7 @@ export function SubagentsPanel() {
   useLayoutEffect(() => {
     const fromRun = previousRun.current;
     previousRun.current = selectedId;
+    if (fromRun === selectedId) return;
     const panel = panelRef.current;
     if (!panel) return;
     const active = panel.ownerDocument.activeElement;

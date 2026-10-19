@@ -18,13 +18,26 @@ function dockSnapshot() {
 
 type DockArrival = "alone" | "beside";
 
-function showDockView(id: string, arrival: DockArrival): void {
+function showDockView(id: string, arrival: DockArrival, origin?: HTMLElement): void {
+  if (origin) {
+    useContextDockStore.setState({
+      inspection: {
+        viewId: id,
+        origin,
+        activeElement: origin.ownerDocument.activeElement,
+        returnViewId: navigator().get().view,
+        returnDockId:
+          origin.closest<HTMLElement>("[data-dock-view-id]")?.dataset.dockViewId ?? null,
+      },
+    });
+  }
   useContextDockStore.getState().adoptDockLocation(id);
   navigator().go(arrival === "alone" ? { view: null, dock: id } : { dock: id });
 }
 
 export function installWorkspaceNavigationPort(endpoint: () => string): () => void {
   activateContextDockStorage(endpoint());
+  useContextDockStore.setState({ inspection: null });
   return configureWorkspaceNavigationPort({
     useActiveViewId: () => navigator().use((location) => location.view),
     useDock: () => ({
@@ -32,6 +45,20 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
       viewIds: useContextDockStore((state) => state.dockViewIds),
       activeViewId: navigator().use((location) => location.dock),
     }),
+    useInspection: () => useContextDockStore((state) => state.inspection),
+    returnFromInspection: (inspection) => {
+      const state = useContextDockStore.getState();
+      if (state.inspection !== inspection) return false;
+      useContextDockStore.setState({ inspection: null });
+      if (inspection.returnViewId) {
+        navigator().go({ view: inspection.returnViewId });
+      } else if (inspection.returnDockId && state.dockViewIds.includes(inspection.returnDockId)) {
+        showDockView(inspection.returnDockId, "alone");
+      } else {
+        selectChat();
+      }
+      return true;
+    },
     useSubagentRunId: () => navigator().use((location) => location.subagent),
     openSubagentRun: (runId) => {
       if (navigator().get().view === "subagents") {
@@ -66,7 +93,7 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
     toggleSidebar: () => useShellLayoutStore.getState().toggleSidebar(),
     selectChat,
     openView: (id) => navigator().go({ view: id }),
-    openViewInDock: (id) => showDockView(id, "alone"),
+    openViewInDock: (id, origin) => showDockView(id, "alone", origin),
     selectDockView: (id) => {
       if (useContextDockStore.getState().dockViewIds.includes(id)) showDockView(id, "beside");
     },
@@ -98,9 +125,9 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
     dock: dockSnapshot,
     setSettingsPane: (pane) => navigator().go({ settings: pane }),
     focusFile: (path) => useContextDockStore.getState().focusFile(path),
-    openFile: (path, line) => {
+    openFile: (path, line, origin) => {
       useContextDockStore.getState().setFileViewer({ path, line: line ?? 0 });
-      showDockView("file", "alone");
+      showDockView("file", "alone", origin);
     },
     closeFile: () => useContextDockStore.getState().setFileViewer(null),
     adoptSessionScope: (sessionId) => {

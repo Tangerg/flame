@@ -66,6 +66,10 @@ describe("ToolCard", () => {
     expect(opened).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Open in the context dock" }));
     expect(opened).toHaveBeenCalledOnce();
+    expect(opened).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "apply_patch" }),
+      screen.getByRole("button", { name: "Open in the context dock" }),
+    );
   });
 
   it("offers no disclosure for a call that never ran", () => {

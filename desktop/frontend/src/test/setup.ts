@@ -70,6 +70,7 @@ beforeEach(async () => {
   useNotificationStore.setState({ log: [] });
   useConfigStore.setState({ values: new Map(), subscribers: new Map() });
   useContextDockStore.setState({
+    inspection: null,
     activeSessionScopeId: null,
     sessionScopes: new Map(),
     dockViewIds: [],

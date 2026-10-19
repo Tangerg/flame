@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ComponentProps,
   type ReactNode,
   type Ref,
 } from "react";
@@ -90,8 +91,12 @@ const styles = stylex.create({
   contents: { display: "contents" },
 });
 
-export function AgentContextDock({ children }: { children: ReactNode }) {
-  return <aside className="agent-context-dock">{children}</aside>;
+export function AgentContextDock({ children, className, ...props }: ComponentProps<"aside">) {
+  return (
+    <aside {...props} className={cn("agent-context-dock", className)}>
+      {children}
+    </aside>
+  );
 }
 
 export function AgentDockRow({

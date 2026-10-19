@@ -316,6 +316,16 @@ restores the tree cursor. Selection changes preserve focus already placed in
 another region. Copy feedback appears only after the clipboard accepts the
 current path and resets when that path changes.
 
+File references, tool material actions and the worktree summary carry their
+explicit source into the existing Workspace navigation owner. The transient
+inspection record is never persisted or carried across Sessions. Entry focuses
+the named Dock region only if the user has not moved focus during navigation.
+The Dock's return action and unhandled Escape restore the source view and its
+keyboard anchor; file-to-tree navigation keeps its separate meaning. Returning
+reveals the anchor if resizing moved it out of view. Background file updates
+retain their existing outside-focus guard. Resuming an unchanged subagent reader
+does not replay its initial focus handoff.
+
 Prose uses one paragraph gap, unitless heading leading and a visible gap between
 every heading and its following content. Deeper heading levels retain the body
 size and step down through weight and supporting ink. Conversation and captured

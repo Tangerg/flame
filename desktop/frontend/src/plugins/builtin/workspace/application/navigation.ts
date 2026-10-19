@@ -8,6 +8,7 @@ import {
   type WorkspaceDockSnapshot,
   type WorkspaceFileFocusSnapshot,
   type WorkspaceFileViewer,
+  type WorkspaceInspection,
   type WorkspaceViewMemory,
 } from "./ports/navigationState";
 
@@ -21,6 +22,14 @@ export function useActiveWorkspaceViewId(): string | null {
 
 export function useWorkspaceDock(): WorkspaceDockSnapshot {
   return workspaceNavigation().useDock();
+}
+
+export function useWorkspaceInspection(): WorkspaceInspection | null {
+  return workspaceNavigation().useInspection();
+}
+
+export function returnFromWorkspaceInspection(inspection: WorkspaceInspection): boolean {
+  return workspaceNavigation().returnFromInspection(inspection);
 }
 
 export function useWorkspaceFileFocus(): WorkspaceFileFocusSnapshot {
@@ -75,8 +84,8 @@ export function openWorkspaceView(id: string): void {
   workspaceNavigation().openView(id);
 }
 
-export function openWorkspaceViewInDock(id: string): void {
-  workspaceNavigation().openViewInDock(id);
+export function openWorkspaceViewInDock(id: string, origin?: HTMLElement): void {
+  workspaceNavigation().openViewInDock(id, origin);
 }
 
 export function selectWorkspaceDockView(id: string): void {
@@ -139,14 +148,17 @@ export function openWorkspaceSettingsPane(pane: string): void {
   workspaceNavigation().openView(WORKSPACE_SETTINGS_VIEW);
 }
 
-export function openWorkspaceDiffForFile(path: string): void {
+export function openWorkspaceDiffForFile(path: string, origin?: HTMLElement): void {
   workspaceNavigation().focusFile(path);
   const views = lookupExtensionPoint(WORKSPACE_VIEW).filter((view) => view.material === "diff");
-  workspaceNavigation().openViewInDock(views.length === 1 ? views[0]!.id : WORKSPACE_DOCK_CATALOG);
+  workspaceNavigation().openViewInDock(
+    views.length === 1 ? views[0]!.id : WORKSPACE_DOCK_CATALOG,
+    origin,
+  );
 }
 
-export function openWorkspaceFile(path: string, line?: number): void {
-  workspaceNavigation().openFile(path, line);
+export function openWorkspaceFile(path: string, line?: number, origin?: HTMLElement): void {
+  workspaceNavigation().openFile(path, line, origin);
 }
 
 export function closeWorkspaceFile(): void {

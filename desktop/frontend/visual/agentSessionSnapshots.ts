@@ -801,6 +801,8 @@ export const LONG_RESPONSE_MARKDOWN = [
   "",
   "The consumer owns persistence policy and transaction scope. The Agent Framework remains reusable because it exposes execution capability without importing application records.",
   "",
+  "The implementation is in runtime/internal/session/store.go:4. Inspect the source, then return to this reading position.",
+  "",
   "- keep Run and Item protocol facts at the application boundary;",
   "- keep framework identities opaque;",
   "- project durable state atomically before publishing it;",

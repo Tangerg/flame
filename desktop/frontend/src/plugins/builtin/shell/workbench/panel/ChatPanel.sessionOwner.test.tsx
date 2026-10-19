@@ -42,6 +42,8 @@ vi.mock("@/plugins/builtin/workspace/public/navigation", () => ({
   showWorkspaceDock: vi.fn(),
   useActiveWorkspaceViewId: () => model.activeMainView,
   useWorkspaceDock: () => model.dock,
+  useWorkspaceInspection: () => null,
+  returnFromWorkspaceInspection: vi.fn(),
 }));
 
 vi.mock("@/plugins/builtin/workspace/public/contextDockCatalog", () => ({

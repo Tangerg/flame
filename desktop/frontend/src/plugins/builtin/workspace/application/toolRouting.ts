@@ -23,13 +23,13 @@ export function workspaceViewLabelForTool(tool: ToolCall): string {
   return destination ? DESTINATION_LABEL[destination] : "workspace.view.openBeside";
 }
 
-export function openWorkspaceViewForTool(tool: ToolCall): void {
+export function openWorkspaceViewForTool(tool: ToolCall, origin?: HTMLElement): void {
   switch (toolDestination(tool)) {
     case "diff":
-      openWorkspaceDiffForFile(tool.fnKind === "path" ? tool.fn : "");
+      openWorkspaceDiffForFile(tool.fnKind === "path" ? tool.fn : "", origin);
       break;
     case "file":
-      openWorkspaceFile(tool.fn, tool.range?.start);
+      openWorkspaceFile(tool.fn, tool.range?.start, origin);
       break;
   }
 }

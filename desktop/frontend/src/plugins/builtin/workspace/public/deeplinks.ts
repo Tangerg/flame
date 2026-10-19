@@ -1,8 +1,4 @@
-import {
-  openWorkspaceDiffForFile,
-  openWorkspaceView,
-  openWorkspaceClientDiagnostics,
-} from "../application/navigation";
+import { openWorkspaceView, openWorkspaceClientDiagnostics } from "../application/navigation";
 
 export function openDiagnosticsView(): void {
   openWorkspaceClientDiagnostics();
@@ -10,8 +6,4 @@ export function openDiagnosticsView(): void {
 
 export function openSettingsView(): void {
   openWorkspaceView("settings");
-}
-
-export function openDiffViewInDock(): void {
-  openWorkspaceDiffForFile("");
 }

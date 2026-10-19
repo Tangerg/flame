@@ -97,7 +97,7 @@ export function useToolRowActions(tool: ToolCall) {
         aria-label={t(opener.label(tool))}
         onClick={(event) => {
           event.stopPropagation();
-          void Promise.resolve(opener.open(tool)).catch((err) => {
+          void Promise.resolve(opener.open(tool, event.currentTarget)).catch((err) => {
             const owner = lookupToolViewOpenerOwner(opener.id) ?? "unknown";
             console.error(`[plugin] tool view opener ${opener.id} threw:`, err);
             reportPluginError(owner, "command", err, `tool view opener: ${opener.id}`);

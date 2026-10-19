@@ -5,6 +5,14 @@ export interface WorkspaceFileViewer {
   line: number;
 }
 
+export interface WorkspaceInspection {
+  readonly viewId: string;
+  readonly origin: HTMLElement;
+  readonly activeElement: Element | null;
+  readonly returnViewId: string | null;
+  readonly returnDockId: string | null;
+}
+
 export interface WorkspaceViewMemory {
   expandedDirs: readonly string[];
   lastFilePath: string | null;
@@ -39,6 +47,8 @@ export interface WorkspaceDockSnapshot {
 interface WorkspaceNavigationPort {
   useActiveViewId(): string | null;
   useDock(): WorkspaceDockSnapshot;
+  useInspection(): WorkspaceInspection | null;
+  returnFromInspection(inspection: WorkspaceInspection): boolean;
   useFileFocus(): WorkspaceFileFocusSnapshot;
   useSubagentRunId(): string | null;
   openSubagentRun(runId: string | null): void;
@@ -54,7 +64,7 @@ interface WorkspaceNavigationPort {
   toggleSidebar(): void;
   selectChat(): void;
   openView(id: string): void;
-  openViewInDock(id: string): void;
+  openViewInDock(id: string, origin?: HTMLElement): void;
   selectDockView(id: string): void;
   closeDockView(id: string): void;
   closeOtherDockViews(id: string): void;
@@ -67,7 +77,7 @@ interface WorkspaceNavigationPort {
   dock(): WorkspaceDockSnapshot;
   setSettingsPane(pane: string): void;
   focusFile(path: string): void;
-  openFile(path: string, line?: number): void;
+  openFile(path: string, line?: number, origin?: HTMLElement): void;
   closeFile(): void;
   // Adoption and activation are different moves that only look alike. At start-up
   // the location is the authority — a deep link or a surviving renderer already

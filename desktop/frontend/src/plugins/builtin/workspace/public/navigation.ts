@@ -15,6 +15,7 @@ export {
   closeWorkspaceFile,
   forgetWorkspaceSessionScopes,
   openWorkspaceFile,
+  openWorkspaceDiffForFile,
   openWorkspaceSettingsPane,
   openWorkspaceView,
   openWorkspaceViewInDock,
@@ -27,8 +28,11 @@ export {
   toggleWorkspaceDock,
   toggleWorkspaceSidebar,
   useWorkspaceDock,
+  useWorkspaceInspection,
+  returnFromWorkspaceInspection,
   useExpandedWorkspaceToolIds,
   useToggleWorkspaceTool,
   useWorkspaceFileViewer,
   useWorkspaceSettingsPaneTarget,
 } from "../application/navigation";
+export type { WorkspaceInspection } from "../application/ports/navigationState";

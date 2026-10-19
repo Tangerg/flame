@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { Activity } from "react";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { navigator } from "@/lib/navigation";
@@ -166,6 +167,35 @@ it("keeps list position and returns keyboard focus to the opened task", async ()
   expect(scroller.scrollTop).toBe(240);
   expect(document.activeElement).toBe(opener);
   await act(async () => vi.dynamicImportSettled());
+});
+
+it("does not initiate a new focus handoff when the same selected reader resumes", async () => {
+  material.rows = rows();
+  navigator().go({ session: "session" });
+  openWorkspaceSubagentRun("child");
+  const { rerender } = render(
+    <Activity mode="visible">
+      <SubagentsPanel />
+    </Activity>,
+  );
+  await act(async () => vi.dynamicImportSettled());
+  const back = screen.getByRole("button", { name: "Back to subagents" });
+  expect(document.activeElement).toBe(back);
+  rerender(
+    <Activity mode="hidden">
+      <SubagentsPanel />
+    </Activity>,
+  );
+  act(() => back.blur());
+  expect(document.activeElement).toBe(document.body);
+
+  rerender(
+    <Activity mode="visible">
+      <SubagentsPanel />
+    </Activity>,
+  );
+  expect(screen.getByRole("button", { name: "Back to subagents" })).toBe(back);
+  expect(document.activeElement).toBe(document.body);
 });
 
 it("folds a long child input with the main message interaction", async () => {

@@ -8,7 +8,7 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The shared presentation foundation and many reading and navigation defects have been repaired. The overall product has not yet reached the user's desired quality. Continue improving **visual refinement, typography and layout, and interaction design together**, with the center conversation and right Context Dock as the first priority.
 
-The UI Goal has resumed in this chat. This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, and made tool outcomes visible before opening their details. The broader visual goal remains open. Historical paused or blocked statuses in earlier chats do not describe the current task.
+The UI Goal has resumed in this chat. This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, and established a shared material-entry and return flow. The broader visual goal remains open. Historical paused or blocked statuses in earlier chats do not describe the current task.
 
 The original checkout is `/Users/tangerg/Desktop/flame`, on branch `main`. All former local and remote branch tips were checked for ancestry before consolidation; their commits are retained in `main`. Only `main` remains locally and on `origin`. Read current Git state before starting; this document is a checkpoint, not an authority that can overwrite newer work.
 
@@ -115,7 +115,28 @@ count. Refusals remain distinct from execution failures. Individual failure
 marks use the Runtime status independently of optional explanatory text. The
 existing automatic expansion and user-pinning rules remain in force.
 
+File references, tool material actions and the header worktree summary now
+capture their source as an explicit inspection intent in Workspace navigation.
+The Dock receives focus without stealing a later user choice, and its shared
+return action or unhandled Escape restores the originating view and anchor.
+Returning from a file opened inside a child narrative selects that same
+subagent pane and retains its reader state. The source anchor can be revealed
+after a width change. Background file updates keep the established outside-focus
+guard; file-to-tree navigation remains independent. The inspection record is
+ephemeral, retired on Session changes or navigation-port reinstallation and excluded from storage.
+An unchanged child reader no longer replays its initial Back-button focus when
+React Activity resumes it; native acceptance exposed this ownership conflict.
+
 ## Verification checkpoint
+
+For material-entry and return navigation:
+
+- The complete frontend `npm run check` passed: 374 test files and 2724 tests, with type, lint, formatting, unused-code, dependency, boundary, token, style, bootstrap, locale, resource, bundle-budget and production-module checks. The initial integration test reached into another feature's private store; it now checks the public UI behavior. A focused attempt overlapped the shared UI rebuild and could not resolve its output; the final sequential type, lint, format and 14 selected-reader/inspection checks passed after the build completed.
+- Regression coverage exercises explicit file entry, Escape return without closing the Dock, return to a retained child reader, a later focus choice taking precedence over entry, Session retirement and unchanged-reader Activity resumption. Existing file-tree focus and file-reference selection checks remain valid. The shared long-answer fixture now includes a real file-reference gesture in both main and delegated readers.
+- Shared UI `npm run check` passed 38 tests and its independently packed consumer; portable-plugin `npm run check` passed all ten resource checks. The supported Wails production macOS arm64 build passed with deployment floor 13.0. No Go, Runtime, CLI, shared-package or portable-resource source changed.
+- Actual Wails WKWebView computer use checked Chinese/light/default-size tool-to-file entry and return, English/dark/18 px child-to-file-to-child navigation, normal and approximately 1120 px windows, and pointer resizing to a 320 px Dock. Focus entered the named material region and returned to the actual source control. The child reader retained its state; resuming it no longer forced Back-button focus. After resizing, the returned file reference was visible in its reading viewport. The worktree header entry also returned to its own source while leaving the inspected diff available.
+- Native keyboard review confirmed that transient tooltip dismissal precedes the inspection return, unhandled Escape returns to the source, and the top-level return action differs from the file-to-tree action. The sidebar-matching divider and existing code, table, selection, Composer and theme owners remain in use. No visual/browser suite was run.
+- The native app exited successfully. The preview, disposable data, bundles, build logs, fixture output and owned WebKit caches were removed; user reference caches and unrelated resources were retained.
 
 For shared tool-outcome summaries:
 
@@ -160,7 +181,7 @@ These checks cover the changed contracts and representative native scenarios. Th
 
 ## Next work: refine the product, layout and interactions
 
-1. **Extend the task comparison.** Reading-to-file-and-back and overview-to-subagent-and-back now have shared presentation and explicit focus ownership. Native tool inspection still opens the current file in the Dock while leaving keyboard focus on its conversation opener. Review this explicit activation and its return route without breaking the file workspace's intentional outside-focus guard for background updates. Do not restart the implemented typography, file header, shared message renderer or sidebar-matching divider.
+1. **Extend the task comparison.** Reading-to-file-and-back, overview-to-subagent-and-back and explicit tool/file inspection now have shared presentation and focus ownership. Continue with richer captured tool evidence and the remaining panel entry forms, including catalogue/picker and full-view transitions. Preserve the distinction between explicit inspection and background updates. Do not restart the implemented typography, file header, shared message renderer or sidebar-matching divider.
 2. **Continue the reading composition around activity.** The shared prose step, paragraph/heading rhythm, disclosure affordance and folded tool-outcome summaries are implemented. Review how recorded evidence and media join an answer, especially where a summary leads into a dense detail view. Preserve the existing bounded table, code and selection owners.
 3. **Refine the remaining Dock forms.** File identity/actions and delegated message reuse, overview continuity and return focus are established. Continue with richer tool details and cross-view navigation: decide which details belong inline or in a persistent pane, and reserve popovers/dialogs for genuinely bounded tasks. Keep the user-requested sidebar-matching divider unchanged, including hover and drag.
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.

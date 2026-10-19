@@ -3,7 +3,10 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { rehydrateOrDefault, ScopedPersistence } from "@/lib/persistedStore";
 import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
-import type { WorkspaceViewMemory } from "../application/ports/navigationState";
+import type {
+  WorkspaceInspection,
+  WorkspaceViewMemory,
+} from "../application/ports/navigationState";
 
 const CONTEXT_DOCK_STORAGE_KEY = "flame.context-dock";
 const NON_NEGATIVE_DECIMAL = /^(0|[1-9]\d*)$/;
@@ -72,6 +75,7 @@ interface ContextDockSessionScope {
 }
 
 interface ContextDockState extends ContextDockSessionScope {
+  inspection: WorkspaceInspection | null;
   activeSessionScopeId: string | null;
   sessionScopes: Map<string, ContextDockSessionScope>;
 }
@@ -103,7 +107,12 @@ function emptySessionScope(): ContextDockSessionScope {
 }
 
 function emptyDockState(): ContextDockState {
-  return { activeSessionScopeId: null, sessionScopes: new Map(), ...emptySessionScope() };
+  return {
+    inspection: null,
+    activeSessionScopeId: null,
+    sessionScopes: new Map(),
+    ...emptySessionScope(),
+  };
 }
 
 const persistence = new ScopedPersistence<ContextDockState>(CONTEXT_DOCK_STORAGE_KEY);
@@ -229,7 +238,7 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
         const sessionScopes = saveCurrentSessionScope(state);
         const nextScope = sessionId ? sessionScopes.get(sessionId) : undefined;
         const scope = nextScope ? cloneSessionScope(nextScope) : emptySessionScope();
-        set({ activeSessionScopeId: sessionId, sessionScopes, ...scope });
+        set({ inspection: null, activeSessionScopeId: sessionId, sessionScopes, ...scope });
         return scope.lastViewId;
       },
       forgetSessionScopes: (openSessionIds) =>
@@ -243,6 +252,7 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
             return { sessionScopes };
           }
           return {
+            inspection: null,
             activeSessionScopeId: null,
             sessionScopes,
             ...emptySessionScope(),

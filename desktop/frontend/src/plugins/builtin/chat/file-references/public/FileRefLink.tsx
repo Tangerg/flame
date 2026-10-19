@@ -27,7 +27,7 @@ export function FileRefLink({
           selection.containsNode(event.currentTarget, true)
         )
           return;
-        openWorkspaceFile(path, line);
+        openWorkspaceFile(path, line, event.currentTarget);
       }}
     >
       {label.split("/").map((segment, index) => (

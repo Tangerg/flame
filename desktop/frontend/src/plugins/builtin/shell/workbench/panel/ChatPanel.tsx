@@ -1,6 +1,8 @@
 import * as stylex from "@stylexjs/stylex";
 import { Activity, Fragment, useCallback, useState, type ReactNode } from "react";
 import { PanelHost } from "@flame/ui/panel";
+import { IconButton } from "@flame/ui";
+import { iconGlyph } from "@/ui/icons";
 import { dockWidthRow } from "./dockWidth";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import { CatalogPicker, knownIconName, type CatalogPickerGroup } from "@/ui";
@@ -52,6 +54,7 @@ import { WorkspaceWindowHeader } from "./WorkspaceWindowHeader";
 import { useT } from "@/lib/i18n";
 import { canPresentDock } from "@/lib/shellGeometry";
 import { shellStyles as sh } from "../shellStyles";
+import { useInspectionFocus } from "./useInspectionFocus";
 
 interface Props {
   onSend: (input: AgentInput) => boolean;
@@ -127,14 +130,25 @@ function DockHeader({
   tabs,
   groups,
   openViewIds,
+  returnAction,
 }: {
   tabs: AgentDockTab[];
   groups: ContextDockDestinationGroup[];
   openViewIds: ReadonlySet<string>;
+  returnAction?: { label: string; onReturn: () => void };
 }) {
   const t = useT();
   return (
     <AgentSurfaceHeader divider={false}>
+      {returnAction && (
+        <IconButton
+          icon={iconGlyph("arrow-left")}
+          size="sm"
+          quiet
+          aria-label={returnAction.label}
+          onClick={returnAction.onReturn}
+        />
+      )}
       <AgentDockTabs
         tabs={tabs}
         ariaLabel={t("dock.tabs.label")}
@@ -166,6 +180,14 @@ export function ChatPanel({ onSend }: Props) {
   const dockOpen = hasDockOwner && dock.open && (showingCatalog || dock.viewIds.length > 0);
   const ownedDockViewIds = hasDockOwner ? dock.viewIds : [];
   const shellVisible = !isLoading || activeMainView !== null || dock.open;
+  const { inspection, dockRef, conversationRef, mainViewRef, returnToSource, onDockKeyDown } =
+    useInspectionFocus({
+      sessionId: activeSessionId,
+      mainViewId: activeMainView,
+      dockViewId: dock.activeViewId,
+      dockViewIds: ownedDockViewIds,
+      dockVisible: dockOpen && dockAvailable,
+    });
 
   const dockRowRef = useCallback((row: HTMLDivElement | null) => {
     if (!row) return;
@@ -198,6 +220,16 @@ export function ChatPanel({ onSend }: Props) {
   if (!shellVisible) return null;
 
   const viewsById = new Map(views.map((view) => [view.id, view]));
+  const returnViewId = inspection?.returnViewId ?? inspection?.returnDockId;
+  const returnTitle = returnViewId ? viewsById.get(returnViewId)?.title : undefined;
+  const returnAction = inspection
+    ? {
+        label: returnTitle
+          ? t("dock.action.returnToView", { view: t(returnTitle) })
+          : t("dock.action.returnToConversation"),
+        onReturn: returnToSource,
+      }
+    : undefined;
 
   const dockTabs = ownedDockViewIds.map((id) => {
     const view = viewsById.get(id);
@@ -234,7 +266,7 @@ export function ChatPanel({ onSend }: Props) {
             onClose={() => closeWorkspaceView(activeMainView)}
           />
           <SessionOwnedWorkspaceState sessionId={activeSessionId}>
-            <WorkspaceViewBody viewId={activeMainView} />
+            <WorkspaceViewBody ref={mainViewRef} viewId={activeMainView} />
           </SessionOwnedWorkspaceState>
         </>
       )}
@@ -244,7 +276,14 @@ export function ChatPanel({ onSend }: Props) {
           open={dockOpen && dockAvailable}
           style={dockWidthRow(dockWidthRatio)}
         >
-          <div {...stylex.props(sh.paneNarrow, conversationPane.container)}>
+          <div
+            ref={conversationRef}
+            tabIndex={-1}
+            role="region"
+            aria-label={t("shell.region.conversation")}
+            data-focus-inset=""
+            {...stylex.props(sh.paneNarrow, conversationPane.container)}
+          >
             <AgentSurfaceHeader corner="window">
               <SessionIdentity
                 sessionId={activeSessionId}
@@ -261,9 +300,20 @@ export function ChatPanel({ onSend }: Props) {
           </div>
           {dockOpen && dockAvailable && <DockResizer />}
           <SessionOwnedWorkspaceState sessionId={activeSessionId}>
-            <AgentContextDock>
+            <AgentContextDock
+              ref={dockRef}
+              tabIndex={-1}
+              aria-label={t(viewsById.get(dock.activeViewId ?? "")?.title ?? "dock.tabs.label")}
+              data-focus-inset=""
+              onKeyDown={onDockKeyDown}
+            >
               {hasDockOwner && (
-                <DockHeader tabs={dockTabs} groups={catalog} openViewIds={openViewIds} />
+                <DockHeader
+                  tabs={dockTabs}
+                  groups={catalog}
+                  openViewIds={openViewIds}
+                  returnAction={returnAction}
+                />
               )}
               <div {...stylex.props(sh.anchor)}>
                 {showingCatalog && (
