@@ -100,6 +100,9 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := host.application.publishCallbacks(endpoint); err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
 		endpoint.BeginShutdown()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
