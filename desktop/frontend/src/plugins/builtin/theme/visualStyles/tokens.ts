@@ -110,9 +110,8 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "menu-item-radius": "max(0px, calc(var(--floating-panel-radius) - var(--layout-menu-inset)))",
   "button-radius": "var(--shape-xl)",
   "field-radius": "var(--shape-xl)",
-  "segmented-radius": "var(--shape-composer)",
-  "segment-radius":
-    "max(0px, calc(var(--segmented-radius) - var(--control-edge-width) - var(--spacing) * 0.5))",
+  "segmented-radius": "var(--shape-lg)",
+  "segment-radius": "max(0px, calc(var(--segmented-radius) - var(--spacing) * 0.5))",
   "surface-card-radius": "var(--shape-bubble)",
   "row-radius": "var(--shape-lg)",
   "floating-panel-radius": "var(--shape-bubble)",

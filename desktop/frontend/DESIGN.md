@@ -478,13 +478,20 @@ multiplies through.
 | `surface-card-radius`   | 16px                          | Settings groups, resource lists, cards and inline forms |
 | `floating-panel-radius` | 16px                          | Popovers, menus and dialogs                             |
 | `floating-tip-radius`   | 8px                           | Tooltips                                                |
-| `segmented-radius`      | 20px                          | Segmented tracks                                        |
+| `segmented-radius`      | 10px                          | Segmented tracks                                        |
+| `segment-radius`        | Track radius minus padding    | Segmented items and their moving backplate              |
 | `menu-item-radius`      | Panel radius minus menu inset | Nested menu rows                                        |
 
 Components consume semantic roles. The visual style maps those roles to the
 shape ladder; resizing a field does not choose another radius. Card padding,
 page gutters and grouping use the shared layout tokens. Nested menu corners
 are derived from their panel and inset rather than authored independently.
+
+Segmented tracks take the compact navigation step so Default and Soft keep a
+visible difference on their short items. A radius larger than half an item's
+height saturates into the same capsule even when the preference changes. The
+track has padding and no border, so its items and moving backplate subtract only
+that padding from the track radius.
 
 ### Corner curve
 
@@ -502,8 +509,8 @@ ladder that agrees with itself.
 Buttons and text capsules keep a round curve while their radius follows the
 user's scale. Only geometric circles and explicitly round controls use `pill`
 to opt out. A superellipse at 50% is a rounded square, and an avatar, a status
-dot or the type caret is a circle. The browser bounds large radii by the element's
-dimensions, so Default and Soft can look alike on a short control.
+dot or the type caret is a circle. Explicit pill controls keep that geometry when
+the user changes the radius preference.
 
 Engines without `corner-shape` support draw the arc at the base radius. Feature
 queries select the curve and its scale together.

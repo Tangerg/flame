@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-19. The current search/keyboard batch started from clean local and remote `main` at `863e4b62f`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-19. The current reported-corner review started from clean local and remote `main` at `565c3eb08`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -14,7 +14,7 @@ The Diff/Usage batch is committed and pushed at `c59e7f470`. The latest verified
 
 The Skills batch is committed and pushed at `863e4b62f`. Search/keyboard ownership is now repaired and verified: literal local filters clear before returning an inspection, while bounded output Find closes back to its reader. The old isolated Wails build reproduced the original query/context loss; the final native build preserves the query spelling, focus and actual return path. Continue from these shared owners rather than adding page-specific Escape branches.
 
-The user's latest report concerns some components appearing identical under Default and Soft corners. The settings values are distinct (`1` and `1.4`); component geometry and shape consumption still need inspection. This is the next active review, not a verified fix or a reason to redesign the approved brand.
+The search/keyboard batch is committed and pushed at `565c3eb08`. The user's reported Default/Soft overlap on Tab items is now repaired and verified. The saved scales were already distinct; a segmented track incorrectly used the Composer's large radius, saturating its short items into the same capsule. The shared host mapping now uses the existing compact step and derives item/backplate corners from real padding only. Actual Wails comparison confirms distinct Sharp, Default and Soft shapes at default text size, and distinct Default/Soft with large text in a narrow window. File-mode tabs were also checked in a 320 px Dock. Keep this compact role and continue the remaining task-flow reviews without changing the approved brand or rebuilding existing navigation.
 
 The original checkout is `/Users/tangerg/Desktop/flame`, on branch `main`. All former local and remote branch tips were checked for ancestry before consolidation; their commits are retained in `main`. Only `main` remains locally and on `origin`. Read current Git state before starting; this document is a checkpoint, not an authority that can overwrite newer work.
 
@@ -279,7 +279,22 @@ same predicate without changing its scoped literal Select All behavior. Recorded
 output Find remains a bounded task: its owner captures Escape to close back to the
 output, while Enter/Shift+Enter cycle matches outside composition.
 
+Segmented tracks use the existing compact navigation shape step. Their items and
+moving backplate share the track radius minus its actual padding; there is no
+track border to subtract. This leaves room for the radius preference to change
+short Tab items visibly. The visual-style owner and its first-paint stylesheet
+mirror publish the same mapping. Preset values, the shared shape ladder, the
+curve feature query and explicitly round controls retain their previous owners.
+
 ## Verification checkpoint
+
+For the reported Tab-item corner overlap:
+
+- Existing preference/document and stylesheet-mirror checks passed all 26 tests. The final frontend `VITEST_MAX_WORKERS=2 npm run check` passed 377 files and 2760 tests, plus type, lint, formatting, unused-code, boundary, style/token, locale, bootstrap, resource, bundle and production-module gates. All ten portable resources still reproduce exactly. No new test was added to restate CSS mappings; the actual geometry defect was reproduced and checked natively.
+- The UI README formatting check passed. Shared UI component and portable sources are unchanged, so the preceding 50-test UI/packed-consumer and portable module results remain applicable rather than being reported as new runs. The supported production Wails arm64 build passed; `vtool` confirmed macOS 13.0. Go, Runtime, CLI, SDK and dependency sources are unchanged.
+- Old-build Wails acceptance compared the same selected Density item under Default and Soft: its capsule stayed the same while adjacent input and card shapes changed. In the final English/light/14 px/Flame Orange scene, that item has a compact Default corner, a visibly softer Soft corner and a tighter Sharp corner. Keyboard switching retains the selected option and focus.
+- Chinese/dark/18 px/custom-blue acceptance covered normal 1440 px and approximately 1120 px windows, with the fixture's ordinary motion enabled. The track and moving item settle with matching corners and Default/Soft remain distinct. A separate production file-reader scene entered README from the file list, retained readable prose/code/table composition, pointer-resized the Dock to 320 px and switched Preview/Source with Left/Right while keeping focus on the current tab.
+- Acceptance used canonical isolated fixtures in actual Wails WKWebView, not a live user Runtime. No browser/visual suite, pixel-comparison test or performance benchmark was run. The owned application exited; its preview, disposable data, bundle, binaries, logs, fixture output and WebKit caches were removed. User references and unrelated resources remain intact.
 
 For literal search and local keyboard tasks:
 
@@ -393,7 +408,6 @@ These checks cover the changed contracts and representative native scenarios. Th
 3. **Refine the remaining Dock forms.** File identity/actions and delegated message reuse, overview continuity and return focus are established. Continue with richer tool details and cross-view navigation: decide which details belong inline or in a persistent pane, and reserve popovers/dialogs for genuinely bounded tasks. Keep the user-requested sidebar-matching divider unchanged, including hover and drag.
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.
 5. **Continue across other pages.** Apply the recorded task map to settings, installed plugin pages, forms, resource lists and dialogs, checking location, scope, current-object actions and the actual return path. Retain the approved brand and the implemented Composer contracts while checking how the surrounding surfaces fit them.
-6. **Inspect the reported corner-setting overlap.** The user reports Default and Soft looking identical on some components. The saved settings use distinct scales; inspect actual shape consumption and component geometry, then reproduce and repair the responsible owner. Preserve deliberate circles and pills, the approved brand and current task flows.
 
 These are future review candidates, not unverified defects or required rewrites. Build each next coherent batch from observed problems while the current goal remains active. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 

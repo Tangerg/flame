@@ -302,7 +302,9 @@ layout and content-specific geometry.
 motion rung and motion scale from the current CSS projection, so a theme change
 affects the next movement without a second animation preference. No animation
 runs before styles are available, during server rendering, or when motion is
-disabled. System reduced motion is honored separately.
+disabled. System reduced motion is honored separately. A `Segmented` track uses
+`segmented-radius`; its items and backplate share the host-derived
+`segment-radius`, the track radius minus the track padding.
 
 The former large-control radius and resource-surface tokens are removed. All
 field sizes use `field-radius`; cards and resource lists use `app-card-surface`.
