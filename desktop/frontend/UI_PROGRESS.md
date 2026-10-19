@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. Native hidden-zoom investigation continues from recorded-evidence selection at `f0e74ab21` on `main`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. Pasted-text review continues from the native hidden-zoom qualification at `55db20f41` on `main`, with the ordinary editing/return paths now natively qualified. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -10,7 +10,9 @@ The latest objective explicitly resumes continuous desktop UI work. Complete eac
 
 Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The subsequent native focus investigation qualified the existing keyboard resize path and isolated clicked-label reverse navigation to a WebKit behavior also reproduced by a bare HTML button. No host preference or component workaround was added. The precise scenarios and limits are below.
 
-Recorded Tool readers now share the literal code reader's local Select All boundary. Whole-reader copy uses the current presented rows or preview excerpt; expanded command output supplies the complete ANSI-stripped captured source, including virtualized lines and trailing newlines. Stable content children keep mutable row trees from shortening the browser's range. Partial selection, editable fields, explicit complete-result copy and Runtime ownership remain separate. Hidden-zoom reading drift now reproduces in a plain native HTML scroller without virtualization and remains a platform limitation, qualified below. Continue with the unqualified oversized pasted-text preview path before deciding whether it needs a product change.
+Recorded Tool readers now share the literal code reader's local Select All boundary. Whole-reader copy uses the current presented rows or preview excerpt; expanded command output supplies the complete ANSI-stripped captured source, including virtualized lines and trailing newlines. Stable content children keep mutable row trees from shortening the browser's range. Partial selection, editable fields, explicit complete-result copy and Runtime ownership remain separate. Hidden-zoom reading drift reproduces in a plain native HTML scroller without virtualization and remains a platform limitation, qualified below.
+
+Pasted-text review exposed a separate native defect: Put back in message discarded the current edit, restored the original paste and left focus on the document. The repair sends the edited text through one ComposerDraft transition and chooses a close destination from the owner's actual result. Full frontend gates, the supported Wails build and ordinary native editing/return paths pass. The separate 50,002-line preview still loses readable accessibility state, while a plain native textarea handles the exact same content; isolate that difference next without assuming a layout, binding or platform cause.
 
 Task-oriented layout and interaction apply across the conversation, Context Dock, settings and installed views. Preserve the approved brand, shared reading hierarchy, Composer, code/table/selection fixes, sidebar-matching Dock seam and custom-accent theme owner. The earlier `cap`-based inline-icon sizing tip is a suggestion for future typography work, not a global icon redesign.
 
@@ -32,6 +34,20 @@ The user has approved the brand direction. Its production assets, settings pane,
 - `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/settings/brand` and `/Users/tangerg/Desktop/flame/desktop/frontend/visual/brandSettings.browser.spec.ts` belong to the brand work.
 
 Composer submission captures the exact immutable draft and Session at the authoring owner. Slash handlers explicitly accept input or admit a send; returning from a handler alone does not clear the draft. Accepted input records history in its captured Session, consumes only the submitted revision, preserves later text and attachment edits, and avoids stealing another control's focus. Replacing Runtime storage retires old callbacks. Goal reports acceptance through this same owner rather than comparing text or clearing independently.
+
+The pasted-text repair keeps those submission and storage contracts. The
+required `restorePaste(id, text)` intent accepts the current reviewed text in one
+draft transition, removes only that paste and preserves the typed prefix and
+other attachments. Empty reviewed text removes the paste without resurrecting
+its old body; a missing ID remains a no-op. `editPaste` reports whether the owner
+kept the exact paste, so the view does not repeat the domain's blank-text rule.
+Cancel/Escape and ordinary Save return to the surviving chip; Put back and a Save
+that removes it return to the existing Composer textarea. One local close intent
+captures the focus origin and target before a retiring action. The resolver
+suppresses a return on unrelated later focus, retirement without a close intent
+or a disconnected target. `TextEditorDialog` only forwards the shared modal's
+existing `finalFocus` option. The native scenarios and qualification boundaries
+are recorded below.
 
 The implementation lives under `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/chat/composer` and `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/chat/goal`, with updated shell and SDK consumers. Focus is owned by the installed Composer state port; the former `application/focus.ts` was intentionally removed. Do not restore the retired clear, text-comparison or global-focus paths.
 
@@ -121,6 +137,18 @@ single browser-owned range and its live DOM boundaries; the
 supplies complete presented text during a trusted copy event. The repair uses
 those native owners rather than storing another selection fact. Static reference
 artwork supplies no keyboard evidence, and no new visual skin was introduced.
+
+Pasted-text review traced ZCode's `v4/composer/useComposerAttachments.ts` for
+large-paste attachment ownership and `ChatMediaAttachmentPreviewDialog.tsx` for
+a bounded named reading task. ChatGPT's actual `app-primary-44ec287874b7.js`
+pasted-attachment component supplies identity, removal and an explicit Show in
+text field action. The similarly named clipboard-paste modules contain an icon,
+not paste behavior. Those sources support task identity and a return to
+authoring; Flame's editable review and accepted-draft rules remain its own.
+The existing Base UI 1.9.0 implementation confirms that a function `finalFocus`
+is explicit and bypasses its default outside-focus guard, which the local close
+intent must therefore preserve. No second component system or visual skin was
+introduced.
 
 For color-system work, retain the user's [Radix Colors](https://www.radix-ui.com/colors) and [HeroUI colors](https://heroui.com/en/docs/react/getting-started/colors) references. The default brand color is **Flame Orange `#FB6E30`**; users can choose their own interface accent through the existing theme owner. Approved brand artwork retains its original color. Avoid recreating the palette, appearance store or brand identity.
 
@@ -490,6 +518,16 @@ remain the visual basis.
 
 ## Verification checkpoint
 
+For pasted-text review and return to authoring:
+
+- Actual baseline Wails used English/dark/18 px/custom blue with an isolated canonical Agent fixture. An 18-line CJK paste could be reviewed and cancelled back to its original chip. After replacing the editor with `Edited evidence · 修改后正文` and `Final line`, Put back instead appended the original 18 lines to `Typed prefix · 保留草稿`. Focus fell to the document and subsequent typing did nothing. This reproduced both the stale-text and lost-authoring-focus defects without a live Runtime write or Send action.
+- The first regression baseline failed six cases and passed 34: edited/emptied put-back lost current text, and retiring attachments lost focus. The first repair then exposed three later-outside-focus failures across Cancel, Save and Put back. The revised composed tests cover those paths, surviving-chip returns, Session retirement, removed Composer targets and the synchronous owner-reported edit result. After primary review captured Save's exit before the owner change, the primary focused run passed 39 files and 305 tests. Existing accepted-submission, draft history/storage, Goal and plugin-editor checks remain included; assertions and deadlines were not weakened.
+- The complete frontend `VITEST_MAX_WORKERS=2 npm run check` passed 381 files and 2,834 tests, including its isolated Runtime lifecycle integration, followed by every type, lint, format, unused-code, architecture, style/token, locale, bootstrap, exact-resource, bundle and production React/JSX linkage gate. Recurring loopback `ECONNREFUSED` diagnostics remained non-failing and unclassified. The subsequent supported `wails3 task build` passed; `file` and `vtool` confirmed arm64 and macOS 13.0, with the existing non-failing duplicate `-lobjc` warning. Final native fixture assets were rebuilt serially after that build. No shared UI package, portable component resource, Runtime, CLI, SDK, dependency, protocol or persisted-data format changed. Private in-process callback signatures were migrated together. Standalone module suites were not rerun for unchanged sources; the preceding shared-UI results remain historical. No browser suite or performance benchmark was started.
+- Actual final Wails acceptance qualified English/dark/18 px/custom blue in a 1440-point window and Chinese/light/14 px/Flame Orange after native Move & Resize → Left produced a 1122 × 950 CSS viewport. The named editor, field focus and persistent footer remained readable. Edited CJK/English content returned exactly after the typed prefix, with the caret at the message end; post-close typing appended there. A separate large attachment remained intact. Saving blank text removed the last attachment and returned focus to the message. In the light scene, ordinary Save returned to the same chip, reopening showed the saved two-line text, and Cancel/Escape discarded later edits and restored that chip. Keyboard Tab/Return put back an empty review without resurrecting its old body, and Chinese typing continued at the prefix end.
+- Return is qualified after the dialog closes. An automated key burst sent during the existing exit transition did not append; no in-transition keystroke guarantee is claimed. Later-outside-focus and Session/target retirement are composed regressions, not native failure injection. No live Runtime write, Send, resource replacement, OS IME, VoiceOver, rendered pixel-contrast or other-platform qualification occurred. These scenes use the production components and real Wails host over canonical isolated reads.
+- The initial 50,002-line probe overlapped a tool-reported macOS lock. After the native window became available again, the ordinary paths above were qualified. A separate plain native textarea then held the exact **1,188,891-character / 50,002-line** generated text, with direct equality confirmed by read-only diagnostics. Its accessibility tree stayed available; Cmd-Down visibly reached line 49999 and the final blank lines, with the caret at 1,188,891. Escape cleared that disposable field. The final production editor accepted the exact same value but again yielded an empty accessibility tree, and the Escape probe did not restore readable accessibility state. Native Quit eventually exited. This narrows the next investigation; it does not establish a general WebKit textarea limit, a specific application bottleneck or an oversized-editor repair.
+- Both bounded Claude Code CLI implementations completed with actual model `claude-opus-5-5`, no subagents and no permission denials. The primary owned reference research, observed failures, review, final gates and native acceptance. The earlier locked baseline instance was stopped through an audited owned-process SIGTERM; the final instance exited after native Quit. All owned native, CLI, test and build processes exited. The bundle was unregistered, and its acceptance root, fixture/plain control, overlays, production binary, data, diagnostics, CLI reports and logs were removed. Newly created bundle-specific WebKit/cache paths were removed against the pre-launch baseline and birth times; preferences, HTTP storage and saved state were absent. No preview server was started. Shared outputs/compiler caches, read-only reference assets and unrelated worktrees/processes were retained.
+
 For the native hidden-zoom investigation:
 
 - Actual Wails on macOS 26.5 used production components and the canonical read-only Tool-shell fixture in English/dark/18 px/custom blue, at a 1440-point window. Find located captured output line 31415. Visible native zoom from 100% to 150% retained the same output node and 777,329 CSS-pixel position. Entering the fixture's unavailable file main view hid that conversation; it is a valid hiding probe, not qualification of a registered Files workflow. After hidden zoom to 200%, Close and Actual Size returned that same node at 582,997, around line 23555. Its row height and complete content height remained unchanged.
@@ -628,11 +666,13 @@ selecting scope from current source and actual native observations.
 The hidden-zoom investigation is complete at the scope above. Its exact position
 change reproduces without application scrolling code; retain the documented
 platform limitation and revisit it when WebKit behavior changes. The selection
-repair does not fix or claim that condition. Next inspect the separate 50,002-line
-pasted-text preview that temporarily made the native accessibility tree
-unavailable until Escape. Its content and cause remain unqualified; distinguish
-an accessibility-extraction limit from an application failure before changing
-Composer. Do not infer a performance bottleneck from that probe.
+repair does not fix or claim that condition. The ordinary pasted-text return
+repair is now qualified above. Next isolate the oversized preview's difference
+from the working plain textarea: controlled value/default value/text content,
+autosize, modal rendering and native accessibility remain hypotheses, not
+diagnoses. The exact same generated content worked in the plain native control;
+the application preview still lost readable accessibility state. Do not infer
+a performance bottleneck or start a broader Composer rewrite from that probe.
 
 Memory query/draft continuity, original-command observation and main-only source
 retention are now implemented and qualified above. Do not recreate them or make

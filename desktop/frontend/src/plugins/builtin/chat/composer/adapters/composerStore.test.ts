@@ -40,6 +40,20 @@ describe("the composer's drafts", () => {
   });
 });
 
+describe("pasted text", () => {
+  it("reports whether an edited paste is still attached", () => {
+    composer().addPaste("first");
+    composer().addPaste("second");
+    const [first, second] = composer().composer.draft.pastes;
+
+    expect(composer().editPaste(first!.id, "revised")).toBe(true);
+    expect(composer().editPaste(second!.id, " \n ")).toBe(false);
+    expect(composer().composer.draft.pastes).toMatchObject([{ id: first!.id, text: "revised" }]);
+    expect(composer().editPaste("missing", "anything")).toBe(false);
+    expect(composer().composer.draft.pastes).toMatchObject([{ id: first!.id, text: "revised" }]);
+  });
+});
+
 describe("submission binding", () => {
   it("consumes the accepted snapshot without clearing its replacement", () => {
     composer().loadSession("pending");

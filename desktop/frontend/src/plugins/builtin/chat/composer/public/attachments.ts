@@ -27,10 +27,10 @@ export function useRemoveComposerPaste(): (id: string) => void {
   return composerState().useRemovePaste();
 }
 
-export function useEditComposerPaste(): (id: string, text: string) => void {
+export function useEditComposerPaste(): (id: string, text: string) => boolean {
   return composerState().useEditPaste();
 }
 
-export function useRestoreComposerPaste(): (id: string) => void {
+export function useRestoreComposerPaste(): (id: string, text: string) => void {
   return composerState().useRestorePaste();
 }

@@ -28,8 +28,8 @@ interface ComposerActions {
   removeImage: (id: string) => void;
   addPaste: (text: string) => void;
   removePaste: (id: string) => void;
-  editPaste: (id: string, text: string) => void;
-  restorePaste: (id: string) => void;
+  editPaste: (id: string, text: string) => boolean;
+  restorePaste: (id: string, text: string) => void;
   loadSession: (sessionId: string) => void;
   discardSession: (sessionId: string) => void;
   historyPrev: () => boolean;
@@ -114,8 +114,11 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
           ),
         removePaste: (id) =>
           edit((draft) => draft.withPastes(draft.pastes.filter((paste) => paste.id !== id))),
-        editPaste: (id, text) => edit((draft) => draft.editPaste(id, text)),
-        restorePaste: (id) => edit((draft) => draft.restorePaste(id)),
+        editPaste: (id, text) => {
+          edit((draft) => draft.editPaste(id, text));
+          return get().composer.draft.pastes.some((paste) => paste.id === id);
+        },
+        restorePaste: (id, text) => edit((draft) => draft.restorePaste(id, text)),
         loadSession: (sessionId) => set((s) => ({ composer: s.composer.activate(sessionId) })),
         discardSession: (sessionId) => {
           imageStaging.delete(sessionId);

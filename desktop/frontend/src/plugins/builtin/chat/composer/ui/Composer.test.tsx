@@ -1,6 +1,6 @@
 import { type ReactElement, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
 import { COMPOSER_KEY_BINDING, SLASH_COMMAND } from "@/plugins/sdk/kernelPoints";
@@ -8,6 +8,18 @@ import { mountLocaleBundle, setLocale } from "@/lib/i18n";
 import { WORKSPACE_LIST_FILES_KEY } from "@/plugins/builtin/workspace/public/queries";
 import { Composer } from "./Composer";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+import { useComposerStore } from "../adapters/composerStore";
+import {
+  useAddComposerImageFiles,
+  useAddComposerPaste,
+  useComposerImages,
+  useComposerPastes,
+  useEditComposerPaste,
+  useRemoveComposerImage,
+  useRemoveComposerPaste,
+  useRestoreComposerPaste,
+} from "../public/attachments";
+import { captureComposerSubmission, useComposerText, useSetComposerText } from "../public/draft";
 
 vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
   runtimeCommandsAvailable: () => true,
@@ -47,7 +59,7 @@ const baseProps = {
   onAddImages: () => {},
   pastes: [],
   onRemovePaste: () => {},
-  onEditPaste: () => {},
+  onEditPaste: () => true,
   onRestorePaste: () => {},
   onAddPaste: () => {},
   acceptsImages: true,
@@ -289,5 +301,199 @@ describe("composer", () => {
       fireEvent.keyDown(textarea, { key: "Tab" });
       await waitFor(() => expect(textarea.value).toBe("/grep "));
     });
+  });
+});
+
+function DraftComposer() {
+  return (
+    <Composer
+      value={useComposerText()}
+      onChange={useSetComposerText()}
+      captureSubmission={captureComposerSubmission}
+      onSend={() => true}
+      images={useComposerImages()}
+      onRemoveImage={useRemoveComposerImage()}
+      onAddImages={useAddComposerImageFiles()}
+      pastes={useComposerPastes()}
+      onRemovePaste={useRemoveComposerPaste()}
+      onEditPaste={useEditComposerPaste()}
+      onRestorePaste={useRestoreComposerPaste()}
+      onAddPaste={useAddComposerPaste()}
+      acceptsImages
+    />
+  );
+}
+
+describe("reviewing a pasted text", () => {
+  const PASTE = Array.from({ length: 18 }, (_, i) => `第 ${i + 1} 行 · mixed line ${i + 1}`).join(
+    "\n",
+  );
+  const EDITED = "Edited evidence · 修改后正文\nFinal line";
+  const IMAGE = { mime: "image/png", data: "AAAA", name: "shot.png" };
+
+  function draft() {
+    return useComposerStore.getState().composer.draft;
+  }
+
+  function stage(...pastes: string[]) {
+    const store = useComposerStore.getState();
+    store.clear();
+    store.setValue("Typed prefix");
+    store.addImages([IMAGE]);
+    for (const paste of pastes) store.addPaste(paste);
+    wrap(
+      <>
+        <DraftComposer />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+    return screen.getByRole<HTMLTextAreaElement>("textbox");
+  }
+
+  async function review(index = 0) {
+    const chip = screen.getAllByRole("button", { name: "Review pasted text" })[index]!;
+    chip.focus();
+    fireEvent.click(chip);
+    await screen.findByRole("dialog", { name: "Pasted text" });
+    const editor = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Pasted text" });
+    await waitFor(() => expect(document.activeElement).toBe(editor));
+    return { chip, editor };
+  }
+
+  async function closed() {
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  }
+
+  afterEach(() => useComposerStore.getState().clear());
+
+  it("puts the edited text back and lets typing continue after it", async () => {
+    const input = stage(PASTE, "second paste\nkept");
+    const kept = draft().pastes[1]!;
+    const { editor } = await review();
+    fireEvent.change(editor, { target: { value: EDITED } });
+    fireEvent.click(screen.getByRole("button", { name: "Put back in message" }));
+    await closed();
+
+    expect(draft().value).toBe(`Typed prefix\n\n${EDITED}`);
+    expect(draft().pastes).toEqual([kept]);
+    expect(draft().images).toMatchObject([IMAGE]);
+    await waitFor(() => expect(document.activeElement).toBe(input));
+    expect(input.value).toBe(`Typed prefix\n\n${EDITED}`);
+    expect(input.selectionStart).toBe(input.value.length);
+    expect(input.selectionEnd).toBe(input.value.length);
+  });
+
+  it("returns to the composer when the last attachment is put back", async () => {
+    const store = useComposerStore.getState();
+    store.clear();
+    store.setValue("Typed prefix");
+    store.addPaste(PASTE);
+    wrap(<DraftComposer />);
+    const input = screen.getByRole<HTMLTextAreaElement>("textbox");
+    await review();
+    fireEvent.click(screen.getByRole("button", { name: "Put back in message" }));
+    await closed();
+
+    expect(draft().value).toBe(`Typed prefix\n\n${PASTE}`);
+    expect(draft().pastes).toEqual([]);
+    await waitFor(() => expect(document.activeElement).toBe(input));
+    expect(input.selectionStart).toBe(input.value.length);
+  });
+
+  it("does not resurrect the original paste when an emptied review is put back", async () => {
+    const input = stage(PASTE);
+    const { editor } = await review();
+    fireEvent.change(editor, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Put back in message" }));
+    await closed();
+
+    expect(draft().value).toBe("Typed prefix");
+    expect(draft().pastes).toEqual([]);
+    expect(draft().images).toMatchObject([IMAGE]);
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it("discards review edits on Cancel and Escape and returns to the chip", async () => {
+    stage(PASTE);
+    const original = draft();
+    let { chip, editor } = await review();
+    fireEvent.change(editor, { target: { value: EDITED } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await closed();
+    await waitFor(() => expect(document.activeElement).toBe(chip));
+    expect(draft()).toBe(original);
+
+    ({ chip, editor } = await review());
+    expect(editor.value).toBe(PASTE);
+    fireEvent.change(editor, { target: { value: EDITED } });
+    fireEvent.keyDown(editor, { key: "Escape" });
+    await closed();
+    await waitFor(() => expect(document.activeElement).toBe(chip));
+    expect(draft()).toBe(original);
+  });
+
+  it("saves an edit into the chip and returns to it", async () => {
+    stage(PASTE);
+    const { chip, editor } = await review();
+    fireEvent.change(editor, { target: { value: EDITED } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await closed();
+
+    expect(draft().value).toBe("Typed prefix");
+    expect(draft().pastes).toMatchObject([{ text: EDITED, lines: 2 }]);
+    await waitFor(() => expect(document.activeElement).toBe(chip));
+  });
+
+  it("returns to the composer when saving a blank review removes the chip", async () => {
+    const input = stage(PASTE, "second paste\nkept");
+    const kept = draft().pastes[1]!;
+    const { editor } = await review();
+    fireEvent.change(editor, { target: { value: "  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await closed();
+
+    expect(draft().value).toBe("Typed prefix");
+    expect(draft().pastes).toEqual([kept]);
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it.each(["Cancel", "Save", "Put back in message"])(
+    "keeps focus the user moved elsewhere while %s closes the review",
+    async (action) => {
+      stage(PASTE, "second paste\nkept");
+      const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+      await review();
+      fireEvent.click(screen.getByRole("button", { name: action }));
+      expect(screen.queryByRole("dialog")).not.toBeNull();
+      elsewhere.focus();
+      await closed();
+      await act(async () => {});
+
+      expect(document.activeElement).toBe(elsewhere);
+    },
+  );
+
+  it("does not pull focus back when the Session retires an open review", async () => {
+    stage(PASTE);
+    const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+    await review();
+    act(() => {
+      elsewhere.focus();
+      useComposerStore.getState().loadSession("other");
+    });
+    await closed();
+    await act(async () => {});
+
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
+  it("does not focus a composer that left while the review closed", async () => {
+    stage(PASTE, "second paste\nkept");
+    await review();
+    fireEvent.click(screen.getByRole("button", { name: "Put back in message" }));
+    cleanup();
+    await act(async () => {});
+
+    expect(document.activeElement).toBe(document.body);
   });
 });

@@ -46,13 +46,12 @@ export class ComposerDraft {
     );
   }
 
-  restorePaste(id: string): ComposerDraft {
-    const paste = this.pastes.find((candidate) => candidate.id === id);
-    if (!paste) return this;
+  restorePaste(id: string, text: string): ComposerDraft {
+    if (!this.pastes.some((paste) => paste.id === id)) return this;
     return new ComposerDraft(
-      joinDraftParts([this.value.trimEnd(), paste.text]),
+      text.trim() ? joinDraftParts([this.value.trimEnd(), text]) : this.value,
       this.images,
-      this.pastes.filter((candidate) => candidate.id !== id),
+      this.pastes.filter((paste) => paste.id !== id),
     );
   }
 }

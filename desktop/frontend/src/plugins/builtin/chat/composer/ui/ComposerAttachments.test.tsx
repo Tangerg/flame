@@ -17,6 +17,7 @@ it("distinguishes referenced file types and still removes the selected reference
       onRemovePaste={vi.fn()}
       onEditPaste={vi.fn()}
       onRestorePaste={vi.fn()}
+      composerInput={{ current: null }}
     />,
   );
   const chips = [...view.container.querySelectorAll('[data-slot="chip"]')];

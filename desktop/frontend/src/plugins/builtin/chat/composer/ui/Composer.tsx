@@ -26,8 +26,8 @@ interface Props {
   onAddImages: (files: File[]) => void;
   pastes: readonly PastedText[];
   onRemovePaste: (id: string) => void;
-  onEditPaste: (id: string, text: string) => void;
-  onRestorePaste: (id: string) => void;
+  onEditPaste: (id: string, text: string) => boolean;
+  onRestorePaste: (id: string, text: string) => void;
   onAddPaste: (text: string) => void;
   acceptsImages: boolean;
 }
@@ -100,6 +100,7 @@ export function Composer({
           onRemovePaste={onRemovePaste}
           onEditPaste={onEditPaste}
           onRestorePaste={onRestorePaste}
+          composerInput={inputRef}
         />
         <TextArea
           variant="bare"

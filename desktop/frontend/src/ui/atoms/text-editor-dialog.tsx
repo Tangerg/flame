@@ -1,4 +1,5 @@
 import {
+  type ComponentProps,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -32,6 +33,7 @@ interface TextEditorDialogProps {
   onSave: () => void;
   font?: "sans" | "mono";
   secondaryAction?: { label: string; onClick: () => void };
+  finalFocus?: ComponentProps<typeof ModalDialog>["finalFocus"];
 }
 
 export function TextEditorDialog({
@@ -52,6 +54,7 @@ export function TextEditorDialog({
   onSave,
   font = "sans",
   secondaryAction,
+  finalFocus,
 }: TextEditorDialogProps) {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -78,6 +81,7 @@ export function TextEditorDialog({
       icon={icon}
       closeLabel={closeLabel}
       initialFocus={editorRef}
+      finalFocus={finalFocus}
       onSubmit={submit}
       slot="text-editor-dialog"
       backdropSlot="text-editor-backdrop"

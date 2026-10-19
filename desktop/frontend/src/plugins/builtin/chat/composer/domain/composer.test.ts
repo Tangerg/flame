@@ -97,13 +97,29 @@ describe("ComposerDraft pastes", () => {
   });
 
   it("puts a paste back into the message the way it would have been sent", () => {
-    const restored = withPaste.restorePaste("p1");
+    const restored = withPaste.restorePaste("p1", "line 1\nline 2");
     expect(restored.pastes).toEqual([]);
     expect(restored.value).toBe("explain this\n\nline 1\nline 2");
   });
 
+  it("puts back the reviewed text and leaves every other attachment", () => {
+    const image = { id: "i1", mime: "image/png", data: "AAAA" };
+    const other = { id: "p2", text: "keep me", lines: 1 };
+    const draft = withPaste.withImages([image]).withPastes([...withPaste.pastes, other]);
+    const restored = draft.restorePaste("p1", "Edited evidence · 修改后正文\nFinal line");
+    expect(restored.value).toBe("explain this\n\nEdited evidence · 修改后正文\nFinal line");
+    expect(restored.pastes).toEqual([other]);
+    expect(restored.images).toEqual([image]);
+  });
+
+  it("puts back an emptied review as nothing rather than the original paste", () => {
+    const restored = withPaste.withValue("explain this ").restorePaste("p1", " \n ");
+    expect(restored.pastes).toEqual([]);
+    expect(restored.value).toBe("explain this ");
+  });
+
   it("ignores a paste it does not hold", () => {
-    expect(withPaste.restorePaste("missing")).toBe(withPaste);
+    expect(withPaste.restorePaste("missing", "anything")).toBe(withPaste);
   });
 });
 
