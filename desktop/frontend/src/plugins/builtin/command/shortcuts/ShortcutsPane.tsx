@@ -253,6 +253,8 @@ export function ShortcutsPane() {
           disabled={recordingActive}
           value={query}
           onValueChange={setQuery}
+          onClear={() => setQuery("")}
+          clearLabel={t("settings.search.clear")}
           placeholder={t("shortcuts.filter")}
           aria-label={t("shortcuts.filterAria")}
         />

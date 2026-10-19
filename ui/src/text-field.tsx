@@ -1,6 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
-import { useCallback, useLayoutEffect, useRef } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  type KeyboardEvent,
+} from "react";
 import type { IconSize } from "./font-scale";
 import { clsx as cn } from "clsx";
 import {
@@ -15,6 +20,7 @@ import {
 import { Icon, useFontSize } from "./font-scale";
 import { Search, X } from "@flame/icons/react";
 import { Button } from "./button";
+import { isImeKey } from "./keyboard";
 import { FIELD_SIZE, FIELD_SURFACE } from "./control-surface";
 import { WELL_SURFACE } from "./well-surface";
 import {
@@ -322,6 +328,7 @@ export function SearchField({
   className,
   styles: extra,
   ref,
+  onKeyDown,
   ...props
 }: SearchFieldProps) {
   const element = useRef<HTMLElement>(null);
@@ -333,6 +340,27 @@ export function SearchField({
     },
     [ref],
   );
+  // A nonempty query owns Escape before any enclosing navigation; only an
+  // empty field lets it reach the host. Without onClear the browser's native
+  // search cancel performs the clear, so its default must survive.
+  const clearOnEscape = (event: KeyboardEvent<HTMLElement>) => {
+    if (
+      event.key !== "Escape" ||
+      event.defaultPrevented ||
+      event.isPropagationStopped() ||
+      isImeKey(event.nativeEvent) ||
+      props.value === "" ||
+      props.disabled ||
+      props.readOnly ||
+      props.pending
+    )
+      return;
+    event.stopPropagation();
+    if (!onClear) return;
+    event.preventDefault();
+    onClear();
+    element.current?.focus();
+  };
   const box = stylex.props(
     FIELD_SURFACE.face,
     FIELD_SIZE[size],
@@ -348,7 +376,14 @@ export function SearchField({
         {...stylex.props(styles.glyph)}
       />
       <TextField
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         {...props}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          clearOnEscape(event);
+        }}
         ref={setElement}
         type="search"
         variant="bare"
@@ -365,6 +400,7 @@ export function SearchField({
             onClear();
             element.current?.focus();
           }}
+          onKeyDown={clearOnEscape}
           disabled={props.disabled || props.readOnly}
           pending={props.pending}
           aria-label={clearLabel}

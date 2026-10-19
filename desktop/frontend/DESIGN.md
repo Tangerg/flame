@@ -80,6 +80,12 @@ Flame keeps StyleX, Base UI, its own tokens and Runtime ownership.
   source; a separate directory command remains available. Escape dismisses a
   transient layer before unwinding the path the user took. Focus follows that
   path and remains with the current reader during background updates.
+- Search is a local task within that path. Queries retain the user's literal
+  text, including paths and identifiers. In a nonempty editable filter, Escape
+  clears the query and keeps input focus; an empty filter lets the enclosing
+  navigation handle it. A bounded Find task instead closes back to its reader.
+  Composition keystrokes do not clear, close or navigate, and a caller that
+  already handled the key retains ownership.
 - Settings, plugin resources and inline editors share the semantic layout roles
   for card insets, row padding, field labels and content gaps. Compact page gutters
   also bound modals. Translated field labels keep their intrinsic height; they do

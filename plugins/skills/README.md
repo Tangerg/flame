@@ -30,7 +30,8 @@ document's accepted read with an explicit label. A first failure names the docum
 and claims no retained content. Explicit entry focuses the document heading; a read
 completing later never moves focus. Back or Escape inside the document restores the
 catalog scroll and focuses the opening row, or the catalog search when a canonical
-read removed that row. Escape in the catalog belongs to the host.
+read removed that row. Escape in a nonempty catalog search clears that query in
+place; otherwise Escape in the catalog belongs to the host.
 
 Proposal confirmation captures the full inspected instructions and revision.
 Escape cancels that local review and returns focus to its action before the host

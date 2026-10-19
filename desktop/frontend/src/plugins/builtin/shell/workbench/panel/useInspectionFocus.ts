@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { isImeKey } from "@flame/ui";
 import {
   returnFromWorkspaceInspection,
   useWorkspaceInspection,
@@ -110,7 +111,7 @@ export function useInspectionFocus({
       !inspection ||
       event.key !== "Escape" ||
       event.defaultPrevented ||
-      event.nativeEvent.isComposing ||
+      isImeKey(event.nativeEvent) ||
       !event.currentTarget.contains(event.target as Node)
     )
       return;

@@ -305,6 +305,8 @@ export function Usage({ context }: { context: ComponentContext }) {
                 placeholder="Find a source"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
+                onClear={() => setFilter("")}
+                clearLabel="Clear filter"
               />
             }
           >

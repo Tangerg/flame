@@ -1,8 +1,7 @@
-import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useRef, useState } from "react";
 import { SystemMessage } from "@/ui";
-import { TextField, vocab } from "@flame/ui";
+import { isImeKey, TextField, vocab } from "@flame/ui";
 import { useActiveSession, useRelocateSession } from "@/plugins/builtin/agent/public/session";
 import { BannerAction } from "./BannerAction";
 import { useT } from "@/lib/i18n";

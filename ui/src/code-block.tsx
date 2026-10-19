@@ -11,6 +11,7 @@ import {
 import { ARTIFACT_SURFACE } from "./artifact-surface";
 import { useCopyFeedback } from "./clipboard";
 import { IconButton } from "./icon-button";
+import { isImeKey } from "./keyboard";
 import { color, leading, space, type, weight } from "./tokens.stylex";
 
 let wrapCode = false;
@@ -219,7 +220,7 @@ export function CodeBody({
       onKeyDown={(event) => {
         if (
           event.defaultPrevented ||
-          event.nativeEvent.isComposing ||
+          isImeKey(event.nativeEvent) ||
           event.altKey ||
           event.shiftKey ||
           (!event.ctrlKey && !event.metaKey) ||

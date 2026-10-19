@@ -1,7 +1,7 @@
-import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
+import { isImeKey } from "@flame/ui";
 import { DialogPrimitive } from "@flame/ui/primitives";
 import { Icon } from "@/ui/icons";
 import { MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";

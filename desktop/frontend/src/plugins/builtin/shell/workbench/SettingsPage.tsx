@@ -1,9 +1,8 @@
-import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode, Ref } from "react";
 import { Suspense, useRef, useState } from "react";
 import { knownIconName, SkeletonList, TextButton, VerticalTabs } from "@/ui";
-import { Panel, PanelHeader, SearchField } from "@flame/ui";
+import { isImeKey, Panel, PanelHeader, SearchField } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
 import {
@@ -160,10 +159,6 @@ function SettingsRailHeader({
         onClear={() => onQueryChange("")}
         clearLabel={t("settings.search.clear")}
         onKeyDown={(event) => {
-          if (event.key === "Escape" && query) {
-            event.preventDefault();
-            onQueryChange("");
-          }
           if (event.key === "Enter" && !isImeKey(event.nativeEvent)) onSubmit();
         }}
         placeholder={searchPlaceholder}

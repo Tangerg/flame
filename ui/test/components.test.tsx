@@ -5,7 +5,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FormEvent } from "react";
 import { createRef, useState } from "react";
 import { Brain } from "@flame/icons/react";
@@ -35,6 +35,7 @@ import {
   ModalDialog,
   RecordForm,
   SearchField,
+  type SearchFieldProps,
   Segmented,
   Select,
   TextArea,
@@ -106,6 +107,25 @@ describe("recorded code", () => {
     expect(document.activeElement).toBe(second);
     document.getSelection()?.removeAllRanges();
   });
+
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    "does not replace the selection during composition %o",
+    (composition) => {
+      render(<CodeBlock label="Captured source">{"recorded text"}</CodeBlock>);
+      const reader = screen.getByRole("region", { name: "Captured source" });
+      document.getSelection()?.removeAllRanges();
+      reader.focus();
+      expect(
+        fireEvent.keyDown(reader, {
+          key: "a",
+          metaKey: true,
+          ...composition,
+        }),
+      ).toBe(true);
+      expect(document.getSelection()?.toString()).toBe("");
+      expect(document.activeElement).toBe(reader);
+    },
+  );
 
   it("keeps the caption outside the literal keyboard-scrollable source", () => {
     const source =
@@ -757,6 +777,141 @@ describe("search field mutation contract", () => {
     expect(screen.getByRole("button", { name: "Clear search" })).toBeTruthy();
     view.rerender(<SearchField {...props} value="" />);
     expect(screen.queryByRole("button", { name: "Clear search" })).toBeNull();
+  });
+});
+
+describe("search field keyboard contract", () => {
+  const host = vi.fn();
+  beforeEach(() => {
+    host.mockClear();
+    document.addEventListener("keydown", host);
+  });
+  afterEach(() => document.removeEventListener("keydown", host));
+
+  function Search({
+    onClear,
+    onKeyDown,
+  }: {
+    onClear?: () => void;
+    onKeyDown?: SearchFieldProps["onKeyDown"];
+  }) {
+    const [query, setQuery] = useState("found");
+    return (
+      <SearchField
+        value={query}
+        onValueChange={setQuery}
+        onKeyDown={onKeyDown}
+        onClear={() => {
+          onClear?.();
+          setQuery("");
+        }}
+        clearLabel="Clear search"
+        aria-label="Search"
+      />
+    );
+  }
+  const field = () =>
+    screen.getByRole<HTMLInputElement>("searchbox", { name: "Search" });
+
+  it("treats the query as literal text unless the caller opts in", () => {
+    const view = render(<SearchField value="" aria-label="Search" readOnly />);
+    expect(field().getAttribute("autocapitalize")).toBe("none");
+    expect(field().getAttribute("autocorrect")).toBe("off");
+    expect(field().getAttribute("spellcheck")).toBe("false");
+    view.rerender(
+      <SearchField value="" aria-label="Search" readOnly spellCheck />,
+    );
+    expect(field().getAttribute("spellcheck")).toBe("true");
+  });
+
+  it("clears a query in place and lets the next Escape reach its host", () => {
+    const clear = vi.fn();
+    render(<Search onClear={clear} />);
+    const input = field();
+    input.focus();
+    expect(fireEvent.keyDown(input, { key: "Escape" })).toBe(false);
+    expect(clear).toHaveBeenCalledOnce();
+    expect(input.value).toBe("");
+    expect(document.activeElement).toBe(input);
+    expect(host).not.toHaveBeenCalled();
+    expect(fireEvent.keyDown(input, { key: "Escape" })).toBe(true);
+    expect(clear).toHaveBeenCalledOnce();
+    expect(host).toHaveBeenCalledOnce();
+  });
+
+  it("restores the input when Escape clears from the clear control", () => {
+    const clear = vi.fn();
+    render(<Search onClear={clear} />);
+    const button = screen.getByRole("button", { name: "Clear search" });
+    button.focus();
+    fireEvent.keyDown(button, { key: "Escape" });
+    expect(clear).toHaveBeenCalledOnce();
+    expect(field().value).toBe("");
+    expect(document.activeElement).toBe(field());
+    expect(screen.queryByRole("button", { name: "Clear search" })).toBeNull();
+    expect(host).not.toHaveBeenCalled();
+  });
+
+  it("leaves an Escape the caller handled to the caller", () => {
+    const clear = vi.fn();
+    const keyDown = vi.fn<NonNullable<SearchFieldProps["onKeyDown"]>>((event) =>
+      event.preventDefault(),
+    );
+    render(<Search onClear={clear} onKeyDown={keyDown} />);
+    fireEvent.keyDown(field(), { key: "Escape" });
+    expect(keyDown).toHaveBeenCalledOnce();
+    expect(clear).not.toHaveBeenCalled();
+    expect(field().value).toBe("found");
+  });
+
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    "leaves IME cancellation to the composition %o",
+    (composition) => {
+      const clear = vi.fn();
+      render(<Search onClear={clear} />);
+      expect(
+        fireEvent.keyDown(field(), { key: "Escape", ...composition }),
+      ).toBe(true);
+      expect(clear).not.toHaveBeenCalled();
+      expect(field().value).toBe("found");
+    },
+  );
+
+  it.each(["disabled", "readOnly", "pending"] as const)(
+    "does not consume Escape while %s",
+    (state) => {
+      const clear = vi.fn();
+      render(
+        <SearchField
+          value="fixed"
+          aria-label="Search"
+          onChange={() => {}}
+          onClear={clear}
+          clearLabel="Clear search"
+          {...{ [state]: true }}
+        />,
+      );
+      for (const target of [
+        field(),
+        screen.getByRole("button", { name: "Clear search" }),
+      ])
+        expect(fireEvent.keyDown(target, { key: "Escape" })).toBe(true);
+      expect(clear).not.toHaveBeenCalled();
+      expect(host).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("keeps a native-only query's Escape local without replacing the browser clear", () => {
+    const view = render(
+      <SearchField value="found" aria-label="Search" onChange={() => {}} />,
+    );
+    expect(fireEvent.keyDown(field(), { key: "Escape" })).toBe(true);
+    expect(host).not.toHaveBeenCalled();
+    view.rerender(
+      <SearchField value="" aria-label="Search" onChange={() => {}} />,
+    );
+    fireEvent.keyDown(field(), { key: "Escape" });
+    expect(host).toHaveBeenCalledOnce();
   });
 });
 

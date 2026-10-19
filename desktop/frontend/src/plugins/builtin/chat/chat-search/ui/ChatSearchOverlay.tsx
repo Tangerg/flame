@@ -1,8 +1,7 @@
 import { iconGlyph } from "@/ui/icons";
-import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
-import { IconButton, TextField, vocab } from "@flame/ui";
+import { IconButton, isImeKey, TextField, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { clearChatSearchHighlights, paintChatSearchHighlights } from "../adapters/searchHighlights";

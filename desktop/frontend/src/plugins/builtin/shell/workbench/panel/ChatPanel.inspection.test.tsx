@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
+import { SearchField } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceViewSpec } from "@/plugins/sdk";
 import { navigator } from "@/lib/navigation";
@@ -93,6 +94,51 @@ afterEach(() => {
 });
 
 describe("material inspection focus", () => {
+  function FilteredMaterial() {
+    const [query, setQuery] = useState("src/main");
+    return (
+      <SearchField
+        value={query}
+        onValueChange={setQuery}
+        onClear={() => setQuery("")}
+        clearLabel="Clear filter"
+        aria-label="Filter material"
+      />
+    );
+  }
+
+  it("clears the local search before returning an inspected material to its source", () => {
+    model.views[0] = { ...model.views[0]!, component: FilteredMaterial };
+    render(<ChatPanel onSend={() => true} />);
+    const source = screen.getByRole("button", { name: "src/main.ts:4" });
+    act(() => source.focus());
+    fireEvent.click(source);
+    const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter material" });
+    act(() => filter.focus());
+    fireEvent.keyDown(filter, { key: "Escape" });
+    expect(filter.value).toBe("");
+    expect(document.activeElement).toBe(filter);
+    expect(screen.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
+    fireEvent.keyDown(filter, { key: "Escape" });
+    expect(screen.queryByRole("button", { name: "Back to conversation" })).toBeNull();
+    expect(document.activeElement).toBe(source);
+  });
+
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    "preserves the active search and inspection during IME cancellation %o",
+    (composition) => {
+      model.views[0] = { ...model.views[0]!, component: FilteredMaterial };
+      render(<ChatPanel onSend={() => true} />);
+      fireEvent.click(screen.getByRole("button", { name: "src/main.ts:4" }));
+      const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter material" });
+      act(() => filter.focus());
+      fireEvent.keyDown(filter, { key: "Escape", ...composition });
+      expect(filter.value).toBe("src/main");
+      expect(document.activeElement).toBe(filter);
+      expect(screen.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
+    },
+  );
+
   it("returns through nested task and file inspections to the original conversation control", () => {
     render(<ChatPanel onSend={() => true} />);
     const source = screen.getByRole("button", { name: "Inspect task" });

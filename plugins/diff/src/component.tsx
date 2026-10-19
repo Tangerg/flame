@@ -27,6 +27,7 @@ import {
   EmptyState,
   Icon,
   IconButton,
+  isImeKey,
   Metadata,
   Panel,
   PanelHeader,
@@ -210,7 +211,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         if (
           event.key !== "Escape" ||
           event.defaultPrevented ||
-          event.nativeEvent.isComposing ||
+          isImeKey(event.nativeEvent) ||
           !file ||
           selection.view !== "file" ||
           selection.returnTo !== "files"
@@ -348,6 +349,8 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               placeholder="Find a changed file"
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
+              onClear={() => setFilter("")}
+              clearLabel="Clear filter"
               disabled={!accepted}
             />
           )}

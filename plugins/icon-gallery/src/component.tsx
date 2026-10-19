@@ -55,6 +55,8 @@ export function Gallery() {
               placeholder="Name or category"
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
+              onClear={() => setFilter("")}
+              clearLabel="Clear filter"
             />
           }
         >

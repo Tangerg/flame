@@ -550,6 +550,8 @@ export function Trajectory({ context }: { context: ComponentContext }) {
               placeholder="Recorded text or ID"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
+              onClear={() => setSearch("")}
+              clearLabel="Clear filter"
             />
           }
           actions={

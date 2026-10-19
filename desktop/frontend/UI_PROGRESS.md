@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-19. The current Skills batch started from clean local and remote `main` at `c59e7f470`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-19. The current search/keyboard batch started from clean local and remote `main` at `863e4b62f`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -11,6 +11,10 @@ The shared presentation foundation and the reading and navigation paths have bee
 This continuation has improved the shared reading hierarchy and file-inspection path, repaired the native Dock background and boundary reports, unified main/delegated message rendering, made tool outcomes visible before opening their details, established a shared material-entry and return flow, unified the searchable Dock directory, picker and full-view entry, and repaired keyboard-reading breaks in captured tool evidence. Diff has a scope-first file overview and a single-file reader, preserves the actual entry path when returning, and separates comparison scope from local filtering; Usage likewise separates report range from source filtering. Task links and nested task/file inspection already use the shared source-return owner. Historical paused or blocked statuses in earlier chats do not describe this work.
 
 The Diff/Usage batch is committed and pushed at `c59e7f470`. The latest verified path is Skills catalog → instructions → catalog, with separate compositions for available documents, personal library management and proposal review. The original query loss, incorrect entry focus, document filtering and repeated disclosure have been repaired and checked in actual Wails scenes. Continue the remaining page and input-task reviews from these owners rather than rebuilding these flows.
+
+The Skills batch is committed and pushed at `863e4b62f`. Search/keyboard ownership is now repaired and verified: literal local filters clear before returning an inspection, while bounded output Find closes back to its reader. The old isolated Wails build reproduced the original query/context loss; the final native build preserves the query spelling, focus and actual return path. Continue from these shared owners rather than adding page-specific Escape branches.
+
+The user's latest report concerns some components appearing identical under Default and Soft corners. The settings values are distinct (`1` and `1.4`); component geometry and shape consumption still need inspection. This is the next active review, not a verified fix or a reason to redesign the approved brand.
 
 The original checkout is `/Users/tangerg/Desktop/flame`, on branch `main`. All former local and remote branch tips were checked for ancestry before consolidation; their commits are retained in `main`. Only `main` remains locally and on `origin`. Read current Git state before starting; this document is a checkpoint, not an authority that can overwrite newer work.
 
@@ -74,6 +78,12 @@ Skills review traced ZCode's actual `settings/SkillsSection.tsx` and ChatGPT's
 `details-73eaf369a9c5.js`. Both retain the directory beneath a named document and
 make failed document reads distinct from an empty catalog. Flame keeps that
 continuity within its persistent Dock rather than adding another dialog.
+
+Search review traced ZCode's `settings/SettingsSearchInput.tsx` for named local
+clear actions and ChatGPT's
+`keyboard-shortcuts-search-input-3e66fb0894a8.js` for caller-first keyboard handling
+and nonempty-query Escape before outer navigation. Flame applies those priorities
+to its shared controlled field, with composition protection at the field and host.
 
 For color-system work, retain the user's [Radix Colors](https://www.radix-ui.com/colors) and [HeroUI colors](https://heroui.com/en/docs/react/getting-started/colors) references. The default brand color is **Flame Orange `#FB6E30`**; users can choose their own interface accent through the existing theme owner. Approved brand artwork retains its original color. Avoid recreating the palette, appearance store or brand identity.
 
@@ -253,7 +263,32 @@ a second blue outline inside the catalog search field during keyboard navigation
 the final native review confirmed a single field edge and the ordinary semantic
 ring on the Dock return button.
 
+`SearchField` owns literal query defaults and local Escape clearing. Nonempty
+editable queries clear through the existing `onClear` callback and retain input
+focus, including when Escape starts on the clear action. Empty queries leave
+enclosing navigation available. Native-only fields preserve the browser's default
+clear rather than synthesizing input events. Explicitly handled keys and blocked
+mutation states retain their previous owners. Actual portable filters and shortcut
+search now provide the explicit clear callback and name; Settings no longer
+duplicates this keyboard rule.
+
+`ui/src/keyboard.ts` owns the shared `isComposing`/legacy keyCode 229 predicate.
+Dock return, Diff/Skills local navigation and the former frontend helper's consumers
+use it; the retired `src/lib/ime.ts` is removed. The stable code reader uses the
+same predicate without changing its scoped literal Select All behavior. Recorded
+output Find remains a bounded task: its owner captures Escape to close back to the
+output, while Enter/Shift+Enter cycle matches outside composition.
+
 ## Verification checkpoint
+
+For literal search and local keyboard tasks:
+
+- Shared UI `npm run check` passed all 50 tests and the independently packed UI/icons consumer. Portable build/check passed all ten exact ESM resources. The 44 focused Dock, captured-result, Diff and Skills regressions passed. The two original failing Dock cases now pass; the existing assertions for disabled/read-only/pending mutation, callback-ref cleanup, literal selection and source returns remain intact.
+- The final frontend `VITEST_MAX_WORKERS=2 npm run check` passed 377 test files and 2760 tests, followed by unused-code, boundary, style/token, locale, bootstrap, resource, bundle and production-module gates. The test run emitted non-failing loopback `ECONNREFUSED` diagnostics; no product cause or repair is claimed for that output. The supported production Wails arm64 build passed and `vtool` confirmed macOS 13.0. Go, Runtime, CLI, SDK and dependency sources are unchanged.
+- In the old Wails build, entering `session` in an inspection's changed-file search and pressing Escape returned focus to the conversation's change-count entry, retained the query and changed it to `Session` through native correction. The final Chinese/light/14 px/Flame Orange build instead clears the query, keeps the input and return action, and returns to the actual source only on the next empty Escape. Blur preserves literal spelling. Tab reaches the named clear button; Escape there clears once and restores input focus.
+- English/dark/18 px/custom blue acceptance included a normal 1440 px window, an approximately 1120 px window and a pointer-resized 320 px Dock. Complete long-path query values, clear controls, count summaries and wrapping file identities stayed available. Pointer clearing allows continued typing; entering one matching file and local Escape restores the retained query and current row. Settings search also cleared locally and kept focus without leaving Settings.
+- Actual Wails output Find was checked against the existing 50,000-line captured-output scene. Enter advanced a match and Shift+Enter returned; Escape from either a nonempty query or its focused clear button closed Find and restored the named output reader. Composition variants are covered by unit regressions; no OS input method was changed and no native IME coverage is claimed. The canonical in-memory fixture and production components ran in a real Wails host, without a live user Runtime. No browser/visual suite or performance benchmark was run.
+- The native app exited. Its owned preview, disposable data, bundle, binaries, logs, fixture output and WebKit caches were removed. Reference caches and unrelated resources remain intact.
 
 For Skills catalog, document and proposal tasks:
 
@@ -358,7 +393,7 @@ These checks cover the changed contracts and representative native scenarios. Th
 3. **Refine the remaining Dock forms.** File identity/actions and delegated message reuse, overview continuity and return focus are established. Continue with richer tool details and cross-view navigation: decide which details belong inline or in a persistent pane, and reserve popovers/dialogs for genuinely bounded tasks. Keep the user-requested sidebar-matching divider unchanged, including hover and drag.
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.
 5. **Continue across other pages.** Apply the recorded task map to settings, installed plugin pages, forms, resource lists and dialogs, checking location, scope, current-object actions and the actual return path. Retain the approved brand and the implemented Composer contracts while checking how the surrounding surfaces fit them.
-6. **Inspect literal search and Escape layers.** Native macOS text correction changed the capitalization of a Skills query on blur. Reproduce whether coded searches or local Escape lose task context before choosing a fix. This is a review candidate, not a classified product defect.
+6. **Inspect the reported corner-setting overlap.** The user reports Default and Soft looking identical on some components. The saved settings use distinct scales; inspect actual shape consumption and component geometry, then reproduce and repair the responsible owner. Preserve deliberate circles and pills, the approved brand and current task flows.
 
 These are future review candidates, not unverified defects or required rewrites. Build each next coherent batch from observed problems while the current goal remains active. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 

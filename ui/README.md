@@ -212,6 +212,16 @@ layout hosts include that floor in their geometry.
 `SearchField` requires a controlled string value. Its input and clear action obey
 the same disabled, read-only and pending constraints. Its explicit clear action
 returns focus to the input and replaces the browser's native cancel action.
+The query is literal text: capitalization, autocorrection and spellcheck are off
+unless the caller passes those native props. The caller's `onKeyDown` runs first
+and keeps any key it handles. An unhandled Escape over an editable, nonempty query
+then belongs to the field, from the input or its clear action: it clears through
+`onClear`, keeps input focus and does not reach enclosing navigation. Without
+`onClear`, the field still keeps that Escape local and leaves the browser's native
+search clearing in place. Escape in an empty or immutable field, and any key during
+IME composition, reaches the host. A bounded task that closes on Escape claims it
+in capture on its own owner. `isImeKey` is the shared composition test for
+`isComposing` and the legacy `keyCode` 229.
 `IconButton` requires either
 `aria-label` or `aria-labelledby`; `title` only overrides the tooltip. `DiffTable`
 requires consumer-supplied region and column labels, including assistive text.

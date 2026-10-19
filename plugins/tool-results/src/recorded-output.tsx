@@ -15,6 +15,7 @@ import {
   CodeCaption,
   CodeFrame,
   IconButton,
+  isImeKey,
   SearchField,
   type CodeActionLabels,
 } from "@flame/ui";
@@ -68,9 +69,21 @@ export function FindField({
   onEnter?: (backward: boolean) => void;
 }) {
   return (
+    // Find is a bounded task: Escape closes it even over a query, so the
+    // close runs in capture before the field's own clear-on-Escape.
     <div
       role="search"
       aria-label={label}
+      onKeyDownCapture={(event) => {
+        if (
+          event.key !== "Escape" ||
+          event.defaultPrevented ||
+          isImeKey(event.nativeEvent)
+        )
+          return;
+        event.preventDefault();
+        onClose();
+      }}
       style={{
         display: "flex",
         flex: "1 1 14rem",
@@ -90,11 +103,11 @@ export function FindField({
           onClear={() => onChange("")}
           clearLabel="Clear search"
           onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.preventDefault();
-              onClose();
-            }
-            if (event.key === "Enter" && onEnter) {
+            if (
+              event.key === "Enter" &&
+              onEnter &&
+              !isImeKey(event.nativeEvent)
+            ) {
               event.preventDefault();
               onEnter(event.shiftKey);
             }

@@ -176,6 +176,48 @@ it("finds visible literal control sequences in captured instructions", () => {
   expect(result.querySelector("p")?.textContent).toBe(source);
 });
 
+it.each(["searchbox", "clear"] as const)(
+  "closes bounded Find over a query on Escape from its %s and leaves IME cancellation alone",
+  (control) => {
+    render(<RecordedResult context={capturedContext("read", "alpha\nbeta")} />);
+    const result = screen.getByRole("region", { name: "Result" });
+    fireEvent.click(screen.getByRole("button", { name: "Find" }));
+    const field = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter result" });
+    fireEvent.change(field, { target: { value: "alpha" } });
+    expect(result.textContent).not.toContain("beta");
+    const target =
+      control === "searchbox" ? field : screen.getByRole("button", { name: "Clear search" });
+    fireEvent.keyDown(target, { key: "Escape", keyCode: 229 });
+    expect(field.value).toBe("alpha");
+    fireEvent.keyDown(target, { key: "Escape" });
+    expect(screen.queryByRole("searchbox", { name: "Filter result" })).toBeNull();
+    expect(document.activeElement).toBe(result);
+    expect(result.textContent).toContain("beta");
+  },
+);
+
+it("cycles output matches with Enter and leaves an IME Enter to the composition", () => {
+  document.documentElement.style.setProperty("--leading-relaxed", "20px");
+  vi.spyOn(globalThis, "requestAnimationFrame").mockReturnValue(0);
+  const output = Array.from({ length: 12 }, (_, index) => `line ${index}`).join("\n");
+  render(<RecordedResult context={capturedContext("shell", output)} />);
+  fireEvent.click(screen.getByRole("button", { name: "Show 3 earlier lines · 12 total" }));
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  const field = screen.getByRole("searchbox", { name: "Find in output" });
+  fireEvent.change(field, { target: { value: "line" } });
+  expect(screen.getByText("1 of 12")).toBeTruthy();
+  fireEvent.keyDown(field, { key: "Enter", isComposing: true });
+  fireEvent.keyDown(field, { key: "Enter", keyCode: 229 });
+  expect(screen.getByText("1 of 12")).toBeTruthy();
+  fireEvent.keyDown(field, { key: "Enter" });
+  expect(screen.getByText("2 of 12")).toBeTruthy();
+  fireEvent.keyDown(field, { key: "Enter", shiftKey: true });
+  expect(screen.getByText("1 of 12")).toBeTruthy();
+  fireEvent.keyDown(field, { key: "Escape" });
+  expect(screen.queryByRole("search", { name: "Output search" })).toBeNull();
+  expect(document.activeElement).toBe(screen.getByRole("region", { name: "Tool output" }));
+});
+
 it("decodes skill summary entities once, keeps descriptions inert and reports truncation", () => {
   const source = [
     "<available_skills>",

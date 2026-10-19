@@ -521,6 +521,8 @@ export function Memory({ context }: { context: ComponentContext }) {
                 placeholder="Text or ID on this page"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                onClear={() => setSearch("")}
+                clearLabel="Clear search"
               />
             }
           >

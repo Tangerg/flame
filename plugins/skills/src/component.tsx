@@ -39,6 +39,7 @@ import {
   EmptyState,
   Facts,
   Icon,
+  isImeKey,
   ListRow,
   Metadata,
   PanelTitle,
@@ -515,7 +516,7 @@ export function Skills({ context }: { context: ComponentContext }) {
         if (
           event.key !== "Escape" ||
           event.defaultPrevented ||
-          event.nativeEvent.isComposing ||
+          isImeKey(event.nativeEvent) ||
           (!opened && !review)
         )
           return;
@@ -590,6 +591,8 @@ export function Skills({ context }: { context: ComponentContext }) {
                   placeholder="Name or description"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
+                  onClear={() => setSearch("")}
+                  clearLabel="Clear search"
                 />
               }
               actions={

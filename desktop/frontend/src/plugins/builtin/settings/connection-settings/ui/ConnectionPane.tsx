@@ -1,8 +1,7 @@
-import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { StatusDot } from "@/ui";
-import { Button, FormActions, FormField, TextField, vocab } from "@flame/ui";
+import { Button, FormActions, FormField, isImeKey, TextField, vocab } from "@flame/ui";
 import { useT, type Translate } from "@/lib/i18n";
 import {
   applyRuntimeEndpoint,

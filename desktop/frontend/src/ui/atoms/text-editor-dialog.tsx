@@ -1,4 +1,3 @@
-import { isImeKey } from "@/lib/ime";
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -7,7 +6,7 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { Button, FormField, ModalDialog, TextArea } from "@flame/ui";
+import { Button, FormField, isImeKey, ModalDialog, TextArea } from "@flame/ui";
 import * as stylex from "@stylexjs/stylex";
 import { SystemMessage } from "./system-message";
 

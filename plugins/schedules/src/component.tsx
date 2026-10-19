@@ -418,6 +418,8 @@ export function Schedules({ context }: { context: ComponentContext }) {
               placeholder="Title or instructions"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
+              onClear={() => setSearch("")}
+              clearLabel="Clear search"
             />
           }
           actions={

@@ -29,6 +29,9 @@ past the new evidence or dropping it when the continuation button disappears.
 Output search identifies the current matching line with the
 shared search treatment; Enter and Shift+Enter cycle matching lines. Clear empties
 the query and retains search focus; Close and Escape return to the output region.
+Find is a bounded task: Escape from its query or clear control closes it even over
+a query, ahead of the field's own clear-on-Escape. IME composition keys neither
+close Find nor cycle matches.
 Applied-change receipts stay an unframed table whose verbs
 and code-role paths rank below the Tool row. Source lines share a continuous numbered
 layout; located source results keep their context above each snippet. Web results
