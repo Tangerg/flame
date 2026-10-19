@@ -28,6 +28,7 @@ describe("messageContextMenuModel", () => {
       msg: message({ role: "assistant" }),
       copy: copy({ plain: "hi", canCopy: true }),
       canRestoreFiles: false,
+      conversation: [],
     });
 
     expect(model.copyMarkdown).toBe(true);
@@ -42,6 +43,7 @@ describe("messageContextMenuModel", () => {
       }),
       copy: copy(),
       canRestoreFiles: false,
+      conversation: [],
     });
 
     expect(model.user.visible).toBe(true);
@@ -58,6 +60,7 @@ describe("messageContextMenuModel", () => {
       }),
       copy: copy({ plain: "fix this", canCopy: true }),
       canRestoreFiles: true,
+      conversation: [],
     });
 
     expect(model.user).toMatchObject({
@@ -77,7 +80,20 @@ describe("messageContextMenuModel", () => {
         msg: message({ role: "assistant" }),
         copy: copy(),
         canRestoreFiles: true,
+        conversation: [message({ role: "assistant" })],
       }).assistant,
     ).toEqual({ visible: true, regenerate: true, regenerateRestore: true });
+  });
+
+  it("keeps copying available for a child answer without offering a main-conversation replay", () => {
+    const model = messageContextMenuModel({
+      msg: message({ id: "child-answer", role: "assistant", runId: "child" }),
+      copy: copy({ plain: "Child answer", canCopy: true }),
+      canRestoreFiles: true,
+      conversation: [message({ id: "root-answer", role: "assistant", runId: "root" })],
+    });
+    expect(model.copyMarkdown).toBe(true);
+    expect(model.copyPlain).toBe(true);
+    expect(model.assistant.visible).toBe(false);
   });
 });

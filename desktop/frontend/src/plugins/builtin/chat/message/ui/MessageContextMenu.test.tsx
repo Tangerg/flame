@@ -1,12 +1,18 @@
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   captureComposerSubmission,
   replaceComposerDraft,
 } from "@/plugins/builtin/chat/composer/public/draft";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { MessageContextMenu } from "./MessageContextMenu";
+
+const material = vi.hoisted(() => ({ messages: [] as Message[] }));
+vi.mock("@/plugins/builtin/agent/public/conversation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/plugins/builtin/agent/public/conversation")>()),
+  useActiveConversationMessages: () => material.messages,
+}));
 
 function buildMessage({ runId = null, ...overrides }: Partial<Message> = {}): Message {
   return {
@@ -24,6 +30,9 @@ function openMenu(triggerLabel: string): void {
 }
 
 describe("messageContextMenu", () => {
+  beforeEach(() => {
+    material.messages = [];
+  });
   afterEach(async () => {
     cleanup();
     await drainBrowserTasks();
@@ -42,8 +51,10 @@ describe("messageContextMenu", () => {
   });
 
   it("shows Regenerate + copy items for an assistant message", () => {
+    const assistant = buildMessage({ role: "assistant" });
+    material.messages = [assistant];
     render(
-      <MessageContextMenu msg={buildMessage({ role: "assistant" })}>
+      <MessageContextMenu msg={assistant}>
         <div>assistant message</div>
       </MessageContextMenu>,
     );

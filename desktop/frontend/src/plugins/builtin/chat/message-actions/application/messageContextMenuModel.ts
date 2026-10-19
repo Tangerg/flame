@@ -35,15 +35,17 @@ export function messageContextMenuModel({
   msg,
   copy,
   canRestoreFiles,
+  conversation,
 }: {
   msg: Message;
   copy: MessageContextMenuCopyState;
   canRestoreFiles: boolean;
+  conversation: readonly Message[];
 }): MessageContextMenuModel {
   const hasRun = Boolean(msg.runId);
   const canEdit = canEditMessage(msg);
   const canUseRunCheckpoint = canUseMessageRunCheckpoint(msg);
-  const canRegenerate = canRegenerateMessage(msg);
+  const canRegenerate = canRegenerateMessage(msg, conversation);
 
   return {
     copyMarkdown: canCopyMessage(copy),

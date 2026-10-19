@@ -340,6 +340,17 @@ move focus, and a later choice to focus another region takes precedence. Termina
 tasks share a Finished group while retaining each outcome's own status; rows
 without a stop command return its space to their reading measure.
 
+Main and delegated narratives use the same `MessageTurn` and `MessageBlock`.
+Turn spacing, streaming preference, long-input folding, tools, Markdown, media,
+selection and message actions have one renderer. Delegated rows project their
+own Run and referenced facts; another task's activity cannot keep a finished
+answer's actions pending. Regeneration is available only for messages in the
+main conversation, where its preceding input can actually be replayed.
+The overview retains its scroll position while detail is open. Each narrative
+owns its scroll following independently and shares the reading-focus guard and
+latest-content control. That control returns focus to its reading region before
+scrolling, so a hidden floating action never keeps keyboard focus.
+
 ### Tabs
 
 - **No session tab strip.** One active session at a time (ChatGPT-style);

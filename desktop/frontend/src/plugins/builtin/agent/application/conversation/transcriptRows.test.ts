@@ -7,7 +7,11 @@ import {
   type ToolCall,
 } from "@/plugins/sdk/types/agentSessionView";
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
-import { buildTranscriptRows, EMPTY_TRANSCRIPT_ROW_CACHE } from "./transcriptRows";
+import {
+  buildTranscriptRows,
+  delegatedTranscriptRows,
+  EMPTY_TRANSCRIPT_ROW_CACHE,
+} from "./transcriptRows";
 
 const ROOT_RUN = "root-run";
 
@@ -64,6 +68,37 @@ function view(options: {
 }
 
 describe("transcript rows", () => {
+  it("gives a selected child its own Run and message facts, excluding an active sibling", () => {
+    const child = run({
+      id: "child",
+      parentRunId: ROOT_RUN,
+      rootRunId: ROOT_RUN,
+      spawnedByItemId: "delegate",
+    });
+    const prompt: Message = {
+      ...message("child-input", [text("Check the module graph")], child.id),
+      role: "user",
+      steer: { runId: child.id, receipt: "accepted" },
+    };
+    const answer = message("child-answer", [toolBlock("read"), text("Graph verified")], child.id);
+    const read = { ...tool("read"), runId: child.id };
+    const projected = delegatedTranscriptRows(
+      { run: child, messages: [prompt, answer] },
+      {
+        toolCalls: { read, sibling: { ...tool("sibling"), status: "running" } },
+        delegatedRuns: { delegate: [{ run: child, messages: [prompt, answer] }] },
+        awaiting: new Map([["sibling", ROOT_RUN]]),
+      },
+    );
+    expect(projected[0]?.inputFeedback).toBe("applied");
+    expect(projected[1]?.runOwner).toEqual({ kind: "owned", runId: child.id, status: "finished" });
+    expect(projected[1]?.facts).toEqual({
+      toolCalls: { read },
+      delegatedRuns: {},
+      awaiting: new Map(),
+    });
+  });
+
   it("projects descendant approvals through the root's Runtime resume barrier", () => {
     const root = run({ id: ROOT_RUN, status: "waiting", outcome: null, finishedAt: null });
     const child = run({

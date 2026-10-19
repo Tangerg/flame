@@ -3,11 +3,13 @@ import { contributeLayout, definePlugin, useCurrentMessage } from "@/plugins/sdk
 import { canRegenerateMessage } from "./application/messageActionAvailability";
 import { regenerateMessage } from "./public/messageActions";
 import { MessageActionButton } from "./MessageActionButton";
+import { useActiveConversationMessages } from "@/plugins/builtin/agent/public/conversation";
 
 function RegenerateButton() {
   const t = useT();
   const msg = useCurrentMessage();
-  if (!canRegenerateMessage(msg)) return null;
+  const messages = useActiveConversationMessages();
+  if (!canRegenerateMessage(msg, messages)) return null;
 
   return (
     <MessageActionButton

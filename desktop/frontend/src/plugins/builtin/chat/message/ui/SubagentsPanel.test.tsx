@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { navigator } from "@/lib/navigation";
@@ -11,6 +11,7 @@ const material = vi.hoisted(() => ({
   available: true,
   cancel: vi.fn(),
 }));
+afterEach(() => vi.restoreAllMocks());
 vi.mock("@/plugins/builtin/agent/public/run", () => ({ cancelSessionRun: material.cancel }));
 vi.mock("@/plugins/builtin/agent/public/conversation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/plugins/builtin/agent/public/conversation")>()),
@@ -87,10 +88,10 @@ it("projects live child material, returns to the list, and never carries it into
   material.rows = rows();
   navigator().go({ session: "session" });
   openWorkspaceSubagentRun("child");
-  const { rerender } = render(<SubagentsPanel />);
+  const { rerender, container } = render(<SubagentsPanel />);
   await act(async () => vi.dynamicImportSettled());
   expect(screen.getByText("Child streamed output")).toBeTruthy();
-  expect(screen.getByText("Running")).toBeTruthy();
+  expect(within(container.querySelector("header")!).getByText("Running")).toBeTruthy();
 
   material.rows = rows(
     { ...child, status: "finished", activeSegmentId: null, outcome: { type: "completed" } },
@@ -138,11 +139,53 @@ it("marks a delegated user message as the same speech bubble the transcript draw
   const bubbles = container.querySelectorAll("[data-user-message-bubble]");
   expect(bubbles).toHaveLength(1);
   expect(bubbles[0]!.textContent).toContain("Audit axios cancellation");
+  expect(screen.getByRole("heading", { name: "You" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Assistant" })).toBeTruthy();
   expect(screen.getByText("Entered model context")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Retry original submission" })).toBeNull();
   expect(
     screen.getByText("Child streamed output").closest("[data-user-message-bubble]"),
   ).toBeNull();
+});
+
+it("keeps list position and returns keyboard focus to the opened task", async () => {
+  material.rows = rows();
+  navigator().go({ session: "session" });
+  openWorkspaceSubagentRun(null);
+  render(<SubagentsPanel />);
+  const group = screen.getByRole("group", { name: "Subagents" });
+  const scroller = group.parentElement!;
+  scroller.scrollTop = 240;
+  const opener = within(group).getAllByRole("button", { name: /Sub-agent/ })[0]!;
+  act(() => opener.focus());
+  fireEvent.click(opener);
+  const back = screen.getByRole("button", { name: "Back to subagents" });
+  expect(document.activeElement).toBe(back);
+  fireEvent.click(back);
+  expect(screen.getByRole("group", { name: "Subagents" }).parentElement).toBe(scroller);
+  expect(scroller.scrollTop).toBe(240);
+  expect(document.activeElement).toBe(opener);
+  await act(async () => vi.dynamicImportSettled());
+});
+
+it("folds a long child input with the main message interaction", async () => {
+  vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(900);
+  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(160);
+  material.rows = rows();
+  material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages.unshift({
+    id: "child-task",
+    role: "user",
+    runId: "child",
+    blocks: [{ kind: "text", text: "Inspect the complete module graph", status: "complete" }],
+  });
+  navigator().go({ session: "session" });
+  openWorkspaceSubagentRun("child");
+  render(<SubagentsPanel />);
+  await act(async () => vi.dynamicImportSettled());
+  fireEvent.click(screen.getByRole("button", { name: "Show full message" }));
+  expect(screen.getByRole("button", { name: "Show less" }).getAttribute("aria-expanded")).toBe(
+    "true",
+  );
 });
 
 it("keeps the selected run cancellation visible when no narrative was produced", () => {
@@ -156,7 +199,11 @@ it("keeps the selected run cancellation visible when no narrative was produced",
   navigator().go({ session: "session" });
   openWorkspaceSubagentRun("child");
   render(<SubagentsPanel />);
-  expect(screen.getByText("The user canceled the review.")).toBeTruthy();
+  expect(
+    within(screen.getByRole("region", { name: "Sub-agent" })).getByText(
+      "The user canceled the review.",
+    ),
+  ).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
 });
 
@@ -176,9 +223,9 @@ it("explains unconfirmed effects for the selected terminal child without replaci
   material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages = [];
   navigator().go({ session: "session" });
   openWorkspaceSubagentRun("child");
-  const { rerender } = render(<SubagentsPanel />);
+  const { rerender, container } = render(<SubagentsPanel />);
   expect(screen.getByText(/This run has ended/)).toBeTruthy();
-  expect(screen.getByText("Canceled")).toBeTruthy();
+  expect(within(container.querySelector("header")!).getByText("Canceled")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Operations with unconfirmed outcomes" }));
   expect(screen.getByText("child-effect")).toBeTruthy();

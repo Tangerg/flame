@@ -1,6 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { AnimatePresence, motion } from "motion/react";
-import { enterUp } from "@/lib/motion";
+import { AnimatePresence } from "motion/react";
 import { publishStreamFollow } from "./streamFollow";
 import type { BlockCtx } from "@/plugins/builtin/chat/message/public/rendering";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
@@ -11,21 +10,17 @@ import { cn } from "@/lib/classNames";
 import { dayKey, formatDay } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n";
 import { Divider } from "@/ui";
+import { stopFollowOnReadingFocus } from "@/ui/agent/readingFollow";
 import { readingColumn as rc } from "./readingColumn";
 import {
   useCurrentRootMaterial,
   type CurrentRootMaterial,
 } from "@/plugins/builtin/agent/public/run";
-import {
-  finalAnswerFollows,
-  MessageBlock,
-  RootRunOutcome,
-} from "@/plugins/builtin/chat/message/public/rendering";
+import { MessageTurn, RootRunOutcome } from "@/plugins/builtin/chat/message/public/rendering";
 import { transcriptTurnContentVisibility } from "./transcriptTurnContentVisibility";
 import { space } from "@flame/ui/tokens.stylex";
 
 const ms = stylex.create({
-  arrival: { position: "relative" },
   viewport: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
   dayPad: { paddingBlock: space.s1 },
   content: { position: "relative", display: "flex", flexDirection: "column", paddingTop: space.s8 },
@@ -44,32 +39,23 @@ function ControlsRelay() {
   useEffect(() => {
     publishStreamFollow({
       atBottom: ctx.isAtBottom,
-      scrollToBottom: () => void ctx.scrollToBottom(),
+      scrollToBottom: () => {
+        ctx.contentRef.current?.focus({ preventScroll: true });
+        void ctx.scrollToBottom();
+      },
     });
   });
   return null;
 }
 
 function TranscriptContent({ children }: PropsWithChildren) {
-  const { scrollRef, state, stopScroll } = useStickToBottomContext();
+  const follow = useStickToBottomContext();
   return (
     <StickToBottom.Content
       scrollClassName={cn("msg-scroll-viewport", stylex.props(ms.viewport).className)}
       className={stylex.props(rc.box, ms.content).className}
-      onFocus={(event) => {
-        const viewport = scrollRef.current;
-        const target = event.target;
-        if (!viewport?.contains(target) || !state.isAtBottom) return;
-        const movement = state.targetScrollTop - viewport.scrollTop;
-        if (movement <= 0) return;
-        const bounds = target.getBoundingClientRect();
-        const frame = viewport.getBoundingClientRect();
-        const style = getComputedStyle(viewport);
-        const top = frame.top + parseFloat(style.scrollPaddingTop);
-        const bottom = frame.bottom - parseFloat(style.scrollPaddingBottom);
-        // Native focus can reveal its target before a queued resize-follow tick.
-        if (bounds.top - movement < top || bounds.bottom - movement > bottom) stopScroll();
-      }}
+      tabIndex={-1}
+      onFocus={(event) => stopFollowOnReadingFocus(event, follow)}
     >
       {children}
     </StickToBottom.Content>
@@ -107,23 +93,16 @@ function transcriptDayBreaks(rows: readonly TranscriptRow[]): readonly boolean[]
   });
 }
 
-const TURN_GAP = stylex.create({
-  none: {},
-  continuation: { marginTop: space.s2 },
-  answer: { marginTop: space.s6 },
-  turn: { marginTop: space.s6 },
-});
-
 interface TurnProps {
   row: TranscriptRow;
   ctx: BlockCtx;
   sessionId: string;
   isLast: boolean;
   isRunning: boolean;
-  answerFollows: boolean;
+  next?: Message;
   terminalRun: CurrentRootMaterial | null;
   opensDay: boolean;
-  gap: keyof typeof TURN_GAP;
+  previous?: Message;
 }
 
 const TranscriptTurn = memo(function TranscriptTurn({
@@ -132,43 +111,31 @@ const TranscriptTurn = memo(function TranscriptTurn({
   sessionId,
   isLast,
   isRunning,
-  answerFollows,
+  next,
   terminalRun,
   opensDay,
-  gap,
+  previous,
 }: TurnProps) {
   return (
     <>
       {opensDay && <DaySeparator createdAt={row.message.createdAt} />}
-      <motion.div
-        {...enterUp}
-        data-turn-id={row.message.id}
-        data-turn-role={row.message.role}
-        className={
-          stylex.props(
-            ms.arrival,
-            rc.gutter,
-            TURN_GAP[gap],
-            transcriptTurnContentVisibility(isLast),
-          ).className
+      <MessageTurn
+        row={row}
+        ctx={ctx}
+        sessionId={sessionId}
+        isLast={isLast}
+        isRunning={isRunning}
+        previous={previous}
+        next={next}
+        className={stylex.props(rc.gutter, transcriptTurnContentVisibility(isLast)).className}
+        terminalFooter={
+          terminalRun ? (
+            <div {...stylex.props(ms.afterBlock)}>
+              <RootRunOutcome material={terminalRun} />
+            </div>
+          ) : undefined
         }
-      >
-        <MessageBlock
-          row={row}
-          ctx={ctx}
-          sessionId={sessionId}
-          isLast={isLast}
-          isRunning={isRunning}
-          answerFollows={answerFollows}
-          terminalFooter={
-            terminalRun ? (
-              <div {...stylex.props(ms.afterBlock)}>
-                <RootRunOutcome material={terminalRun} />
-              </div>
-            ) : undefined
-          }
-        />
-      </motion.div>
+      />
     </>
   );
 });
@@ -200,18 +167,10 @@ export function MessageStream({ rows, ctx, sessionId }: Props) {
                 sessionId={sessionId}
                 isLast={index === rows.length - 1}
                 isRunning={running}
-                answerFollows={finalAnswerFollows(row.message, rows[index + 1]?.message)}
+                next={rows[index + 1]?.message}
                 terminalRun={index === terminalTurnIndex ? currentRoot : null}
                 opensDay={dayBreaks[index] ?? false}
-                gap={
-                  previous === undefined
-                    ? "none"
-                    : row.message.phase === "finalAnswer" && previous.runId === row.message.runId
-                      ? "answer"
-                      : previous.role === row.message.role && previous.runId === row.message.runId
-                        ? "continuation"
-                        : "turn"
-                }
+                previous={previous}
               />
             );
           })}

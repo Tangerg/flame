@@ -1,14 +1,13 @@
 import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { AnimatePresence } from "motion/react";
+import { Activity, useLayoutEffect, useMemo, useRef } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/classNames";
 import {
   useActiveConversationRows,
-  steerInputFeedback,
+  delegatedTranscriptRows,
 } from "@/plugins/builtin/agent/public/conversation";
-import { MessageContext } from "@/plugins/sdk/messageContext";
 import {
   openWorkspaceSubagentRun,
   useWorkspaceSubagentRunId,
@@ -17,16 +16,16 @@ import {
 } from "@/plugins/builtin/workspace/public/navigation";
 import { ScrollArea, SectionLabel, StatusDot } from "@/ui";
 import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
-import { AgentWorkspaceView } from "@/ui/agent";
-import { corner, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { AgentJumpToBottom, AgentWorkspaceView } from "@/ui/agent";
+import { stopFollowOnReadingFocus } from "@/ui/agent/readingFollow";
+import { face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "../application/subagents";
 import { delegatedRunSummary, type DelegatedRunSummary } from "../application/delegatedRunSummary";
 import { DelegatedRunLink } from "./DelegatedRunLink";
-import { renderMessageBlocks, type BlockCtx } from "./BlockRenderer";
-import { MESSAGE_CONTENT_CLASS } from "./messageContent";
-import { messageStyles as ms } from "./messageStyles";
+import type { BlockCtx } from "./BlockRenderer";
+import { useStreamRevealStore } from "../public/streamReveal";
+import { MessageTurn } from "./MessageTurn";
 import { UnresolvedRunEffects } from "./UnresolvedRunEffects";
-import { SteerInputStatus } from "./SteerInputStatus";
 import { SubagentStopButton } from "./SubagentStopButton";
 
 const styles = stylex.create({
@@ -47,7 +46,17 @@ const styles = stylex.create({
   },
   group: { marginBottom: space.s4 },
   title: { marginBottom: space.s2 },
-  transcript: { display: "flex", flexDirection: "column", gap: space.s5, minWidth: 0 },
+  reader: { position: "relative", display: "flex", flexDirection: "column", minHeight: 0, flex: 1 },
+  transcript: { minWidth: 0, paddingBottom: space.s12 },
+  evidence: { marginBottom: space.s6 },
+  jump: {
+    position: "absolute",
+    left: "50%",
+    bottom: space.s4,
+    translate: "-50% 0",
+    zIndex: 3,
+    pointerEvents: "none",
+  },
   summary: { display: "grid", gap: space.s0_5, minWidth: 0, flex: 1 },
   name: {
     display: "-webkit-box",
@@ -146,16 +155,12 @@ export function SubagentsPanel() {
         )}
         {selected && summary?.cancelable && <SubagentStopButton run={selected.narrative.run} />}
       </header>
-      {selected && summary ? (
-        <SubagentTranscript key={selectedId} entry={selected} summary={summary} />
-      ) : (
+      <Activity key={entries[0]?.narrative.run.sessionId} mode={selectedId ? "hidden" : "visible"}>
         <ScrollArea className={stylex.props(styles.scroller).className}>
-          {selectedId ? (
-            <EmptyState icon={iconGlyph("bot")} title={t("subagents.unavailable")} />
-          ) : entries.length === 0 ? (
+          {entries.length === 0 ? (
             <EmptyState icon={iconGlyph("bot")} title={t("subagents.empty")} />
           ) : (
-            <>
+            <div role="group" aria-label={t("subagents.title")}>
               <SubagentGroup
                 title={t("subagents.active")}
                 entries={entries.filter(({ narrative }) => narrative.run.status !== "finished")}
@@ -164,10 +169,15 @@ export function SubagentsPanel() {
                 title={t("subagents.finished")}
                 entries={entries.filter(({ narrative }) => narrative.run.status === "finished")}
               />
-            </>
+            </div>
           )}
         </ScrollArea>
-      )}
+      </Activity>
+      {selected && summary ? (
+        <SubagentTranscript key={selectedId} entry={selected} summary={summary} />
+      ) : selectedId ? (
+        <EmptyState icon={iconGlyph("bot")} title={t("subagents.unavailable")} />
+      ) : null}
     </AgentWorkspaceView>
   );
 }
@@ -200,58 +210,69 @@ function SubagentTranscript({
   summary: DelegatedRunSummary;
 }) {
   const t = useT();
-  const { scrollRef, contentRef } = useStickToBottom({ initial: "instant", resize: "instant" });
+  const { scrollRef, contentRef, isAtBottom, scrollToBottom, state, stopScroll } = useStickToBottom(
+    {
+      initial: "instant",
+      resize: "instant",
+    },
+  );
   const expandedIds = useExpandedWorkspaceToolIds();
   const onToggleExpand = useToggleWorkspaceTool();
-  const ctx: BlockCtx = { expandedIds, onToggleExpand, textReveal: "instant" };
+  const textReveal = useStreamRevealStore((state) => state.streamReveal);
+  const ctx: BlockCtx = { expandedIds, onToggleExpand, textReveal };
   const { narrative, facts } = entry;
+  const rows = useMemo(() => delegatedTranscriptRows(narrative, facts), [narrative, facts]);
   return (
-    <ScrollArea ref={scrollRef} className={stylex.props(styles.scroller).className}>
-      <div
-        ref={contentRef}
-        role="region"
-        aria-label={summary.label}
-        {...stylex.props(styles.transcript)}
-      >
-        {summary.detail && (
-          <div {...stylex.props(typeStep.uiSm, toneInk[summary.ink])}>
-            <RecordBody>{summary.detail}</RecordBody>
-          </div>
-        )}
-        <UnresolvedRunEffects effects={narrative.run.outcome?.unresolvedEffects} />
-        {narrative.messages.length === 0 && (
-          <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("agent.runTree.material.empty")}</p>
-        )}
-        {narrative.messages.map((message) => {
-          const isUser = message.role === "user";
-          return (
-            <MessageContext.Provider
-              key={message.id}
-              value={{ sessionId: narrative.run.sessionId, message }}
-            >
-              <div {...stylex.props(ms.column, isUser && ms.columnUser)}>
-                {isUser && (
-                  <SteerInputStatus feedback={steerInputFeedback(message)} messageId={message.id} />
-                )}
-                <div
-                  data-user-message-bubble={isUser ? "" : undefined}
-                  className={cn(
-                    MESSAGE_CONTENT_CLASS,
-                    stylex.props(
-                      ms.body,
-                      typeStep.prose,
-                      isUser && ms.bubble,
-                      isUser && corner.bubble,
-                    ).className,
-                  )}
-                >
-                  {renderMessageBlocks({ message, facts }, ctx)}
+    <div {...stylex.props(styles.reader)}>
+      <ScrollArea ref={scrollRef} className={stylex.props(styles.scroller).className}>
+        <div
+          ref={contentRef}
+          role="region"
+          aria-label={summary.label}
+          tabIndex={-1}
+          onFocusCapture={(event) =>
+            stopFollowOnReadingFocus(event, { scrollRef, state, stopScroll })
+          }
+          {...stylex.props(styles.transcript)}
+        >
+          {(summary.detail || narrative.run.outcome?.unresolvedEffects?.length) && (
+            <div {...stylex.props(styles.evidence)}>
+              {summary.detail && (
+                <div {...stylex.props(typeStep.uiSm, toneInk[summary.ink])}>
+                  <RecordBody>{summary.detail}</RecordBody>
                 </div>
-              </div>
-            </MessageContext.Provider>
-          );
-        })}
+              )}
+              <UnresolvedRunEffects effects={narrative.run.outcome?.unresolvedEffects} />
+            </div>
+          )}
+          {rows.length === 0 && (
+            <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("agent.runTree.material.empty")}</p>
+          )}
+          <AnimatePresence initial={false}>
+            {rows.map((row, index) => (
+              <MessageTurn
+                key={row.message.id}
+                row={row}
+                ctx={ctx}
+                sessionId={narrative.run.sessionId}
+                isLast={index === rows.length - 1}
+                isRunning={narrative.run.status === "running"}
+                previous={rows[index - 1]?.message}
+                next={rows[index + 1]?.message}
+              />
+            ))}
+          </AnimatePresence>
+        </div>
+      </ScrollArea>
+      <div {...stylex.props(styles.jump)}>
+        <AgentJumpToBottom
+          visible={!isAtBottom}
+          onClick={() => {
+            contentRef.current?.focus({ preventScroll: true });
+            void scrollToBottom();
+          }}
+        />
       </div>
-    </ScrollArea>
+    </div>
   );
 }

@@ -1576,7 +1576,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       message(
         "agentMessage",
         "item_child_response",
-        "The framework remains generic. I found no application persistence type in its production graph.",
+        `The framework remains generic. I found no application persistence type in its production graph.\n\n${LONG_RESPONSE_MARKDOWN}`,
         "run_child",
         "commentary",
       ),
@@ -1602,6 +1602,13 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         "commentary",
       ),
       FANOUT_DELEGATE,
+      message(
+        "userMessage",
+        "item_fan_ok_input",
+        "Inspect the complete module graph and explain where persistence belongs.\n\nKeep the Runtime boundary explicit, show the evidence from source, and compare the public application contracts.\n\nInclude nested findings, source examples, tables, and mixed-language observations so the review remains readable in a narrow workspace.",
+        "run_fan_ok",
+      ),
+      message("agentMessage", "item_fan_ok_answer", LONG_RESPONSE_MARKDOWN, "run_fan_ok"),
       {
         type: "toolCall",
         id: "item_nested_running",

@@ -40,9 +40,13 @@ describe("message action availability", () => {
     expect(canUseMessageRunCheckpoint(message({ role: "assistant", runId: "run_1" }))).toBe(false);
   });
 
-  it("keeps regenerate and feedback assistant-only", () => {
-    expect(canRegenerateMessage(message({ role: "assistant" }))).toBe(true);
-    expect(canRegenerateMessage(message({ role: "user" }))).toBe(false);
+  it("regenerates only an assistant in the main conversation, while child feedback stays available", () => {
+    const assistant = message({ role: "assistant" });
+    const user = message({ id: "user", role: "user" });
+    const conversation = [user, assistant];
+    expect(canRegenerateMessage(assistant, conversation)).toBe(true);
+    expect(canRegenerateMessage(user, conversation)).toBe(false);
+    expect(canRegenerateMessage(message({ id: "child-answer" }), conversation)).toBe(false);
     expect(canRateMessage(message({ role: "assistant" }))).toBe(true);
     expect(canRateMessage(message({ role: "user" }))).toBe(false);
   });

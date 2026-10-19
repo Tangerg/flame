@@ -7,16 +7,19 @@ import { StatusDot } from "@/ui/atoms/status-dot";
 const styles = stylex.create({
   pill: {
     display: "inline-flex",
-    height: "22px",
+    minHeight: "22px",
+    flexShrink: 0,
     borderRadius: radius.button,
     "corner-shape": "round",
     alignItems: "center",
     gap: space.s1_5,
     backgroundColor: surface.surface2,
     paddingInline: space.s2_5,
+    paddingBlock: space.s1,
     fontFamily: "var(--font-sans)",
     fontWeight: weight.medium,
     lineHeight: 1,
+    whiteSpace: "nowrap",
     color: color.fgMuted,
   },
 });

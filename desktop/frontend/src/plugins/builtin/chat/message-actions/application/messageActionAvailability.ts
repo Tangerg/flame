@@ -13,8 +13,8 @@ export function canUseMessageRunCheckpoint(message: Message): boolean {
   return message.role === "user" && Boolean(message.runId);
 }
 
-export function canRegenerateMessage(message: Message): boolean {
-  return message.role === "assistant";
+export function canRegenerateMessage(message: Message, conversation: readonly Message[]): boolean {
+  return message.role === "assistant" && conversation.some(({ id }) => id === message.id);
 }
 
 export function canRateMessage(message: Message): boolean {

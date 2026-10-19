@@ -4,7 +4,7 @@ import type {
   Message,
   ToolCall,
 } from "@/plugins/sdk/types/agentSessionView";
-import type { DelegatedRunNarrativesByItemId } from "../view/runTree";
+import type { DelegatedRunNarrative, DelegatedRunNarrativesByItemId } from "../view/runTree";
 import { selectDelegatedRunNarratives, selectRootNarrativeMessages } from "../view/runTree";
 import { selectAwaitingInterrupts } from "../view/awaitingInterrupts";
 import { steerInputFeedback, type SteerInputFeedback } from "../view/steerInputFeedback";
@@ -82,6 +82,18 @@ export function buildTranscriptRows(
   }
 
   return { rows, cache };
+}
+
+export function delegatedTranscriptRows(
+  { run, messages }: DelegatedRunNarrative,
+  facts: TurnFacts,
+): TranscriptRow[] {
+  return messages.map((message) => ({
+    message,
+    runOwner: { kind: "owned", runId: run.id, status: run.status },
+    inputFeedback: steerInputFeedback(message),
+    facts: readTurnFacts(message, facts.toolCalls, facts.delegatedRuns, facts.awaiting).facts,
+  }));
 }
 
 function transcriptRunOwner(message: Message, view: AgentSessionView): TranscriptRunOwner {

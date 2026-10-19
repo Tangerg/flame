@@ -15,6 +15,7 @@ import { messageContextMenuModel } from "@/plugins/builtin/chat/message-actions/
 import { writeToClipboard } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
+import { useActiveConversationMessages } from "@/plugins/builtin/agent/public/conversation";
 interface Props {
   msg: Message;
   children: ReactNode;
@@ -24,7 +25,8 @@ export function MessageContextMenu({ msg, children }: Props) {
   const t = useT();
   const copy = messageCopyPayloads(msg);
   const canRestoreFiles = runtimeCapability("checkpoints");
-  const menu = messageContextMenuModel({ msg, copy, canRestoreFiles });
+  const conversation = useActiveConversationMessages();
+  const menu = messageContextMenuModel({ msg, copy, canRestoreFiles, conversation });
 
   return (
     <ContextMenu.Root>
