@@ -31,6 +31,7 @@ const styles = stylex.create({
     maxWidth: layout.pageWidth,
     marginInline: "auto",
     minHeight: "100%",
+    flexShrink: 0,
     color: color.fg,
     backgroundColor: surface.canvas,
     fontFamily: "var(--font-sans)",

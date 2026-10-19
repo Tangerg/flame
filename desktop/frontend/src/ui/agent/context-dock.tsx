@@ -91,7 +91,7 @@ const styles = stylex.create({
 });
 
 export function AgentContextDock({ children }: { children: ReactNode }) {
-  return <aside className="agent-context-dock pane-split">{children}</aside>;
+  return <aside className="agent-context-dock">{children}</aside>;
 }
 
 export function AgentDockRow({

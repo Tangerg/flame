@@ -32,7 +32,7 @@ async function expectReadableTask(root: Locator) {
       text: item.textContent,
     };
   });
-  expect(geometry.fontSize).toBe(18);
+  expect(geometry.fontSize).toBe(21);
   expect(Math.abs(geometry.marker.width - geometry.fontSize)).toBeLessThanOrEqual(1);
   expect(Math.abs(geometry.marker.height - geometry.fontSize)).toBeLessThanOrEqual(1);
   expect(geometry.marker.right).toBeLessThan(geometry.title.x);

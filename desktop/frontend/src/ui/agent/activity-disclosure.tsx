@@ -96,23 +96,19 @@ const styles = stylex.create({
     fontVariantNumeric: "tabular-nums",
   },
   headerPublishes: {
-    "--chevron": { default: "0", ":hover": "1" },
     "--row-ink": { default: color.fgMuted, ":hover": color.fg },
     "--row-detail-ink": { default: color.fgFaint, ":hover": color.fgMuted },
   },
-  triggerPublishes: { "--chevron": { default: null, ":focus-visible": "1" } },
   chevron: {
     pointerEvents: "none",
     display: "flex",
     flexShrink: 0,
     marginInlineStart: "calc(var(--spacing) * -1)",
     color: color.fgFaint,
-    transitionProperty: "rotate, opacity",
+    transitionProperty: "rotate",
     transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
-    opacity: { default: "var(--chevron, 1)", "@media (hover: none)": 1 },
   },
-  chevronOpen: { opacity: 1 },
   actions: {
     display: "flex",
     flexShrink: 0,
@@ -213,11 +209,7 @@ export function AgentActivityDisclosure({
           onToggle={onToggle}
           toggleLabel={toggleLabel}
           className={
-            stylex.props(
-              styles.trigger,
-              styles.triggerPublishes,
-              line ? styles.triggerLine : styles.triggerCard,
-            ).className
+            stylex.props(styles.trigger, line ? styles.triggerLine : styles.triggerCard).className
           }
         >
           <span
@@ -245,8 +237,7 @@ export function AgentActivityDisclosure({
               aria-hidden
               data-slot="agent-activity-chevron"
               data-open={open ? "" : undefined}
-              data-reveal="hover"
-              {...stylex.props(styles.chevron, open ? styles.chevronOpen : chevron.shut)}
+              {...stylex.props(styles.chevron, !open && chevron.shut)}
             >
               <Icon name="chevron-down" size="xs" />
             </span>

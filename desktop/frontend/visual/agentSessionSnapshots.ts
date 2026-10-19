@@ -876,6 +876,18 @@ export const LONG_RESPONSE_MARKDOWN = [
   "代码片段如 `runtime.Commit` 应该自然地融入句子；路径和较长的参数可以完整查看，也能直接复制。表格、图表和展开的执行记录都服务于回答本身，保留必要的细节，同时避免过重的边框和重复的标题。",
   "",
   "完成检查后，阅读者应当能够快速判断结论、证据与下一步操作。即使切换到深色主题、放大字号，或者同时打开右侧工作区，这些层级和间距也应保持清晰。",
+  "",
+  "#### Verification details",
+  "",
+  "Inspect the captured result before returning to the conversation.",
+  "",
+  "##### Keyboard and focus",
+  "",
+  "Keep the selected material reachable without losing the original reading position.",
+  "",
+  "###### Narrow reading views",
+  "",
+  "长标题和正文应保持明确的间隔，嵌套层级依靠字号、字重和留白共同表达。",
 ].join("\n");
 const LONG_RESPONSE = message("agentMessage", "item_long_response", LONG_RESPONSE_MARKDOWN);
 

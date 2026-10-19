@@ -1,19 +1,23 @@
 import { expect, test, type Locator } from "./test";
 
-async function expectOneReadingRow(header: Locator) {
-  const centres = await header.evaluate((node) => {
-    const identity = node.firstElementChild!.getBoundingClientRect();
-    const actions = node.lastElementChild!.getBoundingClientRect();
-    return [identity.y + identity.height / 2, actions.y + actions.height / 2];
+async function expectReadingHierarchy(header: Locator) {
+  const geometry = await header.evaluate((node) => {
+    const back = node.querySelector("button")!.getBoundingClientRect();
+    const identity = node.querySelector("[title]")!.getBoundingClientRect();
+    const controls = node
+      .querySelector('[data-slot="workspace-view-controls"]')!
+      .getBoundingClientRect();
+    return { back: back.toJSON(), identity: identity.toJSON(), controls: controls.toJSON() };
   });
-  expect(Math.abs(centres[0]! - centres[1]!)).toBeLessThanOrEqual(1);
+  expect(geometry.back.right).toBeLessThanOrEqual(geometry.identity.x);
+  expect(geometry.identity.bottom).toBeLessThanOrEqual(geometry.controls.y);
 }
 
 for (const [fontSize, theme] of [
   [14, "light"],
   [18, "dark"],
 ] as const) {
-  test(`file identity and fitting actions share a row, then wrap within the narrow Dock ${fontSize}`, async ({
+  test(`file identity leads its reading controls within the narrow Dock ${fontSize}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1472, height: 900 });
@@ -23,18 +27,27 @@ for (const [fontSize, theme] of [
     await page.locator("html[data-visual-ready]").waitFor();
     const view = page.locator('[data-dock-view-id="file"]');
     const header = view.locator('[data-slot="workspace-view-header"]');
-    await expectOneReadingRow(header);
+    await expectReadingHierarchy(header);
     await header.getByRole("button", { name: "Back to files", exact: true }).click();
     await page.getByRole("treeitem", { name: "README.md", exact: true }).click();
     await expect(header.getByTitle("README.md", { exact: true })).toBeVisible();
-    await expectOneReadingRow(header);
+    await expectReadingHierarchy(header);
 
     const resizer = page.locator(".agent-pane-resizer");
     await resizer.focus();
     await resizer.press("Home");
     expect((await view.boundingBox())!.width).toBeCloseTo(320, 0);
     const identity = header.getByTitle("README.md", { exact: true });
-    expect((await identity.boundingBox())!.width).toBeGreaterThan(80);
+    expect(
+      await identity.evaluate((node) => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const host = node.closest('[data-slot="workspace-view-header"]')!.getBoundingClientRect();
+        return [...range.getClientRects()].every(
+          (box) => box.width > 0 && box.left >= host.left && box.right <= host.right,
+        );
+      }),
+    ).toBe(true);
     for (const control of await header.locator('button,[role="tab"]').all()) {
       await expect(control).toBeInViewport({ ratio: 1 });
       expect(

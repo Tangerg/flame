@@ -186,10 +186,10 @@
   --fs-ui-xs: 12px;
   --fs-ui-sm: 13px;
   --fs-ui-md: 14px;
-  --fs-prose: 14px;
+  --fs-prose: 16px;
   --fs-code: 12px;
 
-  --fs-display-sm: 16px;
+  --fs-display-sm: 17px;
   --fs-display-md: 18px;
   --fs-display-lg: 24px;
 
@@ -660,6 +660,10 @@ html.theme-dark {
   flex-direction: column;
   contain: layout paint;
   background: var(--app-drawer-surface);
+}
+
+.agent-drawer-surface,
+.agent-dock-row[data-dock="open"]::before {
   box-shadow: var(--app-pane-wash-end) var(--seam-wash);
 }
 
@@ -745,8 +749,14 @@ html.theme-dark {
   touch-action: none;
 }
 
-.agent-pane-resizer:is(:hover, :focus-visible, :active) + .pane-split {
-  --split-boundary: var(--boundary-emphasis);
+.agent-dock-row[data-dock="open"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inset-inline-end: var(--dock-measure);
+  z-index: var(--layer-resizer);
+  pointer-events: none;
 }
 
 .agent-shell[data-sidebar="collapsed"] .agent-content-card,

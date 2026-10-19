@@ -36,7 +36,9 @@ The package is private and is consumed through repository-local `file:` dependen
 `Panel` owns the content measure and container-responsive gutters.
 Its explicit `header` slot holds introductory content, `controls` holds the one
 sticky action and filter zone, and children hold the scrolling content. The host
-keeps its existing scroll viewport. `Panel` measures only its own controls,
+keeps its existing scroll viewport. The panel does not shrink inside a column
+host: its canvas and sticky-control boundary extend through the complete content.
+`Panel` measures only its own controls,
 projects their height on its root, and uses it to keep focused content and anchors
 clear of the controls; wrapped controls update through `ResizeObserver`.
 Body focus also respects the host's clipped viewport. A wrapping native label
@@ -144,6 +146,10 @@ media paragraphs can use the host's full width. `data-prose-level` records an au
 heading level when the host nests its physical heading below a surrounding
 outline. The `inline-code` and `prose-table` data slots also supply those reading
 roles outside a complete prose root, including table lightboxes.
+Paragraphs share one block gap. Headings use unitless leading and keep supporting
+content visibly separated even at the deepest levels; weight and ink distinguish
+levels that share the body size. The host owns the prose size, independently of
+its interface and code roles.
 Generated footnotes use a quiet supporting-text section and retain their native
 reference links. The renderer owns document-local identities and navigation.
 The link appearance marks content that navigates: anchors with a destination

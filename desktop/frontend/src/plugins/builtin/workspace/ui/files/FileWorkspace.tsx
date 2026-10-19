@@ -1,15 +1,15 @@
 import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
-import { Activity, useCallback, useLayoutEffect, useRef, useState } from "react";
-import { fileExtension } from "@/lib/path";
+import { Activity, useCallback, useLayoutEffect, useRef, useState, type Ref } from "react";
+import { fileExtension, splitFilePath } from "@/lib/path";
 import { fileKind } from "@/lib/fileKind";
 import { isImeKey } from "@/lib/ime";
 import { useExtensionPoint } from "@/plugins/sdk";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
 import { WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
-import { DataView, FilePath, Popover, Segmented, TextButton, fileIconName } from "@/ui";
+import { DataView, Popover, Segmented, TextButton, fileIconName } from "@/ui";
 import { Button, EmptyState, IconButton, TextField, useCopyFeedback } from "@flame/ui";
-import { space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { localWorkspace } from "../../application/ports/localWorkspace";
 import { workspaceErrorClassifier } from "../../application/ports/workspaceErrorClassifier";
 import { useT } from "@/lib/i18n";
@@ -32,6 +32,8 @@ import { selectFileRenderer } from "../../application/fileRenderer";
 const WINDOW_RADIUS = 200;
 
 const fp = stylex.create({
+  workspace: { display: "flex", flex: 1, flexDirection: "column", minWidth: 0, minHeight: 0 },
+  context: { display: "flex", flexDirection: "column", gap: space.s0_5, minWidth: 0 },
   edge: { display: "flex", justifyContent: "center", paddingBlock: space.s1_5 },
   goto: {
     display: "flex",
@@ -53,27 +55,38 @@ function initialWindow(line: number): LineWindow {
 
 export function FileWorkspace() {
   const viewer = useWorkspaceFileViewer();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLButtonElement>(null);
+  const previousViewer = useRef(viewer);
   const returnFocus = useRef(false);
   const restoreFocus = useCallback((item: HTMLElement) => {
     if (!returnFocus.current) return;
     returnFocus.current = false;
     if (item.ownerDocument.activeElement === item.ownerDocument.body) item.focus();
   }, []);
+  useLayoutEffect(() => {
+    const previous = previousViewer.current;
+    previousViewer.current = viewer;
+    const panel = panelRef.current;
+    if (!panel) return;
+    returnFocus.current = false;
+    const active = panel.ownerDocument.activeElement;
+    if (active !== panel.ownerDocument.body && !panel.contains(active)) return;
+    if (viewer) {
+      backRef.current?.focus({ preventScroll: true });
+    } else if (previous) {
+      returnFocus.current = true;
+      const item = panel.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
+      if (item) restoreFocus(item);
+    }
+  }, [viewer, restoreFocus]);
   return (
-    <>
+    <div ref={panelRef} {...stylex.props(fp.workspace)}>
       <Activity mode={viewer ? "hidden" : "visible"}>
         <FileBrowser restoreFocus={restoreFocus} />
       </Activity>
-      {viewer && (
-        <FilePreview
-          viewer={viewer}
-          onBack={() => {
-            returnFocus.current = true;
-            closeWorkspaceFile();
-          }}
-        />
-      )}
-    </>
+      {viewer && <FilePreview viewer={viewer} backRef={backRef} />}
+    </div>
   );
 }
 
@@ -104,7 +117,13 @@ function FileBrowser({ restoreFocus }: { restoreFocus: (item: HTMLElement) => vo
   );
 }
 
-function FilePreview({ viewer, onBack }: { viewer: WorkspaceFileViewer; onBack: () => void }) {
+function FilePreview({
+  viewer,
+  backRef,
+}: {
+  viewer: WorkspaceFileViewer;
+  backRef: Ref<HTMLButtonElement>;
+}) {
   const t = useT();
   const { copied, copy } = useCopyFeedback(viewer.path);
   const workspace = useActiveSessionWorkspace();
@@ -164,6 +183,7 @@ function FilePreview({ viewer, onBack }: { viewer: WorkspaceFileViewer; onBack: 
   const unsupported = workspaceErrorClassifier().isUnsupportedFile(error);
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
+  const { directory, name } = splitFilePath(viewer.path);
 
   const sub = data ? (
     <span>
@@ -178,20 +198,37 @@ function FilePreview({ viewer, onBack }: { viewer: WorkspaceFileViewer; onBack: 
     <WorkspaceViewLayout
       scrollInset="flush"
       scrollRef={scrollPort}
-      identity={<FilePath path={viewer.path} />}
+      navigation={
+        <IconButton
+          ref={backRef}
+          icon={iconGlyph("chevron-left")}
+          size="sm"
+          aria-label={t("file.backToFiles")}
+          onClick={closeWorkspaceFile}
+        />
+      }
+      identity={<span title={viewer.path}>{name}</span>}
+      sub={
+        <span {...stylex.props(fp.context)}>
+          {directory && <span {...stylex.props(face.mono)}>{directory}/</span>}
+          {sub}
+        </span>
+      }
+      controls={
+        renderer && wholeFile ? (
+          <Segmented
+            value={mode}
+            onChange={setMode}
+            ariaLabel={t("file.mode")}
+            options={[
+              { value: "rendered", label: t("file.mode.rendered") },
+              { value: "source", label: t("file.mode.source") },
+            ]}
+          />
+        ) : undefined
+      }
       actions={
         <>
-          {renderer && wholeFile && (
-            <Segmented
-              value={mode}
-              onChange={setMode}
-              ariaLabel={t("file.mode")}
-              options={[
-                { value: "rendered", label: t("file.mode.rendered") },
-                { value: "source", label: t("file.mode.source") },
-              ]}
-            />
-          )}
           {!unsupported && <GoToLine onGo={(line) => openWorkspaceFile(viewer.path, line)} />}
           <IconButton
             icon={iconGlyph(copied ? "check" : "copy")}
@@ -207,15 +244,8 @@ function FilePreview({ viewer, onBack }: { viewer: WorkspaceFileViewer; onBack: 
               onClick={() => void localWorkspace().reveal(cwd, viewer.path)}
             />
           )}
-          <IconButton
-            icon={iconGlyph("arrow-left")}
-            size="sm"
-            aria-label={t("file.backToFiles")}
-            onClick={onBack}
-          />
         </>
       }
-      sub={sub}
     >
       {unsupported ? (
         <EmptyState

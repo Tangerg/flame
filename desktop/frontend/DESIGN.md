@@ -149,6 +149,9 @@ takes `border-strong`, a bar inside one takes `border`. Regions get theirs from
 style owns; a callsite never draws a region boundary itself. Half a pixel, not one:
 on a 2x panel that is exactly one device pixel.
 
+The sidebar and Dock flanks share a soft inset wash instead of an additional
+region stroke. Their full-height treatment stays unchanged during hover and drag.
+
 The failed-run banner is the one object that **demands attention**; it takes a 1px
 `--color-negative-edge` over a neutral fill. Hairlines are opaque per theme, because
 a semi-transparent border shifts across surface lifts.
@@ -203,7 +206,11 @@ Consolas, monospace`, and Flame's is JetBrains Mono.
 
 ### Scale
 
-The scale has nine roles: four UI steps, prose, code, and three display steps. At the default 14 px base, UI steps are 10 / 12 / 13 / 14 px and display steps are 16 / 18 / 24 px. Display sizes are smaller than typical marketing systems because Flame is a product UI, not a hero page.
+The scale has nine roles: four UI steps, prose, code, and three display steps.
+Prose takes one reading step above the interface text, while code retains its
+independent preference. Display steps remain above prose across the supported
+font-size range. The appearance-owned ladder supplies every size; the default
+reading step is 16 px alongside a 14 px interface.
 
 Sizes, weights and tracking are the `--fs-*`, `--fw-*` and `--tracking-*` tokens
 in `globals.css`; `check:tokens` fails the build on a per-callsite pixel value.
@@ -247,8 +254,8 @@ Three opaque tool windows and no line between any of them. No bottom status bar:
 │ ⚙ settings  ││    │ Composer                             │  │         │
 └─────────────┘└────┴──────────────────────────────────────┴──┴─────────┘
        ↑          ↑ turn rail (44)          outline rail (186) ↑ dock seam
-   --sidebar-width  --app-card-edge: the drawer seam,          0.5px edge
-   (275, 240–520) drawn inside the plane                  (--app-pane-split)
+   --sidebar-width  --app-card-edge: the drawer seam,          soft inset wash
+   (275, 240–520) drawn inside the plane                  (--app-pane-wash-end)
 ```
 
 Both rails are container-query gated on the width of the reading column — not the
@@ -301,10 +308,25 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
   remains scrollable; keyboard focus enters the reader only while it overflows.
   Vertical wheel input continues through the conversation at the reader's limits.
 
-File preview headers keep identity, line metadata and trailing controls on one
-row when they fit, then wrap as complete groups in a narrow pane. The filename
-leads its quieter directory and metadata. Copy feedback appears only after the
-clipboard accepts the current path and resets when that path changes.
+File preview headers place the return action before the filename, with the
+complete, wrapping directory and line metadata beneath the identity. Reading
+mode and contextual actions share a separate control row that wraps within the
+pane. Opening a file from the tree moves focus to its return action; returning
+restores the tree cursor. Selection changes preserve focus already placed in
+another region. Copy feedback appears only after the clipboard accepts the
+current path and resets when that path changes.
+
+Prose uses one paragraph gap, unitless heading leading and a visible gap between
+every heading and its following content. Deeper heading levels retain the body
+size and step down through weight and supporting ink. Conversation and captured
+documents consume this same grammar. Activity disclosures keep their quiet
+chevron visible before hover, so the route from summary to evidence is clear.
+
+Shared panels grow with their content inside the host scroller, keeping their
+canvas and sticky-control boundary intact. The conversation plane's fixed edge
+paints the same soft inset wash as the sidebar edge above the scrolling content.
+It has no dark stroke or hover/drag darkening. Both edges share one wash rule;
+the existing resize cursor and keyboard focus treatment remain available.
 
 Subagent detail keeps the selected task's identity, status, way back and stop
 action above its scrolling narrative. Overview counts belong to the list. The
@@ -355,12 +377,14 @@ Flame is a **product UI**, not a marketing site. Spacing comes from the `space` 
 
 ## 5. Elevation & Depth
 
-**Depth is value plus a half-pixel edge. Flush chrome casts nothing.**
-Every seam between regions is carried by an inset 0.5px edge whose shape the visual
-style owns — `--app-card-edge` at the drawer seam (drawn INSIDE the plane, because
-the plane outranks the drawer on z-index so the drawer can slide under it),
-`--app-pane-split` where the dock meets the conversation, `--app-header-edge` under
-a bar. A call site never draws a region boundary. Resource surfaces use the shared contact shadow. Floating overlays (menus, popovers, tooltips, command palette, lightbox) use greater depth because they can land over any surface.
+The sidebar and Dock use the same `--app-pane-wash-end` with `--seam-wash`,
+painted at the end of their adjacent plane. Hover and dragging add no darker edge.
+Header and internal navigation seams retain style-owned half-pixel shapes:
+`--app-card-edge` inside the reading plane, `--app-pane-split` on internal rails,
+and `--app-header-edge` under a bar. A call site never draws a region boundary.
+Resource surfaces use the shared contact shadow. Floating overlays (menus,
+popovers, tooltips, command palette, lightbox) use greater depth because they can
+land over any surface.
 
 | Level | Treatment                                              | Use                                                                            |
 | ----- | ------------------------------------------------------ | ------------------------------------------------------------------------------ |

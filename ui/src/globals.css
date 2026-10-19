@@ -247,24 +247,15 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   line-height: var(--leading-prose);
   text-wrap: pretty;
 }
-:where([data-prose]) > :where(* + *) {
-  margin-block-start: calc(var(--prose-space) * 4);
-}
 :where([data-prose]) :where(p) {
-  margin: 0 0 var(--prose-space);
+  margin: 0;
   font-size: inherit;
   line-height: var(--leading-prose);
   color: inherit;
   letter-spacing: inherit;
 }
-:where([data-prose]) > :where(p:not(:first-child)) {
-  margin-block-start: calc(var(--prose-space) * 2);
-}
-:where([data-prose]) > :where(p + p) {
-  margin-block: calc(var(--prose-space) * 4);
-}
-:where([data-prose]) :where(p:last-child) {
-  margin-block-end: 0;
+:where([data-prose]) > :where(* + *) {
+  margin-block-start: calc(var(--prose-space) * 4);
 }
 :where([data-prose]) :where(h1, h2, h3, h4, h5, h6) {
   font-weight: var(--fw-semibold);
@@ -272,37 +263,32 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   color: var(--color-accent-strong);
   margin: calc(var(--prose-space) * 8) 0 calc(var(--prose-space) * 2);
   text-wrap: balance;
+  line-height: 1.3;
+}
+:where([data-prose]) > :where(:is(h1, h2, h3, h4, h5, h6) + *) {
+  margin-block-start: 0;
 }
 :where([data-prose])
   :where(h1:not([data-prose-level]), [data-prose-level="1"]) {
   margin-block-start: calc(var(--prose-space) * 9);
   margin-block-end: calc(var(--prose-space) * 3);
   font-size: round(calc(var(--fs-prose) * 1.5), 1px);
-  line-height: calc(var(--prose-space) * 8);
 }
 :where([data-prose])
   :where(h2:not([data-prose-level]), [data-prose-level="2"]) {
   font-size: round(calc(var(--fs-prose) * 1.25), 1px);
-  line-height: calc(var(--prose-space) * 7);
 }
 :where([data-prose])
   :where(h3:not([data-prose-level]), [data-prose-level="3"]) {
   margin-block-start: calc(var(--prose-space) * 7);
   font-size: round(calc(var(--fs-prose) * 1.125), 1px);
-  line-height: calc(var(--prose-space) * 6.5);
 }
 :where([data-prose])
   :where(h4:not([data-prose-level]), [data-prose-level="4"]) {
   margin-block-start: calc(var(--prose-space) * 6);
-  margin-block-end: 0;
+  margin-block-end: calc(var(--prose-space) * 2);
   font-size: var(--fs-prose);
-  line-height: calc(var(--prose-space) * 6);
   color: var(--color-text);
-}
-:where([data-prose])
-  :where(h4:not([data-prose-level]), [data-prose-level="4"])
-  + p {
-  margin-block-start: 0;
 }
 :where([data-prose])
   :where(
@@ -311,10 +297,14 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
     [data-prose-level="5"],
     [data-prose-level="6"]
   ) {
-  margin: calc(var(--prose-space) * 4) 0 0;
+  margin: calc(var(--prose-space) * 5) 0 calc(var(--prose-space) * 2);
   font-size: var(--fs-prose);
-  line-height: var(--leading-prose);
+  font-weight: var(--fw-medium);
   color: var(--color-text);
+}
+:where([data-prose])
+  :where(h6:not([data-prose-level]), [data-prose-level="6"]) {
+  color: var(--color-text-muted);
 }
 :where([data-prose]) :where(ul, ol) {
   margin: 0;

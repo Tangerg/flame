@@ -13,9 +13,9 @@ describe("uiTypeLadder", () => {
       "ui-xs": 12,
       "ui-sm": 13,
       "ui-md": 14,
-      prose: 14,
+      prose: 16,
       code: 12,
-      "display-sm": 16,
+      "display-sm": 17,
       "display-md": 18,
       "display-lg": 24,
     });
@@ -30,10 +30,10 @@ describe("uiTypeLadder", () => {
     }
   });
 
-  it("reads at the interface size across the whole base range", () => {
+  it("gives prose a reading step above the interface across the whole base range", () => {
     for (let base = UI_FONT_SIZE_MIN_PX; base <= UI_FONT_SIZE_MAX_PX; base += 1) {
       const ladder = uiTypeLadder(base);
-      expect(ladder.prose).toBe(ladder["ui-md"]);
+      expect(ladder.prose).toBeGreaterThan(ladder["ui-md"]);
     }
   });
 
@@ -63,9 +63,9 @@ describe("uiTypeLadderCssVariables", () => {
       "--fs-ui-xs": "12px",
       "--fs-ui-sm": "13px",
       "--fs-ui-md": "14px",
-      "--fs-prose": "14px",
+      "--fs-prose": "16px",
       "--fs-code": "12px",
-      "--fs-display-sm": "16px",
+      "--fs-display-sm": "17px",
       "--fs-display-md": "18px",
       "--fs-display-lg": "24px",
     });

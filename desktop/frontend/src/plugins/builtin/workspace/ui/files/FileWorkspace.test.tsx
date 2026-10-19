@@ -6,7 +6,7 @@ import { WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { configureLocalWorkspace } from "../../application/ports/localWorkspace";
 import { navigator } from "@/lib/navigation";
-import { openWorkspaceFile } from "../../application/navigation";
+import { closeWorkspaceFile, openWorkspaceFile } from "../../application/navigation";
 import { useContextDockStore } from "../../adapters/contextDockStore";
 import { installWorkspaceErrorClassifier } from "../../adapters/runtimeWorkspaceErrorClassifier";
 import {
@@ -220,7 +220,7 @@ describe("workspace files panel", () => {
     expect(useContextDockStore.getState().dockViewIds).toEqual(["file"]);
 
     const back = screen.getByRole("button", { name: "Back to files" });
-    act(() => back.focus());
+    expect(document.activeElement).toBe(back);
     fireEvent.click(back);
     const returned = await screen.findByRole("treeitem", { name: "main.go" });
     expect(returned.tabIndex).toBe(0);
@@ -229,6 +229,29 @@ describe("workspace files panel", () => {
     expect(useContextDockStore.getState().dockViewIds).toEqual(["file"]);
     fireEvent.keyDown(returned, { key: "ArrowUp" });
     expect(document.activeElement).toBe(screen.getByRole("treeitem", { name: "src" }));
+  });
+
+  it("preserves another control's focus when file selection changes", async () => {
+    mount(
+      <>
+        <button>Another control</button>
+        <FileWorkspace />
+      </>,
+    );
+    fireEvent.click(await screen.findByRole("treeitem", { name: "src" }));
+    const row = await screen.findByRole("treeitem", { name: "main.go" });
+    act(() => row.focus());
+    fireEvent.keyDown(row, { key: "Enter" });
+    await screen.findByText("package main");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Back to files" }));
+    const other = screen.getByRole("button", { name: "Another control" });
+    act(() => other.focus());
+    act(() => closeWorkspaceFile());
+    await screen.findByRole("treeitem", { name: "main.go" });
+    expect(document.activeElement).toBe(other);
+    act(() => openWorkspaceFile("src/main.go"));
+    await screen.findByText("package main");
+    expect(document.activeElement).toBe(other);
   });
 
   it("shows a failed directory read and retries it without closing the directory", async () => {

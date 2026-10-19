@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from "./test";
 
-async function expectBlockRhythm(root: Locator, fontSize: number) {
+async function expectBlockRhythm(root: Locator) {
   const reading = await root.evaluate((node) => {
     const quotes = [...node.querySelectorAll("blockquote")];
     const startsWith = (element: Element, text: string) =>
@@ -28,6 +28,7 @@ async function expectBlockRhythm(root: Locator, fontSize: number) {
     };
     const taskParagraphs = task.querySelectorAll(":scope > p");
     return {
+      fontSize: Number.parseFloat(getComputedStyle(node).fontSize),
       evidence: flow(evidence),
       nextSteps: flow(nextSteps),
       nested: flow(nested),
@@ -41,6 +42,7 @@ async function expectBlockRhythm(root: Locator, fontSize: number) {
     };
   });
   expect(reading).not.toBeNull();
+  const fontSize = reading!.fontSize;
   expect(reading!.evidence).toEqual({ tags: ["P", "P"], gaps: [fontSize / 2] });
   expect(reading!.nextSteps).toEqual({
     tags: ["P", "UL", "P"],
@@ -77,14 +79,14 @@ for (const [fontSize, theme, narrow] of [
       await resizer.focus();
       await resizer.press("Home");
     }
-    await expectBlockRhythm(page.locator('[data-slot="document-body"]'), fontSize);
+    await expectBlockRhythm(page.locator('[data-slot="document-body"]'));
 
     await page.setViewportSize({ width: narrow ? 320 : 1472, height: 900 });
     await page.goto(
       `/visual/?fixture=agent&state=prose-blocks&theme=${theme}&font-size=${fontSize}`,
     );
     await page.locator("html[data-visual-ready]").waitFor();
-    await expectBlockRhythm(page.locator(".md").filter({ hasText: "Quoted evidence" }), fontSize);
+    await expectBlockRhythm(page.locator(".md").filter({ hasText: "Quoted evidence" }));
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
 }
