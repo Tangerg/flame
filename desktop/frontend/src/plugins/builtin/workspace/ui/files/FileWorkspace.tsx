@@ -1,7 +1,6 @@
 import { iconGlyph } from "@/ui/icons";
 import * as stylex from "@stylexjs/stylex";
 import { Activity, useCallback, useLayoutEffect, useRef, useState } from "react";
-import { copyText } from "@flame/ui";
 import { fileExtension } from "@/lib/path";
 import { fileKind } from "@/lib/fileKind";
 import { isImeKey } from "@/lib/ime";
@@ -9,7 +8,7 @@ import { useExtensionPoint } from "@/plugins/sdk";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
 import { WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
 import { DataView, FilePath, Popover, Segmented, TextButton, fileIconName } from "@/ui";
-import { Button, EmptyState, IconButton, TextField } from "@flame/ui";
+import { Button, EmptyState, IconButton, TextField, useCopyFeedback } from "@flame/ui";
 import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { localWorkspace } from "../../application/ports/localWorkspace";
 import { workspaceErrorClassifier } from "../../application/ports/workspaceErrorClassifier";
@@ -107,6 +106,7 @@ function FileBrowser({ restoreFocus }: { restoreFocus: (item: HTMLElement) => vo
 
 function FilePreview({ viewer, onBack }: { viewer: WorkspaceFileViewer; onBack: () => void }) {
   const t = useT();
+  const { copied, copy } = useCopyFeedback(viewer.path);
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
   const targetLine = viewer.line;
@@ -194,10 +194,10 @@ function FilePreview({ viewer, onBack }: { viewer: WorkspaceFileViewer; onBack: 
           )}
           {!unsupported && <GoToLine onGo={(line) => openWorkspaceFile(viewer.path, line)} />}
           <IconButton
-            icon={iconGlyph("copy")}
+            icon={iconGlyph(copied ? "check" : "copy")}
             size="sm"
-            aria-label={t("file.copyPath")}
-            onClick={() => void copyText(viewer.path)}
+            aria-label={t(copied ? "file.pathCopied" : "file.copyPath")}
+            onClick={() => void copy()}
           />
           {cwd && localWorkspace().available() && (
             <IconButton

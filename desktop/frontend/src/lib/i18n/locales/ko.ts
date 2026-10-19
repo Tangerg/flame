@@ -1019,6 +1019,7 @@ export const ko: Record<string, string> = {
   "message.mermaid.zoomOut": "다이어그램 축소",
   "file.range": "전체 {{total}}줄 중 {{start}}–{{end}}줄",
   "file.copyPath": "경로 복사",
+  "file.pathCopied": "경로를 복사했습니다",
   "file.reveal": "Finder에서 보기",
   "file.goToLine": "줄로 이동",
   "file.goToLine.placeholder": "줄 번호",

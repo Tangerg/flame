@@ -1074,6 +1074,7 @@ export const de: Record<string, string> = {
   "message.mermaid.zoomOut": "Diagramm verkleinern",
   "file.range": "Zeilen {{start}}–{{end}} von {{total}}",
   "file.copyPath": "Pfad kopieren",
+  "file.pathCopied": "Pfad kopiert",
   "file.reveal": "Im Finder zeigen",
   "file.goToLine": "Gehe zu Zeile",
   "file.goToLine.placeholder": "Zeilennummer",

@@ -1080,6 +1080,7 @@ export const es: Record<string, string> = {
   "message.mermaid.zoomOut": "Reducir diagrama",
   "file.range": "Líneas {{start}}–{{end}} de {{total}}",
   "file.copyPath": "Copiar ruta",
+  "file.pathCopied": "Ruta copiada",
   "file.reveal": "Mostrar en Finder",
   "file.goToLine": "Ir a la línea",
   "file.goToLine.placeholder": "Número de línea",

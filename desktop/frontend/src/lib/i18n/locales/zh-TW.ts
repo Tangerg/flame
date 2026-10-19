@@ -984,6 +984,7 @@ export const zhTW: Record<string, string> = {
   "message.mermaid.zoomOut": "縮小圖表",
   "file.range": "第 {{start}}–{{end}} 行，共 {{total}} 行",
   "file.copyPath": "複製路徑",
+  "file.pathCopied": "已複製路徑",
   "file.reveal": "在 Finder 中顯示",
   "file.goToLine": "跳至行",
   "file.goToLine.placeholder": "行號",

@@ -1037,6 +1037,7 @@ export const ja: Record<string, string> = {
   "message.mermaid.zoomOut": "図を縮小",
   "file.range": "{{total}} 行中 {{start}}–{{end}} 行",
   "file.copyPath": "パスをコピー",
+  "file.pathCopied": "パスをコピーしました",
   "file.reveal": "Finder で表示",
   "file.goToLine": "行へ移動",
   "file.goToLine.placeholder": "行番号",

@@ -299,6 +299,11 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
   remains scrollable; keyboard focus enters the reader only while it overflows.
   Vertical wheel input continues through the conversation at the reader's limits.
 
+File preview headers keep identity, line metadata and trailing controls on one
+row when they fit, then wrap as complete groups in a narrow pane. The filename
+leads its quieter directory and metadata. Copy feedback appears only after the
+clipboard accepts the current path and resets when that path changes.
+
 ### Tabs
 
 - **No session tab strip.** One active session at a time (ChatGPT-style);
