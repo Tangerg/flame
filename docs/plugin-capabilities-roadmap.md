@@ -79,7 +79,7 @@ model *selection* is a published contract a plugin may contribute; model
 ### Tier 2 — more UI, or needs a new mechanism
 - [x] **Web search / fetch / browse** (+ cache store) — tool plugin.
 - [ ] **Code execution / sandbox** — tool plugin owning its execution environment.
-- [ ] **Usage / cost reports, daily / weekly summaries.** A projection plugin: it
+- [x] **Usage / cost reports, daily / weekly summaries.** A projection plugin: it
       *reads* core accounting facts and owns its own report store + UI. Accounting
       totals stay core. Good vehicle to also measure composition/callback latency.
 - [ ] **Event-driven watchers / triggers (webhook, file-watch → start a Run).**
@@ -167,6 +167,9 @@ if its scope is genuinely ambiguous, surface it instead of guessing.
 - `fe169cd65` refactor: share one callback HTTP client instead of per-call transports.
 
 ## Completed rounds and contract lessons
+
+Commit IDs below identify authored revisions and may be rewritten when this
+worktree rebases onto `main`; subjects and changed owners identify each round.
 
 - `c5a031a74` upgrades all 30 Scope modules to v0.53.0 in Runtime, CLI and
   Reviews. Build/vet and the changed dependency consumers passed. The broad CLI
@@ -282,6 +285,29 @@ if its scope is genuinely ambiguous, surface it instead of guessing.
   check and the complete desktop frontend check passed after this sync, including
   tests, published boundaries, resources and production bundle checks. No plugin
   UI compilation stop was triggered. Backend rounds still avoid shared UI edits.
+- `3cbefe94b` implements Saved usage reports: a private archive and ordinary
+  workspace component capture, inspect and explicitly remove daily/weekly core
+  responses. Core now publishes the actual UTC observation time and relative
+  lower bound from one clock reading. These are rolling retained-evidence queries,
+  not calendar settlement or a transaction cutoff. Accounting, prices and unknown
+  coverage remain core-owned; the archive preserves the returned response.
+- Capture admission precedes the public accounting callback. Only newly admitted
+  work can observe core; publication and receipt settlement are atomic. Recovery
+  retains the original identity. Capture receipts contain headers, not duplicate
+  report bodies, so explicit deletion removes the saved accounting payload.
+  Replaying old capture/removal receipts cannot resurrect or target later reports.
+  The archive refuses at 64 reports / one MiB each instead of silently evicting
+  user-saved evidence. The UI preserves missing values, zero and exact JSON numbers.
+- The executable binds core's public summary type into the archive envelope and
+  generated contract. The plugin RPC package does not import core's protocol or
+  define a competing accounting structure. Existing live Usage remains a separate
+  read projection over the same core owner, without a new total or price rule.
+- Reports verification passed: Runtime build, changed usage/protocol/backend
+  tests and vet, dependency gates, real installed stdio capture/read/restart/delete
+  acceptance, frontend typecheck/lint, changed wire/component tests, published/UI
+  boundaries, and plugin resource reproducibility. After main's `4e54d4f8e` native
+  zoom/dock sync, full frontend and plugin checks had already passed; no shared UI
+  file was changed by this round. Broader unchanged suites were not repeated.
 
 ## Composition and callback baseline
 
