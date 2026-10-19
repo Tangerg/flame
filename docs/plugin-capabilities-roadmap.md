@@ -1,7 +1,7 @@
 # Plugin capabilities roadmap
 
 Forward-looking TODO for extending Flame's plugin line beyond Memory and Schedules.
-Knowledge base is now implemented as the third first-party backend. The architecture refactor is covered
+Knowledge base and GitHub are now implemented as ordinary first-party backends. The architecture refactor is covered
 by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is about
 *which capabilities to build next as plugins, and in what order.*
 
@@ -14,8 +14,9 @@ by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is ab
   entry now receives the same call-scoped canonical host grant as its public
   `plugins.call` entry, through the single owner `Pool.OpenRPC` (commit
   `a15f2f9e4`). Memory keeps its own narrow model/embedding grant by design.
-- Three first-party backends: `runtime/internal/plugins/memory`,
-  `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase`.
+- Four first-party backends: `runtime/internal/plugins/memory`,
+  `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase`,
+  `runtime/internal/plugins/github`.
 - Examples: `examples/plugins/reviews` (backend + typed ops + MCP tools + a
   declared analyzer dependency + board UI; one analyzer business is exposed as
   *both* a typed query and the `analyze_review` Tool), `examples/plugins/composition`
@@ -65,7 +66,7 @@ model *selection* is a published contract a plugin may contribute; model
 - [x] **Knowledge base / RAG over user docs.** Nearly the same shape as Memory:
       embedding callback + private vector store + `ModelContextContract` to inject
       retrieved chunks. Best "third plugin" to prove the pattern generalizes.
-- [ ] **First external connector (pick one SaaS, e.g. Lark or GitHub).** MCP tools
+- [x] **First external connector (pick one SaaS, e.g. Lark or GitHub).** MCP tools
       + a private credential store (+ optional context contribution). This is the
       largest product-value category; it also validates "same business usable from
       UI command *and* model Tool" (the parity just closed in `a15f2f9e4`).
@@ -178,6 +179,26 @@ if its scope is genuinely ambiguous, surface it instead of guessing.
   a newly admitted import may embed; missing settlement cannot authorize replay.
   Deleted document IDs are retired so a stale revision cannot match a reimport.
   Typed search, MCP search and model context share the same retrieval use case.
+- `764f67058` implements GitHub's read-only issue/list/file operations and matching
+  MCP tools. The existing private installation secret-input store owns the current
+  token; the backend receives one immutable launch value rather than creating a
+  competing credential database. Its private database owns credential-qualified
+  conditional responses. Every read revalidates upstream authority; rejection
+  never returns cached private content. Public access is explicit absence, while
+  a configured invalid token fails without a public fallback.
+- GitHub's Link header may use its canonical numeric repository route even when
+  the caller used `owner/name`. Only its next page number is projected. Subsequent
+  requests remain bound to the authored repository/filter; no Link, download URL
+  or redirect gains HTTP routing authority. The fixed-origin client bounds
+  responses/files and preserves explicit authorization/rate/resource refusals.
+  Source contracts and API version are linked in `plugins/github/README.md`.
+- GitHub verification passed: Runtime build, backend/resource/credential/cache
+  tests, typed/Tool success and refusal parity, actual installed secret lifecycle
+  and model refusal parity, first-party initialization, vet and architecture gates.
+  HTTP tests are deterministic and credential-independent; installed acceptance
+  deliberately refuses an invalid resource before HTTP. Live GitHub requests and
+  real-account permissions have not been qualified. The catalog initialization
+  regression now checks all supplied packages rather than freezing their count.
 - Embedding v2 returns the actual vector space with its vectors. Dimensions or a
   separately read embedding role cannot prove vector compatibility. Memory and
   all in-repository callback consumers migrated together; external backends must
