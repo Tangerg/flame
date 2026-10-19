@@ -291,6 +291,10 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
   whole turn, and a 38px gutter was taking it from every code block and table.
 - Long code blocks and tables can exceed the measure — they scroll horizontally
   inside their own wrapper; the prose column does not move.
+- Long inline tables keep a bounded reading viewport with pinned column headings.
+  Actions stay above its start, including in a narrow column. The complete table
+  remains scrollable; keyboard focus enters the reader only while it overflows.
+  Vertical wheel input continues through the conversation at the reader's limits.
 
 ### Tabs
 

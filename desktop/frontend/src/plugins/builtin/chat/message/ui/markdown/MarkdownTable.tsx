@@ -30,17 +30,6 @@ export function MarkdownTable({ markdownSource, children }: Props) {
 
   return (
     <div className="md-table-container" data-markdown-table tabIndex={-1}>
-      <div
-        {...scroll}
-        className="md-table-scroller"
-        role={reachable ? "region" : undefined}
-        aria-label={reachable ? t("message.table.content") : undefined}
-        data-focus-inset={reachable ? "" : undefined}
-      >
-        <table ref={tableRef} dir="auto" data-slot="prose-table">
-          {children}
-        </table>
-      </div>
       <div className="md-table-actions" data-reveal="hover" data-markdown-copy="exclude">
         <LightboxDialog
           open={previewOpen}
@@ -73,6 +62,17 @@ export function MarkdownTable({ markdownSource, children }: Props) {
           onClick={() => void copy()}
           aria-label={t(copied ? "message.table.copied" : "message.table.copy")}
         />
+      </div>
+      <div
+        {...scroll}
+        className="md-table-scroller"
+        role={reachable ? "region" : undefined}
+        aria-label={reachable ? t("message.table.content") : undefined}
+        data-focus-inset={reachable ? "" : undefined}
+      >
+        <table ref={tableRef} dir="auto" data-slot="prose-table">
+          {children}
+        </table>
       </div>
     </div>
   );

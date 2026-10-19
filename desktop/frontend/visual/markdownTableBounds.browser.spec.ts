@@ -144,6 +144,10 @@ async function readTableWithKeyboard(page: Page, container: Locator) {
   expect(range).toBeGreaterThan(1);
   await container.focus();
   await page.keyboard.press("Tab");
+  await expect(container.getByRole("button", { name: "Expand table", exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(container.getByRole("button", { name: "Copy table", exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
   await expect(scroller).toBeFocused();
   await expect(scroller).toHaveAttribute("role", "region");
   await expect(scroller).toHaveAccessibleName("Table content");
@@ -158,7 +162,9 @@ async function readTableWithKeyboard(page: Page, container: Locator) {
     await page.keyboard.up("ArrowRight");
   }
   expect(await transcript.evaluate((node) => node.scrollTop)).toBe(outerTop);
-  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expect(container.getByRole("button", { name: "Copy table", exact: true })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
   await expect(container.getByRole("button", { name: "Expand table", exact: true })).toBeFocused();
 }
 
@@ -210,12 +216,15 @@ for (const [width, fontSize, theme] of [
         expect.soft(reading.table.right).toBeLessThanOrEqual(reading.markdown.right);
         if (width > 1000) {
           expect
-            .soft(reading.actions.left, `${reading.state} actions follow the table end`)
-            .toBeGreaterThanOrEqual(reading.table.right);
+            .soft(reading.actions.right, `${reading.state} actions share the table's trailing edge`)
+            .toBeLessThanOrEqual(reading.table.right);
           expect
-            .soft(reading.actions.bottom, `${reading.state} actions reserve no row`)
-            .toBeLessThanOrEqual(reading.table.bottom);
-          expect.soft(reading.container.bottom).toBe(reading.table.bottom);
+            .soft(
+              reading.actions.bottom,
+              `${reading.state} actions have their own zone above the reader`,
+            )
+            .toBeLessThanOrEqual(reading.scroller.top);
+          expect.soft(reading.container.bottom).toBe(reading.scroller.bottom);
         }
       } else {
         expect(reading.overflowX).toBe("auto");
