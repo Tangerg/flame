@@ -79,7 +79,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
           )}
           <ToolStatusMarks model={model} />
         </Pressable>
-        <span {...stylex.props(gm.actions)}>{actions}</span>
+        {actions.length > 0 && <span {...stylex.props(gm.actions)}>{actions}</span>}
       </div>
       <ToolFailureLine model={model} />
       {expanded && !model.denied && (

@@ -7,7 +7,7 @@ import {
   RecordedOutput,
   resultActions,
 } from "./recorded-output";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Search } from "@flame/icons/react";
 import type { CapturedToolResult, ComponentContext } from "@flame/plugin-sdk";
 import {
@@ -377,10 +377,15 @@ function RecordedRows({
                 <Metadata
                   style={{
                     whiteSpace: "pre-wrap",
-                    fontFamily: "var(--font-sans)",
                   }}
                 >
-                  {row.location}
+                  {row.location.split("/").map((part, index) => (
+                    <Fragment key={index}>
+                      {index > 0 && "/"}
+                      {index > 0 && <wbr />}
+                      {part}
+                    </Fragment>
+                  ))}
                 </Metadata>
               )}
               {row.kind === "entry" && (

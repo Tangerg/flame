@@ -22,10 +22,6 @@ import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   sans: { fontFamily: "var(--font-sans)" },
   failure: { flexShrink: 0, color: color.negative },
-  openSlot: {
-    flexShrink: 0,
-    width: "max(var(--control-height-xs), var(--control-target-min))",
-  },
   failureLine: {
     marginTop: space.s0_5,
     marginLeft: space.s6,
@@ -70,27 +66,27 @@ export function useToolRowActions(tool: ToolCall) {
   const t = useT();
   const actions = toolCardActions(tool, useExtensionPoint(TOOL_ACTION));
   const opener = toolCardViewOpener(tool, useExtensionPoint(TOOL_VIEW_OPENER));
-  return [
-    ...actions.map((action) => (
-      <IconButton
-        key={action.id}
-        data-reveal="hover"
-        icon={iconGlyph(knownIconName(action.icon) ?? "tool")}
-        size="xs"
-        quiet
-        aria-label={t(action.title)}
-        onClick={(event) => {
-          event.stopPropagation();
-          void Promise.resolve(action.run(tool)).catch((err) => {
-            const owner = lookupToolActionOwner(action.id) ?? "unknown";
-            console.error(`[plugin] tool action ${action.id} threw:`, err);
-            reportPluginError(owner, "command", err, `tool action: ${action.id}`);
-          });
-        }}
-        className={stylex.props(reveal.shown).className}
-      />
-    )),
-    opener ? (
+  const controls = actions.map((action) => (
+    <IconButton
+      key={action.id}
+      data-reveal="hover"
+      icon={iconGlyph(knownIconName(action.icon) ?? "tool")}
+      size="xs"
+      quiet
+      aria-label={t(action.title)}
+      onClick={(event) => {
+        event.stopPropagation();
+        void Promise.resolve(action.run(tool)).catch((err) => {
+          const owner = lookupToolActionOwner(action.id) ?? "unknown";
+          console.error(`[plugin] tool action ${action.id} threw:`, err);
+          reportPluginError(owner, "command", err, `tool action: ${action.id}`);
+        });
+      }}
+      className={stylex.props(reveal.shown).className}
+    />
+  ));
+  if (opener) {
+    controls.push(
       <IconButton
         key="open-view"
         data-reveal="hover"
@@ -108,9 +104,8 @@ export function useToolRowActions(tool: ToolCall) {
           });
         }}
         className={stylex.props(reveal.shown).className}
-      />
-    ) : (
-      <span key="open-view" aria-hidden {...stylex.props(styles.openSlot)} />
-    ),
-  ];
+      />,
+    );
+  }
+  return controls;
 }

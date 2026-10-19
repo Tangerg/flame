@@ -136,8 +136,31 @@ test("search results omit absent snippets while preserving recorded empty lines"
   await expect(fileRows.nth(1).locator("pre")).toHaveText(
     "func TestCommitAtomicity(t *testing.T) {",
   );
+  const located = fileRows.nth(1);
+  expect(await located.locator("p").evaluate((node) => getComputedStyle(node).fontFamily)).toBe(
+    await located.locator("pre").evaluate((node) => getComputedStyle(node).fontFamily),
+  );
   await expect(fileRows.nth(2).locator("pre")).toHaveText(" ");
   await expect(fileRows.nth(2).locator("pre")).toBeVisible();
+  await page.setViewportSize({ width: 440, height: 900 });
+  expect(
+    await fileRows
+      .nth(0)
+      .locator("p")
+      .evaluate((node) => {
+        const filename = "store_test.go";
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        let text = walker.nextNode();
+        while (text && !text.textContent?.includes(filename)) text = walker.nextNode();
+        if (!text) throw new Error("The recorded filename is missing");
+        const start = text.textContent!.indexOf(filename);
+        const range = document.createRange();
+        range.setStart(text, start);
+        range.setEnd(text, start + filename.length);
+        return range.getClientRects().length;
+      }),
+  ).toBe(1);
+  await page.setViewportSize({ width: 1440, height: 900 });
   await files.getByRole("button", { name: "Find", exact: true }).click();
   await finding.getByRole("searchbox", { name: "Filter result" }).fill("TestCommitAtomicity");
   await expect(filteredRows).toHaveCount(1);
