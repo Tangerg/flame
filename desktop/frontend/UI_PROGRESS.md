@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. Recorded-evidence selection continues from the native keyboard qualification at `309b1e44e` on `main`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. Native hidden-zoom investigation continues from recorded-evidence selection at `f0e74ab21` on `main`. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -10,7 +10,7 @@ The latest objective explicitly resumes continuous desktop UI work. Complete eac
 
 Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The subsequent native focus investigation qualified the existing keyboard resize path and isolated clicked-label reverse navigation to a WebKit behavior also reproduced by a bare HTML button. No host preference or component workaround was added. The precise scenarios and limits are below.
 
-Recorded Tool readers now share the literal code reader's local Select All boundary. Whole-reader copy uses the current presented rows or preview excerpt; expanded command output supplies the complete ANSI-stripped captured source, including virtualized lines and trailing newlines. Stable content children keep mutable row trees from shortening the browser's range. Partial selection, editable fields, explicit complete-result copy and Runtime ownership remain separate. The next concrete investigation is reading-position drift when native zoom changes while a virtual output reader is hidden, recorded below.
+Recorded Tool readers now share the literal code reader's local Select All boundary. Whole-reader copy uses the current presented rows or preview excerpt; expanded command output supplies the complete ANSI-stripped captured source, including virtualized lines and trailing newlines. Stable content children keep mutable row trees from shortening the browser's range. Partial selection, editable fields, explicit complete-result copy and Runtime ownership remain separate. Hidden-zoom reading drift now reproduces in a plain native HTML scroller without virtualization and remains a platform limitation, qualified below. Continue with the unqualified oversized pasted-text preview path before deciding whether it needs a product change.
 
 Task-oriented layout and interaction apply across the conversation, Context Dock, settings and installed views. Preserve the approved brand, shared reading hierarchy, Composer, code/table/selection fixes, sidebar-matching Dock seam and custom-accent theme owner. The earlier `cap`-based inline-icon sizing tip is a suggestion for future typography work, not a global icon redesign.
 
@@ -398,6 +398,20 @@ while visible. `ChatStream` suspends only its Composer geometry observer, and
 WebKit: retained hidden readers otherwise measured zero and jumped to the bottom.
 No scroll-position cache or replacement business lifetime was added.
 
+Native page zoom while a retained reader is hidden has a separate limit. On
+macOS 26.5, changing 150% to 200% while its ancestor is `hidden` changed a
+777,329 CSS-pixel position to 582,997 on return. A plain HTML scroller reproduced
+the exact change without React, virtualization, ResizeObserver or application
+scroll handlers. Ordinary hide/show at unchanged zoom retained 777,329, and visible
+zoom retained that same position. This is not evidence of another component
+lifetime or virtual-window defect. The [WebKit scroll-area implementation](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/rendering/RenderLayerScrollableArea.cpp)
+saves and restores a layer position; [the DOM scroll getter](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/dom/Element.cpp)
+removes the current zoom. A saved layer offset restored under a different scale
+is consistent with the observed 150/200 ratio. That is a source-based explanation,
+not identification of the exact installed system WebKit revision. Keep this
+limitation explicit rather than adding a competing application scroll cache or
+keeping every hidden workspace laid out solely for this edge case.
+
 `useInspectionFocus.ts` gives a removed layout trigger's focus to the presented
 main body, visible Dock or conversation only when focus fell to the document
 body. Existing explicit source returns and later outside focus keep priority.
@@ -475,6 +489,14 @@ reachable controls and width semantics. Existing type, color and surface owners
 remain the visual basis.
 
 ## Verification checkpoint
+
+For the native hidden-zoom investigation:
+
+- Actual Wails on macOS 26.5 used production components and the canonical read-only Tool-shell fixture in English/dark/18 px/custom blue, at a 1440-point window. Find located captured output line 31415. Visible native zoom from 100% to 150% retained the same output node and 777,329 CSS-pixel position. Entering the fixture's unavailable file main view hid that conversation; it is a valid hiding probe, not qualification of a registered Files workflow. After hidden zoom to 200%, Close and Actual Size returned that same node at 582,997, around line 23555. Its row height and complete content height remained unchanged.
+- A separate plain HTML page in the same real Wails host used one fixed-height overflow container and a tall content child, with no React, virtual rows, ResizeObserver or application scroll handlers. A native button established the same reference position. The identical 150% → hide → 200% → show → Actual Size sequence reproduced exactly 777,329 → 582,997. A separate hide/show at unchanged 100% retained 777,329. Temporary read-only diagnostics observed DOM geometry; they did not restore or synthesize scroll state. No live Runtime write, recorded Tool execution or installed-package update occurred.
+- This confirms a native hidden-zoom limitation, not passing reading continuity under that condition. Current upstream WebKit source supplies a consistent save/restore-and-zoom explanation; the exact system WebKit revision and an upstream repair were not qualified. The better-layout/accessibility review retains browser scroll ownership and the existing semantic visibility/focus boundaries. No product source, theme, dependency or generated resource changed, and no implementation was delegated because none was justified by this investigation.
+- The isolated fixture production build and native overlay compilation passed; the duplicate `-lobjc` warning remained non-failing. Only this handoff changed, so its formatter and `git diff --check` are the fresh repository checks. The preceding full UI/resource gates and supported production build remain historical results, not new runs. No browser suite, performance benchmark, VoiceOver, OS IME, other-platform or new theme/window matrix ran. The first disposable launch had an incorrect asset root and unregistered scene parameter; those acceptance setup errors were corrected before qualification.
+- Cleanup completed: every owned native/build process exited, the app was unregistered, and the fixture, plain page, overlay, binary, data, observations and logs were removed with their acceptance root. Newly created bundle-specific WebKit/cache directories were removed against the pre-launch baseline and birth times; preferences, HTTP storage and saved state were absent. No preview server was started. Existing shared outputs, compiler caches, read-only references and unrelated worktrees/processes were retained.
 
 For recorded-evidence selection and copy:
 
@@ -603,16 +625,14 @@ HTML and remains a platform limitation. Preserve the existing geometry and focus
 owners. Continue with the remaining task-oriented evidence and reading paths,
 selecting scope from current source and actual native observations.
 
-The next concrete investigation is hidden virtual-output reading continuity
-during native page zoom. An exploratory sequence read at 776,985 CSS px, entered
-Files in the main area at 150%, enlarged that hidden reader to 200%, closed the
-main view and restored Actual Size. The same output instance then reported
-582,738 CSS px. This is an observed reading-position change, not a diagnosed
-measurement or Runtime defect; isolate the WebKit/viewport behavior before
-changing an owner. The selection/copy repair does not claim to fix it. A separate
-50,002-line pasted-text preview temporarily made the native accessibility tree
-unavailable until Escape; its content and cause remain unqualified. Do not infer
-a performance bottleneck or start a broader Composer rewrite from that probe.
+The hidden-zoom investigation is complete at the scope above. Its exact position
+change reproduces without application scrolling code; retain the documented
+platform limitation and revisit it when WebKit behavior changes. The selection
+repair does not fix or claim that condition. Next inspect the separate 50,002-line
+pasted-text preview that temporarily made the native accessibility tree
+unavailable until Escape. Its content and cause remain unqualified; distinguish
+an accessibility-extraction limit from an application failure before changing
+Composer. Do not infer a performance bottleneck from that probe.
 
 Memory query/draft continuity, original-command observation and main-only source
 retention are now implemented and qualified above. Do not recreate them or make
