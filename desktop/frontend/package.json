@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "perf:baseline": "playwright test --config playwright.perf.config.ts",
+    "perf:composition": "vite build --config vite.composition.config.ts && vite preview --config vite.composition.config.ts",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",

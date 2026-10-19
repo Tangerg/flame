@@ -330,5 +330,62 @@ Point resolution uses real contract/applicability/order admission over an
 in-memory installation snapshot; it excludes persistence I/O and rendered frames.
 Callbacks use the real loopback grant/transport, contract admission and result
 decoding with deterministic vectors; they exclude provider latency/accounting I/O.
-ESM loading and rendered decoration remain unmeasured and need a separate browser
-sample after the frontend seam is suitable. No speculative optimization was added.
+No speculative optimization was added.
+
+### Browser realization baseline
+
+Apple M4, Chromium 149 headless, 10 reported hardware threads, viewport
+1,280 × 577 CSS pixels at device scale 1. Nine fresh-page samples, with the host
+modules loaded before measurement; the browser process and filesystem caches
+were warm. The 1,029-byte prebuilt Provider ESM from the independent composition
+example was served uncompressed over loopback with `Cache-Control: no-store`.
+
+| Boundary | Workload | Median | Sample range |
+| --- | --- | --- | --- |
+| First plugin module acquisition + ESM evaluation | One Provider module, warm host | 3.5 ms | 2.9–4.5 ms |
+| Warm decoration DOM ready | 1 / 8 / 32 nested frames | 0.9 / 1.0 / 1.8 ms | 0.8–1.1 / 0.9–1.2 / 1.7–2.0 ms |
+| Warm decoration + two animation frames | 1 / 8 / 32 nested frames | 32.5 / 32.7 / 32.7 ms | 31.9–32.8 / 32.2–32.9 / 31.3–32.8 ms |
+
+The fixture uses production `ComponentModules`, `ComponentCompositions`,
+`RenderingComponent`, shared-module import maps and contribution lifetimes.
+Metadata and lease admission return deterministic in-memory facts, so this sample
+does not include Runtime RPC, core point admission, backend callbacks, provider
+latency, full workbench startup or native WebView behavior. Core resolution and
+callback baselines above measure different boundaries; their values are not one
+end-to-end request. One module resource was acquired in each page, shared by all
+frames; repeated module reads were below the 0.1 ms timer resolution except one
+0.1 ms sample. Warm DOM samples followed the first single-frame mount. The probe
+checked both frame count and outer-to-inner nesting of the current sample.
+
+DOM readiness is observed mutation completion. Two animation frames provide an
+additional browser scheduling horizon, not a paint or interaction-latency
+guarantee; below-viewport frames are still part of this DOM workload. The roughly
+33 ms frame horizon must not be interpreted as JavaScript execution time.
+
+Reproduce from `desktop/frontend`:
+
+```sh
+npm run perf:composition
+```
+
+In another terminal, use a fresh page for each sample:
+
+```sh
+agent-browser --session flame-composition open http://127.0.0.1:4176/visual/composition.html
+agent-browser --session flame-composition wait --fn '!!window.compositionBaseline'
+agent-browser --session flame-composition eval --stdin <<'JS'
+(async () => {
+  const cold = await window.compositionBaseline.measure(1);
+  const warm = [];
+  for (const count of [1, 8, 32]) warm.push(await window.compositionBaseline.measure(count));
+  return {cold, warm};
+})()
+JS
+```
+
+Repeat the fresh-page sequence nine times and compare medians/ranges. The fixture
+has no installed Runtime, model calls or user data. Close the isolated browser
+session and stop the preview when finished. The observed browser tree and a local
+screenshot confirmed ordinary nested Provider frames; no performance threshold
+was added as a correctness test. Fixture build, frontend typecheck, focused lint,
+format and Knip checks passed. No production host path was changed.
