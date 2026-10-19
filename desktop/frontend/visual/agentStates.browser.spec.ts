@@ -292,6 +292,13 @@ test("the subagent transcript follows new output and respects reading above the 
   await expect
     .poll(() => scroller.evaluate((e) => e.scrollHeight - e.clientHeight - e.scrollTop))
     .toBeLessThan(2);
+  await expect(panel.getByText("Audit Agent Framework ownership", { exact: true })).toBeInViewport({
+    ratio: 1,
+  });
+  await expect(panel.getByText("Needs input", { exact: true })).toBeInViewport({ ratio: 1 });
+  await expect(
+    panel.getByRole("button", { name: "Cancel this run", exact: true }).first(),
+  ).toBeInViewport({ ratio: 1 });
   await scroller.hover();
   await page.mouse.wheel(0, -500);
   await expect

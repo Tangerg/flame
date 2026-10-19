@@ -15,14 +15,14 @@ import {
   useExpandedWorkspaceToolIds,
   useToggleWorkspaceTool,
 } from "@/plugins/builtin/workspace/public/navigation";
-import { Icon, ScrollArea, SectionLabel, StatusDot } from "@/ui";
-import { EmptyState, IconButton, RecordBody, RecordSummary, toneInk, vocab } from "@flame/ui";
-import { AgentSurfaceHeader, AgentWorkspaceView } from "@/ui/agent";
+import { ScrollArea, SectionLabel, StatusDot } from "@/ui";
+import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
+import { AgentWorkspaceView } from "@/ui/agent";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { corner, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { corner, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "../application/subagents";
-import { delegatedRunSummary } from "../application/delegatedRunSummary";
+import { delegatedRunSummary, type DelegatedRunSummary } from "../application/delegatedRunSummary";
 import { DelegatedRunLink } from "./DelegatedRunLink";
 import { renderMessageBlocks, type BlockCtx } from "./BlockRenderer";
 import { MESSAGE_CONTENT_CLASS } from "./messageContent";
@@ -31,6 +31,16 @@ import { UnresolvedRunEffects } from "./UnresolvedRunEffects";
 import { SteerInputStatus } from "./SteerInputStatus";
 
 const styles = stylex.create({
+  header: {
+    display: "flex",
+    alignItems: "center",
+    gap: space.s2,
+    flexShrink: 0,
+    minWidth: 0,
+    minHeight: "var(--surface-header-height)",
+    paddingInline: "var(--reading-gutter-wide)",
+    paddingBlock: space.s2,
+  },
   headLine: { minWidth: 0, flex: 1 },
   scroller: {
     paddingInline: "var(--reading-gutter-wide)",
@@ -39,27 +49,37 @@ const styles = stylex.create({
   group: { marginBottom: space.s4 },
   title: { marginBottom: space.s2 },
   transcript: { display: "flex", flexDirection: "column", gap: space.s5, minWidth: 0 },
-  status: { display: "flex", alignItems: "flex-start", gap: space.s2 },
-  summary: { minWidth: 0, flex: 1 },
-  statusAction: { marginInlineStart: "auto" },
+  summary: { display: "grid", gap: space.s0_5, minWidth: 0, flex: 1 },
+  name: {
+    display: "-webkit-box",
+    WebkitBoxOrient: "vertical",
+    WebkitLineClamp: 2,
+    overflow: "hidden",
+    overflowWrap: "anywhere",
+    fontWeight: weight.medium,
+  },
 });
 
 export function SubagentsPanel() {
   const t = useT();
+  const available = useRuntimeCommandsAvailable();
   const rows = useActiveConversationRows();
   const entries = useMemo(() => subagentEntries(rows), [rows]);
   const selectedId = useWorkspaceSubagentRunId();
   const selected = entries.find(({ narrative }) => narrative.run.id === selectedId);
+  const summary = selected
+    ? delegatedRunSummary(
+        t,
+        selected.narrative.run,
+        selected.ordinal,
+        selected.siblingCount,
+        selected.taskLabel,
+      )
+    : null;
   const running = entries.filter(({ narrative }) => narrative.run.status === "running").length;
   return (
     <AgentWorkspaceView ariaLabel={t("subagents.title")}>
-      <AgentSurfaceHeader>
-        <span
-          {...stylex.props(styles.headLine, vocab.truncate, vocab.muted, typeStep.uiSm, face.mono)}
-        >
-          {t("subagents.count", { count: entries.length })}
-          {running > 0 && ` · ${t("subagents.running", { count: running })}`}
-        </span>
+      <header data-slot="subagent-header" {...stylex.props(styles.header)}>
         {selectedId && (
           <IconButton
             icon={iconGlyph("chevron-left")}
@@ -68,9 +88,52 @@ export function SubagentsPanel() {
             onClick={() => openWorkspaceSubagentRun(null)}
           />
         )}
-      </AgentSurfaceHeader>
-      {selected ? (
-        <SubagentTranscript key={selectedId} entry={selected} />
+        {summary ? (
+          <div {...stylex.props(styles.summary)}>
+            <span
+              data-slot="subagent-identity"
+              title={summary.label}
+              {...stylex.props(styles.name, typeStep.uiSm)}
+            >
+              {summary.label}
+            </span>
+            <span {...stylex.props(vocab.line, toneInk[summary.ink], typeStep.uiXs)}>
+              <StatusDot tone={summary.dotTone} />
+              {summary.statusLabel}
+            </span>
+          </div>
+        ) : (
+          <span
+            {...stylex.props(
+              styles.headLine,
+              vocab.truncate,
+              vocab.muted,
+              typeStep.uiSm,
+              face.mono,
+            )}
+          >
+            {t("subagents.count", { count: entries.length })}
+            {running > 0 && ` · ${t("subagents.running", { count: running })}`}
+          </span>
+        )}
+        {selected && summary?.cancelable && (
+          <IconButton
+            icon={iconGlyph("stop")}
+            size="sm"
+            quiet
+            disabled={!available}
+            aria-label={t("agent.runTree.action.cancel")}
+            onClick={() =>
+              cancelSessionRun({
+                sessionId: selected.narrative.run.sessionId,
+                runId: selected.narrative.run.id,
+              })
+            }
+          />
+        )}
+      </header>
+      {selected && summary ? (
+        <SubagentTranscript key={selectedId} entry={selected} summary={summary} />
       ) : (
         <ScrollArea className={stylex.props(styles.scroller).className}>
           {selectedId ? (
@@ -115,55 +178,30 @@ function SubagentGroup({ title, entries }: { title: string; entries: SubagentEnt
   );
 }
 
-function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
+function SubagentTranscript({
+  entry,
+  summary,
+}: {
+  entry: SubagentEntry;
+  summary: DelegatedRunSummary;
+}) {
   const t = useT();
-  const available = useRuntimeCommandsAvailable();
   const { scrollRef, contentRef } = useStickToBottom({ initial: "instant", resize: "instant" });
   const expandedIds = useExpandedWorkspaceToolIds();
   const onToggleExpand = useToggleWorkspaceTool();
   const ctx: BlockCtx = { expandedIds, onToggleExpand, textReveal: "instant" };
-  const { narrative, facts, ordinal, siblingCount, taskLabel } = entry;
-  const model = delegatedRunSummary(t, narrative.run, ordinal, siblingCount, taskLabel);
+  const { narrative, facts } = entry;
   return (
     <ScrollArea ref={scrollRef} className={stylex.props(styles.scroller).className}>
       <div
         ref={contentRef}
         role="region"
-        aria-label={model.label}
+        aria-label={summary.label}
         {...stylex.props(styles.transcript)}
       >
-        <div {...stylex.props(styles.status, typeStep.uiMd)}>
-          <span {...stylex.props(vocab.firstLine)}>
-            <Icon name="bot" size="sm" />
-          </span>
-          <span {...stylex.props(styles.summary)}>
-            <RecordSummary
-              title={<span title={model.label}>{model.label}</span>}
-              status={
-                <span {...stylex.props(vocab.line, vocab.hold, toneInk[model.ink])}>
-                  <StatusDot tone={model.dotTone} />
-                  {model.statusLabel}
-                </span>
-              }
-            />
-          </span>
-          {model.cancelable && (
-            <IconButton
-              icon={iconGlyph("stop")}
-              size="sm"
-              quiet
-              disabled={!available}
-              className={stylex.props(styles.statusAction).className}
-              aria-label={t("agent.runTree.action.cancel")}
-              onClick={() =>
-                cancelSessionRun({ sessionId: narrative.run.sessionId, runId: narrative.run.id })
-              }
-            />
-          )}
-        </div>
-        {model.detail && (
-          <div {...stylex.props(typeStep.uiSm, toneInk[model.ink])}>
-            <RecordBody>{model.detail}</RecordBody>
+        {summary.detail && (
+          <div {...stylex.props(typeStep.uiSm, toneInk[summary.ink])}>
+            <RecordBody>{summary.detail}</RecordBody>
           </div>
         )}
         <UnresolvedRunEffects effects={narrative.run.outcome?.unresolvedEffects} />

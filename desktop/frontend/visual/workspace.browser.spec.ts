@@ -961,25 +961,20 @@ test("choosing a subagent swaps the panel's name for the way back", async ({ pag
   await panel.locator('[data-slot="delegated-run-link"] button').first().click();
   await expect(panel.getByRole("button", { name: "Subagents", exact: true })).toBeVisible();
 
-  const gap = await panel
-    .locator('[role="region"]')
-    .first()
-    .evaluate((root) => {
-      const name = root.querySelector("span[title]");
-      const status = [...root.querySelectorAll("span")].find(
-        (node) => node.textContent?.trim() === "Needs input",
-      );
-      if (!name || !status) return null;
-      const written = document.createRange();
-      written.selectNodeContents(name);
-      return Math.round(
-        status.getBoundingClientRect().left - written.getBoundingClientRect().right,
-      );
-    });
-  expect(
-    gap,
-    "a run's status reads with the run it names, not at the pane's far edge",
-  ).toBeLessThan(40);
+  const placement = await panel.locator("header").evaluate((root) => {
+    const name = root.querySelector('[data-slot="subagent-identity"]');
+    const status = [...root.querySelectorAll("span")].find(
+      (node) => node.textContent?.trim() === "Needs input",
+    );
+    if (!name || !status) return null;
+    const identity = name.getBoundingClientRect();
+    const state = status.getBoundingClientRect();
+    return { inset: Math.abs(state.left - identity.left), gap: state.top - identity.bottom };
+  });
+  expect(placement, "the selected task keeps its status directly beneath its name").not.toBeNull();
+  expect(placement!.inset).toBeLessThanOrEqual(1);
+  expect(placement!.gap).toBeGreaterThanOrEqual(0);
+  expect(placement!.gap).toBeLessThanOrEqual(8);
 });
 
 test("every dock view the app offers is a view some state opens", async ({ page }) => {

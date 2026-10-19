@@ -304,6 +304,13 @@ row when they fit, then wrap as complete groups in a narrow pane. The filename
 leads its quieter directory and metadata. Copy feedback appears only after the
 clipboard accepts the current path and resets when that path changes.
 
+Subagent detail keeps the selected task's identity, status, way back and stop
+action above its scrolling narrative. Overview counts belong to the list. The
+task name takes the available width while the controls remain reachable in a
+narrow Dock. Names take at most two lines; the complete label remains in its
+native title hint, the keyboard-reachable list entry and the transcript's accessible name.
+Detail headers use the reading plane, without a second window-chrome divider.
+
 ### Tabs
 
 - **No session tab strip.** One active session at a time (ChatGPT-style);
