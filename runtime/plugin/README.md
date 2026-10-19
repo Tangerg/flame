@@ -518,7 +518,7 @@ their existing Scope Call/Stream contract and cannot acquire those authorities.
 
 ## Model selection before exact binding
 
-`ModelSelectionContract` publishes the `flame.model-selection.v1` selection role.
+`ModelSelectionContract` publishes the `flame.model-selection.v2` selection role.
 The ordinary provider-selection API chooses one installed contribution explicitly.
 A backend registers `ModelSelectionMethod` and returns the complete provider,
 model and optional model-owned reasoning effort. The query carries the original
@@ -542,6 +542,15 @@ conversation. The selected identity travels with its actual resolved model into
 context composition, observation and pricing. Role changes affect new captures.
 No selector binding is retained as a later execution dependency after the query
 has returned; its result is the immutable selection owned by the accepted use case.
+
+The query's `context` projects the actual calling use and its captured envelope.
+`interaction` has no caller byte budget at this boundary; `utility` carries text
+bytes and output tokens before authoring its prompts; `independent` carries encoded
+request bytes and output tokens from the selected-call budget. Limits remain with
+their calling owners and cannot be changed by selection. They are neither model
+capacity nor a monetary allowance. A selector must not infer use from an absent
+request or treat text bytes as encoded-request bytes. Selection contributors must
+rebuild and explicitly select v2; the former contract has no adapter or fallback.
 
 Selection is per accepted execution/auxiliary capture. Input transformations and
 independent routed physical calls use the separate admitted boundaries below.

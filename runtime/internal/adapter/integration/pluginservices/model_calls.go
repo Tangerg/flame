@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
@@ -35,7 +36,13 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pl
 		if err != nil {
 			return models.SelectedChat{}, nil, nil, err
 		}
-		selection, err = o.SelectModel(ctx, selection, &input.Request)
+		selection, err = o.SelectModel(ctx, modelapp.SelectionInput{
+			Context: modelchoice.SelectionContext{Use: modelchoice.Independent, Limits: &modelchoice.SelectionLimits{
+				InputKind: modelchoice.RequestBytes, MaxInputBytes: input.Budget.MaxRequestBytes, MaxOutputTokens: input.Budget.MaxOutputTokens,
+			}},
+			Proposed: selection,
+			Request:  &input.Request,
+		})
 		if err != nil {
 			return models.SelectedChat{}, nil, nil, err
 		}

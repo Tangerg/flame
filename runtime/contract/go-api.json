@@ -1669,6 +1669,16 @@
       "path": "github.com/Tangerg/flame/runtime/model",
       "constants": [
         {
+          "name": "Independent",
+          "type": "Use",
+          "value": "\"independent\""
+        },
+        {
+          "name": "Interaction",
+          "type": "Use",
+          "value": "\"interaction\""
+        },
+        {
           "name": "MaximumModelIdentityCharacters",
           "type": "untyped int",
           "value": "256"
@@ -1682,6 +1692,21 @@
           "name": "MaximumReasoningEffortCharacters",
           "type": "untyped int",
           "value": "32"
+        },
+        {
+          "name": "RequestBytes",
+          "type": "InputKind",
+          "value": "\"request\""
+        },
+        {
+          "name": "TextBytes",
+          "type": "InputKind",
+          "value": "\"text\""
+        },
+        {
+          "name": "Utility",
+          "type": "Use",
+          "value": "\"utility\""
         }
       ],
       "variables": [
@@ -1737,6 +1762,17 @@
         }
       ],
       "types": [
+        {
+          "name": "InputKind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
         {
           "name": "ModelIdentity",
           "kind": "struct",
@@ -1840,6 +1876,70 @@
               "signature": "func() error"
             }
           ]
+        },
+        {
+          "name": "SelectionContext",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Use",
+              "type": "Use",
+              "tag": "json:\"use\""
+            },
+            {
+              "name": "Limits",
+              "type": "*SelectionLimits",
+              "tag": "json:\"limits,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SelectionLimits",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InputKind",
+              "type": "InputKind",
+              "tag": "json:\"inputKind\""
+            },
+            {
+              "name": "MaxInputBytes",
+              "type": "int64",
+              "tag": "json:\"maxInputBytes\" jsonschema:\"minimum=1\""
+            },
+            {
+              "name": "MaxOutputTokens",
+              "type": "int64",
+              "tag": "json:\"maxOutputTokens\" jsonschema:\"minimum=1\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Use",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
         }
       ]
     },
@@ -1883,6 +1983,7 @@
         "encoding/json/jsontext",
         "github.com/Tangerg/flame/runtime/capability",
         "github.com/Tangerg/flame/runtime/jsoninput",
+        "github.com/Tangerg/flame/runtime/model",
         "github.com/Tangerg/go-sdk/mcp",
         "github.com/Tangerg/scope/core/chat",
         "github.com/Tangerg/scope/core/tool",
@@ -2707,6 +2808,11 @@
           "name": "ModelSelectionRequest",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Context",
+              "type": "model.SelectionContext",
+              "tag": "json:\"context\""
+            },
             {
               "name": "Proposed",
               "type": "ModelSelection",

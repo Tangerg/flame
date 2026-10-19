@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -106,7 +107,7 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd StartCommand) (result S
 		if draft.Options != nil {
 			request.Options = draft.Options.Clone()
 		}
-		selected, selectErr := c.modelSelector.SelectModel(ctx, draft.ModelSelection, request.Clone())
+		selected, selectErr := c.modelSelector.SelectModel(ctx, models.SelectionInput{Context: modelchoice.SelectionContext{Use: modelchoice.Interaction}, Proposed: draft.ModelSelection, Request: request.Clone()})
 		if selectErr != nil {
 			return StartResult{}, fmt.Errorf("runs: select opening model: %w", selectErr)
 		}

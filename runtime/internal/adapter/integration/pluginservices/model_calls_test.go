@@ -302,6 +302,9 @@ func TestSelectedModelResolvesInstalledSelectionForEveryIndependentCall(t *testi
 			if err != nil || parent.Parent != fmt.Sprintf("selected-route-%d", choices.Load()) || parent.Origin != capability.Model || command.Input.Request.Options.Model != "proposed-model" {
 				return pluginsdk.ModelSelection{}, errors.New("selector lost original independent request")
 			}
+			if command.Input.Context.Use != modelchoice.Independent || command.Input.Context.Limits == nil || *command.Input.Context.Limits != (modelchoice.SelectionLimits{InputKind: modelchoice.RequestBytes, MaxInputBytes: selectedCallInput("proposed-model").Budget.MaxRequestBytes, MaxOutputTokens: selectedCallInput("proposed-model").Budget.MaxOutputTokens}) {
+				return pluginsdk.ModelSelection{}, errors.New("selector lost independent caller envelope")
+			}
 			chosen := choices.Add(1)
 			return pluginsdk.ModelSelection{Provider: "anthropic", Model: fmt.Sprintf("chosen-%d", chosen)}, nil
 		})

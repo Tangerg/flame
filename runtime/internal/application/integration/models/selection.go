@@ -10,5 +10,11 @@ import (
 // Selector chooses a proposal before the calling owner accepts its exact model
 // binding. Accepted executions restore that binding without another selection.
 type Selector interface {
-	SelectModel(context.Context, modelchoice.Selection, *chat.Request) (modelchoice.Selection, error)
+	SelectModel(context.Context, SelectionInput) (modelchoice.Selection, error)
+}
+
+type SelectionInput struct {
+	Context  modelchoice.SelectionContext
+	Proposed modelchoice.Selection
+	Request  *chat.Request
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -136,10 +137,10 @@ func mustResolvedChat(t testing.TB, model chat.Model, counter InputTokenCounter)
 	return resolved
 }
 
-type utilitySelectorFunc func(context.Context, modelchoice.Selection, *chat.Request) (modelchoice.Selection, error)
+type utilitySelectorFunc func(context.Context, modelapp.SelectionInput) (modelchoice.Selection, error)
 
-func (f utilitySelectorFunc) SelectModel(ctx context.Context, proposal modelchoice.Selection, request *chat.Request) (modelchoice.Selection, error) {
-	return f(ctx, proposal, request)
+func (f utilitySelectorFunc) SelectModel(ctx context.Context, input modelapp.SelectionInput) (modelchoice.Selection, error) {
+	return f(ctx, input)
 }
 
 func TestUtilitySelectionPrecedesExactProviderConstructionAndNeverFallsBack(t *testing.T) {
@@ -157,9 +158,9 @@ func TestUtilitySelectionPrecedesExactProviderConstructionAndNeverFallsBack(t *t
 				return mustResolvedChat(t, model, nil), nil
 			}}
 			refusal := errors.New("selector unavailable")
-			selector := utilitySelectorFunc(func(_ context.Context, proposal modelchoice.Selection, request *chat.Request) (modelchoice.Selection, error) {
+			selector := utilitySelectorFunc(func(_ context.Context, input modelapp.SelectionInput) (modelchoice.Selection, error) {
 				steps = append(steps, "select")
-				if proposal != proposed || request != nil {
+				if input.Proposed != proposed || input.Request != nil || input.Context.Use != modelchoice.Utility || input.Context.Limits == nil || *input.Context.Limits != (modelchoice.SelectionLimits{InputKind: modelchoice.TextBytes, MaxInputBytes: 1024, MaxOutputTokens: 64}) {
 					t.Error("utility selection invented input or changed proposal")
 				}
 				if fail {

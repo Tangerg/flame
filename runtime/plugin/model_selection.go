@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -26,11 +27,15 @@ func (s ModelSelection) Validate() error {
 // ModelSelectionRequest offers the caller's proposal before its exact binding.
 // Request is absent when a use case captures its model before authoring input.
 type ModelSelectionRequest struct {
-	Proposed ModelSelection `json:"proposed"`
-	Request  *chat.Request  `json:"request,omitzero"`
+	Context  model.SelectionContext `json:"context"`
+	Proposed ModelSelection         `json:"proposed"`
+	Request  *chat.Request          `json:"request,omitzero"`
 }
 
 func (r ModelSelectionRequest) Validate() error {
+	if err := r.Context.Validate(); err != nil {
+		return err
+	}
 	if err := r.Proposed.Validate(); err != nil {
 		return err
 	}
@@ -40,12 +45,12 @@ func (r ModelSelectionRequest) Validate() error {
 	return nil
 }
 func ModelSelectionMethod() (*Method[ModelSelectionRequest, ModelSelection], error) {
-	return NewMethod[ModelSelectionRequest, ModelSelection](MethodConfig{Name: "flame.model-selection/select.v1", Kind: capability.Query, Target: "call", Description: "Select the exact model before the caller accepts provider identity, request capacity and metering."})
+	return NewMethod[ModelSelectionRequest, ModelSelection](MethodConfig{Name: "flame.model-selection/select.v2", Kind: capability.Query, Target: "call", Description: "Select the exact model using the actual calling use and captured limits before provider construction, request-capacity admission and metering."})
 }
 func ModelSelectionContract() (*capability.Contract, error) {
 	method, err := ModelSelectionMethod()
 	if err != nil {
 		return nil, err
 	}
-	return capability.New(capability.Config{Reference: "flame.model-selection.v1", Composition: capability.Selection, Scope: "call"}, method.Descriptor())
+	return capability.New(capability.Config{Reference: "flame.model-selection.v2", Composition: capability.Selection, Scope: "call"}, method.Descriptor())
 }

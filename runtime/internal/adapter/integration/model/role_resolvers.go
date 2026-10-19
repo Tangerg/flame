@@ -56,7 +56,12 @@ func LiveUtilityModel(
 			selection = role.Selection()
 		}
 		if selector != nil {
-			selected, err := selector.SelectModel(ctx, selection, nil)
+			selected, err := selector.SelectModel(ctx, modelapp.SelectionInput{
+				Context: modelchoice.SelectionContext{Use: modelchoice.Utility, Limits: &modelchoice.SelectionLimits{
+					InputKind: modelchoice.TextBytes, MaxInputBytes: int64(budget.MaxInputBytes), MaxOutputTokens: budget.MaxOutputTokens,
+				}},
+				Proposed: selection,
+			})
 			if err != nil {
 				return SelectedChat{}, nil, fmt.Errorf("auxiliary model: select route: %w", err)
 			}

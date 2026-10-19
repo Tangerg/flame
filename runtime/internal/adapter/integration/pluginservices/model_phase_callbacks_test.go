@@ -9,10 +9,12 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -79,7 +81,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 					var cycle error
 					switch phase {
 					case "selection":
-						_, cycle = composition.SelectModel(r.Context(), selection, request)
+						_, cycle = composition.SelectModel(r.Context(), modelapp.SelectionInput{Context: modelchoice.SelectionContext{Use: modelchoice.Interaction}, Proposed: selection, Request: request})
 					case "context":
 						_, cycle = composition.PrepareContext(r.Context(), bindings, selection, request, nil)
 					case "input":
@@ -176,7 +178,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 				}
 				switch phase {
 				case "selection":
-					_, err = composition.SelectModel(ctx, selection, request)
+					_, err = composition.SelectModel(ctx, modelapp.SelectionInput{Context: modelchoice.SelectionContext{Use: modelchoice.Interaction}, Proposed: selection, Request: request})
 				case "context":
 					var resolveErr error
 					bindings, resolveErr = composition.ResolveContext(ctx)

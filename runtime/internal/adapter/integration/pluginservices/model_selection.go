@@ -5,19 +5,22 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
 )
 
 // SelectModel uses only the explicitly selected installed provider. An absent
 // choice preserves the caller's proposal; a withdrawn choice is a refusal.
-func (o *CallComposition) SelectModel(ctx context.Context, proposed modelchoice.Selection, request *chat.Request) (modelchoice.Selection, error) {
-	if err := proposed.ValidateExact(); err != nil {
+func (o *CallComposition) SelectModel(ctx context.Context, proposal models.SelectionInput) (modelchoice.Selection, error) {
+	if err := proposal.Context.Validate(); err != nil {
+		return modelchoice.Selection{}, err
+	}
+	if err := proposal.Proposed.ValidateExact(); err != nil {
 		return modelchoice.Selection{}, err
 	}
 	contract, err := pluginsdk.ModelSelectionContract()
@@ -44,7 +47,7 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposed modelchoice.
 		return modelchoice.Selection{}, err
 	}
 	if !chosen {
-		return proposed, nil
+		return proposal.Proposed, nil
 	}
 	ctx, err = enterContributionPhase(ctx, binding)
 	if err != nil {
@@ -91,9 +94,17 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposed modelchoice.
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}
-	input := pluginsdk.ModelSelectionRequest{Proposed: pluginsdk.ModelSelection{Provider: proposed.Provider(), Model: proposed.Model(), ReasoningEffort: proposed.ReasoningEffort()}}
-	if request != nil {
-		input.Request = request.Clone()
+	input := pluginsdk.ModelSelectionRequest{
+		Context: proposal.Context,
+		Proposed: pluginsdk.ModelSelection{
+			Provider: proposal.Proposed.Provider(), Model: proposal.Proposed.Model(), ReasoningEffort: proposal.Proposed.ReasoningEffort(),
+		},
+	}
+	if proposal.Context.Limits != nil {
+		input.Context.Limits = new(*proposal.Context.Limits)
+	}
+	if proposal.Request != nil {
+		input.Request = proposal.Request.Clone()
 	}
 	metadata, release, err := o.calls.pool.OpenRPC(ctx, binding.ServerID, session)
 	if err != nil {

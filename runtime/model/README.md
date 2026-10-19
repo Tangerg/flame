@@ -16,6 +16,13 @@ selection. Failed decoding does not mutate a previous value. The public plugin
 model-selection policy transports its own explicit query projection; Runtime
 still admits the chosen identity before provider construction.
 
+`SelectionContext` projects the actual interaction, utility or independent use.
+Only utility and independent calls already own a bounded input/output envelope at
+selection time. `SelectionLimits` preserves its input unit: text bytes for utility
+work and complete encoded-request bytes for independent calls. These values inform
+routing; capacity admission, envelope enforcement and pricing retain their core
+owners. Interaction does not invent an envelope from its current input size.
+
 [`model/catalog`](catalog/README.md) supplies shared admission against the released
 Scope model catalog. Host role configuration, physical endpoint evidence and
 execution token-limit policy retain their existing owners. Former private

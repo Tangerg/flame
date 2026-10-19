@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -37,6 +38,9 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 					if err != nil || invocation.Origin != capability.Human || invocation.Parent != "original-selection-parent" || invocation.ID != invocation.Target.Reference || command.ID != "" {
 						return pluginsdk.ModelSelection{}, errors.New("original selection query attribution changed")
 					}
+					if command.Input.Context.Use != modelchoice.Interaction || command.Input.Context.Limits != nil {
+						return pluginsdk.ModelSelection{}, errors.New("selection lost caller context")
+					}
 					if command.Input.Proposed.Provider != "provider" || command.Input.Proposed.Model != "proposed-model" || command.Input.Proposed.ReasoningEffort != "high" {
 						return pluginsdk.ModelSelection{}, errors.New("proposal identity changed")
 					}
@@ -61,7 +65,7 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 			ctx := operation.Adopt(t.Context(), "original-selection-parent", capability.Human, "original-start")
 			request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))
 			before := request.Clone()
-			actual, err := composition.SelectModel(ctx, proposed, request)
+			actual, err := composition.SelectModel(ctx, modelapp.SelectionInput{Context: modelchoice.SelectionContext{Use: modelchoice.Interaction}, Proposed: proposed, Request: request})
 			if mode == "selected" {
 				if err != nil || actual.Provider() != "provider" || actual.Model() != "selected-model" || actual.ReasoningEffort() != "low" || calls.Load() != 1 {
 					t.Fatalf("selected route: %+v %v calls=%d", actual, err, calls.Load())
@@ -81,7 +85,7 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 func TestAbsentModelSelectionDoesNotDiscoverAnImplicitProvider(t *testing.T) {
 	composition, _, _ := installedContextFixture(t, "valid")
 	proposed := testsupport.DefaultModelSelection()
-	actual, err := composition.SelectModel(t.Context(), proposed, nil)
+	actual, err := composition.SelectModel(t.Context(), modelapp.SelectionInput{Context: modelchoice.SelectionContext{Use: modelchoice.Interaction}, Proposed: proposed, Request: nil})
 	if err != nil || actual != proposed {
 		t.Fatalf("unselected route changed: %+v %v", actual, err)
 	}

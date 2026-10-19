@@ -1,0 +1,18 @@
+[
+  {
+    "name": "flame.model-router/get-policy.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Inspect the private routing policy and revision before editing.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2drouter_2fget_2dpolicy_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2drouter_2fget_2dpolicy_2ev1Output"
+  },
+  {
+    "name": "flame.model-router/replace-policy.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Replace the routing policy at the inspected revision. Each use has at most one exact target and an optional caller-envelope ceiling.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2drouter_2freplace_2dpolicy_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2drouter_2freplace_2dpolicy_2ev1Output"
+  }
+]

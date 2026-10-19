@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -1133,7 +1134,7 @@ func TestResumeCommitsOpeningBeforeActivation(t *testing.T) {
 	activatedAfterOpening := false
 	control.resumeCheck = func() { _, activatedAfterOpening = effects.opening().Resume() }
 	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
-	c.modelSelector = modelSelectorFunc(func(context.Context, modelchoice.Selection, *corechat.Request) (modelchoice.Selection, error) {
+	c.modelSelector = modelSelectorFunc(func(context.Context, models.SelectionInput) (modelchoice.Selection, error) {
 		t.Fatal("Resume reran model selection")
 		return modelchoice.Selection{}, errors.New("unexpected selection")
 	})

@@ -1,9 +1,11 @@
 package plugin
 
 import (
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/scope/core/chat"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestModelSelectionContractRequiresExactProposalAndPreservesInputAbsence(t *testing.T) {
@@ -19,11 +21,11 @@ func TestModelSelectionContractRequiresExactProposalAndPreservesInputAbsence(t *
 		t.Fatal("model route does not use explicit query selection")
 	}
 	proposal := ModelSelection{Provider: "provider", Model: "model", ReasoningEffort: "high"}
-	if err := (ModelSelectionRequest{Proposed: proposal}).Validate(); err != nil {
+	if err := (ModelSelectionRequest{Context: model.SelectionContext{Use: model.Interaction}, Proposed: proposal}).Validate(); err != nil {
 		t.Fatal(err)
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))
-	if err := (ModelSelectionRequest{Proposed: proposal, Request: request}).Validate(); err != nil {
+	if err := (ModelSelectionRequest{Context: model.SelectionContext{Use: model.Interaction}, Proposed: proposal, Request: request}).Validate(); err != nil {
 		t.Fatal(err)
 	}
 	if err := (ModelSelectionRequest{}).Validate(); err == nil {
