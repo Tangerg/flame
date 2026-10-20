@@ -32,12 +32,15 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   constructor(private readonly runtimeClient: () => FlameClient) {}
 
   #sessionMutations = createMutationSettler();
-  #openingRetries = new Map<
-    string,
-    (signal: AbortSignal) => ReturnType<RuntimeAgentDriver["resume"]>
-  >();
+  // Each Runtime generation owns its opening-retry registry. A snapshot read
+  // captures its generation and registers into that registry, so a read that
+  // finishes after the gateway switched writes a stale handle into a discarded
+  // registry rather than the current one; retries resolve only the current one.
+  #generation: {
+    retries: Map<string, (signal: AbortSignal) => ReturnType<RuntimeAgentDriver["resume"]>>;
+  } = { retries: new Map() };
   retryOpening(key: string, signal: AbortSignal): ReturnType<RuntimeAgentDriver["resume"]> {
-    const retry = this.#openingRetries.get(key);
+    const retry = this.#generation.retries.get(key);
     if (!retry)
       return Promise.reject(
         new Error("opening command does not belong to this Runtime generation"),
@@ -86,6 +89,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
 
   async loadSessionSnapshot(sessionId: string, signal?: AbortSignal) {
     const client = this.runtimeClient();
+    const generation = this.#generation;
     const sid = asSessionId(sessionId);
     const includeDescendants = runtimeCapability("subagents");
     try {
@@ -138,7 +142,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
                   responses: structuredClone(command.params.responses),
                 };
           if (belongs) {
-            this.#openingRetries.set(command.idempotencyKey, async (retrySignal: AbortSignal) => {
+            generation.retries.set(command.idempotencyKey, async (retrySignal: AbortSignal) => {
               const opening = await command.retry({ signal: retrySignal });
               return {
                 ...opening,
@@ -275,14 +279,14 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   }
 
   replaceRuntimeGeneration(): void {
-    this.#openingRetries.clear();
+    this.#generation = { retries: new Map() };
     const predecessor = this.#sessionMutations;
     this.#sessionMutations = createMutationSettler();
     predecessor.dispose();
   }
 
   dispose(): void {
-    this.#openingRetries.clear();
+    this.#generation = { retries: new Map() };
     this.#sessionMutations.dispose();
   }
 }

@@ -13,6 +13,7 @@ import { createMutationPromise } from "@flame/runtime-client";
 import * as runtimeCapabilities from "@/features/connection/public/capabilities";
 import { agentRuntime } from "@/features/agent/application/ports/runtimeGateway";
 import { installAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
+import { runtimeOpeningRetries } from "@/features/agent/adapters/runtimeOpeningRetries";
 import { registerAgentSessionSharedMaterial } from "@/features/agent/application/ports/sessionSharedMaterial";
 let runtimeClient: () => FlameClient = () => {
   throw new Error("Runtime test client is not configured");
@@ -49,6 +50,47 @@ function createdSession(id: string) {
 }
 
 describe("agentRuntimeGateway", () => {
+  it("keeps the current-generation opening retry when a retired recovery completes late", async () => {
+    vi.spyOn(runtimeCapabilities, "runtimeCapability").mockReturnValue(false);
+    const oldRetry = vi.fn(async () => ({ result: { runId: "run_old", segmentId: "seg_old" } }));
+    const newRetry = vi.fn(async () => ({
+      result: { runId: "run_current", segmentId: "seg_current" },
+    }));
+    let finishOld!: (commands: unknown[]) => void;
+    const oldCommands = new Promise<unknown[]>((resolve) => {
+      finishOld = resolve;
+    });
+    const opening = (retry: unknown) => ({
+      operation: "start",
+      params: { sessionId: "ses_retry", input: [{ type: "text", text: "pending" }] },
+      idempotencyKey: "persisted-opening-key",
+      observation: { type: "unknown", cause: new Error("acceptance unavailable") },
+      retry,
+    });
+    const snapshot = vi.fn(async () => ({ items: [], runs: [], interrupts: [] }));
+    let recoverCommands = vi.fn(() => oldCommands);
+    runtimeClient = () =>
+      ({ sessions: { snapshot }, runs: { recoverCommands } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
+
+    const retiredRead = agentRuntime().loadSessionSnapshot("ses_retry");
+    await vi.waitFor(() => expect(recoverCommands).toHaveBeenCalled());
+
+    recoverCommands = vi.fn(async () => [opening(newRetry)]);
+    uninstall.replaceRuntimeGeneration();
+    await agentRuntime().loadSessionSnapshot("ses_retry");
+    finishOld([opening(oldRetry)]);
+    await retiredRead;
+
+    const result = await runtimeOpeningRetries().retry(
+      "persisted-opening-key",
+      new AbortController().signal,
+    );
+    expect(result.result.runId).toBe("run_current");
+    expect(oldRetry).not.toHaveBeenCalled();
+    expect(newRetry).toHaveBeenCalledOnce();
+  });
+
   it("does not hand a retained create promise to a replacement adapter generation", async () => {
     const transportFailure = new RpcTransportError("retired response was lost");
     const retiredRetry = vi.fn(
