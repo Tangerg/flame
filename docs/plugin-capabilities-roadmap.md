@@ -1,8 +1,8 @@
 # Plugin capabilities roadmap
 
 Forward-looking TODO for extending Flame's plugin line beyond Memory and Schedules.
-Knowledge base, GitHub, Model router, Guardrails, Web research and Saved usage
-reports are now implemented as ordinary first-party backends. The architecture refactor is covered
+Knowledge base, GitHub, Model router, Guardrails, Web research, Saved usage
+reports and Native sandbox are now implemented as ordinary first-party backends. The architecture refactor is covered
 by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is about
 *which capabilities to build next as plugins, and in what order.*
 
@@ -15,11 +15,11 @@ by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is ab
   entry now receives the same call-scoped canonical host grant as its public
   `plugins.call` entry, through the single owner `Pool.OpenRPC` (commit
   `a15f2f9e4`). Memory keeps its own narrow model/embedding grant by design.
-- Eight first-party backends: `runtime/internal/plugins/memory`,
+- Nine first-party backends: `runtime/internal/plugins/memory`,
   `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase`,
   `runtime/internal/plugins/github`, `runtime/internal/plugins/modelrouter`,
   `runtime/internal/plugins/guardrails`, `runtime/internal/plugins/web`,
-  `runtime/internal/plugins/usagereports`.
+  `runtime/internal/plugins/usagereports`, `runtime/internal/plugins/sandbox`.
 - Examples: `examples/plugins/reviews` (backend + typed ops + MCP tools + a
   declared analyzer dependency + board UI; one analyzer business is exposed as
   *both* a typed query and the `analyze_review` Tool), `examples/plugins/composition`
@@ -80,7 +80,7 @@ model *selection* is a published contract a plugin may contribute; model
 
 ### Tier 2 — more UI, or needs a new mechanism
 - [x] **Web search / fetch / browse** (+ cache store) — tool plugin.
-- [ ] **Code execution / sandbox** — tool plugin owning its execution environment.
+- [x] **Code execution / sandbox** — tool plugin owning its execution environment.
 - [x] **Usage / cost reports, daily / weekly summaries.** A projection plugin: it
       *reads* core accounting facts and owns its own report store + UI. Accounting
       totals stay core. Good vehicle to also measure composition/callback latency.
@@ -106,8 +106,8 @@ model *selection* is a published contract a plugin may contribute; model
 The user directed the remaining design to the local `study/codex-server` reference
 (snapshot `7c073196a1`, location in `DEVELOPMENT.md`). Its implementation separates
 execution target, permission policy and platform enforcement. Docker and Seatbelt
-are therefore not competing choices at one boundary. Neither remaining candidate
-is complete; their boxes stay unchecked until implementation and verification.
+are therefore not competing choices at one boundary. Native sandbox is complete;
+file ingress remains unchecked until its implementation and verification.
 
 - Code execution: reuse Flame's existing native confinement mechanism for the
   actual execution platform. The current macOS `sandbox.Workspace` owns a temporary
@@ -341,6 +341,27 @@ worktree rebases onto `main`; subjects and changed owners identify each round.
   boundaries, and plugin resource reproducibility. After main's `4e54d4f8e` native
   zoom/dock sync, full frontend and plugin checks had already passed; no shared UI
   file was changed by this round. Broader unchanged suites were not repeated.
+
+- `18cd0e92d` implements Native sandbox. Typed execution and the MCP Tool enter
+  one private command owner, using the existing platform confinement mechanism
+  with a fresh scratch workspace. Admission is durable before the core discovery
+  callback or process launch. Only newly admitted work may start; missing results
+  remain unknown after restart. Original result/refusal receipts retain exact
+  output, exit status and duration without another execution.
+- Native output keeps UTF-8 as text and other bytes as tagged base64. Timeout and
+  process-group cleanup stay with the shared runner; its existing output bound is
+  now published from that owner. The plugin promises no CPU/memory/process quota,
+  hermetic filesystem or unsupported-platform fallback. Corrupt stored results
+  fail validation rather than becoming known outcomes. Model receipt reads only
+  project the original business result through the Tool codec.
+- Native sandbox verification passed: Runtime build/vet, changed native mechanism
+  and backend tests, typed/Tool receipt parity, restart/conflict/unknown/corruption
+  boundaries, real macOS confinement and timeout, architecture/naming gates, and
+  installed stdio typed/model execution with core Run completion and restart replay.
+  Linux/arm64 cross-build passed; Linux execution was not run on this macOS host.
+  One acceptance fixture incorrectly searched text content instead of Scope's
+  structured `details`; it now checks the actual status, exit code and output.
+  No plugin UI or shared presentation code changed in this round.
 
 ## Composition and callback baseline
 
