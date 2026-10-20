@@ -335,3 +335,42 @@ it("opens only a unique admitted client diagnostics contribution", async () => {
   openWorkspaceClientDiagnostics();
   expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
 });
+
+it("keeps a presented Files page while its tree and line navigation change the file", () => {
+  navigator().go({ session: "session", view: "file", dock: "diff" });
+  openWorkspaceFile("src/tree.ts");
+  openWorkspaceFile("src/tree.ts", 24);
+  expect(navigator().get()).toMatchObject({ view: "file", dock: "diff" });
+  expect(useContextDockStore.getState()).toMatchObject({
+    fileViewer: { path: "src/tree.ts", line: 24 },
+    inspection: null,
+  });
+
+  navigator().go({ view: "v3" });
+  const source = document.createElement("button");
+  document.body.append(source);
+  openWorkspaceFile("src/inspected.ts", 3, source);
+  expect(navigator().get()).toMatchObject({ view: null, dock: "file" });
+  expect(useContextDockStore.getState().inspection).toMatchObject({ returnViewId: "v3" });
+  source.remove();
+});
+
+it("restores an ordinary Dock source full width only when the return asks for it", () => {
+  navigator().go({ session: "session", view: null });
+  openWorkspaceViewInDock("skills");
+  const dock = document.createElement("div");
+  dock.dataset.dockViewId = "skills";
+  const source = document.createElement("button");
+  dock.append(source);
+  document.body.append(dock);
+
+  openWorkspaceFile("src/a.ts", 1, source);
+  expect(returnFromWorkspaceInspection(useContextDockStore.getState().inspection!)).toBe(true);
+  expect(navigator().get()).toMatchObject({ view: null, dock: "skills" });
+
+  openWorkspaceFile("src/a.ts", 1, source);
+  const inspection = useContextDockStore.getState().inspection!;
+  expect(returnFromWorkspaceInspection(inspection, "main")).toBe(true);
+  expect(navigator().get()).toMatchObject({ view: "skills", dock: "skills" });
+  dock.remove();
+});

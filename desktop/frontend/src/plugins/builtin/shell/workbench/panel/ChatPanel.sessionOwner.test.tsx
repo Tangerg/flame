@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { lazy, useState, type ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { PanelHeader } from "@flame/ui/panel";
 import type { WorkspaceViewSpec } from "@/plugins/sdk";
 import {
@@ -305,7 +305,9 @@ it("projects the saved ratio onto the observed row width without saving a new ra
 });
 
 describe("ChatPanel full-view window controls", () => {
+  let rowWidth: MockInstance<() => number>;
   beforeEach(() => {
+    rowWidth = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
     model.sessionId = "ses_window";
     model.activeMainView = "current-view";
     model.dock = { open: false, viewIds: [], activeViewId: null };
@@ -313,6 +315,7 @@ describe("ChatPanel full-view window controls", () => {
     vi.mocked(closeWorkspaceView).mockClear();
     vi.mocked(openWorkspaceViewInDock).mockClear();
   });
+  afterEach(() => rowWidth.mockRestore());
 
   function expectWindowHeader(container: HTMLElement, title: string) {
     const header = container.querySelector<HTMLElement>('[data-slot="workspace-window-header"]');

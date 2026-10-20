@@ -9,6 +9,7 @@ import {
   type WorkspaceFileFocusSnapshot,
   type WorkspaceFileViewer,
   type WorkspaceInspection,
+  type WorkspaceSourcePresentation,
   type WorkspaceViewMemory,
 } from "./ports/navigationState";
 
@@ -28,8 +29,11 @@ export function useWorkspaceInspection(): WorkspaceInspection | null {
   return workspaceNavigation().useInspection();
 }
 
-export function returnFromWorkspaceInspection(inspection: WorkspaceInspection): boolean {
-  return workspaceNavigation().returnFromInspection(inspection);
+export function returnFromWorkspaceInspection(
+  inspection: WorkspaceInspection,
+  presentation?: WorkspaceSourcePresentation,
+): boolean {
+  return workspaceNavigation().returnFromInspection(inspection, presentation);
 }
 
 export function useWorkspaceFileFocus(): WorkspaceFileFocusSnapshot {

@@ -33,6 +33,7 @@ import {
   showWorkspaceDock,
   useActiveWorkspaceViewId,
   useWorkspaceDock,
+  useWorkspaceInspection,
 } from "@/plugins/builtin/workspace/public/navigation";
 import {
   useContextDockCatalog,
@@ -192,12 +193,14 @@ export function ChatPanel({ onSend }: Props) {
   const activeSession = useActiveSession();
   const activeSessionId = useActiveSessionId();
   const t = useT();
-  const [rowWidth, setRowWidth] = useState(0);
-  const dockAvailable = canPresentDock(rowWidth);
+  const inspection = useWorkspaceInspection();
+  const [rowWidth, setRowWidth] = useState<number | null>(null);
+  const measuredWidth = rowWidth ?? 0;
+  const dockAvailable = canPresentDock(measuredWidth);
   const dockWidth =
     dockWidthRatio === null
-      ? defaultDockWidth(rowWidth)
-      : dockWidthFromRatio(dockWidthRatio, rowWidth);
+      ? defaultDockWidth(measuredWidth)
+      : dockWidthFromRatio(dockWidthRatio, measuredWidth);
 
   const hasDockOwner = activeSessionId !== "";
   const showingCatalog = dock.activeViewId === WORKSPACE_DOCK_CATALOG;
@@ -205,12 +208,21 @@ export function ChatPanel({ onSend }: Props) {
   const dockVisible = dockOpen && dockAvailable;
   const ownedDockViewIds = hasDockOwner ? dock.viewIds : [];
   const shellVisible = !isLoading || activeMainView !== null || dock.open;
-  const { inspection, dockRef, conversationRef, mainViewRef, returnToSource, onDockKeyDown } =
+  const fullPaneViewId =
+    activeMainView ??
+    (dockOpen && rowWidth !== null && !dockAvailable && inspection?.viewId === dock.activeViewId
+      ? dock.activeViewId
+      : null);
+  const inspectedFullPane = fullPaneViewId !== null && inspection?.viewId === fullPaneViewId;
+  const { dockRef, conversationRef, mainViewRef, returnToSource, onMaterialKeyDown } =
     useInspectionFocus({
       sessionId: activeSessionId,
+      inspection,
       mainViewId: activeMainView,
+      fullPaneViewId,
       dockViewId: dock.activeViewId,
       dockViewIds: ownedDockViewIds,
+      dockAvailable,
       dockVisible,
     });
 
@@ -278,11 +290,8 @@ export function ChatPanel({ onSend }: Props) {
     };
   });
   const openViewIds = new Set(ownedDockViewIds);
-  const fullWidthViewId =
-    dock.activeViewId && dock.activeViewId !== WORKSPACE_DOCK_CATALOG
-      ? dock.activeViewId
-      : (ownedDockViewIds[0] ?? "file");
-  const presentedMain = activeMainView !== null;
+  const fullWidthViewId = dock.activeViewId ?? ownedDockViewIds[0] ?? "file";
+  const presentedMain = fullPaneViewId !== null;
   const mountedViewIds = new Set(ownedDockViewIds);
   if (activeMainView !== null) mountedViewIds.add(activeMainView);
   for (let source = inspection; source; source = source.previous) {
@@ -290,15 +299,26 @@ export function ChatPanel({ onSend }: Props) {
       mountedViewIds.add(source.returnViewId);
     }
   }
-  const presentedViewId = presentedMain ? activeMainView : dock.activeViewId;
+  mountedViewIds.delete(WORKSPACE_DOCK_CATALOG);
+  const presentedViewId = presentedMain ? fullPaneViewId : dock.activeViewId;
+  const catalogView = { title: "dock.catalog.title", icon: "panel-r", dock: "workspace" } as const;
 
   return (
     <AgentContentCard label={t("shell.region.workspace")}>
       {presentedMain && (
         <WorkspaceWindowHeader
-          view={viewsById.get(activeMainView)}
-          onOpenInDock={(origin) => openWorkspaceViewInDock(activeMainView, origin)}
-          onClose={() => closeWorkspaceView(activeMainView)}
+          view={
+            fullPaneViewId === WORKSPACE_DOCK_CATALOG ? catalogView : viewsById.get(fullPaneViewId)
+          }
+          exit={
+            inspectedFullPane && returnAction
+              ? { kind: "return", ...returnAction }
+              : { kind: "close", onClose: () => closeWorkspaceView(fullPaneViewId) }
+          }
+          onOpenInDock={
+            dockAvailable ? (origin) => openWorkspaceViewInDock(fullPaneViewId, origin) : undefined
+          }
+          onKeyDown={inspectedFullPane ? onMaterialKeyDown : undefined}
         />
       )}
       <AgentDockRow
@@ -344,7 +364,7 @@ export function ChatPanel({ onSend }: Props) {
                 : t(viewsById.get(dock.activeViewId ?? "")?.title ?? "dock.tabs.label")
             }
             data-focus-inset=""
-            onKeyDown={presentedMain ? undefined : onDockKeyDown}
+            onKeyDown={activeMainView === null || inspectedFullPane ? onMaterialKeyDown : undefined}
           >
             {!presentedMain && hasDockOwner && (
               <DockHeader
@@ -355,8 +375,16 @@ export function ChatPanel({ onSend }: Props) {
               />
             )}
             <div {...stylex.props(sh.anchor)}>
-              <Activity mode={!presentedMain && showingCatalog ? "visible" : "hidden"}>
-                <div data-dock-view-id={WORKSPACE_DOCK_CATALOG} {...stylex.props(sh.overlay)}>
+              <Activity mode={presentedViewId === WORKSPACE_DOCK_CATALOG ? "visible" : "hidden"}>
+                <div
+                  ref={fullPaneViewId === WORKSPACE_DOCK_CATALOG ? mainViewRef : undefined}
+                  role={presentedMain ? "region" : undefined}
+                  aria-label={presentedMain ? t(catalogView.title) : undefined}
+                  tabIndex={presentedMain ? -1 : undefined}
+                  data-focus-inset=""
+                  data-dock-view-id={WORKSPACE_DOCK_CATALOG}
+                  {...stylex.props(sh.overlay)}
+                >
                   <DockCatalogPage groups={catalog} openViewIds={openViewIds} />
                 </div>
               </Activity>
@@ -364,7 +392,7 @@ export function ChatPanel({ onSend }: Props) {
                 <div
                   key={viewId}
                   hidden={viewId !== presentedViewId}
-                  data-dock-view-id={presentedMain ? undefined : viewId}
+                  data-dock-view-id={activeMainView === null ? viewId : undefined}
                   {...stylex.props(sh.overlay)}
                 >
                   <ContentVisibility
@@ -372,7 +400,7 @@ export function ChatPanel({ onSend }: Props) {
                   >
                     <PanelHost hosted={!presentedMain}>
                       <WorkspaceViewBody
-                        ref={viewId === activeMainView ? mainViewRef : undefined}
+                        ref={viewId === fullPaneViewId ? mainViewRef : undefined}
                         viewId={viewId}
                       />
                     </PanelHost>

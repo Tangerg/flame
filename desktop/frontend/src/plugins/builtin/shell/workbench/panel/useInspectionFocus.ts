@@ -2,7 +2,6 @@ import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { isImeKey } from "@flame/ui";
 import {
   returnFromWorkspaceInspection,
-  useWorkspaceInspection,
   useWorkspaceSubagentRunId,
   WORKSPACE_DOCK_CATALOG,
   type WorkspaceInspection,
@@ -16,25 +15,30 @@ interface ReturnFocus {
 
 export function useInspectionFocus({
   sessionId,
+  inspection,
   mainViewId,
+  fullPaneViewId,
   dockViewId,
   dockViewIds,
+  dockAvailable,
   dockVisible,
 }: {
   sessionId: string;
+  inspection: WorkspaceInspection | null;
   mainViewId: string | null;
+  fullPaneViewId: string | null;
   dockViewId: string | null;
   dockViewIds: readonly string[];
+  dockAvailable: boolean;
   dockVisible: boolean;
 }) {
-  const inspection = useWorkspaceInspection();
   const subagentRunId = useWorkspaceSubagentRunId();
   const delivered = useRef<WorkspaceInspection | null>(null);
   const returningRef = useRef<ReturnFocus | null>(null);
   const dockRef = useRef<HTMLElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
   const mainViewRef = useRef<HTMLDivElement>(null);
-  const previousPresentation = useRef({ sessionId, mainViewId: null as string | null });
+  const previousPresentation = useRef({ sessionId, fullPaneViewId: null as string | null });
 
   useLayoutEffect(() => {
     if (!inspection) {
@@ -45,22 +49,21 @@ export function useInspectionFocus({
       delivered.current = inspection;
       return;
     }
-    const dock = dockRef.current;
+    const material = fullPaneViewId !== null ? mainViewRef.current : dockVisible && dockRef.current;
     if (
       delivered.current === inspection ||
-      !dock ||
-      !dockVisible ||
+      !material ||
       mainViewId !== null ||
       dockViewId !== inspection.viewId
     )
       return;
     delivered.current = inspection;
-    const doc = dock.ownerDocument;
+    const doc = material.ownerDocument;
     const active = doc.activeElement;
     if (active === inspection.activeElement || active === doc.body) {
-      dock.focus({ preventScroll: true });
+      material.focus({ preventScroll: true });
     }
-  }, [inspection, dockVisible, mainViewId, dockViewId]);
+  }, [inspection, dockVisible, mainViewId, fullPaneViewId, dockViewId]);
 
   useLayoutEffect(() => {
     const returning = returningRef.current;
@@ -70,27 +73,34 @@ export function useInspectionFocus({
       returningRef.current = null;
       return;
     }
-    if (request.returnViewId ? mainViewId !== request.returnViewId : mainViewId !== null) return;
-    if (
-      (request.returnViewId === "subagents" || request.returnDockId === "subagents") &&
-      subagentRunId !== request.returnSubagentRunId
-    )
-      return;
-    if (
+    const returnDockId =
       !request.returnViewId &&
       request.returnDockId &&
       (request.returnDockId === WORKSPACE_DOCK_CATALOG ||
-        dockViewIds.includes(request.returnDockId)) &&
-      (dockViewId !== request.returnDockId || !dockVisible)
+        dockViewIds.includes(request.returnDockId))
+        ? request.returnDockId
+        : null;
+    const presentedViewId = fullPaneViewId ?? (dockVisible ? dockViewId : null);
+    if (
+      request.returnViewId
+        ? mainViewId !== request.returnViewId
+        : returnDockId
+          ? presentedViewId !== returnDockId
+          : mainViewId !== null
+    )
+      return;
+    if (
+      (request.returnViewId === "subagents" || request.returnDockId === "subagents") &&
+      subagentRunId !== request.returnSubagentRunId
     )
       return;
     const doc = request.origin.ownerDocument;
     if (doc.activeElement === returning.activeElement || doc.activeElement === doc.body) {
       if (request.origin.isConnected) request.origin.focus();
       if (doc.activeElement !== request.origin) {
-        (request.returnViewId
+        (fullPaneViewId !== null
           ? mainViewRef
-          : request.returnDockId
+          : returnDockId
             ? dockRef
             : conversationRef
         ).current?.focus({
@@ -99,29 +109,44 @@ export function useInspectionFocus({
       }
     }
     returningRef.current = null;
-  }, [inspection, sessionId, mainViewId, dockViewId, dockViewIds, dockVisible, subagentRunId]);
+  }, [
+    inspection,
+    sessionId,
+    mainViewId,
+    fullPaneViewId,
+    dockViewId,
+    dockViewIds,
+    dockVisible,
+    subagentRunId,
+  ]);
 
   useLayoutEffect(() => {
     const previous = previousPresentation.current;
-    previousPresentation.current = { sessionId, mainViewId };
+    previousPresentation.current = { sessionId, fullPaneViewId };
     if (
-      (previous.sessionId === sessionId && previous.mainViewId === mainViewId) ||
+      (previous.sessionId === sessionId && previous.fullPaneViewId === fullPaneViewId) ||
       returningRef.current
     )
       return;
-    const target = (mainViewId ? mainViewRef : dockVisible ? dockRef : conversationRef).current;
-    if (target && target.ownerDocument.activeElement === target.ownerDocument.body) {
+    const target = (fullPaneViewId ? mainViewRef : dockVisible ? dockRef : conversationRef).current;
+    if (!target) return;
+    const doc = target.ownerDocument;
+    if (
+      doc.activeElement === doc.body ||
+      (previous.fullPaneViewId === null && doc.activeElement === dockRef.current)
+    ) {
       target.focus({ preventScroll: true });
     }
-  }, [sessionId, mainViewId, dockVisible]);
+  }, [sessionId, fullPaneViewId, dockVisible]);
 
   const returnToSource = () => {
     if (!inspection) return;
     const activeElement = inspection.origin.ownerDocument.activeElement;
     returningRef.current = { inspection, activeElement, sessionId };
-    if (!returnFromWorkspaceInspection(inspection)) returningRef.current = null;
+    const presentation = dockAvailable || inspection.previous ? "dock" : "main";
+    if (!returnFromWorkspaceInspection(inspection, presentation)) returningRef.current = null;
   };
-  const onDockKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+  const onMaterialKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (
       !inspection ||
       event.key !== "Escape" ||
@@ -135,5 +160,5 @@ export function useInspectionFocus({
     returnToSource();
   };
 
-  return { inspection, dockRef, conversationRef, mainViewRef, returnToSource, onDockKeyDown };
+  return { dockRef, conversationRef, mainViewRef, returnToSource, onMaterialKeyDown };
 }

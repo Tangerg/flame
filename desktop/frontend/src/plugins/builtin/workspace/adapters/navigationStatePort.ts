@@ -24,6 +24,7 @@ function inspectFrom(id: string, origin?: HTMLElement): void {
   const state = useContextDockStore.getState();
   const returnDockId =
     origin.closest<HTMLElement>("[data-dock-view-id]")?.dataset.dockViewId ?? null;
+  const sourceViewId = location.view ?? (returnDockId === location.dock ? returnDockId : null);
   useContextDockStore.setState({
     inspection: {
       viewId: id,
@@ -34,7 +35,7 @@ function inspectFrom(id: string, origin?: HTMLElement): void {
       returnSubagentRunId: location.subagent,
       returnFileViewer: state.fileViewer,
       previous:
-        returnDockId === location.dock && state.inspection?.viewId === returnDockId
+        sourceViewId !== null && state.inspection?.viewId === sourceViewId
           ? state.inspection
           : null,
     },
@@ -58,25 +59,24 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
       activeViewId: navigator().use((location) => location.dock),
     }),
     useInspection: () => useContextDockStore((state) => state.inspection),
-    returnFromInspection: (inspection) => {
+    returnFromInspection: (inspection, presentation = "dock") => {
       const state = useContextDockStore.getState();
       if (state.inspection !== inspection) return false;
       useContextDockStore.setState({ inspection: inspection.previous });
-      const returnDockAvailable =
+      const returnDockId =
+        !inspection.returnViewId &&
         inspection.returnDockId &&
         (inspection.returnDockId === WORKSPACE_DOCK_CATALOG ||
-          state.dockViewIds.includes(inspection.returnDockId));
+          state.dockViewIds.includes(inspection.returnDockId))
+          ? inspection.returnDockId
+          : null;
       if (inspection.returnViewId === "file" || inspection.returnDockId === "file") {
         state.setFileViewer(inspection.returnFileViewer);
       }
-      if (!inspection.returnViewId && inspection.returnDockId && returnDockAvailable) {
-        state.adoptDockLocation(inspection.returnDockId);
-      }
+      if (returnDockId) state.adoptDockLocation(returnDockId);
       navigator().go({
-        view: inspection.returnViewId,
-        ...(!inspection.returnViewId && returnDockAvailable
-          ? { dock: inspection.returnDockId }
-          : {}),
+        view: returnDockId && presentation === "main" ? returnDockId : inspection.returnViewId,
+        ...(returnDockId ? { dock: returnDockId } : {}),
         ...(inspection.returnViewId === "subagents" || inspection.returnDockId === "subagents"
           ? { subagent: inspection.returnSubagentRunId }
           : {}),
@@ -161,7 +161,7 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
     openFile: (path, line, origin) => {
       inspectFrom("file", origin);
       useContextDockStore.getState().setFileViewer({ path, line: line ?? 0 });
-      showDockView("file", "alone");
+      if (origin || navigator().get().view !== "file") showDockView("file", "alone");
     },
     closeFile: () => useContextDockStore.getState().setFileViewer(null),
     adoptSessionScope: (sessionId) => {

@@ -24,6 +24,7 @@ import {
   useWorkspaceFileViewer,
   useWorkspaceSubagentRunId,
 } from "@/plugins/builtin/workspace/public/navigation";
+import { useDockWidth } from "@/plugins/builtin/workspace/public/sidebarDrawer";
 import { ChatPanel } from "./ChatPanel";
 
 const TABLE = "| File | Note |\n|---|---|\n| app/ui/resizer.ts:6 | README.md:4 |";
@@ -109,6 +110,60 @@ function ChildReader() {
   );
 }
 
+function FilteredMaterial() {
+  const [query, setQuery] = useState("src/main");
+  return (
+    <SearchField
+      value={query}
+      onValueChange={setQuery}
+      onClear={() => setQuery("")}
+      clearLabel="Clear filter"
+      aria-label="Filter material"
+    />
+  );
+}
+
+async function openPreview(scope: HTMLElement) {
+  const expand = await within(scope).findByRole("button", { name: "Expand table" });
+  act(() => expand.focus());
+  fireEvent.click(expand);
+  return { expand, dialog: screen.getByRole("dialog", { name: "Table preview" }) };
+}
+
+async function settle() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+function windowHeader() {
+  return document.querySelector<HTMLElement>('[data-slot="workspace-window-header"]');
+}
+
+function observeRowWidth(initial: number) {
+  let width = initial;
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => width);
+  const observers: ResizeObserverCallback[] = [];
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        observers.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  return async (next: number) => {
+    width = next;
+    await act(async () => {
+      observers.forEach((observe) => observe([], {} as ResizeObserver));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+  };
+}
+
 beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
   model.sessionId = "ses_first";
@@ -126,6 +181,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 it("hands focus from a removed full-width trigger to the material and back to the conversation", () => {
@@ -219,19 +275,6 @@ it("retires a moved main view when its Dock tab is closed", () => {
 });
 
 describe("material inspection focus", () => {
-  function FilteredMaterial() {
-    const [query, setQuery] = useState("src/main");
-    return (
-      <SearchField
-        value={query}
-        onValueChange={setQuery}
-        onClear={() => setQuery("")}
-        clearLabel="Clear filter"
-        aria-label="Filter material"
-      />
-    );
-  }
-
   it("clears the local search before returning an inspected material to its source", () => {
     model.views[0] = { ...model.views[0]!, component: FilteredMaterial };
     render(<ChatPanel onSend={() => true} />);
@@ -409,19 +452,6 @@ describe("table preview file references", () => {
     return screen.getByRole("region", { name: "Conversation" });
   }
 
-  async function openPreview(scope: HTMLElement) {
-    const expand = await within(scope).findByRole("button", { name: "Expand table" });
-    act(() => expand.focus());
-    fireEvent.click(expand);
-    return { expand, dialog: screen.getByRole("dialog", { name: "Table preview" }) };
-  }
-
-  async function settle() {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-  }
-
   it("ends the preview, opens the exact line in the Dock and returns to the source table", async () => {
     const viewer = renderHook(useWorkspaceFileViewer);
     render(<ChatPanel onSend={() => true} />);
@@ -547,5 +577,204 @@ describe("table preview file references", () => {
     await settle();
     expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
     expect(document.activeElement).toBe(expand);
+  });
+});
+
+describe("material inspection without room for the Dock", () => {
+  it("presents an inspected file full width at its line and keeps it across resizes", async () => {
+    const resize = observeRowWidth(700);
+    const viewer = renderHook(useWorkspaceFileViewer);
+    const ratio = renderHook(useDockWidth);
+    openWorkspaceViewInDock("file");
+    render(<ChatPanel onSend={() => true} />);
+    expect(screen.getByRole("region", { name: "Conversation" })).toBeTruthy();
+    expect(windowHeader()).toBeNull();
+
+    const source = screen.getByRole("button", { name: "src/main.ts:4" });
+    act(() => source.focus());
+    fireEvent.click(source);
+    expect(viewer.result.current).toEqual({ path: "src/main.ts", line: 4 });
+    expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
+    expect(screen.queryByRole("region", { name: "Conversation" })).toBeNull();
+    const header = within(windowHeader()!);
+    expect(header.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
+    expect(header.queryByRole("button", { name: "Close" })).toBeNull();
+    expect(header.queryByRole("button", { name: "Open in the context dock" })).toBeNull();
+
+    const location = navigator().get();
+    const savedRatio = ratio.result.current.width;
+    const controls = screen.getByRole("button", { name: "File controls" });
+    await resize(1200);
+    expect(windowHeader()).toBeNull();
+    expect(screen.getByRole("region", { name: "Conversation" })).toBeTruthy();
+    const dock = screen.getByRole("complementary", { name: "Files" });
+    expect(within(dock).getByRole("button", { name: "Back to conversation" })).toBeTruthy();
+    act(() => dock.focus());
+    await resize(700);
+    expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
+    expect(
+      within(windowHeader()!).getByRole("button", { name: "Back to conversation" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "File controls" })).toBe(controls);
+    expect(navigator().get()).toEqual(location);
+    expect(ratio.result.current.width).toBe(savedRatio);
+
+    fireEvent.keyDown(controls, { key: "Escape" });
+    expect(document.activeElement).toBe(source);
+    expect(windowHeader()).toBeNull();
+    expect(navigator().get()).toMatchObject({ view: null, dock: "file" });
+  });
+
+  it("returns through a full-width task, table preview and file to the conversation", async () => {
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
+    const viewer = renderHook(useWorkspaceFileViewer);
+    render(<ChatPanel onSend={() => true} />);
+    const source = screen.getByRole("button", { name: "Inspect task" });
+    act(() => source.focus());
+    fireEvent.click(source);
+    expect(document.activeElement).toBe(screen.getByRole("region", { name: "Subagents" }));
+    expect(
+      within(windowHeader()!).getByRole("button", { name: "Back to conversation" }),
+    ).toBeTruthy();
+    const nested = screen.getByRole("button", { name: "Inspect nested task" });
+    act(() => nested.focus());
+    fireEvent.click(nested);
+    expect(navigator().get().subagent).toBe("nested");
+
+    const { expand, dialog } = await openPreview(screen.getByRole("region", { name: "Subagents" }));
+    const reference = within(dialog).getByRole("button", { name: "README.md:4" });
+    act(() => reference.focus());
+    fireEvent.keyDown(reference, { key: "Enter" });
+    await settle();
+    expect(viewer.result.current).toEqual({ path: "README.md", line: 4 });
+    expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
+
+    fireEvent.click(within(windowHeader()!).getByRole("button", { name: "Back to task" }));
+    expect(navigator().get()).toMatchObject({ view: null, dock: "subagents", subagent: "nested" });
+    expect(document.activeElement).toBe(expand);
+    fireEvent.keyDown(within(windowHeader()!).getByRole("button", { name: "Back to task" }), {
+      key: "Escape",
+    });
+    expect(navigator().get()).toMatchObject({ view: null, subagent: "child" });
+    expect(document.activeElement).toBe(nested);
+    fireEvent.keyDown(screen.getByRole("button", { name: "Read child" }), { key: "Escape" });
+    expect(document.activeElement).toBe(source);
+    expect(windowHeader()).toBeNull();
+  });
+
+  it.each([
+    { width: 700, exit: "header" },
+    { width: 1200, exit: "body" },
+  ] as const)(
+    "returns an inspected task presented as main through a file to the conversation at $width",
+    ({ width, exit }) => {
+      vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(width);
+      render(<ChatPanel onSend={() => true} />);
+      const source = screen.getByRole("button", { name: "Inspect task" });
+      act(() => source.focus());
+      fireEvent.click(source);
+      act(() => openWorkspaceView("subagents"));
+      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "child" });
+      let header = within(windowHeader()!);
+      expect(header.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
+      expect(header.queryByRole("button", { name: "Close" })).toBeNull();
+
+      fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
+      const file = screen.getByRole("button", { name: "src/child.ts:8" });
+      act(() => file.focus());
+      fireEvent.click(file);
+      expect(navigator().get()).toMatchObject({ view: null, dock: "file" });
+      fireEvent.click(screen.getByRole("button", { name: "Back to task" }));
+
+      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "child" });
+      expect(document.activeElement).toBe(file);
+      expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
+      header = within(windowHeader()!);
+      const back = header.getByRole("button", { name: "Back to conversation" });
+      expect(header.queryByRole("button", { name: "Close" })).toBeNull();
+
+      fireEvent.keyDown(
+        exit === "header" ? back : screen.getByRole("button", { name: "Read child" }),
+        { key: "Escape" },
+      );
+      expect(document.activeElement).toBe(source);
+      expect(navigator().get().view).toBeNull();
+      expect(windowHeader()).toBeNull();
+      expect(screen.queryByRole("button", { name: "Back to conversation" })).toBeNull();
+    },
+  );
+
+  it("leaves outside, composing and local Escape to their owners before returning", () => {
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
+    model.views[0] = { ...model.views[0]!, component: FilteredMaterial };
+    render(
+      <>
+        <button>Outside control</button>
+        <ChatPanel onSend={() => true} />
+      </>,
+    );
+    const outside = screen.getByRole("button", { name: "Outside control" });
+    const source = screen.getByRole("button", { name: "src/main.ts:4" });
+    act(() => {
+      source.focus();
+      openWorkspaceFile("src/main.ts", 4, source);
+      outside.focus();
+    });
+    expect(document.activeElement).toBe(outside);
+    fireEvent.keyDown(outside, { key: "Escape" });
+    const back = within(windowHeader()!).getByRole("button", { name: "Back to conversation" });
+
+    const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter material" });
+    act(() => filter.focus());
+    fireEvent.keyDown(filter, { key: "Escape", isComposing: true });
+    expect(filter.value).toBe("src/main");
+    fireEvent.keyDown(filter, { key: "Escape" });
+    expect(filter.value).toBe("");
+    expect(back.isConnected).toBe(true);
+    fireEvent.keyDown(filter, { key: "Escape" });
+    expect(back.isConnected).toBe(false);
+    expect(document.activeElement).toBe(source);
+  });
+
+  it("restores an ordinary Dock source full width when the row narrowed during inspection", async () => {
+    const resize = observeRowWidth(1200);
+    openWorkspaceViewInDock("subagents");
+    render(<ChatPanel onSend={() => true} />);
+    fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
+    const source = screen.getByRole("button", { name: "src/child.ts:8" });
+    act(() => source.focus());
+    fireEvent.click(source);
+    await resize(700);
+
+    fireEvent.click(within(windowHeader()!).getByRole("button", { name: "Back to Subagents" }));
+    expect(screen.queryByRole("region", { name: "Conversation" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
+    expect(document.activeElement).toBe(source);
+    const header = within(windowHeader()!);
+    expect(header.getByRole("button", { name: "Close" })).toBeTruthy();
+    expect(header.queryByRole("button", { name: "Open in the context dock" })).toBeNull();
+  });
+
+  it("restores a filtered catalog source full width with its search control", async () => {
+    const resize = observeRowWidth(1200);
+    showWorkspaceDock();
+    render(<ChatPanel onSend={() => true} />);
+    const search = screen.getByRole<HTMLInputElement>("combobox", { name: "Find a panel…" });
+    act(() => search.focus());
+    fireEvent.change(search, { target: { value: "Files" } });
+    fireEvent.click(screen.getByRole("option", { name: "Files" }));
+    await resize(700);
+
+    fireEvent.click(within(windowHeader()!).getByRole("button", { name: "Back to panel list" }));
+    expect(screen.queryByRole("region", { name: "Conversation" })).toBeNull();
+    expect(screen.getByRole("combobox", { name: "Find a panel…" })).toBe(search);
+    expect(search.value).toBe("Files");
+    expect(document.activeElement).toBe(search);
+    expect(screen.queryByText("View unavailable")).toBeNull();
+
+    fireEvent.click(within(windowHeader()!).getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: /Open material full width/ }));
+    expect(screen.getByRole("combobox", { name: "Find a panel…" })).toBe(search);
+    expect(search.value).toBe("Files");
   });
 });

@@ -16,6 +16,8 @@ export interface WorkspaceInspection {
   readonly previous: WorkspaceInspection | null;
 }
 
+export type WorkspaceSourcePresentation = "dock" | "main";
+
 export interface WorkspaceViewMemory {
   expandedDirs: readonly string[];
   lastFilePath: string | null;
@@ -51,7 +53,10 @@ interface WorkspaceNavigationPort {
   useActiveViewId(): string | null;
   useDock(): WorkspaceDockSnapshot;
   useInspection(): WorkspaceInspection | null;
-  returnFromInspection(inspection: WorkspaceInspection): boolean;
+  returnFromInspection(
+    inspection: WorkspaceInspection,
+    presentation?: WorkspaceSourcePresentation,
+  ): boolean;
   useFileFocus(): WorkspaceFileFocusSnapshot;
   useSubagentRunId(): string | null;
   openSubagentRun(runId: string | null, origin?: HTMLElement): void;
