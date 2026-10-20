@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Continuous work explicitly resumed in a fresh isolated worktree. Files now retains a visible keyboard entry through row removal and folder collapse, with native pointer-to-arrow focus feedback and existing file reading/returns preserved. Final frontend checks pass 383 files / 2,895 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
+Updated: 2026-10-21. Continuous work is active in the isolated worktree. Files retains a visible keyboard entry through row removal and collapse; global shortcut recording now preserves Space through display, dispatch and reset. Final frontend checks pass 383 files / 2,897 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -525,6 +525,34 @@ copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
 
+## Shortcut recording and activation
+
+`apps/web/src/lib/combo.ts` now includes the canonical `space` / physical `Space`
+pair in its existing dispatch-code map. Its inverse captures the same key;
+normalization, labels, conflict lookup and tinykeys dispatch consume that one
+representation. Previously bare Space normalized to an empty key and left the
+recorder open, while modified Space saved a modifier-only binding that could not
+activate the command. Existing event suppression, recording ownership, Tab,
+Escape, input policy, conflicts, persistence and reset retain their owners.
+
+ZCode's actual `settings/useShortcutRecording.ts`, shortcut bindings and labels
+were inspected for capture identity and bounded cancellation. Its modifier and
+bare-key policy differs from Flame's and was not copied. ChatGPT's actual
+`keyboard-shortcuts-settings-10f7592e9ebf.js` supplies command identity, capture,
+conflict and cancellation callbacks, rather than exporter behavior. The
+[UI Events code specification](https://www.w3.org/TR/uievents-code/#key-alphanumeric-writing-system)
+identifies `Space`; the installed tinykeys matcher accepts exact physical codes
+or case-normalized logical key strings, while spaces delimit sequences. Flame
+uses its existing physical-key policy and semantic control/type/color tokens.
+The better-series review preserves the whole change → capture → activate → reset
+path without adding state, palette values, a component system or geometry.
+
+Composer's logical-key projection has different modifier semantics, and none of
+its six current bindings uses Space. It remains unchanged; adding such a binding
+would require reviewing that owner's actual contract. No protocol, dependency or
+preference-schema migration is needed. A previously saved modifier-only override
+cannot reveal its lost intended key; reset and record it again rather than guess.
+
 ## File browsing and keyboard continuity
 
 `apps/web/src/features/workspace/ui/files/FileTree.tsx` retains one stored cursor:
@@ -688,6 +716,16 @@ reachable controls and width semantics. Existing type, color and surface owners
 remain the visual basis.
 
 ## Verification checkpoint
+
+For shortcut Space recording (2026-10-21):
+
+- Actual baseline Wails reproduced bare Space leaving recording open and Shift+Space closing it with only `⇧`. The original shortcut still activated the safe fixture command after Reset; the malformed override did not. The root cause was traced through capture, normalization and the installed tinykeys matcher.
+- Bounded Claude Code CLI added the map entry and two observable regressions. The original focused suite passed 27 tests; both new regressions failed against the original implementation. The final focused suite passed 29 tests across combo, pane and provider. The pane regression exercises recording-event suppression, stored/displayed Space, actual window-key dispatch, Reset and restored original dispatch with the real provider. Primary lint and typecheck also passed. No deadline, assertion or check was weakened.
+- Final `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **383 files / 2,897 tests** and every subsequent type/lint/format/unused-code, architecture/contract/style/token/locale/resource, bundle and production-module linkage gate. All 1,071 keys across eight locales and eleven component resources passed. Existing non-failing loopback `ECONNREFUSED` diagnostics remain unclassified. Serial `make check-native` passed Desktop tests/vet/build and the supported Wails beta.29 build; the binary is arm64 Mach-O, macOS 13.0 minimum, SDK 26.5. Duplicate `-lobjc` remained non-failing.
+- Actual final Wails used production recording, overrides, keymap and the product's single Slot-mounted provider. A temporary public command emitted one in-app acknowledgement per Space or Shift+Space activation. Recording itself emitted none. Conflict naming, Escape cancellation and source focus passed; filtering by Space then Reset returned focus to the surviving search, and Escape cleared it. The old Space binding stopped activating, and the original binding worked again. A duplicate provider in an earlier temporary scene was removed and these dispatch paths were repeated; it was never a product change.
+- English/light/14 px, English/dark/18 px/custom blue and Chinese/light/14 px/explicit Flame Orange qualified readable Space labels, recorder controls and existing focus rings. Native Window → Move & Resize → Left and twenty 0.05 zoom increments qualified the narrow 200% settings task. The final clean fixture omitted the synthetic command, extra provider and scene links. Its real Settings command was recorded as Space, used from the restored workspace to reopen Settings, cancelled and reset by keyboard in the narrow 200% view, then reopened with the restored `⌘,`. Native scrolling moved the settings content while its existing navigation remained independent. Accepted source hashes stayed unchanged.
+- These are actual Wails/WebKit UI and command-registration paths over isolated fixture providers and disposable preferences. They do not qualify a live Runtime action, OS-reserved shortcut interception, other keyboard layouts/platform GUIs, VoiceOver, native IME or rendered contrast. Appearance-page testing was excluded because this fixture does not install the font-availability port; requested scenes used fixture-owned appearance inputs. Browser/visual suites, performance baselines and unrelated standalone author checks were not run. No shared component, Runtime, protocol or backend source changed.
+- Cleanup completed: all owned native/CLI/check/build processes exited; the app was unregistered and removed. New bundle-specific Caches/WebKit paths passed preexistence, UID and birth-time guards; HTTP storage, preferences and saved state were absent. The private acceptance root, disposable data, overlays, prompts/reports, logs and all worktree-generated fixture/production/native outputs were removed. Installed worktree dependencies and shared compiler/package caches remain for continuous work. Read-only references, user data, unrelated processes and main-checkout edits are preserved. Continue inspecting complete content/Dock tasks from current source and native evidence; do not reopen completed Space behavior as pending work.
 
 For Files browser continuity (2026-10-21):
 
