@@ -16,6 +16,15 @@ func archive(source, output, prefix string) (err error) {
 	if !filepath.IsAbs(source) || !filepath.IsAbs(output) {
 		return errors.New("plugin archive: source and output must be absolute")
 	}
+	source, err = filepath.EvalSymlinks(source)
+	if err != nil {
+		return err
+	}
+	parent, err := filepath.EvalSymlinks(filepath.Dir(output))
+	if err != nil {
+		return err
+	}
+	output = filepath.Join(parent, filepath.Base(output))
 	if relative, err := filepath.Rel(source, output); err != nil || filepath.IsLocal(relative) {
 		return errors.New("plugin archive: output must be outside source")
 	}

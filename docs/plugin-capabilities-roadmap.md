@@ -208,9 +208,9 @@ Contract lessons from this round:
   host/CLI projections and component resources must move together; existing
   installations explicitly select rebuilt releases, and pending work needs its
   original host and binary. No implicit conversion changes those routes.
-- Release building resolves physical directory identity before replacing an owned
-  output. A filesystem alias must neither bypass source protection nor turn a CLI
-  invocation into a successful no-op.
+- Release building and ZIP creation resolve physical directory identity before
+  writing artifacts. A filesystem alias must neither bypass source protection nor
+  turn a CLI invocation into a successful no-op.
 - Usage report observation time and relative range are query facts. Restart tests
   use a controlled clock or verify those fields separately before comparing all
   retained accounting evidence; accounting remains in Core.

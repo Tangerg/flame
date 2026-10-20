@@ -46,6 +46,13 @@ func TestArchivePreservesPackageRootAndExecutableMode(t *testing.T) {
 	if err := archive(source, filepath.Join(source, "self.zip"), ""); err == nil {
 		t.Fatal("archive admitted its own output as source material")
 	}
+	alias := filepath.Join(root, "alias")
+	if err := os.Symlink(source, alias); err != nil {
+		t.Fatal(err)
+	}
+	if err := archive(source, filepath.Join(alias, "self.zip"), ""); err == nil {
+		t.Fatal("archive admitted its own output through a filesystem alias")
+	}
 	if err := archive(source, filepath.Join(root, "first.zip"), ""); err == nil {
 		t.Fatal("archive replaced an existing file")
 	}
