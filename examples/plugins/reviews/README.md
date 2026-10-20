@@ -53,28 +53,33 @@ not another review database. Read the backend again to observe its current state
 
 ## Build and install
 
-Build the executable for the Runtime host's OS and architecture from the repository
-workspace, using the Go version declared in `go.work`:
+From the repository root, prepare the workspace and regenerate the contracts and
+component. Assemble a new release under `out`, using the Runtime host's OS and
+architecture:
 
 ```sh
-cd examples/plugins/reviews/backend
-mkdir -p ../package/bin
-go build -trimpath -ldflags='-s -w' -o ../package/bin/reviews ./cmd/reviews
+make setup
+make generate
+mkdir -p out/plugins
+mkdir out/plugins/reviews
+cp -R examples/plugins/reviews/package/. out/plugins/reviews/
+mkdir -p out/plugins/reviews/bin
+go build -trimpath -ldflags='-s -w' -o out/plugins/reviews/bin/reviews ./examples/plugins/reviews/backend/cmd/reviews
 ```
 
-Install the `package` directory, not the source module. Flame accepts the packaged
-command `./bin/reviews`, binds `PLUGIN_ROOT` to immutable execution content, and
-binds `PLUGIN_DATA` to the installation's private data directory. The stripped
-package must fit the existing 128 MiB aggregate admission limit.
-Rebuild and admit new bytes when changing the backend. A selected new digest
-is an explicit trust decision; it preserves desired enablement when configuration remains valid.
+Use a new output directory for each build. Install the assembled release rather
+than a source directory. Flame binds `PLUGIN_ROOT` to immutable execution content
+and `PLUGIN_DATA` to the installation's private data directory. The stripped
+package must fit the existing 128 MiB aggregate admission limit. Rebuild and admit
+new bytes when changing the backend; selecting a new digest is an explicit trust
+decision and preserves desired enablement when configuration remains valid.
 
 For an already running Runtime, use its endpoint and an absolute source path on
 that machine:
 
 ```sh
 flame --runtime-url http://127.0.0.1:17171 plugins install \
-  --request '{"source":"/absolute/path/to/flame/examples/plugins/reviews/package"}'
+  --request '{"source":"/absolute/path/to/flame/out/plugins/reviews"}'
 flame --runtime-url http://127.0.0.1:17171 plugins list
 flame --runtime-url http://127.0.0.1:17171 plugins set-enablement \
   --request '{"installationId":"<installed-id>","enabled":true}'
@@ -122,17 +127,9 @@ Call `io.github.tangerg.flame.examples/reviews.analyzers` on
 digest, generated capability descriptor, an installation target and `{}` input.
 This uses the same public invocation path as other installed operations.
 
-The backend acceptance `TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetime`
-builds and installs both executables, calls the analyzer through Core callbacks,
-checks disable/reenable and refuses newly discovered contributors outside captured
-setup authority. Reconnecting the consumer explicitly admits its new collection.
-Point declaration availability belongs to the target consumer installation; another
-enabled copy cannot keep a disabled consumer's point available. This backend proof
-does not execute the board. Actual installed Web qualification separately covers
-applicable/inapplicable actions, provider absence, metadata-only menu construction
-and explicit analysis. Independent public-module compilation, native packaging
-and broader graphical lifetimes retain their own verification scope in the
-refactor progress record.
+The backend tests exercise captured collaborators, disable/reenable and explicit
+collection refresh. Component interaction and native resource lifetime remain
+separate contracts; a backend test does not execute the board.
 
 ## Mutation and recovery
 
@@ -178,8 +175,6 @@ receipt. The board never uses the newly read revision or current draft for that
 recovery. Multiple retained commands remain separately visible and block another
 status submission until their outcomes are established. Original-release absence
 or input conflict keeps its command unresolved rather than choosing another owner.
-The full graphical restart/update/uninstall/provider review retains its own
-qualification scope in the refactor progress record.
 
 The Store compiles the same Go-owned input schema at open and uses it for writes
 and receipt integrity checks. Receipt reads do not rerun business admission:
@@ -215,101 +210,48 @@ Delivery command replay continues to use the original Run command identity;
 the backend receipt does not replace that owner. Recovering a backend receipt
 does not retroactively settle a finished Run whose response was never observed.
 
-## Verification and current boundary
+## Verification
 
-From `backend`, run `go test ./...`, `go vet ./...`, and `go build ./...`.
-`go test -race -run TestConcurrentDuplicate ./...` checks the changed transaction
-ownership. Use `GOWORK=off` for the same checks against this module's independent
-released dependency graph once its Runtime dependency names a release containing
-the new public SDK. Current workspace checks use the branch's SDK. An isolated
-offline author build of current product source `6d5e2427d` is verified with Runtime
-and companion localruntime module archives, `GOWORK=off`, and no local `replace`.
-The archives include the actual implementation required by their public packages,
-including internal directories; author source imports only public APIs. A
-public-directories-only archive does not contain that implementation closure.
-The checked archives use the explicit temporary version
-`v0.0.0-unreleased.6d5e2427d557`. Their source staging directory is removed before
-workspace-off tidy, module verification, full race, vet and build pass through
-an isolated module cache, with no replace. The fixture also compiles the public
-Tool-proposal contributor and runs the unchanged executable command-decoration
-regression. The offline proxy is not a published release: this module's currently
-declared older Runtime version still lacks the new public SDK. Current selected
-module metadata also passes offline, including the thirty Scope v0.51.1 modules;
-this does not qualify registry availability or publication.
+From the repository root:
 
-Schema accepts integer spellings such as `0.0` and `1e0`, while the typed Go
-decoder rejects them before Store entry. Runtime now asks that same registered
-typed input owner for complete structural admission before saving a command route.
-The real installed CLI regression first reproduces an unconfirmed command on old
-code, then verifies definite invalid-parameters refusal without consuming the key.
-Canonical `0` with that key still reaches the business owner, saves `invalidUpdate`
-and recovers its receipt; another input cannot reuse the admitted identity.
-This is a shared SDK/Runtime admission contract, with no Reviews-specific numeric
-coercion or business receipt for a never-admitted request. The current backend
-protocol is `2026-10-15.3`; rebuild every package and consumer together. The
-broader qualification limits remain in the
-[refactor handoff](../../../docs/plugin-refactor-handoff.md).
+```sh
+make check
+make check-native
+make check-author
+```
 
-`TestTypedAndToolEntrancesShareTheBusinessReceipt` compares complete canonical
-results and the Tool error flag for revision, invocation and invalid-input refusals.
-It also reads the public receipt of invalid revision and Unicode byte-overflow
-decisions. It retains
-4,096 receipts through real Store updates, admits another successful update and
-preserves new business refusals and original recovery beyond that history size.
-This SDK/MCP test uses
-in-memory transport; it does not execute the CLI or board.
+The root check discovers the Reviews backend through `go.work`, runs its
+independent dependency graph with `GOWORK=off`, and checks the component through
+the npm workspace. `make setup` prepares the immutable current-source module
+artifacts. No local `replace` or source snapshot supplies the SDK. Published
+consumers must select a release containing these public packages; candidate
+artifacts do not claim registry publication.
 
-From `runtime`, `go test ./internal/bootstrap -run TestReviewBackend -count=1`
-builds and installs the real stdio backend in temporary directories. It exercises
-approval, Runtime/backend restart, command replay, stale revisions, withdrawal,
-historical results, and a real CLI querying and receiving revision-conflict
-results through authenticated HTTP. That CLI case compares the complete canonical
-results with the model Tool output, including same-command refusal redelivery;
-it does not claim CLI coverage of every refusal class. A transport probe drops
-an actual committed update's response: Runtime retains a lost Run and unresolved
-effect, the restarted backend recovers the original receipt through the public
-read-only query, and a replacement call returns the revision conflict. An absent
-receipt does not enter the mutation handler. That test also verifies process retirement
-and preserves the Run's original uncertainty after restart. Its model is scripted;
-the test needs no provider credentials or external service.
+For focused backend validation, run `go test ./...`, `go vet ./...` and
+`go build ./...` from `backend`. Runtime's real installed regressions run from the
+repository root with:
 
-`go test ./internal/bootstrap -run TestReviewReceiptHistory -count=1` instead
-starts a separate HTTP backend fixture with 4,096 real historical receipts before
-Runtime connects. Separate model Run/executable CLI cases compare the complete
-missing-review and invalid-revision refusals. Each first rejects an oversized
-public request, then uses that still-available command identity for actual work.
-The CLI and public Endpoint recover the new refusal
-through the original read-only receipt query. Child-process counters prove one
-Tool dispatch, one read-only typed input validation, one typed update dispatch
-and two receipt reads; final private
-assertions retain the original Review and all 4,098 receipts. The Store regression
-also reopens the private database and reads original success/refusal receipts
-after an actual successful update beyond the old cutoff. Separate invalid-input
-cases verify exact recovery and changed-input conflict across private restart.
-These history cases do not execute the board.
+```sh
+go test ./runtime/internal/bootstrap -run TestReview -count=1
+```
 
-`TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt` builds the real
-CLI and stdio backend and checks the human binding boundary through authenticated
-HTTP. A successful update is followed by repeated changed-input conflict and
-matching Go classification. A fresh key advances the review, while the original
-key/input still returns its complete earlier receipt without changing current
-state. This qualifies Core's `idempotency_conflict`.
+These scripted-model tests cover typed/Tool refusal identity, executable CLI
+identity conflict, public receipt recovery, backend and Runtime restart, approval,
+withdrawal, and retained receipt history. All execution uses temporary data and
+local transports. They do not require provider credentials or qualify every
+rendered board interaction.
 
-`TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI` separately
-compares private `invocationConflict` through a real model Run and executable CLI.
-A separate HTTP backend makes real prior private calls with captured identities
-before forwarding unchanged public requests to the production handlers. The
-controlled collision has original atomic `notFound` receipts, without fake replies
-or direct receipt writes. CLI/Go recovery explicitly refuses those different-input
-receipts instead of replacing them or replaying the requested mutations. A fresh
-CLI identity succeeds once. Child-process assertions preserve both original
-outcomes and require exactly three receipts, one Tool, two typed dispatches, two
-pure validations and two receipt reads. The graphical entrance remains unexecuted.
+Integer schemas can accept spellings such as `0.0` and `1e0` that the typed Go
+input owner refuses. Runtime performs that same typed structural admission before
+saving a command route. A malformed request never consumes its key; a later
+canonical input with that key can reach the business owner. The current backend
+protocol is `2026-10-15.3`; rebuild the backend, contracts and components together.
 
-This package's MCP tools execute through Session-owned Runs and the existing
-approval path. Its ordinary Board calls the same published business operations
-through the public component SDK. Diagnostic `tools.invoke` is not a plugin action
-entrance.
+The backend's own tests preserve more than 4,096 real receipts, recover original
+success and refusal after restart, reject changed-input identity reuse, and check
+atomic business/receipt commits. The public `commands.get` query never enters a
+mutation handler. Model Tools and ordinary Board calls use the same published
+business operations; diagnostic `tools.invoke` is not a plugin action entrance.
 
 ## Ordinary component source
 
@@ -323,8 +265,8 @@ The owning generator now publishes the complete `CAPABILITY_JSON` string beside
 its typed method maps. Send that string unchanged. Converting schema integers to
 JavaScript numbers can change their exact contract identity.
 
-From `examples/plugins/reviews/client`, install the declared public dependencies,
-then use `npm run typecheck` and `npm run build`. The shared public SDK build emits
+From the repository root, use `npm run typecheck --workspace @flame/reviews-example`
+and `npm run build --workspace @flame/reviews-example`. The shared public SDK build emits
 `package/io.github.tangerg.flame/components/component.js` with React, JSX runtime,
 SDK and UI imports externalized for the host's actual shared module instances.
 The same prebuilt ESM format is used for development and release builds.
@@ -335,9 +277,9 @@ same generic ESM/resource subscription and shared module mapping for this ordina
 installed package. Generation replacement requests a window reload; it cannot
 unload evaluated JavaScript. Unmount cancels observation and Dougong joins SDK I/O.
 
-The former HTML carriers are removed. Compilation, production bundles and backend
-resource-lifetime checks provide source/build evidence. Actual rendered Web Board
-query/refusal comparison and original-command recovery now have matching evidence.
-Web/Wails resource lifecycle and native Memory recovery retain their separate
-scenario scope in `docs/plugin-refactor-progress.md`; these do not prove every
-Reviews workflow or every graphical refusal class.
+The host consumes this ordinary ESM through the same installed resource and
+contribution lifecycle as first-party components. Generation replacement requests
+a fresh window; unmount cancels observation without cancelling accepted business
+commands. Graphical query/refusal and original-command recovery regressions live
+with the Web integration tests. Native staging and host behavior are checked by
+`make check-native`.

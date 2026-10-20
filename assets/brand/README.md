@@ -49,6 +49,6 @@ assets retain their original color.
 - Keep the original colors and avoid adding outlines, glow or extra decorations.
 
 The original concept boards and refinement prompts remain under
-[`design/branding/`](../design/branding/). The transparent production assets were
+[`design/branding/`](../../design/branding/). The transparent production assets were
 prepared from the approved rounded concepts with the built-in imagegen tool;
 their extraction prompts are recorded in [`prompts.txt`](prompts.txt).

@@ -552,9 +552,7 @@ for (const file of scanned) {
     });
   }
 
-  // A public surface publishes what its context OWNS. Re-exporting another owner's fact
-  // gives it a second path, and that path lies about who depends on whom: sixty-one files
-  // read as depending on `agent` while depending on a `plugins/sdk` type below it.
+  // Re-exporting another feature's fact hides its owner from the dependency graph.
   const publicAt = rel.indexOf("/public/");
   if (!isTest && /^features\/.+\/public\/.+\.(ts|tsx)$/.test(rel)) {
     const contextRoot = rel.slice(0, publicAt);

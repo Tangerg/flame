@@ -5,8 +5,7 @@
 **Status:** Superseded historical design draft. Its provisional APIs and isolated-page
 architecture are not current implementation guidance. See the current
 [Runtime contract](../../runtime/README.md#public-surfaces),
-[component SDK](../../packages/component-sdk/README.md) and
-[acceptance record](../plugin-refactor-progress.md#proposal-acceptance-coverage).
+[component SDK](../../packages/component-sdk/README.md).
 **Date:** 2026-10-01.  
 **Product baseline:** `Tangerg/flame@1083cab5794d6bcc252bdd27dac4b23ecb8a5940`.  
 **Audience:** Runtime, Scope, Desktop/Web, CLI, and plugin SDK maintainers.\
@@ -1641,9 +1640,9 @@ Keep this external draft as a review artifact. Do not add it to the active Runti
 [F3]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/DESIGN_PHILOSOPHY.md
 [F4]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/DEVELOPMENT.md
 [F5]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/REFACTORING.md
-[F6]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/docs/README.md
-[F7]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/apps/web/ARCHITECTURE.md
-[F8]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/apps/web/src/extensions/types/workspace.ts
+[F6]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/doc/README.md
+[F7]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/desktop/frontend/ARCHITECTURE.md
+[F8]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/desktop/frontend/src/plugins/sdk/types/workspace.ts
 [F10]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/protocol/capabilities.go
 [F11]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/internal/adapter/toolset/filesystem.go
 [F12]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/internal/adapter/toolset/discovery.go
@@ -1663,10 +1662,10 @@ Keep this external draft as a review artifact. Do not add it to the active Runti
 [F26]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/internal/application/workspace/agentmemory/curation.go
 [F27]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/internal/application/automation/schedules/worker.go
 [F28]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/internal/application/workspace/skills.go
-[F29]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/apps/web/src/extensions/kernelPoints.ts
-[F30]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/apps/web/src/main/builtinPlugins.ts
+[F29]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/desktop/frontend/src/plugins/sdk/kernelPoints.ts
+[F30]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/desktop/frontend/src/main/builtinPlugins.ts
 [F31]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/go.mod
-[F32]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/docs/ARCHITECTURE.md
+[F32]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/doc/ARCHITECTURE.md
 [F33]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/internal/domain/integration/mcpserver/server.go
 [F34]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/internal/domain/run/approval/callgate.go
 [F35]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/internal/infra/sqlite/db.go

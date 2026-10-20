@@ -313,6 +313,10 @@ async function stageWeb() {
   await cp(join(root, "apps/web/dist"), destination, { recursive: true });
 }
 async function goMembers(native) {
+  const env = {
+    ...proxyEnvironment(join(root, "out/module-proxy")),
+    GOWORK: "off",
+  };
   const entries = JSON.parse(
     run("go", ["work", "edit", "-json"], root, process.env, true),
   ).Use;
@@ -330,8 +334,13 @@ async function goMembers(native) {
       if (native && operation === "build") {
         const output = join(root, "out/native-check");
         await mkdir(output, { recursive: true });
-        run("go", [operation, "-o", join(output, "flame"), "./..."], directory);
-      } else run("go", [operation, "./..."], directory);
+        run(
+          "go",
+          [operation, "-mod=readonly", "-o", join(output, "flame"), "./..."],
+          directory,
+          env,
+        );
+      } else run("go", [operation, "-mod=readonly", "./..."], directory, env);
     }
   }
 }

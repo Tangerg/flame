@@ -9,18 +9,23 @@ The executable consumes the public types and contracts in the independent Review
 author module. Its `unresolvedReview` finding refers to the inspected review ID
 and revision. A resolved snapshot has no findings. Invalid snapshots are refused.
 
-From `examples/plugins/reviews/backend` in the repository workspace:
+From the repository root, prepare current dependencies and contracts, then
+assemble a new release outside the source tree:
 
 ```sh
-go generate ./...
-mkdir -p ../analyzer/package/bin
-go build -trimpath -ldflags='-s -w' -o ../analyzer/package/bin/review-analyzer ./cmd/review-analyzer
+make setup
+make generate
+mkdir -p out/plugins
+mkdir out/plugins/review-analyzer
+cp -R examples/plugins/reviews/analyzer/package/. out/plugins/review-analyzer/
+mkdir -p out/plugins/review-analyzer/bin
+go build -trimpath -ldflags='-s -w' -o out/plugins/review-analyzer/bin/review-analyzer ./examples/plugins/reviews/backend/cmd/review-analyzer
 ```
 
-Install the absolute `analyzer/package` directory through `plugins install`, then
-enable its installation through `plugins set-enablement`. Enable it before
-activating Reviews; Reviews' optional named analyzer collection is captured at
-setup. Deliberate later changes require reloading that consumer entry.
+Install the absolute `out/plugins/review-analyzer` directory through
+`plugins install`, then enable it through `plugins set-enablement`. Enable it
+before activating Reviews; Reviews' optional named analyzer collection is
+captured at setup. Deliberate changes require reloading that consumer entry.
 
 `plugin.json` owns package identity, `mcp.json` owns process launch, and the
 referenced namespace declaration binds `analyzer` plus the point value
@@ -32,6 +37,7 @@ or add an analyzer branch to the generic package loader.
 Runtime bootstrap builds both installed executables and exercises their actual
 Core callback route. It verifies original review identity/revision, optional absence
 on disable, reenable, frozen setup authority and explicit collection refresh.
-The current workspace proof does not establish that the new SDK is available at
-the older published Runtime version in `go.mod`; independent published-module and
-native component qualification remain separate work.
+The root check validates the Reviews module with `GOWORK=off` against the frozen
+module artifacts prepared by `make setup`. Published consumers must select a
+release containing the public SDK; the candidate file proxy is not publication.
+Native component qualification belongs to `make check-native`.

@@ -230,14 +230,14 @@ asset read rechecks the enabled release, component and package integrity through
 canonical Delivery. Closing the subscription or Runtime withdraws its ephemeral
 access. Asset URLs carry no persistent Runtime bearer token. The workbench's
 shared module graph supplies React, the SDK and UI; replacement of evaluated code
-requires a fresh window generation. Source/native compilation is not evidence of
-rendered interaction; actual acceptance status belongs in the refactor progress.
+requires a fresh window generation. Source/native compilation alone does not
+verify rendered interaction.
 
 File renderers receive a frozen accepted file read. Tool-result renderers receive
 settled historical projections and no invocation authority. Current renderers may
 inspect historical results without evaluating historical producer code. Loading,
 withdrawal and ambiguity retain generic inspection and existing source access.
-See [Desktop's component lifecycle](../apps/desktop/README.md#installed-component-rendering).
+See [Web component ownership](../apps/web/ARCHITECTURE.md).
 
 ## Run commands and strict request identity
 

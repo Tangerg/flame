@@ -17,6 +17,9 @@ import (
 )
 
 func TestStandalonePluginArchiveRetainsItsPrivateCommandOwner(t *testing.T) {
+	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_A2A_AGENTS", "")
+	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 	root := t.TempDir()
 	author := filepath.Join(root, "author")
 	_, file, _, _ := runtime.Caller(0)

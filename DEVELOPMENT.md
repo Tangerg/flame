@@ -59,8 +59,10 @@ Run from the repository root:
 The coordinator discovers Go members from `go.work` and npm members from root
 `workspaces`. Native requirements classify the Desktop member explicitly; a
 non-native check does not claim that member passed. CI requires both jobs.
-Workspace checks invoke local sources. Independent distribution verification
-uses `GOWORK=off` and the frozen standard module artifacts described in
+Each Go member runs test/vet/build with `GOWORK=off` and read-only manifests, so
+workspace substitution cannot hide missing dependencies. Cross-module development
+and generation use the workspace. Independent distribution verification uses
+the frozen standard module artifacts described in
 [consumer reference](docs/reference/consumers.md).
 
 Owner checks can be run directly, for example `go test ./runtime/...` or
