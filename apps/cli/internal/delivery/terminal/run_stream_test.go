@@ -332,6 +332,35 @@ func TestRecoveredSessionRetriesATransientColdRead(t *testing.T) {
 	stop()
 }
 
+type crossingAttachRuntime struct {
+	*runtimefixture.Runtime
+	attempts atomic.Int32
+}
+
+func (r *crossingAttachRuntime) SubscribeRun(ctx context.Context, request conversation.SubscribeRun) (conversation.SegmentStream, error) {
+	if r.attempts.Add(1) <= 16 {
+		return conversation.SegmentStream{}, conversation.ErrStaleSegment
+	}
+	return r.Runtime.SubscribeRun(ctx, request)
+}
+
+func TestRecoveredSessionKeepsFollowingAfterLocalAttachBudget(t *testing.T) {
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{
+			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
+		}}}}
+	}
+	if _, err := base.StartRun(t.Context(), testStartRun("ses_demo_1", "crossing attach")); err != nil {
+		t.Fatal(err)
+	}
+	runtime := &crossingAttachRuntime{Runtime: base}
+	host, stop := runUIWithRuntimeChanges(t, runtime, nil, "ses_demo_1")
+	awaitState(t, "attachment beyond two exhausted local budgets", func() bool { return runtime.attempts.Load() > 16 })
+	host.Shows(t, "crossing attach")
+	stop()
+}
+
 func TestStreamRecoveryUsesTheFollowerSessionIdentity(t *testing.T) {
 	runtime := &sessionReadRecordingRuntime{Runtime: runtimefixture.New()}
 	application := &app{

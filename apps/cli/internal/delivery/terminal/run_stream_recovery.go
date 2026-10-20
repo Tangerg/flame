@@ -79,6 +79,13 @@ func (s *streamFollower) restoreAttachedSession(sessionID string) (runworkflow.R
 			s.failures = 0
 			return recovered, true
 		}
+		if runworkflow.RecoveryRequired(err) {
+			s.failures++
+			if !s.postRetryStatus(false) || runtimeRecoveryBackoff.Wait(s.ctx, s.failures) != nil {
+				return runworkflow.Recovery{}, false
+			}
+			continue
+		}
 		if !s.waitBeforeRetry(fmt.Errorf("restore active session: %w", err)) {
 			return runworkflow.Recovery{}, false
 		}
