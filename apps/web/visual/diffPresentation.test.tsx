@@ -304,6 +304,96 @@ it("keeps a pending Refresh focused and inert through completion, failure and re
   expect(document.activeElement).toBe(refresh);
 });
 
+it("lets Escape from a pending Refresh return a list-opened file to its filtered row while the read continues", async () => {
+  const held = Promise.withResolvers<Diff>();
+  const read = vi
+    .fn<(signal?: AbortSignal) => Promise<Diff>>()
+    .mockResolvedValueOnce(REVIEW_DIFF)
+    .mockImplementationOnce(() => held.promise);
+  const { get, outsideEscape } = mountDiff("", read);
+  await loaded();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Filter files" }), {
+    target: { value: "session" },
+  });
+  const row = screen.getByRole<HTMLElement>("button", { name: /^session.go / });
+  row.focus();
+  fireEvent.click(row);
+  expect(screen.getByRole("heading", { name: "session.go" })).toBeTruthy();
+  const refresh = screen.getByRole<HTMLElement>("button", { name: "Refresh" });
+  refresh.focus();
+  fireEvent.click(refresh);
+  await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+  const signal = get.mock.calls[1]![1]!;
+  expect(refresh.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(refresh);
+
+  expect((await screen.findByRole("tooltip")).textContent).toBe("Refresh");
+  fireEvent.keyDown(refresh, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(outsideEscape).not.toHaveBeenCalled();
+
+  fireEvent.keyDown(refresh, { key: "Escape" });
+  expect(outsideEscape).not.toHaveBeenCalled();
+  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter files" }).value).toBe(
+    "session",
+  );
+  expect(row.getAttribute("aria-current")).toBe("true");
+  expect(document.activeElement).toBe(row);
+  expect(signal.aborted).toBe(false);
+  expect(screen.getByText("Reading uncommitted changes…")).toBeTruthy();
+
+  await act(async () => held.resolve(REVIEW_DIFF));
+  await loaded();
+  expect(get).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter files" }).value).toBe(
+    "session",
+  );
+  expect(screen.getByRole("button", { name: /^session.go / })).toBe(row);
+  expect(row.getAttribute("aria-current")).toBe("true");
+  expect(document.activeElement).toBe(row);
+  expect(outsideEscape).not.toHaveBeenCalled();
+});
+
+it("leaves Escape from a pending Refresh on a directly opened file to the source return", async () => {
+  const held = Promise.withResolvers<Diff>();
+  const read = vi
+    .fn<(signal?: AbortSignal) => Promise<Diff>>()
+    .mockResolvedValueOnce(REVIEW_DIFF)
+    .mockImplementationOnce(() => held.promise);
+  const { get, outsideEscape } = mountDiff(ACTIVE_DIFF_FILE, read);
+  await loaded();
+  const refresh = screen.getByRole<HTMLElement>("button", { name: "Refresh" });
+  refresh.focus();
+  fireEvent.click(refresh);
+  await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+  const signal = get.mock.calls[1]![1]!;
+  expect(refresh.getAttribute("aria-disabled")).toBe("true");
+
+  expect((await screen.findByRole("tooltip")).textContent).toBe("Refresh");
+  fireEvent.keyDown(refresh, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(outsideEscape).not.toHaveBeenCalled();
+
+  fireEvent.keyDown(refresh, { key: "Escape" });
+  expect(outsideEscape).toHaveBeenCalledOnce();
+  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getByRole("button", { name: "Show changed files" })).toBeTruthy();
+  expect(screen.queryByRole("searchbox", { name: "Filter files" })).toBeNull();
+  expect(document.activeElement).toBe(refresh);
+  expect(signal.aborted).toBe(false);
+
+  await act(async () => held.resolve(REVIEW_DIFF));
+  await loaded();
+  expect(get).toHaveBeenCalledTimes(2);
+  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(document.activeElement).toBe(refresh);
+  expect(outsideEscape).toHaveBeenCalledOnce();
+});
+
 it("leaves a later outside focus choice when a pending refresh drops the selected file", async () => {
   const held = Promise.withResolvers<Diff>();
   const read = vi

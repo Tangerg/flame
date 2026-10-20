@@ -242,8 +242,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                 icon={Refresh}
                 aria-label="Refresh"
                 size="md"
-                disabled={read.loading}
-                focusableWhenDisabled
+                pending={read.loading}
                 onClick={() => void refresh()}
               />
             }

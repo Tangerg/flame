@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Continuous work is active in the isolated worktree. Files retains its keyboard entry through row removal and collapse; global shortcuts preserve Space through recording and activation; Diff Refresh retains focus while unavailable without admitting duplicate reads. Final frontend checks pass 383 files / 2,899 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
+Updated: 2026-10-21. Continuous work is active in the isolated worktree. Files retains keyboard continuity through row removal and collapse; global shortcuts preserve Space; Skills, Usage and Diff Refresh retain focus and parent navigation during reads. Final frontend checks pass 383 files / 2,905 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -346,19 +346,23 @@ accepted file and identify the actual comparison beside the requested scope.
 `DiffFileList`, `DiffFileHeader` and `DiffFilePath` share file presentation in `ui`;
 portable state and Runtime reads remain with their existing owners.
 
-Diff's local Refresh now uses the shared Base UI button's existing
-`focusableWhenDisabled` contract alongside its existing loading disablement.
+Diff's local Refresh uses the shared Button's existing `pending` contract.
 A pending read keeps the operation's keyboard place while refusing pointer,
-Enter and Space activation. Completion and failure require no compensating
-focus transition; a later outside choice remains authoritative. No read,
-selection, comparison, abort, retry or shared Button default changed. The checked
-portable ESM was regenerated from its source.
+Enter and Space activation. Escape remains available to the existing local
+list return or host source return, after any open Tooltip closes. Completion
+and failure require no compensating focus transition; a later outside choice
+remains authoritative. No read, selection, comparison, abort, retry or shared
+Button default changed. The checked portable ESM was regenerated from its source.
 
 The native baseline, not a desktop screenshot alone, established the defect:
 Enter on Refresh moved focus to the document, and completion left the next Tab
 at the fixture sidebar. Exact installed Base UI 1.9.0 and its
 [loading-state guidance](https://base-ui.com/react/components/button#loading-states)
-provide the existing interaction contract. HeroUI's local
+initially led to `focusableWhenDisabled`. The subsequent native Skills task
+exposed that this option prevents every non-Tab key, including the Escape that
+the parent reader owns. Diff used the same option. Existing shared `pending`
+pauses only the button's activation and preserves that navigation boundary.
+HeroUI's local
 `button/loading-state.tsx` retains named pending action identity; Flame retains
 its own status copy and controls. ZCode's `useGitAutoRefresh.ts` distinguishes
 background observation from explicit refresh; its debounce/watcher policy is
@@ -373,6 +377,10 @@ Usage applies the same distinction between query scope and presentation: the
 report period and refresh precede source search and grouping. A pending or failed
 period change visibly names the accepted period in the persistent control zone.
 Filtering still changes only displayed buckets, never the report totals.
+Usage Refresh now uses shared `pending` so a read does not remove the user's
+keyboard position. Success, failure and explicit retry preserve that control;
+later filter or Composer focus remains authoritative. Its scope, accepted report,
+filter, grouping and Runtime request owner are unchanged.
 
 Skills now separates three catalog tasks. Available rows use the shared
 `RecordButton` to enter a named document directly; personal library rows show their
@@ -392,6 +400,16 @@ failures claim no retained data; same-document refresh failures identify the
 accepted document. Document navigation does not recreate the Runtime subscription.
 Diff file rows now consume the same `RecordButton` presentation without changing
 their selection, comparison or return ownership.
+
+Skills catalog and document Refresh now use shared `pending` for active reads.
+Both remain focusable while refusing duplicate activation. Catalog refresh
+retains its query and accepted rows; document refresh retains its named accepted
+instructions and the existing error/retry path. Escape can retire the document's
+read and restore the exact catalog row, while late completion stays retired.
+An open Tooltip consumes its own Escape first. The catalog's independent
+`disabled={Boolean(command)}` remains native disablement: an unresolved command
+is still governed by its original command and recovery contract. This is a local
+read-control repair, with no global Button behavior change or new focus state.
 
 Provider rows retain one credential draft owner and one canonical mutation owner. `providers/ui/ProviderRow.tsx` now runs Save & Test through one existing `useAsyncFeedback` lease that starts at activation. The mutation latch and saving state remain local to the admitted update; `saveDraft` still settles only the submitted URL/key values. Ordinary Save/Clear keep their existing feedback policy. A retired Runtime generation remains ignored, current save failure prevents testing, and test failure uses its existing message. Editing does not submit the successor draft or cancel an already accepted canonical update. No new draft, generation cache, protocol or persisted representation was added.
 
@@ -740,14 +758,18 @@ remain the visual basis.
 
 ## Verification checkpoint
 
-For Diff Refresh continuity (2026-10-21):
+For Skills, Usage and Diff pending-read continuity (2026-10-21):
 
-- Actual Wails reproduced Enter on keyboard-focused Refresh dropping focus to the document as soon as its held read began. Completion did not restore focus; Tab moved to the first fixture-sidebar control. The original focused suite passed nine tests. Bounded Claude Code CLI added two regressions; the red run passed ten and failed one on native disablement, and the corrected focused suite passed eleven. Happy DOM does not reproduce WebKit's automatic blur, so that test checks the necessary focusable/unavailable state plus activation suppression, completion, failure/retry and a later outside choice even when the selected file disappears. Native acceptance establishes the actual focus effect. Existing assertions and deadlines remain intact.
-- Primary review retained the one-prop local fix. Explicit formatting, plugin build and the full plugin check passed, including type/lint, author replacement protection and all eleven exact ESM resources. Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **383 files / 2,899 tests**, every subsequent gate, all 1,071 keys across eight locales, production bundling and module linkage. `make check-native` passed; the final binary is arm64 Mach-O, macOS 13.0 minimum, SDK 26.5. Recurring non-failing loopback diagnostics and duplicate `-lobjc` warnings remain separate. Accepted source/test/resource hashes stayed unchanged through native acceptance.
-- Actual final Wails checked English/light/14 px/Flame Orange, English/dark/18 px/custom blue and a Chinese/light/14 px/explicit Orange host. A temporary canonical-transport gate held reads and completed or rejected them through keys that did not move focus. Refresh remained focused and unavailable; pointer, Enter and Space repeats did not increase the observed read count. Success, failure and explicit retry preserved that control. A later mixed CJK/English Composer draft and its focus survived completion without submission. Filter → file → refresh → Escape retained the exact query and current row. Switching comparison retained the selector's focus while showing the previous accepted scope; entering pending Refresh by Tab remained possible. A renamed CJK file retained its complete current/previous identity after pointer refresh.
-- Native Window → Move & Resize → Left and the existing keyboard handle qualified a **320 px Dock** with dark 18 px type. Twenty 0.05 native zoom increments qualified **200%** full-pane review, pending Refresh, filtering, file entry, actual code scrolling and return to the selected row and conversation source. The final clean fixture omitted all temporary gates, hotkeys, counters and scene links. Its ordinary Refresh → Tab continued into file navigation, and clean 200% read/scroll/Escape/Back returned to the original conversation trigger. Existing sticky controls, comparison identity and return ownership were preserved. The earlier native clicked-label reverse-navigation limitation was not changed; forward Tab reached the existing resize handle.
-- Native scenes use production components over isolated canonical in-memory reads in the actual Wails/WebKit host. They do not qualify live Runtime Git reads, admitted-release replacement, provider execution, VoiceOver, OS IME, rendered contrast or other-platform GUIs. The checked resource rebuild does not replace an already admitted installed digest; existing explicit package selection/update and reload requirements remain. No protocol, schema, dependency or user-data migration is needed. Browser/visual suites, performance baselines and unrelated standalone author/root/CLI/SDK suites were not run.
-- Cleanup completed: all owned native/CLI/check/build processes exited, the app was unregistered, and its bundle/data/overlays, frozen source, CLI prompt/report, fixture gates and logs were removed. Newly created Caches/WebKit paths passed preexistence/UID/birth-time guards; HTTP storage, preferences and saved state were absent. Worktree-generated fixture, shared-package, web and native outputs were removed. Installed dependencies, shared compiler/package caches, read-only references, user data and unrelated processes/worktrees remain. Continue inspecting existing reading tasks and other proven pending-refresh consumers; do not recreate this completed Diff fix.
+- Actual baseline Wails reproduced keyboard-focused Refresh losing focus as its held read began in the Skills catalog, Skills document and Usage report. Completion left Tab at the fixture sidebar. The earlier Diff baseline exposed the same focus loss. Happy DOM does not reproduce this WebKit blur; regressions check the required focusable/unavailable contract and actual native acceptance establishes the focus effect.
+- Bounded Claude Code CLI supplied the three local controls and regression cases. The original Skills/Usage baseline passed eleven tests; three new cases failed on the original disablement and passed after the first repair. Primary native review then caught pending document Escape being swallowed by Base UI's `focusableWhenDisabled`; the installed implementation prevents every non-Tab key. Primary changed these local readers and Diff to existing shared `pending`. A second bounded CLI supplied the Escape regressions but could not execute its requested commands under its tool allowlist. Primary executed all final validation and retained native command disablement. No check was bypassed.
+- Primary review corrected the new tests' popup precondition: an open Tooltip consumes the first Escape, and only the next one returns the reader. With that exact sequence, the old focusable-disablement implementation still failed all three new Escape cases and passed the other 25. Final focused validation passed **4 files / 33 tests**, including the shared Button contract. It covers suppression of pointer/Enter/Space repeats, success, failure/retry, later outside focus, query/grouping/accepted data, unresolved-command native disablement, document-read retirement, list-owned Diff return while its read continues, and direct-file Escape reaching the host once. The direct-file harness checks propagation, not a real host unmount.
+- Formatting, plugin build and full plugin check passed, including author replacement protection and all eleven exact ESM resources. Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **383 files / 2,905 tests**, all subsequent gates, 1,071 keys across eight locales, production bundling and module linkage. `make check-native` passed; the final binary is arm64 Mach-O, macOS 13.0 minimum, SDK 26.5. Recurring non-failing loopback diagnostics and duplicate `-lobjc` warnings remain separate. Nine accepted source/test/resource hashes stayed unchanged through final native acceptance.
+- Actual final Wails used production components over a canonical isolated memory transport. Temporary gates held, completed or rejected named reads using keys that did not move focus. English/light/14 px/Flame Orange qualified filtered Skills catalog → refresh → document → refresh → Escape → original row, document/catalog failure and explicit retry, duplicate refusal and a later mixed CJK/English Composer draft surviving completion. Usage retained source query, Model grouping and accepted totals through failure/retry; later edits kept their focus. Diff's pending Refresh returned to the exact filtered `session.go` row; its original read then completed without moving that focus.
+- Native Window → Move & Resize → Left and the existing keyboard handle qualified **320 px Docks** with dark 18 px type/custom blue for both Skills and Usage. Pending controls retained visible Blue rings, content scrolled, and Skills Escape returned its original query/row while retiring the document read. Twenty 0.05 native zoom increments qualified **200%** Skills main content and pending return. A Chinese/light/14 px/explicit Orange host qualified Usage main content at 200%: a requested Last 7 days read retained the All time accepted label through failure, then explicitly retried to Last 7 days. Portable page copy remains English under its existing context; host controls use Chinese.
+- A final clean fixture omitted all temporary gates, hotkeys, counters and scene links. Ordinary keyboard Refresh → Tab entered the filtered Skills document; refresh, literal CJK/English reading, wheel scrolling and Escape retained query and row. The real Browse panels picker opened Usage with Back to Skills. At 200%, the existing presentation owner moved it into main content; report scrolling kept period/refresh/search/grouping available. Refresh → Escape returned to the retained Skills query. The resulting main Skills reader also passed refresh, actual document scrolling and return. Native zoom was reset before quitting. The earlier clicked-label reverse-navigation platform limitation remains qualified separately; forward Tab reached the resize handle.
+- References remain read-only: ZCode's actual `settings/SkillsSection.tsx` and `settings/usage-stats/AppUsagePanel.tsx` distinguish refresh from accepted content; ChatGPT's actual `details-73eaf369a9c5.js` names a document/error/retry rather than an exporter; HeroUI pending-action examples preserve named identity; Radix and better-series review preserve nested popup priority and local return. Existing light/dark semantic tokens, Orange/custom-blue rings, type roles, wrapping and sticky control owners remain unchanged. Static Ace references support composition, not keyboard evidence.
+- These scenes do not qualify live Runtime Git/accounting reads, real Skills mutations, admitted-release replacement, provider execution, VoiceOver, OS IME, measured pixel contrast or other-platform GUIs. The checked resource rebuild does not replace an already admitted installed digest; existing explicit package selection/update and reload requirements remain. No protocol, schema, dependency or user-data migration is needed. Browser/visual suites, performance baselines and unrelated standalone root/CLI/SDK suites were not run.
+- Cleanup completed: owned native/CLI/check/build processes exited, the app was unregistered, and its bundle/data/overlays, temporary sources, CLI prompts/reports, gates and logs were removed. New Caches/WebKit paths passed preexistence/UID/birth-time guards; HTTP storage, preferences and saved state were absent. Worktree-generated fixture, shared-package, web and native outputs were removed. Installed dependencies, shared compiler/package caches, read-only references, user data and unrelated work remain. Continue observing complete existing reading/management tasks before changing further pending consumers; do not mechanically alter native disablement.
 
 For shortcut Space recording (2026-10-21):
 
