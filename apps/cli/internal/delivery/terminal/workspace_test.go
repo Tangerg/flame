@@ -97,7 +97,10 @@ func TestRecentWorkspacePickerCreatesAndSwitchesToTheSelectedRoot(t *testing.T) 
 	}
 	backend := &workspaceRecordingRuntime{Runtime: runtimefixture.New(), created: make(chan string, 4)}
 	backend.Instant = true
-	host, stop := runUIWithState(t, backend, current, "", state)
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	host, stop, _ := runUIWithState(t, backend, current, "", state)
 	host.Shows(t, "Ask flame")
 	if opened := <-backend.created; opened != current {
 		t.Fatalf("opening workspace = %s, want %s", opened, current)

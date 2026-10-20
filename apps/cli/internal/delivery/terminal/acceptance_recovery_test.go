@@ -97,16 +97,15 @@ func TestRetiredAcceptanceSettlesTheOpeningWithoutObservingOrCancelingMaterial(t
 				t.Fatal(err)
 			}
 			backend := &retiredOpeningProbe{Runtime: base}
-			host, stop := runUIWithReplayState(t, backend, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+			host, stop, workbenchForHost := runUIWithReplayState(t, backend, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 			if !canceling {
 				host.Shows(t, "accepted run material has been retired")
 			}
 			awaitState(t, "retired command receipt settlement", func() bool {
-				reopened, err := openTestWorkbench(stateDirectory)
-				if err != nil {
+				reopened := workbenchForHost()
+				if reopened == nil {
 					return false
 				}
-				defer reopened.Close()
 				return len(reopened.PendingRuns(command.SessionID)) == 0
 			})
 			stop()
@@ -146,17 +145,14 @@ func TestAnotherRunsTerminalEventCannotSettleAnUnconfirmedOpening(t *testing.T) 
 	}
 	observation := &observedCurrentOwner{Runtime: base, subscribed: make(chan struct{}, 1)}
 	gate := &gatedRecoveryStartRuntime{Runtime: observation, commandID: command.CommandID, started: make(chan struct{}, 1), release: make(chan struct{})}
-	host, stop := runUIFromConfig(t, Config{Runtime: gate, RuntimeProfile: &profile, SessionID: command.SessionID, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory), DetachOnExit: true})
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{Runtime: gate, RuntimeProfile: &profile, SessionID: command.SessionID, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory), DetachOnExit: true})
 	awaitValue(t, gate.started, "original command lookup")
 	awaitValue(t, observation.subscribed, "current owner snapshot and successor tail")
 	if _, err := base.CancelRun(t.Context(), conversation.CancelRun{RunID: current.RunID, Reason: "finish the other Runtime owner"}); err != nil {
 		t.Fatal(err)
 	}
 	host.Shows(t, "pending prompt outcome unknown")
-	reopened, err := openTestWorkbench(stateDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	reopened := workbenchForHost()
 	pending := reopened.PendingRuns(command.SessionID)
 	if len(pending) != 1 || pending[0].Command.CommandID != command.CommandID || pending[0].State != workbench.PendingRunDispatching {
 		t.Fatalf("another Run settled the original command: %+v", pending)

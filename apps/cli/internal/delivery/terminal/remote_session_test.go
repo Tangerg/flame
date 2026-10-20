@@ -47,7 +47,7 @@ func TestRemoteSessionAttachmentsStayLocalAcrossSwitchAndRelocation(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
+	host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, SessionID: first.ID, LocalDirectory: local, DetachOnExit: true,
 	})
 	host.Shows(t, "Ask flame")
@@ -102,7 +102,7 @@ func TestRemoteSessionEditorAndDocumentsUseTheLocalDirectory(t *testing.T) {
 	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	backend.Script = stableCompletedScript
-	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
+	host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, Workspace: `Z:\server\project`, LocalDirectory: local,
 		DetachOnExit: true, Transfers: outputTransferStub{},
 	})
@@ -160,7 +160,7 @@ func TestRemotePluginCommandsReceiveLocalAndRuntimeDirectories(t *testing.T) {
 			return err
 		},
 	}
-	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
+	host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, SessionID: created.ID, LocalDirectory: local,
 		DetachOnExit: true, Plugins: []extensions.Plugin{plugin},
 	})
@@ -193,7 +193,7 @@ func TestSharedTerminalExitLeavesNewAndAttachedRunsAlive(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
+			host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 				Runtime: backend, SessionID: created.ID, LocalDirectory: t.TempDir(), DetachOnExit: true,
 			})
 			if !attached {
@@ -270,7 +270,7 @@ func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t
 				t.Fatal(err)
 			}
 			profile := steerReplayTestProfile(t, created.Workspace.Path)
-			host, stop := runUIFromConfig(t, Config{
+			host, stop, _ := runUIFromConfig(t, Config{
 				Runtime: backend, RuntimeProfile: &profile, SessionID: created.ID,
 				LocalDirectory: local, OpenWorkbench: persistentTestWorkbench(state), DetachOnExit: true,
 			})
@@ -375,17 +375,16 @@ func TestOpeningCancellationReplaysTheSamePayloadAfterCloseAndRestart(t *testing
 	if err := closing.cancelOpeningRunNow(t.Context(), pending); !errors.Is(err, replay.ErrCommandOutcomeUnknown) {
 		t.Fatalf("terminal-close cancellation = %v, want unknown acknowledgement", err)
 	}
-	host, stop := runUIFromConfig(t, Config{
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{
 		Runtime: backend, RuntimeProfile: &profile, SessionID: sessionID,
 		LocalDirectory: t.TempDir(), OpenWorkbench: persistentTestWorkbench(state), DetachOnExit: true,
 	})
 	host.Shows(t, "canceled")
 	awaitState(t, "the exact cancellation to be confirmed after restart", func() bool {
-		recovered, openErr := openTestWorkbench(state)
-		if openErr != nil {
+		recovered := workbenchForHost()
+		if recovered == nil {
 			return false
 		}
-		defer recovered.Close()
 		return len(recovered.PendingRuns(sessionID)) == 0
 	})
 	stop()

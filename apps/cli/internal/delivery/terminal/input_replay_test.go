@@ -68,7 +68,7 @@ func TestSteerPreparationFailurePreservesTheEditableInstructionAndAttachments(t 
 	if err := os.WriteFile(filepath.Join(workspace, "notes.txt"), []byte("notes"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	host, stop := runUIWithState(t, backend, workspace, "", state)
+	host, stop, _ := runUIWithState(t, backend, workspace, "", state)
 	host.Shows(t, "Ask flame")
 	sessionID := firstRuntimeSession(t, base)
 	host.Type("start long work")
@@ -135,7 +135,7 @@ func TestInputPreparationLeavesTheUIResponsiveAndUnsentInputEditable(t *testing.
 				if err := os.WriteFile(filepath.Join(workspace, "notes.txt"), []byte("notes"), 0o600); err != nil {
 					t.Fatal(err)
 				}
-				host, stop := runUIWithState(t, backend, workspace, "", state)
+				host, stop, workbenchForHost := runUIWithState(t, backend, workspace, "", state)
 				host.Shows(t, "Ask flame")
 				sessionID := firstRuntimeSession(t, base)
 				if command == "steer" {
@@ -155,10 +155,7 @@ func TestInputPreparationLeavesTheUIResponsiveAndUnsentInputEditable(t *testing.
 				awaitSignal(t, backend.entered, "attachment preparation")
 				var originalID replay.CommandID
 				if command == "start" {
-					observer, err := openTestWorkbench(state)
-					if err != nil {
-						t.Fatal(err)
-					}
+					observer := workbenchForHost()
 					queued := observer.PendingRuns(sessionID)
 					if len(queued) != 1 || queued[0].State != workbench.PendingRunQueued {
 						t.Fatalf("preparation changed durable queue admission: %+v", queued)
@@ -230,7 +227,7 @@ func TestEditingSteerDuringInputPreparationPreservesTheNewDraft(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(workspace, "notes.txt"), []byte("notes"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	host, stop := runUIWithState(t, backend, workspace, "", state)
+	host, stop, _ := runUIWithState(t, backend, workspace, "", state)
 	host.Shows(t, "Ask flame")
 	sessionID := firstRuntimeSession(t, base)
 	host.Type("start long work")

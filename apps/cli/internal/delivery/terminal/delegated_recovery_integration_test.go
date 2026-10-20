@@ -1,18 +1,16 @@
 package terminal
 
 import (
-	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
-	"time"
-
 	"context"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"testing"
-
-	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
+	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
@@ -112,13 +110,14 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 					t.Fatal(err)
 				}
 			}
+			openWorkbench, currentWorkbench := observeTestWorkbench(persistentTestWorkbench(stateDirectory))
 			backend := &persistedTreeResumeRuntime{
-				Connection: connection, stateDirectory: stateDirectory, sessionID: session.ID,
+				Connection: connection, workbench: currentWorkbench, sessionID: session.ID,
 				observed: make(chan workbench.PendingResume, 1),
 			}
-			host, stop := runUIFromConfig(t, Config{
+			host, stop, _ := runUIFromConfig(t, Config{
 				Runtime: backend, RuntimeProfile: &profile, Workspace: workspace,
-				SessionID: session.ID, OpenWorkbench: persistentTestWorkbench(stateDirectory),
+				SessionID: session.ID, OpenWorkbench: openWorkbench,
 			})
 			if !pendingAtStartup {
 				host.Shows(t, "Tool approval")
@@ -168,20 +167,14 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 
 type persistedTreeResumeRuntime struct {
 	*runtimebinding.Connection
-	stateDirectory string
-	sessionID      string
-	observed       chan workbench.PendingResume
+	workbench func() *workbench.Store
+	sessionID string
+	observed  chan workbench.PendingResume
 }
 
 func (r *persistedTreeResumeRuntime) ResumeRun(ctx context.Context, command conversation.ResumeRun) (conversation.SegmentStream, error) {
-	store, err := openTestWorkbench(r.stateDirectory)
-	if err != nil {
-		return conversation.SegmentStream{}, err
-	}
+	store := r.workbench()
 	pending, found := store.PendingResume(r.sessionID)
-	if err := store.Close(); err != nil {
-		return conversation.SegmentStream{}, err
-	}
 	if found && pending.Command.Equal(command) {
 		r.observed <- pending
 	}

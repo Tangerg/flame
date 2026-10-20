@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"golang.org/x/mod/module"
 	modzip "golang.org/x/mod/zip"
@@ -69,14 +70,14 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	info, err := json.Marshal(struct{ Version, Time string }{*version, strings.TrimSpace(string(timestamp))})
+	info, err := versionInfo(filepath.Join(directory, escapedVersion+".info"), *version, strings.TrimSpace(string(timestamp)))
 	if err != nil {
 		return err
 	}
 	for _, artifact := range []struct {
 		suffix string
 		data   []byte
-	}{{".zip", archive.Bytes()}, {".mod", mod}, {".info", append(info, '\n')}} {
+	}{{".zip", archive.Bytes()}, {".mod", mod}, {".info", info}} {
 		name := filepath.Join(directory, escapedVersion+artifact.suffix)
 		if err := publishImmutable(name, artifact.data); err != nil {
 			return err
@@ -97,6 +98,34 @@ func run() error {
 	}
 	slices.Sort(versions)
 	return os.WriteFile(filepath.Join(directory, "list"), []byte(strings.Join(versions, "\n")+"\n"), 0o644)
+}
+
+// The archive and manifest must still match this frozen source byte for byte.
+// An already-published version owns its recorded timestamp even when a later
+// commit changes only another module in the repository.
+func versionInfo(name, version, timestamp string) ([]byte, error) {
+	existing, err := os.ReadFile(name)
+	if err == nil {
+		var info struct{ Version, Time string }
+		if err := json.Unmarshal(existing, &info); err != nil {
+			return nil, err
+		}
+		if info.Version != version {
+			return nil, fmt.Errorf("module proxy: metadata version differs: %s", name)
+		}
+		if _, err := time.Parse(time.RFC3339, info.Time); err != nil {
+			return nil, fmt.Errorf("module proxy: invalid published timestamp: %w", err)
+		}
+		return existing, nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	if _, err := time.Parse(time.RFC3339, timestamp); err != nil {
+		return nil, err
+	}
+	info, err := json.Marshal(struct{ Version, Time string }{version, timestamp})
+	return append(info, '\n'), err
 }
 
 // A version becomes visible atomically and can never replace different bytes.

@@ -1,12 +1,82 @@
 package ownership
 
 import (
+	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 )
+
+func TestDataDirectoryLeaseProcess(t *testing.T) {
+	path := os.Getenv("FLAME_TEST_DIRECTORY_LEASE")
+	if path == "" {
+		return
+	}
+	owner, err := OpenDataDirectory(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	fmt.Fprintln(os.Stdout, "owned")
+	if _, err := bufio.NewReader(os.Stdin).ReadByte(); err != nil {
+		t.Fatal(err)
+	}
+	os.Exit(78)
+}
+
+func TestDataDirectoryLeaseExcludesOtherProcessesUntilOwnerExit(t *testing.T) {
+	path := t.TempDir()
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(path, alias); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestDataDirectoryLeaseProcess$")
+	command.Env = append(os.Environ(), "FLAME_TEST_DIRECTORY_LEASE="+path)
+	stdin, err := command.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout, err := command.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { cancel(); _ = command.Wait() })
+	if ready, err := bufio.NewReader(stdout).ReadString('\n'); err != nil || ready != "owned\n" {
+		t.Fatalf("directory owner readiness = %q, %v", ready, err)
+	}
+	for _, target := range []string{path, alias} {
+		if unexpected, err := OpenDataDirectory(t.Context(), target); !errors.Is(err, ErrDataDirectoryInUse) {
+			if unexpected != nil {
+				_ = unexpected.Close()
+			}
+			t.Fatalf("another process acquired %q: %v", target, err)
+		}
+	}
+	if _, err := stdin.Write([]byte{'x'}); err != nil {
+		t.Fatal(err)
+	}
+	var exited *exec.ExitError
+	if err := command.Wait(); !errors.As(err, &exited) || exited.ExitCode() != 78 {
+		t.Fatalf("owner exit = %v", err)
+	}
+	successor, err := OpenDataDirectory(t.Context(), alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := successor.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestDataDirectoryCanonicalizesAndProtectsDirectory(t *testing.T) {
 	directory := filepath.Join(t.TempDir(), "data")

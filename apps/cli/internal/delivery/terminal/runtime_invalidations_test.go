@@ -1590,7 +1590,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 		applied: make(chan changefeed.Event, 1),
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{
+	host, stop, _ := runUIFromConfig(t, Config{
 		RuntimeProfile: featuredTerminalProfile(t),
 		Runtime:        base, Changes: source, SessionID: "ses_demo_1",
 		OpenWorkbench: persistentTestWorkbench(stateDirectory),

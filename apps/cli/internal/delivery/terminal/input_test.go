@@ -1,9 +1,11 @@
 package terminal
 
 import (
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/oolong/core/input"
@@ -14,7 +16,7 @@ func TestHandledNoOpEditsCannotStarveDraftAutosave(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	sessionID := firstRuntimeSession(t, backend)
 	host.Type("draft survives no-op edits")
@@ -30,7 +32,7 @@ func TestHandledNoOpEditsCannotStarveDraftAutosave(t *testing.T) {
 		host.Send(input.Key{Code: input.Backspace})
 		if time.Since(started) >= 5*draftPersistenceDelay {
 			var err error
-			draft, found, err = storedDraft(stateDirectory, sessionID)
+			draft, found, err = storedDraft(workbenchForHost, sessionID)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -50,13 +52,13 @@ func TestResolvedKeyTextSchedulesDraftAutosave(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	sessionID := firstRuntimeSession(t, backend)
 
 	host.Send(input.Key{Text: "你好"})
 	host.Shows(t, "你好")
-	awaitStoredDraft(t, stateDirectory, sessionID, prompt.Message{Text: "你好"})
+	awaitStoredDraft(t, workbenchForHost, sessionID, prompt.Message{Text: "你好"})
 	stop()
 }
 
@@ -90,26 +92,26 @@ func TestProgrammaticComposerEditsScheduleDraftAutosave(t *testing.T) {
 			backend := runtimefixture.New()
 			backend.Instant = true
 			stateDirectory := t.TempDir()
-			host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+			host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 			host.Shows(t, "Ask flame")
 			sessionID := firstRuntimeSession(t, backend)
 
 			test.edit(t, host)
 			host.Shows(t, test.want)
-			awaitStoredDraft(t, stateDirectory, sessionID, prompt.Message{Text: test.want})
+			awaitStoredDraft(t, workbenchForHost, sessionID, prompt.Message{Text: test.want})
 			stop()
 		})
 	}
 }
 
-func awaitStoredDraft(t *testing.T, stateDirectory, sessionID string, want prompt.Message) {
+func awaitStoredDraft(t *testing.T, currentWorkbench func() *workbench.Store, sessionID string, want prompt.Message) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
 	var draft prompt.Message
 	var found bool
 	var err error
 	for time.Now().Before(deadline) {
-		draft, found, err = storedDraft(stateDirectory, sessionID)
+		draft, found, err = storedDraft(currentWorkbench, sessionID)
 		if err == nil && found && draft.Equal(want) {
 			return
 		}
@@ -118,10 +120,10 @@ func awaitStoredDraft(t *testing.T, stateDirectory, sessionID string, want promp
 	t.Fatalf("autosaved draft = (%+v, %v, %v), want %+v", draft, found, err, want)
 }
 
-func storedDraft(stateDirectory, sessionID string) (prompt.Message, bool, error) {
-	store, err := openTestWorkbench(stateDirectory)
-	if err != nil {
-		return prompt.Message{}, false, err
+func storedDraft(currentWorkbench func() *workbench.Store, sessionID string) (prompt.Message, bool, error) {
+	store := currentWorkbench()
+	if store == nil {
+		return prompt.Message{}, false, errors.New("workbench has not opened")
 	}
 	message, found := store.Draft(sessionID)
 	return message, found, nil

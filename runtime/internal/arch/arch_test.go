@@ -1471,14 +1471,16 @@ func TestRememberScopeUsesApprovalDomainType(t *testing.T) {
 	checks := []struct {
 		path       string
 		structName string
+		fieldName  string
+		fieldType  string
 	}{
-		{filepath.Join(root, "internal", "application", "agent", "runs"), "ApprovalResponse"},
-		{filepath.Join(root, "internal", "domain", "run", "interrupt"), "Resolution"},
+		{filepath.Join(root, "internal", "application", "agent", "runs"), "ApprovalResponse", "RememberScope", "approval.Scope"},
+		{filepath.Join(root, "internal", "domain", "run", "approval"), "Resolution", "RememberScope", "Scope"},
 	}
 	for _, check := range checks {
-		if got := namedStructFieldType(t, check.path, check.structName, "RememberScope"); got != "approval.Scope" {
+		if got := namedStructFieldType(t, check.path, check.structName, check.fieldName); got != check.fieldType {
 			rel, _ := filepath.Rel(root, check.path)
-			t.Errorf("%s: %s.RememberScope = %s, want approval.Scope", rel, check.structName, got)
+			t.Errorf("%s: %s.%s = %s, want %s", rel, check.structName, check.fieldName, got, check.fieldType)
 		}
 	}
 }

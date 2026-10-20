@@ -1563,6 +1563,7 @@ for await (const line of lines) {
         const faultClient = createFlameClient(
           createHttpTransport({ baseUrl, fetch: fault.fetch }),
           {
+            capabilities: () => negotiated,
             requestMeta,
           },
         );
@@ -1592,6 +1593,7 @@ for await (const line of lines) {
       if (!deletedId) throw new Error("post-commit Session was not created");
       const fault = faultUnaryResponse("sessions.delete", "afterCommit");
       const faultClient = createFlameClient(createHttpTransport({ baseUrl, fetch: fault.fetch }), {
+        capabilities: () => negotiated,
         requestMeta,
       });
       try {
@@ -1791,6 +1793,7 @@ for await (const line of lines) {
     ): Promise<T> => {
       const fault = faultUnaryResponse(method, "afterCommit");
       const faultClient = createFlameClient(createHttpTransport({ baseUrl, fetch: fault.fetch }), {
+        capabilities: () => negotiated,
         requestMeta,
       });
       try {
@@ -2021,6 +2024,7 @@ for await (const line of lines) {
     ): Promise<T> => {
       const fault = faultUnaryResponse(method, "afterCommit");
       const faultClient = createFlameClient(createHttpTransport({ baseUrl, fetch: fault.fetch }), {
+        capabilities: () => negotiated,
         requestMeta,
       });
       try {
@@ -2216,6 +2220,7 @@ for await (const line of lines) {
     ): Promise<T> => {
       const fault = faultUnaryResponse(method, "afterCommit");
       const faultClient = createFlameClient(createHttpTransport({ baseUrl, fetch: fault.fetch }), {
+        capabilities: () => negotiated,
         requestMeta,
       });
       try {

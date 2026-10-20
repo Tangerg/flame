@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	modulePath  = "github.com/Tangerg/flame/apps/cli"
-	runtimePath = "github.com/Tangerg/flame/runtime"
-	oolongPath  = "github.com/Tangerg/oolong"
-	cobraPath   = "github.com/spf13/cobra"
-	viperPath   = "github.com/spf13/viper"
+	modulePath       = "github.com/Tangerg/flame/apps/cli"
+	runtimePath      = "github.com/Tangerg/flame/runtime"
+	localRuntimePath = "github.com/Tangerg/flame/packages/local-runtime"
+	oolongPath       = "github.com/Tangerg/oolong"
+	cobraPath        = "github.com/spf13/cobra"
+	viperPath        = "github.com/spf13/viper"
 )
 
 type ring uint8
@@ -92,7 +93,7 @@ func TestExternalFrameworksStopAtTheirAdapters(t *testing.T) {
 	walkProduction(t, root, func(relative, path string) {
 		for _, imported := range imports(t, path) {
 			switch {
-			case importsPath(imported, runtimePath):
+			case importsPath(imported, runtimePath), importsPath(imported, localRuntimePath):
 				if !mayImportRuntime(relative, imported) {
 					t.Errorf("%s imports %s outside its allowed Runtime boundary", relative, imported)
 				}
@@ -115,10 +116,19 @@ func TestExternalFrameworksStopAtTheirAdapters(t *testing.T) {
 }
 
 func mayImportRuntime(relative, imported string) bool {
-	if imported == runtimePath+"/protocol" || imported == runtimePath+"/capability" || strings.HasPrefix(relative, "internal/adapter/runtimebinding/") {
+	if strings.HasPrefix(relative, "internal/adapter/runtimebinding/") {
 		return true
 	}
-	return imported == runtimePath+"/localruntime" && ringOf(relative) == ringComposition
+	switch imported {
+	case runtimePath + "/protocol", runtimePath + "/capability", runtimePath + "/exactint", runtimePath + "/exactjson":
+		return true
+	case runtimePath + "/storage/advisorylock":
+		return strings.HasPrefix(relative, "internal/adapter/filesystem/")
+	case localRuntimePath:
+		return ringOf(relative) == ringComposition
+	default:
+		return false
+	}
 }
 
 func TestRuntimeImportBoundaries(t *testing.T) {
@@ -126,7 +136,7 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		consumer, imported string
 		allowed            bool
 	}{
-		{consumer: "main.go", imported: runtimePath + "/localruntime", allowed: true},
+		{consumer: "main.go", imported: localRuntimePath, allowed: true},
 		{consumer: "internal/application/installedcommand/command.go", imported: runtimePath + "/capability", allowed: true},
 		{consumer: "internal/application/workbench/installed_commands.go", imported: runtimePath + "/capability", allowed: true},
 		{consumer: "internal/delivery/cmd/plugins.go", imported: runtimePath + "/capability", allowed: true},
@@ -134,12 +144,17 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		{consumer: "internal/application/workbench/installed_commands.go", imported: runtimePath + "/storage/sqlite"},
 		{consumer: "main.go", imported: runtimePath},
 		{consumer: "internal/adapter/runtimebinding/connection.go", imported: runtimePath, allowed: true},
-		{consumer: "internal/adapter/runtimebinding/connection.go", imported: runtimePath + "/localruntime", allowed: true},
-		{consumer: "internal/adapter/filesystem/store.go", imported: runtimePath + "/localruntime"},
+		{consumer: "internal/adapter/runtimebinding/connection.go", imported: localRuntimePath, allowed: true},
+		{consumer: "internal/adapter/filesystem/store.go", imported: localRuntimePath},
+		{consumer: "internal/adapter/filesystem/statefile/store.go", imported: runtimePath + "/storage/advisorylock", allowed: true},
+		{consumer: "internal/application/workbench/store.go", imported: runtimePath + "/storage/advisorylock"},
+		{consumer: "internal/domain/conversation/session.go", imported: runtimePath + "/storage/advisorylock"},
+		{consumer: "internal/domain/conversation/session.go", imported: runtimePath + "/exactint", allowed: true},
+		{consumer: "internal/domain/conversation/session.go", imported: runtimePath + "/exactjson", allowed: true},
 		{consumer: "internal/domain/conversation/session.go", imported: runtimePath + "/protocol", allowed: true},
-		{consumer: "internal/domain/conversation/session.go", imported: runtimePath + "/localruntime"},
-		{consumer: "internal/application/agent/session/create.go", imported: runtimePath + "/localruntime"},
-		{consumer: "internal/delivery/cmd/sessions.go", imported: runtimePath + "/localruntime"},
+		{consumer: "internal/domain/conversation/session.go", imported: localRuntimePath},
+		{consumer: "internal/application/agent/session/create.go", imported: localRuntimePath},
+		{consumer: "internal/delivery/cmd/sessions.go", imported: localRuntimePath},
 		{consumer: "internal/delivery/cmd/sessions.go", imported: runtimePath},
 	} {
 		if allowed := mayImportRuntime(test.consumer, test.imported); allowed != test.allowed {
@@ -175,7 +190,6 @@ func TestApplicationDoesNotOwnOperatingSystemIO(t *testing.T) {
 func TestCLIUsesOneJSONVocabulary(t *testing.T) {
 	root := moduleRoot(t)
 	exact := map[string]string{
-		"internal/exactjson":              "names json.Number as the exact-number carrier",
 		"internal/adapter/runtimebinding": "names json.Number to keep an exit code an integer",
 	}
 	found := make(map[string]bool, len(exact))

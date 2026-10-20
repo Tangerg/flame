@@ -442,7 +442,7 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 	base.Instant = true
 	runtime := &refusingFirstCommandRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: runtime, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: runtime, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Type("preserve a refused start")
 	host.Press(input.Enter)
@@ -456,8 +456,8 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 		if refused.SessionID == "" {
 			return false
 		}
-		store, err := openTestWorkbench(stateDirectory)
-		if err != nil {
+		store := workbenchForHost()
+		if store == nil {
 			return false
 		}
 		pending = store.PendingRuns(refused.SessionID)
@@ -479,7 +479,7 @@ func TestPluginChangedStartWaitsForTheUserToRetry(t *testing.T) {
 	base.Instant = true
 	runtime := &refusingFirstCommandRuntime{Runtime: base, refusal: conversation.ErrPluginChanged}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: runtime, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: runtime, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Type("start during a plugin update")
 	host.Press(input.Enter)
@@ -491,8 +491,8 @@ func TestPluginChangedStartWaitsForTheUserToRetry(t *testing.T) {
 		if refused.SessionID == "" {
 			return false
 		}
-		store, err := openTestWorkbench(stateDirectory)
-		if err != nil {
+		store := workbenchForHost()
+		if store == nil {
 			return false
 		}
 		pending := store.PendingRuns(refused.SessionID)
@@ -516,7 +516,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	release := sync.OnceFunc(func() { close(releaseCancellation) })
 	runtime := &invalidAcceptedStartRuntime{Runtime: base, releaseCancellation: releaseCancellation}
 	stateDirectory := t.TempDir()
-	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop, workbenchForHost := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	t.Cleanup(release)
 	host.Shows(t, "Ask flame")
 	host.Type("cancel malformed accepted start")
@@ -528,8 +528,11 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 		if len(starts) != 1 || len(cancellations) != 1 {
 			return false
 		}
-		reopened, err := openTestWorkbench(stateDirectory)
-		return err == nil && len(reopened.PendingRuns(starts[0].SessionID)) == 0
+		reopened := workbenchForHost()
+		if reopened == nil {
+			return false
+		}
+		return len(reopened.PendingRuns(starts[0].SessionID)) == 0
 	})
 	starts, cancellations := runtime.attempts()
 	if starts[0].CommandID == "" || cancellations[0].CommandID == "" || cancellations[0].RunID == "" ||
@@ -621,7 +624,7 @@ func TestRetryingInvalidAcceptedStartCleanupRecoversAuthoritativeProjection(t *t
 	}
 	runtime := &invalidAcceptedStartRuntime{Runtime: base, refuseFirst: true}
 	stateDirectory := t.TempDir()
-	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop, workbenchForHost := runUIWithState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("retry malformed accepted start cleanup")
 	host.Press(input.Enter)
@@ -632,8 +635,11 @@ func TestRetryingInvalidAcceptedStartCleanupRecoversAuthoritativeProjection(t *t
 		if len(starts) != 1 || len(cancellations) != 2 {
 			return false
 		}
-		reopened, err := openTestWorkbench(stateDirectory)
-		return err == nil && len(reopened.PendingRuns(starts[0].SessionID)) == 0
+		reopened := workbenchForHost()
+		if reopened == nil {
+			return false
+		}
+		return len(reopened.PendingRuns(starts[0].SessionID)) == 0
 	})
 	_, cancellations := runtime.attempts()
 	if cancellations[0].CommandID == "" || cancellations[0].CommandID != cancellations[1].CommandID ||
@@ -662,16 +668,16 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 	}
 	stageDispatchingRun(t, store, command)
 	runtime := &recordingRuntime{Runtime: base}
-	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	host, stop, workbenchForHost := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	host.Shows(t, "stable answer")
 	host.Shows(t, "complete")
 	if started := runtime.startInput(); started.CommandID != command.CommandID || started.Message.Text != command.Message.Text {
 		t.Fatalf("replayed start = %+v, want %+v", started, command)
 	}
-	reopened, err := openTestWorkbench(stateDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	reopened := workbenchForHost()
 	if pending := reopened.PendingRuns(command.SessionID); len(pending) != 0 {
 		t.Fatalf("acknowledged outbox = %+v", pending)
 	}
@@ -698,17 +704,17 @@ func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T)
 		t.Fatal(err)
 	}
 	stageDispatchingRun(t, store, command)
-	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	host, stop, workbenchForHost := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	host.Shows(t, "already accepted")
 	host.Shows(t, "reconnected")
 	attempts := runtime.attempts()
 	if len(attempts) != 1 {
 		t.Fatalf("launch reconciliation attempts = %+v", attempts)
 	}
-	reopened, err := openTestWorkbench(stateDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	reopened := workbenchForHost()
 	if pending := reopened.PendingRuns(command.SessionID); len(pending) != 0 {
 		t.Fatalf("reconciled outbox = %+v", pending)
 	}
@@ -738,7 +744,10 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 	}
 	stageDispatchingRun(t, store, command)
 	runtime := &activeConflictRuntime{Runtime: base, attempted: make(chan prompt.StartRun, 1), conflict: original}
-	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	host, stop, workbenchForHost := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	host.Shows(t, "already active")
 	host.Shows(t, "1 queued")
 	select {
@@ -751,8 +760,8 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 	}
 	var pending []workbench.PendingRun
 	awaitState(t, "the refused command to become an ordinary queued intent", func() bool {
-		reopened, openErr := openTestWorkbench(stateDirectory)
-		if openErr != nil {
+		reopened := workbenchForHost()
+		if reopened == nil {
 			return false
 		}
 		pending = reopened.PendingRuns(command.SessionID)
@@ -799,20 +808,23 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
-	awaitSignal(t, runtime.settled, "runtime cancellation settlement")
-	reopened, err := openTestWorkbench(stateDirectory)
-	if err != nil {
+	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
+	host, stop, workbenchForHost := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	awaitSignal(t, runtime.settled, "runtime cancellation settlement")
+	reopened := workbenchForHost()
 	held := reopened.PendingRuns(command.SessionID)
 	if len(held) != 1 || held[0].State != workbench.PendingRunCanceling || held[0].CancelCommandID != cancelID {
 		t.Fatalf("unacknowledged cancellation ownership = %+v", held)
 	}
 	release()
 	awaitState(t, "the canceled opening command to leave the durable outbox", func() bool {
-		current, openErr := openTestWorkbench(stateDirectory)
-		return openErr == nil && len(current.PendingRuns(command.SessionID)) == 0
+		current := workbenchForHost()
+		if current == nil {
+			return false
+		}
+		return len(current.PendingRuns(command.SessionID)) == 0
 	})
 	host.Shows(t, command.Message.Text)
 	if cancelID == "" {
@@ -854,7 +866,10 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 		t.Fatal(err)
 	}
 
-	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	host, stop, workbenchForHost := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	awaitSignal(t, runtime.settled, "runtime cancellation before failed local settlement")
 	states, err := os.ReadDir(filepath.Join(stateDirectory, "sessions"))
 	if err != nil || len(states) != 1 {
@@ -885,8 +900,11 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 		t.Fatal(err)
 	}
 	awaitState(t, "the canceled opening ownership to settle after storage recovers", func() bool {
-		reopened, openErr := openTestWorkbench(stateDirectory)
-		return openErr == nil && len(reopened.PendingRuns(command.SessionID)) == 0
+		reopened := workbenchForHost()
+		if reopened == nil {
+			return false
+		}
+		return len(reopened.PendingRuns(command.SessionID)) == 0
 	})
 	host.Hides(t, "workbench:")
 	if cancelID == "" {
@@ -918,11 +936,17 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 	}
 	runtime := &invalidAcceptedStartRuntime{Runtime: base}
 
-	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	host, stop, workbenchForHost := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	host.Shows(t, "canceled")
 	awaitState(t, "the invalid recovered start to leave the durable outbox", func() bool {
-		reopened, openErr := openTestWorkbench(stateDirectory)
-		return openErr == nil && len(reopened.PendingRuns(command.SessionID)) == 0
+		reopened := workbenchForHost()
+		if reopened == nil {
+			return false
+		}
+		return len(reopened.PendingRuns(command.SessionID)) == 0
 	})
 	starts, cancellations := runtime.attempts()
 	if len(starts) != 1 || len(cancellations) != 1 || cancellations[0].RunID == "" ||
@@ -1054,7 +1078,10 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			runtime := &recordingRuntime{Runtime: base}
 			profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 			profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
-			host, stop := runUIFromConfig(t, Config{
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
+			host, stop, workbenchForHost := runUIFromConfig(t, Config{
 				Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
 				Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
 			})
@@ -1062,10 +1089,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			if runtime.startCount() != 0 {
 				t.Fatalf("cross-store recovery opened %d runs", runtime.startCount())
 			}
-			reopened, err := openTestWorkbench(stateDirectory)
-			if err != nil {
-				t.Fatal(err)
-			}
+			reopened := workbenchForHost()
 			if test.name == "run start" && len(reopened.PendingRuns("ses_demo_1")) != 1 {
 				t.Fatal("cross-store recovery retired pending run ownership")
 			}

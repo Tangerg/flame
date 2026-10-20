@@ -768,7 +768,7 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 		Runtime: base, started: make(chan prompt.StartRun, 1), release: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIWithState(t, gate, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop, workbenchForHost := runUIWithState(t, gate, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("FIRST_SETTLEMENT")
 	host.Press(input.Enter)
@@ -778,8 +778,8 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 
 	var pending []workbench.PendingRun
 	awaitState(t, "both runtime commands to become durable", func() bool {
-		store, err := openTestWorkbench(stateDirectory)
-		if err != nil {
+		store := workbenchForHost()
+		if store == nil {
 			return false
 		}
 		pending = store.PendingRuns(first.SessionID)
@@ -829,10 +829,7 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 		t.Fatalf("starts after durable recovery = %+v", inputs)
 	}
 
-	reopened, err := openTestWorkbench(stateDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	reopened := workbenchForHost()
 	if remaining := reopened.PendingRuns(first.SessionID); len(remaining) != 0 {
 		t.Fatalf("settled FIFO remains durable: %+v", remaining)
 	}
@@ -855,7 +852,7 @@ func TestAcceptedStartSettlementRecoveryRestoresTheTerminalStatusWithoutAFollowU
 		Runtime: base, started: make(chan prompt.StartRun, 1), release: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIWithState(t, gate, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop, _ := runUIWithState(t, gate, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("ONLY_SETTLEMENT")
 	host.Press(input.Enter)
@@ -1189,15 +1186,7 @@ func TestPendingRunRecoveryPreservesAnEditedSuccessor(t *testing.T) {
 			if err := store.Close(); err != nil {
 				t.Fatal(err)
 			}
-			readPending := func() ([]workbench.PendingRun, error) {
-				reopened, err := openTestWorkbench(stateDirectory)
-				if err != nil {
-					return nil, err
-				}
-				defer reopened.Close()
-				return reopened.PendingRuns(command.SessionID), nil
-			}
-			host, stop := runUIWithReplayState(t, gate, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
+			host, stop, workbenchForHost := runUIWithReplayState(t, gate, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 			awaitState(t, "pending run recovery to start", func() bool {
 				select {
 				case <-gate.started:
@@ -1217,12 +1206,7 @@ func TestPendingRunRecoveryPreservesAnEditedSuccessor(t *testing.T) {
 
 			close(gate.release)
 			awaitState(t, "pending run recovery to settle durably", func() bool {
-				// The terminal may replace the state file while this second
-				// reader loads it; that read is simply retried.
-				pending, err := readPending()
-				if err != nil {
-					return false
-				}
+				pending := workbenchForHost().PendingRuns(command.SessionID)
 				if outcome == "accepted" {
 					return len(pending) == 1 && pending[0].Command.CommandID == successor.CommandID
 				}
@@ -1233,10 +1217,9 @@ func TestPendingRunRecoveryPreservesAnEditedSuccessor(t *testing.T) {
 			host.Press(input.Enter)
 			host.Shows(t, "queued prompt updated")
 			var pending []workbench.PendingRun
-			awaitState(t, "a settled authoring read", func() bool {
-				var err error
-				pending, err = readPending()
-				return err == nil
+			awaitState(t, "the edited successor to persist", func() bool {
+				pending = workbenchForHost().PendingRuns(command.SessionID)
+				return len(pending) > 0 && pending[len(pending)-1].Command.Message.Text == "EDITED_BEFORE_RECOVERY_AND_AFTER_RECOVERY"
 			})
 			last := pending[len(pending)-1]
 			if last.Command.Message.Text != "EDITED_BEFORE_RECOVERY_AND_AFTER_RECOVERY" || last.Command.CommandID == successor.CommandID {

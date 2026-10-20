@@ -51,6 +51,9 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 
 	workspace := t.TempDir()
 	profile := steerReplayTestProfile(t, workspace)
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	prepared, err := prepareSession(t.Context(), Config{
 		Runtime:        runtimefixture.New(),
 		RuntimeProfile: &profile,
@@ -73,7 +76,7 @@ func TestRestartReportsAPendingSteerRuntimeRefused(t *testing.T) {
 	stateDirectory := t.TempDir()
 	stageSteerRuntimeWillRefuse(t, stateDirectory)
 
-	host, stop := runUIWithReplayState(t, runtimefixture.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop, _ := runUIWithReplayState(t, runtimefixture.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	showsPlain(t, host, "steer sent before restart was refused")
 	stop()
 }
@@ -86,7 +89,7 @@ func TestRestartKeepsEveryStartupNoticeVisible(t *testing.T) {
 		Setup: func(*extensions.Scope) error { return errors.New("broken setup") },
 	}
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-	host, stop := runUIFromConfig(t, Config{
+	host, stop, _ := runUIFromConfig(t, Config{
 		Runtime: runtimefixture.New(), RuntimeProfile: &profile, Workspace: "/tmp/flame-cli-test",
 		SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(stateDirectory),
 		Plugins: []extensions.Plugin{broken},
@@ -161,6 +164,9 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 		t.Fatal(err)
 	}
 
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	prepared, err := prepareSession(t.Context(), Config{
 		RuntimeProfile: featuredTerminalProfile(t),
 		Runtime:        runtime,

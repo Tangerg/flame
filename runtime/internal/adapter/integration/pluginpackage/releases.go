@@ -105,25 +105,37 @@ func (r *Releases) validateDirectory() error {
 
 // RecoverStaging runs only under the Runtime's directory lease, before package
 // admission opens. Normal reclamation must preserve live unpublished candidates.
-func (r *Releases) RecoverStaging(ctx context.Context) error {
+func (r *Releases) RecoverStaging(ctx context.Context) (err error) {
 	if err := r.validateDirectory(); err != nil {
 		return err
 	}
-	entries, err := os.ReadDir(r.directory)
+	directory, _, err := fileinput.OpenDirectoryExpected(r.directory, r.directoryIdentity)
 	if err != nil {
 		return err
 	}
-	for _, entry := range entries {
+	defer func() { err = errors.Join(err, directory.Close()) }()
+	for {
 		if err := cancellation.Err(ctx); err != nil {
 			return err
 		}
-		if strings.HasPrefix(entry.Name(), ".stage-") {
-			if err := removeSealed(filepath.Join(r.directory, entry.Name())); err != nil {
-				return fmt.Errorf("pluginpackage: recover staging: %w", err)
+		entries, readErr := directory.ReadDir(reclaimBatch)
+		for _, entry := range entries {
+			if err := cancellation.Err(ctx); err != nil {
+				return err
+			}
+			if strings.HasPrefix(entry.Name(), ".stage-") {
+				if err := removeSealed(filepath.Join(r.directory, entry.Name())); err != nil {
+					return fmt.Errorf("pluginpackage: recover staging: %w", err)
+				}
 			}
 		}
+		if errors.Is(readErr, io.EOF) {
+			return nil
+		}
+		if readErr != nil {
+			return fmt.Errorf("pluginpackage: list staging: %w", readErr)
+		}
 	}
-	return nil
 }
 
 // Candidate is one package admitted as an immutable release that is not yet

@@ -210,7 +210,10 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 		t.Fatal(saveDraftErr)
 	}
 	backend := &postCommitSessionDeleteRuntime{Runtime: base, deleted: make(chan struct{}, 1)}
-	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Send(input.Key{Code: input.Character, Rune: 'r', Mods: input.Ctrl})
 	host.Shows(t, "Sessions · Center")
@@ -266,8 +269,11 @@ func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) 
 	if stageSessionDeletionErr := store.StageSessionDeletion(request, durableCommandReplayGuard(t)); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
 	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 
-	host, stop := runUIWithReplayState(t, backend, workspace, "ses_demo_1", stateDirectory)
+	host, stop, _ := runUIWithReplayState(t, backend, workspace, "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	stop()
 	if _, getSessionErr := backend.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, conversation.ErrSessionNotFound) {
@@ -466,7 +472,7 @@ func TestRollbackPreservesDraftAuthoredWhileTheRuntimeSettles(t *testing.T) {
 		Runtime: runtimefixture.New(), entered: make(chan struct{}, 1), release: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIWithState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop, workbenchForHost := runUIWithState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("/rollback all history")
 	host.Press(input.Enter)
@@ -480,7 +486,7 @@ func TestRollbackPreservesDraftAuthoredWhileTheRuntimeSettles(t *testing.T) {
 	close(backend.release)
 	host.Shows(t, "Why is the cache expiry test flaky?")
 	host.Shows(t, "new thought")
-	awaitStoredDraft(t, stateDirectory, "ses_demo_1", prompt.Message{
+	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", prompt.Message{
 		Text: "Why is the cache expiry test flaky?\n\nnew thought",
 	})
 	stop()
@@ -492,7 +498,7 @@ func TestRestartRecoversCommittedRollbackAndOpeningInput(t *testing.T) {
 	backend := &committedThenCanceledRollbackRuntime{
 		Runtime: underlying, committed: make(chan struct{}),
 	}
-	host, stop := runUIWithState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop, _ := runUIWithState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("/rollback all history")
 	host.Press(input.Enter)
@@ -502,15 +508,12 @@ func TestRestartRecoversCommittedRollbackAndOpeningInput(t *testing.T) {
 	awaitSignal(t, backend.committed, "durable runtime rollback")
 	stop()
 
-	restarted, stopRestarted := runUIWithState(
+	restarted, stopRestarted, workbenchForRestarted := runUIWithState(
 		t, underlying, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory,
 	)
 	restarted.Shows(t, "Why is the cache expiry test flaky?")
 	restarted.Shows(t, "recovered rollback input · 1 runs removed")
-	reopened, err := openTestWorkbench(stateDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	reopened := workbenchForRestarted()
 	if pending := reopened.PendingSessionRollbacks(); len(pending) != 0 {
 		t.Fatalf("settled rollback journals = %+v", pending)
 	}
@@ -535,7 +538,7 @@ func TestRollbackKeepsRecoveredTextAndReportsItsPersistenceFailure(t *testing.T)
 		Runtime: runtimefixture.New(), entered: make(chan struct{}, 1), release: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIWithState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	host, stop, workbenchForHost := runUIWithState(t, backend, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("/rollback all history")
 	host.Press(input.Enter)
@@ -554,7 +557,7 @@ func TestRollbackKeepsRecoveredTextAndReportsItsPersistenceFailure(t *testing.T)
 	host.Shows(t, "workbench:")
 	restoreWrites()
 	host.Type("!")
-	awaitStoredDraft(t, stateDirectory, "ses_demo_1", prompt.Message{Text: "Why is the cache expiry test flaky?!"})
+	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", prompt.Message{Text: "Why is the cache expiry test flaky?!"})
 	host.Shows(t, "rolled back 1 runs; restored text was not saved")
 	host.Hides(t, "rolled back session · 1 runs removed")
 	stop()
@@ -828,7 +831,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 	if err := os.WriteFile(attachmentPath, []byte("notes"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	host, stop := runUIWithState(t, backend, workspace, "", stateDirectory)
+	host, stop, workbenchForHost := runUIWithState(t, backend, workspace, "", stateDirectory)
 	host.Shows(t, "Ask flame")
 	sessionID := firstRuntimeSession(t, base)
 	host.Type("start long work")
@@ -841,7 +844,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 	awaitState(t, "the attachment draft to become durable", func() bool {
 		var found bool
 		var err error
-		staged, found, err = storedDraft(stateDirectory, sessionID)
+		staged, found, err = storedDraft(workbenchForHost, sessionID)
 		return err == nil && found && len(staged.Attachments) == 1
 	})
 
@@ -856,7 +859,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 		t.Fatal("steer did not reach the runtime")
 	}
 	awaitState(t, "the accepted steer draft ownership to be retired", func() bool {
-		_, found, err := storedDraft(stateDirectory, sessionID)
+		_, found, err := storedDraft(workbenchForHost, sessionID)
 		return err == nil && !found
 	})
 	restoreWrites := blockSessionStateWrites(t, stateDirectory, sessionID)
@@ -867,7 +870,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 	restoreWrites()
 	host.Type("x")
 	staged.Text = "x"
-	awaitStoredDraft(t, stateDirectory, sessionID, staged)
+	awaitStoredDraft(t, workbenchForHost, sessionID, staged)
 	stop()
 }
 
@@ -915,7 +918,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 		t.Fatal(err)
 	}
 	profile := steerReplayTestProfile(t, workspace)
-	host, stop := runUIFromConfig(t, Config{
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{
 		Runtime: runtime, RuntimeProfile: &profile, Workspace: workspace,
 		OpenWorkbench: persistentTestWorkbench(stateDirectory),
 	})
@@ -930,10 +933,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	host.Type("/steer focus on parsing")
 	host.Press(input.Enter)
 	accepted := awaitSignalValue(t, runtime.committed, "accepted steer before acknowledgement")
-	store, err := openTestWorkbench(stateDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	store := workbenchForHost()
 	pending, found := store.PendingSteer(sessionID)
 	if !found || !pending.Command().Equal(accepted) {
 		t.Fatalf("durable steer = %+v, found %t", pending, found)
@@ -941,7 +941,10 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	stop()
 
 	replayGuard := &cachedSteeringRuntime{Runtime: base, accepted: accepted, receipt: runtime.receipt}
-	restarted, stopRestarted := runUIFromConfig(t, Config{
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	restarted, stopRestarted, workbenchForRestarted := runUIFromConfig(t, Config{
 		Runtime: replayGuard, RuntimeProfile: &profile, Workspace: workspace,
 		SessionID: sessionID, OpenWorkbench: persistentTestWorkbench(stateDirectory),
 	})
@@ -950,10 +953,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	if len(replayGuard.attempts) != 1 || !replayGuard.attempts[0].Equal(accepted) {
 		t.Fatalf("restart steer attempts = %+v", replayGuard.attempts)
 	}
-	reopened, err := openTestWorkbench(stateDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
+	reopened := workbenchForRestarted()
 	if durable, found := reopened.PendingSteer(sessionID); found {
 		t.Fatalf("settled steer remains durable: %+v", durable)
 	}

@@ -64,6 +64,12 @@ The remote terminal detaches on exit without canceling an observed or newly acce
 
 `runtimebinding.Connection` owns binding lifecycle, capability negotiation, exact protocol translation, and safe error classification. It does not own product state. The adapter preserves exact provider/model identity and never stores credentials in CLI state, history, frames, errors, or logs.
 
+Runtime's public `exactint` and `exactjson` packages own the shared numeric
+vocabulary. Filesystem adapters may use the existing `storage/advisorylock`
+primitive for their own partition lifetime; Domain and Application do not import
+that I/O capability. Only process composition and the binding adapter may import
+the independent `packages/local-runtime` deployment contract.
+
 The Runtime delivery endpoint is the single authority for the wire contract: both bindings validate request parameters, responses, and events with the generated protocol validators before a result reaches the CLI. The adapter therefore does not revalidate a Runtime result, and CLI projections do not restate Runtime rules such as identity syntax, closed enums, conditional field presence, numeric bounds, or lifecycle field agreement. What the adapter still checks is what Runtime cannot answer for it: a present and complete response, that the response answers the exact request it made, and that a catalog page keeps its requested filter, order, cursor continuity, and identity uniqueness. CLI-authored input is validated before it is sent, and a CLI value object validates its own construction.
 
 The rule covers the error path too: the Runtime validates a problem before projecting it and substitutes an internal failure when it cannot, so a malformed problem is not a shape the endpoint can emit. It applies to the value, not the package — a helper in Domain or Application that takes a Runtime result and runs a generated validator on it is the same restatement as a direct call in the adapter, and is where the last of them survived. What legitimately looks similar is a CLI projection validating itself: reconstructing a wire value out of the CLI's own shape asks whether the translation was faithful, which nothing upstream can answer.

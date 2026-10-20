@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -418,12 +417,12 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 		t.Fatalf("idempotency conflict error = %v", createSessionErr)
 	}
 
-	second, err := Open(t.Context(), config)
-	if err != nil {
-		t.Fatalf("second Open sharing data directory: %v", err)
+	if second, err := Open(t.Context(), config); err == nil {
+		_ = second.Close()
+		t.Fatal("second Runtime acquired the live data directory")
 	}
 
-	_, events, err := second.SubscribeRuntime(t.Context(), protocol.RuntimeSubscribeRequest{
+	_, events, err := runtime.SubscribeRuntime(t.Context(), protocol.RuntimeSubscribeRequest{
 		Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged},
 	}, protocol.SubscriptionOptions{})
 	if err != nil {
@@ -449,21 +448,16 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 	}
 	select {
 	case event := <-eventReceived:
-		if event.Type != protocol.RuntimeResync ||
-			!slices.Equal(event.Topics, []protocol.RuntimeTopic{protocol.TopicSessionsChanged}) {
-			t.Fatalf("cross-Runtime event = %+v, want scoped resync", event)
+		if event.Type != protocol.RuntimeSessionsChanged || len(event.SessionIDs) != 1 {
+			t.Fatalf("Runtime event = %+v, want the committed Session change", event)
 		}
 	case <-time.After(5 * time.Second):
-		t.Fatal("peer Runtime commit produced no scoped resync")
+		t.Fatal("Runtime commit produced no Session change")
 	}
-	if closeErr := second.Close(); closeErr != nil {
-		t.Fatalf("close second Runtime: %v", closeErr)
-	}
-	<-streamDone
-
 	if closeErr := runtime.Close(); closeErr != nil {
 		t.Fatalf("Close: %v", closeErr)
 	}
+	<-streamDone
 	if _, discoverErr := runtime.Discover(t.Context(), protocol.CallOptions{}); !errors.Is(discoverErr, ErrClosed) {
 		t.Fatalf("Discover after Close error = %v, want ErrClosed", discoverErr)
 	}

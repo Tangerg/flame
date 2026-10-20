@@ -99,7 +99,7 @@ describe("visual Runtime transport", () => {
         true,
       );
       const send = vi.spyOn(transport, "send");
-      const client = createFlameClient(transport);
+      const client = createFlameClient(transport, { capabilities: () => VISUAL_CAPABILITIES });
       const otherClient = createFlameClient(
         createVisualRuntimeTransport(
           structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
@@ -107,6 +107,7 @@ describe("visual Runtime transport", () => {
           async () => REVIEW_DIFF,
           true,
         ),
+        { capabilities: () => VISUAL_CAPABILITIES },
       );
       try {
         const workspace = await client.workspaces.open({ path: VISUAL_WORKSPACE_PATH });
@@ -143,6 +144,7 @@ describe("visual Runtime transport", () => {
           VISUAL_CAPABILITIES,
           async () => REVIEW_DIFF,
         ),
+        { capabilities: () => VISUAL_CAPABILITIES },
       );
       try {
         const workspace = await client.workspaces.open({ path: VISUAL_WORKSPACE_PATH });
@@ -165,6 +167,7 @@ describe("visual Runtime transport", () => {
         async () => REVIEW_DIFF,
         true,
       ),
+      { capabilities: () => VISUAL_CAPABILITIES },
     );
     try {
       const workspace = await client.workspaces.open({ path: VISUAL_WORKSPACE_PATH });
@@ -189,13 +192,14 @@ describe("visual Runtime transport", () => {
     }
   });
 
-  it("answers Settings reads through the validated Runtime client", async () => {
+  it("answers advertised Settings reads through the validated Runtime client", async () => {
     const client = createFlameClient(
       createVisualRuntimeTransport(
         structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
         VISUAL_CAPABILITIES,
         async () => REVIEW_DIFF,
       ),
+      { capabilities: () => VISUAL_CAPABILITIES },
     );
     try {
       expect((await client.providers.list()).data).toEqual(VISUAL_PROVIDERS);
@@ -210,7 +214,9 @@ describe("visual Runtime transport", () => {
         model: VISUAL_MODELS[0]!.id,
       });
       expect(await client.models.getEmbeddingRole()).toEqual({});
-      expect((await client.mcp.list()).data).toEqual([]);
+      await expect(client.mcp.list()).rejects.toMatchObject({
+        data: { type: "capability_not_negotiated" },
+      });
       expect((await client.plugins.list()).data).toEqual(VISUAL_PACKAGES);
       expect((await client.plugins.listProviders()).data).toEqual(VISUAL_PLUGIN_PROVIDERS);
       expect(await client.approval.listRules()).toEqual({ rules: [] });
@@ -233,6 +239,7 @@ describe("visual Runtime transport", () => {
           VISUAL_CAPABILITIES,
           async () => REVIEW_DIFF,
         ),
+        { capabilities: () => VISUAL_CAPABILITIES },
       );
       try {
         const subscription = await client.runtimeEvents.subscribe({ topics: [topic] });
@@ -254,6 +261,7 @@ describe("visual Runtime transport", () => {
         VISUAL_CAPABILITIES,
         async () => REVIEW_DIFF,
       ),
+      { capabilities: () => VISUAL_CAPABILITIES },
     );
     try {
       await expect(client.models.setUtilityRole({})).rejects.toThrow(
@@ -271,6 +279,7 @@ describe("visual Runtime transport", () => {
         VISUAL_CAPABILITIES,
         async () => REVIEW_DIFF,
       ),
+      { capabilities: () => VISUAL_CAPABILITIES },
     );
     const controller = new AbortController();
     const cancelled = new Error("visual read cancelled");

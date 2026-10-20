@@ -10,6 +10,7 @@ import {
   CAPABILITY_JSON,
   type MethodInputs,
 } from "../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
+import { VISUAL_CAPABILITIES } from "../../visual/agentFixtureFacts";
 import { VISUAL_SCHEDULES_PAGE } from "../../visual/componentSnapshots";
 let transport: ReturnType<typeof createMemoryTransport>;
 
@@ -21,7 +22,7 @@ let context: ComponentContext;
 
 beforeEach(() => {
   transport = createMemoryTransport();
-  client = createFlameClient(transport);
+  client = createFlameClient(transport, { capabilities: () => VISUAL_CAPABILITIES });
   owner = new AbortController();
   context = {
     component: {
