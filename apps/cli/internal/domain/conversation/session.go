@@ -10,7 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
-	"github.com/Tangerg/flame/apps/cli/internal/exactint"
+	"github.com/Tangerg/flame/runtime/exactint"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 

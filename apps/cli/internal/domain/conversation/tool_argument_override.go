@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/apps/cli/internal/exactjson"
+	"github.com/Tangerg/flame/runtime/exactjson"
 )
 
 // ToolArgumentOverride is a validated, immutable replacement for one pending
