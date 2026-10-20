@@ -5,7 +5,9 @@ import (
 	"errors"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -15,15 +17,6 @@ var retiredProductBrandTokens = [][]byte{
 	[]byte("Ly" + "ra"),
 	[]byte("ly" + "ra"),
 }
-
-var generatedProductBrandDirectories = []string{
-	filepath.Join("desktop", "build", "bin"),
-	filepath.Join("desktop", "build", "ios"),
-	filepath.Join("desktop", "build", "linux"),
-	filepath.Join("desktop", "build", "windows"),
-}
-
-var machineLocalRuntimeConfig = filepath.Join("runtime", "config", "config.yaml")
 
 const (
 	brandScanChunkBytes       = 64 << 10
@@ -35,43 +28,44 @@ const (
 // outputs are not repository product sources.
 func TestAppHasNoRetiredProductBrand(t *testing.T) {
 	appRoot := filepath.Dir(moduleRoot(t))
-	err := filepath.WalkDir(appRoot, func(path string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		relative, err := filepath.Rel(appRoot, path)
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			if retiredBrandExcludedDirectory(relative) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if retiredBrandExcludedFile(relative) {
-			return nil
-		}
+	sources, err := maintainedProductFiles(appRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, relative := range sources {
+		path := filepath.Join(appRoot, relative)
 		for _, token := range retiredProductBrandTokens {
-			if bytes.Contains([]byte(entry.Name()), token) {
+			if bytes.Contains([]byte(relative), token) {
 				t.Errorf("retired product brand remains in path %s", relative)
 			}
 		}
-		if !productBrandTextFile(entry.Name()) {
-			return nil
+		if !productBrandTextFile(filepath.Base(relative)) {
+			continue
 		}
 		retiredToken, err := retiredBrandInFile(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
 		if err != nil {
-			return err
+			t.Fatal(err)
 		}
 		if retiredToken != "" {
 			t.Errorf("retired product brand %q remains in %s", retiredToken, relative)
 		}
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("scan app product identity: %v", err)
 	}
+}
+
+// Git owns the maintained-source boundary, including ignored embed staging and
+// build outputs. New output locations must not create another exclusion policy.
+func maintainedProductFiles(root string) ([]string, error) {
+	command := exec.Command("git", "ls-files", "--cached", "--others", "--exclude-standard", "-z")
+	command.Dir = root
+	data, err := command.Output()
+	if err != nil {
+		return nil, err
+	}
+	paths := strings.Split(strings.TrimSuffix(string(data), "\x00"), "\x00")
+	return slices.DeleteFunc(paths, func(path string) bool { return path == "" }), nil
 }
 
 func retiredBrandInFile(path string) (string, error) {
@@ -102,47 +96,44 @@ func retiredBrandInFile(path string) (string, error) {
 	}
 }
 
-func retiredBrandExcludedDirectory(relative string) bool {
-	base := filepath.Base(relative)
-	if base == ".cache" || base == ".git" || base == "node_modules" || base == "dist" {
-		return true
-	}
-	for _, generated := range generatedProductBrandDirectories {
-		if relative == generated {
-			return true
+func TestProductBrandScanFollowsTrackedAndUntrackedSource(t *testing.T) {
+	root := t.TempDir()
+	git := func(args ...string) {
+		t.Helper()
+		command := exec.CommandContext(t.Context(), "git", args...)
+		command.Dir = root
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, output)
 		}
 	}
-	return false
-}
-
-func TestRetiredBrandScanExcludesOnlyGeneratedDirectoryClasses(t *testing.T) {
-	for _, path := range []string{
-		filepath.Join("desktop", ".cache"),
-		filepath.Join("desktop", "frontend", "node_modules"),
-		filepath.Join("desktop", "frontend", "dist"),
-		".git",
-		filepath.Join("desktop", "build", "bin"),
-	} {
-		if !retiredBrandExcludedDirectory(path) {
-			t.Errorf("generated directory %q is included in the product-source scan", path)
+	write := func(name, data string) {
+		t.Helper()
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(data), 0600); err != nil {
+			t.Fatal(err)
 		}
 	}
-	for _, path := range []string{
-		"desktop",
-		filepath.Join("desktop", "build"),
-		filepath.Join("desktop", "frontend", "src"),
-		filepath.Join("runtime", "internal"),
-	} {
-		if retiredBrandExcludedDirectory(path) {
-			t.Errorf("source directory %q is excluded from the product-source scan", path)
-		}
+	git("init", "--quiet")
+	write(".gitignore", "out/\napps/desktop/assets/web/\nnode_modules/\n**/config.yaml\n")
+	write("assets/brand/README.md", "Flame")
+	git("add", "--", ".gitignore", "assets/brand/README.md")
+	write("apps/web/src/new.ts", "export const product = 'Flame'")
+	write("apps/desktop/build/config.yml", "name: Flame")
+	for _, name := range []string{"out/generated.js", "apps/desktop/assets/web/vendor.js", "apps/web/node_modules/vendor/index.js", "runtime/config/config.yaml"} {
+		write(name, "private or generated")
 	}
-}
-
-func retiredBrandExcludedFile(relative string) bool {
-	// Machine-local runtime configuration may contain API keys and provider-owned
-	// identifiers. Its checked-in example remains part of the product scan.
-	return relative == machineLocalRuntimeConfig
+	actual, err := maintainedProductFiles(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slices.Sort(actual)
+	expected := []string{".gitignore", "apps/desktop/build/config.yml", "apps/web/src/new.ts", "assets/brand/README.md"}
+	if !slices.Equal(actual, expected) {
+		t.Fatalf("maintained product sources = %v, want %v", actual, expected)
+	}
 }
 
 func productBrandTextFile(name string) bool {

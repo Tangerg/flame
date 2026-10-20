@@ -409,8 +409,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/ProtonMail/go-crypto v1.3.0 h1:ILq8+Sf5If5DCpHQp4PbZdS1J7HDFRXz/+xKBiRGFrw=
 github.com/ProtonMail/go-crypto v1.3.0/go.mod h1:9whxjD8Rbs29b4XWbB8irEcE8KHMqaR2e7GWU1R+/PE=
-github.com/Tangerg/flame v0.1.0-layout.20261020.2/go.mod h1:t+D/OUFhIBlJMDBHlU8m9c+WyMGwtcnui5ZvQtB56hA=
-github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261020.2/go.mod h1:TzRyIfLc37kZQZC4JwwtOcaiS6NgoHtwAxvEZ7ZAUF0=
+github.com/Tangerg/flame v0.1.0-layout.20261020.3/go.mod h1:h9rvqQq0KvlDD+kG2+JWdnnAnWnVlVqnU41rE7TPAJU=
+github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261020.3/go.mod h1:TzRyIfLc37kZQZC4JwwtOcaiS6NgoHtwAxvEZ7ZAUF0=
 github.com/Tangerg/scope/a2a v0.47.0/go.mod h1:d1py4XE/5vEsukRJSAqVLxLpLdwSbqpw+SvJflnMQhc=
 github.com/Tangerg/scope/agent v0.47.0/go.mod h1:W44+R/XEdPiB+1I9yMz305DI/Olt5J4uFLqUN7A81xk=
 github.com/Tangerg/scope/core v0.23.0/go.mod h1:9hOHcD65yh5MRKI/8vXoozbq7PAIJa1L3TLkVkkPIsI=

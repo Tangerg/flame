@@ -13,8 +13,8 @@ codeberg.org/go-latex/latex v0.3.0/go.mod h1:8ETijTpK2bFtwRAXLXe1RZJrYxnc5pibibZ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261020.2 h1:AxqlOGa0bUQhnTN6RtPh3Mkm9ibPTzpn2QaSxK0UeJw=
-github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261020.2/go.mod h1:TzRyIfLc37kZQZC4JwwtOcaiS6NgoHtwAxvEZ7ZAUF0=
+github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261020.3 h1:tUb7Ea8GIdNpkD9+U0dgtw50xG1Egt77WgUXEfUW/T0=
+github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261020.3/go.mod h1:TzRyIfLc37kZQZC4JwwtOcaiS6NgoHtwAxvEZ7ZAUF0=
 github.com/Tangerg/go-sdk v1.8.1-scope.3 h1:hMC4qrvwu38L4/bLwnPiCYi9BTRFQxGb6Cs97pa/CzQ=
 github.com/Tangerg/go-sdk v1.8.1-scope.3/go.mod h1:9ZBcxdycY3/8/I1dCH3Uo5rCY3Run9Y4ZmEmiQIulUw=
 github.com/Tangerg/oolong/components v0.24.0 h1:lpsjR8YFXlfxUEN4Mo6Wx4/HuIHsMhSVF0k4Bq76xTE=
