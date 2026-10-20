@@ -1,0 +1,18 @@
+[
+  {
+    "name": "flame.sandbox/execute.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Execute a bounded /bin/sh script in a new private native sandbox workspace. Writes stay in that workspace, the configured home is hidden, network is denied and child environment is scrubbed. No CPU or memory quota is promised. Replaying the original command returns its saved outcome; unknown work is never re-executed.",
+    "input": "schema.json#/$defs/Method_flame_2esandbox_2fexecute_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2esandbox_2fexecute_2ev1Output"
+  },
+  {
+    "name": "flame.sandbox/limits.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Inspect native backend availability and the actual script, timeout and retained-output limits. Availability does not substitute for successful confinement at execution.",
+    "input": "schema.json#/$defs/Method_flame_2esandbox_2flimits_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2esandbox_2flimits_2ev1Output"
+  }
+]

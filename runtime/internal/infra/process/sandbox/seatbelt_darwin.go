@@ -135,7 +135,7 @@ func (s seatbeltRunner) Run(ctx context.Context, dir string, input toolshell.Inp
 		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
 	cmd.WaitDelay = sandboxProcessWaitDelay
-	stdout, stderr := capture.NewWriter(maxCommandOutputBytes), capture.NewWriter(maxCommandOutputBytes)
+	stdout, stderr := capture.NewWriter(MaxCommandOutputBytes), capture.NewWriter(MaxCommandOutputBytes)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 

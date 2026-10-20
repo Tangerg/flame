@@ -21,8 +21,8 @@ func (repeatingReader) Read(data []byte) (int, error) {
 // bounded capture: the writer counts the dropped bytes, and this is where a
 // command's output says how many of them the reader is missing.
 func TestOutputWithMarkerReportsWhatTheModelCannotSee(t *testing.T) {
-	const produced = 2 * maxCommandOutputBytes
-	output := capture.NewWriter(maxCommandOutputBytes)
+	const produced = 2 * MaxCommandOutputBytes
+	output := capture.NewWriter(MaxCommandOutputBytes)
 	written, err := io.Copy(output, io.LimitReader(repeatingReader{}, produced))
 	if err != nil {
 		t.Fatal(err)
@@ -31,11 +31,11 @@ func TestOutputWithMarkerReportsWhatTheModelCannotSee(t *testing.T) {
 		t.Fatalf("io.Copy wrote %d bytes; want %d", written, produced)
 	}
 	marked := string(outputWithMarker(output))
-	if len(marked) <= maxCommandOutputBytes || !strings.Contains(marked, "bytes truncated") {
+	if len(marked) <= MaxCommandOutputBytes || !strings.Contains(marked, "bytes truncated") {
 		t.Fatalf("marked output is %d bytes and reads %q", len(marked), marked[max(0, len(marked)-64):])
 	}
 
-	within := capture.NewWriter(maxCommandOutputBytes)
+	within := capture.NewWriter(MaxCommandOutputBytes)
 	if _, err := within.Write([]byte("complete")); err != nil {
 		t.Fatal(err)
 	}

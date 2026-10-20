@@ -7,7 +7,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/capture"
 )
 
-const maxCommandOutputBytes = 256 << 10
+// A per-stream cap prevents isolated child output from exhausting host memory.
+const MaxCommandOutputBytes = 256 << 10
 
 // outputWithMarker tells the model how much of a command's output it is not
 // seeing, which the bounded writer counts but deliberately does not phrase.

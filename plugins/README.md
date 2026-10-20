@@ -1,8 +1,9 @@
 # First-party portable packages
 
-Memory, Schedules, Knowledge base, GitHub, Model router, Guardrails, Web research
-and Saved usage reports are complete optional backends. Memory, Schedules and
-Saved usage reports use ordinary public components; the other five are backend-only packages.
+Memory, Schedules, Knowledge base, GitHub, Model router, Guardrails, Web research,
+Saved usage reports and Native sandbox are complete optional backends. Memory,
+Schedules and Saved usage reports use ordinary public components; the other six
+are backend-only packages.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
 
@@ -80,13 +81,15 @@ model-visible inputs before provider dispatch.
 its private archive preserves immutable source versions.
 [Saved usage reports](usagereports/README.md) archives daily and weekly responses
 from the public core accounting callback without creating another ledger.
+[Native sandbox](sandbox/README.md) owns bounded code execution in private scratch
+workspaces and original command outcomes through the shared native confinement.
 Other packages contain only their declared content or presentation resources.
 
 Backend source is compiled from `runtime/internal/plugins/memory` and
 `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase` and
 `runtime/internal/plugins/github`, `runtime/internal/plugins/modelrouter` and
 `runtime/internal/plugins/guardrails`, `runtime/internal/plugins/web` and
-`runtime/internal/plugins/usagereports`
+`runtime/internal/plugins/usagereports` and `runtime/internal/plugins/sandbox`
 inside the local Runtime application module.
 These are separate executables with private facts and process lifetimes, without
 separate published Go modules or first-party version resolution.
