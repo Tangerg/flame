@@ -1,14 +1,22 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. Saved usage reports now open a named reading view with an archive return, distinct read states and a bounded removal decision. Original removal recovery preserves another open report. Captured-image titles respect the native window-controls gutter. Settings navigation and rows retreat at native page zoom, and model-role rows use their own group's available width. Provider Save & Test feedback spans the save and test as one operation; edits retire its old results while retaining successor drafts. Explicit material inspections remain visible when the Dock cannot fit, with full-pane source returns and focus continuity. Table-preview file navigation retains the original table/task return anchor. MCP draft lifetime and import-name validation are integrated; pending commands hold their submitted fields. Captured Tool JSON retains its original literal tokens during indentation and copy. Ordinary pasted-text editing/return is integrated at `d15175820`; the oversized-editor qualification at `50015e78c` remains a separate native limit. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. Paused at the user's requested milestone. Plugin management prioritizes installed packages and names the captured plugin/release in task-specific Configure and Stage editors. Saved usage reports now open a named reading view with an archive return, distinct read states and a bounded removal decision. Original removal recovery preserves another open report. Captured-image titles respect the native window-controls gutter. Settings navigation and rows retreat at native page zoom, and model-role rows use their own group's available width. Provider Save & Test feedback spans the save and test as one operation; edits retire its old results while retaining successor drafts. Explicit material inspections remain visible when the Dock cannot fit, with full-pane source returns and focus continuity. Table-preview file navigation retains the original table/task return anchor. MCP draft lifetime and import-name validation are integrated; pending commands hold their submitted fields. Captured Tool JSON retains its original literal tokens during indentation and copy. Ordinary pasted-text editing/return is integrated at `d15175820`; the oversized-editor qualification at `50015e78c` remains a separate native limit. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user has additionally requested UI polish for the newly added plugins and explicitly limited it to existing UI. Saved usage reports are now implemented and qualified below. Continue through existing plugin management and workspace entry points; do not add pages for backend-only packages. The final frontend/plugin gates and supported Wails build pass, and the report batch's private resources are cleaned. The captured-image inset is integrated at `d25b4ef72` and settings width at `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but did not isolate a production close defect: after the user's confirmed activation, the captured window was visible while native/WebKit visibility still reported hidden and frame callbacks stayed paused. Do not repeat that activation request or add a component workaround from these inconsistent signals. Those completed isolation roots and their new caches are also cleaned; details follow.
+The user limited newly added plugin polish to existing UI, then requested a pause at the next milestone. Saved reports are integrated at `1e7813982`; existing plugin management is now implemented and qualified below. The shared UI, plugin and complete frontend gates and supported Wails build pass. Native English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange include narrow 200% editors and source returns. All owned acceptance resources are cleaned. Stop here and wait for the user's next arrangement; do not select another batch or add pages for backend-only packages.
 
-The latest objective explicitly resumes continuous desktop UI work. Complete each evidence-backed batch with native acceptance, the relevant gates, an explicit-path commit and push to `main`, cleanup and an update to this file before selecting the next batch. Native page zoom and the single Dock width projection remain integrated. Open workspace views now retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
+The captured-image inset is integrated at `d25b4ef72` and settings width at
+`1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
+did not isolate a production close defect: after the user's confirmed activation,
+the captured window was visible while native/WebKit visibility still reported
+hidden and frame callbacks stayed paused. Do not repeat that activation request
+or add a component workaround from these inconsistent signals. Those completed
+isolation roots and their new caches are also cleaned; details follow.
+
+The milestone pause supersedes the earlier continuous-work instruction. After an explicit resume, retain the established native acceptance, relevant gates, explicit-path commit and push to `main`, cleanup and handoff workflow. Native page zoom and the single Dock width projection remain integrated. Open workspace views now retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
 
 Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The subsequent native focus investigation qualified the existing keyboard resize path and isolated clicked-label reverse navigation to a WebKit behavior also reproduced by a bare HTML button. No host preference or component workaround was added. The precise scenarios and limits are below.
 
@@ -201,6 +209,15 @@ Flame's existing Skills component supplies the actual ancestor-scroll and
 explicit-entry focus approach, and Schedules supplies the named removal decision.
 The report uses shared Flame components throughout; no charts, derived totals,
 new component system or backend-only plugin pages were introduced.
+
+Plugin-management review traced ZCode's actual
+`packages/ui/src/settings/InstalledPluginManagement.tsx` for selected-plugin
+identity and a named editing task, and `PluginConfigControls.tsx` for field scope.
+Its dedicated configuration forms and uninstall cleanup contract differ from
+Flame's Runtime contract and were not copied. Existing HeroUI form/modal and
+Radix focus references above inform the bounded editor. Native baseline evidence
+established the missing task identity and secondary controls displacing the
+catalog; existing Base UI cancellation already returned to the surviving trigger.
 
 ## Implemented foundation to retain
 
@@ -460,6 +477,20 @@ consumes it without discarding the task. `RecordForm` still owns focus retiremen
 The Memory resolver rejects a disconnected or read-disabled opener and uses
 retained search. A later read never reclaims a subsequent focus choice.
 
+Plugin management places Installed packages after installation and before
+Provider selections, retaining the latter's existing provider/command owners.
+`settings/plugins-pane/ui/PackageManager.tsx` captures name and optional version
+with the existing command target when an editor opens. Live catalog replacement
+cannot relabel an editor that still submits the captured installation/digest.
+Configure exposes the reviewed release digest and labels JSON input changes;
+Stage labels the Runtime path, uses Stage update as its completion action and
+explains the separate selection step. The digest is an admission identity, not
+a claim that compatible installation configuration cannot survive selection.
+Eight locales replace the former mixed JSON-or-path label. The existing
+`TextEditorDialog` only forwards optional description content to `ModalDialog`;
+shared wrapping, scrolling, focus, pending fields and submission retain their
+owners. No backend-only page, schema form, command or protocol was added.
+
 Saved usage reports now separate the retained archive from a named reading view.
 `plugins/usagereports/src/component.tsx` keeps the capture period, archive rows,
 source button and actual ancestor scroll positions while a report is open. Its
@@ -610,6 +641,15 @@ reachable controls and width semantics. Existing type, color and surface owners
 remain the visual basis.
 
 ## Verification checkpoint
+
+For existing plugin management:
+
+- A ten-package native metadata fixture reproduced generic unnamed Configure/Stage dialogs, their shared JSON-or-path label and the catalog below secondary provider controls. Bounded Claude Code CLI (`claude-opus-5-5`) implemented the permitted editor, order, copy and locale changes. Its original baseline passed eight tests; the final focused run passed ten. Primary review corrected an overbroad configuration-lifetime claim from the actual Runtime owner and removed redundant wrapping. An intermediate primary assertion incorrectly searched modal-inert background content by accessible name; its text-presence correction retains the live-catalog identity test. No product behavior or valid assertion was weakened.
+- Regressions cover captured name/version/digest through catalog replacement, exact configure identity and injected-target rejection, optional version, exact stage installation/path through failure/retry, retained drafts and cancellation without submission. `npm run check --prefix ui` passed 58 tests plus its offline packed consumer. `npm run check --prefix plugins` passed its release test and eleven exact ESM resources. Serial `VITEST_MAX_WORKERS=2 npm run check` passed **383 files / 2,891 tests**, all subsequent gates and 1,071 keys across eight locales. The supported `wails3 task build` passed: arm64 Mach-O, macOS 13.0 minimum, SDK 26.5; duplicate `-lobjc` remained non-failing. All eleven accepted source files and 489 production assets stayed unchanged through native QA.
+- Actual Wails English/dark/18 px/custom blue at 1440 × 900 showed Installed packages and actionable rows on the first screen. Pointer entry opened `Configure inputs: flame.github 1.0.0`, a complete wrapped digest and the named JSON field with initial editor focus. Invalid JSON retained the literal draft and error; keyboard Cancel returned to the original Configure button. Reopening restored the initial draft, and accepted isolated Save returned to that same source. Stage showed the named plugin/version, Runtime path label, separate-selection explanation and Stage update completion action. Escape from Cancel and accepted isolated Stage both returned to its Package actions trigger; the selected version remained 1.0.0.
+- Native Window → Move & Resize → Left plus twenty 0.05 zoom increments qualified the 561 CSS px, 200% English page. Wheel scrolling reached plugin actions. The longer Knowledgebase editor wrapped its title and complete digest, independently scrolled its body and retained its header/footer. Tab reached Cancel; Escape restored the same visible Configure source with a blue keyboard ring. Chinese/light/14 px/Flame Orange at Actual Size qualified translated Configure/Stage identity, digest, labels, hints and return. Its narrow 200% Stage retained title, path, explanation and footer; pointer Cancel returned to the same Knowledgebase menu trigger, and Shift-Tab visibly focused Configure in Orange.
+- These scenes used production components and native chrome/zoom at the real Wails asset origin over a canonical isolated transport, ten manifest-based metadata snapshots and disposable synthetic configure/stage responses. Plugin executables were not started; optional components/points/skills/themes were deliberately absent. Exact command payload and catalog-replacement assertions are component regressions, not native transport observations. No live Runtime configuration, credentials, approval, installation, package verification, release selection or backend workflow was exercised. An externally changed stage attempt was excluded and repeated successfully after fresh observation. The initial textarea-Escape ambiguity does not establish a defect; no global keyboard/focus workaround was added. VoiceOver, native IME, pixel contrast, other-platform GUI, browser/visual suites and performance baselines were not run. No data/protocol migration is required.
+- All fourteen owned process records exited. The bundle `io.github.tangerg.flame.plugin-management-review.c056753af2ce` was unregistered; new Caches/WebKit directories were removed after UID/birth checks, while HTTP storage, preferences and saved state were absent. The private root `/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-plugin-management-review-mrvms995`, pinned sources, fixtures, overlays, binaries, disposable homes, prompts/reports and logs were removed. Shared outputs/dependency caches, references, user data and unrelated processes remain intact. Do not query any old app binding and accidentally relaunch a deleted scene.
 
 For saved usage report tasks:
 
@@ -895,6 +935,9 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 ## Future review candidates
 
+Work is paused at the user's requested milestone. The candidates below are
+context for a future explicit resume, not authorization to continue now.
+
 Table-preview file handoff and the narrow/full-pane host repair are implemented
 and natively qualified above. Preserve the surviving source anchor, one inspection
 chain, geometry-only presentation and the distinction between source Back and
@@ -946,9 +989,9 @@ The settings-width investigation is implemented and natively qualified above. Pr
 
 The captured-image toolbar repair is implemented and natively qualified above. Preserve the existing image identity, gallery, fit/zoom/pan and ordinary source-return owners. Fullscreen close-transition completion remains unqualified: the visible plain native control passed, while the pinned production fixture's native/WebKit visibility contradicted its captured screen even after confirmed manual activation. Isolate that native occlusion discrepancy before attributing close behavior to a component. Do not repeat activation requests or add focus retries, animation timeouts or native preference workarounds from this evidence. The previously recorded hidden-zoom scrolling limit is separate.
 
-Saved-report catalog/reading/return, distinct read states and named removal are now implemented and qualified above. Preserve original command identity, fresh-membership reconciliation and exact number semantics. The user explicitly chose polish of existing UI, so continue with existing plugin management/configuration and workspace entries; do not add pages to backend-only packages. Select the next task from actual behavior rather than recreating the completed Memory, Schedules or report flows.
+Saved-report catalog/reading/return, distinct read states and named removal are now implemented and qualified above. Preserve original command identity, fresh-membership reconciliation and exact number semantics. Existing plugin management now also qualifies catalog priority and named Configure/Stage tasks. Preserve captured identity, strict command payloads and shared focus owners. The user chose existing UI only; do not add backend-only pages or recreate completed Memory, Schedules, report or package-editor flows.
 
-These remaining items are review candidates, not defects or required rewrites. The narrow/full-pane host gap is now implemented and natively qualified above. The latest objective resumes work and supersedes the earlier Schedules pause. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
+These remaining items are review candidates, not defects or required rewrites. The narrow/full-pane host gap is now implemented and natively qualified above. The latest user request pauses work after this milestone and supersedes the earlier continuous objective. After an explicit resume, separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 
 ## Working and maintenance practice
 
@@ -961,4 +1004,4 @@ These remaining items are review candidates, not defects or required rewrites. T
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
 - Commit explicit owned paths, push verified milestones to remote `main`, preserve unrelated working files during integration and clean owned resources. Update this file with the new product state and verification scope rather than starting another round log.
-- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction and task model across pages. The latest objective resumes continuous batches until the user explicitly stops. Finish verification, commit to `main`, push and clean each batch before advancing.
+- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction and task model across pages. The user's latest milestone request pauses continuous work here. Wait for their next arrangement before resuming; retain verification, commit to `main`, push and cleanup for future batches.

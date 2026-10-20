@@ -1190,7 +1190,12 @@ export const de: Record<string, string> = {
   "packages.stage": "Update vorbereiten",
   "packages.select": "Vorbereitete Version wählen",
   "packages.uninstall": "Deinstallieren",
-  "packages.input": "JSON-Eingabe oder Runtime-Quellpfad",
+  "packages.editTitle": "{{action}}: {{name}}",
+  "packages.editTitleVersion": "{{action}}: {{name}} {{version}}",
+  "packages.configureInput": "Eingabeänderungen (JSON)",
+  "packages.configureContext": "Prüfsumme des geprüften Releases: {{digest}}.",
+  "packages.stageContext":
+    "Das Vorbereiten ändert das ausgewählte Release nicht. Das vorbereitete Release wird anschließend separat ausgewählt.",
   "packages.save": "Speichern",
   "packages.installed":
     "{{name}} wurde installiert. Prüfe das Release unten, bevor du es aktivierst.",

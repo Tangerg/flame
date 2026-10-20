@@ -1140,7 +1140,12 @@ export const ja: Record<string, string> = {
   "packages.stage": "更新をステージ",
   "packages.select": "ステージ済みリリースを選択",
   "packages.uninstall": "アンインストール",
-  "packages.input": "JSON 入力または Runtime のソースパス",
+  "packages.editTitle": "{{action}}: {{name}}",
+  "packages.editTitleVersion": "{{action}}: {{name}} {{version}}",
+  "packages.configureInput": "入力の変更（JSON）",
+  "packages.configureContext": "レビュー対象リリースのダイジェスト: {{digest}}。",
+  "packages.stageContext":
+    "ステージは新しいリリースを準備するだけで、選択中のリリースは変わりません。ステージ済みリリースは後で別途選択してください。",
   "packages.save": "保存",
   "packages.installed":
     "{{name}} をインストールしました。有効にする前に、下のリリースを確認してください。",

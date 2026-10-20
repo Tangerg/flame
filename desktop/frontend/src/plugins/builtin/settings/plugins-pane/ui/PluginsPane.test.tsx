@@ -66,7 +66,10 @@ describe("PluginsPane installation facts", () => {
   it.each(["Configure"])("binds %s to the release opened for review", async () => {
     const reviewedDigest = "1".repeat(64);
     const replacementDigest = "2".repeat(64);
-    let installation = reviewedInstallation();
+    let installation: PluginInstallation = {
+      ...reviewedInstallation(),
+      selected: { ...reviewedInstallation().selected, version: "1.0.0" },
+    };
     const submit = vi.fn(async () => reviewedInstallation());
     host = await startKernel([
       definePlugin({
@@ -96,12 +99,25 @@ describe("PluginsPane installation facts", () => {
     fireEvent.click(screen.getByRole("button", { name: "Configure inputs" }));
     installation = {
       ...installation,
-      selected: { ...installation.selected, digest: replacementDigest },
+      selected: {
+        ...installation.selected,
+        name: "Renamed package",
+        version: "2.0.0",
+        digest: replacementDigest,
+      },
     };
     await act(async () => {
       await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY] });
     });
     expect(screen.getByText(replacementDigest)).toBeTruthy();
+    expect(screen.getByText("Renamed package")).toBeTruthy();
+    const dialog = screen.getByRole("dialog", {
+      name: "Configure inputs: Reviewed package 1.0.0",
+    });
+    expect(within(dialog).getByRole("textbox", { name: "Input changes (JSON)" })).toBeTruthy();
+    expect(dialog.textContent).toContain(`Reviewed release digest: ${reviewedDigest}.`);
+    expect(dialog.textContent).not.toContain(replacementDigest);
+    expect(dialog.textContent).not.toContain("Renamed package");
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith({
@@ -174,6 +190,105 @@ describe("PluginsPane installation facts", () => {
     expect(field.getAttribute("aria-describedby")).toBe(message.id);
     expect(submit).not.toHaveBeenCalled();
     expect(field).toHaveProperty("value", encoded);
+  });
+
+  it("stages a path for the opened installation and keeps the draft after a failure", async () => {
+    let installation = reviewedInstallation();
+    const stage = vi
+      .fn(async (_request: unknown) => reviewedInstallation())
+      .mockRejectedValueOnce(new Error("Source unreadable"));
+    host = await startKernel([
+      definePlugin({
+        name: "test.package-stage",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+          ctx.contribute(DATA_PROVIDER, {
+            key: PACKAGES_KEY,
+            fetcher: async () => [installation],
+          });
+          ctx.cleanup(
+            packageOperations.configure({
+              signal: ctx.signal,
+              pendingCommands: () => [],
+              stage,
+            } as unknown as ReturnType<typeof packageOperations.get>),
+          );
+        },
+      }),
+    ]);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PluginsPane />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Package actions" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Stage update" }));
+    const title = "Stage update: Reviewed package";
+    const dialog = screen.getByRole("dialog", { name: title });
+    expect(dialog.textContent).not.toContain("undefined");
+    expect(dialog.textContent).toContain("Select the staged release separately afterward.");
+    const field = within(dialog).getByRole("textbox", {
+      name: "Absolute package directory or ZIP path on the Runtime",
+    });
+    expect(field).toHaveProperty("value", "/package");
+    fireEvent.change(field, { target: { value: "/next.zip" } });
+    installation = {
+      ...installation,
+      source: "/replaced",
+      selected: { ...installation.selected, name: "Renamed package", version: "2.0.0" },
+    };
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY] });
+    });
+    expect(screen.getByRole("dialog", { name: title })).toBe(dialog);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Stage update" }));
+    expect((await within(dialog).findByRole("alert")).textContent).toContain("Source unreadable");
+    expect(field).toHaveProperty("value", "/next.zip");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Stage update" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const request = { installationId: installation.id, source: "/next.zip" };
+    expect(stage.mock.calls).toEqual([[request], [request]]);
+  });
+
+  it("discards a cancelled configure draft without submitting", async () => {
+    const submit = vi.fn(async () => reviewedInstallation());
+    host = await startKernel([
+      definePlugin({
+        name: "test.package-cancel",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+          ctx.contribute(DATA_PROVIDER, {
+            key: PACKAGES_KEY,
+            fetcher: async () => [reviewedInstallation()],
+          });
+          ctx.cleanup(
+            packageOperations.configure({
+              signal: ctx.signal,
+              pendingCommands: () => [],
+              configure: submit,
+            } as unknown as ReturnType<typeof packageOperations.get>),
+          );
+        },
+      }),
+    ]);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PluginsPane />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Configure inputs" }));
+    const dialog = screen.getByRole("dialog", { name: "Configure inputs: Reviewed package" });
+    const draft = within(dialog).getByRole("textbox");
+    const initial = (draft as HTMLTextAreaElement).value;
+    fireEvent.change(draft, { target: { value: "{}" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(submit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Configure inputs" }));
+    expect(within(screen.getByRole("dialog")).getByRole("textbox")).toHaveProperty(
+      "value",
+      initial,
+    );
   });
 
   it("shows and clears kernel errors without requiring an installed plugin", async () => {

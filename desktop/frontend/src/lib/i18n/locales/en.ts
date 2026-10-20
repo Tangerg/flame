@@ -1166,7 +1166,12 @@ export const en: Record<string, string> = {
   "packages.stage": "Stage update",
   "packages.select": "Select staged release",
   "packages.uninstall": "Uninstall",
-  "packages.input": "JSON input or Runtime source path",
+  "packages.editTitle": "{{action}}: {{name}}",
+  "packages.editTitleVersion": "{{action}}: {{name}} {{version}}",
+  "packages.configureInput": "Input changes (JSON)",
+  "packages.configureContext": "Reviewed release digest: {{digest}}.",
+  "packages.stageContext":
+    "Staging prepares a new release without changing the selected one. Select the staged release separately afterward.",
   "packages.save": "Save",
   "packages.installed": "Installed {{name}}. Review its release below before enabling it.",
   "packages.releaseUnavailable":

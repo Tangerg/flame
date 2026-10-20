@@ -1124,7 +1124,12 @@ export const ko: Record<string, string> = {
   "packages.stage": "업데이트 준비",
   "packages.select": "준비된 릴리스 선택",
   "packages.uninstall": "제거",
-  "packages.input": "JSON 입력 또는 Runtime 소스 경로",
+  "packages.editTitle": "{{action}}: {{name}}",
+  "packages.editTitleVersion": "{{action}}: {{name}} {{version}}",
+  "packages.configureInput": "입력 변경(JSON)",
+  "packages.configureContext": "검토한 릴리스의 다이제스트: {{digest}}.",
+  "packages.stageContext":
+    "업데이트 준비는 새 릴리스를 준비할 뿐 선택된 릴리스는 바꾸지 않습니다. 준비된 릴리스는 나중에 별도로 선택하세요.",
   "packages.save": "저장",
   "packages.installed":
     "{{name}}을(를) 설치했습니다. 활성화하기 전에 아래에서 릴리스를 검토하세요.",

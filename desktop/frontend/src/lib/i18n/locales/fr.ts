@@ -1208,7 +1208,12 @@ export const fr: Record<string, string> = {
   "packages.stage": "Préparer la mise à jour",
   "packages.select": "Sélectionner la version préparée",
   "packages.uninstall": "Désinstaller",
-  "packages.input": "Entrée JSON ou chemin source du Runtime",
+  "packages.editTitle": "{{action}} : {{name}}",
+  "packages.editTitleVersion": "{{action}} : {{name}} {{version}}",
+  "packages.configureInput": "Modifications des entrées (JSON)",
+  "packages.configureContext": "Empreinte de la version examinée : {{digest}}.",
+  "packages.stageContext":
+    "Préparer la mise à jour ne change pas la version sélectionnée. Sélectionnez ensuite la version préparée séparément.",
   "packages.save": "Enregistrer",
   "packages.installed": "{{name}} est installé. Vérifiez sa version ci-dessous avant de l'activer.",
   "packages.releaseUnavailable":

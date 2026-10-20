@@ -20,6 +20,7 @@ interface TextEditorDialogProps {
   onOpenChange: (open: boolean) => void;
   icon?: ReactNode;
   title: ReactNode;
+  description?: ReactNode;
   closeLabel: string;
   label: string;
   value: string;
@@ -41,6 +42,7 @@ export function TextEditorDialog({
   onOpenChange,
   icon,
   title,
+  description,
   closeLabel,
   label,
   value,
@@ -78,6 +80,7 @@ export function TextEditorDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={title}
+      description={description}
       icon={icon}
       closeLabel={closeLabel}
       initialFocus={editorRef}

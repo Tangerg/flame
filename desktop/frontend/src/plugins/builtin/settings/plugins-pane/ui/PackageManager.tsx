@@ -50,12 +50,24 @@ const styles = stylex.create({
   },
 });
 
-type PackageEdit =
-  | { type: "configure"; target: PluginReleaseRequest; value: string }
-  | { type: "stage"; target: PluginRequest; value: string };
+// The dialog presents the identity captured when the edit opened, so a live
+// catalog replacement cannot relabel a task that still submits the old target.
+type PackageEdit = { name: string; version?: string; value: string } & (
+  { type: "configure"; target: PluginReleaseRequest } | { type: "stage"; target: PluginRequest }
+);
 
 const EDIT_LABEL: Record<PackageEdit["type"], string> = {
   configure: "packages.configure",
+  stage: "packages.stage",
+};
+
+const EDIT_INPUT: Record<PackageEdit["type"], string> = {
+  configure: "packages.configureInput",
+  stage: "packages.source",
+};
+
+const EDIT_SAVE: Record<PackageEdit["type"], string> = {
+  configure: "packages.save",
   stage: "packages.stage",
 };
 
@@ -113,9 +125,6 @@ export function PackageManager() {
           </SystemMessage>
         )}
       </PanelSection>
-      {operations && (
-        <ProviderSelections installations={catalog.data ?? []} operations={operations} />
-      )}
       <PanelSection title={t("packages.installedTitle")}>
         <DataView
           items={catalog.data ?? []}
@@ -139,6 +148,9 @@ export function PackageManager() {
           )}
         </DataView>
       </PanelSection>
+      {operations && (
+        <ProviderSelections installations={catalog.data ?? []} operations={operations} />
+      )}
       {operations && <PendingCommands operations={operations} />}
     </>
   );
@@ -159,6 +171,7 @@ function PackageRow({
   const busy = feedback.state === "busy";
   const error = feedback.state === "error" ? feedback.reason : "";
   const request = { installationId: installation.id, digest: installation.selected.digest };
+  const identity = { name: installation.selected.name, version: installation.selected.version };
   const enabled = installation.enabled;
   const enablementLabel = enabled ? "packages.disable" : "packages.enable";
   const run = (label: string, operation: () => Promise<unknown>) =>
@@ -218,6 +231,15 @@ function PackageRow({
       return operations.stage({ ...edit.target, source: edit.value });
     });
   };
+  const editTitle =
+    edit &&
+    (edit.version
+      ? t("packages.editTitleVersion", {
+          action: t(EDIT_LABEL[edit.type]),
+          name: edit.name,
+          version: edit.version,
+        })
+      : t("packages.editTitle", { action: t(EDIT_LABEL[edit.type]), name: edit.name }));
   return (
     <ListRow>
       <RecordHeading
@@ -239,6 +261,7 @@ function PackageRow({
                 setEdit({
                   type: "configure",
                   target: request,
+                  ...identity,
                   value: JSON.stringify(
                     { valueChanges: {}, serverChanges: {}, skillChanges: {} },
                     null,
@@ -270,6 +293,7 @@ function PackageRow({
                     setEdit({
                       type: "stage",
                       target: { installationId: installation.id },
+                      ...identity,
                       value: installation.source,
                     });
                   },
@@ -334,13 +358,19 @@ function PackageRow({
         onOpenChange={(open) => {
           if (!open) setEdit(undefined);
         }}
-        title={edit ? t(EDIT_LABEL[edit.type]) : ""}
+        title={editTitle ?? ""}
+        description={
+          edit &&
+          (edit.type === "configure"
+            ? t("packages.configureContext", { digest: edit.target.digest })
+            : t("packages.stageContext"))
+        }
         closeLabel={t("common.close")}
-        label={t("packages.input")}
+        label={edit ? t(EDIT_INPUT[edit.type]) : ""}
         value={edit?.value ?? ""}
         onChange={(value) => setEdit((current) => current && { ...current, value })}
         cancelLabel={t("common.cancel")}
-        saveLabel={t("packages.save")}
+        saveLabel={edit ? t(EDIT_SAVE[edit.type]) : ""}
         savingLabel={t("packages.loading")}
         busy={busy}
         error={error}
