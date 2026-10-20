@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   createFlameClient,
@@ -20,12 +20,97 @@ import { VISUAL_MEMORY_BINDING, VISUAL_USAGE } from "./componentSnapshots";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
 import { REVIEW_DIFF } from "./diffSnapshot";
 
+type Header = MethodOutputs["flame.usage-reports/list.v1"][number];
+type Report = MethodOutputs["flame.usage-reports/get.v1"];
+type Runtime = ReturnType<typeof createFlameClient>;
+type Call = Parameters<Runtime["plugins"]["call"]>[0];
+
 const releases: Array<() => Promise<void>> = [];
 afterEach(async () => {
   cleanup();
   await Promise.all(releases.splice(0).map((release) => release()));
   vi.restoreAllMocks();
 });
+
+const binding = {
+  ...VISUAL_MEMORY_BINDING,
+  contribution: "usage-reports",
+  contract: CAPABILITY_JSON,
+};
+const daily: Header = {
+  id: "a".repeat(64),
+  period: "daily",
+  observedAt: "2026-10-20T08:00:00Z",
+  since: "2026-10-19T08:00:00Z",
+};
+const weekly: Header = {
+  id: "b".repeat(64),
+  period: "weekly",
+  observedAt: "2026-10-20T09:00:00Z",
+  since: "2026-10-13T09:00:00Z",
+};
+const saved = (header: Header): Report => ({
+  ...header,
+  summary: { ...VISUAL_USAGE, observedAt: header.observedAt, since: header.since },
+});
+const reply = (value: unknown) =>
+  Promise.resolve<CallPluginResponse>({ output: stringifyJSON(value) });
+const reportId = (request: Call) => (JSON.parse(request.input) as { id: string }).id;
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((settle, fail) => {
+    resolve = settle;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+};
+const original = (method: string, recover: PluginCommandRecovery["recover"]) => ({
+  idempotencyKey: `original-${method}`,
+  binding: {
+    ...binding,
+    method,
+    target: { scope: "installation" as const, reference: binding.installationId },
+  },
+  recover,
+  retire: vi.fn(),
+});
+
+function mount(
+  handle: (request: Call) => Promise<CallPluginResponse>,
+  pending: () => PluginCommandRecovery[] = () => [],
+) {
+  const owner = new AbortController();
+  const runtime = createFlameClient(
+    createVisualRuntimeTransport(
+      structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+      VISUAL_CAPABILITIES,
+      async () => REVIEW_DIFF,
+    ),
+    { capabilities: () => VISUAL_CAPABILITIES },
+  );
+  releases.push(async () => {
+    owner.abort();
+    await runtime.close();
+  });
+  vi.spyOn(runtime.plugins, "pendingCommands").mockImplementation(pending);
+  const call = vi
+    .spyOn(runtime.plugins, "call")
+    .mockImplementation((request) => handle(request) as never);
+  const context: ComponentContext = {
+    component: { ...binding, componentId: "usage-reports" },
+    binding,
+    runtime,
+    telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
+    signal: owner.signal,
+    track: (operation) => operation,
+    compose: () => null,
+  };
+  render(<UsageReports context={context} />);
+  const calls = (method: string) =>
+    call.mock.calls.filter(([request]) => request.method === `flame.usage-reports/${method}.v1`);
+  return { calls };
+}
 
 it("recovers the original capture and preserves exact numbers, zero prices and missing totals", async () => {
   const owner = new AbortController();
@@ -111,7 +196,10 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
     true,
   );
   fireEvent.click(screen.getByRole("button", { name: "Check original outcome" }));
-  const detail = (await screen.findByRole("heading", { name: "Daily report" })).closest("section")!;
+  // The reading view names its report by period and core observation.
+  const detail = (await screen.findByRole("heading", { name: /^Daily report · / })).closest(
+    "section",
+  )!;
   await waitFor(() => expect(screen.queryByText(/Confirmation is unknown/)).toBeNull());
   expect(recover).toHaveBeenCalledOnce();
   expect(capture).toHaveBeenCalledOnce();
@@ -123,3 +211,217 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
   expect(within(facts).getByText("Not reported")).toBeTruthy();
   expect(within(facts).getAllByText("0").length).toBeGreaterThan(0);
 });
+
+it("reads a named report at the pane top and returns to the same archive row", async () => {
+  const list = deferred<CallPluginResponse>();
+  const read = deferred<CallPluginResponse>();
+  mount((request) =>
+    request.method === "flame.usage-reports/list.v1" ? list.promise : read.promise,
+  );
+  expect(screen.getByText("Reading saved reports…")).toBeTruthy();
+  expect(screen.queryByText("No saved reports")).toBeNull();
+  list.resolve({ output: stringifyJSON([daily, weekly]) });
+
+  const pane = screen.getByRole("region", { name: "Saved usage reports" }).parentElement!;
+  pane.style.overflowY = "auto";
+  pane.scrollTop = 480;
+  const opener = await screen.findByRole("button", { name: /^View report: Weekly report · / });
+  opener.focus();
+  fireEvent.click(opener);
+
+  const heading = screen.getByRole("heading", { name: /^Weekly report · / });
+  expect(document.activeElement).toBe(heading);
+  expect(pane.scrollTop).toBe(0);
+  expect(screen.queryByRole("button", { name: /^View report/ })).toBeNull();
+  expect(screen.getByText("Weekly · last 7 days")).toBeTruthy();
+  expect(screen.getByText("Reading saved report…")).toBeTruthy();
+
+  const back = screen.getByRole("button", { name: "Back to archive" });
+  back.focus();
+  read.resolve({ output: stringifyJSON(saved(weekly)) });
+  await screen.findByText("Total cost (USD)");
+  expect(document.activeElement).toBe(back);
+
+  fireEvent.click(back);
+  expect(document.activeElement).toBe(opener);
+  expect(pane.scrollTop).toBe(480);
+  expect(screen.getAllByRole("button", { name: /^View report/ })).toHaveLength(2);
+  expect(
+    screen.getByText("2 saved reports. Capacity is 64; remove a report to make room."),
+  ).toBeTruthy();
+});
+
+it("keeps a failed archive read distinct from an empty archive and retains accepted rows", async () => {
+  const outcomes: Array<() => Promise<CallPluginResponse>> = [
+    () => Promise.reject(new Error("archive offline")),
+    () => reply([]),
+    () => reply([daily]),
+    () => Promise.reject(new Error("archive offline again")),
+  ];
+  mount(() => outcomes.shift()!());
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "The archive could not be read: archive offline.",
+  );
+  expect(screen.queryByText("No saved reports")).toBeNull();
+
+  const refresh = screen.getByRole("button", { name: "Refresh archive" });
+  fireEvent.click(refresh);
+  await screen.findByText("No saved reports");
+  expect(screen.queryByRole("alert")).toBeNull();
+
+  fireEvent.click(refresh);
+  await screen.findByRole("button", { name: /^View report: Daily report · / });
+  fireEvent.click(refresh);
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "The archive could not be read: archive offline again. The last accepted archive remains shown.",
+  );
+  expect(screen.getByRole("button", { name: /^View report: Daily report · / })).toBeTruthy();
+  expect(screen.queryByText("No saved reports")).toBeNull();
+});
+
+it("removes only the confirmed captured report after a named decision", async () => {
+  let members = [daily, weekly];
+  const removal = deferred<CallPluginResponse>();
+  const { calls } = mount((request) => {
+    switch (request.method) {
+      case "flame.usage-reports/list.v1":
+        return reply(members);
+      case "flame.usage-reports/get.v1":
+        return reply(saved(reportId(request) === daily.id ? daily : weekly));
+      default:
+        return createMutationPromise<CallPluginResponse>(async () => {
+          const result = await removal.promise;
+          members = members.filter(({ id }) => id !== reportId(request));
+          return result;
+        }, "remove-daily");
+    }
+  });
+  fireEvent.click(await screen.findByRole("button", { name: /^View report: Daily report · / }));
+  await screen.findByText("Total cost (USD)");
+  const remove = screen.getByRole("button", { name: "Remove saved report" });
+
+  remove.focus();
+  fireEvent.click(remove);
+  let dialog = await screen.findByRole("alertdialog", { name: /^Remove Daily report · .*\?$/ });
+  await waitFor(() =>
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Cancel" })),
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(remove));
+
+  fireEvent.click(remove);
+  dialog = await screen.findByRole("alertdialog");
+  fireEvent.keyDown(within(dialog).getByRole("button", { name: "Cancel" }), { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  expect(calls("delete")).toHaveLength(0);
+
+  fireEvent.click(remove);
+  dialog = await screen.findByRole("alertdialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Remove saved report" }));
+  const confirming = within(dialog).getByRole("button", { name: "Removing report…" });
+  expect(confirming.getAttribute("aria-busy")).toBe("true");
+  expect(confirming.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(confirming);
+  fireEvent.keyDown(confirming, { key: "Escape" });
+  expect(screen.getByRole("alertdialog")).toBe(dialog);
+  expect(calls("delete").map(([request]) => reportId(request))).toEqual([daily.id]);
+  removal.resolve({ output: stringifyJSON(true) });
+  await screen.findByText("Saved report removed. Core accounting is unchanged.");
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  expect(calls("delete").map(([request]) => reportId(request))).toEqual([daily.id]);
+  expect(screen.queryByRole("heading", { name: /^Daily report · / })).toBeNull();
+  expect(screen.queryByRole("button", { name: /^View report: Daily report/ })).toBeNull();
+  expect(screen.getByRole("button", { name: /^View report: Weekly report · / })).toBeTruthy();
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Refresh archive" })),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /^View report: Weekly report · / }));
+  await screen.findByRole("heading", { name: /^Weekly report · / });
+  expect(screen.queryByText("Saved report removed. Core accounting is unchanged.")).toBeNull();
+});
+
+it.each([
+  { name: "fresh membership keeps it", viewing: weekly, archiveReads: true, stays: true },
+  { name: "an unread archive keeps it", viewing: weekly, archiveReads: false, stays: true },
+  { name: "fresh membership retires it", viewing: daily, archiveReads: true, stays: false },
+])(
+  "reconciles a recovered old removal against the open report when $name",
+  async ({ viewing, archiveReads, stays }) => {
+    let members = [daily, weekly];
+    let pending: PluginCommandRecovery[] = [];
+    let listFails = false;
+    const recover = vi.fn();
+    const { calls } = mount(
+      (request) => {
+        switch (request.method) {
+          case "flame.usage-reports/list.v1":
+            return listFails ? Promise.reject(new Error("archive offline")) : reply(members);
+          case "flame.usage-reports/get.v1":
+            return reply(saved(reportId(request) === daily.id ? daily : weekly));
+          default:
+            return createMutationPromise<CallPluginResponse>(async () => {
+              pending = [
+                original("flame.usage-reports/delete.v1", async (decode) => {
+                  recover();
+                  pending = [];
+                  members = members.filter(({ id }) => id !== daily.id);
+                  return decode(true);
+                }),
+              ];
+              throw new MutationLookupError(new Error("receipt unavailable"));
+            }, "remove-daily");
+        }
+      },
+      () => pending,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /^View report: Daily report · / }));
+    await screen.findByText("Total cost (USD)");
+    fireEvent.click(screen.getByRole("button", { name: "Remove saved report" }));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Remove saved report" }));
+    await screen.findByText(/Confirmation is unknown/);
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getByRole("heading", { name: /^Daily report · / })).toBeTruthy();
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "Remove saved report" }).disabled,
+    ).toBe(true);
+
+    if (viewing === weekly) {
+      fireEvent.click(screen.getByRole("button", { name: "Back to archive" }));
+      fireEvent.click(screen.getByRole("button", { name: /^View report: Weekly report · / }));
+      await screen.findByRole("heading", { name: /^Weekly report · / });
+    }
+    listFails = !archiveReads;
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Check original outcome" }));
+    });
+    await screen.findByText("Original report removal confirmed. Core accounting is unchanged.");
+    expect(recover).toHaveBeenCalledOnce();
+    expect(calls("delete")).toHaveLength(1);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Check original outcome" })).toBeNull(),
+    );
+
+    await waitFor(() =>
+      expect(Boolean(screen.queryByRole("heading", { name: /^(Daily|Weekly) report · / }))).toBe(
+        stays,
+      ),
+    );
+    expect(Boolean(screen.queryByRole("heading", { name: /^Weekly report · / }))).toBe(stays);
+    expect(screen.queryByRole("heading", { name: /^Daily report · / })).toBeNull();
+    expect(Boolean(screen.queryByText("Total cost (USD)"))).toBe(stays);
+    const back = screen.queryByRole("button", { name: "Back to archive" });
+    if (back) fireEvent.click(back);
+    expect(Boolean(screen.queryByRole("button", { name: /^View report: Daily report/ }))).toBe(
+      !archiveReads,
+    );
+    expect(screen.queryByRole("alert")?.textContent ?? null).toBe(
+      archiveReads
+        ? null
+        : "The archive could not be read: archive offline. The last accepted archive remains shown.",
+    );
+    expect(screen.queryByText("No saved reports")).toBeNull();
+    expect(screen.getByRole("button", { name: /^View report: Weekly report · / })).toBeTruthy();
+  },
+);
