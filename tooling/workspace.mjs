@@ -331,16 +331,16 @@ async function goMembers(native) {
       ) ?? false;
     if (requiresNative !== native) continue;
     for (const operation of ["test", "vet", "build"]) {
+      const args = [operation, "-mod=readonly"];
+      // These packages launch real backends and compiler jobs inside their tests.
+      if (operation === "test") args.push("-p=1");
       if (native && operation === "build") {
         const output = join(root, "out/native-check");
         await mkdir(output, { recursive: true });
-        run(
-          "go",
-          [operation, "-mod=readonly", "-o", join(output, "flame"), "./..."],
-          directory,
-          env,
-        );
-      } else run("go", [operation, "-mod=readonly", "./..."], directory, env);
+        args.push("-o", join(output, "flame"));
+      }
+      args.push("./...");
+      run("go", args, directory, env);
     }
   }
 }
