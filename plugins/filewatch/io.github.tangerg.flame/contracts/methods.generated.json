@@ -1,0 +1,42 @@
+[
+  {
+    "name": "flame.filewatch/configure.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Replace or rearm the trigger at its current revision; omitting trigger disables observation. Configuration acceptance does not claim a live watch. Captured work remains immutable.",
+    "input": "schema.json#/$defs/Method_flame_2efilewatch_2fconfigure_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2efilewatch_2fconfigure_2ev1Output"
+  },
+  {
+    "name": "flame.filewatch/event.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one retained observation and its complete original dispatch capture.",
+    "input": "schema.json#/$defs/Method_flame_2efilewatch_2fevent_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2efilewatch_2fevent_2ev1Output"
+  },
+  {
+    "name": "flame.filewatch/events.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read at most 256 retained observation headers, newest first. Accepted means core confirmed the captured Run opening, not that execution completed. Pending intents are never pruned.",
+    "input": "schema.json#/$defs/Method_flame_2efilewatch_2fevents_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2efilewatch_2fevents_2ev1Output"
+  },
+  {
+    "name": "flame.filewatch/get.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read this installation's single persistent file trigger and configuration revision.",
+    "input": "schema.json#/$defs/Method_flame_2efilewatch_2fget_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2efilewatch_2fget_2ev1Output"
+  },
+  {
+    "name": "flame.filewatch/status.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Inspect the actual background observation revision and failures. A failed watch requires explicit configuration rearm; accepted dispatch intents continue reconciliation.",
+    "input": "schema.json#/$defs/Method_flame_2efilewatch_2fstatus_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2efilewatch_2fstatus_2ev1Output"
+  }
+]

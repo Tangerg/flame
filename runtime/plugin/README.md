@@ -357,6 +357,17 @@ Managed background owners can call NotifyPluginChange for their own declared
 contribution. It publishes plugins.dataChanged through the existing invalidation
 owner; no new event bus or plugin business store is created.
 
+Workspace observation sources use the ordinary Runtime client's `SubscribeRuntime`
+with `files.changed` and exact `WatchSpec` paths. Start the subscription from the
+activation resource, after setup; cancel and join it during retirement. Runtime
+admits workspace/path identity, owns bounded OS observation and reports stream
+failure or `resync`. It does not turn a notification into a Run. A source backend
+owns its trigger rules and durably captured intent, then uses `GetRunAcceptance`
+and `StartRun` with the original request and identities. Connection-local sequences
+need a new generation on reconnect; coalesced notifications and resync cannot be
+represented as an exactly-once filesystem event log. See
+[`File watch`](../../plugins/filewatch/README.md) for an ordinary installed example.
+
 ## Captured model calls
 
 ModelMethod publishes flame.model/call.v1 using Scope chat.Request and the complete

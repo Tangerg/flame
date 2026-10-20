@@ -1,0 +1,364 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Method_flame_2efilewatch_2fconfigure_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvcnBj_5fConfigureInput"
+    },
+    "Method_flame_2efilewatch_2fconfigure_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fSnapshot"
+    },
+    "Method_flame_2efilewatch_2fevent_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvcnBj_5fEventInput"
+    },
+    "Method_flame_2efilewatch_2fevent_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fEvent"
+    },
+    "Method_flame_2efilewatch_2fevents_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Method_flame_2efilewatch_2fevents_2ev1Output": {
+      "items": {
+        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fHeader"
+      },
+      "type": "array"
+    },
+    "Method_flame_2efilewatch_2fget_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Method_flame_2efilewatch_2fget_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fSnapshot"
+    },
+    "Method_flame_2efilewatch_2fstatus_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Method_flame_2efilewatch_2fstatus_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fStatus"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fInvocation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "parent": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget"
+        }
+      },
+      "required": [
+        "id",
+        "origin",
+        "target"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "reference": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "reference"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fCapture": {
+      "additionalProperties": false,
+      "properties": {
+        "generation": {
+          "type": "string"
+        },
+        "invocation": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fInvocation"
+        },
+        "kind": {
+          "enum": [
+            "changed",
+            "resync"
+          ],
+          "type": "string"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sequence": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "type": "integer"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "trigger": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fDraft"
+        }
+      },
+      "required": [
+        "generation",
+        "sequence",
+        "revision",
+        "kind",
+        "paths",
+        "observedAt",
+        "trigger",
+        "sessionId",
+        "runId",
+        "invocation"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fDraft": {
+      "additionalProperties": false,
+      "properties": {
+        "instructions": {
+          "maxLength": 16384,
+          "minLength": 1,
+          "type": "string"
+        },
+        "model": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "provider": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "reasoningEffort": {
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "workspace": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "workspace",
+        "paths",
+        "instructions",
+        "provider",
+        "model"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted": {
+          "type": "boolean"
+        },
+        "capture": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fCapture"
+        }
+      },
+      "required": [
+        "capture",
+        "accepted"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fHeader": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "changed",
+            "resync"
+          ],
+          "type": "string"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "pathCount": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "kind",
+        "observedAt",
+        "pathCount",
+        "sessionId",
+        "runId",
+        "accepted"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "trigger": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fDraft"
+        }
+      },
+      "required": [
+        "revision"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "dispatchError": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "phase": {
+          "enum": [
+            "inactive",
+            "disabled",
+            "watching",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "revision",
+        "phase"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvcnBj_5fConfigureInput": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "trigger": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fDraft"
+        }
+      },
+      "required": [
+        "expectedRevision"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvcnBj_5fEventInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    }
+  }
+}
