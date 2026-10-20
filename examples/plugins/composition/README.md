@@ -18,17 +18,17 @@ schemas own contribution data. `PluginComponent<Input, Props>` owns the ordinary
 typed React input/props contract. Runtime owns installation and point resolution;
 the host owns component resource/render lifetimes.
 
-From this directory:
+From the repository root:
 
 ```sh
-npm ci --ignore-scripts
-npm run typecheck
-npm run build
-npm run check:resources
+make setup
+npm run typecheck --workspace @flame/composition-example
+npm run build --workspace @flame/composition-example
+npm run check:resources --workspace @flame/composition-example
 ```
 
-Install the `consumer` and `provider` directories with the ordinary Plugins UI or
-`plugins install`, then enable them. Open **CompositionBoard**. The board shows the
+Install the `consumer/package` and `provider/package` directories with the ordinary
+Plugins UI or `plugins install`, then enable them. Open **CompositionBoard**. The board shows the
 Provider panel containing Consumer's inspector, wrapped by two actual Provider
 frames. **Use contributed summary** selects the independent summary. The board
 owns that local selection and explicit frame order; it does not persist another
