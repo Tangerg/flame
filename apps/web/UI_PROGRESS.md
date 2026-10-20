@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Continuous work is active in the isolated worktree. Schedules now distinguishes failed initial reads from accepted empty/filtered pages and preserves Refresh through keyboard recovery. Trajectory page scope/navigation, Files, shortcut Space and the existing pending-read/return repairs remain integrated. Final frontend checks pass 385 files / 2,919 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
+Updated: 2026-10-21. Continuous work is active in the isolated worktree. Dock background-tab closure now preserves surviving authoring/reading focus; close and move settlement respects later choices and composition-safe deletion. Schedules read/empty recovery, Trajectory page scope/navigation, Files, shortcut Space and existing return repairs remain integrated. Final frontend checks pass 385 files / 2,930 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -690,6 +690,38 @@ artwork supplies no keyboard evidence. The six better-series domains apply to
 this file-browse/read/return flow; unchanged colors, typography and control
 surfaces retain their existing owners.
 
+## Dock tab task continuity
+
+`apps/web/src/ui/agent/context-dock.tsx` keeps tab selection and close/reorder
+commands with their existing host owners. Its local post-action focus intent now
+captures the actual document origin and the affected tab's live popup. Only a tab,
+that popup or an unclaimed body can initiate settlement. The existing frame
+boundary respects later focus, including another tab, and ignores disconnected
+destinations. A closing popup can still finish its own focus entry before that
+frame without being mistaken for an unrelated choice. Popup identity is derived
+from the rendered tab ID, without a shared ref competing across menu lifetimes.
+
+The existing tab list prevents only middle-button mousedown's focus transfer;
+primary pressing, Base UI activation, overflow and drag/drop retain their owners.
+Middle-closing a background tab therefore keeps a surviving Composer or reader
+control and its text/selection context. A removed focused tab settles on the
+surviving active tab, or the available header return/Browse action when none
+remains. Delete/Backspace also respect an already consumed key and the existing
+shared `isImeKey` contract, including legacy 229. No new tab state, global listener,
+timer, geometry, theme or command policy was introduced.
+
+Read-only research inspected ZCode's actual `SidePaneTabTrigger.tsx` and
+`AnimatedSidePanePanel.tsx` for background closure and contextual actions. Its
+custom-div/all-pointer policy was not copied into Flame's native Base UI buttons.
+Installed Base UI 1.9.0 explicitly permits secondary-press focus without
+selection, which is a different fact from continued authoring focus. HeroUI's
+local overflow Tabs example and prior Radix tab/focus references inform the
+composite and overflow model rather than a new close lifecycle. ChatGPT's actual
+side-panel source remains evidence for separate material identity; it is not
+native close-focus proof. Better-series review retains current type, semantic
+surfaces, Orange/custom-blue focus and the same workbench composition. Static
+Ace references supply no keyboard evidence.
+
 ## Retained workspace and result views
 
 The native Memory query reset had two host causes. Activity hide disconnected
@@ -808,6 +840,17 @@ reachable controls and width semantics. Existing type, color and surface owners
 remain the visual basis.
 
 ## Verification checkpoint
+
+For Dock tab closure, movement and continued work (2026-10-21):
+
+- Actual baseline Wails reproduced the task break: real screenshot-coordinate middle-click closed the inactive Diff tab and kept Files selected, but moved focus from an unsent mixed-language Composer draft to Files' tab. The earlier element-index middle option performed ordinary AX activation, so it is not closure evidence. Installed source traced the unconditional deferred focus callback; no Runtime or selection-store repair was justified.
+- Bounded Claude Code CLI supplied the initial implementation and ten regressions. Primary removed a shared popup ref, captured the actual tab-qualified popup, and added a later-tab-selection regression. An overly strict intermediate guard failed two existing menu-return cases; the final intent permits that captured popup's own focus entry while rejecting a different tab or outside control. Against the frozen original, final regressions failed five cases and passed eleven. Independently allowing any later strip focus failed the new selection case and passed fifteen. Final focused checks passed **3 files / 70 tests** across Dock tabs, actual shell inspection integration and Dock storage. The stateful harness controls animation frames and verifies drafts/selection, active/last-tab returns, menu close/move, later focus, retired targets, ordinary deletion and both composition/consumed-key boundaries. The original five tests and their assertions remain intact.
+- The first full frontend invocation failed the introduced mousedown handler on a static row under the existing accessibility lint. Primary moved that interaction to the existing semantic tab list, without adding a false role or disabling the check. Corrected lint and focused checks passed. Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **385 files / 2,930 tests** and every subsequent gate, including eleven unchanged ESM resources, production bundle and module linkage. `make check-native` passed Desktop tests/vet/build and the supported Wails build; its binary is arm64 Mach-O, minimum macOS 13.0, SDK 26.5. Accepted final component/test hashes stayed unchanged during final native acceptance. Existing non-failing loopback diagnostics and duplicate `-lobjc` warnings remain separate. A denied CLI shell edit was replaced with its allowed edit tool; no check or valid assertion was bypassed.
+- Actual Wails English/light/14 px/Flame Orange qualified middle-close with continued mixed-language typing, Delete on the selected tab and Backspace on the last tab, with focus on the next tab or Browse. Context menus also retained their selected destination after Close others and Close all. The corrected final list-handler placement was then qualified in a native narrow window with **320 px Dock**, dark 18 px type/custom blue: middle-close preserved Composer focus and subsequent typing, and a separate file-detail → tree return kept the `apps` row focused while another background tab closed. Down continued to `go.mod`. The real keyboard splitter reached 320 px and retained its Blue ring.
+- Chinese/light/14 px/explicit Orange qualified background closure with a retained draft. At **200%** the existing presentation owner retreated to the conversation while keeping that draft and input focus; resetting zoom restored Files and the remaining Trajectory tab without resurrecting closed Diff. This is a zoom/retention qualification, not a claim that the tab strip stays presented in the narrow 200% layout.
+- The final clean fixture omitted all temporary scene links and used canonical responses without gates or overrides. A real right-click menu moved Trajectory left, retained the moved tab's focus, then closed other panels and all panels with valid returns. Browse → keyboard Files reopened the material through the actual catalog; keyboard close and the existing Back to panel list return reached Browse again. Native explicit close-button rendering was observed, but its AX-only invocation is not reported as a separate pointer-close qualification. Unit coverage qualifies that button's active/last-tab focus contract. Native zoom was reset before quit.
+- These are production UI components and native mouse/keyboard actions over isolated canonical fixtures, without a live user Runtime or business command. Composing/legacy229, queued later-focus and retired-target cases are deterministic component regressions, not native OS input-method or frame-delay injection. VoiceOver, measured pixel contrast, other-platform GUIs, browser/visual suites, performance baselines and unrelated standalone root/CLI/SDK suites were not run. Shared UI primitives, Runtime, protocol, stored preferences and installed resources are unchanged; no migration or release replacement is required.
+- Cleanup completed: owned CLI/native/check/build processes exited, the app was unregistered, and its bundle, data, overlays, temporary sources, prompts/reports, scene links and logs were removed. Newly created bundle-specific Caches/WebKit paths passed preexistence/UID/birth-time guards; HTTP storage, preferences and saved state were absent. Worktree-generated fixture, shared-package, Web/native outputs and Vite caches were removed. Installed dependencies, shared compiler/package caches, read-only references, user data and unrelated work remain. Continue from complete observed workspace tasks; do not turn an instrumentation ambiguity into a product defect.
 
 For Trajectory page scope and navigation (2026-10-21):
 
