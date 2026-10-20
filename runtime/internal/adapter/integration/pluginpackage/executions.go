@@ -53,8 +53,7 @@ func (r *Releases) executionDirectory() string {
 }
 
 // ReclaimExecutions collects crash leftovers. A per-tree directory lease
-// protects every live copy, including copies held by another Runtime using the
-// same data directory. The namespace lease makes creation and collection one
+// protects every live copy. The namespace lease makes creation and collection one
 // atomic handoff; it is never held while copying package bytes.
 func (r *Releases) ReclaimExecutions(ctx context.Context) (err error) {
 	if err := r.validateDirectory(); err != nil {

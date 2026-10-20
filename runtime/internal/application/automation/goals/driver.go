@@ -39,10 +39,10 @@ var (
 	// ErrGoalConflict reports that a concurrent lifecycle transition won the goal's
 	// compare-and-swap; the caller read a version that was already superseded.
 	ErrGoalConflict = errors.New("goals: goal changed concurrently")
-	// ErrGoalOwned reports that another Runtime process owns the autonomous
+	// ErrGoalOwned reports that an existing owner holds the autonomous
 	// drive for this Session. The durable Goal remains readable, but lifecycle
 	// mutation must not create a second driver.
-	ErrGoalOwned = errors.New("goals: goal drive is owned by another runtime")
+	ErrGoalOwned = errors.New("goals: goal drive is already owned")
 	// ErrClosed reports a lifecycle command after the driver has stopped accepting
 	// work. A caller must never be told an active Goal was accepted when no drive
 	// can be attached to drive it.

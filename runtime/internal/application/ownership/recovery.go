@@ -14,7 +14,7 @@ import (
 
 const recoveryInterval = time.Second
 
-// RecoveryBackend elects one Runtime process to perform a recovery sweep.
+// RecoveryBackend serializes Runtime's recovery sweeps.
 type RecoveryBackend interface {
 	TryRecoverySweep() (Lease, bool, error)
 	AcquireRecoverySweep(ctx context.Context) (Lease, error)
@@ -31,7 +31,7 @@ type GoalRecovery interface {
 }
 
 // RecoveryCoordinator is the single ordered recovery entry point shared by startup and
-// survivor sweeps. The process winner always reconciles Runs before Goals.
+// periodic sweeps. Each admitted sweep reconciles Runs before Goals.
 type RecoveryCoordinator struct {
 	runs      RunRecovery
 	goals     GoalRecovery
@@ -54,7 +54,7 @@ func NewRecovery(runs RunRecovery, goals GoalRecovery, ownership RecoveryBackend
 }
 
 // Reconcile performs one non-blocking recovery sweep. acquired is false when
-// another Runtime already owns the sweep; that process is responsible for the
+// another sweep already holds ownership and is responsible for the
 // current pass.
 func (c *RecoveryCoordinator) Reconcile(ctx context.Context) (acquired bool, err error) {
 	if err := recoveryContextError(ctx); err != nil {
@@ -70,9 +70,8 @@ func (c *RecoveryCoordinator) Reconcile(ctx context.Context) (acquired bool, err
 	return true, c.reconcileOwned(ctx, lease)
 }
 
-// ReconcileStartup waits for the current recovery winner, then performs its
-// own ordered pass before this Runtime begins serving requests. The second pass
-// is intentional: candidates may have appeared after the prior winner's read.
+// ReconcileStartup joins any current recovery sweep, then reconciles Runs before
+// Goals before Runtime begins serving requests.
 func (c *RecoveryCoordinator) ReconcileStartup(ctx context.Context) error {
 	if err := recoveryContextError(ctx); err != nil {
 		return err
@@ -84,8 +83,8 @@ func (c *RecoveryCoordinator) ReconcileStartup(ctx context.Context) error {
 	return c.reconcileOwned(ctx, lease)
 }
 
-// RunWorker continuously detects process death by attempting the same kernel
-// leases held by live Run and Goal owners. A contended lease is definitive
+// RunWorker reconciles ownerless Run and Goal state through the same kernel
+// leases held by live logical owners. A contended lease is definitive
 // liveness evidence; no heartbeat or expiry clock participates. A failed sweep
 // remains observable and is retried at the next interval.
 func (c *RecoveryCoordinator) RunWorker(ctx context.Context) {

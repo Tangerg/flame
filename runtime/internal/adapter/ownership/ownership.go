@@ -1,5 +1,5 @@
-// Package ownership maps application ownership identities to cross-process
-// advisory leases rooted in one shared Runtime data directory.
+// Package ownership maps application ownership identities to kernel leases
+// within Runtime's exclusively owned data directory.
 package ownership
 
 import (
@@ -20,9 +20,8 @@ import (
 
 const ownershipDirectory = "ownership"
 
-// LeaseSet owns the stable lock-file layout shared by every Runtime process
-// using the same data directory. Lock files carry no ownership state; the OS
-// lock on their first byte is authoritative and is released on process death.
+// LeaseSet owns the stable lock-file layout for Runtime's logical owners.
+// Lock files carry no ownership state; kernel leases end on release or process death.
 type LeaseSet struct {
 	sessions     string
 	workingTrees string
@@ -73,7 +72,7 @@ func (l *LeaseSet) TryGoalDrive(sessionID string) (goals.DriveLease, bool, error
 	return tryLease(l.goalDrives, sessionID, false)
 }
 
-// TryRecoverySweep elects one Runtime to reconcile abandoned Runs before Goals.
+// TryRecoverySweep admits one ordered reconciliation of Runs before Goals.
 func (l *LeaseSet) TryRecoverySweep() (appownership.Lease, bool, error) {
 	lease, err := advisorylock.TryDirectory(l.recovery)
 	if err != nil {

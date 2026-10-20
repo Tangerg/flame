@@ -408,7 +408,7 @@ acquire content under their own context. This resource claim transfers once into
 session ledger and is retired after process teardown, including failed handshakes, rejected or superseded
 attempts, detach and shutdown. Retained source descriptors contain neither the claim nor
 relocated paths and cannot launch installation stdio. Startup collects abandoned execution
-copies using directory leases, preserving copies held by another Runtime. This protects
+copies after acquiring the data-directory lifetime lease. This protects
 the launch from changes to published bytes; stdio still runs as trusted local code, without
 an OS sandbox.
 
@@ -417,7 +417,7 @@ contention returns no lease and no error; descriptor or handle cleanup failures 
 errors and cannot be mistaken for contention. Owned Unix directory descriptors are closed
 once after attempting unlock, with both failures retained. Borrowed-file unlocks and
 Windows mutex releases remain retryable while their resource permits it. Repeated
-release calls return the settled result without more OS calls. Data-directory setup
+release calls return the settled result without more OS calls. Data-directory ownership
 delegates release to its lease rather than maintaining a second release state.
 
 The registry resolves each server by its origin, realizing an installation

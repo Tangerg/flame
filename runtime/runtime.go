@@ -25,8 +25,8 @@ var (
 
 // Config identifies the host paths used by one in-process Runtime.
 type Config struct {
-	// DataDirectory holds Runtime durability and must be absolute. It is required
-	// and may be shared by other Runtime processes using the same storage epoch.
+	// DataDirectory holds Runtime durability and must be absolute. One Runtime
+	// exclusively owns it from before initialization through complete shutdown.
 	DataDirectory string
 	// DefaultWorkspacePath is used when a request omits its workspace. Empty uses
 	// UserHomePath.
