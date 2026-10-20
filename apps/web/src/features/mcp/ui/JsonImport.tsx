@@ -96,7 +96,8 @@ function JsonImportGeneration({ currentCommands }: { currentCommands: MCPServerC
   return (
     <>
       <TextButton
-        disabled={!currentCommands || busy}
+        disabled={!currentCommands}
+        pending={busy}
         onClick={() => {
           if (currentCommands) {
             setError(undefined);
