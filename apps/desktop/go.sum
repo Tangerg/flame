@@ -1,7 +1,7 @@
 git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 h1:N3IGoHHp9pb6mj1cbXbuaSXV/UMKwmbKLf53nQmtqMA=
 git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3/go.mod h1:QtOLZGz8olr4qH2vWK0QH0w0O4T9fEIjMuWpKUsH7nc=
-github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261020.6 h1:NuguAgPxDiVCAtRbWeleSKzGNQs6HUy8HDY4e/y5o0E=
-github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261020.6/go.mod h1:TzRyIfLc37kZQZC4JwwtOcaiS6NgoHtwAxvEZ7ZAUF0=
+github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261021.1 h1:lfFiOPIj3k17KRKiIDDuAwaix6MIOX3OXUImA0xtLfU=
+github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261021.1/go.mod h1:TzRyIfLc37kZQZC4JwwtOcaiS6NgoHtwAxvEZ7ZAUF0=
 github.com/adrg/xdg v0.5.3 h1:xRnxJXne7+oWDatRhR1JLnvuccuIeCoBu2rtuLqQB78=
 github.com/adrg/xdg v0.5.3/go.mod h1:nlTsY+NNiCBGCK2tpm09vRqfVzrc2fLmXGpBLF0zlTQ=
 github.com/coder/websocket v1.8.15 h1:6B2JPeOGlpff2Uz6vOEH1Vzpi0iUz20A+lPVhPHtNUA=

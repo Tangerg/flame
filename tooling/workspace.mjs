@@ -332,6 +332,8 @@ async function goMembers(native) {
     if (requiresNative !== native) continue;
     for (const operation of ["test", "vet", "build"]) {
       const args = [operation, "-mod=readonly"];
+      // Process-backed fixtures own their compiler and backend concurrency.
+      if (operation === "test") args.push("-p=1");
       if (native && operation === "build") {
         const output = join(root, "out/native-check");
         await mkdir(output, { recursive: true });
