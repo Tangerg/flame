@@ -40,6 +40,13 @@ wrapping metadata line under Recorded activity. Failed, timed-out and lost Runs 
 canceled tools remain neutral. Attention includes timed-out Runs and retains
 incomplete, refused or errored tools without changing their recorded state.
 
+The visible page summary identifies the last accepted cursor range. Refresh
+rereads that page and its captured descendant scope. Newer/Older navigation
+updates the summary only after acceptance and moves reading focus there while
+the initiating action still owns it. Failed reads retain the accepted page and
+leave their action available for retry; later focus choices remain authoritative.
+Filters and counts apply to that page, without implying a total page count.
+
 Run summaries retain their full accepted Run ID alongside provider/model, state
 and time. Summary metadata groups identities, timestamps and approval decisions
 as separate wrapping values; long identities retain complete wrapping text.

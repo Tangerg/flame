@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   mutationSettlementIsUnknown,
   type ComponentContext,
@@ -460,12 +467,16 @@ export function Trajectory({ context }: { context: ComponentContext }) {
   }, [context]);
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
+  const arrival = useRef<HTMLElement>(undefined);
+  const summary = useRef<HTMLParagraphElement>(null);
   const load = useCallback(
     async (
       cursors: (string | undefined)[] = [undefined],
       capturedDescendants?: boolean,
+      origin?: HTMLElement,
     ) => {
       reading.current?.abort();
+      arrival.current = undefined;
       const controller = new AbortController();
       reading.current = controller;
       const signal = AbortSignal.any([context.signal, controller.signal]);
@@ -489,11 +500,13 @@ export function Trajectory({ context }: { context: ComponentContext }) {
             signal,
           ),
         );
-        if (!signal.aborted)
+        if (!signal.aborted) {
+          arrival.current = origin;
           setRead({
             loading: false,
             accepted: { page, cursors, includeDescendants },
           });
+        }
       } catch (error) {
         if (!signal.aborted)
           setRead((previous) => ({
@@ -513,6 +526,13 @@ export function Trajectory({ context }: { context: ComponentContext }) {
     return () => reading.current?.abort();
   }, [load]);
   const accepted = read.accepted;
+  useLayoutEffect(() => {
+    const origin = arrival.current;
+    arrival.current = undefined;
+    const active = origin?.ownerDocument.activeElement;
+    if (origin && (active === origin || active === origin.ownerDocument.body))
+      summary.current?.focus();
+  }, [accepted]);
   const rows = accepted?.page.data ?? [];
   const runOptions = [
     { value: "all", label: "All Runs" },
@@ -559,8 +579,12 @@ export function Trajectory({ context }: { context: ComponentContext }) {
               icon={Refresh}
               aria-label="Refresh"
               size="md"
-              disabled={read.loading}
-              onClick={() => void load()}
+              pending={read.loading}
+              onClick={() =>
+                void (accepted
+                  ? load(accepted.cursors, accepted.includeDescendants)
+                  : load())
+              }
             />
           }
         >
@@ -597,12 +621,10 @@ export function Trajectory({ context }: { context: ComponentContext }) {
       )}
       {accepted && (
         <>
-          <Metadata
-            role="status"
-            className={read.error ? undefined : "sr-only"}
-          >
-            {accepted.page.data.length} recorded observations loaded on page{" "}
-            {accepted.cursors.length}.
+          <Metadata ref={summary} tabIndex={-1} role="status">
+            {accepted.page.data.length} recorded{" "}
+            {accepted.page.data.length === 1 ? "observation" : "observations"}{" "}
+            loaded on page {accepted.cursors.length}.
             {read.error && " Showing the last accepted page."}
           </Metadata>
           <TrajectoryReport
@@ -617,22 +639,26 @@ export function Trajectory({ context }: { context: ComponentContext }) {
               {" "}
               <Toolbar label="Trajectory pages">
                 <Button
-                  disabled={read.loading || accepted.cursors.length === 1}
-                  onClick={() =>
+                  pending={read.loading}
+                  disabled={accepted.cursors.length === 1}
+                  onClick={(event) =>
                     void load(
                       accepted.cursors.slice(0, -1),
                       accepted.includeDescendants,
+                      event.currentTarget,
                     )
                   }
                 >
                   Newer records
                 </Button>
                 <Button
-                  disabled={read.loading || !accepted.page.nextCursor}
-                  onClick={() =>
+                  pending={read.loading}
+                  disabled={!accepted.page.nextCursor}
+                  onClick={(event) =>
                     void load(
                       [...accepted.cursors, accepted.page.nextCursor!],
                       accepted.includeDescendants,
+                      event.currentTarget,
                     )
                   }
                 >
