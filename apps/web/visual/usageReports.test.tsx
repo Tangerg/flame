@@ -261,6 +261,165 @@ it("reads a named report at the pane top and returns to the same archive row", a
   ).toBeTruthy();
 });
 
+function heldReads() {
+  const reads: Array<ReturnType<typeof deferred<CallPluginResponse>>> = [];
+  const { calls } = mount((request) => {
+    if (request.method === "flame.usage-reports/list.v1") return reply([daily, weekly]);
+    const read = deferred<CallPluginResponse>();
+    reads.push(read);
+    return read.promise;
+  });
+  return { reads, calls };
+}
+
+const exact = (header: Header): Report => {
+  const report = saved(header);
+  return {
+    ...report,
+    summary: { ...report.summary, total: { inputTokens: 9007199254740993n, outputTokens: 0 } },
+  };
+};
+
+function activateRepeatedly(button: HTMLElement) {
+  fireEvent.pointerDown(button, { pointerType: "mouse" });
+  fireEvent.click(button);
+  for (const key of ["Enter", " "]) {
+    fireEvent.keyDown(button, { key });
+    fireEvent.keyUp(button, { key });
+    fireEvent.click(button);
+  }
+}
+
+it("keeps a held report refresh focusable, single and on the accepted report", async () => {
+  const { reads, calls } = heldReads();
+  fireEvent.click(await screen.findByRole("button", { name: /^View report: Weekly report · / }));
+  const heading = screen.getByRole("heading", { name: /^Weekly report · / });
+  const refresh = screen.getByRole<HTMLButtonElement>("button", { name: "Refresh report" });
+  expect(refresh.disabled).toBe(false);
+  expect(refresh.getAttribute("aria-disabled")).toBe("true");
+  activateRepeatedly(refresh);
+  expect(calls("get")).toHaveLength(1);
+  reads[0]!.reject(new Error("report offline"));
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "The saved report could not be read: report offline.",
+  );
+  expect(screen.queryByText("Total cost (USD)")).toBeNull();
+
+  refresh.focus();
+  fireEvent.click(refresh);
+  expect(screen.queryByRole("alert")).toBeNull();
+  reads[1]!.resolve({ output: stringifyJSON(exact(weekly)) });
+  await screen.findByText("9,007,199,254,740,993");
+
+  fireEvent.click(refresh);
+  expect(document.activeElement).toBe(refresh);
+  expect(refresh.disabled).toBe(false);
+  expect(refresh.getAttribute("aria-disabled")).toBe("true");
+  expect(screen.getByText("Reading saved report…")).toBeTruthy();
+  expect(screen.getByText("9,007,199,254,740,993")).toBeTruthy();
+  activateRepeatedly(refresh);
+  expect(calls("get")).toHaveLength(3);
+  reads[2]!.resolve({ output: stringifyJSON(exact(weekly)) });
+  await waitFor(() => expect(screen.queryByText("Reading saved report…")).toBeNull());
+  expect(document.activeElement).toBe(refresh);
+  expect(refresh.getAttribute("aria-disabled")).toBeNull();
+  expect(screen.getByText("9,007,199,254,740,993")).toBeTruthy();
+
+  fireEvent.click(refresh);
+  reads[3]!.reject(new Error("report offline again"));
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "The saved report could not be refreshed: report offline again. The last accepted report remains visible.",
+  );
+  expect(document.activeElement).toBe(refresh);
+  expect(screen.getByText("9,007,199,254,740,993")).toBeTruthy();
+
+  fireEvent.click(refresh);
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByText("9,007,199,254,740,993")).toBeTruthy();
+  reads[4]!.resolve({ output: stringifyJSON(exact(weekly)) });
+  await waitFor(() => expect(screen.queryByText("Reading saved report…")).toBeNull());
+  expect(document.activeElement).toBe(refresh);
+  expect(screen.queryByRole("alert")).toBeNull();
+
+  fireEvent.click(refresh);
+  const remove = screen.getByRole("button", { name: "Remove saved report" });
+  remove.focus();
+  reads[5]!.resolve({ output: stringifyJSON(exact(weekly)) });
+  await waitFor(() => expect(screen.queryByText("Reading saved report…")).toBeNull());
+  expect(document.activeElement).toBe(remove);
+
+  refresh.focus();
+  fireEvent.click(refresh);
+  const back = screen.getByRole("button", { name: "Back to archive" });
+  back.focus();
+  reads[6]!.resolve({ output: stringifyJSON(exact(weekly)) });
+  await waitFor(() => expect(screen.queryByText("Reading saved report…")).toBeNull());
+  expect(document.activeElement).toBe(back);
+  expect(screen.getByRole("heading", { name: /^Weekly report · / })).toBe(heading);
+  expect(screen.getByText("Weekly · last 7 days")).toBeTruthy();
+  expect(calls("get").map(([request]) => reportId(request))).toEqual(Array(7).fill(weekly.id));
+});
+
+it("retires a pending report refresh on Back and returns to the same archive row", async () => {
+  const { reads, calls } = heldReads();
+  const pane = screen.getByRole("region", { name: "Saved usage reports" }).parentElement!;
+  pane.style.overflowY = "auto";
+  const opener = await screen.findByRole("button", { name: /^View report: Weekly report · / });
+  fireEvent.click(screen.getByRole("combobox", { name: "Capture period" }));
+  const option = await screen.findByRole("option", { name: "Weekly · last 7 days" });
+  fireEvent.pointerDown(option, { pointerType: "mouse" });
+  fireEvent.click(option);
+  await waitFor(() =>
+    expect(screen.getByRole("combobox", { name: "Capture period" }).textContent).toContain(
+      "Weekly · last 7 days",
+    ),
+  );
+  pane.scrollTop = 480;
+  opener.focus();
+  fireEvent.click(opener);
+  reads[0]!.resolve({ output: stringifyJSON(exact(weekly)) });
+  await screen.findByText("9,007,199,254,740,993");
+
+  const refresh = screen.getByRole("button", { name: "Refresh report" });
+  refresh.focus();
+  fireEvent.click(refresh);
+  expect(calls("get")).toHaveLength(2);
+  const signal = calls("get")[1]![1]!.signal!;
+  expect(signal.aborted).toBe(false);
+  const back = screen.getByRole("button", { name: "Back to archive" });
+  back.focus();
+  fireEvent.click(back);
+  expect(signal.aborted).toBe(true);
+  expect(document.activeElement).toBe(opener);
+  expect(pane.scrollTop).toBe(480);
+  expect(screen.getByRole("combobox", { name: "Capture period" }).textContent).toContain(
+    "Weekly · last 7 days",
+  );
+
+  await act(async () => {
+    reads[1]!.resolve({ output: stringifyJSON(exact(weekly)) });
+    await reads[1]!.promise;
+  });
+  expect(screen.queryByRole("heading", { name: /^(Daily|Weekly) report · / })).toBeNull();
+  expect(document.activeElement).toBe(opener);
+  fireEvent.click(screen.getByRole("button", { name: /^View report: Daily report · / }));
+  reads[2]!.resolve({ output: stringifyJSON(saved(daily)) });
+  await screen.findByText("Total cost (USD)");
+  expect(screen.getByRole("heading", { name: /^Daily report · / })).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: /^Weekly report · / })).toBeNull();
+  expect(screen.queryByText("9,007,199,254,740,993")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Back to archive" }));
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: /^View report: Daily report · / }),
+  );
+  expect(pane.scrollTop).toBe(480);
+  expect(calls("get").map(([request]) => reportId(request))).toEqual([
+    weekly.id,
+    weekly.id,
+    daily.id,
+  ]);
+});
+
 it("keeps a failed archive read distinct from an empty archive and retains accepted rows", async () => {
   const outcomes: Array<() => Promise<CallPluginResponse>> = [
     () => Promise.reject(new Error("archive offline")),

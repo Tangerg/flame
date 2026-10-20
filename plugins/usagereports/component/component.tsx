@@ -404,7 +404,7 @@ function Archive({ context }: { context: BoundContext }) {
               label="Report navigation"
               actions={
                 <Button
-                  disabled={opened.loading}
+                  pending={opened.loading}
                   onClick={() => void read(opened.header.id)}
                 >
                   Refresh report

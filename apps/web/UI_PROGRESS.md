@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Continuous work is active in the isolated worktree. Files retains keyboard continuity through row removal and collapse; global shortcuts preserve Space; Skills, Usage and Diff Refresh retain focus and parent navigation during reads. Final frontend checks pass 383 files / 2,905 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
+Updated: 2026-10-21. Continuous work is active in the isolated worktree. Files retains keyboard continuity through row removal and collapse; global shortcuts preserve Space; Skills, Usage, saved usage reports and Diff Refresh retain focus during reads, with their existing returns intact. Final frontend checks pass 383 files / 2,907 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -535,12 +535,20 @@ shared wrapping, scrolling, focus, pending fields and submission retain their
 owners. No backend-only page, schema form, command or protocol was added.
 
 Saved usage reports now separate the retained archive from a named reading view.
-`plugins/usagereports/src/component.tsx` keeps the capture period, archive rows,
+`plugins/usagereports/component/component.tsx` keeps the capture period, archive rows,
 source button and actual ancestor scroll positions while a report is open. Its
 existing `Panel` controls own Back, Refresh and the report's period/observation
 identity. Entry resets the pane to the top and focuses the heading only while
 that intent still owns focus; later data acceptance does not reclaim it. Back
 restores the available source or falls back to Refresh archive.
+
+Refresh report now uses the shared Button's existing `pending` contract. Its
+active read preserves keyboard position while refusing repeated activation;
+success, failure and explicit retry need no compensating focus effect. Back
+still retires the report read and restores the original archive row, period and
+scroll positions; a late result cannot reopen the report. Later focus choices
+remain authoritative. Archive refresh, capture, removal and original-command
+recovery keep their existing semantics.
 
 Initial archive loading, failed reads and an accepted empty archive are distinct.
 Failed report refresh keeps the accepted report and a reachable retry. Reading
@@ -804,6 +812,19 @@ For existing plugin management:
 - All fourteen owned process records exited. The bundle `io.github.tangerg.flame.plugin-management-review.c056753af2ce` was unregistered; new Caches/WebKit directories were removed after UID/birth checks, while HTTP storage, preferences and saved state were absent. The private root `/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-plugin-management-review-mrvms995`, pinned sources, fixtures, overlays, binaries, disposable homes, prompts/reports and logs were removed. Shared outputs/dependency caches, references, user data and unrelated processes remain intact. Do not query any old app binding and accidentally relaunch a deleted scene.
 
 For saved usage report tasks:
+
+Pending report Refresh continuity (2026-10-21):
+
+- Actual Wails reproduced a focused Weekly report Refresh moving focus to the page root as soon as its held read began. Completion left Tab at the fixture sidebar. The responsible local native disablement is now the shared Button's existing `pending`; no focus state/effect, read owner, Back policy, archive refresh, capture, removal or recovery contract changed. The portable ESM was rebuilt.
+- Bounded Claude Code CLI changed only the report component and its tests. The existing baseline passed seven cases. Primary independently reran the new regressions against the frozen original: **1 failed / 8 passed** on native disablement. Final report/shared Button validation passed **2 files / 14 tests**. Coverage retains exact wide numbers and adds first-read failure without accepted totals, accepted report identity through held refresh/success/failure/retry, duplicate pointer/Enter/Space refusal, later action focus, Back abort, archive row/period/scroll restoration and late-result retirement before another report opens. Happy DOM establishes the focusable/unavailable contract; actual Wails establishes native focus retention.
+- The CLI reported one denied piped command and reran the exact allowed test command. Primary review corrected strict array-index types in the new tests after the first full gate caught them; no assertion or compiler option was weakened. Final formatting, plugin build/check and all eleven exact resources passed. Serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **383 files / 2,907 tests**, every subsequent gate, 1,071 keys across eight locales, production bundle and module linkage. `make check-native` passed; `vtool` confirmed arm64 Mach-O, macOS 13.0 minimum and SDK 26.5. Three final source/test/resource hashes remained unchanged through clean acceptance. Existing duplicate `-lobjc` and recurring non-failing loopback diagnostics remain separate.
+- Actual final Wails qualified English/light/14 px/Orange at a 523 px Dock: the lower Weekly report retained its name, accepted totals and focused Refresh through held reads, repeat refusal, failure and explicit retry. First-read failure displayed no accepted totals. Pointer Back and a separate pure-keyboard Refresh → Shift+Tab → Back returned to the same bottom row and retained Weekly capture period. Completing a retired read did not reopen the report. A later mixed CJK/English Composer draft and its focus survived completion without submission.
+- Window → Move & Resize → Left and keyboard resize Home qualified a **320 px Dock**, dark 18 px/custom blue, wrapped report identity, a visible Blue pending ring, actual body scrolling and keyboard return to the original bottom row. Chinese/light/14 px/explicit Orange qualified **200%** main content, pending Refresh, reading/scrolling and Back. A final clean scene removed every temporary gate, hotkey, counter, startup diagnostic and scene link. At the system-narrowed window and 200%, it retained visible Back/Refresh/report identity while reading the lower totals, and keyboard Back restored the original Weekly row, Orange ring, capture period and archive position. Zoom was reset before quitting. Portable copy remains English under its existing public context.
+- Review reuses the earlier task and semantic-color evidence, with HeroUI's actual pending-button example and ZCode's actual `UsageChartLoadBoundary.tsx` for named action/loading/error boundaries. They do not prove native focus behavior. Better-series review confirms the existing names, 14/18 px type, light/dark/custom accent, wrapping and sticky controls; no new composition or component system was introduced. An attempted reverse Tab after pointer-clicked Refresh repeated the already qualified clicked-label platform limitation; pure keyboard and pointer Back passed without a workaround.
+- Native inputs are canonical isolated plugin responses in the real Wails host, not a live saved archive, capture/removal, pricing operation or admitted release replacement. Existing exact-number and original-command regressions remain intact; those mutation paths were not newly exercised natively. VoiceOver, OS IME, pixel-contrast measurement, other-platform GUIs, browser/visual suites, performance baselines and unrelated root/CLI/SDK checks were not run. Initial preflight lacked generated shared UI, and the temporary fixture then lacked a React import; staging and correcting that private input resolved them before baseline acceptance. No product fallback was added.
+- Cleanup completed: owned CLI/check/build/native processes exited, the app was unregistered, new Caches/WebKit paths passed preexistence/UID/birth guards, and HTTP storage/preferences/saved state were absent. The bundle, disposable home, frozen source, overlays, fixture inputs, diagnostics, prompts/reports, logs and generated worktree outputs were removed. Installed dependencies, shared caches, read-only references, user data and unrelated work remain. No protocol or persisted-data migration is needed; existing package digest selection/reload requirements still apply. Continue from native task evidence before changing other controls.
+
+Earlier report composition and removal evidence:
 
 - Scope is existing plugin UI only. The ten optional backends contain three public pages (Memory, Schedules and Saved usage reports); the other seven remain backend-only. This batch changed only the report component, its focused tests, its generated ESM and this handoff.
 - Actual Wails baseline at a 523 px Dock with 15 observed reports placed the selected first report's heading at y=1480 and Remove at y=2008, retaining focus on View report. Removal had no separate decision and left document focus. This is observed fixture state, not a claim about who created its extra captures.
