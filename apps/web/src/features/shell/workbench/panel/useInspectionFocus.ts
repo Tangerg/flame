@@ -130,9 +130,16 @@ export function useInspectionFocus({
     const target = (fullPaneViewId ? mainViewRef : dockVisible ? dockRef : conversationRef).current;
     if (!target) return;
     const doc = target.ownerDocument;
+    const active = doc.activeElement;
+    // Full-pane presentation hides other owned content before WebKit settles focus.
+    const hiddenOrigin =
+      fullPaneViewId !== null &&
+      !target.contains(active) &&
+      [conversationRef.current, dockRef.current].some((pane) => pane?.contains(active));
     if (
-      doc.activeElement === doc.body ||
-      (previous.fullPaneViewId === null && doc.activeElement === dockRef.current)
+      active === doc.body ||
+      (previous.fullPaneViewId === null && active === dockRef.current) ||
+      hiddenOrigin
     ) {
       target.focus({ preventScroll: true });
     }

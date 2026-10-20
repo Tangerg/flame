@@ -230,6 +230,82 @@ it("preserves outside focus when a main view is presented", () => {
   expect(document.activeElement).toBe(outside);
 });
 
+describe("main presentation focus handoff", () => {
+  beforeEach(() => {
+    model.views.push({
+      id: "settings",
+      title: "Settings",
+      component: () => <button>Settings controls</button>,
+    });
+  });
+
+  it("enters a main view when focus belonged to the conversation it hides", () => {
+    render(<ChatPanel onSend={() => true} />);
+    const control = screen.getByRole("button", { name: "Other control" });
+    act(() => control.focus());
+    act(() => openWorkspaceView("settings"));
+
+    expect(screen.queryByRole("region", { name: "Conversation" })).toBeNull();
+    expect(control.isConnected).toBe(true);
+    expect(document.activeElement).toBe(screen.getByRole("region", { name: "Settings" }));
+  });
+
+  it("enters a different main view from a retained Dock child", () => {
+    openWorkspaceViewInDock("subagents");
+    render(<ChatPanel onSend={() => true} />);
+    const child = screen.getByRole("button", { name: "Evidence 0" });
+    fireEvent.click(child);
+    act(() => child.focus());
+    act(() => openWorkspaceView("settings"));
+
+    expect(child.isConnected).toBe(true);
+    expect(screen.queryByRole("button", { name: "Evidence 1" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("region", { name: "Settings" }));
+
+    fireEvent.click(within(windowHeader()!).getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(child);
+  });
+
+  it("enters a main view from the retained panel catalog without losing its query", () => {
+    showWorkspaceDock();
+    render(<ChatPanel onSend={() => true} />);
+    const search = screen.getByRole<HTMLInputElement>("combobox", { name: "Find a panel…" });
+    fireEvent.change(search, { target: { value: "Files" } });
+    act(() => search.focus());
+    act(() => openWorkspaceView("settings"));
+
+    expect(search.isConnected).toBe(true);
+    expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("region", { name: "Settings" }));
+
+    fireEvent.click(within(windowHeader()!).getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("combobox", { name: "Find a panel…" })).toBe(search);
+    expect(search.value).toBe("Files");
+  });
+
+  it("keeps a child that stays visible while its material moves into the Dock", () => {
+    openWorkspaceView("file");
+    render(<ChatPanel onSend={() => true} />);
+    const controls = screen.getByRole("button", { name: "File controls" });
+    act(() => controls.focus());
+    act(() => openWorkspaceViewInDock("file"));
+
+    expect(navigator().get().view).toBeNull();
+    expect(screen.getByRole("complementary", { name: "Files" }).contains(controls)).toBe(true);
+    expect(document.activeElement).toBe(controls);
+  });
+
+  it("does not replay the handoff while the same main view updates", () => {
+    openWorkspaceView("settings");
+    const view = render(<ChatPanel onSend={() => true} />);
+    const controls = screen.getByRole("button", { name: "Settings controls" });
+    act(() => controls.focus());
+    view.rerender(<ChatPanel onSend={() => true} />);
+
+    expect(document.activeElement).toBe(controls);
+  });
+});
+
 it("retains a main-only source while inspecting a file and restores the same source on return", () => {
   function SourceMaterial() {
     const [query, setQuery] = useState("");
