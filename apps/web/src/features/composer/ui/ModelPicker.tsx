@@ -12,7 +12,6 @@ import { useRecentModelsStore, type RecentModel } from "@/features/composer/adap
 import { AgentComposerChip } from "@/ui/agent/index";
 import { useSetComposerModelPreference } from "@/features/composer/public/modelPreference";
 import { useSelectedModelSelection } from "@/features/composer/public/selectedModel";
-type Selection = NonNullable<ReturnType<typeof useSelectedModelSelection>>;
 
 function modelItemId(model: SelectableModel): string {
   return JSON.stringify([model.provider, model.id]);
@@ -20,8 +19,8 @@ function modelItemId(model: SelectableModel): string {
 
 const RECENT_GROUP_ID = "__recent";
 
-function modelItem(model: SelectableModel, selection: Selection, t: Translate) {
-  const active = model.provider === selection.model.provider && model.id === selection.model.id;
+function modelItem(model: SelectableModel, selected: SelectableModel | undefined, t: Translate) {
+  const active = model.provider === selected?.provider && model.id === selected.id;
   return {
     id: modelItemId(model),
     label: model.label,
@@ -35,7 +34,7 @@ function modelItem(model: SelectableModel, selection: Selection, t: Translate) {
 
 function modelGroups(
   models: readonly SelectableModel[],
-  selection: Selection,
+  selected: SelectableModel | undefined,
   recent: readonly RecentModel[],
   t: Translate,
 ): CatalogPickerGroup[] {
@@ -57,7 +56,7 @@ function modelGroups(
     label: providerDisplayName(provider),
     leading: <ProviderIcon provider={provider} size="md" />,
     count: items.length,
-    items: items.map((model) => modelItem(model, selection, t)),
+    items: items.map((model) => modelItem(model, selected, t)),
   }));
 
   return shelf.length > 0
@@ -67,7 +66,7 @@ function modelGroups(
           label: t("composer.model.recent"),
           leading: <Icon name="history" size="md" />,
           count: shelf.length,
-          items: shelf.map((model) => modelItem(model, selection, t)),
+          items: shelf.map((model) => modelItem(model, selected, t)),
         },
         ...providers,
       ]
@@ -121,8 +120,8 @@ export function ModelPicker() {
   const recent = useRecentModelsStore((state) => state.recent);
   const remember = useRecentModelsStore((state) => state.remember);
   const groups = useMemo(
-    () => (selection ? modelGroups(models, selection, recent, t) : []),
-    [models, recent, selection, t],
+    () => modelGroups(models, selected, recent, t),
+    [models, recent, selected, t],
   );
   const modelsByItemId = useMemo(
     () => new Map(models.map((model) => [modelItemId(model), model])),
@@ -148,13 +147,13 @@ export function ModelPicker() {
     return <ModelPickerPlaceholder />;
   }
 
-  if (!selected) return <ModelPickerPlaceholder />;
-
   return (
     <RailCatalogPicker
       groups={groups}
       openAtGroupId={
-        groups.some((group) => group.id === selected.provider) ? selected.provider : groups[0]?.id
+        selected && groups.some((group) => group.id === selected.provider)
+          ? selected.provider
+          : groups[0]?.id
       }
       label={t("composer.switchModel")}
       heading={t("composer.model.title")}
@@ -164,7 +163,7 @@ export function ModelPicker() {
         const model = modelsByItemId.get(item.id);
         if (!model) return;
         remember({ provider: model.provider, id: model.id });
-        const reasoningEffort = model.reasoningLevelOrDefault(selection.reasoningEffort);
+        const reasoningEffort = model.reasoningLevelOrDefault(selection?.reasoningEffort);
         setModel({
           kind: "explicit",
           provider: model.provider,
@@ -175,10 +174,18 @@ export function ModelPicker() {
       trigger={
         <AgentComposerChip
           aria-label={t("composer.switchModel")}
-          title={`${selected.label} · ${providerDisplayName(selected.provider)}`}
+          title={
+            selected ? `${selected.label} · ${providerDisplayName(selected.provider)}` : undefined
+          }
           shrink="gives"
-          leading={<ProviderIcon provider={selected.provider} size="composer" />}
-          label={selected.label}
+          leading={
+            selected ? (
+              <ProviderIcon provider={selected.provider} size="composer" />
+            ) : (
+              <Icon name="server" size="composer" />
+            )
+          }
+          label={selected?.label ?? t("composer.switchModel")}
         />
       }
       side="top"
