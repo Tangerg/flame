@@ -54,7 +54,10 @@ func invocationOperation(meta methodMeta, request any) (string, error) {
 	}
 	kind, err := capability.KindFor([]byte(call.Contract), call.Method)
 	if err != nil {
-		return "", err
+		// A malformed contract or an undeclared method is a caller error; project
+		// it to the public invalid_params identity the local handler also uses,
+		// before any transport, so errors.Is/As stay recognizable to callers.
+		return "", protocol.InvalidParameters(err)
 	}
 	if kind == capability.Mutation {
 		return "command", nil
