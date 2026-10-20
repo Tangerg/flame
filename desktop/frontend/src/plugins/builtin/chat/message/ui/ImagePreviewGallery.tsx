@@ -29,7 +29,7 @@ const ig = stylex.create({
   toolbar: {
     position: "absolute",
     top: space.s3,
-    left: space.s3,
+    left: `max(${space.s3}, var(--window-controls-gutter, 0px))`,
     right: space.s3,
     zIndex: 1,
     display: "flex",
