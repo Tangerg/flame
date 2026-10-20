@@ -101,27 +101,36 @@ model *selection* is a published contract a plugin may contribute; model
 3. Do plugin UIs *after* the shared design-system component APIs have settled.
 4. Only build the event-ingress contract when a real webhook/event need appears.
 
-### Remaining scope decisions
+### Reference-guided implementation direction
 
-Both remaining candidates are unchecked pending user choices. Neither decision
-has an inferred default:
+The user directed the remaining design to the local `study/codex-server` reference
+(snapshot `7c073196a1`, location in `DEVELOPMENT.md`). Its implementation separates
+execution target, permission policy and platform enforcement. Docker and Seatbelt
+are therefore not competing choices at one boundary. Neither remaining candidate
+is complete; their boxes stay unchecked until implementation and verification.
 
-- Code execution: reuse the existing macOS Seatbelt environment, refusing other
-  platforms, or build a Docker environment with explicit resource quotas. The
-  current `sandbox.Workspace` owns a temporary copy, scrubs the child environment,
-  confines writes, hides the configured home and denies network access. It bounds
-  captured output and supports cancellation/timeouts; it does not impose CPU,
-  memory or process-count quotas. These choices establish different isolation
-  and platform contracts. A plugin would own its code environment and private
-  job facts; core Run execution remains core.
-- Event ingress: start with a token-protected loopback webhook, workspace file
-  watching, or both. Source authentication, accepted-event identity and delivery
-  failure semantics must follow that choice. Current SDK setup/callback lifetimes
-  and Schedules' captured Run acceptance provide lifecycle and dispatch precedents;
-  they do not provide external ingress. The event plugin would own trigger rules,
-  captured events and dispatch intent; canonical Run acceptance, lifecycle and
-  accounting remain core. No ingress transport has been implemented or disguised
-  as an existing Tool/callback.
+- Code execution: reuse Flame's existing native confinement mechanism for the
+  actual execution platform. The current macOS `sandbox.Workspace` owns a temporary
+  copy, scrubs the child environment, confines writes, hides the configured home,
+  denies network access and bounds output. Cancellation/timeouts are distinct from
+  CPU, memory and process-count quotas, which this mechanism does not supply.
+  Unsupported confinement must fail closed. The plugin owns its private code
+  environment and command outcomes; core Run execution remains core. A container
+  execution target is a separate future requirement, not a prerequisite invented
+  for this candidate. Reference: `sandboxing/src/manager.rs` platform selection and
+  `exec-server/src/process_sandbox.rs` enforcement refusal.
+- Event ingress: use workspace file changes as the first concrete source.
+  Codex's `fs/watch` → `fs/changed` → `fs/unwatch` protocol supplies a useful
+  connection-scoped subscription/lifetime precedent. Its `fs_watch.rs` only emits
+  notifications; starting a Turn is a separate canonical operation. Flame needs
+  its own published watch subscription mechanism, with host-owned path admission,
+  source lifetime and bounded delivery. The plugin owns trigger rules, accepted
+  event facts and captured dispatch intent; core owns canonical Run acceptance,
+  lifecycle and accounting. Coalesced OS changes are observations, not a durable
+  event log; accepted plugin dispatch intent must survive interruption/restart.
+  Watch initialization failures must be explicit rather than adopting Codex's
+  noop fallback. No external webhook listener or Tool/callback ingress shortcut
+  is required for this source.
 
 ## Workflow: dedicated worktree, sync from main anytime
 
