@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useId, useState } from "react";
+import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 import { copyText } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { ContextMenu } from "@/ui/index";
@@ -52,6 +52,8 @@ const ft = stylex.create({
 interface TreeContext {
   cwd?: string;
   focusedPath: string | null;
+  onRowRemoved: (row: HTMLElement) => void;
+  onEntryReady: (row: HTMLElement, fallback: boolean) => void;
   changes: ReadonlyMap<string, WorkspaceFileChange>;
   onFocusPath: (path: string) => void;
   onSelectFile: (path: string) => void;
@@ -63,13 +65,19 @@ function changedBelow(changes: TreeContext["changes"], directory: string): boole
   return false;
 }
 
+function holds(entry: WorkspaceFileEntry, path: string | null): path is string {
+  return path !== null && (path === entry.path || path.startsWith(`${entry.path}/`));
+}
+
 function TreeNode({
   entry,
   depth,
+  cursor,
   tree,
 }: {
   entry: WorkspaceFileEntry;
   depth: number;
+  cursor: string | null;
   tree: TreeContext;
 }) {
   const t = useT();
@@ -93,6 +101,23 @@ function TreeNode({
     error,
     refetch,
   } = useWorkspaceListFiles(expanded ? { cwd: tree.cwd, path: entry.path } : undefined);
+  const shown = expanded && !isLoading && error == null ? children : undefined;
+  const childCursor =
+    cursor !== entry.path && shown?.some((child) => holds(child, cursor)) ? cursor : null;
+  const focusable = cursor !== null && childCursor === null;
+  const standIn = focusable && entry.path !== tree.focusedPath;
+  const { onRowRemoved, onEntryReady } = tree;
+  const rowRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    return () => {
+      if (row) onRowRemoved(row);
+    };
+  }, [onRowRemoved]);
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (focusable && row) onEntryReady(row, standIn);
+  }, [focusable, standIn, onEntryReady]);
 
   const activate = () =>
     isDir
@@ -105,10 +130,11 @@ function TreeNode({
 
   const row = (
     <Tree.Item
+      ref={rowRef}
       level={depth + 1}
       expanded={isDir ? expanded : undefined}
       selected={selected}
-      focusable={entry.path === tree.focusedPath}
+      focusable={focusable}
       onActivate={activate}
       aria-label={entry.name}
       aria-describedby={status ? statusId : undefined}
@@ -185,7 +211,13 @@ function TreeNode({
           >
             {(rows) =>
               rows.map((child) => (
-                <TreeNode key={child.path} entry={child} depth={depth + 1} tree={tree} />
+                <TreeNode
+                  key={child.path}
+                  entry={child}
+                  depth={depth + 1}
+                  cursor={holds(child, childCursor) ? childCursor : null}
+                  tree={tree}
+                />
               ))
             }
           </DataView>
@@ -207,10 +239,23 @@ export function FileTree({
   const t = useT();
   const changes = useWorkingTreeFiles();
   const [focused, setFocused] = useState<string | null>(null);
-  const focusedPath = focused ?? entries[0]?.path ?? null;
+  const focusLost = useRef(false);
+  const onRowRemoved = useCallback((row: HTMLElement) => {
+    if (row.ownerDocument.activeElement === row) focusLost.current = true;
+  }, []);
+  const onEntryReady = useCallback((row: HTMLElement, fallback: boolean) => {
+    const reclaim = fallback && focusLost.current;
+    focusLost.current = false;
+    if (reclaim && row.ownerDocument.activeElement === row.ownerDocument.body) row.focus();
+  }, []);
+  const cursor = entries.some((entry) => holds(entry, focused))
+    ? focused
+    : (entries[0]?.path ?? null);
   const tree: TreeContext = {
     cwd,
-    focusedPath,
+    focusedPath: focused,
+    onRowRemoved,
+    onEntryReady,
     changes,
     onFocusPath: setFocused,
     onSelectFile,
@@ -218,7 +263,13 @@ export function FileTree({
   return (
     <Tree.Root aria-label={t("workspace.view.title.file")} {...stylex.props(ft.pad)}>
       {entries.map((entry) => (
-        <TreeNode key={entry.path} entry={entry} depth={0} tree={tree} />
+        <TreeNode
+          key={entry.path}
+          entry={entry}
+          depth={0}
+          cursor={holds(entry, cursor) ? cursor : null}
+          tree={tree}
+        />
       ))}
     </Tree.Root>
   );

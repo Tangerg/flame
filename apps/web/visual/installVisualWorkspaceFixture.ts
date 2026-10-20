@@ -287,10 +287,10 @@ function workspaceDataPlugin(
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_LIST_FILES_KEY,
         fetcher: async (params) =>
-          (params as { path?: string } | undefined)?.path === "app"
+          (params as { path?: string } | undefined)?.path === "apps"
             ? [{ path: ACTIVE_DIFF_FILE, name: "resizer.ts", type: "file", sizeBytes: 2048 }]
             : ([
-                { path: "app", name: "app", type: "dir" },
+                { path: "apps", name: "apps", type: "dir" },
                 { path: "go.mod", name: "go.mod", type: "file", sizeBytes: 4_096 },
                 { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
                 {
