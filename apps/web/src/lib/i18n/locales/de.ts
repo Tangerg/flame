@@ -107,6 +107,7 @@ export const de: Record<string, string> = {
   "composer.placeholder": "Beschreibe, was zu tun ist — @ referenziert eine Datei",
   "composer.switchModel": "Modell wechseln",
   "composer.switchReasoningEffort": "Denkintensität ändern",
+  "composer.model.unavailable": "Im aktuellen Katalog nicht verfügbar",
   "composer.model.title": "Modelle",
   "composer.model.recent": "Zuletzt verwendet",
   "composer.model.search.placeholder": "Modelle suchen…",

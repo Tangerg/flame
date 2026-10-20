@@ -105,6 +105,7 @@ export const ja: Record<string, string> = {
   "composer.placeholder": "やりたいことを書いてください — @ でファイル参照",
   "composer.switchModel": "モデルを切替",
   "composer.switchReasoningEffort": "思考強度を切替",
+  "composer.model.unavailable": "現在のカタログでは利用できません",
   "composer.model.title": "モデル",
   "composer.model.recent": "最近使用した",
   "composer.model.search.placeholder": "モデルを検索…",

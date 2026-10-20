@@ -21,7 +21,7 @@ function modelItemId(model: SelectableModel): string {
 const RECENT_GROUP_ID = "__recent";
 
 function modelItem(model: SelectableModel, selection: Selection, t: Translate) {
-  const active = model.provider === selection.model.provider && model.id === selection.model.id;
+  const active = model.provider === selection.provider && model.id === selection.modelId;
   return {
     id: modelItemId(model),
     label: model.label,
@@ -129,7 +129,7 @@ export function ModelPicker() {
     [models],
   );
 
-  if (models.length === 0) {
+  if (models.length === 0 && !selection) {
     if (isError) {
       return (
         <Button
@@ -148,13 +148,14 @@ export function ModelPicker() {
     return <ModelPickerPlaceholder />;
   }
 
-  if (!selected) return <ModelPickerPlaceholder />;
+  if (!selection) return <ModelPickerPlaceholder />;
+  const label = selected?.label ?? selection.modelId;
 
   return (
     <RailCatalogPicker
       groups={groups}
       openAtGroupId={
-        groups.some((group) => group.id === selected.provider) ? selected.provider : groups[0]?.id
+        groups.some((group) => group.id === selection.provider) ? selection.provider : groups[0]?.id
       }
       label={t("composer.switchModel")}
       heading={t("composer.model.title")}
@@ -175,10 +176,10 @@ export function ModelPicker() {
       trigger={
         <AgentComposerChip
           aria-label={t("composer.switchModel")}
-          title={`${selected.label} · ${providerDisplayName(selected.provider)}`}
+          title={`${label} · ${providerDisplayName(selection.provider)}${selected ? "" : ` · ${t("composer.model.unavailable")}`}`}
           shrink="gives"
-          leading={<ProviderIcon provider={selected.provider} size="composer" />}
-          label={selected.label}
+          leading={<ProviderIcon provider={selection.provider} size="composer" />}
+          label={label}
         />
       }
       side="top"

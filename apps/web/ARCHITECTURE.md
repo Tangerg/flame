@@ -300,6 +300,10 @@ expanded, collapsed, or absent and reserves only the corresponding window contro
 Provider identity is the exact provider/model pair. An existing Session supplies
 its own durable selection. An explicit user choice in Composer becomes a Run
 override; incomplete catalog reads do not overwrite the Session's selection.
+Composer sends its explicit provider/model pair and authored reasoning effort
+directly from its preference owner. Catalog reads only supply labels and capability
+availability. A missing model or retired effort remains the authored override;
+only a new user selection initializes defaults from the chosen catalog entry.
 
 Composer owns submission intent and accepts an injected send function. Agent
 owns the send use case. Workbench consumers call Agent's public input surface

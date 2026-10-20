@@ -52,10 +52,10 @@ export function ReasoningEffortPill() {
   const t = useT();
   const selection = useSelectedModelSelection();
   const setModel = useSetComposerModelPreference();
-  if (!selection) return null;
+  if (!selection?.model) return null;
   const { model } = selection;
   const levels = model.reasoningLevels;
-  const current = model.reasoningLevelOrDefault(selection.reasoningEffort);
+  const current = selection.reasoningEffort;
   if (current === undefined || levels.length === 0) return null;
   return (
     <DropdownMenu.Root>

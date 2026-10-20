@@ -4,7 +4,12 @@ import { ModelPicker } from "@/features/composer/ui/ModelPicker";
 import { useRecentModelsStore } from "@/features/composer/adapters/recentModels";
 const state = vi.hoisted(() => ({
   models: [] as ModelFixture[],
-  selection: null as { model: ModelFixture; reasoningEffort?: string } | null,
+  selection: null as {
+    provider: string;
+    modelId: string;
+    model: ModelFixture | undefined;
+    reasoningEffort?: string;
+  } | null,
   setModel: vi.fn(),
 }));
 
@@ -89,11 +94,36 @@ describe("ModelPicker", () => {
       model({ provider: "deepseek", id: "DeepSeek Chat" }),
       model({ provider: "deepseek", id: "DeepSeek Reasoner", reasoning: true }),
     ];
-    state.selection = { model: state.models[1]!, reasoningEffort: "high" };
+    state.selection = {
+      provider: state.models[1]!.provider,
+      modelId: state.models[1]!.id,
+      model: state.models[1]!,
+      reasoningEffort: "high",
+    };
     state.setModel.mockReset();
   });
 
   afterEach(cleanup);
+
+  it("shows an explicit identity as unavailable while an incomplete catalog omits it", () => {
+    state.models = [];
+    state.selection = {
+      provider: "custom",
+      modelId: "authored-model",
+      model: undefined,
+      reasoningEffort: "authored-effort",
+    };
+    const { rerender } = render(<ModelPicker />);
+    const selected = screen.getByRole("button", { name: "Switch model" });
+    expect(selected.textContent).toContain("authored-model");
+    expect(selected.title).toContain("Unavailable in the current catalog");
+    state.models = [model({ provider: "other", id: "other-model" })];
+    rerender(<ModelPicker />);
+    expect(screen.getByRole("button", { name: "Switch model" }).textContent).toContain(
+      "authored-model",
+    );
+    expect(state.setModel).not.toHaveBeenCalled();
+  });
 
   it("opens on the provider in force and lists only its models", async () => {
     render(<ModelPicker />);
@@ -186,7 +216,12 @@ describe("ModelPicker", () => {
   });
 
   it("names only the model; effort has its own control", () => {
-    state.selection = { model: state.models[2]!, reasoningEffort: "high" };
+    state.selection = {
+      provider: state.models[2]!.provider,
+      modelId: state.models[2]!.id,
+      model: state.models[2]!,
+      reasoningEffort: "high",
+    };
     render(<ModelPicker />);
     const label = screen
       .getByRole("button", { name: "Switch model" })
@@ -195,7 +230,12 @@ describe("ModelPicker", () => {
   });
 
   it("marks the model in use by its row, without a radio column", async () => {
-    state.selection = { model: state.models[2]!, reasoningEffort: "high" };
+    state.selection = {
+      provider: state.models[2]!.provider,
+      modelId: state.models[2]!.id,
+      model: state.models[2]!,
+      reasoningEffort: "high",
+    };
     render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     await screen.findByPlaceholderText("Search models…");

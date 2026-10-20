@@ -52,13 +52,13 @@ async function sentOptions(preference: ComposerModelPreference) {
 }
 
 describe("Composer run options", () => {
-  it("leaves the Session model in charge when the chosen model left the catalog", async () => {
+  it("sends the explicit model even when the catalog omits it", async () => {
     expect(
       await sentOptions({ kind: "explicit", provider: "anthropic", model: "claude-retired" }),
-    ).toEqual({});
+    ).toEqual({ provider: "anthropic", model: "claude-retired" });
   });
 
-  it("sends the effort it shows when the chosen effort left the model", async () => {
+  it("preserves the authored effort when the catalog stops publishing it", async () => {
     expect(
       await sentOptions({
         kind: "explicit",
@@ -66,6 +66,13 @@ describe("Composer run options", () => {
         model: "deepseek-v4-pro",
         reasoningEffort: "retired-level",
       }),
-    ).toEqual({ provider: "deepseek", model: "deepseek-v4-pro", reasoningEffort: "high" });
+    ).toEqual({ provider: "deepseek", model: "deepseek-v4-pro", reasoningEffort: "retired-level" });
+    queryClient.removeQueries({ queryKey: [MODELS_KEY] });
+    queryClient.removeQueries({ queryKey: [AGENT_SESSIONS_KEY] });
+    expect(resolveAgentRunStartOptions()).toEqual({
+      provider: "deepseek",
+      model: "deepseek-v4-pro",
+      reasoningEffort: "retired-level",
+    });
   });
 });
