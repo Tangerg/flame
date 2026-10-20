@@ -19,14 +19,12 @@ func buildRunMaintenance(
 	skillMaintenance *workspace.SkillMaintenance,
 	memory maintenance.MemoryMaintenance,
 	resolveUtility modeladapter.AuxiliaryResolver,
-	contextState maintenance.SessionContextInvalidator,
 ) (executionadapter.RunMaintenance, executionadapter.ModelContextCompactor, error) {
 	compactor, err := maintenance.NewCompactor(
 		conversationServices.messages,
 		resolveUtility,
 		maintenance.NewLiveStateSnapshotter(shells),
 		maintenance.CompactionPolicyValues{},
-		contextState,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build compactor: %w", err)

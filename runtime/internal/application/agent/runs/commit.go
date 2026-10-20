@@ -200,6 +200,7 @@ func (m ModelInvocationCommit) Validate() error {
 }
 
 type EventCommit struct {
+	Compaction        *ConversationCompactionPlan
 	ExecutionContext  *ExecutorCheckpoint
 	ResultPublication *ResultPublication
 	ToolResults       []corechat.ToolResult
@@ -294,6 +295,17 @@ func (e EventCommit) Validate() error {
 		}
 	}
 
+	if e.Compaction != nil {
+		if e.Compaction.SessionID() != e.SessionID {
+			return errors.New("runs: compaction belongs to another Session")
+		}
+		if err := e.Compaction.validateOwner(e.RunID, e.SegmentID); err != nil {
+			return err
+		}
+		if e.State != StateUnchanged || len(e.Items) != 1 || e.Items[0].Kind() != transcript.Compaction || len(e.ConversationMessages) != 0 {
+			return errors.New("runs: compaction requires one Compaction Item in its history transaction")
+		}
+	}
 	if e.ResultPublication != nil {
 		if err := e.ResultPublication.Validate(); err != nil {
 			return err

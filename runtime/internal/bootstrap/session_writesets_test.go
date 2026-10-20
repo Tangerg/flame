@@ -176,13 +176,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 	if err != nil {
 		t.Fatal(err)
 	}
-	compactions, err := persistence.NewConversationCompactions(messages, runs, func(ctx context.Context, fn func(context.Context) error) error {
-		return sqlitebase.RunInTx(ctx, db, fn)
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	history, err := runsapp.NewConversationHistory(messages, compactions)
+	history, err := runsapp.NewConversationHistory(messages)
 	if err != nil {
 		t.Fatal(err)
 	}

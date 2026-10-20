@@ -66,7 +66,23 @@ func TestNewFinalizerRejectsPartialTitleMaintenance(t *testing.T) {
 	}
 }
 
+type unexpectedCompactions struct{}
+
+func (unexpectedCompactions) ApplyCompaction(context.Context, runs.ConversationCompactionPlan) error {
+	return errors.New("unexpected conversation compaction")
+}
+
+type inertContextState struct{}
+
+func (inertContextState) ForgetSessionContext(string) {}
+
 func mustNewEffects(cfg Config) *Effects {
+	if cfg.Compactions == nil {
+		cfg.Compactions = unexpectedCompactions{}
+	}
+	if cfg.ContextState == nil {
+		cfg.ContextState = inertContextState{}
+	}
 	if dependency.Missing(cfg.ExecutionTrees) {
 		cfg.ExecutionTrees = unusedExecutionTrees{}
 	}

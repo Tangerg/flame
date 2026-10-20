@@ -1,6 +1,8 @@
 package runs
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -60,3 +62,47 @@ func (p ConversationCompactionPlan) Compaction() conversation.Compaction { retur
 
 // Runs returns an isolated snapshot of the exact Run replacements.
 func (p ConversationCompactionPlan) Runs() []run.Replacement { return slices.Clone(p.runs) }
+
+// ConversationCompactionStore joins the decided rewrite to its owning event transaction.
+type ConversationCompactionStore interface {
+	ApplyCompaction(context.Context, ConversationCompactionPlan) error
+}
+
+func PlanConversationCompaction(sessionID string, compaction conversation.Compaction, current []run.Run) (ConversationCompactionPlan, error) {
+	planned := make([]run.Replacement, len(current))
+	for index, value := range current {
+		replacement, err := run.Replace(value, func(value run.Run) (run.Run, error) {
+			if !value.State().IsTerminal() || !value.Lineage().IsRoot() {
+				return value, nil
+			}
+			count, known := value.MessageMark().Count()
+			if !known {
+				return run.Run{}, errors.New("terminal root Run has no message watermark")
+			}
+			mark, err := compaction.RebaseMessageMark(count)
+			if err != nil {
+				return run.Run{}, err
+			}
+			return value.WithMessageMark(mark)
+		})
+		if err != nil {
+			return ConversationCompactionPlan{}, fmt.Errorf("runs: rebase conversation Run %q: %w", value.ID(), err)
+		}
+		planned[index] = replacement
+	}
+	return NewConversationCompactionPlan(sessionID, compaction, planned)
+}
+
+func (p ConversationCompactionPlan) validateOwner(runID, segmentID string) error {
+	for _, replacement := range p.runs {
+		owner := replacement.Expected()
+		if owner.ID() != runID {
+			continue
+		}
+		if owner.State() == run.Running && owner.Lineage().IsRoot() && owner.ActiveSegmentID() == segmentID {
+			return nil
+		}
+		return errors.New("runs: conversation compaction requires its active root Segment")
+	}
+	return errors.New("runs: conversation compaction omits its Run owner")
+}

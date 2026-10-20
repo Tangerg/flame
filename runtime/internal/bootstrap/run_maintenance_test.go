@@ -85,7 +85,7 @@ func TestDefaultMaintenanceUsesAdmittedSkillDocuments(t *testing.T) {
 			resolve := modeladapter.AuxiliaryResolver(func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func(), error) {
 				return auxiliaryFixture(model), func() {}, nil
 			})
-			pipeline, _, err := buildRunMaintenance(cfg, conversation, nil, workspace.skills, workspace.skillMaintenance, noMemoryMaintenance{}, resolve, unusedMaintenanceContext{})
+			pipeline, _, err := buildRunMaintenance(cfg, conversation, nil, workspace.skills, workspace.skillMaintenance, noMemoryMaintenance{}, resolve)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -135,12 +135,6 @@ func TestDefaultMaintenanceUsesAdmittedSkillDocuments(t *testing.T) {
 			}
 		})
 	}
-}
-
-type unusedMaintenanceContext struct{}
-
-func (unusedMaintenanceContext) ForgetSessionContext(string) {
-	panic("skill mining must not compact context")
 }
 
 type skillRevisionModel struct{ calls int }

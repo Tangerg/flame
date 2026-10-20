@@ -11,20 +11,22 @@ import (
 // consumer above persistence addresses and the conversation Scope's history
 // store keeps.
 type conversationEnvironment struct {
-	store    *persistence.ConversationStore
-	messages *runs.ConversationHistory
+	store       *persistence.ConversationStore
+	compactions runs.ConversationCompactionStore
+	messages    *runs.ConversationHistory
 }
 
 func buildConversationEnvironment(
 	store *persistence.ConversationStore,
 	compactions runs.ConversationCompactionStore,
 ) (conversationEnvironment, error) {
-	messages, err := runs.NewConversationHistory(store, compactions)
+	messages, err := runs.NewConversationHistory(store)
 	if err != nil {
 		return conversationEnvironment{}, fmt.Errorf("runtime: build conversation history: %w", err)
 	}
 	return conversationEnvironment{
-		store:    store,
-		messages: messages,
+		store:       store,
+		compactions: compactions,
+		messages:    messages,
 	}, nil
 }

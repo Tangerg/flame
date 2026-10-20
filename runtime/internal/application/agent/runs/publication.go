@@ -527,6 +527,12 @@ func combineAuthoritativeCommit(route *executorRoute, sessionID string, batch re
 				index,
 			)
 		}
+		if reduced.Commit.Compaction != nil {
+			if combined.Compaction != nil {
+				return EventCommit{}, errors.New("runs: repeated conversation compaction")
+			}
+			combined.Compaction = reduced.Commit.Compaction
+		}
 		if reduced.Commit.ResultPublication != nil {
 			if combined.ResultPublication != nil {
 				return EventCommit{}, errors.New("runs: repeated result publication")

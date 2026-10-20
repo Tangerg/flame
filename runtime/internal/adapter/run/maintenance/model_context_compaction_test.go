@@ -47,14 +47,7 @@ func TestModelContextCompactionRewritesDurableHistoryAndPreservesPendingInput(t 
 	if clientErr != nil {
 		t.Fatal(clientErr)
 	}
-	contextState := new(recordingSessionContextInvalidator)
-	compactor := mustNewCompactor(t,
-		store,
-		constClient(client),
-		nil,
-		CompactionPolicyValues{MaxTokens: intPointer(threshold)},
-		contextState,
-	)
+	compactor := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxTokens: intPointer(threshold)})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
@@ -73,18 +66,16 @@ func TestModelContextCompactionRewritesDurableHistoryAndPreservesPendingInput(t 
 		effective[len(effective)-1].Text() != pending.Text() {
 		t.Fatalf("effective context = %#v", effective)
 	}
-	stored, err := store.Read(t.Context(), sessionID)
-	if err != nil {
-		t.Fatal(err)
+	rewrite, found := result.Rewrite()
+	if !found {
+		t.Fatal("durable rewrite proposal is missing")
 	}
+	stored := rewrite.Messages()
 	if len(stored) != 3 || !reflect.DeepEqual(stored, effective[:len(effective)-1]) {
 		t.Fatalf("durable/effective context = stored:%#v effective:%#v", stored, effective)
 	}
 	if len(model.requests) != 1 {
 		t.Fatalf("summary model calls = %d, want one", len(model.requests))
-	}
-	if !reflect.DeepEqual(contextState.sessions, []string{sessionID}) {
-		t.Fatalf("forgot Session contexts = %v, want [%s]", contextState.sessions, sessionID)
 	}
 
 	effective[0].Parts[0].Text = "caller changed summary"
@@ -94,7 +85,7 @@ func TestModelContextCompactionRewritesDurableHistoryAndPreservesPendingInput(t 
 		t.Fatal("caller reuse changed the frozen compaction result")
 	}
 	afterReuse, err := store.Read(t.Context(), sessionID)
-	if err != nil || !reflect.DeepEqual(afterReuse, stored) {
+	if err != nil || !reflect.DeepEqual(afterReuse, history) {
 		t.Fatalf("caller reuse changed durable history: (%#v, %v)", afterReuse, err)
 	}
 }
@@ -132,10 +123,10 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if below.Changed() || preCompactCalls != 0 || store.rewrites != 0 || len(model.requests) != 0 {
+	if below.Changed() || preCompactCalls != 0 || len(model.requests) != 0 {
 		t.Fatalf(
-			"below threshold = changed:%t hook:%d rewrites:%d summaries:%d, want no work",
-			below.Changed(), preCompactCalls, store.rewrites, len(model.requests),
+			"below threshold = changed:%t hook:%d summaries:%d, want no work",
+			below.Changed(), preCompactCalls, len(model.requests),
 		)
 	}
 
@@ -151,15 +142,19 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 		t.Fatal(err)
 	}
 	if !atThreshold.Changed() || !atThreshold.Summarized() ||
-		preCompactCalls != 1 || store.rewrites != 1 || len(model.requests) != 1 {
+		preCompactCalls != 1 || len(model.requests) != 1 {
 		t.Fatalf(
-			"at threshold = changed:%t summarized:%t hook:%d rewrites:%d summaries:%d",
+			"at threshold = changed:%t summarized:%t hook:%d summaries:%d",
 			atThreshold.Changed(), atThreshold.Summarized(), preCompactCalls,
-			store.rewrites, len(model.requests),
+			len(model.requests),
 		)
 	}
-	stored, err := store.Read(t.Context(), sessionID)
-	if err != nil {
+	rewrite, found := atThreshold.Rewrite()
+	if !found {
+		t.Fatal("durable rewrite proposal is missing")
+	}
+	stored := rewrite.Messages()
+	if err := store.Replace(t.Context(), sessionID, stored...); err != nil {
 		t.Fatal(err)
 	}
 	if stored[len(stored)-1].Text() != current.Text() {
@@ -173,10 +168,10 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.Changed() || preCompactCalls != 1 || store.rewrites != 1 || len(model.requests) != 1 {
+	if after.Changed() || preCompactCalls != 1 || len(model.requests) != 1 {
 		t.Fatalf(
-			"after compaction = changed:%t hook:%d rewrites:%d summaries:%d, want no immediate repeat",
-			after.Changed(), preCompactCalls, store.rewrites, len(model.requests),
+			"after compaction = changed:%t hook:%d summaries:%d, want no immediate repeat",
+			after.Changed(), preCompactCalls, len(model.requests),
 		)
 	}
 }
@@ -200,8 +195,8 @@ func TestDefaultModelContextCompactionDoesNotFailOnLongAssistantSequence(t *test
 	if err != nil {
 		t.Fatalf("assistant sequence below the compaction threshold failed: %v", err)
 	}
-	if result.Changed() || store.rewrites != 0 {
-		t.Fatalf("result = changed:%t rewrites:%d, want untouched context", result.Changed(), store.rewrites)
+	if result.Changed() {
+		t.Fatalf("result = changed:%t, want untouched context", result.Changed())
 	}
 }
 
@@ -257,8 +252,8 @@ func TestModelContextCompactionCountsMediaButDoesNotCompactBelowProviderThreshol
 	if result.Changed() || result.Summarized() || result.EstimatedTokens() != wantEstimate {
 		t.Fatalf("result = changed:%t summarized:%t tokens:%d", result.Changed(), result.Summarized(), result.EstimatedTokens())
 	}
-	if counter.calls != 1 || store.rewrites != 0 || len(summaryModel.requests) != 0 {
-		t.Fatalf("side effects = counts:%d rewrites:%d summaries:%d", counter.calls, store.rewrites, len(summaryModel.requests))
+	if counter.calls != 1 || len(summaryModel.requests) != 0 {
+		t.Fatalf("side effects = counts:%d summaries:%d", counter.calls, len(summaryModel.requests))
 	}
 }
 
@@ -306,11 +301,10 @@ func TestModelContextCompactionCountFailureLeavesDurableStateUntouched(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if counter.calls != 1 || store.rewrites != 0 || len(summaryModel.requests) != 0 || !reflect.DeepEqual(after, history) {
+	if counter.calls != 1 || len(summaryModel.requests) != 0 || !reflect.DeepEqual(after, history) {
 		t.Fatalf(
-			"side effects = counts:%d rewrites:%d summaries:%d history_equal:%t",
+			"side effects = counts:%d summaries:%d history_equal:%t",
 			counter.calls,
-			store.rewrites,
 			len(summaryModel.requests),
 			reflect.DeepEqual(after, history),
 		)
@@ -370,8 +364,8 @@ func TestModelContextCompactionCompactsMediaOnlyAtProviderThreshold(t *testing.T
 	if !result.Changed() || !result.Summarized() || result.EstimatedTokens() != wantEstimate {
 		t.Fatalf("result = changed:%t summarized:%t tokens:%d", result.Changed(), result.Summarized(), result.EstimatedTokens())
 	}
-	if counter.calls < 2 || store.rewrites != 1 || len(summaryModel.requests) != 1 {
-		t.Fatalf("side effects = counts:%d rewrites:%d summaries:%d", counter.calls, store.rewrites, len(summaryModel.requests))
+	if counter.calls < 2 || len(summaryModel.requests) != 1 {
+		t.Fatalf("side effects = counts:%d summaries:%d", counter.calls, len(summaryModel.requests))
 	}
 }
 
@@ -432,10 +426,10 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if below.Changed() || store.rewrites != 0 || len(model.requests) != 0 {
+	if below.Changed() || len(model.requests) != 0 {
 		t.Fatalf(
-			"uncalibrated context = changed:%t rewrites:%d summaries:%d, want below threshold",
-			below.Changed(), store.rewrites, len(model.requests),
+			"uncalibrated context = changed:%t summaries:%d, want below threshold",
+			below.Changed(), len(model.requests),
 		)
 	}
 
@@ -454,10 +448,10 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 		t.Fatal(err)
 	}
 	if !atThreshold.Changed() || !atThreshold.Summarized() ||
-		store.rewrites != 1 || len(model.requests) != 1 {
+		len(model.requests) != 1 {
 		t.Fatalf(
-			"calibrated context = changed:%t summarized:%t rewrites:%d summaries:%d",
-			atThreshold.Changed(), atThreshold.Summarized(), store.rewrites, len(model.requests),
+			"calibrated context = changed:%t summarized:%t summaries:%d",
+			atThreshold.Changed(), atThreshold.Summarized(), len(model.requests),
 		)
 	}
 }
@@ -529,12 +523,11 @@ func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Changed() || !result.Summarized() || store.rewrites != 1 || len(model.requests) != 1 {
+	if !result.Changed() || !result.Summarized() || len(model.requests) != 1 {
 		t.Fatalf(
-			"hard-input compaction = changed:%t summarized:%t rewrites:%d summaries:%d",
+			"hard-input compaction = changed:%t summarized:%t summaries:%d",
 			result.Changed(),
 			result.Summarized(),
-			store.rewrites,
 			len(model.requests),
 		)
 	}
@@ -611,12 +604,11 @@ func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Changed() || !result.Summarized() || store.rewrites != 1 || len(model.requests) != 1 {
+	if !result.Changed() || !result.Summarized() || len(model.requests) != 1 {
 		t.Fatalf(
-			"output-reserved compaction = changed:%t summarized:%t rewrites:%d summaries:%d",
+			"output-reserved compaction = changed:%t summarized:%t summaries:%d",
 			result.Changed(),
 			result.Summarized(),
-			store.rewrites,
 			len(model.requests),
 		)
 	}
@@ -726,9 +718,6 @@ func TestRequiredModelContextCompactionRequiresLifecyclePermission(t *testing.T)
 			if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, test.wantErr) {
 				t.Fatalf("error = %v, want %v", err, test.wantErr)
 			}
-			if store.rewrites != 0 {
-				t.Fatalf("rewrites = %d, want none before lifecycle permission", store.rewrites)
-			}
 		})
 	}
 }
@@ -755,9 +744,6 @@ func TestRequiredCompactionCannotPersistTextFromARefusal(t *testing.T) {
 	request := durableContextRequest(t, sessionID, history, 0, nil)
 	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, chatclient.ErrInvalidOutput) {
 		t.Fatalf("CompactModelContext = %v, want Scope typed output rejection", err)
-	}
-	if store.rewrites != 0 {
-		t.Fatalf("refused summary rewrote conversation %d times", store.rewrites)
 	}
 }
 
@@ -1033,44 +1019,6 @@ func contextTokenEstimate(t *testing.T, candidate []chat.Message) int {
 	)
 }
 
-func TestFailedCompactionCommitPreservesSessionContextAuthority(t *testing.T) {
-	cause := errors.New("compaction commit failed")
-	store := failedCompactionStore{compactionTestStore: newCompactionTestStore(), cause: cause}
-	const sessionID = "session:failed-compaction-commit"
-	history := completeContextTurns()
-	if err := store.Write(t.Context(), sessionID, history...); err != nil {
-		t.Fatal(err)
-	}
-	model := newTextStubModel("COMPACTION SUMMARY")
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	invalidator := new(recordingSessionContextInvalidator)
-	compactor := mustNewCompactor(t, store, constClient(client), nil,
-		CompactionPolicyValues{MaxTokens: intPointer(contextTokenEstimate(t, history))}, invalidator)
-	request := durableContextRequest(t, sessionID, history, 0, nil)
-	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, cause) {
-		t.Fatalf("CompactModelContext = %v, want commit failure", err)
-	}
-	if len(invalidator.sessions) != 0 {
-		t.Fatal("failed commit retired unchanged context authority")
-	}
-	after, err := store.Read(t.Context(), sessionID)
-	if err != nil || !reflect.DeepEqual(after, history) {
-		t.Fatalf("history after failed commit = (%v, %v)", after, err)
-	}
-}
-
-type failedCompactionStore struct {
-	*compactionTestStore
-	cause error
-}
-
-func (s failedCompactionStore) RewriteForCompaction(context.Context, string, int, int, int, ...chat.Message) error {
-	return s.cause
-}
-
 // TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing drives the
 // rung below the summary: an oversized OLD tool result is previewed in place,
 // that alone brings the request under budget, and no utility model is called.
@@ -1110,9 +1058,7 @@ func TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing(t *testing.
 	if err := store.Write(t.Context(), sessionID, history...); err != nil {
 		t.Fatal(err)
 	}
-	contextState := new(recordingSessionContextInvalidator)
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil,
-		CompactionPolicyValues{MaxTokens: intPointer(threshold)}, contextState)
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxTokens: intPointer(threshold)})
 
 	result, err := compactor.CompactModelContext(
 		t.Context(), durableContextRequest(t, sessionID, history, 0, nil),
@@ -1130,13 +1076,11 @@ func TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing(t *testing.
 			before, after, len(history))
 	}
 
-	stored, err := store.Read(t.Context(), sessionID)
-	if err != nil {
-		t.Fatal(err)
+	rewrite, found := result.Rewrite()
+	if !found {
+		t.Fatal("trim has no durable rewrite proposal")
 	}
-	if store.rewrites != 1 {
-		t.Fatalf("durable rewrites = %d, want one", store.rewrites)
-	}
+	stored := rewrite.Messages()
 	if len(stored) != len(history) {
 		t.Fatalf("durable history length = %d, want %d unchanged", len(stored), len(history))
 	}
@@ -1149,9 +1093,6 @@ func TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing(t *testing.
 	}
 	if !reflect.DeepEqual(result.Messages(), stored) {
 		t.Fatal("effective context and durable history disagree after a trim")
-	}
-	if !reflect.DeepEqual(contextState.sessions, []string{sessionID}) {
-		t.Fatalf("forgot Session contexts = %v, want [%s]", contextState.sessions, sessionID)
 	}
 }
 
@@ -1195,11 +1136,11 @@ func TestDurableProtectedTailSpanningEphemeralProtectsTheSameHistory(t *testing.
 		if !result.Summarized() {
 			t.Fatalf("%s did not reach the summary rung: %+v", sessionID, result)
 		}
-		stored, err := store.Read(t.Context(), sessionID)
-		if err != nil {
-			t.Fatal(err)
+		rewrite, found := result.Rewrite()
+		if !found {
+			t.Fatal("durable rewrite proposal is missing")
 		}
-		return stored
+		return rewrite.Messages()
 	}
 
 	withoutEphemeral := rewrite("session:tail-history", cloneMessages(history), durableProtectedTail)
@@ -1263,12 +1204,12 @@ func TestModelContextCompactionCountsTrailerWithoutReturningIt(t *testing.T) {
 		return result, store
 	}
 
-	if result, store := compact("session:without-trailer", nil); result.Changed() || store.rewrites != 0 {
-		t.Fatalf("history below the limit compacted: changed=%t rewrites=%d", result.Changed(), store.rewrites)
+	if result, _ := compact("session:without-trailer", nil); result.Changed() {
+		t.Fatalf("history below the limit compacted: changed=%t", result.Changed())
 	}
-	result, store := compact("session:with-trailer", trailer)
-	if !result.Summarized() || store.rewrites != 1 {
-		t.Fatalf("trailer did not count toward the limit: summarized=%t rewrites=%d", result.Summarized(), store.rewrites)
+	result, _ := compact("session:with-trailer", trailer)
+	if !result.Summarized() {
+		t.Fatalf("trailer did not count toward the limit: summarized=%t", result.Summarized())
 	}
 	for index, message := range result.Messages() {
 		if strings.Contains(message.Text(), marker) {

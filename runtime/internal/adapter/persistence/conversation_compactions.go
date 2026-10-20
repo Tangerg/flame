@@ -53,10 +53,6 @@ func NewConversationCompactions(
 
 var _ runsapp.ConversationCompactionStore = (*ConversationCompactions)(nil)
 
-func (c *ConversationCompactions) ListRuns(ctx context.Context, sessionID string) ([]run.Run, error) {
-	return c.runs.ListRuns(ctx, sessionID)
-}
-
 func (c *ConversationCompactions) ApplyCompaction(ctx context.Context, plan runsapp.ConversationCompactionPlan) error {
 	return c.tx(ctx, func(ctx context.Context) error { return c.applyCompaction(ctx, plan) })
 }

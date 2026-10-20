@@ -32,11 +32,7 @@ func BenchmarkSessionMaterialSnapshot(b *testing.B) {
 			}
 			messages := sqlite.NewMessageStore(db)
 			runs := sqlite.NewRunStore(db)
-			compactions, err := NewConversationCompactions(mustConversationStore(b, messages), runs, tx)
-			if err != nil {
-				b.Fatal(err)
-			}
-			history, err := runsapp.NewConversationHistory(mustConversationStore(b, messages), compactions)
+			history, err := runsapp.NewConversationHistory(mustConversationStore(b, messages))
 			if err != nil {
 				b.Fatal(err)
 			}

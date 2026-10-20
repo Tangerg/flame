@@ -7,6 +7,8 @@ import (
 	"math"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
+
 	"github.com/Tangerg/flame/runtime/dependency"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/resourceid"
@@ -424,6 +426,7 @@ func (m ModelContextCompaction) AllowsCompaction(ctx context.Context) (bool, err
 // one compaction decision. Summarized distinguishes a semantic history fold
 // from a coordinate-preserving deterministic trim.
 type ModelContextCompactionResult struct {
+	rewrite         *conversation.Compaction
 	messages        []corechat.Message
 	changed         bool
 	summary         string
@@ -490,6 +493,25 @@ func NewModelContextCompactionResult(
 	}, nil
 }
 
+func NewDurableModelContextCompactionResult(messages []corechat.Message, summary string, before, tokens int, rewrite conversation.Compaction) (ModelContextCompactionResult, error) {
+	result, err := NewModelContextCompactionResult(messages, true, summary, before, tokens)
+	if err != nil {
+		return ModelContextCompactionResult{}, err
+	}
+	if rewrite.ExpectedCount() > before {
+		return ModelContextCompactionResult{}, errors.New("execution: durable compaction exceeds its candidate history")
+	}
+	result.rewrite = new(rewrite)
+	return result, nil
+}
+
+func (m ModelContextCompactionResult) Rewrite() (conversation.Compaction, bool) {
+	if m.rewrite == nil {
+		return conversation.Compaction{}, false
+	}
+	return *m.rewrite, true
+}
+
 // Messages returns an independently owned effective mutable suffix.
 func (m ModelContextCompactionResult) Messages() []corechat.Message {
 	return cloneChatMessages(m.messages)
@@ -516,8 +538,8 @@ func (m ModelContextCompactionResult) MessageCounts() (before int, after int) {
 func (m ModelContextCompactionResult) EstimatedTokens() int { return m.estimatedTokens }
 
 // ModelContextCompactor owns the optional Runtime implementation of model-call
-// context reduction. It may persist durable root history but never owns the
-// Interaction state that consumes the returned replacement.
+// context reduction. It computes durable rewrite proposals without persisting
+// history or owning the Interaction state that consumes the replacement.
 type ModelContextCompactor interface {
 	// CompactModelContext returns the exact suffix the Interaction must install
 	// before invoking the model.

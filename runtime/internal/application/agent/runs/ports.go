@@ -282,6 +282,7 @@ type SessionPorts struct {
 // facts, not cancellation policy: application/domain code owns topology
 // validation and subtree meaning.
 type Projection interface {
+	ListRuns(context.Context, string) ([]run.Run, error)
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
 	Tree(ctx context.Context, runID string) ([]run.Run, error)
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/resourceid"
 	"github.com/Tangerg/scope/core/chat"
@@ -40,31 +39,15 @@ type ConversationStore interface {
 // from a write the store proved it rejected.
 var ErrConversationWriteUncertain = errors.New("runs: conversation write outcome is unknown")
 
-// ConversationCompactionStore is the exact persistence capability for coordinate-changing
-// conversation rewrites. Reading Runs and applying the decided replacement are
-// separate because summary generation must happen outside a database
-// transaction; ApplyCompaction rechecks the complete snapshot atomically.
-type ConversationCompactionStore interface {
-	ListRuns(ctx context.Context, sessionID string) ([]run.Run, error)
-	ApplyCompaction(ctx context.Context, plan ConversationCompactionPlan) error
-}
+// ConversationHistory coordinates durable conversation operations while the
+// domain value owns sequence validation and transformations.
+type ConversationHistory struct{ store ConversationStore }
 
-// ConversationHistory coordinates durable conversation operations while the domain value
-// owns sequence validation and transformations.
-type ConversationHistory struct {
-	store       ConversationStore
-	compactions ConversationCompactionStore
-}
-
-// NewConversationHistory returns the conversation use cases backed by store.
-func NewConversationHistory(store ConversationStore, compactions ConversationCompactionStore) (*ConversationHistory, error) {
+func NewConversationHistory(store ConversationStore) (*ConversationHistory, error) {
 	if dependency.Missing(store) {
 		return nil, errors.New("runs: conversation store is required")
 	}
-	if dependency.Missing(compactions) {
-		return nil, errors.New("runs: conversation compaction store is required")
-	}
-	return &ConversationHistory{store: store, compactions: compactions}, nil
+	return &ConversationHistory{store: store}, nil
 }
 
 // Read returns the validated durable conversation snapshot.
@@ -131,59 +114,6 @@ func (m *ConversationHistory) Count(ctx context.Context, sessionID string) (int,
 		return 0, fmt.Errorf("runs: count conversation for Session %q: %w", sessionID, err)
 	}
 	return count, nil
-}
-
-// RewriteForCompaction installs a summary or content-trim replacement and
-// rebases every terminal Run watermark into its new coordinate space. The
-// history and Run projection commit as one persistence write-set; a stale
-// message count or Run snapshot fails the complete operation.
-func (m *ConversationHistory) RewriteForCompaction(
-	ctx context.Context,
-	sessionID string,
-	expectedCount int,
-	cutoff int,
-	replacementPrefix int,
-	messages ...chat.Message,
-) error {
-	if err := validateConversationSessionIdentity(sessionID); err != nil {
-		return err
-	}
-	compaction, err := conversation.NewCompaction(expectedCount, cutoff, replacementPrefix, messages)
-	if err != nil {
-		return err
-	}
-	runs, err := m.compactions.ListRuns(ctx, sessionID)
-	if err != nil {
-		return fmt.Errorf("runs: read conversation compaction Runs for Session %q: %w", sessionID, err)
-	}
-	planned := make([]run.Replacement, len(runs))
-	for index, current := range runs {
-		planned[index], err = run.Replace(current, func(current run.Run) (run.Run, error) {
-			if !current.State().IsTerminal() || !current.Lineage().IsRoot() {
-				return current, nil
-			}
-			count, known := current.MessageMark().Count()
-			if !known {
-				return run.Run{}, errors.New("terminal root Run has no message watermark")
-			}
-			mark, err := compaction.RebaseMessageMark(count)
-			if err != nil {
-				return run.Run{}, err
-			}
-			return current.WithMessageMark(mark)
-		})
-		if err != nil {
-			return fmt.Errorf("runs: rebase conversation Run %q: %w", current.ID(), err)
-		}
-	}
-	plan, err := NewConversationCompactionPlan(sessionID, compaction, planned)
-	if err != nil {
-		return fmt.Errorf("runs: prepare conversation compaction for Session %q: %w", sessionID, err)
-	}
-	if err := m.compactions.ApplyCompaction(ctx, plan); err != nil {
-		return fmt.Errorf("runs: compact conversation for Session %q: %w", sessionID, err)
-	}
-	return nil
 }
 
 // Truncate atomically keeps the first keepN messages. The store removes the

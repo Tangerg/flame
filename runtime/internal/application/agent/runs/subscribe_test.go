@@ -3,6 +3,8 @@ package runs
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -392,4 +394,19 @@ func TestReplayRetentionIsWhatTheCoordinatorEnforces(t *testing.T) {
 	if got := mustNewCoordinator(Dependencies{Retention: custom}).ReplayRetention(); got != custom {
 		t.Fatalf("retention = %+v, want %+v", got, custom)
 	}
+}
+
+func (f *fakeRunProjection) ListRuns(_ context.Context, sessionID string) ([]run.Run, error) {
+	var values []run.Run
+	for _, value := range f.runs {
+		if value.SessionID() == sessionID {
+			values = append(values, value)
+		}
+	}
+	slices.SortFunc(values, func(a, b run.Run) int { return strings.Compare(a.ID(), b.ID()) })
+	return values, f.err
+}
+
+func (r *racingRunProjection) ListRuns(context.Context, string) ([]run.Run, error) {
+	return []run.Run{r.value}, nil
 }

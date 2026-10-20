@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
-	"fmt"
 	"iter"
 	"math"
 	"strings"
@@ -39,31 +38,15 @@ func textToolOutput(t *testing.T, output chat.ToolOutput) string {
 
 func intPointer(value int) *int { return &value }
 
-type recordingSessionContextInvalidator struct {
-	sessions []string
-}
-
-func (r *recordingSessionContextInvalidator) ForgetSessionContext(sessionID string) {
-	r.sessions = append(r.sessions, sessionID)
-}
-
 func mustNewCompactor(
 	t *testing.T,
 	store compactionStore,
 	client modeladapter.AuxiliaryResolver,
 	liveState LiveStateSnapshotter,
 	values CompactionPolicyValues,
-	contextStates ...SessionContextInvalidator,
 ) *Compactor {
 	t.Helper()
-	if len(contextStates) > 1 {
-		t.Fatal("mustNewCompactor accepts at most one context invalidator")
-	}
-	var contextState SessionContextInvalidator = new(recordingSessionContextInvalidator)
-	if len(contextStates) == 1 {
-		contextState = contextStates[0]
-	}
-	compactor, err := NewCompactor(store, client, liveState, values, contextState)
+	compactor, err := NewCompactor(store, client, liveState, values)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +64,6 @@ func mustCompactionPolicy(t *testing.T, values CompactionPolicyValues) compactio
 
 type compactionTestStore struct {
 	*testsupport.ConversationStore
-	rewrites int
 }
 
 func newCompactionTestStore() *compactionTestStore {
@@ -212,27 +194,6 @@ func TestCompactorTokenTriggerKeepsLimitOwnershipExplicit(t *testing.T) {
 			t.Fatalf("token trigger overflowed to %d", trigger)
 		}
 	})
-}
-
-func (c *compactionTestStore) RewriteForCompaction(
-	ctx context.Context,
-	sessionID string,
-	expectedCount int,
-	_, _ int,
-	messages ...chat.Message,
-) error {
-	current, err := c.Read(ctx, sessionID)
-	if err != nil {
-		return err
-	}
-	if len(current) != expectedCount {
-		return fmt.Errorf("test compaction count changed from %d to %d", expectedCount, len(current))
-	}
-	if err := c.Replace(ctx, sessionID, messages...); err != nil {
-		return err
-	}
-	c.rewrites++
-	return nil
 }
 
 func TestTrimForBudgetPreviewsOldNotRecentAndDoesNotMutate(t *testing.T) {

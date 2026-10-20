@@ -8,6 +8,7 @@ import (
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -24,8 +25,8 @@ var (
 )
 
 // CompactModelContext reduces the exact mutable context for one imminent model
-// call. Durable root history is reconciled and rewritten transactionally;
-// transient child history is reduced only in the returned Interaction state.
+// call. A durable rewrite is an immutable proposal for the Run fact owner;
+// computation never changes stored history or derived Session authority.
 func (c *Compactor) CompactModelContext(
 	ctx context.Context,
 	request executionadapter.ModelContextCompaction,
@@ -132,21 +133,12 @@ func (c *Compactor) CompactModelContext(
 		return executionadapter.ModelContextCompactionResult{}, err
 	}
 	if request.Durable() {
-		if err := c.store.RewriteForCompaction(
-			ctx,
-			request.SessionID(),
-			len(history),
-			cutoff,
-			prefixAfter,
-			replacement...,
-		); err != nil {
-			return executionadapter.ModelContextCompactionResult{}, fmt.Errorf(
-				"maintenance: persist model context compaction: %w",
-				err,
-			)
+		rewrite, err := conversation.NewCompaction(len(history), cutoff, prefixAfter, replacement)
+		if err != nil {
+			return executionadapter.ModelContextCompactionResult{}, err
 		}
+		return executionadapter.NewDurableModelContextCompactionResult(effective, summary, len(candidate), estimatedTokens, rewrite)
 	}
-	c.contextState.ForgetSessionContext(request.SessionID())
 	return result, nil
 }
 

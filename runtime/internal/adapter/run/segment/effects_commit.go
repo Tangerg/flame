@@ -250,6 +250,7 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 	if err != nil {
 		settled, settleErr := e.reconcileEventCommit(ctx, commit)
 		if settled {
+			e.invalidateCompactedContext(commit)
 			return nil
 		}
 		if settleErr != nil {
@@ -257,7 +258,17 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 		}
 		return e.compensateFailedCommit(ctx, commit, err)
 	}
+	e.invalidateCompactedContext(commit)
 	return nil
+}
+
+func (e *Effects) invalidateCompactedContext(commit runs.EventCommit) {
+	for _, item := range commit.Items {
+		if item.Kind() == transcript.Compaction {
+			e.contextState.ForgetSessionContext(commit.SessionID)
+			return
+		}
+	}
 }
 
 const runCommitReconciliationTimeout = 5 * time.Second
@@ -409,6 +420,12 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 	}
 	if publication := commit.ResultPublication; publication != nil {
 		if err := e.runState.RecordResultPublication(ctx, commit.SessionID, commit.RunID, commit.SegmentID, publication.ID, publication.Digest, commit.ToolResults); err != nil {
+			return err
+		}
+	}
+
+	if commit.Compaction != nil {
+		if err := e.compactions.ApplyCompaction(ctx, *commit.Compaction); err != nil {
 			return err
 		}
 	}

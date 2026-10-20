@@ -11,6 +11,7 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -199,6 +200,7 @@ type ToolCallPrepared struct {
 }
 
 type CompactionBoundary struct {
+	Rewrite *conversation.Compaction
 	executionFactBase
 	Summary        string
 	MessagesBefore int

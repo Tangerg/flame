@@ -224,8 +224,12 @@ type ConversationStore interface {
 	Count(ctx context.Context, sessionID string) (int, error)
 }
 
+type SessionContextInvalidator interface{ ForgetSessionContext(string) }
+
 // Config bundles the Effects dependencies.
 type Config struct {
+	Compactions           runs.ConversationCompactionStore
+	ContextState          SessionContextInvalidator
 	ExecutionTrees        runs.ExecutionTreeStore
 	Interrupts            InterruptStore
 	Sessions              SessionStore
@@ -250,6 +254,8 @@ type Config struct {
 // Effects coordinates run-segment side effects. It is stateless beyond its
 // dependencies and safe to share.
 type Effects struct {
+	compactions           runs.ConversationCompactionStore
+	contextState          SessionContextInvalidator
 	executionTrees        runs.ExecutionTreeStore
 	interrupts            InterruptStore
 	sessions              SessionStore
@@ -299,6 +305,8 @@ func New(cfg Config) (*Effects, error) {
 		{"model invocation journal", cfg.ModelInvocations},
 		{"tool invocation journal", cfg.ToolInvocations},
 		{"conversation store", cfg.Conversation},
+		{"compaction store", cfg.Compactions},
+		{"Session context invalidator", cfg.ContextState},
 		{"run store", cfg.State},
 		{"run progress writer", cfg.RunProgress},
 		{"executor checkpoint store", cfg.ExecutorCheckpoints},
@@ -316,6 +324,7 @@ func New(cfg Config) (*Effects, error) {
 		}
 	}
 	return &Effects{
+		compactions: cfg.Compactions, contextState: cfg.ContextState,
 		interrupts:            cfg.Interrupts,
 		sessions:              cfg.Sessions,
 		actorAuthority:        cfg.ActorAuthority,

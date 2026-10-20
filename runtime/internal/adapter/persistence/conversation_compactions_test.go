@@ -11,6 +11,7 @@ import (
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -18,7 +19,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func newCompactionFixture(t *testing.T) (*sql.DB, *persistence.ConversationStore, *sqlite.RunStore, *runsapp.ConversationHistory) {
+func newCompactionFixture(t *testing.T) (*sql.DB, *persistence.ConversationStore, *sqlite.RunStore, *persistence.ConversationCompactions) {
 	t.Helper()
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
@@ -40,15 +41,11 @@ func newCompactionFixture(t *testing.T) (*sql.DB, *persistence.ConversationStore
 	if err != nil {
 		t.Fatal(err)
 	}
-	service, err := runsapp.NewConversationHistory(messages, compactions)
-	if err != nil {
-		t.Fatal(err)
-	}
 	ses := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_long", Title: "long", Workspace: testsupport.MustWorkspace("/work")})
 	if err := sqlite.NewSessionStore(db).Insert(t.Context(), ses); err != nil {
 		t.Fatal(err)
 	}
-	return db, messages, runs, service
+	return db, messages, runs, compactions
 }
 
 func seedCompactionHistory(t *testing.T, messages *persistence.ConversationStore, runs *sqlite.RunStore) []chat.Message {
@@ -87,7 +84,7 @@ func compactedMessages() []chat.Message {
 func TestConversationCompactionRebasesRunsAcrossRepeatedLongTurns(t *testing.T) {
 	db, messages, runs, service := newCompactionFixture(t)
 	seedCompactionHistory(t, messages, runs)
-	if err := service.RewriteForCompaction(t.Context(), "ses_long", 8, 6, 1, compactedMessages()...); err != nil {
+	if err := applyTestCompaction(t, service, runs); err != nil {
 		t.Fatal(err)
 	}
 	after, err := messages.Read(t.Context(), "ses_long")
@@ -124,7 +121,7 @@ func TestConversationCompactionRebasesRunsAcrossRepeatedLongTurns(t *testing.T) 
 	if restoreErr := runs.Restore(t.Context(), latest); restoreErr != nil {
 		t.Fatal(restoreErr)
 	}
-	if rewriteForCompactionErr := service.RewriteForCompaction(t.Context(), "ses_long", 8, 6, 1, compactedMessages()...); rewriteForCompactionErr != nil {
+	if rewriteForCompactionErr := applyTestCompaction(t, service, runs); rewriteForCompactionErr != nil {
 		t.Fatal(rewriteForCompactionErr)
 	}
 	after, err = messages.Read(t.Context(), "ses_long")
@@ -173,7 +170,7 @@ func TestConversationCompactionRollsBackHistoryWhenRunRebaseFails(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	if err := service.RewriteForCompaction(t.Context(), "ses_long", 8, 6, 1, compactedMessages()...); err == nil {
+	if err := applyTestCompaction(t, service, runs); err == nil {
 		t.Fatal("injected Run-watermark failure must fail the whole compaction")
 	}
 	after, err := messages.Read(t.Context(), "ses_long")
@@ -193,4 +190,21 @@ func TestConversationCompactionRollsBackHistoryWhenRunRebaseFails(t *testing.T) 
 			t.Errorf("Run %s mark after rollback = %s, want %d", current.ID(), current.MessageMark(), want)
 		}
 	}
+}
+
+func applyTestCompaction(t *testing.T, store *persistence.ConversationCompactions, runs *sqlite.RunStore) error {
+	t.Helper()
+	proposal, err := conversation.NewCompaction(8, 6, 1, compactedMessages())
+	if err != nil {
+		return err
+	}
+	current, err := runs.ListRuns(t.Context(), "ses_long")
+	if err != nil {
+		return err
+	}
+	plan, err := runsapp.PlanConversationCompaction("ses_long", proposal, current)
+	if err != nil {
+		return err
+	}
+	return store.ApplyCompaction(t.Context(), plan)
 }

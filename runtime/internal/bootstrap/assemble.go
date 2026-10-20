@@ -185,6 +185,8 @@ func buildAssemblyCore(
 		ModelInvocations:    cfg.Stores.ModelInvocations,
 		ToolInvocations:     cfg.Stores.ToolInvocations,
 		Conversation:        execution.conversation.store,
+		Compactions:         execution.conversation.compactions,
+		ContextState:        execution.transientSessions,
 		State:               cfg.Stores.Runs,
 		RunProgress:         cfg.Stores.Runs,
 		ExecutorCheckpoints: cfg.Stores.ExecutorCheckpoints,

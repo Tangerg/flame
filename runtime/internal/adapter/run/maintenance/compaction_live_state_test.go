@@ -70,7 +70,11 @@ func TestCompactorPreservesUnreadCompletedShell(t *testing.T) {
 		t.Fatal("expected compaction to fire")
 	}
 
-	after, _ := store.Read(context.Background(), sessID)
+	rewrite, found := res.Rewrite()
+	if !found {
+		t.Fatal("durable rewrite proposal is missing")
+	}
+	after := rewrite.Messages()
 	// [summary, reminder, latest turn]
 	if len(after) != 3 {
 		t.Fatalf("post-compact len = %d, want 3 (summary + reminder + latest turn)", len(after))
@@ -106,10 +110,15 @@ func TestCompactorSkipsReminderWhenNoLiveState(t *testing.T) {
 	history, _ := store.Read(context.Background(), sessID)
 	threshold := mustEstimateModelContextTokens(t, history, nil, chat.Options{}) - 1
 	c := mustNewCompactor(t, store, constClient(client), live, CompactionPolicyValues{MaxTokens: intPointer(threshold)})
-	if _, err := c.CompactModelContext(context.Background(), durableContextRequest(t, sessID, history, 0, nil)); err != nil {
+	res, err := c.CompactModelContext(context.Background(), durableContextRequest(t, sessID, history, 0, nil))
+	if err != nil {
 		t.Fatal(err)
 	}
-	after, _ := store.Read(context.Background(), sessID)
+	rewrite, found := res.Rewrite()
+	if !found {
+		t.Fatal("durable rewrite proposal is missing")
+	}
+	after := rewrite.Messages()
 	if len(after) != 2 {
 		t.Fatalf("empty live-state should leave summary + latest turn = 2, got %d", len(after))
 	}

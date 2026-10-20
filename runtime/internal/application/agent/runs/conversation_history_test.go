@@ -1,7 +1,6 @@
 package runs
 
 import (
-	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -14,22 +13,8 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-type recordingCompactions struct {
-	runs []run.Run
-	plan ConversationCompactionPlan
-}
-
-func (r *recordingCompactions) ListRuns(context.Context, string) ([]run.Run, error) {
-	return append([]run.Run(nil), r.runs...), nil
-}
-
-func (r *recordingCompactions) ApplyCompaction(_ context.Context, plan ConversationCompactionPlan) error {
-	r.plan = plan
-	return nil
-}
-
 func TestMessagesCoordinatesDurableHistory(t *testing.T) {
-	messages := newConversationHistory(t, testsupport.NewConversationStore(), &recordingCompactions{})
+	messages := newConversationHistory(t, testsupport.NewConversationStore())
 	seed := []chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("one")),
 		chat.NewAssistantMessage(chat.NewTextPart("two")),
@@ -54,7 +39,7 @@ func TestMessagesCoordinatesDurableHistory(t *testing.T) {
 }
 
 func TestMessagesRejectsInvalidAppendWithoutChangingHistory(t *testing.T) {
-	history := newConversationHistory(t, testsupport.NewConversationStore(), &recordingCompactions{})
+	history := newConversationHistory(t, testsupport.NewConversationStore())
 	valid := chat.NewUserMessage(chat.NewTextPart("original"))
 	if err := history.Append(t.Context(), "ses_1", valid); err != nil {
 		t.Fatal(err)
@@ -70,7 +55,7 @@ func TestMessagesRejectsInvalidAppendWithoutChangingHistory(t *testing.T) {
 }
 
 func TestMessagesRejectsMissingSession(t *testing.T) {
-	messages := newConversationHistory(t, testsupport.NewConversationStore(), &recordingCompactions{})
+	messages := newConversationHistory(t, testsupport.NewConversationStore())
 	for _, sessionID := range []string{
 		"",
 		" ses_1",
@@ -89,28 +74,32 @@ func TestMessagesRejectsMissingSession(t *testing.T) {
 
 func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 	at := time.Unix(10, 0).UTC()
-	compactions := &recordingCompactions{runs: []run.Run{
+	current := []run.Run{
 		testsupport.MustRestoreRun(run.Snapshot{ID: "run_before", SessionID: "ses_1", State: run.Completed, CreatedAt: at, MessageMark: run.MessageMarkAt(4)}),
 		testsupport.MustRestoreRun(run.Snapshot{ID: "run_cut", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(time.Second), MessageMark: run.MessageMarkAt(6)}),
 		testsupport.MustRestoreRun(run.Snapshot{ID: "run_recent", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(2 * time.Second), MessageMark: run.MessageMarkAt(8)}),
 		testsupport.MustRestoreRun(run.Snapshot{ID: "run_active", SessionID: "ses_1", State: run.Running, CreatedAt: at.Add(3 * time.Second)}),
-	}}
-	messages := newConversationHistory(t, testsupport.NewConversationStore(), compactions)
+	}
 	replacement := []chat.Message{
 		chat.NewSystemMessage("summary"),
 		chat.NewUserMessage(chat.NewTextPart("recent question")),
 		chat.NewAssistantMessage(chat.NewTextPart("recent answer")),
 	}
-	if err := messages.RewriteForCompaction(t.Context(), "ses_1", 8, 6, 1, replacement...); err != nil {
+	proposal, err := conversation.NewCompaction(8, 6, 1, replacement)
+	if err != nil {
 		t.Fatal(err)
 	}
-	planned := compactions.plan.Runs()
+	plan, err := PlanConversationCompaction("ses_1", proposal, current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	planned := plan.Runs()
 	if len(planned) != 4 {
 		t.Fatalf("planned Runs = %d, want 4", len(planned))
 	}
 	wantMarks := []run.MessageMark{run.MessageMarkAt(1), run.MessageMarkAt(1), run.MessageMarkAt(3), run.UnknownMessageMark()}
 	for index, replacement := range planned {
-		if !replacement.Expected().Equal(compactions.runs[index]) {
+		if !replacement.Expected().Equal(current[index]) {
 			t.Fatalf("planned Run %d lost its expected CAS aggregate", index)
 		}
 		if got := replacement.State().MessageMark(); got != wantMarks[index] {
@@ -119,30 +108,19 @@ func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 	}
 }
 
-func newConversationHistory(t *testing.T, store ConversationStore, compactions ConversationCompactionStore) *ConversationHistory {
+func newConversationHistory(t *testing.T, store ConversationStore) *ConversationHistory {
 	t.Helper()
-	history, err := NewConversationHistory(store, compactions)
+	history, err := NewConversationHistory(store)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return history
 }
 
-func TestConversationHistoryRequiresCompletePersistence(t *testing.T) {
-	for _, test := range []struct {
-		name        string
-		store       ConversationStore
-		compactions ConversationCompactionStore
-	}{
-		{name: "messages", compactions: &recordingCompactions{}},
-		{name: "typed nil messages", store: (*testsupport.ConversationStore)(nil), compactions: &recordingCompactions{}},
-		{name: "compactions", store: testsupport.NewConversationStore()},
-		{name: "typed nil compactions", store: testsupport.NewConversationStore(), compactions: (*recordingCompactions)(nil)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if history, err := NewConversationHistory(test.store, test.compactions); err == nil || history != nil {
-				t.Fatalf("NewConversationHistory = (%v, %v), want incomplete persistence rejected", history, err)
-			}
-		})
+func TestConversationHistoryRequiresPersistence(t *testing.T) {
+	for _, store := range []ConversationStore{nil, (*testsupport.ConversationStore)(nil)} {
+		if history, err := NewConversationHistory(store); err == nil || history != nil {
+			t.Fatalf("missing persistence = %v, %v", history, err)
+		}
 	}
 }

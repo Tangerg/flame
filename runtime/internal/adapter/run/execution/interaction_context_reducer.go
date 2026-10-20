@@ -271,19 +271,26 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		i.session.accounting.discardPreparedModelContext(invocation)
 		return nil, err
 	}
-	if result.Summarized() {
+	if result.Changed() {
+		summary := result.Summary()
+		if summary == "" {
+			summary = "Trimmed model context."
+		}
+		before, after := result.MessageCounts()
+		fact := runs.CompactionBoundary{Summary: summary, MessagesBefore: before, MessagesAfter: after}
+		if compaction.Durable() {
+			rewrite, found := result.Rewrite()
+			if !found {
+				return nil, errors.New("execution: durable compaction has no history proposal")
+			}
+			fact.Rewrite = new(rewrite)
+		}
+		if err := i.session.commitFact(ctx, i.session.executorMember(invocation.Relation()), fact); err != nil {
+			return nil, err
+		}
 		if compaction.Durable() {
 			i.session.state.markDurableContextCompacted()
 		}
-		before, after := result.MessageCounts()
-		i.session.lifetime.send(runs.ExecutorEvent{
-			Member: i.session.executorMember(invocation.Relation()),
-			Payload: runs.CompactionBoundary{
-				Summary:        result.Summary(),
-				MessagesBefore: before,
-				MessagesAfter:  after,
-			},
-		})
 	}
 	return effective, nil
 }

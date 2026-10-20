@@ -294,3 +294,39 @@ func TestPrimaryMediaAdmissionUsesFinalTransformedInputForCallAndStream(t *testi
 		}
 	}
 }
+
+type recordingCompactionProposal struct{ calls int }
+
+func (c *recordingCompactionProposal) CompactModelContext(ctx context.Context, request ModelContextCompaction) (ModelContextCompactionResult, error) {
+	c.calls++
+	return (summarizingObservationCompactor{summary: "PROPOSED SUMMARY"}).CompactModelContext(ctx, request)
+}
+
+func TestContextCompactionWaitsForInputPreparation(t *testing.T) {
+	compactor := new(recordingCompactionProposal)
+	owner := &inputCaptureComposition{contextCaptureComposition: contextCaptureComposition{t: t}, failure: errors.New("input preparation failed")}
+	calls := 0
+	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		calls++
+		return nil, errors.New("unexpected provider call")
+	}), InteractionExecutorConfig{
+		CallComposition: owner, ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
+	})
+	events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+	if compactor.calls != 1 || calls != 0 || owner.transformed != 1 || len(payloadsOf[runs.CompactionBoundary](events)) != 0 {
+		t.Fatalf("preparation failure crossed compaction commit: proposals=%d provider=%d input=%d events=%v", compactor.calls, calls, owner.transformed, events)
+	}
+}
+
+func TestCommittedCompactionPrecedesAProviderFailure(t *testing.T) {
+	compactor := new(recordingCompactionProposal)
+	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		return nil, errors.New("provider failed after compaction")
+	}), InteractionExecutorConfig{
+		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
+	})
+	events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+	if compactor.calls != 1 || len(payloadsOf[runs.CompactionBoundary](events)) != 1 || len(payloadsOf[runs.ModelCallFailed](events)) != 1 {
+		t.Fatalf("provider failure lost committed compaction: proposals=%d events=%v", compactor.calls, events)
+	}
+}

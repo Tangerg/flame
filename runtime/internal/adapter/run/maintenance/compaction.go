@@ -10,36 +10,17 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 )
 
-// compactionStore is the worker's narrow conversation use-case view. The
-// implementation owns the cross-aggregate transaction that replaces history
-// and rebases Run watermarks; this model worker only decides summary content.
-// Read transfers decoded messages to the caller. RewriteForCompaction borrows
-// messages synchronously and must copy any values it retains.
+// compactionStore supplies the durable prefix used to compute a proposal.
 type compactionStore interface {
-	Read(ctx context.Context, sessionID string) ([]chat.Message, error)
-	RewriteForCompaction(
-		ctx context.Context,
-		sessionID string,
-		expectedCount int,
-		cutoff int,
-		replacementPrefix int,
-		messages ...chat.Message,
-	) error
-}
-
-// SessionContextInvalidator retires process-local authority derived from model
-// context that a successful compaction replaced.
-type SessionContextInvalidator interface {
-	ForgetSessionContext(sessionID string)
+	Read(context.Context, string) ([]chat.Message, error)
 }
 
 // Compactor reduces the exact context of an imminent model request.
 type Compactor struct {
-	store        compactionStore
-	client       modeladapter.AuxiliaryResolver
-	liveState    LiveStateSnapshotter // nil = no post-compaction live-state reminder
-	contextState SessionContextInvalidator
-	policy       compactionPolicy
+	store     compactionStore
+	client    modeladapter.AuxiliaryResolver
+	liveState LiveStateSnapshotter // nil = no post-compaction live-state reminder
+	policy    compactionPolicy
 }
 
 type compactionAction uint8
@@ -62,14 +43,13 @@ type compactionPlan struct {
 // NewCompactor requires a chat history store and per-call chat-client resolver.
 // liveState (nil to disable) snapshots a
 // session's still-active process state so an LLM summary rung can remind the
-// model of running shells the summary cannot reconstruct. contextState is
-// required to retire read-before-write authority after history changes.
+// model of running shells the summary cannot reconstruct.
+// The Run fact owner commits the returned proposal before retiring derived authority.
 func NewCompactor(
 	store compactionStore,
 	client modeladapter.AuxiliaryResolver,
 	liveState LiveStateSnapshotter,
 	values CompactionPolicyValues,
-	contextState SessionContextInvalidator,
 ) (*Compactor, error) {
 	if dependency.Missing(store) {
 		return nil, errors.New("compactor: conversation store is required")
@@ -77,16 +57,13 @@ func NewCompactor(
 	if client == nil {
 		return nil, errors.New("compactor: utility model resolver is required")
 	}
-	if dependency.Missing(contextState) {
-		return nil, errors.New("compactor: session context invalidator is required")
-	}
 	policy, err := newCompactionPolicy(values)
 	if err != nil {
 		return nil, err
 	}
 	return &Compactor{
 		store: store, client: client, liveState: liveState,
-		contextState: contextState, policy: policy,
+		policy: policy,
 	}, nil
 }
 

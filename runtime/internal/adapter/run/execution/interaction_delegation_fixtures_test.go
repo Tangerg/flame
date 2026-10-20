@@ -352,6 +352,18 @@ func (*delegateProjection) Nudge(string, []string) {}
 
 func (*delegateProjection) Finish(context.Context, runs.Finish) error { return nil }
 
+func (d *delegateProjection) ListRuns(_ context.Context, sessionID string) ([]run.Run, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	var values []run.Run
+	for _, value := range d.runs {
+		if value.SessionID() == sessionID {
+			values = append(values, value)
+		}
+	}
+	return values, nil
+}
+
 func (d *delegateProjection) Run(
 	_ context.Context,
 	runID string,

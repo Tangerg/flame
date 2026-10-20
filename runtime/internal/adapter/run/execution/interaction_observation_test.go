@@ -22,6 +22,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/core/chat"
@@ -222,6 +223,13 @@ func (c summarizingObservationCompactor) CompactModelContext(
 	_ context.Context,
 	request ModelContextCompaction,
 ) (ModelContextCompactionResult, error) {
+	if request.Durable() {
+		rewrite, err := conversation.NewCompaction(len(request.Candidate()), 0, 0, request.Candidate())
+		if err != nil {
+			return ModelContextCompactionResult{}, err
+		}
+		return NewDurableModelContextCompactionResult(request.Candidate(), c.summary, len(request.Candidate()), 100, rewrite)
+	}
 	return NewModelContextCompactionResult(
 		request.Candidate(),
 		true,

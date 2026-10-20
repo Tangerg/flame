@@ -279,7 +279,6 @@ func buildExecutionComposition(
 		workspaceServices.skillMaintenance,
 		toolRuntime.memory,
 		modelServices.utilityModel,
-		transientSessions,
 	)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build Run maintenance: %w", err)

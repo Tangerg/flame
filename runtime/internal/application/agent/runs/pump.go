@@ -119,6 +119,10 @@ func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 		s.fail(fmt.Errorf("runs: unsupported executor payload %T", event.Payload))
 		return false
 	}
+	if compacted, ok := executionFact.(CompactionBoundary); ok && compacted.Rewrite != nil {
+		s.fail(errors.New("runs: durable compaction requires a commit receipt"))
+		return false
+	}
 	if _, unacknowledged := executionFact.(ToolResultsCommitted); unacknowledged {
 		s.fail(errors.New("runs: Tool result publication requires a commit receipt"))
 		return false
@@ -231,6 +235,20 @@ func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact Execut
 	batch, err := speculative.reduce(fact)
 	if err != nil {
 		return err
+	}
+	if compacted, ok := fact.(CompactionBoundary); ok && compacted.Rewrite != nil {
+		current, err := s.coordinator.runs.ListRuns(s.ownerCtx, s.spec.SessionID)
+		if err != nil {
+			return err
+		}
+		plan, err := PlanConversationCompaction(s.spec.SessionID, *compacted.Rewrite, current)
+		if err != nil {
+			return err
+		}
+		if len(batch.events) != 1 || batch.events[0].Commit == nil {
+			return errors.New("runs: compaction has no Item commit")
+		}
+		batch.events[0].Commit.Compaction = new(plan)
 	}
 	publication, err := s.publisher.publishAuthoritativeAtomically(s.ownerCtx, route, batch)
 	if err != nil {

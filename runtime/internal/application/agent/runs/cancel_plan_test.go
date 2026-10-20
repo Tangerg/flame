@@ -242,3 +242,7 @@ func cancellationRunIDs(runs []cancellationRun) []string {
 	}
 	return ids
 }
+
+func (c cancellationDriftProjection) ListRuns(context.Context, string) ([]run.Run, error) {
+	return slices.Clone(c.tree), nil
+}

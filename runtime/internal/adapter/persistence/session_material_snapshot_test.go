@@ -103,17 +103,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 		GoalStore: readerGoalStore, entered: make(chan struct{}), release: make(chan struct{}),
 	}
 	readerMessages := sqlite.NewMessageStore(readerDB)
-	readerCompactions, err := NewConversationCompactions(
-		mustConversationStore(t, readerMessages),
-		sqlite.NewRunStore(readerDB),
-		func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, readerDB, fn)
-		},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	readerHistory, err := runsapp.NewConversationHistory(mustConversationStore(t, readerMessages), readerCompactions)
+	readerHistory, err := runsapp.NewConversationHistory(mustConversationStore(t, readerMessages))
 	if err != nil {
 		t.Fatal(err)
 	}
