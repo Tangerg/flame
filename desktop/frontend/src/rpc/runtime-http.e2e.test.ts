@@ -46,6 +46,7 @@ import {
 } from "@flame/runtime-contract/methods";
 import {
   PROTOCOL_VERSION,
+  type MCPServerID,
   type RequestMeta,
   type RunEvent,
   type RuntimeEvent,
@@ -3122,6 +3123,14 @@ for await (const line of lines) {
       arguments: { command: "printf approval-original" },
     });
 
+    // The paused tree also retains MCP sources introduced by earlier cases.
+    const capturedSources = new Map<string, { server: MCPServerID; count: number }>();
+    for (const tool of (await client.mcp.listTools()).data) {
+      const key = JSON.stringify(tool.server);
+      const source = capturedSources.get(key);
+      capturedSources.set(key, { server: tool.server, count: (source?.count ?? 0) + 1 });
+    }
+
     await client.close();
     client = undefined;
     await killRuntimeProcess();
@@ -3129,6 +3138,10 @@ for await (const line of lines) {
     client = createRuntimeClient();
     negotiated = (await client.runtime.discover()).capabilities;
     await awaitManagedOwners();
+
+    await Promise.all(
+      [...capturedSources.values()].map(({ server, count }) => awaitMCPTools(server, count)),
+    );
 
     const restored = await client.runs.get(runId);
     expect(
@@ -3160,7 +3173,10 @@ for await (const line of lines) {
       ],
     });
     const firstResumeEvents = await collectRunEvents(originalOpeningEvents(resumed));
-    expect(firstResumeEvents.at(-1)?.event).toMatchObject({
+    expect(
+      firstResumeEvents.at(-1)?.event,
+      JSON.stringify(firstResumeEvents.at(-1)?.event),
+    ).toMatchObject({
       type: "segment.finished",
       run: { status: "waiting" },
       interrupts: expect.arrayContaining([expect.anything()]),
