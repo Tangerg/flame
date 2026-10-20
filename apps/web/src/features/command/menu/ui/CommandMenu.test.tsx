@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { definePlugin } from "@/extensions/definePlugin";
 import { COMMAND } from "@/features/command/public/extensionPoints";
@@ -19,7 +19,7 @@ vi.mock("@/features/workspace/public/navigation", () => ({
   openWorkspaceViewInDock: openViewInDock,
 }));
 
-async function withCommands() {
+async function withCommands(open = true) {
   await loadPluginsForTest(
     definePlugin({
       name: "test.command-menu",
@@ -47,7 +47,7 @@ async function withCommands() {
       },
     }),
   );
-  useCommandMenuStore.setState({ open: true });
+  useCommandMenuStore.setState({ open });
   return render(<CommandMenu />);
 }
 
@@ -91,8 +91,8 @@ describe("command menu", () => {
 
     fireEvent.click(screen.getByRole("option", { name: /New chat/ }));
 
-    expect(newChat).toHaveBeenCalledOnce();
     expect(useCommandMenuStore.getState().open).toBe(false);
+    await waitFor(() => expect(newChat).toHaveBeenCalledOnce());
   });
 
   it("lists the workspace views, which nothing else reaches by keyboard", async () => {
@@ -104,7 +104,7 @@ describe("command menu", () => {
 
     row.click();
 
-    expect(openViewInDock).toHaveBeenCalledWith("terminal");
+    await waitFor(() => expect(openViewInDock).toHaveBeenCalledWith("terminal"));
   });
 
   it("opens a view the dock does not carry on the content card", async () => {
@@ -113,7 +113,32 @@ describe("command menu", () => {
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "icon gallery" } });
     screen.getByRole("option").click();
 
-    expect(openViewOnCard).toHaveBeenCalledWith("icon-gallery");
+    await waitFor(() => expect(openViewOnCard).toHaveBeenCalledWith("icon-gallery"));
     expect(openViewInDock).not.toHaveBeenCalled();
+  });
+
+  it("lets a selected command take focus after the menu closes", async () => {
+    await withCommands(false);
+    render(
+      <>
+        <button>Source</button>
+        <button>Destination</button>
+      </>,
+    );
+    const source = screen.getByRole("button", { name: "Source" });
+    const destination = screen.getByRole("button", { name: "Destination" });
+    const surfaceClosed = vi.fn();
+    source.focus();
+    newChat.mockImplementationOnce(() => {
+      surfaceClosed(screen.queryByRole("dialog") === null);
+      destination.focus();
+    });
+    act(() => useCommandMenuStore.getState().setOpen(true));
+    fireEvent.click(await screen.findByRole("option", { name: /New chat/ }));
+
+    await waitFor(() => expect(newChat).toHaveBeenCalledOnce());
+    await drainBrowserTasks();
+    expect(surfaceClosed).toHaveBeenCalledExactlyOnceWith(true);
+    expect(document.activeElement).toBe(destination);
   });
 });

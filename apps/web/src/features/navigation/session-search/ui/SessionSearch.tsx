@@ -47,10 +47,7 @@ export function SessionSearch() {
       options={(query) =>
         matchSessions(sessions ?? [], query).map((session) => ({
           key: session.id,
-          onSelect: () => {
-            selectAgentSession(session.id);
-            setOpen(false);
-          },
+          onSelect: () => selectAgentSession(session.id),
           children: (
             <>
               <Icon name="chat" size="sm" className={stylex.props(cmd.glyph).className} />

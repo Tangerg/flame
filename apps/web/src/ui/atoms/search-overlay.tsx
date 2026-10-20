@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { isImeKey } from "@flame/ui";
 import { DialogPrimitive } from "@flame/ui/primitives";
 import { Icon } from "@/ui/icons/index";
@@ -41,6 +41,7 @@ const styles = stylex.create({
 
 interface SearchOption {
   key: string;
+  /** Runs after dismissal so the action can focus outside the modal. */
   onSelect: () => void;
   children: ReactNode;
 }
@@ -52,6 +53,13 @@ interface SearchOverlayProps {
   placeholder: string;
   options: (query: string) => readonly SearchOption[];
   empty: ReactNode;
+}
+
+interface Delivery {
+  readonly completion: symbol;
+  run: (() => void) | undefined;
+  opener: HTMLElement | null;
+  popup: HTMLElement | null;
 }
 
 function wrap(index: number, count: number, step: number) {
@@ -68,24 +76,66 @@ export function SearchOverlay({
   empty,
 }: SearchOverlayProps) {
   const [wasOpen, setWasOpen] = useState(open);
-  const [opener, setOpener] = useState<HTMLElement | null>(null);
+  const [opener, setOpener] = useState<HTMLElement | null>(() =>
+    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+  );
+  const choice = useRef<Delivery | null>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [completion, setCompletion] = useState<symbol | null>(null);
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open)
+    if (open) {
       setOpener(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    }
   }
 
+  useLayoutEffect(() => {
+    if (open) choice.current = null;
+  }, [open]);
+
+  useEffect(() => {
+    const delivery = choice.current;
+    if (open || !delivery || delivery.completion !== completion || !delivery.run) return;
+    const run = delivery.run;
+    // Keep the intent until reopening: Base UI may still settle its return focus.
+    delivery.run = undefined;
+    const doc = delivery.popup?.ownerDocument ?? document;
+    const active = doc.activeElement;
+    if ((active === doc.body || delivery.popup?.contains(active)) && delivery.opener?.isConnected) {
+      delivery.opener.focus({ preventScroll: true });
+    }
+    run();
+  }, [completion, open]);
+
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+    <DialogPrimitive.Root
+      open={open}
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={(nextOpen) => {
+        // The next committed effect runs after the modal's isolation cleanup.
+        if (!nextOpen && choice.current) setCompletion(choice.current.completion);
+      }}
+    >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop
           data-slot="search-overlay-backdrop"
           className={stylex.props(MODAL_SCRIM).className}
         />
         <DialogPrimitive.Popup
+          ref={popupRef}
           data-slot="search-overlay"
           aria-label={label}
-          finalFocus={() => (opener?.isConnected ? opener : null)}
+          finalFocus={() => {
+            if (choice.current) return false;
+            const active = document.activeElement;
+            if (
+              active !== document.body &&
+              active !== opener &&
+              !popupRef.current?.contains(active)
+            )
+              return false;
+            return opener?.isConnected ? opener : null;
+          }}
           {...stylex.props(modalPanel("top"), styles.panel)}
         >
           <SearchOverlayContent
@@ -95,6 +145,16 @@ export function SearchOverlay({
             placeholder={placeholder}
             options={options}
             empty={empty}
+            onChoose={(option) => {
+              if (!open || choice.current) return;
+              choice.current = {
+                completion: Symbol(),
+                run: option.onSelect,
+                opener,
+                popup: popupRef.current,
+              };
+              onOpenChange(false);
+            }}
           />
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
@@ -102,7 +162,9 @@ export function SearchOverlay({
   );
 }
 
-type SearchOverlayContentProps = Omit<SearchOverlayProps, "onOpenChange">;
+type SearchOverlayContentProps = Omit<SearchOverlayProps, "onOpenChange"> & {
+  onChoose: (option: SearchOption) => void;
+};
 
 function SearchOverlayContent({
   open,
@@ -110,6 +172,7 @@ function SearchOverlayContent({
   placeholder,
   options,
   empty,
+  onChoose,
 }: SearchOverlayContentProps) {
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -149,7 +212,8 @@ function SearchOverlayContent({
             }
             if (event.key === "Enter") {
               event.preventDefault();
-              rows[active]?.onSelect();
+              const option = rows[active];
+              if (option) onChoose(option);
             }
           }}
           onChange={(event) => {
@@ -180,7 +244,7 @@ function SearchOverlayContent({
                 tabIndex={-1}
                 selected={index === active}
                 onPointerMove={() => setHighlight(index)}
-                onClick={option.onSelect}
+                onClick={() => onChoose(option)}
               >
                 {option.children}
               </OptionRow>

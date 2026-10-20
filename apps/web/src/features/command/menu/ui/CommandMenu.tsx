@@ -82,10 +82,7 @@ export function CommandMenu() {
       options={(query) =>
         matchCommands(choices, query).map((choice) => ({
           key: choice.key,
-          onSelect: () => {
-            setOpen(false);
-            choice.run();
-          },
+          onSelect: choice.run,
           children: (
             <>
               {knownIconName(choice.icon) ? (

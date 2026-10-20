@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Continuous work is active in the isolated worktree. A loaded model catalog now remains selectable when the current model is unresolved, without silently choosing a replacement; open search and authoring context survive that condition. Dock focus, Schedules read/empty recovery, Trajectory page scope/navigation and previous repairs remain integrated. Final frontend checks pass 385 files / 2,938 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
+Updated: 2026-10-21. Continuous work is active in the isolated worktree. Search selection now dismisses the modal before handing its action and focus to the destination; cancellation and non-focusing actions retain the surviving source. Model catalog recovery, Dock focus, Schedules read/empty recovery, Trajectory page scope/navigation and previous repairs remain integrated. Final frontend checks pass 385 files / 2,948 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -584,6 +584,42 @@ copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
 
+## Search selection and task handoff
+
+`src/ui/atoms/search-overlay.tsx` owns the end of the bounded search task before
+handing its selected action to a destination. Pointer and Enter selection capture
+one callback and request controlled closure. Base UI's close completion publishes
+an immutable token; a committed effect consumes the callback from its sole ref
+owner after modal isolation cleanup. The retained intent prevents a later
+primitive return-focus job from overriding the selected destination. Repeated
+activation during closing cannot dispatch the choice twice, and unmounting
+retires a choice that has not been delivered.
+
+If the closing surface still owns focus, the surviving opener is restored before
+the action runs. A local command such as Toggle theme therefore retains context,
+and an action can intentionally focus a destination or open another search task
+from that same origin. Later outside focus remains authoritative for cancellation
+and non-focusing actions. Ordinary dismissal executes no choice. CommandMenu and
+SessionSearch retain only their existing command/session callbacks; the shared
+surface now owns their close request. Query/highlight resets, matching, row
+announcements, keyboard/IME handling and visual tokens retain their established
+contracts. Business command, Session, navigation and Runtime owners are unchanged.
+
+Read-only research inspected ZCode's actual
+`command-center/CommandCenterDialog.tsx` and
+`quickpick/QuickPickCommandDialog.tsx`: both request closure before handing
+the selected command or task to its owner. Their immediate callbacks are task-model
+evidence, not proof of Wails focus ordering. Installed Base UI 1.9.0
+`FloatingFocusManager.mjs` shows its queued return focus and the explicit-target
+exception to its outside-focus guard; `popupStoreUtils.mjs` and
+`useUnmountAfterClose.mjs` establish the close-completion/commit distinction.
+Flame's existing CatalogPicker supplies a local one-shot handoff precedent, while
+the search surface also needs a return for non-focusing commands. Better-series
+focus and layout guidance retains the existing modal, semantic surfaces, query
+field, reading/list rhythm and Orange/custom-blue focus roles. Existing Radix
+Dialog and HeroUI modal references inform the bounded task model; static Ace
+artwork supplies no keyboard evidence.
+
 ## Composer model catalog recovery
 
 `src/features/composer/ui/ModelPicker.tsx` now treats catalog availability separately
@@ -882,6 +918,17 @@ reachable controls and width semantics. Existing type, color and surface owners
 remain the visual basis.
 
 ## Verification checkpoint
+
+For search selection and task handoff (2026-10-21):
+
+- Actual baseline Wails opened the registered production command menu from Files' Back action. Selecting Focus composer closed the menu but restored Files' Back action; direct Mod-L reached the editable Composer. Tracing the shared surface and installed Base UI established that the callback ran while modal isolation was still active, before an explicit return-focus job restored the opener.
+- Focused baseline passed **3 files / 15 tests**. The edit-only Claude Code CLI reached its 240-second bound after a partial shared-surface draft; it supplied no completed report. Primary completed the shared owner, both consumers and regressions, then ran all checks. Frozen original production components with the final CommandMenu integration test failed **1 and passed 5**: the callback observed the dialog still open. Final focused checks passed **3 files / 25 tests**, retaining existing query, filtering, selected-row, identity, composition and cancellation assertions. New cases cover pointer/Enter delivery after modal cleanup, repeated activation, no-focus actions, cancellation, reopening, later outside focus, removed openers and retirement on unmount.
+- The first full frontend check failed React's immutability lint because the draft stored a mutable delivery payload in state. Primary left the callback under its sole ref owner and published only an immutable completion token; no check was suppressed. Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **385 files / 2,948 tests** and every subsequent type/lint/format, boundary/contract/style/token/locale/resource, production-bundle and module-linkage gate. Eleven portable ESM resources remain unchanged. `make check-native` passed Desktop tests/vet/build and the supported Wails build; the final binary is arm64 Mach-O, minimum macOS 13.0, SDK 26.5. All six accepted source/test hashes remained unchanged throughout final native acceptance. Existing non-failing loopback diagnostics and duplicate `-lobjc` warnings remain separate.
+- Actual final Wails English/light/14 px/Flame Orange qualified Files' Back action → command query → Enter → editable Composer, followed by continued mixed-language drafting. A real screenshot-coordinate pointer selection repeated that destination handoff. Empty-result search/cancellation retained the draft; reopening started with a fresh query. Current-session selection and command-menu → Search chats → child-search cancellation retained the originating Composer. Toggle theme also retained its source. Independent command-list wheel scrolling and cancellation preserved context.
+- English/dark/18 px/custom blue qualified native Window → Move & Resize → Left and keyboard resizing to a **320 px Dock**, then command selection into the retained Composer draft. After observing the new empty command field, Up wrapped to the final Workspace diff row and revealed it. At **200%**, the workspace retreated to its existing conversation presentation; command-menu → Search chats → query → Escape returned to the same editable draft. This does not qualify every underlying workspace control at that scale.
+- Chinese/light/14 px/Orange at **200%** used a clean collapsed-fixture scene. Shift-Tab from the Composer reached Edit goal; the localized Focus composer query and Enter handed focus back to the input, with continued drafting. Reopening reset the command query. The localized Search chats command opened its own query field, and cancellation returned to the complete original draft. Native zoom was reset before each owned app quit. The final scene uses canonical memory responses and actual registered commands, with no injected shortcuts, counters, gates or scene links.
+- These are production components in the actual Wails host over an isolated memory transport. The fixture contains one Session; another Session's identity and callback are covered by deterministic consumer tests, not native switching. No draft/Run command or provider execution was submitted. VoiceOver, native OS composition, measured pixel contrast, other-platform GUIs, browser/visual suites, performance benchmarks and unrelated standalone root/CLI/SDK suites were not run. No Runtime, protocol, theme, stored schema, installed resource or package dependency changed; no migration is required.
+- Cleanup completed: owned CLI/check/build/native processes exited, the app was unregistered, and its bundle, isolated data, overlays, temporary sources/configuration, prompts/results and logs were removed. Newly created bundle-specific library paths passed preexistence/UID/birth-time guards. Worktree-generated fixtures, Vite state, staging, icons/UI bundles and native outputs were removed after tracked-path checks. Installed dependencies, global compiler/package caches, reference artwork, user data and unrelated processes were retained.
 
 For Composer model catalog recovery (2026-10-21):
 
@@ -1274,6 +1321,13 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 Continuous work is explicitly resumed. The candidates below require current
 source and native evidence before selecting each next batch.
+
+Search selection handoff is implemented and natively qualified above. Preserve
+the shared modal completion owner, single callback delivery and ordinary source
+return. Continue from other complete task paths rather than repeating this
+resolved ordering defect or adding local focus delays. A combined open-and-arrow
+probe with an unobserved pointer position is not evidence of a navigation defect;
+the separately observed final native field qualified last-row wrapping and reveal.
 
 Model catalog recovery is implemented and natively qualified above. Keep catalog
 availability independent from resolution of the current model, and retain the
