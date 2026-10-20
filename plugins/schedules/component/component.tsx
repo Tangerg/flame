@@ -169,7 +169,8 @@ export function Schedules({ context }: { context: ComponentContext }) {
             icon={Refresh}
             aria-label="Refresh"
             size="md"
-            disabled={read.loading || busy}
+            pending={read.loading}
+            disabled={busy}
             onClick={() => void refresh()}
           />
         </FilterBar>
@@ -177,7 +178,11 @@ export function Schedules({ context }: { context: ComponentContext }) {
     >
       {read.loading && <p role="status">Reading schedules…</p>}
       {read.error && (
-        <p role="alert">{read.error} The last accepted page is retained.</p>
+        <p role="alert">
+          Schedules could not be read: {read.error}.{" "}
+          {read.accepted && "The last accepted page is retained. "}
+          Use Refresh to try again.
+        </p>
       )}
       {liveError && (
         <p role="alert">
@@ -426,7 +431,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
         }
       >
         <RecordGroup variant="cards" id="items" aria-label="Saved schedules">
-          {!matching.length && !read.loading && (
+          {page && !matching.length && (
             <EmptyState
               icon={CalendarClock}
               size="compact"
