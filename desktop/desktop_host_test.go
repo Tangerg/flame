@@ -19,7 +19,7 @@ func mustDesktopHost(t *testing.T, home string) *DesktopHost {
 	if err != nil {
 		t.Fatal(err)
 	}
-	host, err := newDesktopHost(root)
+	host, err := newDesktopHost(root, defaultLocalRuntimeEndpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestDesktopHostBootstrap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bootstrap.LocalRuntime.Endpoint != localRuntimeEndpoint || bootstrap.LocalRuntime.LocalToken != value {
+	if bootstrap.LocalRuntime.Endpoint != defaultLocalRuntimeEndpoint || bootstrap.LocalRuntime.LocalToken != value {
 		t.Fatalf("local runtime = %#v", bootstrap.LocalRuntime)
 	}
 }
@@ -134,6 +134,7 @@ func TestDesktopBootstrapUsesConfiguredProductRoot(t *testing.T) {
 			root := filepath.Join(t.TempDir(), " product root ")
 			t.Setenv("HOME", home)
 			t.Setenv("FLAME_HOME", root)
+			t.Setenv("FLAME_LOCAL_RUNTIME_URL", "")
 			defaultDirectory := mustDesktopDataDirectory(t, home)
 			if _, err := localruntime.OpenToken(defaultDirectory.LocalTokenPath()); err != nil {
 				t.Fatal(err)
@@ -172,8 +173,98 @@ func TestDesktopBootstrapUsesConfiguredProductRoot(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if bootstrap.LocalRuntime.Endpoint != localRuntimeEndpoint || bootstrap.LocalRuntime.LocalToken != expected {
+			if bootstrap.LocalRuntime.Endpoint != defaultLocalRuntimeEndpoint || bootstrap.LocalRuntime.LocalToken != expected {
 				t.Fatal("Bootstrap did not use only the configured product root")
+			}
+		})
+	}
+}
+
+func TestDesktopBootstrapPairsConfiguredEndpointWithProductRootToken(t *testing.T) {
+	tests := map[string]struct {
+		configured string
+		want       string
+	}{
+		"default":            {configured: "", want: "http://127.0.0.1:17171"},
+		"alternate loopback": {configured: "http://127.0.0.1:17172", want: "http://127.0.0.1:17172"},
+		"root slash":         {configured: "http://127.0.0.1:17172/", want: "http://127.0.0.1:17172"},
+		"https":              {configured: "https://127.0.0.1:17172", want: "https://127.0.0.1:17172"},
+		"ipv6 loopback":      {configured: "http://[::1]:17172/", want: "http://[::1]:17172"},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			root := filepath.Join(t.TempDir(), "product")
+			t.Setenv("HOME", t.TempDir())
+			t.Setenv("FLAME_HOME", root)
+			t.Setenv("FLAME_LOCAL_RUNTIME_URL", test.configured)
+			directory, err := localruntime.DataDirectoryUnder(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			token, err := localruntime.OpenToken(directory.LocalTokenPath())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			host, err := defaultDesktopHost()
+			if err != nil {
+				t.Fatal(err)
+			}
+			bootstrap, err := host.Bootstrap()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if bootstrap.LocalRuntime.Endpoint != test.want {
+				t.Fatalf("endpoint = %q, want %q", bootstrap.LocalRuntime.Endpoint, test.want)
+			}
+			if bootstrap.LocalRuntime.LocalToken != token.Value() {
+				t.Fatal("Bootstrap did not pair the endpoint with the configured product root token")
+			}
+		})
+	}
+}
+
+func TestDesktopHostRejectsInvalidLocalRuntimeEndpoint(t *testing.T) {
+	tests := []string{
+		"127.0.0.1:17172",
+		"//127.0.0.1:17172",
+		"ftp://127.0.0.1:17172",
+		"ws://127.0.0.1:17172",
+		"http:127.0.0.1:17172",
+		"http://user:secret@127.0.0.1:17172",
+		"http://secret@127.0.0.1:17172",
+		"http://user:secret@127.0.0.1:invalid",
+		"http://192.168.1.10:17172",
+		"http://0.0.0.0:17172",
+		"http://localhost:17172",
+		"http://flame.example:17172",
+		"http://[::1%25lo0]:17172",
+		"http://127.0.0.1:17172/v2",
+		"http://127.0.0.1:17172//",
+		"http://127.0.0.1:17172?token=secret",
+		"http://127.0.0.1:17172/?",
+		"http://127.0.0.1:17172#secret",
+		"http://127.0.0.1:17172#",
+		"http://127.0.0.1",
+		"http://127.0.0.1:",
+		"http://127.0.0.1:0",
+		"http://127.0.0.1:65536",
+		" http://127.0.0.1:17172",
+	}
+
+	for _, configured := range tests {
+		t.Run(configured, func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			t.Setenv("FLAME_HOME", filepath.Join(t.TempDir(), "product"))
+			t.Setenv("FLAME_LOCAL_RUNTIME_URL", configured)
+
+			_, err := defaultDesktopHost()
+			if err == nil {
+				t.Fatal("desktop accepted an invalid local runtime endpoint")
+			}
+			if strings.Contains(err.Error(), configured) || strings.Contains(err.Error(), "secret") {
+				t.Fatalf("error disclosed the rejected endpoint: %v", err)
 			}
 		})
 	}

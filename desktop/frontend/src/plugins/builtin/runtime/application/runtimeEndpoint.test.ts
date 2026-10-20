@@ -308,7 +308,7 @@ it("rejects malformed credentials before replacing the connection", () => {
 });
 
 it("binds the local token and filesystem capability only to the bootstrapped Runtime", async () => {
-  const endpoint = "http://127.0.0.1:17171";
+  const endpoint = "http://127.0.0.1:17172";
   await runtimeConnection.dispose();
   runtimeConnection = createRuntimeConnection({
     ...createBrowserHost(),
@@ -331,8 +331,19 @@ it("binds the local token and filesystem capability only to the bootstrapped Run
   expect(new Headers(request.mock.calls[0]?.[1]?.headers).get("Authorization")).toBe(
     "Bearer native-token",
   );
-  applyRuntimeEndpoint("https://remote.example");
+  applyRuntimeEndpoint("http://127.0.0.1:17171");
   expect(runtimeConnection.localWorkspaceAvailable()).toBe(false);
   await expect(runtimeConnection.client().runtime.discover()).rejects.toThrow("captured request");
   expect(new Headers(request.mock.calls[1]?.[1]?.headers).get("Authorization")).toBeNull();
+  applyRuntimeEndpoint("https://remote.example");
+  expect(runtimeConnection.localWorkspaceAvailable()).toBe(false);
+  await expect(runtimeConnection.client().runtime.discover()).rejects.toThrow("captured request");
+  expect(new Headers(request.mock.calls[2]?.[1]?.headers).get("Authorization")).toBeNull();
+  resetRuntimeEndpoint();
+  expect(configuredRuntimeTarget()).toEqual({ endpoint, localToken: "native-token" });
+  expect(runtimeConnection.localWorkspaceAvailable()).toBe(true);
+  await expect(runtimeConnection.client().runtime.discover()).rejects.toThrow("captured request");
+  expect(new Headers(request.mock.calls[3]?.[1]?.headers).get("Authorization")).toBe(
+    "Bearer native-token",
+  );
 });

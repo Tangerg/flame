@@ -149,6 +149,11 @@ and is consumed through `@flame/runtime-contract/client`.
 Native bootstrap uses `localruntime` to resolve the exact `FLAME_HOME` product root
 (default `~/.flame`) and reads only its `runtime/local-token`. An explicit root must
 be absolute. Missing or invalid configured credentials do not select another deployment.
+The native-only `FLAME_LOCAL_RUNTIME_URL` names that deployment's Runtime origin
+(default `http://127.0.0.1:17171`). It must be an `http` or `https` loopback IP literal
+with an explicit port and no credentials, path, query, or fragment; startup rejects any
+other value. Set it together with the matching `FLAME_HOME`: native folder browsing,
+Open, and Reveal stay limited to this exact origin.
 
 From the repository root, install the shared client before its UI consumer:
 

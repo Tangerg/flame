@@ -3,15 +3,19 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"unsafe"
 
 	"github.com/Tangerg/flame/runtime/localruntime"
 )
 
-const localRuntimeEndpoint = "http://127.0.0.1:17171"
+const defaultLocalRuntimeEndpoint = "http://127.0.0.1:17171"
 
 type LocalRuntimeConnection struct {
 	Endpoint   string `json:"endpoint"`
@@ -54,6 +58,7 @@ type pathOpener interface {
 // Every exported method becomes a Wails IPC entry point. Keep composition setters
 // unexported; TestDesktopHostBinds checks the exposed method set.
 type DesktopHost struct {
+	localRuntimeEndpoint   string
 	localTokenPath         string
 	workingDirectoryPicker workingDirectoryPicker
 	imageSaver             imageSaver
@@ -67,14 +72,48 @@ type DesktopHost struct {
 	notificationsReady atomic.Bool
 }
 
-func newDesktopHost(productRoot string) (*DesktopHost, error) {
+// The endpoint and product root describe one deployment: the published token is read
+// only from that root, so the endpoint must name the Runtime that root belongs to.
+func newDesktopHost(productRoot, localRuntimeEndpoint string) (*DesktopHost, error) {
+	endpoint, err := loopbackRuntimeOrigin(localRuntimeEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("desktop host: local runtime endpoint: %w", err)
+	}
 	dataDirectory, err := localruntime.DataDirectoryUnder(productRoot)
 	if err != nil {
 		return nil, fmt.Errorf("desktop host: resolve data directory: %w", err)
 	}
 	return &DesktopHost{
-		localTokenPath: dataDirectory.LocalTokenPath(),
+		localRuntimeEndpoint: endpoint,
+		localTokenPath:       dataDirectory.LocalTokenPath(),
 	}, nil
+}
+
+// The frontend grants native filesystem access to exactly this origin, so only a
+// loopback IP literal qualifies; host names are never resolved. Errors omit the input
+// because it may carry credentials.
+func loopbackRuntimeOrigin(raw string) (string, error) {
+	endpoint, err := url.Parse(raw)
+	if err != nil {
+		return "", errors.New("is not a valid URL")
+	}
+	if endpoint.Scheme != "http" && endpoint.Scheme != "https" {
+		return "", errors.New("must use http or https")
+	}
+	if endpoint.User != nil {
+		return "", errors.New("must not contain credentials")
+	}
+	path := endpoint.EscapedPath()
+	if endpoint.Opaque != "" || (path != "" && path != "/") || strings.ContainsAny(raw, "?#") {
+		return "", errors.New("must be an origin without path, query, or fragment")
+	}
+	if ip := net.ParseIP(endpoint.Hostname()); ip == nil || !ip.IsLoopback() {
+		return "", errors.New("host must be a loopback IP address")
+	}
+	if port, err := strconv.ParseUint(endpoint.Port(), 10, 16); err != nil || port == 0 {
+		return "", errors.New("port must be between 1 and 65535")
+	}
+	return endpoint.Scheme + "://" + endpoint.Host, nil
 }
 
 func (d *DesktopHost) useWindow(window nativeWindow) {
@@ -110,7 +149,11 @@ func defaultDesktopHost() (*DesktopHost, error) {
 	if err != nil {
 		return nil, fmt.Errorf("desktop host: resolve flame home: %w", err)
 	}
-	return newDesktopHost(root)
+	endpoint := os.Getenv("FLAME_LOCAL_RUNTIME_URL")
+	if endpoint == "" {
+		endpoint = defaultLocalRuntimeEndpoint
+	}
+	return newDesktopHost(root, endpoint)
 }
 
 // Fullscreen transitions rebuild the native titlebar, so cached geometry would be stale.
@@ -224,7 +267,7 @@ func (d *DesktopHost) Bootstrap() (DesktopBootstrap, error) {
 		return DesktopBootstrap{}, err
 	}
 	return DesktopBootstrap{
-		LocalRuntime: LocalRuntimeConnection{Endpoint: localRuntimeEndpoint, LocalToken: token},
+		LocalRuntime: LocalRuntimeConnection{Endpoint: d.localRuntimeEndpoint, LocalToken: token},
 	}, nil
 }
 
