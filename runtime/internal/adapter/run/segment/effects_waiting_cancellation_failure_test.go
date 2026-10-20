@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )

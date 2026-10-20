@@ -1,6 +1,6 @@
 package sqlite_test
 
-import runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+import runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 
 func testCommitID(raw string) runtimeidentity.CommitID {
 	identity, err := runtimeidentity.ParseCommit(raw)

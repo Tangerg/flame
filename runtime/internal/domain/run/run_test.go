@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 

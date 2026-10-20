@@ -8,8 +8,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/sandbox"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 

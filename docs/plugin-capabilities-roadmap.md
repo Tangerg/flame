@@ -16,12 +16,12 @@ by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is ab
   entry now receives the same call-scoped canonical host grant as its public
   `plugins.call` entry, through the single owner `Pool.OpenRPC` (commit
   `a15f2f9e4`). Memory keeps its own narrow model/embedding grant by design.
-- Ten first-party backends: `runtime/internal/plugins/memory`,
-  `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase`,
-  `runtime/internal/plugins/github`, `runtime/internal/plugins/modelrouter`,
-  `runtime/internal/plugins/guardrails`, `runtime/internal/plugins/web`,
-  `runtime/internal/plugins/usagereports`, `runtime/internal/plugins/sandbox`,
-  `runtime/internal/plugins/filewatch`.
+- Ten first-party backends: `plugins/memory/backend`,
+  `plugins/schedules/backend`, `plugins/knowledgebase/backend`,
+  `plugins/github/backend`, `plugins/modelrouter/backend`,
+  `plugins/guardrails/backend`, `plugins/web/backend`,
+  `plugins/usagereports/backend`, `plugins/sandbox/backend`,
+  `plugins/filewatch/backend`.
 - Examples: `examples/plugins/reviews` (backend + typed ops + MCP tools + a
   declared analyzer dependency + board UI; one analyzer business is exposed as
   *both* a typed query and the `analyze_review` Tool), `examples/plugins/composition`
@@ -175,6 +175,49 @@ candidate that needs a new core mechanism (e.g. the event-ingress gap), design a
 build that mechanism root-cause rather than hacking it onto an existing contract;
 if its scope is genuinely ambiguous, surface it instead of guessing.
 
+## Authoring and distribution acceptance
+
+- [x] Complete plugin source is concentrated beside its declaration and UI.
+- [x] An exported author project builds and generates contracts outside the checkout
+      with GOWORK=off and vendored public SDK/released dependencies.
+- [x] A target release ZIP installs through the existing Runtime admission path,
+      executes its declared contract, and preserves original command recovery.
+
+The implementation uses the existing native backend model. QuickJS and a universal
+JavaScript backend SDK remain analysis only. Registry publication, remote acquisition
+and automatic updates are not claimed by these artifact acceptance checks.
+
+All ten backend author projects passed independent tests and contract generation.
+Memory, Schedules and Saved usage reports also reproduced their component resources
+from packed public npm dependencies. Guardrails acceptance exports with GOWORK=off,
+uses an empty module cache and disabled proxy, builds its native ZIP, installs it
+through Runtime, and recovers the original command after restart. The native Darwin
+arm64 catalog produced 18 ZIPs; every package remained within admission's size bound.
+
+Contract lessons from this round:
+
+- Business source and its publisher generators belong beside the declaration;
+  host integration tests and generated consumer projections belong to their consumers.
+- Shared value invariants, directory identity, native confinement and technical
+  adapters have one public Runtime implementation. Independent author projects
+  vendor that SDK and released dependencies without importing Core's private packages.
+- SDK source snapshots use content-derived development versions and include no
+  application configuration. They are artifacts for this revision, not fabricated
+  registry releases or local replacements for Scope.
+- Go package paths participate in generated schema identity. Publisher contracts,
+  host/CLI projections and component resources must move together; existing
+  installations explicitly select rebuilt releases, and pending work needs its
+  original host and binary. No implicit conversion changes those routes.
+- Release building resolves physical directory identity before replacing an owned
+  output. A filesystem alias must neither bypass source protection nor turn a CLI
+  invocation into a successful no-op.
+- Usage report observation time and relative range are query facts. Restart tests
+  use a controlled clock or verify those fields separately before comparing all
+  retained accounting evidence; accounting remains in Core.
+
+Verification passed: Runtime, plugins, CLI and Reviews test/build/vet; targeted
+SDK, lock, File watch and scheduling race checks; frontend and plugin npm checks.
+
 ## Working constraints (per AGENTS.md / PROJECT_RULES)
 
 - Root-cause only; no compatibility patches; breaking changes allowed to fix a
@@ -192,7 +235,9 @@ if its scope is genuinely ambiguous, surface it instead of guessing.
 
 ## Verification
 
-- Build: `go build ./runtime/...`
+- Build: `go build ./runtime/... ./plugins/...`
+- Backend module: `(cd plugins && go test ./... && go vet ./...)`
+- Standalone release: `go test ./runtime/internal/bootstrap -run TestStandalonePluginArchiveRetainsItsPrivateCommandOwner -count=1`
 - Adapter suites: `go test ./runtime/internal/adapter/integration/{mcpconnection,pluginservices}/... -count=1`
 - Plugin SDK: `go test ./runtime/plugin/... -count=1`
 - Reviews example module: `(cd examples/plugins/reviews/backend && go test ./... -count=1)`

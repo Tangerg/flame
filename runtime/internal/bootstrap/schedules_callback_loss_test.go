@@ -10,10 +10,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
+	schedulesqlite "github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
-	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
-	schedulesqlite "github.com/Tangerg/flame/runtime/internal/plugins/schedules/sqlite"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

@@ -1,22 +1,24 @@
 package sqlite_test
 
 import (
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"path/filepath"
 	"testing"
 	"time"
 
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
+
 	"errors"
+	"reflect"
+	"strings"
+
 	"github.com/Tangerg/flame/runtime/capability"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
-	"reflect"
-	"strings"
 )
 
 func TestUnobservedEndpointReopensUnknownWithoutReplayingCallingIdentity(t *testing.T) {
@@ -184,7 +186,8 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	reporter, err := sessions.NewUsageReporter(sessions.UsageDependencies{Source: store})
+	clock := func() time.Time { return draft.CreatedAt.Add(2 * time.Second) }
+	reporter, err := sessions.NewUsageReporter(sessions.UsageDependencies{Source: store, Now: clock})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +212,7 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reporter, err = sessions.NewUsageReporter(sessions.UsageDependencies{Source: sqlite.NewModelInvocationStore(db)})
+	reporter, err = sessions.NewUsageReporter(sessions.UsageDependencies{Source: sqlite.NewModelInvocationStore(db), Now: clock})
 	if err != nil {
 		t.Fatal(err)
 	}

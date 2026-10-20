@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
+	"github.com/Tangerg/flame/runtime/sandbox"
 )
 
 // TestLaunchSandboxConfinesWrites proves the opt-in jail is actually wired onto

@@ -7,12 +7,12 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // WaitingSubtreeCancellationCommit is the immutable write-set for canceling a

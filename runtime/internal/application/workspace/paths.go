@@ -5,12 +5,13 @@ package workspace
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
+
+	"github.com/Tangerg/flame/runtime/dependency"
+	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
 )
 
 // Workspace input failures are stable application errors.
 var (
-	ErrCWDUnavailable       = errors.New("workspace: cwd unavailable")
 	ErrPathRequired         = errors.New("workspace: path required")
 	ErrPathOutsideRoot      = errors.New("workspace: path outside root")
 	ErrInvalidFileRange     = errors.New("workspace: invalid file range")
@@ -56,7 +57,7 @@ func (s *Scope) ResolveRoot(cwd string) (string, error) {
 	}
 	resolved, err := s.paths.ResolveExistingDir(root)
 	if err != nil {
-		return "", fmt.Errorf("%w: %s: %w", ErrCWDUnavailable, root, err)
+		return "", fmt.Errorf("%w: %s: %w", workspacepaths.ErrCWDUnavailable, root, err)
 	}
 	return resolved, nil
 }

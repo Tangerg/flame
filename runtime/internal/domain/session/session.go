@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/instant"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/exactint"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/exactint"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/runtime/instant"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // IDPrefix is the type prefix assigned when a Runtime generates a Session ID.

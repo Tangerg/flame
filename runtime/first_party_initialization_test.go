@@ -2,12 +2,14 @@ package runtime
 
 import (
 	json "encoding/json/v2"
-	"github.com/Tangerg/flame/runtime/capability"
-	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
+
+	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
+	"github.com/Tangerg/flame/runtime/capability"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -31,19 +33,19 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(initial.Data) != 10 {
-		t.Fatalf("default catalog = %d installations", len(initial.Data))
+	sources, err := os.ReadDir(os.Getenv("FLAME_TEST_FIRST_PARTY_DIRECTORY"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(initial.Data) != len(sources) {
+		t.Fatalf("default catalog installed %d of %d supplied packages", len(initial.Data), len(sources))
 	}
 	ids := map[string]string{}
-	views := 0
+	backendCount := 0
 	var memory, diagnostics, usage, scheduling protocol.PluginInstallation
 	for _, item := range initial.Data {
 		ids[item.Selected.Name] = item.ID
-		for _, component := range item.Selected.Components {
-			if component.Placement == "workspaceView" {
-				views++
-			}
-		}
+		backendCount += len(item.Selected.Servers)
 		if item.Selected.Name == "flame.schedules" {
 			scheduling = item
 		}
@@ -61,8 +63,13 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 			usage = item
 		}
 	}
-	if views != 8 {
-		t.Fatalf("default catalog = %d workspace views", views)
+	for _, item := range []protocol.PluginInstallation{memory, diagnostics, usage} {
+		if item.ID == "" || !slices.ContainsFunc(item.Selected.Components, func(component protocol.PluginClientComponent) bool { return component.Placement == "workspaceView" }) {
+			t.Fatalf("required workspace page is absent: %+v", item)
+		}
+	}
+	if scheduling.ID == "" {
+		t.Fatal("default schedule backend is absent")
 	}
 	deadline := time.Now().Add(10 * time.Second)
 	for {
@@ -79,7 +86,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 				ready++
 			}
 		}
-		if ready == 2 {
+		if ready == backendCount {
 			break
 		}
 		if time.Now().After(deadline) {
@@ -123,7 +130,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(restarted.Data) != 9 {
+	if len(restarted.Data) != len(initial.Data)-1 {
 		t.Fatalf("restart restored an uninstalled default: %d", len(restarted.Data))
 	}
 	for _, item := range restarted.Data {
@@ -166,7 +173,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 		t.Fatal(err)
 	}
 	reset, err := current.ListPlugins(t.Context(), CallOptions{})
-	if err != nil || len(reset.Data) != 10 {
+	if err != nil || len(reset.Data) != len(initial.Data) {
 		t.Fatalf("empty database did not receive defaults: (%v, %v)", reset, err)
 	}
 }

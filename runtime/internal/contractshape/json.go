@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/exactjson"
+	"github.com/Tangerg/flame/runtime/exactjson"
 )
 
 // DecodeValue preserves authored shape before typed validation can erase it.

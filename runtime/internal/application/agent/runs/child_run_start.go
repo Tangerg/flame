@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/instant"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/runtime/instant"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // ChildRunStartReservation is the durable, non-public identity allocated for

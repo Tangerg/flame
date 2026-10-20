@@ -519,8 +519,11 @@ Schedule dispatch records Run acceptance in the opening transaction, and later
 source withdrawal cannot cancel that accepted Run. Pending captures remain private
 and are redelivered with stable identities after reenable or restart.
 
-All application builds use the repository workspace. Backend executable sources
-live under `internal/plugins` in this application module. Source folders
-must be built into target packages before installation. The pre-release schema
+Application builds use the repository workspace. First-party backend sources
+live beside their declarations and UI in `plugins/<name>/backend`, in a separate
+Go module that imports public Runtime APIs. The author exporter produces one
+independent plugin module with content-addressed SDK source archives and vendored
+dependencies. Its build runs with GOWORK=off and emits a precompiled installable ZIP.
+Runtime installation never builds source or installs toolchains. The pre-release schema
 policy refuses old stores; this boundary has no compatibility readers or migration
 fallbacks.

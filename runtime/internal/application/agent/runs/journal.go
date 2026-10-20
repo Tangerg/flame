@@ -7,7 +7,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // liveHeadroom bounds queued live-only events per subscriber. Replayable events

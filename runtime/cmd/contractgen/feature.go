@@ -84,35 +84,38 @@ func runFeature(source, dir, tsDir string, goOutputs ...featureGoOutput) error {
 		}
 		goBodies[output.Path] = body
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-	if err := writeJSON(filepath.Join(dir, "schema.json"), struct {
-		Schema string                    `json:"$schema"`
-		Defs   map[string]jsontext.Value `json:"$defs"`
-	}{schemaDialect, artifacts.definitions}); err != nil {
-		return err
-	}
-	if err := writeJSON(filepath.Join(dir, "methods.generated.json"), artifacts.methods); err != nil {
-		return err
-	}
-	if err := writeJSON(filepath.Join(dir, "capability.generated.json"), artifacts.capability.Descriptor()); err != nil {
-		return err
-	}
-	var reference strings.Builder
-	reference.WriteString("# Feature operations\n\nGenerated from the feature's Go-owned method contracts.\n\n| Method | Kind | Target | Description |\n| --- | --- | --- | --- |\n")
-	for _, method := range artifacts.methods {
-		description := strings.NewReplacer("|", "\\|", "\n", " ", "\r", " ").Replace(method.Description)
-		if method.Stream != "" {
-			description += " Stream chunks: " + method.Stream + "; final result: " + method.Output + "."
+	if dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
 		}
-		fmt.Fprintf(&reference, "| `%s` | %s | %s | %s |\n", method.Name, method.Kind, method.Target, description)
+		if err := writeJSON(filepath.Join(dir, "schema.json"), struct {
+			Schema string                    `json:"$schema"`
+			Defs   map[string]jsontext.Value `json:"$defs"`
+		}{schemaDialect, artifacts.definitions}); err != nil {
+			return err
+		}
+		if err := writeJSON(filepath.Join(dir, "methods.generated.json"), artifacts.methods); err != nil {
+			return err
+		}
+		if err := writeJSON(filepath.Join(dir, "capability.generated.json"), artifacts.capability.Descriptor()); err != nil {
+			return err
+		}
+		var reference strings.Builder
+		reference.WriteString("# Feature operations\n\nGenerated from the feature's Go-owned method contracts.\n\n| Method | Kind | Target | Description |\n| --- | --- | --- | --- |\n")
+		for _, method := range artifacts.methods {
+			description := strings.NewReplacer("|", "\\|", "\n", " ", "\r", " ").Replace(method.Description)
+			if method.Stream != "" {
+				description += " Stream chunks: " + method.Stream + "; final result: " + method.Output + "."
+			}
+			fmt.Fprintf(&reference, "| `%s` | %s | %s | %s |\n", method.Name, method.Kind, method.Target, description)
+		}
+		descriptor := artifacts.capability.Descriptor()
+		fmt.Fprintf(&reference, "\nCapability `%s` uses `%s` composition in `%s` scope. Required backend protocol: `%s`.\n\n`capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.\n", descriptor.Reference, descriptor.Composition, descriptor.Scope, descriptor.Protocol)
+		if err := os.WriteFile(filepath.Join(dir, "API_REFERENCE.md"), []byte(reference.String()), 0644); err != nil {
+			return err
+		}
 	}
-	descriptor := artifacts.capability.Descriptor()
-	fmt.Fprintf(&reference, "\nCapability `%s` uses `%s` composition in `%s` scope. Required backend protocol: `%s`.\n\n`capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.\n", descriptor.Reference, descriptor.Composition, descriptor.Scope, descriptor.Protocol)
-	if err := os.WriteFile(filepath.Join(dir, "API_REFERENCE.md"), []byte(reference.String()), 0644); err != nil {
-		return err
-	}
+
 	if tsDir != "" {
 		if err := os.MkdirAll(tsDir, 0755); err != nil {
 			return err
@@ -147,7 +150,10 @@ func protectFeatureSource(source, dir, tsDir string) error {
 	if err != nil {
 		return err
 	}
-	outputs := []string{filepath.Join(dir, "schema.json"), filepath.Join(dir, "methods.generated.json"), filepath.Join(dir, "capability.generated.json"), filepath.Join(dir, "API_REFERENCE.md")}
+	var outputs []string
+	if dir != "" {
+		outputs = []string{filepath.Join(dir, "schema.json"), filepath.Join(dir, "methods.generated.json"), filepath.Join(dir, "capability.generated.json"), filepath.Join(dir, "API_REFERENCE.md")}
+	}
 	if tsDir != "" {
 		outputs = append(outputs, filepath.Join(tsDir, "methods.generated.ts"))
 	}

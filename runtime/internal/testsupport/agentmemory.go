@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"time"
 
-	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 )
 
 // MustAgentMemoryItem fills irrelevant identity, partition, provenance and

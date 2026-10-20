@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/idempotency"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 

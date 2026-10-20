@@ -8,7 +8,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 

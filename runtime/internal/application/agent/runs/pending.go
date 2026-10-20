@@ -6,13 +6,13 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/instant"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/runtime/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/flame/runtime/optional"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // Pending is one complete Run-tree barrier awaiting human decisions. The set is

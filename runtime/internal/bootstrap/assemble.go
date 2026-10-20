@@ -27,8 +27,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
-	"github.com/Tangerg/flame/runtime/model/catalog"
+	modelcatalog "github.com/Tangerg/flame/runtime/model/catalog"
+	"github.com/Tangerg/flame/runtime/sandbox"
 )
 
 // assemble transfers acquired resources directly to the Runtime lifecycle.

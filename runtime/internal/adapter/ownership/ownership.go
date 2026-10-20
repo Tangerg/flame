@@ -14,8 +14,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	appownership "github.com/Tangerg/flame/runtime/internal/application/ownership"
-	"github.com/Tangerg/flame/runtime/internal/infra/advisorylock"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/runtime/storage/advisorylock"
 )
 
 const ownershipDirectory = "ownership"

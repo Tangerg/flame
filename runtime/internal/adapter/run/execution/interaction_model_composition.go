@@ -8,10 +8,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/resourceid"
 	"github.com/Tangerg/scope/core/chat"
 )
 

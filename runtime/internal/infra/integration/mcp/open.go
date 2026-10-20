@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"

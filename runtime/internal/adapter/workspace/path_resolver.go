@@ -6,54 +6,22 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/storage/directories"
+	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
 
-// ErrNotDirectory reports that a path exists but is not a directory.
-var ErrNotDirectory = errors.New("workspace: not a directory")
-
-// ErrAbsolutePathRequired reports an attempt to let an adapter rediscover the
-// process cwd. Workspace roots are resolved once at process/session boundaries.
-var ErrAbsolutePathRequired = errors.New("workspace: absolute path required")
-
-// Canonical resolves existing aliases while retaining a not-yet-created suffix.
-// An unresolved physical identity cannot become a competing lexical identity.
-// Relative values are rejected because they depend on the process cwd.
-func Canonical(path string) (string, error) {
-	if !filepath.IsAbs(path) {
-		return "", ErrAbsolutePathRequired
-	}
-	return pathidentity.Resolve("", path)
-}
-
-// Resolver implements the application session coordinator's cwd-resolution
-// port.
-type Resolver struct{}
-
-// ResolveExistingDir verifies path exists as a directory and returns its
-// canonical identity.
-func (Resolver) ResolveExistingDir(path string) (string, error) {
-	if !filepath.IsAbs(path) {
-		return "", ErrAbsolutePathRequired
-	}
-	info, err := os.Stat(path)
-	if err != nil {
-		return "", err
-	}
-	if !info.IsDir() {
-		return "", ErrNotDirectory
-	}
-	return Canonical(path)
-}
+type Resolver struct{ directories.Resolver }
 
 // ResolveInRoot lexically confines a client path to root and returns its
 // root-relative form. The workspace application owns the input-policy errors;
 // this adapter owns filesystem path spelling and cleaning.
 func (Resolver) ResolveInRoot(root, path string) (string, error) {
 	if !filepath.IsAbs(root) {
-		return "", ErrAbsolutePathRequired
+		return "", workspacepaths.ErrAbsolutePathRequired
 	}
 	if path == "" {
 		return "", workspaceapp.ErrPathRequired
@@ -100,7 +68,7 @@ func (r Resolver) ResolveExistingInRoot(root, path string) (string, error) {
 // A path that disappeared (or was replaced by a non-directory) is a normal
 // workspace projection, not an error. Other filesystem failures remain explicit.
 func (Resolver) Inspect(path string) (workspaceapp.Resolved, error) {
-	cwd, err := Canonical(path)
+	cwd, err := directories.Canonical(path)
 	if err != nil {
 		return workspaceapp.Resolved{}, err
 	}

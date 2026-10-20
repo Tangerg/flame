@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/instant"
-	"github.com/Tangerg/flame/runtime/internal/exactint"
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/flame/runtime/exactint"
+	"github.com/Tangerg/flame/runtime/instant"
+	"github.com/Tangerg/flame/runtime/optional"
 )
 
 // Status is one Step's execution state.

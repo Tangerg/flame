@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/dependency"
 	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
 )
 

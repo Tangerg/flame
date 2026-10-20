@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // RunActorAdmission reads installation authority inside the Run opening

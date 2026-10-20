@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpredirect"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/transport/httpredirect"
 )
 
 func TestListRemoteModels(t *testing.T) {

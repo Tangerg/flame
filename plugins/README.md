@@ -42,7 +42,6 @@ No separate readiness ledger advances those facts. CLI `plugins compositions`,
 `plugins set-composition` and `plugins resolve-composition` inspect/change these
 existing owners without loading a graphical component.
 
-
 Build target-specific packages from the repository's local `go.work`:
 
 ```sh
@@ -51,16 +50,17 @@ node plugins/build.mjs --os darwin --arch arm64 --output /absolute/new/packages
 
 The output directory must not exist. Supported targets are Darwin, Linux and
 Windows on amd64 or arm64. The output contains the complete first-party catalog,
-including all workspace pages and renderers and compiled Memory/Schedules backends.
-The same build discovers and compiles the Knowledge base backend and copies its
-generated operations/context contracts.
+including all workspace pages, renderers and the ten compiled backends.
+The same build copies each backend's generated contracts and declared resources.
 GitHub uses the same package path with a declared optional secret token input;
 its unset configuration supports public reads without blocking catalog initialization.
 Memory/Schedules package namespaces also contain canonical contracts generated
 from the typed methods registered by their actual backends. Run
-`go generate ./internal/plugins/memory/rpc ./internal/plugins/schedules/rpc`
-from `runtime` after changing those methods; the package builder copies the
+`go generate ./memory/backend/rpc ./schedules/backend/rpc`
+from `plugins` after changing those methods; the package builder copies the
 namespace resources into the output.
+Regenerate consumer projections with `go generate ./...` from Runtime and CLI,
+then rebuild component resources before packaging.
 Runtime and CLI build targets place it in `plugins` beside their executable.
 Runtime installs and enables this catalog only when initializing a fresh
 database. Restart preserves user decisions. Package updates still require explicit
@@ -87,38 +87,59 @@ workspaces and original command outcomes through the shared native confinement.
 dispatch intents over the public Runtime workspace observation stream.
 Other packages contain only their declared content or presentation resources.
 
-Backend source is compiled from `runtime/internal/plugins/memory` and
-`runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase` and
-`runtime/internal/plugins/github`, `runtime/internal/plugins/modelrouter` and
-`runtime/internal/plugins/guardrails`, `runtime/internal/plugins/web` and
-`runtime/internal/plugins/usagereports`, `runtime/internal/plugins/sandbox` and
-`runtime/internal/plugins/filewatch`
-inside the local Runtime application module.
-These are separate executables with private facts and process lifetimes, without
-separate published Go modules or first-party version resolution.
+Backend implementations live in `<name>/backend` beside their manifests, contracts
+and optional `<name>/src` UI. The `plugins` Go module is separate from Runtime.
+Its business code and unit tests import only public Runtime APIs; host-specific
+integration tests stay with Runtime's host adapters. Shared invariants and native
+mechanisms have one public implementation consumed by both modules.
 
-## Standalone author artifacts
+## Independent author projects and release packages
 
-Build a complete Usage author kit outside the checkout:
+Export one complete plugin outside the checkout:
 
 ```sh
-node plugins/build-author-kit.mjs --output /absolute/new/author-kit --offline
+node plugins/build-author-kit.mjs --plugin guardrails --output /absolute/new/author --offline
 ```
 
-The command builds the existing icon/UI artifacts, packs the public SDK, UI,
-icons and Runtime contract, and copies the complete Usage source/declaration.
-It installs those archives in the independent directory, typechecks and builds
-using only that directory's declared toolchain, then compares every emitted
-resource byte with the bundled Usage package. Dependencies must resolve inside
-that directory. It never loads or renders a component. Omit `--offline` only when
-npm must fetch declared registry dependencies missing from the local cache.
+The author directory contains that plugin's complete source, its own Go module,
+contracts, declaration and build tools. Go dependencies are vendored. Included
+Runtime/localruntime SDK source archives have content-derived development versions;
+they are current-source artifacts, not versions published to a Go registry.
+The exporter never substitutes a released Scope module. UI-backed projects also
+contain packed public SDK/UI/icons/Runtime TS packages and an independent npm lockfile.
+The default plugin is `usage`; select any first-party directory with `--plugin`.
+Omit `--offline` only when declared registry dependencies are missing locally.
 
-The result includes its own lockfile and build script. After moving it away from
-Flame, `npm ci --ignore-scripts`, `npm run typecheck` and `npm run build` reproduce
-the installable `usage` directory. Current-source tarballs are public author
-artifacts; this does not assert registry publication or rendered/native behavior.
-The SDK build function requires the author's declared `compiler: rolldown`, so
-source links and archives use the same explicit compiler owner.
+In the independent author directory:
+
+```sh
+GOWORK=off GOPROXY=off go test ./...
+GOWORK=off go generate ./...
+# UI-backed plugins additionally run npm ci --ignore-scripts, npm run typecheck and npm run build.
+node build.mjs --os darwin --arch arm64 --output /absolute/new/packages --archives /absolute/new/releases
+```
+
+The same builder handles the repository catalog, `--plugin <directory>` or an
+exported single-package project. Install the resulting ZIP through the ordinary
+Runtime `plugins.install` operation or CLI with its absolute Runtime-host path:
+
+```sh
+flame --runtime-url http://127.0.0.1:17171 plugins install --request '{"source":"/absolute/releases/plugin-flame.guardrails-1.0.0-darwin-arm64.zip"}'
+```
+
+The ZIP contains the platform's executable and declared resources, with executable
+permissions preserved. Runtime computes and admits its ordinary immutable release;
+installation needs no Go, Node, compiler, source checkout or dependency installation.
+Choose the Runtime host's OS/architecture; native sandbox availability follows the
+actual confinement mechanism. Package acquisition from a registry/URL and automatic
+updates remain separate work.
+
+Module relocation changes the generated schema reference identities. Regenerate
+plugin contracts, host/CLI projections and component resources together. Existing
+installations must explicitly admit/select rebuilt packages. Original pending work
+retains its old release and receipt route; finish it with the matching original
+host/binary before upgrading. Private business schemas and core accounting ownership
+are unchanged. No compatibility reader or automatic data conversion is supplied.
 
 ## Shared page resources
 

@@ -3,7 +3,7 @@ package protocol
 import (
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/exactint"
+	"github.com/Tangerg/flame/runtime/exactint"
 )
 
 // MaximumExactJSONInteger is the largest integer-valued identity Flame places

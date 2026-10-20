@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/Tangerg/flame/runtime/dependency"
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // HookTrust reports whether a project root may run user lifecycle hooks.

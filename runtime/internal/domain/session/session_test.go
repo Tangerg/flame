@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/exactint"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/exactint"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 

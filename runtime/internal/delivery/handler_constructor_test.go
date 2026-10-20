@@ -3,8 +3,8 @@ package delivery
 import (
 	"testing"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestNewReportsMissingIntegrations(t *testing.T) {

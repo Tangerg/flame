@@ -8,7 +8,7 @@ second process supervisor or lifecycle.
 
 ## MCP metadata
 
-Scope's `core`, `agent`, `a2a` and `mcp` modules use v0.52.0 with
+Scope's `core`, `agent`, `a2a` and `mcp` modules use v0.53.0 with
 `github.com/Tangerg/go-sdk` v1.8.1-scope.3. Other Scope modules retain their own
 published release versions. Native SDK `Meta` values are encoded JSON: write typed
 values with `Meta.Set`, check its error, and decode a consumed entry directly into

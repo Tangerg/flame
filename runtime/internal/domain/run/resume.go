@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // TreeResumeDraft is the complete set of parked Runs reopened after one

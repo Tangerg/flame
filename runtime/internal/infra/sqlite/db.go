@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/exactint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/exactint"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 

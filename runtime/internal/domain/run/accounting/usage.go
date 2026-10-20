@@ -8,8 +8,8 @@ import (
 	"math"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/optional"
 	"github.com/Tangerg/scope/core/chat"
 )
 

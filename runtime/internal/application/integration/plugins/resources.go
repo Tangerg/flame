@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 func (c *Coordinator) Component(ctx context.Context, id resourceid.InstallationID, digest fingerprint.Digest, component plugin.ContributionID) (plugin.ClientComponent, error) {

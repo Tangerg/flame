@@ -15,7 +15,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
+	"github.com/Tangerg/flame/runtime/sandbox"
 )
 
 // Isolator holds one sandbox Workspace per isolated session. The copy is

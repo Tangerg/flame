@@ -65,6 +65,6 @@ revision. Changed original JSON conflicts with the retained identity. An uncerta
 embedding/commit remains unconfirmed; absence of a receipt cannot authorize replay.
 Database corruption is a protocol failure, not a business refusal.
 
-Generate contracts from Runtime with
-`go generate ./internal/plugins/knowledgebase/rpc`. Run the backend's tests from
-the workspace with `go test ./runtime/internal/plugins/knowledgebase/... -count=1`.
+Generate contracts from the repository workspace with
+`go generate ./plugins/knowledgebase/backend/rpc`. Run the backend's tests from
+the workspace with `go test ./plugins/knowledgebase/backend/... -count=1`.

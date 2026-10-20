@@ -7,7 +7,7 @@ import (
 
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
+	"github.com/Tangerg/flame/runtime/sandbox"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )

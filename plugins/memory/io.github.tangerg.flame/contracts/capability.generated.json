@@ -11,7 +11,7 @@
       "description": "Add a human-authored memory item in the requested scope.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_AddInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_AddInput": {
             "additionalProperties": false,
             "properties": {
               "CWD": {
@@ -21,11 +21,18 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": ["project", "user"],
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               }
             },
-            "required": ["Scope", "CWD", "Content"],
+            "required": [
+              "Scope",
+              "CWD",
+              "Content"
+            ],
             "type": "object"
           }
         },
@@ -39,16 +46,23 @@
             "type": "string"
           },
           "Scope": {
-            "enum": ["project", "user"],
+            "enum": [
+              "project",
+              "user"
+            ],
             "type": "string"
           }
         },
-        "required": ["Scope", "CWD", "Content"],
+        "required": [
+          "Scope",
+          "CWD",
+          "Content"
+        ],
         "type": "object"
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot": {
             "additionalProperties": false,
             "properties": {
               "Content": {
@@ -77,7 +91,10 @@
                 "type": "string"
               },
               "Origin": {
-                "enum": ["auto", "user"],
+                "enum": [
+                  "auto",
+                  "user"
+                ],
                 "type": "string"
               },
               "Pinned": {
@@ -87,14 +104,21 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": ["project", "user"],
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               },
               "SessionID": {
                 "type": "string"
               },
               "Status": {
-                "enum": ["active", "pending", "rejected"],
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ],
                 "type": "string"
               },
               "UpdatedAt": {
@@ -119,17 +143,20 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_AddResult": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_AddResult": {
             "additionalProperties": false,
             "properties": {
               "Changed": {
                 "type": "boolean"
               },
               "Item": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot"
               }
             },
-            "required": ["Item", "Changed"],
+            "required": [
+              "Item",
+              "Changed"
+            ],
             "type": "object"
           }
         },
@@ -140,10 +167,13 @@
             "type": "boolean"
           },
           "Item": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot"
           }
         },
-        "required": ["Item", "Changed"],
+        "required": [
+          "Item",
+          "Changed"
+        ],
         "type": "object"
       }
     },
@@ -154,14 +184,16 @@
       "description": "Delete one memory item through its private owner.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_ItemInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_ItemInput": {
             "additionalProperties": false,
             "properties": {
               "ID": {
                 "type": "string"
               }
             },
-            "required": ["ID"],
+            "required": [
+              "ID"
+            ],
             "type": "object"
           }
         },
@@ -172,12 +204,14 @@
             "type": "string"
           }
         },
-        "required": ["ID"],
+        "required": [
+          "ID"
+        ],
         "type": "object"
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_Ack": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Ack": {
             "additionalProperties": false,
             "properties": {},
             "type": "object"
@@ -196,18 +230,24 @@
       "description": "Read active memory items that can inform a Run.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_ItemsInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_ItemsInput": {
             "additionalProperties": false,
             "properties": {
               "Project": {
                 "type": "string"
               },
               "Scope": {
-                "enum": ["project", "user"],
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               }
             },
-            "required": ["Scope", "Project"],
+            "required": [
+              "Scope",
+              "Project"
+            ],
             "type": "object"
           }
         },
@@ -218,16 +258,22 @@
             "type": "string"
           },
           "Scope": {
-            "enum": ["project", "user"],
+            "enum": [
+              "project",
+              "user"
+            ],
             "type": "string"
           }
         },
-        "required": ["Scope", "Project"],
+        "required": [
+          "Scope",
+          "Project"
+        ],
         "type": "object"
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot": {
             "additionalProperties": false,
             "properties": {
               "Content": {
@@ -256,7 +302,10 @@
                 "type": "string"
               },
               "Origin": {
-                "enum": ["auto", "user"],
+                "enum": [
+                  "auto",
+                  "user"
+                ],
                 "type": "string"
               },
               "Pinned": {
@@ -266,14 +315,21 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": ["project", "user"],
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               },
               "SessionID": {
                 "type": "string"
               },
               "Status": {
-                "enum": ["active", "pending", "rejected"],
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ],
                 "type": "string"
               },
               "UpdatedAt": {
@@ -301,7 +357,7 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot"
         },
         "type": "array"
       }
@@ -313,7 +369,7 @@
       "description": "List memory items visible in the requested scope.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_ListInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_ListInput": {
             "additionalProperties": false,
             "properties": {
               "CWD": {
@@ -334,11 +390,18 @@
                 "type": "integer"
               },
               "Scope": {
-                "enum": ["project", "user"],
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               }
             },
-            "required": ["Scope", "CWD", "Cursor"],
+            "required": [
+              "Scope",
+              "CWD",
+              "Cursor"
+            ],
             "type": "object"
           }
         },
@@ -363,16 +426,23 @@
             "type": "integer"
           },
           "Scope": {
-            "enum": ["project", "user"],
+            "enum": [
+              "project",
+              "user"
+            ],
             "type": "string"
           }
         },
-        "required": ["Scope", "CWD", "Cursor"],
+        "required": [
+          "Scope",
+          "CWD",
+          "Cursor"
+        ],
         "type": "object"
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot": {
             "additionalProperties": false,
             "properties": {
               "Content": {
@@ -401,7 +471,10 @@
                 "type": "string"
               },
               "Origin": {
-                "enum": ["auto", "user"],
+                "enum": [
+                  "auto",
+                  "user"
+                ],
                 "type": "string"
               },
               "Pinned": {
@@ -411,14 +484,21 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": ["project", "user"],
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               },
               "SessionID": {
                 "type": "string"
               },
               "Status": {
-                "enum": ["active", "pending", "rejected"],
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ],
                 "type": "string"
               },
               "UpdatedAt": {
@@ -443,7 +523,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_Page": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Page": {
             "additionalProperties": false,
             "properties": {
               "Capacity": {
@@ -461,13 +541,17 @@
               },
               "Rows": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot"
                 },
                 "maxItems": 100,
                 "type": "array"
               }
             },
-            "required": ["Rows", "NextCursor", "Capacity"],
+            "required": [
+              "Rows",
+              "NextCursor",
+              "Capacity"
+            ],
             "type": "object"
           }
         },
@@ -489,13 +573,17 @@
           },
           "Rows": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot"
             },
             "maxItems": 100,
             "type": "array"
           }
         },
-        "required": ["Rows", "NextCursor", "Capacity"],
+        "required": [
+          "Rows",
+          "NextCursor",
+          "Capacity"
+        ],
         "type": "object"
       }
     },
@@ -506,7 +594,7 @@
       "description": "Extract and curate captured conversation under the private ledger and watermark.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_Conversation": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Conversation": {
             "additionalProperties": false,
             "properties": {
               "MessageCount": {
@@ -522,17 +610,20 @@
                 "type": "string"
               }
             },
-            "required": ["MessageCount", "Transcript"],
+            "required": [
+              "MessageCount",
+              "Transcript"
+            ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_MaintenanceInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_MaintenanceInput": {
             "additionalProperties": false,
             "properties": {
               "Compacted": {
                 "type": "boolean"
               },
               "Conversation": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_Conversation"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Conversation"
               },
               "Project": {
                 "type": "string"
@@ -541,7 +632,12 @@
                 "type": "string"
               }
             },
-            "required": ["SessionID", "Project", "Compacted", "Conversation"],
+            "required": [
+              "SessionID",
+              "Project",
+              "Compacted",
+              "Conversation"
+            ],
             "type": "object"
           }
         },
@@ -552,7 +648,7 @@
             "type": "boolean"
           },
           "Conversation": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_Conversation"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Conversation"
           },
           "Project": {
             "type": "string"
@@ -561,19 +657,26 @@
             "type": "string"
           }
         },
-        "required": ["SessionID", "Project", "Compacted", "Conversation"],
+        "required": [
+          "SessionID",
+          "Project",
+          "Compacted",
+          "Conversation"
+        ],
         "type": "object"
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_MaintenanceResult": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_MaintenanceResult": {
             "additionalProperties": false,
             "properties": {
               "Published": {
                 "type": "boolean"
               }
             },
-            "required": ["Published"],
+            "required": [
+              "Published"
+            ],
             "type": "object"
           }
         },
@@ -584,7 +687,9 @@
             "type": "boolean"
           }
         },
-        "required": ["Published"],
+        "required": [
+          "Published"
+        ],
         "type": "object"
       }
     },
@@ -595,7 +700,7 @@
       "description": "Apply a human review decision to a pending memory item.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_ReviewInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_ReviewInput": {
             "additionalProperties": false,
             "properties": {
               "Decision": {
@@ -605,7 +710,10 @@
                 "type": "string"
               }
             },
-            "required": ["ID", "Decision"],
+            "required": [
+              "ID",
+              "Decision"
+            ],
             "type": "object"
           }
         },
@@ -619,12 +727,15 @@
             "type": "string"
           }
         },
-        "required": ["ID", "Decision"],
+        "required": [
+          "ID",
+          "Decision"
+        ],
         "type": "object"
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_Ack": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Ack": {
             "additionalProperties": false,
             "properties": {},
             "type": "object"
@@ -643,7 +754,7 @@
       "description": "Rank active memories for the supplied project and query.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_SearchInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_SearchInput": {
             "additionalProperties": false,
             "properties": {
               "EmbeddingSpace": {
@@ -665,7 +776,12 @@
                 "type": "integer"
               }
             },
-            "required": ["Project", "Query", "TopK", "EmbeddingSpace"],
+            "required": [
+              "Project",
+              "Query",
+              "TopK",
+              "EmbeddingSpace"
+            ],
             "type": "object"
           }
         },
@@ -691,12 +807,17 @@
             "type": "integer"
           }
         },
-        "required": ["Project", "Query", "TopK", "EmbeddingSpace"],
+        "required": [
+          "Project",
+          "Query",
+          "TopK",
+          "EmbeddingSpace"
+        ],
         "type": "object"
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot": {
             "additionalProperties": false,
             "properties": {
               "Content": {
@@ -725,7 +846,10 @@
                 "type": "string"
               },
               "Origin": {
-                "enum": ["auto", "user"],
+                "enum": [
+                  "auto",
+                  "user"
+                ],
                 "type": "string"
               },
               "Pinned": {
@@ -735,14 +859,21 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": ["project", "user"],
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               },
               "SessionID": {
                 "type": "string"
               },
               "Status": {
-                "enum": ["active", "pending", "rejected"],
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ],
                 "type": "string"
               },
               "UpdatedAt": {
@@ -770,7 +901,7 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot"
         },
         "type": "array"
       }
@@ -782,7 +913,7 @@
       "description": "Edit the current content or pin state of a memory item.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvcnBj_UpdateInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_UpdateInput": {
             "additionalProperties": false,
             "properties": {
               "Content": {
@@ -795,7 +926,9 @@
                 "type": "boolean"
               }
             },
-            "required": ["ID"],
+            "required": [
+              "ID"
+            ],
             "type": "object"
           }
         },
@@ -812,12 +945,14 @@
             "type": "boolean"
           }
         },
-        "required": ["ID"],
+        "required": [
+          "ID"
+        ],
         "type": "object"
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_ItemSnapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot": {
             "additionalProperties": false,
             "properties": {
               "Content": {
@@ -846,7 +981,10 @@
                 "type": "string"
               },
               "Origin": {
-                "enum": ["auto", "user"],
+                "enum": [
+                  "auto",
+                  "user"
+                ],
                 "type": "string"
               },
               "Pinned": {
@@ -856,14 +994,21 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": ["project", "user"],
+                "enum": [
+                  "project",
+                  "user"
+                ],
                 "type": "string"
               },
               "SessionID": {
                 "type": "string"
               },
               "Status": {
-                "enum": ["active", "pending", "rejected"],
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ],
                 "type": "string"
               },
               "UpdatedAt": {
@@ -918,7 +1063,10 @@
             "type": "string"
           },
           "Origin": {
-            "enum": ["auto", "user"],
+            "enum": [
+              "auto",
+              "user"
+            ],
             "type": "string"
           },
           "Pinned": {
@@ -928,14 +1076,21 @@
             "type": "string"
           },
           "Scope": {
-            "enum": ["project", "user"],
+            "enum": [
+              "project",
+              "user"
+            ],
             "type": "string"
           },
           "SessionID": {
             "type": "string"
           },
           "Status": {
-            "enum": ["active", "pending", "rejected"],
+            "enum": [
+              "active",
+              "pending",
+              "rejected"
+            ],
             "type": "string"
           },
           "UpdatedAt": {

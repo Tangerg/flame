@@ -3,7 +3,7 @@ package sqlite
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // SQLite methods are adapter boundaries: even when an Application aggregate

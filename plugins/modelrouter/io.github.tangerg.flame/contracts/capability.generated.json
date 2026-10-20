@@ -17,7 +17,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9kb21haW4_Rule": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule": {
             "additionalProperties": false,
             "properties": {
               "ceiling": {
@@ -41,7 +41,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9kb21haW4_Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Snapshot": {
             "additionalProperties": false,
             "properties": {
               "revision": {
@@ -56,7 +56,7 @@
               },
               "rules": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9kb21haW4_Rule"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
                 },
                 "maxItems": 3,
                 "type": "array"
@@ -142,7 +142,7 @@
           },
           "rules": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9kb21haW4_Rule"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
             },
             "maxItems": 3,
             "type": "array"
@@ -162,7 +162,7 @@
       "description": "Replace the routing policy at the inspected revision. Each use has at most one exact target and an optional caller-envelope ceiling.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9kb21haW4_Rule": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule": {
             "additionalProperties": false,
             "properties": {
               "ceiling": {
@@ -186,7 +186,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9ycGM_ReplaceInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9ycGM_ReplaceInput": {
             "additionalProperties": false,
             "properties": {
               "expectedRevision": {
@@ -201,7 +201,7 @@
               },
               "rules": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9kb21haW4_Rule"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
                 },
                 "maxItems": 3,
                 "type": "array"
@@ -287,7 +287,7 @@
           },
           "rules": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9kb21haW4_Rule"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
             },
             "maxItems": 3,
             "type": "array"
@@ -301,7 +301,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9kb21haW4_Rule": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule": {
             "additionalProperties": false,
             "properties": {
               "ceiling": {
@@ -325,7 +325,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9kb21haW4_Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Snapshot": {
             "additionalProperties": false,
             "properties": {
               "revision": {
@@ -340,7 +340,7 @@
               },
               "rules": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9kb21haW4_Rule"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
                 },
                 "maxItems": 3,
                 "type": "array"
@@ -426,7 +426,7 @@
           },
           "rules": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tb2RlbHJvdXRlci9kb21haW4_Rule"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
             },
             "maxItems": 3,
             "type": "array"

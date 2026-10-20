@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 func TestItemIdentityRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T) {

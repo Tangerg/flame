@@ -12,8 +12,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	domainplugin "github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/resourceid"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

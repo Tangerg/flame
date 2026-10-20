@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 )
 
 const executableName = runtimeidentity.ProductName

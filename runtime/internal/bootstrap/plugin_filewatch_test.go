@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	"github.com/Tangerg/flame/plugins/filewatch/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
-	"github.com/Tangerg/flame/runtime/internal/plugins/filewatch/domain"
-	"github.com/Tangerg/flame/runtime/internal/plugins/filewatch/rpc"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"

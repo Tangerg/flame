@@ -10,11 +10,11 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/exactjson"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/capture"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	"github.com/Tangerg/flame/runtime/internal/exactjson"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 )
 

@@ -5,8 +5,8 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/jsoninput"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 type CompositionMember struct {

@@ -6,12 +6,12 @@ import (
 	"slices"
 	"strings"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // WaitingSubtreeCancellationRequest carries the complete durable waiting tree

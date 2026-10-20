@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	sqlite3 "modernc.org/sqlite"
 	sqlite3lib "modernc.org/sqlite/lib"

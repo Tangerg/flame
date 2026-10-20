@@ -7,12 +7,12 @@ import (
 	"slices"
 	"strings"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/flame/runtime/optional"
 )
 
 // InterruptFunc is the consumer-owned capability a tool uses to park the

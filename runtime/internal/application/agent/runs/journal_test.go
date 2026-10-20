@@ -2,12 +2,13 @@ package runs
 
 import (
 	"errors"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"iter"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"

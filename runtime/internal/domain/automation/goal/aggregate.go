@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/instant"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // Status is one Goal's durable lifecycle state.

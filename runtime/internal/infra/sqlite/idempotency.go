@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/idempotency"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 

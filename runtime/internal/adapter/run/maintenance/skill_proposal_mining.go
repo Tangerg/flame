@@ -8,16 +8,16 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
+	modeltext "github.com/Tangerg/flame/runtime/model/text"
 
 	"github.com/Tangerg/scope/core/chat"
 	skillspec "github.com/Tangerg/scope/skills"
 
+	"github.com/Tangerg/flame/runtime/dependency"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/flame/runtime/optional"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 const (

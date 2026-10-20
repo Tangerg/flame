@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	agent "github.com/Tangerg/scope/agent"
 )
 

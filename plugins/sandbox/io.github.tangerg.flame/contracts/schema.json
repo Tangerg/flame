@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "Method_flame_2esandbox_2fexecute_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zYW5kYm94L3JwYw_5fExecuteInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9iYWNrZW5kL3JwYw_5fExecuteInput"
     },
     "Method_flame_2esandbox_2fexecute_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zYW5kYm94L2RvbWFpbg_5fResult"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9iYWNrZW5kL2RvbWFpbg_5fResult"
     },
     "Method_flame_2esandbox_2flimits_2ev1Input": {
       "additionalProperties": false,
@@ -13,9 +13,9 @@
       "type": "object"
     },
     "Method_flame_2esandbox_2flimits_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zYW5kYm94L3JwYw_5fLimits"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9iYWNrZW5kL3JwYw_5fLimits"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zYW5kYm94L2RvbWFpbg_5fOutput": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9iYWNrZW5kL2RvbWFpbg_5fOutput": {
       "additionalProperties": false,
       "properties": {
         "content": {
@@ -35,7 +35,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zYW5kYm94L2RvbWFpbg_5fResult": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9iYWNrZW5kL2RvbWFpbg_5fResult": {
       "additionalProperties": false,
       "properties": {
         "durationMillis": {
@@ -65,10 +65,10 @@
           "type": "string"
         },
         "stderr": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zYW5kYm94L2RvbWFpbg_5fOutput"
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9iYWNrZW5kL2RvbWFpbg_5fOutput"
         },
         "stdout": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zYW5kYm94L2RvbWFpbg_5fOutput"
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9iYWNrZW5kL2RvbWFpbg_5fOutput"
         }
       },
       "required": [
@@ -80,7 +80,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zYW5kYm94L3JwYw_5fExecuteInput": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9iYWNrZW5kL3JwYw_5fExecuteInput": {
       "additionalProperties": false,
       "properties": {
         "script": {
@@ -106,7 +106,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zYW5kYm94L3JwYw_5fLimits": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9iYWNrZW5kL3JwYw_5fLimits": {
       "additionalProperties": false,
       "properties": {
         "available": {

@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/runtime/plugin/toolfailure"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 const proposalDescription = `Propose a reusable Skill for future work.

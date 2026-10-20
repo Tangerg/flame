@@ -3,14 +3,15 @@ package segment
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 
-	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"

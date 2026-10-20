@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // TreeBarrierCommit is the one durable write-set produced when any executor

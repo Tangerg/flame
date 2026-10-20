@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
+	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	memorydomain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
-	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

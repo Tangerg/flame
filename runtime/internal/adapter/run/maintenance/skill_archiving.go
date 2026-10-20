@@ -3,11 +3,12 @@ package maintenance
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/flame/runtime/dependency"
+
+	"github.com/Tangerg/flame/runtime/optional"
 )
 
 const (

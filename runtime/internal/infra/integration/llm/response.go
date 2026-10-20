@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpredirect"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
+	"github.com/Tangerg/flame/runtime/transport/httpredirect"
+	"github.com/Tangerg/flame/runtime/transport/httpresponse"
 )
 
 const maxModelResponseFrameBytes int64 = 64 << 20

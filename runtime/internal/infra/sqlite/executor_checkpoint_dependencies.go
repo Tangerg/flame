@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/resourceid"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 

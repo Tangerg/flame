@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/Tangerg/flame/runtime/internal/application/opaquetoken"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/runtime/internal/opaquetoken"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // maximumReplayEpochBytes bounds the process-local authority carried inside

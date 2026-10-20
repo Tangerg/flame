@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/pagination"
 )
 
 type crudSessionStore struct {
@@ -471,7 +472,7 @@ func TestCoordinatorUpdateRejectsInvalidPatch(t *testing.T) {
 	}
 
 	ghost := "/no/such/dir"
-	if _, err := c.Update(t.Context(), "ses_1", Patch{WorkspacePath: &ghost}); !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
+	if _, err := c.Update(t.Context(), "ses_1", Patch{WorkspacePath: &ghost}); !errors.Is(err, workspacepaths.ErrCWDUnavailable) {
 		t.Fatalf("ghost cwd err = %v, want ErrCWDUnavailable", err)
 	}
 	if store.saved.ID() != "" {
@@ -479,7 +480,7 @@ func TestCoordinatorUpdateRejectsInvalidPatch(t *testing.T) {
 	}
 
 	title := "Renamed"
-	if _, err := c.Update(t.Context(), "ses_1", Patch{Title: &title, WorkspacePath: &ghost}); !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
+	if _, err := c.Update(t.Context(), "ses_1", Patch{Title: &title, WorkspacePath: &ghost}); !errors.Is(err, workspacepaths.ErrCWDUnavailable) {
 		t.Fatalf("mixed patch err = %v, want ErrCWDUnavailable", err)
 	}
 	if store.saved.ID() != "" {
@@ -487,7 +488,7 @@ func TestCoordinatorUpdateRejectsInvalidPatch(t *testing.T) {
 	}
 
 	missing := "/missing/project"
-	if _, err := c.Create(context.Background(), "New", missing); !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
+	if _, err := c.Create(context.Background(), "New", missing); !errors.Is(err, workspacepaths.ErrCWDUnavailable) {
 		t.Fatalf("missing create cwd err = %v, want ErrCWDUnavailable", err)
 	}
 	if store.inserted.ID() != "" {

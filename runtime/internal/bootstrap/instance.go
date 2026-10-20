@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"path/filepath"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

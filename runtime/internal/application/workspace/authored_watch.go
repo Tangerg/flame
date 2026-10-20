@@ -7,8 +7,10 @@ import (
 	"slices"
 	"sync"
 
+	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+
+	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // AuthoredResource is the closed set of file-backed product resources whose
@@ -139,7 +141,7 @@ func (a *AuthoredWatch) Watch(
 			return nil, err
 		}
 		if resolved.Missing || resolved.ProjectRoot == "" {
-			return nil, ErrCWDUnavailable
+			return nil, workspacepaths.ErrCWDUnavailable
 		}
 		identity := authoredScopeKey{workspace: root, projectRoot: resolved.ProjectRoot}
 		if _, duplicate := seen[identity]; duplicate {

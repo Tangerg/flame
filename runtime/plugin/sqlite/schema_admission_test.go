@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	memorysqlite "github.com/Tangerg/flame/runtime/internal/plugins/memory/sqlite"
-	schedulesqlite "github.com/Tangerg/flame/runtime/internal/plugins/schedules/sqlite"
+	memorysqlite "github.com/Tangerg/flame/plugins/memory/backend/sqlite"
+	schedulesqlite "github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
 )
 
 func TestFormerCallContextInputIsRefusedWithoutChangingPrivateEvidence(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/pagination"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 type QueryModelInvocationReader interface {

@@ -12,7 +12,7 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/lsp"
 )
 

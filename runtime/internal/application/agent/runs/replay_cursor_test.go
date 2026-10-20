@@ -3,11 +3,12 @@ package runs
 import (
 	"encoding/base64"
 	"errors"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 func testReplayPosition() replayPosition {

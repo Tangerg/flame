@@ -88,18 +88,19 @@ admission without a known outcome; it is not a successful empty result. Former
 call-context input, completed-only, digest-only and bare-result databases are refused without conversion;
 retain that directory separately and use a fresh directory for this breaking change.
 
-`runtime/internal/plugins/memory/rpc/contracts.go` is the typed method
+`plugins/memory/backend/rpc/contracts.go` is the typed method
 source used by actual server registration. Query consumers use its generated
 contract rather than importing the private domain or constructing another schema.
 Core Run context consumes the generated Go projection in
 `runtime/internal/adapter/integration/pluginservices/memorycontract`; CLI keeps its
 independent generated projection from the same source. Its generated
 canonical capability, Schema, method references and TypeScript data maps live
-under `io.github.tangerg.flame/contracts` in this package. Regenerate from Runtime
-with `go generate ./internal/plugins/memory/rpc`; the existing contractgen
+under `io.github.tangerg.flame/contracts` in this package. Regenerate from the workspace
+with `go generate ./plugins/memory/backend/rpc`; the existing contractgen
 projects the same methods. Generated Go operation frames are defined projection
 types, so callers explicitly convert shared read shapes instead of depending on
-transparent aliases. Canonical JSON and wire behavior are unchanged. The package builder copies this namespace into the
+transparent aliases. Consumers regenerate their own projections from the published
+descriptor. The package builder copies this namespace into the
 compiled package. Do not hand-edit generated artifacts or duplicate schemas.
 
 The published snapshot owns its identity pattern, closed scope/origin/status
@@ -132,9 +133,9 @@ complete capability for original command recovery. Human, Tool and automatic
 entrances retain the same private business and receipt owners.
 
 Build packages using [the local application workflow](../README.md). Backend
-source lives in [`runtime/internal/plugins/memory`](../../runtime/internal/plugins/memory) as part
-of the local Runtime application module. Verify from `runtime` with the workspace
-enabled: `go test ./...`, `go vet ./...`, and `go build ./...`.
+source lives in [`backend`](backend) as part of the independent first-party Go
+module. Verify from `plugins` with the workspace enabled: `go test ./...`,
+`go vet ./...`, and `go build ./...`.
 
 ## Public consumer client
 

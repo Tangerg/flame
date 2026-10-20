@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
+	modeltext "github.com/Tangerg/flame/runtime/model/text"
 
 	"github.com/Tangerg/scope/core/chat"
 

@@ -2,9 +2,10 @@ package delivery
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"maps"
 	"slices"
+
+	"github.com/Tangerg/flame/runtime/optional"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 )

@@ -35,7 +35,7 @@ wide integers and exact JSON numbers without rounding them through JavaScript
 Regenerate the typed contribution after changing its methods:
 
 ```sh
-go generate ./runtime/internal/plugins/usagereports/rpc
+go generate ./plugins/usagereports/backend/rpc
 npm run build --prefix plugins
 ```
 

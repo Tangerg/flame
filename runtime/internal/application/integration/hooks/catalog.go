@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	domain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 

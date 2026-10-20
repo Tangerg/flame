@@ -1,6 +1,6 @@
 package model
 
-import runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+import runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 
 const (
 	MaximumProviderIdentityCharacters = runtimeidentity.MaximumProviderCharacters

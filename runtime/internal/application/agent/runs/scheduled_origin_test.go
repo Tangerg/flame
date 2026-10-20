@@ -1,13 +1,14 @@
 package runs
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
+
+	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 

@@ -47,6 +47,38 @@ func TestStreamingFeatureProjectsChunkAndFinalContracts(t *testing.T) {
 	}
 }
 
+func TestFeatureConsumerGenerationLeavesPublisherArtifactsUntouched(t *testing.T) {
+	directory := t.TempDir()
+	t.Chdir(directory)
+	method, err := pluginsdk.NewMethod[struct{}, string](pluginsdk.MethodConfig{Name: "acme/read", Kind: capability.Query, Target: "installation", Description: "Read."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := featureDescriptor(method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(directory, "capability.generated.json")
+	if err := os.WriteFile(source, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+	projection := filepath.Join(directory, "consumer", "contract.generated.go")
+	if err := runFeature(source, "", "", featureGoOutput{Path: projection, Package: "consumer"}); err != nil {
+		t.Fatal(err)
+	}
+	retained, err := os.ReadFile(source)
+	if err != nil || string(retained) != string(data) {
+		t.Fatalf("publisher descriptor changed: %v", err)
+	}
+	if _, err := parser.ParseFile(token.NewFileSet(), projection, nil, parser.AllErrors); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(directory)
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("consumer generated publisher artifacts: %v, %v", entries, err)
+	}
+}
+
 func TestFeatureCapabilityJSONPreservesIntegerSchemaLexemes(t *testing.T) {
 	method, err := pluginsdk.NewMethod[struct{}, uint64](pluginsdk.MethodConfig{Name: "acme/count", Kind: capability.Query, Target: "installation", Description: "Read the original count."})
 	if err != nil {

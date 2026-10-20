@@ -3,12 +3,12 @@ package delivery
 import (
 	"testing"
 
-	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
+	"github.com/Tangerg/flame/runtime/storage/directories"
 )
 
 func canonicalWorkspacePath(t *testing.T, path string) string {
 	t.Helper()
-	canonical, err := workspaceadapter.Canonical(path)
+	canonical, err := directories.Canonical(path)
 	if err != nil {
 		t.Fatalf("canonical workspace path %q: %v", path, err)
 	}

@@ -8,7 +8,8 @@
     "lint": "oxlint */src/*.tsx build-*.mjs --deny-warnings",
     "format:check": "prettier --check */src/*.tsx build-*.mjs package.json tsconfig.json",
     "check:resources": "node build-components.mjs --check",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm run check:resources"
+    "test": "node --test build-release.test.mjs",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run check:resources"
   },
   "dependencies": {
     "@flame/icons": "file:../icons",

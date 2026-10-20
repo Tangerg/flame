@@ -5,10 +5,10 @@ import (
 	"errors"
 	"iter"
 
+	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"

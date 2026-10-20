@@ -7,7 +7,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/idempotency"
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/flame/runtime/optional"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 )

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 )
 
 // Resource identifiers are application-owned lifecycle identities. Their

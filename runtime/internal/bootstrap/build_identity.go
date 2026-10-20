@@ -8,7 +8,7 @@ import (
 	"math"
 	"os"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 

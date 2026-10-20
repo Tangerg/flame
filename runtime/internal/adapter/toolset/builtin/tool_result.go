@@ -12,16 +12,17 @@ package builtin
 import (
 	"context"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"unicode/utf8"
+
+	"github.com/Tangerg/flame/runtime/dependency"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/flame/runtime/optional"
+	"github.com/Tangerg/flame/runtime/plugin/toolfailure"
 )
 
 // defaultReadWindow bounds a read that names no limit, so a naive

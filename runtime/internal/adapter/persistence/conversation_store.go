@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/dependency"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
 )

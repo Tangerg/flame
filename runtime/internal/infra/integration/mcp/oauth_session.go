@@ -5,12 +5,13 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"net/http"
 	"net/url"
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/optional"
 
 	"github.com/Tangerg/go-sdk/auth"
 	"golang.org/x/oauth2"

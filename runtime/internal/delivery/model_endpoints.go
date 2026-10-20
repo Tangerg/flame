@@ -3,8 +3,8 @@ package delivery
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/pagination"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

@@ -34,7 +34,7 @@ var (
 )
 
 func main() {
-	out := flag.String("out", ".", "directory the Go-side artifacts are written to")
+	out := flag.String("out", ".", "directory for generated artifacts; empty writes only requested projections")
 	validators := flag.String("validators", "", "directory the generated Go wire validator is written to; skipped when empty")
 	ts := flag.String("ts", "", "directory the TypeScript protocol binding is written to; skipped when empty")
 	feature := flag.String("feature", "", "typed capability descriptor file, or - for stdin; replaces Runtime registry generation")

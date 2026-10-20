@@ -6,8 +6,8 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 
+	"github.com/Tangerg/flame/runtime/dependency"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // compactionStore is the worker's narrow conversation use-case view. The

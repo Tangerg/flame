@@ -3,6 +3,8 @@ package workspace
 import (
 	"errors"
 	"testing"
+
+	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
 )
 
 func TestNewScopeRequiresPathResolver(t *testing.T) {
@@ -35,7 +37,7 @@ func TestScopeResolvesSelectedRootAndPreservesFailure(t *testing.T) {
 		}
 	}
 	paths.err = errors.New("filesystem unavailable")
-	if _, err := scope.ResolveRoot(""); !errors.Is(err, ErrCWDUnavailable) || !errors.Is(err, paths.err) {
+	if _, err := scope.ResolveRoot(""); !errors.Is(err, workspacepaths.ErrCWDUnavailable) || !errors.Is(err, paths.err) {
 		t.Fatalf("ResolveRoot error = %v, want workspace category and filesystem cause", err)
 	}
 }

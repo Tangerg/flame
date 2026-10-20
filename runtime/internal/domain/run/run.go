@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/instant"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/optional"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // ErrIdentityConflict reports an attempt to reuse a durable Run identity for a

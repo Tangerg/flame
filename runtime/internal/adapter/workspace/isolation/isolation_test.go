@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
+	"github.com/Tangerg/flame/runtime/sandbox"
 )
 
 func TestNewRequiresExplicitAbsolutePaths(t *testing.T) {

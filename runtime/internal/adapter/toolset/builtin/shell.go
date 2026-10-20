@@ -14,10 +14,10 @@ import (
 	"github.com/Tangerg/scope/tools/content"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/flame/runtime/optional"
+	"github.com/Tangerg/flame/runtime/plugin/toolfailure"
 )
 
 // Shell tools over a shared [exec.Shells]: the primary `shell` tool plus

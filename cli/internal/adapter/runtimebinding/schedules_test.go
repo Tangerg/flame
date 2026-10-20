@@ -3,18 +3,19 @@ package runtimebinding
 import (
 	"context"
 	json "encoding/json/v2"
+	"testing"
+	"time"
+
 	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	"testing"
-	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/schedule"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type scheduleFixtureRecord = schedule.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9zY2hlZHVsZXMvZG9tYWlu_5fSnapshot
+type scheduleFixtureRecord = schedule.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_5fSnapshot
 
 type scheduleBindingStub struct {
 	pluginBinding

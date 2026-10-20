@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/dependency"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"go.opentelemetry.io/otel/attribute"

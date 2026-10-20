@@ -3,12 +3,13 @@ package session
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"strings"
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/optional"
+
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // MaximumCatalogSearchCharacters bounds one user-facing session catalog

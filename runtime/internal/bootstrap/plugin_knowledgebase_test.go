@@ -10,11 +10,11 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
+	"github.com/Tangerg/flame/plugins/knowledgebase/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/plugins/knowledgebase/domain"
-	"github.com/Tangerg/flame/runtime/internal/plugins/knowledgebase/rpc"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"

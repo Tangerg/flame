@@ -71,11 +71,11 @@ including after terminal execution or Runtime restart. Selecting a new release
 can reconcile captured work only through its original available current contract;
 former incompatible routes are not converted or retargeted.
 
-`runtime/internal/plugins/schedules/rpc/contracts.go` is the typed method
+`plugins/schedules/backend/rpc/contracts.go` is the typed method
 source used by actual server registration and query consumers. Its generated
 canonical capability, Schema, method references and TypeScript data maps live
-under `io.github.tangerg.flame/contracts` in this package. Regenerate from Runtime
-with `go generate ./internal/plugins/schedules/rpc`; the existing contractgen
+under `io.github.tangerg.flame/contracts` in this package. Regenerate from the workspace
+with `go generate ./plugins/schedules/backend/rpc`; the existing contractgen
 projects the same methods. The package builder copies this namespace into the
 compiled package. Do not hand-edit generated artifacts or duplicate schemas.
 The backend publishes the named `schedules` capability. Runtime validates the
@@ -111,8 +111,7 @@ An admitted scheduling Tool dispatch and an unconfirmed human command invalidate
 human reads even when the reply fails. The notice carries no facts; the next query reads the backend owner.
 
 Use [the local build workflow](../README.md). Backend source lives in
-[`runtime/internal/plugins/schedules`](../../runtime/internal/plugins/schedules) as part of the
-local Runtime application module. Verify from `runtime` with the workspace
+[`backend`](backend) in the independent first-party Go module. Verify from `plugins` with the workspace
 enabled: `go test ./...`, `go vet ./...`, and `go build ./...`.
 
 ## Public manual operation

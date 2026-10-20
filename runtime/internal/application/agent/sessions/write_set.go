@@ -8,9 +8,9 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // runsInParentFirstOrder gives persistence a creation-safe tree order while

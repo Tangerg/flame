@@ -222,7 +222,7 @@ func collect(root string) map[string][]string {
 			})
 		}
 	}
-	for _, entry := range []string{"runtime/internal/plugins/schedules", "runtime/internal/plugins/memory"} {
+	for _, entry := range []string{"plugins/schedules/backend", "plugins/memory/backend"} {
 		directory := filepath.Join(root, entry)
 		if _, err := os.Stat(directory); os.IsNotExist(err) {
 			continue

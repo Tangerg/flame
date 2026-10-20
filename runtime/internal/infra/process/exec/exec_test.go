@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
+	"github.com/Tangerg/flame/runtime/sandbox"
 )
 
 func TestShellReadRetainsOutputAndCleanupFailure(t *testing.T) {

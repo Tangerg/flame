@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/runtime/dependency"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // ChatResolver combines the execution and model-validation views of one provider boundary.

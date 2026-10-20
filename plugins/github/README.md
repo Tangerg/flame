@@ -68,7 +68,7 @@ GitHub's [issues](https://docs.github.com/en/rest/issues/issues?apiVersion=2026-
 contracts define the external boundary. Enterprise endpoints, OAuth flows, writes
 and context contribution require their own demonstrated needs.
 
-Generate with `go generate ./runtime/internal/plugins/github/rpc` and verify the
-changed backend with `go test ./runtime/internal/plugins/github/... -count=1` from
+Generate with `go generate ./plugins/github/backend/rpc` and verify the
+changed backend with `go test ./plugins/github/backend/... -count=1` from
 the repository workspace. Tests use deterministic HTTP transports and no live
 GitHub credentials.

@@ -36,7 +36,7 @@ projects the original result through the Tool codec; it never executes code.
 Regenerate the contract with:
 
 ```sh
-go generate ./runtime/internal/plugins/sandbox/rpc
+go generate ./plugins/sandbox/backend/rpc
 ```
 
 Build the ordinary target package with `plugins/build.mjs`; installation never

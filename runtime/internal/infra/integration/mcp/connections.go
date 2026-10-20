@@ -16,9 +16,9 @@ import (
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // server is the live state of one configured MCP server. Access is guarded by

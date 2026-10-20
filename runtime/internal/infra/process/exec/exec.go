@@ -33,7 +33,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
+	"github.com/Tangerg/flame/runtime/sandbox"
 )
 
 // maxBuffer caps a background shell's retained output; once exceeded the

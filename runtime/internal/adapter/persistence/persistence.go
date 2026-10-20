@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/localruntime"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"

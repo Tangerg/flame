@@ -18,7 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type memoryFixtureRecord = memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9tZW1vcnkvZG9tYWlu_5fItemSnapshot
+type memoryFixtureRecord = memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot
 
 const (
 	adapterMemoryIDOne   = "mem_00000000000000000000000000000001"

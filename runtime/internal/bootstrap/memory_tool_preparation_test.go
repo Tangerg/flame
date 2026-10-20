@@ -4,13 +4,14 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"fmt"
-	memorydomain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
-	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
 	"iter"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
+	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"

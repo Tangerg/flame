@@ -3,8 +3,9 @@ package sessions
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
+
+	"github.com/Tangerg/flame/runtime/optional"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"

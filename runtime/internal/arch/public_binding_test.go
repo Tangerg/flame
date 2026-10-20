@@ -13,7 +13,7 @@ import (
 
 func TestPublicPackageSetIsExact(t *testing.T) {
 	root := moduleRoot(t)
-	want := []string{".", "capability", "idempotency", "jsoninput", "localruntime", "model", "plugin", "point", "protocol", "storage"}
+	want := []string{".", "capability", "dependency", "exactint", "exactjson", "idempotency", "identity", "instant", "jsoninput", "localruntime", "model", "optional", "pagination", "plugin", "point", "protocol", "resourceid", "sandbox", "storage", "transport", "workspace"}
 	var got []string
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -242,7 +242,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 		t.Fatalf("load external Runtime build closure: %v\n%s", err, output)
 	}
 	for _, dependency := range strings.Fields(string(output)) {
-		if strings.HasPrefix(dependency, runtimeModulePath+"/internal/plugins/") {
+		if strings.HasPrefix(dependency, "github.com/Tangerg/flame/plugins/") {
 			t.Fatalf("public Runtime builds a private feature implementation: %s", dependency)
 		}
 	}

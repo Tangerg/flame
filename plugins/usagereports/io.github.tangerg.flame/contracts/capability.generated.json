@@ -11,7 +11,7 @@
       "description": "Capture a daily or weekly core accounting report with its actual observation time and lower bound. Totals remain core-owned; saved reports are immutable.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_CaptureInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_CaptureInput": {
             "additionalProperties": false,
             "properties": {
               "period": {
@@ -46,7 +46,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_Header": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_Header": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -113,7 +113,7 @@
       "description": "Remove one immutable saved report without changing core accounting evidence or totals.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_ReportInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_ReportInput": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -154,7 +154,7 @@
       "description": "Read one saved core report verbatim, preserving missing usage, unknown prices and recorded zeros.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_ReportInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_ReportInput": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -185,7 +185,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_Report[github.com/Tangerg/flame/runtime/protocol.UsageSummary]": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_Report[github.com/Tangerg/flame/runtime/protocol.UsageSummary]": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -504,7 +504,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_Header": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_Header": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -536,7 +536,7 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_Header"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_Header"
         },
         "type": "array"
       }

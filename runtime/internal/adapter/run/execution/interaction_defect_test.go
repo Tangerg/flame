@@ -3,9 +3,9 @@ package execution
 import (
 	"testing"
 
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // TestExecutionDefectFailsTheRunAndFinishesTheSession: an impossible state in

@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
+	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"
+	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
+	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/capability"
-	scheduleapp "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
-	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
-	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )

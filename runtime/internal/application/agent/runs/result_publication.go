@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/scope/core/chat"
 )
 

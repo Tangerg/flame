@@ -305,7 +305,7 @@ func TestDomainStaysFrameworkFree(t *testing.T) {
 func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 	root := moduleRoot(t)
 	checks := map[string]map[string]string{
-		filepath.Join(root, "internal", "plugins", "memory", "domain"): {
+		filepath.Join(root, "..", "plugins", "memory", "backend", "domain"): {
 			"Render":         "memory prompt rendering belongs to adapter/run/execution",
 			"EstimateTokens": "model token approximation belongs to adapter/run/execution",
 			"NormalizeFacts": "LLM Markdown extraction belongs to adapter/maintenance",
@@ -336,8 +336,8 @@ func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 func TestSharedCapabilitiesStayPure(t *testing.T) {
 	root := moduleRoot(t)
 	for _, name := range []string{
-		"internal/capture", "internal/completion", "internal/exactint", "internal/exactjson", "idempotency",
-		"internal/identity", "internal/optional",
+		"internal/capture", "internal/completion", "exactint", "exactjson", "idempotency",
+		"identity", "optional",
 	} {
 		forbidExternalImports(t, filepath.Join(root, name), []string{
 			domainPkg,
@@ -377,7 +377,7 @@ func TestSharedValuesStayFreeOfExternalCapabilities(t *testing.T) {
 // Domain language or outward implementation concerns.
 func TestApplicationMechanismsStayApplicationOwned(t *testing.T) {
 	root := moduleRoot(t)
-	for _, name := range []string{"opaquetoken", "pagination", "taskgroup"} {
+	for _, name := range []string{"taskgroup"} {
 		forbidExternalImports(t, filepath.Join(root, "internal", "application", name), []string{
 			domainPkg,
 			"github.com/Tangerg/flame/runtime/internal/adapter",
@@ -1041,7 +1041,7 @@ func TestDeliveryDoesNotImplementQuerySemantics(t *testing.T) {
 		"defaultItemPageLimit":    "how wide a page may be is the read's policy",
 		"defaultSessionPageLimit": "how wide a page may be is the read's policy",
 	})
-	paginationPkg := runtimeModule + "/internal/application/pagination"
+	paginationPkg := runtimeModule + "/pagination"
 	forbidCalls(t, "./internal/delivery/...", map[string]string{
 		paginationPkg + ".Decode": "a cursor is decoded by the read that minted it",
 		paginationPkg + ".Encode": "a cursor is minted by the read that knows the sort position",
@@ -1880,41 +1880,19 @@ const (
 // ring; shared capabilities need an explicit policy instead of an unrestricted
 // internal/* escape hatch. Test fixtures are checked by their dedicated tests.
 func layerOf(rel string) string {
-	for _, feature := range []string{"memory", "schedules", "knowledgebase", "github", "modelrouter", "guardrails", "web", "usagereports", "sandbox", "filewatch"} {
-		owner := "internal/plugins/" + feature
-		if rel == owner {
-			return ringComposition
-		}
-		prefix := owner + "/"
-		if strings.HasPrefix(rel, prefix) {
-			child := strings.TrimPrefix(rel, prefix)
-			switch {
-			case inPackageTree(child, "domain"):
-				return ringDomain
-			case inPackageTree(child, "application"):
-				return ringApplication
-			case inPackageTree(child, "rpc"):
-				return ringAdapter
-			case inPackageTree(child, "sqlite"):
-				return ringInfra
-			case inPackageTree(child, "maintenance"), inPackageTree(child, "tools"), inPackageTree(child, "transport"):
-				return ringAdapter
-			}
-		}
-	}
 	if strings.Contains("/"+rel+"/", "/testdata/") {
 		return ringTestSupport
 	}
 	switch rel {
-	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/fingerprint", "internal/identity", "internal/optional", "jsoninput", "capability", "point", "model":
+	case "dependency", "exactint", "exactjson", "internal/fingerprint", "identity", "optional", "resourceid", "instant", "jsoninput", "capability", "point", "model", "workspace":
 		return ringValue
-	case "internal/cancellation", "internal/capture", "internal/completion", "idempotency", "internal/keylock":
+	case "pagination", "internal/cancellation", "internal/capture", "internal/completion", "idempotency", "internal/keylock", "internal/opaquetoken":
 		return ringMechanism
 	case "internal/contractshape":
 		return ringProtocol
 	case "internal/contractcatalog":
 		return ringGenerator
-	case "plugin", "plugin/sqlite", "storage/sqlite", "model/catalog":
+	case "plugin", "plugin/sqlite", "plugin/toolfailure", "storage/sqlite", "storage/advisorylock", "model/catalog", "model/text", "sandbox", "transport/httpredirect", "transport/httpresponse", "storage/directories":
 		return ringInfra
 	}
 	switch {
@@ -2021,7 +1999,7 @@ func moduleRoot(t *testing.T) string {
 func TestRuntimeUsesOneJSONVocabulary(t *testing.T) {
 	root := moduleRoot(t)
 	exact := map[string]string{
-		filepath.Join("internal", "exactjson"): "names json.Number as the exact-number carrier",
+		"exactjson": "names json.Number as the exact-number carrier",
 	}
 	found := make(map[string]bool, len(exact))
 	walkErr := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {

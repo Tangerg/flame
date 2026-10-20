@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
+	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 

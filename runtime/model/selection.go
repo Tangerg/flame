@@ -8,7 +8,7 @@ package model
 import (
 	"errors"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 )
 
 // ErrIncomplete reports a provider/model pair where only one value was set.

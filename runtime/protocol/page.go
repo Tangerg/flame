@@ -1,6 +1,6 @@
 package protocol
 
-import runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+import runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 
 // MaximumPaginationCursorCharacters is the public resource contract for one
 // opaque pagination continuation. Cursors are URL-safe Base64, so this character

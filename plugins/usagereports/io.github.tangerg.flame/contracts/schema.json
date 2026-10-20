@@ -2,22 +2,22 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "Method_flame_2eusage_2dreports_2fcapture_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fCaptureInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fCaptureInput"
     },
     "Method_flame_2eusage_2dreports_2fcapture_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fHeader"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader"
     },
     "Method_flame_2eusage_2dreports_2fdelete_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fReportInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput"
     },
     "Method_flame_2eusage_2dreports_2fdelete_2ev1Output": {
       "type": "boolean"
     },
     "Method_flame_2eusage_2dreports_2fget_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fReportInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput"
     },
     "Method_flame_2eusage_2dreports_2fget_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d"
     },
     "Method_flame_2eusage_2dreports_2flist_2ev1Input": {
       "additionalProperties": false,
@@ -26,11 +26,11 @@
     },
     "Method_flame_2eusage_2dreports_2flist_2ev1Output": {
       "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fHeader"
+        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader"
       },
       "type": "array"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fCaptureInput": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fCaptureInput": {
       "additionalProperties": false,
       "properties": {
         "period": {
@@ -46,7 +46,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fHeader": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -75,7 +75,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fReportInput": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -89,7 +89,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy91c2FnZXJlcG9ydHMvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d": {
       "additionalProperties": false,
       "properties": {
         "id": {

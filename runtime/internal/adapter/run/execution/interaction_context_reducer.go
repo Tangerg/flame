@@ -9,10 +9,10 @@ import (
 
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/model/catalog"
+	modelcatalog "github.com/Tangerg/flame/runtime/model/catalog"
+	modeltext "github.com/Tangerg/flame/runtime/model/text"
 	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"

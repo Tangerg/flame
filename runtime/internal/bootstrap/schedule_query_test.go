@@ -2,11 +2,12 @@ package bootstrap
 
 import (
 	json "encoding/json/v2"
+
+	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"
+	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
+	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	scheduleapp "github.com/Tangerg/flame/runtime/internal/plugins/schedules/application"
-	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
-	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

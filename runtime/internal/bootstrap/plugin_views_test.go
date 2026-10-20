@@ -6,19 +6,20 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/capability"
-	memorydomain "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
-	memoryrpc "github.com/Tangerg/flame/runtime/internal/plugins/memory/rpc"
-	schedulerpc "github.com/Tangerg/flame/runtime/internal/plugins/schedules/rpc"
-	"github.com/Tangerg/flame/runtime/jsoninput"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
+	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
+	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
+	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/jsoninput"
+
+	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	scheduledomain "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -348,15 +349,23 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 	invalid := read
 	invalid.SinceDays = new(0)
 	refused(invalid, delivery.UsageSummary, protocol.ErrInvalidParams)
+	assertRetainedReport := func(phase string, actual *protocol.UsageSummary) {
+		t.Helper()
+		if actual.ObservedAt.Before(recorded.ObservedAt) || actual.Since == nil || !actual.Since.Equal(actual.ObservedAt.AddDate(0, 0, -*read.SinceDays)) {
+			t.Fatalf("%s returned an invalid observation range: %+v", phase, actual)
+		}
+		// Query timestamps belong to each observation rather than retained accounting evidence.
+		retained := *actual
+		retained.ObservedAt, retained.Since = recorded.ObservedAt, recorded.Since
+		if !reflect.DeepEqual(retained, *recorded) {
+			t.Fatalf("%s changed accounting records: before=%+v after=%+v", phase, recorded, actual)
+		}
+	}
 	r.close()
 	r = poMCPOpen(t, cfg)
-	if restarted := r.must(delivery.UsageSummary, read, "").(*protocol.UsageSummary); !reflect.DeepEqual(restarted, recorded) {
-		t.Fatal("restart changed the recorded report")
-	}
+	assertRetainedReport("restart", r.must(delivery.UsageSummary, read, "").(*protocol.UsageSummary))
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-usage")
 	refused(resourceRequest, delivery.PluginsReadResource, protocol.ErrPluginDisabled)
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-usage")
-	if canonical := r.must(delivery.UsageSummary, read, "").(*protocol.UsageSummary); !reflect.DeepEqual(canonical, recorded) {
-		t.Fatal("uninstall changed accounting records")
-	}
+	assertRetainedReport("uninstall", r.must(delivery.UsageSummary, read, "").(*protocol.UsageSummary))
 }

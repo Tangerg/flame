@@ -11,7 +11,7 @@
       "description": "Replace or rearm the trigger at its current revision; omitting trigger disables observation. Configuration acceptance does not claim a live watch. Captured work remains immutable.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Draft": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Draft": {
             "additionalProperties": false,
             "properties": {
               "instructions": {
@@ -59,7 +59,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvcnBj_ConfigureInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvcnBj_ConfigureInput": {
             "additionalProperties": false,
             "properties": {
               "expectedRevision": {
@@ -73,7 +73,7 @@
                 "type": "integer"
               },
               "trigger": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Draft"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Draft"
               }
             },
             "required": [
@@ -96,7 +96,7 @@
             "type": "integer"
           },
           "trigger": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Draft"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Draft"
           }
         },
         "required": [
@@ -106,7 +106,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Draft": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Draft": {
             "additionalProperties": false,
             "properties": {
               "instructions": {
@@ -154,7 +154,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Snapshot": {
             "additionalProperties": false,
             "properties": {
               "revision": {
@@ -168,7 +168,7 @@
                 "type": "integer"
               },
               "trigger": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Draft"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Draft"
               }
             },
             "required": [
@@ -191,7 +191,7 @@
             "type": "integer"
           },
           "trigger": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Draft"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Draft"
           }
         },
         "required": [
@@ -207,7 +207,7 @@
       "description": "Read one retained observation and its complete original dispatch capture.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvcnBj_EventInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvcnBj_EventInput": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -238,46 +238,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation": {
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "origin": {
-                "type": "string"
-              },
-              "parent": {
-                "type": "string"
-              },
-              "target": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target"
-              }
-            },
-            "required": [
-              "id",
-              "origin",
-              "target"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target": {
-            "additionalProperties": false,
-            "properties": {
-              "reference": {
-                "type": "string"
-              },
-              "scope": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "scope",
-              "reference"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Capture": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Capture": {
             "additionalProperties": false,
             "properties": {
               "generation": {
@@ -328,7 +289,7 @@
                 "type": "string"
               },
               "trigger": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Draft"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Draft"
               }
             },
             "required": [
@@ -345,7 +306,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Draft": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Draft": {
             "additionalProperties": false,
             "properties": {
               "instructions": {
@@ -393,19 +354,58 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Event": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Event": {
             "additionalProperties": false,
             "properties": {
               "accepted": {
                 "type": "boolean"
               },
               "capture": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Capture"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Capture"
               }
             },
             "required": [
               "capture",
               "accepted"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "origin": {
+                "type": "string"
+              },
+              "parent": {
+                "type": "string"
+              },
+              "target": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target"
+              }
+            },
+            "required": [
+              "id",
+              "origin",
+              "target"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target": {
+            "additionalProperties": false,
+            "properties": {
+              "reference": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "scope",
+              "reference"
             ],
             "type": "object"
           }
@@ -417,7 +417,7 @@
             "type": "boolean"
           },
           "capture": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Capture"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Capture"
           }
         },
         "required": [
@@ -440,7 +440,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Header": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Header": {
             "additionalProperties": false,
             "properties": {
               "accepted": {
@@ -500,7 +500,7 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Header"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Header"
         },
         "type": "array"
       }
@@ -518,7 +518,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Draft": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Draft": {
             "additionalProperties": false,
             "properties": {
               "instructions": {
@@ -566,7 +566,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Snapshot": {
             "additionalProperties": false,
             "properties": {
               "revision": {
@@ -580,7 +580,7 @@
                 "type": "integer"
               },
               "trigger": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Draft"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Draft"
               }
             },
             "required": [
@@ -603,7 +603,7 @@
             "type": "integer"
           },
           "trigger": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Draft"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Draft"
           }
         },
         "required": [
@@ -625,7 +625,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_Status": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Status": {
             "additionalProperties": false,
             "properties": {
               "dispatchError": {

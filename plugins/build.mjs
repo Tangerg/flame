@@ -8,18 +8,54 @@ import {
   mkdtemp,
   rename,
   rm,
+  realpath,
 } from "node:fs/promises";
 import { spawn } from "node:child_process";
-import { dirname, isAbsolute, join } from "node:path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
-const source = dirname(fileURLToPath(import.meta.url));
-const repository = dirname(source);
+const source = await realpath(dirname(fileURLToPath(import.meta.url)));
+
+async function physicalDestination(path) {
+  try {
+    return await realpath(path);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    return join(await physicalDestination(dirname(path)), basename(path));
+  }
+}
+
+async function validateDestination(path) {
+  if (typeof path !== "string" || !isAbsolute(path))
+    throw new Error("output must be a new absolute directory");
+  const destination = await physicalDestination(resolve(path));
+  for (const [parent, child] of [
+    [source, destination],
+    [destination, source],
+  ]) {
+    const difference = relative(parent, child);
+    if (
+      difference === "" ||
+      (difference !== ".." &&
+        !difference.startsWith(`..${sep}`) &&
+        !isAbsolute(difference))
+    )
+      throw new Error("build destinations must be outside the plugin source");
+  }
+}
 
 function go(args, env) {
   return new Promise((resolve, reject) => {
-    const child = spawn("go", args, { cwd: repository, env, stdio: "inherit" });
+    const child = spawn("go", args, { cwd: source, env, stdio: "inherit" });
     child.on("error", reject);
     child.on("exit", (code) =>
       code === 0 ? resolve() : reject(new Error(`go exited ${code}`)),
@@ -27,45 +63,77 @@ function go(args, env) {
   });
 }
 
-export async function buildPlugins({ os, arch, output }) {
+export async function buildPlugins({ os, arch, output, plugin, archives }) {
   if (
     !["darwin", "linux", "windows"].includes(os) ||
     !["amd64", "arm64"].includes(arch)
   )
     throw new Error("a supported target OS and architecture are required");
-  if (!isAbsolute(output))
-    throw new Error("output must be a new absolute directory");
+  await validateDestination(output);
+  if (archives) {
+    await validateDestination(archives);
+    await mkdir(archives);
+  }
+  if (plugin && !/^[a-z][a-z0-9-]*$/.test(plugin))
+    throw new Error("invalid plugin directory name");
+  let singlePackage = false;
+  try {
+    await access(join(source, "plugin.json"));
+    singlePackage = true;
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  if (plugin && singlePackage)
+    throw new Error("single-package author projects do not accept --plugin");
+  if (plugin && !singlePackage)
+    await access(join(source, plugin, "plugin.json"));
   await mkdir(output);
-  for (const entry of await readdir(source, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
+  const entries = singlePackage
+    ? [
+        {
+          name: JSON.parse(await readFile(join(source, "plugin.json"), "utf8"))
+            .name,
+          isDirectory: () => true,
+        },
+      ]
+    : await readdir(source, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory() || (plugin && entry.name !== plugin)) continue;
     const feature = entry.name;
-    const manifestPath = join(source, feature, "plugin.json");
+    const packageSource = singlePackage ? source : join(source, feature);
+    const manifestPath = join(packageSource, "plugin.json");
     try {
       await access(manifestPath);
     } catch (error) {
       if (error.code === "ENOENT") continue;
       throw error;
     }
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]{0,127}$/.test(feature))
+      throw new Error("invalid package directory name");
     const target = join(output, feature);
     await mkdir(target);
     await cp(manifestPath, join(target, "plugin.json"));
     const namespace = "io.github.tangerg.flame";
-    if ((await readdir(join(source, feature))).includes(namespace))
-      await cp(join(source, feature, namespace), join(target, namespace), {
+    if ((await readdir(packageSource)).includes(namespace))
+      await cp(join(packageSource, namespace), join(target, namespace), {
         recursive: true,
       });
-    if ((await readdir(join(source, feature))).includes("skills"))
-      await cp(join(source, feature, "skills"), join(target, "skills"), {
+    if ((await readdir(packageSource)).includes("skills"))
+      await cp(join(packageSource, "skills"), join(target, "skills"), {
         recursive: true,
       });
     try {
-      await access(join(source, feature, "mcp.json"));
+      await access(join(packageSource, "mcp.json"));
     } catch (error) {
-      if (error.code === "ENOENT") continue;
+      if (error.code === "ENOENT") {
+        if (archives)
+          await archivePlugin(target, manifestPath, os, arch, archives);
+        continue;
+      }
       throw error;
     }
     const descriptor = JSON.parse(
-      await readFile(join(source, feature, "mcp.json"), "utf8"),
+      await readFile(join(packageSource, "mcp.json"), "utf8"),
     );
     await mkdir(join(target, "bin"));
     for (const [name, server] of Object.entries(descriptor.mcpServers)) {
@@ -79,11 +147,10 @@ export async function buildPlugins({ os, arch, output }) {
           "-ldflags=-s -w",
           "-o",
           join(target, "bin", executable),
-          `./runtime/internal/plugins/${feature}`,
+          singlePackage ? "./backend" : `./${feature}/backend`,
         ],
         {
           ...process.env,
-          GOWORK: join(repository, "go.work"),
           CGO_ENABLED: "0",
           GOOS: os,
           GOARCH: arch,
@@ -94,21 +161,50 @@ export async function buildPlugins({ os, arch, output }) {
       join(target, "mcp.json"),
       JSON.stringify(descriptor, null, 2) + "\n",
     );
+    if (archives) await archivePlugin(target, manifestPath, os, arch, archives);
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+async function archivePlugin(target, manifestPath, os, arch, archives) {
+  const { name, version } = JSON.parse(await readFile(manifestPath, "utf8"));
+  for (const value of [name, version]) {
+    if (
+      typeof value !== "string" ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9.+-]{0,127}$/.test(value)
+    )
+      throw new Error("plugin archive requires a bounded name and version");
+  }
+  await go(
+    [
+      "run",
+      "./cmd/archive",
+      "--source",
+      target,
+      "--output",
+      join(archives, `plugin-${name}-${version}-${os}-${arch}.zip`),
+    ],
+    { ...process.env, GOOS: "", GOARCH: "" },
+  );
+}
+
+if (
+  process.argv[1] &&
+  (await realpath(process.argv[1])) ===
+    (await realpath(fileURLToPath(import.meta.url)))
+) {
   const { values } = parseArgs({
     options: {
       os: { type: "string" },
       arch: { type: "string" },
       output: { type: "string" },
+      plugin: { type: "string" },
+      archives: { type: "string" },
       replace: { type: "boolean", default: false },
     },
   });
   if (!values.replace) await buildPlugins(values);
   else {
-    if (!isAbsolute(values.output)) throw new Error("output must be absolute");
+    await validateDestination(values.output);
     await mkdir(dirname(values.output), { recursive: true });
     const stage = await mkdtemp(join(dirname(values.output), ".first-party-"));
     try {

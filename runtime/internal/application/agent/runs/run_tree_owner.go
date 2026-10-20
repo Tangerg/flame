@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/flame/runtime/optional"
 )
 
 // runCleanupTimeout bounds request-detached Run teardown, so a stuck store or

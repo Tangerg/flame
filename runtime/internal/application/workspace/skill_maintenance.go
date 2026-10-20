@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // IdleSkillSweeper is the persistence port for automatic archival policy. The

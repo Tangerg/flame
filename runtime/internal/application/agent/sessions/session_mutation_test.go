@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
+	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+
 	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -389,7 +390,7 @@ func TestRestoreSessionRejectsUnresolvableCWDBeforeMutation(t *testing.T) {
 	}))
 
 	_, err := coordinator.restoreSession(t.Context(), Snapshot{Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/archive")})}, false)
-	if !errors.Is(err, workspaceapp.ErrCWDUnavailable) || !errors.Is(err, want) {
+	if !errors.Is(err, workspacepaths.ErrCWDUnavailable) || !errors.Is(err, want) {
 		t.Fatalf("RestoreSession error = %v, want cwd unavailable + cause", err)
 	}
 	if len(stores.restored) != 0 {

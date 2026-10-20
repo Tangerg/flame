@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	agentmemory "github.com/Tangerg/flame/runtime/internal/plugins/memory/domain"
 )
 
 // TestComposeSystemPrompt_BaseOnly verifies empty context sources yield the

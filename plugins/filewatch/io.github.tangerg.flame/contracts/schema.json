@@ -2,16 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "Method_flame_2efilewatch_2fconfigure_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvcnBj_5fConfigureInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvcnBj_5fConfigureInput"
     },
     "Method_flame_2efilewatch_2fconfigure_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fSnapshot"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fSnapshot"
     },
     "Method_flame_2efilewatch_2fevent_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvcnBj_5fEventInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvcnBj_5fEventInput"
     },
     "Method_flame_2efilewatch_2fevent_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fEvent"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fEvent"
     },
     "Method_flame_2efilewatch_2fevents_2ev1Input": {
       "additionalProperties": false,
@@ -20,7 +20,7 @@
     },
     "Method_flame_2efilewatch_2fevents_2ev1Output": {
       "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fHeader"
+        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fHeader"
       },
       "type": "array"
     },
@@ -30,7 +30,7 @@
       "type": "object"
     },
     "Method_flame_2efilewatch_2fget_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fSnapshot"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fSnapshot"
     },
     "Method_flame_2efilewatch_2fstatus_2ev1Input": {
       "additionalProperties": false,
@@ -38,48 +38,9 @@
       "type": "object"
     },
     "Method_flame_2efilewatch_2fstatus_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fStatus"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fStatus"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fInvocation": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "origin": {
-          "type": "string"
-        },
-        "parent": {
-          "type": "string"
-        },
-        "target": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget"
-        }
-      },
-      "required": [
-        "id",
-        "origin",
-        "target"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget": {
-      "additionalProperties": false,
-      "properties": {
-        "reference": {
-          "type": "string"
-        },
-        "scope": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "scope",
-        "reference"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fCapture": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fCapture": {
       "additionalProperties": false,
       "properties": {
         "generation": {
@@ -130,7 +91,7 @@
           "type": "string"
         },
         "trigger": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fDraft"
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fDraft"
         }
       },
       "required": [
@@ -147,7 +108,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fDraft": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fDraft": {
       "additionalProperties": false,
       "properties": {
         "instructions": {
@@ -195,14 +156,14 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fEvent": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fEvent": {
       "additionalProperties": false,
       "properties": {
         "accepted": {
           "type": "boolean"
         },
         "capture": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fCapture"
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fCapture"
         }
       },
       "required": [
@@ -211,7 +172,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fHeader": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fHeader": {
       "additionalProperties": false,
       "properties": {
         "accepted": {
@@ -268,7 +229,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fSnapshot": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fSnapshot": {
       "additionalProperties": false,
       "properties": {
         "revision": {
@@ -282,7 +243,7 @@
           "type": "integer"
         },
         "trigger": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fDraft"
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fDraft"
         }
       },
       "required": [
@@ -290,7 +251,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fStatus": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fStatus": {
       "additionalProperties": false,
       "properties": {
         "dispatchError": {
@@ -324,7 +285,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvcnBj_5fConfigureInput": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvcnBj_5fConfigureInput": {
       "additionalProperties": false,
       "properties": {
         "expectedRevision": {
@@ -338,7 +299,7 @@
           "type": "integer"
         },
         "trigger": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvZG9tYWlu_5fDraft"
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_5fDraft"
         }
       },
       "required": [
@@ -346,7 +307,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvaW50ZXJuYWwvcGx1Z2lucy9maWxld2F0Y2gvcnBj_5fEventInput": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvcnBj_5fEventInput": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -357,6 +318,45 @@
       },
       "required": [
         "id"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fInvocation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "parent": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget"
+        }
+      },
+      "required": [
+        "id",
+        "origin",
+        "target"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_5fTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "reference": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "reference"
       ],
       "type": "object"
     }

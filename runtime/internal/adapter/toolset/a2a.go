@@ -14,7 +14,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
+	"github.com/Tangerg/flame/runtime/transport/httpresponse"
 )
 
 const maxA2AResponseFrameBytes int64 = 64 << 20

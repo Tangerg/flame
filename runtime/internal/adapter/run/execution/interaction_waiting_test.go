@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
-	"github.com/Tangerg/flame/runtime/internal/adapter/run/modeltext"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -24,7 +23,8 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	infraexec "github.com/Tangerg/flame/runtime/internal/infra/process/exec"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
+	modeltext "github.com/Tangerg/flame/runtime/model/text"
+	"github.com/Tangerg/flame/runtime/sandbox"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )

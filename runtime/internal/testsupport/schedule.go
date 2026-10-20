@@ -1,11 +1,12 @@
 package testsupport
 
 import (
-	"github.com/Tangerg/flame/runtime/capability"
 	"strconv"
 	"time"
 
-	schedule "github.com/Tangerg/flame/runtime/internal/plugins/schedules/domain"
+	"github.com/Tangerg/flame/runtime/capability"
+
+	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 )
 
 func ScheduleInvocation() capability.Invocation {

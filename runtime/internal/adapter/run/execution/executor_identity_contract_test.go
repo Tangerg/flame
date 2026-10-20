@@ -6,7 +6,7 @@ import (
 
 	"github.com/Tangerg/scope/agent"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 )
 
 func TestRuntimeExecutorIdentityPolicyMatchesAgentFrameworkPort(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/dependency"
 	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 

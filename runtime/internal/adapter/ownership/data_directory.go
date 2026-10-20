@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/advisorylock"
+	"github.com/Tangerg/flame/runtime/storage/advisorylock"
 )
 
 // DataDirectorySetup serializes schema installation and configuration seeding.

@@ -5,10 +5,10 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/pagination"
 )
 
 type EndpointReader interface {

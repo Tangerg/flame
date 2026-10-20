@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // ErrSessionBusy reports that admitting a root Run was rejected because the

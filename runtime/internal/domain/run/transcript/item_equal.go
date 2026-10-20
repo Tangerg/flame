@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/flame/runtime/optional"
 )
 
 // Equal compares the complete semantic Item, including accepted answers and

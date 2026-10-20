@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/pagination"
 )
 
 // Activity is the resolved durable Run activity used by Session read consumers.

@@ -6,8 +6,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/runtime/optional"
 )
 
 const (

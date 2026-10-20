@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/runtime/optional"
 )
 
 // WorkspaceResolver is the filesystem boundary needed when a Session is
@@ -245,7 +247,7 @@ func (c *Coordinator) ApplyGeneratedTitle(ctx context.Context, id, title string)
 func (c *Coordinator) resolveSessionWorkspace(path string) (session.Workspace, error) {
 	resolved, err := c.paths.ResolveExistingDir(path)
 	if err != nil {
-		return session.Workspace{}, errors.Join(workspaceapp.ErrCWDUnavailable, err)
+		return session.Workspace{}, errors.Join(workspacepaths.ErrCWDUnavailable, err)
 	}
 	workspace, err := session.NewWorkspace(resolved)
 	if err != nil {
