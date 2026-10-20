@@ -37,11 +37,11 @@ const styles = stylex.create({
     width: "100%",
     gridTemplateColumns: {
       default: "256px minmax(0, 1fr)",
-      "@container (max-width: 640px)": "minmax(0, 1fr)",
+      "@container (max-width: 40rem)": "minmax(0, 1fr)",
     },
     gridTemplateRows: {
       default: "minmax(0, 1fr)",
-      "@container (max-width: 640px)": "fit-content(40%) minmax(0, 1fr)",
+      "@container (max-width: 40rem)": "fit-content(40%) minmax(0, 1fr)",
     },
     overflow: "hidden",
     backgroundColor: surface.canvas,

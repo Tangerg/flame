@@ -15,7 +15,7 @@ const styles = stylex.create({
   split: {
     gridTemplateColumns: {
       default: "minmax(0, 1fr) auto",
-      "@container (max-width: 560px)": "minmax(0, 1fr)",
+      "@container (max-width: 35rem)": "minmax(0, 1fr)",
     },
     rowGap: layout.contentGap,
   },
@@ -27,7 +27,7 @@ const styles = stylex.create({
   control: {
     minWidth: 0,
     maxWidth: "100%",
-    justifySelf: { default: "end", "@container (max-width: 560px)": "stretch" },
+    justifySelf: { default: "end", "@container (max-width: 35rem)": "stretch" },
   },
 });
 

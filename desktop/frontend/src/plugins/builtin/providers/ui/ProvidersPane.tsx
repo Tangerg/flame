@@ -3,6 +3,7 @@ import { useState } from "react";
 import { DataView, SectionLabel, SystemMessage } from "@/ui";
 import { gap, RecordGroup, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n";
+import { SettingsGroup } from "../../settings/kit";
 import { useProviderConfigs } from "../application/providerConfig";
 import { needsProviderSetup } from "../application/providerSetup";
 import { ProviderRow } from "./ProviderRow";
@@ -44,10 +45,10 @@ export function ProvidersPane() {
       </DataView>
       <div {...stylex.props(vocab.column, gap.s2)}>
         <SectionLabel>{t("providers.roles.heading")}</SectionLabel>
-        <RecordGroup variant="list">
+        <SettingsGroup>
           <UtilityModelSection />
           <EmbeddingModelSection />
-        </RecordGroup>
+        </SettingsGroup>
       </div>
     </div>
   );
