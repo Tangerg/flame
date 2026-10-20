@@ -44,7 +44,12 @@ func (r Resolution) Kind() Kind {
 	return ""
 }
 
-func (r Resolution) Question() *QuestionAnswer { return r.question }
+func (r Resolution) Question() *QuestionAnswer {
+	if r.question == nil {
+		return nil
+	}
+	return new(*r.question)
+}
 
 func (r Resolution) Approval() *approval.Resolution {
 	if r.approval == nil {

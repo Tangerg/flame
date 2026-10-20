@@ -271,6 +271,10 @@ func (inertRunControl) RestoreWaitingExecution(
 
 type inertRunProjection struct{}
 
+func (inertRunProjection) ListRuns(context.Context, string) ([]run.Run, error) {
+	return nil, nil
+}
+
 func (inertRunProjection) Run(context.Context, string) (run.Run, bool, error) {
 	return run.Run{}, false, nil
 }
@@ -1304,10 +1308,18 @@ func runProgressFor(state segment.RunStore) segment.RunProgressWriter {
 	return progress
 }
 
+type unexpectedDeliveryCompactions struct{}
+
+func (unexpectedDeliveryCompactions) ApplyCompaction(context.Context, runs.ConversationCompactionPlan) error {
+	return errors.New("unexpected conversation compaction")
+}
+
 func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 	stores := inertRuntimeStores{}
 	state := s.runStore()
 	cfg := segment.Config{
+		Compactions:           unexpectedDeliveryCompactions{},
+		ContextState:          s,
 		Interrupts:            nonNilRunsegmentInterrupts(s.interrupts, stores),
 		Sessions:              nonNilRunsegmentSessions(s.sess, stores),
 		Transcript:            nonNilRunsegmentTranscript(s.hist, stores),
