@@ -74,7 +74,7 @@
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/packages/plugin-sdk",
+      "path": "github.com/Tangerg/flame/packages/plugin-sdk/go",
       "imports": [
         "context",
         "encoding/json/jsontext",
@@ -1237,11 +1237,11 @@
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/packages/plugin-sdk/sqlite",
+      "path": "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite",
       "imports": [
         "context",
         "database/sql",
-        "github.com/Tangerg/flame/packages/plugin-sdk",
+        "github.com/Tangerg/flame/packages/plugin-sdk/go",
         "github.com/Tangerg/flame/runtime/jsoninput",
         "github.com/Tangerg/go-sdk/mcp"
       ],
@@ -1305,7 +1305,7 @@
       "path": "github.com/Tangerg/flame/packages/runtime-client/go",
       "imports": [
         "context",
-        "github.com/Tangerg/flame/packages/plugin-sdk",
+        "github.com/Tangerg/flame/packages/plugin-sdk/go",
         "github.com/Tangerg/flame/runtime/capability",
         "github.com/Tangerg/flame/runtime/point",
         "github.com/Tangerg/flame/runtime/protocol",
