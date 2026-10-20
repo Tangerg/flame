@@ -7,7 +7,11 @@ import { WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 import { configureLocalWorkspace } from "@/features/workspace/application/ports/localWorkspace";
 import { navigator } from "@/lib/navigation";
-import { closeWorkspaceFile, openWorkspaceFile } from "@/features/workspace/application/navigation";
+import {
+  closeWorkspaceFile,
+  openWorkspaceFile,
+  rememberWorkspaceView,
+} from "@/features/workspace/application/navigation";
 import { useContextDockStore } from "@/features/workspace/adapters/contextDockStore";
 import { installWorkspaceErrorClassifier } from "@/features/workspace/adapters/runtimeWorkspaceErrorClassifier";
 import {
@@ -362,5 +366,69 @@ describe("workspace file tree keyboard model", () => {
     expect(document.activeElement).toBe(src);
     fireEvent.keyDown(src, { key: "ArrowLeft" });
     expect(src.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("keeps one keyboard entry when the root listing changes under its cursor", () => {
+    const notes: WorkspaceFileEntry = { name: "NOTES.md", path: "NOTES.md", type: "file" };
+    const view = mount(<FileTree entries={[directory, readme]} onSelectFile={() => {}} />);
+    const row = screen.getByRole("treeitem", { name: "README.md" });
+    act(() => row.focus());
+
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <FileTree entries={[notes, directory, readme]} onSelectFile={() => {}} />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByRole("treeitem", { name: "README.md" }).tabIndex).toBe(0);
+    expect(document.activeElement).toBe(row);
+
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <FileTree entries={[notes, directory]} onSelectFile={() => {}} />
+      </QueryClientProvider>,
+    );
+    const entry = screen.getByRole("treeitem", { name: "NOTES.md" });
+    expect(entry.tabIndex).toBe(0);
+    expect(document.activeElement).toBe(entry);
+  });
+
+  it("moves a removed nested cursor and its focus to the surviving folder", async () => {
+    const other: WorkspaceFileEntry = { name: "other.go", path: "src/other.go", type: "file" };
+    mount(<FileTree entries={[directory, readme]} onSelectFile={() => {}} />);
+    fireEvent.click(screen.getByRole("treeitem", { name: "src" }));
+    const row = await screen.findByRole("treeitem", { name: "main.go" });
+    act(() => row.focus());
+
+    listFiles.mockImplementation(async (query) => (query.path ? [other] : [directory]));
+    await act(() => client.refetchQueries());
+    await screen.findByRole("treeitem", { name: "other.go" });
+    const src = screen.getByRole("treeitem", { name: "src" });
+    expect(src.tabIndex).toBe(0);
+    expect(document.activeElement).toBe(src);
+  });
+
+  it("stands in for a collapsed cursor without taking another control's focus", async () => {
+    mount(
+      <>
+        <button>Another control</button>
+        <FileTree entries={[readme, directory]} onSelectFile={() => {}} />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("treeitem", { name: "src" }));
+    const row = await screen.findByRole("treeitem", { name: "main.go" });
+    act(() => row.focus());
+    const control = screen.getByRole("button", { name: "Another control" });
+    act(() => control.focus());
+
+    act(() => rememberWorkspaceView({ expandedDirs: [] }));
+    expect(screen.queryByRole("treeitem", { name: "main.go" })).toBeNull();
+    expect(screen.getByRole("treeitem", { name: "src" }).tabIndex).toBe(0);
+    expect(screen.getByRole("treeitem", { name: "README.md" }).tabIndex).toBe(-1);
+    expect(document.activeElement).toBe(control);
+
+    act(() => rememberWorkspaceView({ expandedDirs: ["src"] }));
+    expect((await screen.findByRole("treeitem", { name: "main.go" })).tabIndex).toBe(0);
+    expect(screen.getByRole("treeitem", { name: "src" }).tabIndex).toBe(-1);
+    expect(document.activeElement).toBe(control);
   });
 });
