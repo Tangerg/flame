@@ -23,7 +23,7 @@ func TestExecutableCLIPluginCommandCallsTheHostWithoutAPage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	endpoint, err := host.application.newDeliveryEndpoint(t.Context(), info.ServerInfo, cfg.Stores.IdempotencyNamespace.String())
+	endpoint, err := host.application.newDeliveryEndpoint(t.Context(), info.ServerInfo, cfg.Stores.IdempotencyNamespace.String(), cfg.Stores.ValidateDirectory)
 	if err != nil {
 		_ = host.Close()
 		t.Fatal(err)

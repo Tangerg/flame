@@ -18,6 +18,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
@@ -153,13 +154,16 @@ func openEmbeddedBinding(ctx context.Context, cfg Config) (*flameruntime.Runtime
 	})
 }
 
-func openConnection(ctx context.Context, cfg Config, endpoint string) (*Connection, error) {
+func openConnection(ctx context.Context, cfg Config, target settings.Runtime) (*Connection, error) {
+	if err := target.Validate(); err != nil {
+		return nil, err
+	}
 	var binding runtimeBinding
 	var err error
-	if endpoint == "" {
+	if target.Mode == settings.RuntimeEmbedded {
 		binding, err = openEmbeddedBinding(ctx, cfg)
 	} else {
-		binding, err = runtimeclient.Connect(ctx, runtimeclient.RemoteConfig{Endpoint: endpoint, Token: cfg.RemoteToken})
+		binding, err = runtimeclient.Connect(ctx, runtimeclient.RemoteConfig{Endpoint: target.Endpoint, Token: cfg.RemoteToken})
 	}
 	if err != nil {
 		return nil, classifyError(err)
@@ -335,7 +339,7 @@ type Owner struct {
 	mu         sync.Mutex
 	config     Config
 	connection *Connection
-	endpoint   string
+	target     settings.Runtime
 	closing    bool
 }
 
@@ -344,7 +348,7 @@ func NewOwner(config Config) *Owner {
 	return &Owner{config: config}
 }
 
-func (o *Owner) Connection(ctx context.Context, endpoint string) (*Connection, error) {
+func (o *Owner) Connection(ctx context.Context, target settings.Runtime) (*Connection, error) {
 	if o == nil {
 		return nil, errors.New("runtime connection owner is nil")
 	}
@@ -354,12 +358,12 @@ func (o *Owner) Connection(ctx context.Context, endpoint string) (*Connection, e
 		return nil, conversation.ErrDisconnected
 	}
 	if o.connection != nil {
-		if endpoint != o.endpoint {
+		if target != o.target {
 			return nil, errors.New("runtime target cannot change during a CLI process")
 		}
 		return o.connection, nil
 	}
-	opened, err := openConnection(ctx, o.config, endpoint)
+	opened, err := openConnection(ctx, o.config, target)
 	if err != nil {
 		if opened != nil {
 			err = o.rejectOpen(opened, err)
@@ -367,7 +371,7 @@ func (o *Owner) Connection(ctx context.Context, endpoint string) (*Connection, e
 		return nil, err
 	}
 	o.connection = opened
-	o.endpoint = endpoint
+	o.target = target
 	return opened, nil
 }
 

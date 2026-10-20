@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -499,7 +500,7 @@ func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 		ProductRoot: productRoot, DefaultWorkspacePath: workspace,
 		UserHomePath: runtimefixture.TempDirectory(t), ConfigDirectories: []string{runtimefixture.TempDirectory(t)}, ClientVersion: "test",
 	})
-	runtime, err := owner.Connection(t.Context(), "")
+	runtime, err := owner.Connection(t.Context(), settings.Runtime{Mode: settings.RuntimeEmbedded})
 	if err != nil {
 		t.Fatalf("open Runtime: %v", err)
 	}
@@ -930,11 +931,11 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 		ProductRoot: runtimefixture.TempDirectory(t), DefaultWorkspacePath: runtimefixture.TempDirectory(t),
 		UserHomePath: runtimefixture.TempDirectory(t), ConfigDirectories: []string{runtimefixture.TempDirectory(t)}, ClientVersion: "test",
 	})
-	first, err := owner.Connection(t.Context(), "")
+	first, err := owner.Connection(t.Context(), settings.Runtime{Mode: settings.RuntimeEmbedded})
 	if err != nil {
 		t.Fatalf("first Runtime: %v", err)
 	}
-	second, err := owner.Connection(t.Context(), "")
+	second, err := owner.Connection(t.Context(), settings.Runtime{Mode: settings.RuntimeEmbedded})
 	if err != nil {
 		t.Fatalf("second Runtime: %v", err)
 	}
@@ -959,7 +960,7 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 	if err := owner.Close(); err != nil {
 		t.Fatalf("repeated Close: %v", err)
 	}
-	if _, err := owner.Connection(t.Context(), ""); !errors.Is(err, conversation.ErrDisconnected) {
+	if _, err := owner.Connection(t.Context(), settings.Runtime{Mode: settings.RuntimeEmbedded}); !errors.Is(err, conversation.ErrDisconnected) {
 		t.Fatalf("Connection after Close = %v, want ErrDisconnected", err)
 	}
 }

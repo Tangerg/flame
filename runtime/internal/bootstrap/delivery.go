@@ -61,6 +61,7 @@ func (h *runtimeApplication) newDeliveryEndpoint(
 	lifetime context.Context,
 	info protocol.ServerInfo,
 	idempotencyNamespace string,
+	validateDirectory func() error,
 ) (*delivery.Endpoint, error) {
 	handler, err := h.newDeliveryHandler(info, idempotencyNamespace)
 	if err != nil {
@@ -70,6 +71,7 @@ func (h *runtimeApplication) newDeliveryEndpoint(
 		IdempotencyStore:     h.idempotencyStore,
 		IdempotencyNamespace: idempotencyNamespace,
 		Lifetime:             lifetime,
+		ValidateStorage:      validateDirectory,
 	})
 	if err != nil {
 		return nil, err
@@ -93,10 +95,6 @@ func (h *runtimeApplication) publishCallbacks(endpoint *delivery.Endpoint) error
 		}
 	}
 	return h.callbacks.PublishRPC(mux, h.modelCallbacks...)
-}
-
-func (h *runtimeApplication) notifyExternalChange() {
-	h.workers.invalidations.Notify(invalidation.Notice{Resource: invalidation.Resync})
 }
 
 func (h *runtimeApplication) startWorkers(ctx context.Context) workerJoins {

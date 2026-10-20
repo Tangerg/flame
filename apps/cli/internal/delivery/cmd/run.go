@@ -10,6 +10,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/attachment"
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
@@ -93,7 +95,7 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 			return workspaceErr
 		}
 		attachmentRoot := workspacePath
-		if config.Runtime.Endpoint != "" {
+		if config.Runtime.Mode == settings.RuntimeRemote {
 			attachmentRoot, err = resolveLocalDirectory(cmd)
 			if err != nil {
 				return err
@@ -116,7 +118,7 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 		opened, err = session.Open(cmd.Context(), runtime, r.sessionID, "")
 		if err == nil {
 			attachmentRoot := opened.Session.Workspace.Path
-			if config.Runtime.Endpoint != "" {
+			if config.Runtime.Mode == settings.RuntimeRemote {
 				attachmentRoot, err = resolveLocalDirectory(cmd)
 				if err != nil {
 					return err
@@ -235,7 +237,7 @@ func runFileCompletionWorkspace(cmd *cobra.Command, provider runtimeProvider) (s
 	if err != nil {
 		return "", err
 	}
-	if config.Runtime.Endpoint != "" {
+	if config.Runtime.Mode == settings.RuntimeRemote {
 		return resolveLocalDirectory(cmd)
 	}
 	sessionID, err := cmd.Flags().GetString("session")

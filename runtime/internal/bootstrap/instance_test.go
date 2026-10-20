@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -82,23 +83,8 @@ func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 	if namespace == "" {
 		t.Fatal("runtime.discover omitted idempotency namespace")
 	}
-	second, _, err := OpenInstance(t.Context(), cfg)
-	if err != nil {
-		t.Fatalf("second OpenInstance sharing data directory: %v", err)
-	}
-	secondResult := second.Endpoint().Invoke(t.Context(), "runtime.discover", struct{}{}, delivery.Options{})
-	if secondResult.Failure != nil {
-		t.Fatalf("second runtime.discover: %v", secondResult.Failure)
-	}
-	secondDiscovery, ok := secondResult.Value.(*protocol.DiscoverResponse)
-	if !ok || secondDiscovery.Capabilities.Limits.Idempotency.Namespace != namespace {
-		t.Fatalf("second idempotency namespace = %+v, want %q", secondResult.Value, namespace)
-	}
-	if secondDiscovery.ServerInfo.InstanceID == discovery.ServerInfo.InstanceID {
-		t.Fatalf("second Runtime instance identity = %q, want a fresh identity", secondDiscovery.ServerInfo.InstanceID)
-	}
-	if closeErr := second.Close(); closeErr != nil {
-		t.Fatalf("close second instance: %v", closeErr)
+	if _, _, err := OpenInstance(t.Context(), cfg); !errors.Is(err, ownershipadapter.ErrDataDirectoryInUse) {
+		t.Fatalf("second OpenInstance = %v, want exclusive directory refusal", err)
 	}
 
 	if closeErr := instance.Close(); closeErr != nil {
@@ -116,8 +102,7 @@ func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 	if !ok || reopenedDiscovery.Capabilities.Limits.Idempotency.Namespace != namespace {
 		t.Fatalf("reopened idempotency namespace = %+v, want %q", reopenedResult.Value, namespace)
 	}
-	if reopenedDiscovery.ServerInfo.InstanceID == discovery.ServerInfo.InstanceID ||
-		reopenedDiscovery.ServerInfo.InstanceID == secondDiscovery.ServerInfo.InstanceID {
+	if reopenedDiscovery.ServerInfo.InstanceID == discovery.ServerInfo.InstanceID {
 		t.Fatalf("reopened Runtime instance identity = %q, want a fresh identity", reopenedDiscovery.ServerInfo.InstanceID)
 	}
 	if err := reopened.Close(); err != nil {

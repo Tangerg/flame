@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/pathologize"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/storage/advisorylock"
 )
 
 // listReadBatchSize bounds temporary directory metadata, not the number of
@@ -29,15 +30,17 @@ type Store struct {
 	rootName string
 	root     *os.Root
 	cleanup  goruntime.Cleanup
+	lease    *advisorylock.Lease
 }
 
 type openedRoots struct {
 	boundary *os.Root
 	root     *os.Root
+	lease    *advisorylock.Lease
 }
 
 // Open validates, creates, and pins an owned state root.
-func Open(root string) (*Store, error) {
+func Open(root string) (_ *Store, err error) {
 	root = strings.TrimSpace(root)
 	if root == "" {
 		return nil, errors.New("state directory is empty")
@@ -49,7 +52,7 @@ func Open(root string) (*Store, error) {
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return nil, fmt.Errorf("create state directory: %w", err)
 	}
-	root, err := filepath.EvalSymlinks(root)
+	root, err = filepath.EvalSymlinks(root)
 	if err != nil {
 		return nil, fmt.Errorf("resolve state directory: %w", err)
 	}
@@ -60,6 +63,18 @@ func Open(root string) (*Store, error) {
 	if !expected.IsDir() || expected.Mode()&os.ModeSymlink != 0 {
 		return nil, errors.New("state root is not a directory")
 	}
+	lease, err := advisorylock.TryDirectory(root)
+	if err != nil {
+		return nil, fmt.Errorf("acquire state directory: %w", err)
+	}
+	if lease == nil {
+		return nil, errors.New("state directory is already in use")
+	}
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, lease.Release())
+		}
+	}()
 	boundaryName := filepath.Dir(root)
 	rootName := filepath.Base(root)
 	if boundaryName == root {
@@ -95,7 +110,7 @@ func Open(root string) (*Store, error) {
 		}
 		return nil, errors.New("state directory changed while it was being opened")
 	}
-	store := &Store{boundary: boundary, rootName: rootName, root: pinned}
+	store := &Store{boundary: boundary, rootName: rootName, root: pinned, lease: lease}
 	store.addCleanup()
 	return store, nil
 }
@@ -110,12 +125,12 @@ func (s *Store) Close() error {
 	if s.root == nil {
 		return nil
 	}
-	roots := openedRoots{boundary: s.boundary, root: s.root}
+	roots := openedRoots{boundary: s.boundary, root: s.root, lease: s.lease}
 	s.boundary = nil
 	s.root = nil
 	s.cleanup.Stop()
 	goruntime.KeepAlive(s)
-	return errors.Join(roots.root.Close(), roots.boundary.Close())
+	return errors.Join(roots.root.Close(), roots.boundary.Close(), roots.lease.Release())
 }
 
 // Read returns one regular state file within the requested size bound.
@@ -214,30 +229,21 @@ func (s *Store) ListFiles(name, extension string) (_ []string, err error) {
 // created beside the destination, so Rename cannot cross filesystems and
 // intentionally replaces the prior snapshot instead of conflict-renaming it.
 func (s *Store) Replace(name string, body []byte) error {
-	directory, base, err := s.replacementDirectory(name)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.ensureRoot(); err != nil {
+		return err
+	}
+	relative, err := stateName(name)
+	if err != nil {
+		return err
+	}
+	directory, err := s.openDirectory(filepath.Dir(relative), true)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = directory.Close() }()
-	return replaceStateFile(directory, base, body)
-}
-
-// A replacement owns an independent directory handle before releasing the
-// store lock. Large writes and Sync cannot block unrelated authoring records;
-// Close may retire the Store while an already-admitted replacement finishes
-// safely through its own handle. Concurrent replacements still commit at Rename.
-func (s *Store) replacementDirectory(name string) (*os.Root, string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if err := s.ensureRoot(); err != nil {
-		return nil, "", err
-	}
-	relative, err := stateName(name)
-	if err != nil {
-		return nil, "", err
-	}
-	directory, err := s.openDirectory(filepath.Dir(relative), true)
-	return directory, filepath.Base(relative), err
+	return replaceStateFile(directory, filepath.Base(relative), body)
 }
 
 func replaceStateFile(directory *os.Root, base string, body []byte) error {
@@ -322,10 +328,11 @@ func (s *Store) ensureRoot() error {
 }
 
 func (s *Store) addCleanup() {
-	roots := openedRoots{boundary: s.boundary, root: s.root}
+	roots := openedRoots{boundary: s.boundary, root: s.root, lease: s.lease}
 	s.cleanup = goruntime.AddCleanup(s, func(roots openedRoots) {
 		_ = roots.root.Close()
 		_ = roots.boundary.Close()
+		_ = roots.lease.Release()
 	}, roots)
 }
 

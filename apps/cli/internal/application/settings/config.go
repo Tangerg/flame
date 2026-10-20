@@ -38,6 +38,14 @@ const (
 	ActionExternalEditor  = "external-editor"
 )
 
+// AuthoringPartition preserves the local outbox identity across reconnects.
+func (r Runtime) AuthoringPartition() string {
+	if r.Mode == RuntimeEmbedded {
+		return ""
+	}
+	return r.Endpoint
+}
+
 type Config struct {
 	Runtime  Runtime             `json:"runtime" mapstructure:"runtime"`
 	Provider string              `json:"provider" mapstructure:"provider"`
@@ -51,12 +59,23 @@ type Config struct {
 // Runtime selects the process-owned embedded Runtime or an existing endpoint.
 // Credentials are process input and never part of printable CLI preferences.
 type Runtime struct {
-	Endpoint string `json:"endpoint" mapstructure:"endpoint"`
+	Mode     RuntimeMode `json:"mode" mapstructure:"mode"`
+	Endpoint string      `json:"endpoint" mapstructure:"endpoint"`
 }
 
+type RuntimeMode string
+
+const (
+	RuntimeRemote   RuntimeMode = "remote"
+	RuntimeEmbedded RuntimeMode = "embedded"
+)
+
 func (r Runtime) Validate() error {
-	if r.Endpoint == "" {
+	if r.Mode == RuntimeEmbedded {
 		return nil
+	}
+	if r.Mode != RuntimeRemote {
+		return errors.New("runtime.mode must be remote or embedded")
 	}
 	endpoint, err := url.Parse(r.Endpoint)
 	if err != nil || endpoint.Host == "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https") ||
@@ -93,6 +112,7 @@ type Plugins struct {
 
 func Default() Config {
 	return Config{
+		Runtime:  Runtime{Mode: RuntimeRemote, Endpoint: "http://127.0.0.1:17171"},
 		Approval: Approval{Remember: RememberNone},
 		UI:       UI{Mouse: true, Notifications: true, ToolDetails: false, TranscriptRetain: 24},
 		Keys: map[string][]string{

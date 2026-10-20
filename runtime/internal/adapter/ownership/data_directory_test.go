@@ -2,13 +2,13 @@ package ownership
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 )
 
-func TestDataDirectorySetupCanonicalizesAndProtectsDirectory(t *testing.T) {
+func TestDataDirectoryCanonicalizesAndProtectsDirectory(t *testing.T) {
 	directory := filepath.Join(t.TempDir(), "data")
 	alias := filepath.Join(t.TempDir(), "alias")
 	if err := os.MkdirAll(directory, 0o755); err != nil {
@@ -17,11 +17,11 @@ func TestDataDirectorySetupCanonicalizesAndProtectsDirectory(t *testing.T) {
 	if err := os.Symlink(directory, alias); err != nil {
 		t.Fatalf("create alias: %v", err)
 	}
-	setup, err := PrepareDataDirectory(t.Context(), alias)
+	setup, err := OpenDataDirectory(t.Context(), alias)
 	if err != nil {
 		t.Fatalf("acquire setup: %v", err)
 	}
-	defer func() { _ = setup.Release() }()
+	defer func() { _ = setup.Close() }()
 	physical, err := filepath.EvalSymlinks(directory)
 	if err != nil {
 		t.Fatalf("resolve directory: %v", err)
@@ -38,46 +38,67 @@ func TestDataDirectorySetupCanonicalizesAndProtectsDirectory(t *testing.T) {
 	}
 }
 
-func TestDataDirectorySetupSerializesOnlySetupWindow(t *testing.T) {
+func TestDataDirectoryRefusesAnotherWriterUntilClose(t *testing.T) {
 	directory := t.TempDir()
-	first, err := PrepareDataDirectory(t.Context(), directory)
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(directory, alias); err != nil {
+		t.Fatal(err)
+	}
+	first, err := OpenDataDirectory(t.Context(), directory)
 	if err != nil {
-		t.Fatalf("acquire first setup: %v", err)
+		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = first.Close() })
+	for _, target := range []string{directory, alias} {
+		if _, err := OpenDataDirectory(t.Context(), target); !errors.Is(err, ErrDataDirectoryInUse) {
+			t.Fatalf("second writer for %s: %v", target, err)
+		}
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	second, err := OpenDataDirectory(t.Context(), alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := second.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
 
-	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
-	defer cancel()
-	secondResult := make(chan *DataDirectorySetup, 1)
-	errorResult := make(chan error, 1)
-	go func() {
-		second, err := PrepareDataDirectory(ctx, directory)
-		if err != nil {
-			errorResult <- err
-			return
-		}
-		secondResult <- second
-	}()
-	select {
-	case <-secondResult:
-		t.Fatal("second setup crossed the first setup window")
-	case err := <-errorResult:
-		t.Fatalf("second setup failed while waiting: %v", err)
-	case <-time.After(30 * time.Millisecond):
+func TestDataDirectoryCanceledOpenDoesNotChangePermissions(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.Chmod(directory, 0755); err != nil {
+		t.Fatal(err)
 	}
-	if err := first.Release(); err != nil {
-		t.Fatalf("release first setup: %v", err)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := OpenDataDirectory(ctx, directory); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
 	}
-	if err := first.Release(); err != nil {
-		t.Fatalf("release first setup again: %v", err)
+	info, err := os.Stat(directory)
+	if err != nil {
+		t.Fatal(err)
 	}
-	select {
-	case second := <-secondResult:
-		if err := second.Release(); err != nil {
-			t.Fatalf("release second setup: %v", err)
-		}
-	case err := <-errorResult:
-		t.Fatalf("second setup: %v", err)
-	case <-ctx.Done():
-		t.Fatal("second setup did not acquire after release")
+	if info.Mode().Perm() != 0755 {
+		t.Fatal("canceled writer changed directory permissions")
+	}
+}
+
+func TestDataDirectoryRejectsAReplacedRoot(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "data")
+	directory, err := OpenDataDirectory(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = directory.Close() })
+	if err := os.Rename(path, path+"-retained"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := directory.Validate(); err == nil {
+		t.Fatal("replacement root retained write authority")
 	}
 }

@@ -189,29 +189,32 @@ func TestOpenRequiresAnAbsoluteRoot(t *testing.T) {
 	}
 }
 
-func TestAdmittedReplacementKeepsItsDirectoryAfterStoreClose(t *testing.T) {
+func TestStoreExclusivelyOwnsPhysicalDirectory(t *testing.T) {
 	root := t.TempDir()
-	store := openStore(t, root)
-	// Pause an admitted write before its file I/O, then retire the Store. Its
-	// independently pinned directory remains owned by that one operation.
-	directory, base, err := store.replacementDirectory("inputs/prepared.json")
+	store, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = directory.Close() }()
+	t.Cleanup(func() { _ = store.Close() })
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range []string{root, alias} {
+		if second, err := Open(target); err == nil {
+			_ = second.Close()
+			t.Fatal("second writer admitted")
+		}
+	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	body := []byte("complete input after owner close")
-	if err := replaceStateFile(directory, base, body); err != nil {
+	reopened, err := Open(alias)
+	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := os.ReadFile(filepath.Join(root, "inputs", "prepared.json"))
-	if err != nil || !slices.Equal(got, body) {
-		t.Fatalf("admitted replacement lost its pinned directory: %q, %v", got, err)
-	}
-	if err := store.Replace("late.json", body); err == nil {
-		t.Fatal("closed Store admitted a new replacement")
+	if err := reopened.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 

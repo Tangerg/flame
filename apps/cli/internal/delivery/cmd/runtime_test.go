@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -56,7 +58,7 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			var output bytes.Buffer
-			root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
+			root := NewRoot(Dependencies{OpenRuntime: func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) {
 				return runtimefixture.New(), new(profile), nil
 			}})
 			root.SetOut(&output)
@@ -90,7 +92,7 @@ func TestCommandsRefuseARuntimeWithoutANegotiatedProfile(t *testing.T) {
 		{"plugins", "list"},
 		{"runtime", "info"},
 	} {
-		root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
+		root := NewRoot(Dependencies{OpenRuntime: func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) {
 			return runtimefixture.New(), nil, nil
 		}})
 		root.SetOut(io.Discard)

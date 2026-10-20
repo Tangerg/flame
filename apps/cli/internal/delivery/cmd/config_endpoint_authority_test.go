@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,7 +58,7 @@ func TestDynamicCompletionRejectsProjectSelectedEndpoint(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(workspace, ".flame.yaml"), []byte("runtime:\n  endpoint: https://project-selected.invalid\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
+	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) {
 		t.Fatal("project configuration selected a Runtime during completion")
 		return nil, nil, nil
 	}})

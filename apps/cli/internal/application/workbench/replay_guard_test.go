@@ -53,6 +53,10 @@ func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 		t.Fatal(stagePendingResumeErr)
 	}
 
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)

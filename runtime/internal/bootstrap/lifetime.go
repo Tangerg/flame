@@ -12,10 +12,9 @@ import (
 )
 
 type runtimeLifetime struct {
-	delivery            *delivery.Endpoint
-	stopRuntime         context.CancelFunc
-	databaseChangesDone <-chan struct{}
-	recoveryDone        <-chan struct{}
+	delivery     *delivery.Endpoint
+	stopRuntime  context.CancelFunc
+	recoveryDone <-chan struct{}
 
 	context      context.Context
 	closeMu      sync.Mutex
@@ -170,11 +169,9 @@ func runShutdown(
 			return
 		}
 	}
-	for _, done := range []<-chan struct{}{lifetime.databaseChangesDone, lifetime.recoveryDone} {
-		if err := completion.Wait(ownerCtx, done); err != nil {
-			finishShutdown(lifetime, attempt, false, err)
-			return
-		}
+	if err := completion.Wait(ownerCtx, lifetime.recoveryDone); err != nil {
+		finishShutdown(lifetime, attempt, false, err)
+		return
 	}
 	var errs []error
 	for _, component := range components {

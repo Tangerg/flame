@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"time"
 
 	"context"
@@ -41,7 +42,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 				ProductRoot: runtimefixture.TempDirectory(t), DefaultWorkspacePath: workspace,
 				UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()}, ClientVersion: "test",
 			})
-			connection, err := owner.Connection(t.Context(), "")
+			connection, err := owner.Connection(t.Context(), settings.Runtime{Mode: settings.RuntimeEmbedded})
 			if err != nil {
 				t.Fatal(err)
 			}

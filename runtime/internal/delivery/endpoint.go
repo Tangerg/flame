@@ -41,11 +41,13 @@ type Endpoint struct {
 	idempotency          *replayStore
 	idempotencyNamespace runtimeidentity.IdempotencyNamespace
 	invocations          *invocationGroup
+	validateStorage      func() error
 }
 
 // EndpointConfig supplies durable operation mechanisms. A nil IdempotencyStore
 // selects a Runtime-instance-local store, useful for tests and non-durable hosts.
 type EndpointConfig struct {
+	ValidateStorage      func() error
 	IdempotencyStore     idempotency.Store
 	IdempotencyNamespace string
 	// Lifetime ends every in-flight operation and stream owned by this Runtime
@@ -71,6 +73,7 @@ func NewEndpoint(target any, config EndpointConfig) (*Endpoint, error) {
 		store = newMemoryIdempotencyStore()
 	}
 	return &Endpoint{
+		validateStorage:      config.ValidateStorage,
 		target:               target,
 		idempotency:          newReplayStore(store),
 		idempotencyNamespace: namespace,
@@ -101,6 +104,11 @@ func (e *Endpoint) AwaitShutdown(ctx context.Context) error {
 // Invoke validates and executes the named operation through the catalog's
 // capability, idempotency and safe-problem policies.
 func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, options Options) Result {
+	if e.validateStorage != nil {
+		if err := e.validateStorage(); err != nil {
+			return failed(projectError(err))
+		}
+	}
 	ctx, release, admitted := e.invocations.Attach(ctx)
 	if !admitted {
 		return failed(projectError(context.Canceled))

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,7 +25,7 @@ func TestEmbeddedRuntimeValidatesItsConfigOnlyWhenSelected(t *testing.T) {
 		t.Fatalf("client construction interpreted an unselected Runtime config: %v", err)
 	}
 	t.Cleanup(func() { _ = owner.Close() })
-	if _, err := owner.Connection(t.Context(), ""); err == nil {
+	if _, err := owner.Connection(t.Context(), settings.Runtime{Mode: settings.RuntimeEmbedded}); err == nil {
 		t.Fatal("embedded Runtime accepted relative configuration directory")
 	}
 }

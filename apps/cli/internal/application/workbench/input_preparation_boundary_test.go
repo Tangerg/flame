@@ -32,6 +32,9 @@ func TestPreparedInputPublicationKeepsItsPayloadAfterStateRootReplacement(t *tes
 		t.Fatal(err)
 	}
 	_, stageErr := store.StagePendingSteer(pending, source, prepared)
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)

@@ -68,6 +68,9 @@ func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 		t.Fatalf("failed edit changed the live FIFO or reservation: %+v", got)
 	}
 	writes.fail = ""
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -190,6 +193,9 @@ func TestQueueRecoveryPreservesHeldSuccessors(t *testing.T) {
 			if !reflect.DeepEqual(after, before) {
 				t.Fatalf("recovery changed successor identity, held state, or content: got %+v, want %+v", after, before)
 			}
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
 			reopened, err := OpenDirectory(directory, Config{})
 			if err != nil {
 				t.Fatal(err)
@@ -243,3 +249,5 @@ func TestRestoredPendingRunStateControlsQueueOwnership(t *testing.T) {
 		})
 	}
 }
+
+func (p *queueWriteFailure) Close() error { return closePersistence(p.Persistence) }

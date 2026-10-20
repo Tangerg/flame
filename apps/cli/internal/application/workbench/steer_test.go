@@ -35,6 +35,10 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 		t.Fatalf("draft after staging = %+v, found %t", draft, found)
 	}
 
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -54,6 +58,10 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 	want := prompt.Message{Text: newer.Text, Attachments: []prompt.Attachment{attachment}}
 	if !recovered.Equal(want) {
 		t.Fatalf("recovered draft = %+v, want %+v", recovered, want)
+	}
+
+	if err := reopened.Close(); err != nil {
+		t.Fatal(err)
 	}
 
 	settled, err := OpenDirectory(directory, Config{})
@@ -94,6 +102,10 @@ func TestPendingSteerAcknowledgementIsRestartIdempotentAndPreservesDraft(t *test
 	}
 	if acknowledgePendingSteerErr := store.AcknowledgePendingSteer(sessionID, pending.CommandID()); acknowledgePendingSteerErr != nil {
 		t.Fatal(acknowledgePendingSteerErr)
+	}
+
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
 	}
 
 	reopened, err := OpenDirectory(directory, Config{})

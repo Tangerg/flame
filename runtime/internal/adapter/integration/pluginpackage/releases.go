@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/dependency"
@@ -37,10 +38,11 @@ type releaseCatalog interface {
 }
 
 type Releases struct {
-	directory   string
-	catalog     releaseCatalog
-	executionMu sync.Mutex
-	executions  map[fingerprint.Digest]*executionContent
+	directory         string
+	directoryIdentity os.FileInfo
+	catalog           releaseCatalog
+	executionMu       sync.Mutex
+	executions        map[fingerprint.Digest]*executionContent
 	// publishMu serializes publication and reclamation of release directories.
 	publishMu sync.Mutex
 	// mu guards the integrity cache and the verifications in flight. It is
@@ -66,20 +68,62 @@ func New(directory string, catalog releaseCatalog) (*Releases, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pluginpackage: resolve release directory: %w", err)
 	}
+	identity, err := os.Stat(resolved)
+	if err != nil {
+		return nil, err
+	}
 	return &Releases{
-		directory:  resolved,
-		catalog:    catalog,
-		executions: map[fingerprint.Digest]*executionContent{},
-		verified:   map[fingerprint.Digest]releaseIntegrity{},
-		verifying:  map[fingerprint.Digest]*verification{},
+		directory:         resolved,
+		directoryIdentity: identity,
+		catalog:           catalog,
+		executions:        map[fingerprint.Digest]*executionContent{},
+		verified:          map[fingerprint.Digest]releaseIntegrity{},
+		verifying:         map[fingerprint.Digest]*verification{},
 	}, nil
 }
 
 func (r *Releases) Root(digest fingerprint.Digest) (string, error) {
+	if err := r.validateDirectory(); err != nil {
+		return "", err
+	}
 	if err := digest.Validate(); err != nil {
 		return "", errors.Join(plugin.ErrInvalid, err)
 	}
 	return filepath.Join(r.directory, digest.String()), nil
+}
+
+func (r *Releases) validateDirectory() error {
+	current, err := os.Stat(r.directory)
+	if err != nil {
+		return err
+	}
+	if !os.SameFile(r.directoryIdentity, current) {
+		return errors.New("pluginpackage: release directory changed while Runtime owns it")
+	}
+	return nil
+}
+
+// RecoverStaging runs only under the Runtime's directory lease, before package
+// admission opens. Normal reclamation must preserve live unpublished candidates.
+func (r *Releases) RecoverStaging(ctx context.Context) error {
+	if err := r.validateDirectory(); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(r.directory)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if err := cancellation.Err(ctx); err != nil {
+			return err
+		}
+		if strings.HasPrefix(entry.Name(), ".stage-") {
+			if err := removeSealed(filepath.Join(r.directory, entry.Name())); err != nil {
+				return fmt.Errorf("pluginpackage: recover staging: %w", err)
+			}
+		}
+	}
+	return nil
 }
 
 // Candidate is one package admitted as an immutable release that is not yet
@@ -99,7 +143,12 @@ func (c *Candidate) Publish(ctx context.Context) (plugin.Release, error) {
 	return c.releases.publish(ctx, c.staged, c.release, c.contents)
 }
 
-func (c *Candidate) Discard() error { return c.staged.discard() }
+func (c *Candidate) Discard() error {
+	if err := c.releases.validateDirectory(); err != nil {
+		return err
+	}
+	return c.staged.discard()
+}
 
 // Materialize admits one package as a candidate release: the bytes are copied
 // into private staging within the package limits, sealed read-only, digested
@@ -107,6 +156,9 @@ func (c *Candidate) Discard() error { return c.staged.discard() }
 // change that references the release, so nothing is published outside the
 // admission point that also reclaims releases.
 func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Candidate, err error) {
+	if err := r.validateDirectory(); err != nil {
+		return nil, err
+	}
 	if err := cancellation.Err(ctx); err != nil {
 		return nil, err
 	}
@@ -210,6 +262,9 @@ func (r *Releases) publish(ctx context.Context, staged *staging, release plugin.
 // The directory is read in bounded batches, so garbage of any size is
 // reclaimed without materializing the whole listing.
 func (r *Releases) Reclaim(ctx context.Context, retained []fingerprint.Digest) (err error) {
+	if err := r.validateDirectory(); err != nil {
+		return err
+	}
 	r.publishMu.Lock()
 	defer r.publishMu.Unlock()
 	admitted, err := r.catalog.Digests(ctx)

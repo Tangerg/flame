@@ -26,7 +26,6 @@ func TestRuntimeEndpointPreferenceAndCredentialBoundary(t *testing.T) {
 	}{
 		{want: "https://environment.example/flame"},
 		{flags: []string{"--runtime-url", "https://flag.example/flame"}, want: "https://flag.example/flame"},
-		{flags: []string{"--runtime-url="}, want: ""},
 	} {
 		args := append([]string{"-C", local, "--config", configPath}, test.flags...)
 		args = append(args, "config", "show")
@@ -111,7 +110,7 @@ func TestRemoteRunAttachesLocalBytesToAnExistingRemoteSession(t *testing.T) {
 func TestRemoteFileCompletionDoesNotOpenRuntime(t *testing.T) {
 	local := runtimefixture.TempDirectory(t)
 	writeCommandFixture(t, filepath.Join(local, "notes.txt"), []byte("notes"))
-	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
+	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) {
 		t.Fatal("local file completion opened Runtime")
 		return nil, nil, nil
 	}})
@@ -133,8 +132,8 @@ func TestDynamicCompletionLoadsTheConfiguredRuntimeTarget(t *testing.T) {
 	configPath := filepath.Join(local, ".flame.yaml")
 	writeCommandFixture(t, configPath, []byte("runtime:\n  endpoint: https://configured.example/flame\n"))
 	var target string
-	root := NewRoot(Dependencies{OpenRuntime: func(_ context.Context, endpoint string) (Runtime, RuntimeProfile, error) {
-		target = endpoint
+	root := NewRoot(Dependencies{OpenRuntime: func(_ context.Context, endpoint settings.Runtime) (Runtime, RuntimeProfile, error) {
+		target = endpoint.Endpoint
 		return instantRuntime(), new(commandRuntimeProfile(t)), nil
 	}})
 	var out bytes.Buffer
@@ -152,8 +151,8 @@ func TestDynamicCompletionLoadsTheConfiguredRuntimeTarget(t *testing.T) {
 func TestExplicitRemoteFailureDoesNotOpenAnEmbeddedRuntime(t *testing.T) {
 	want := errors.New("remote endpoint unavailable")
 	var endpoints []string
-	root := NewRoot(Dependencies{OpenRuntime: func(_ context.Context, endpoint string) (Runtime, RuntimeProfile, error) {
-		endpoints = append(endpoints, endpoint)
+	root := NewRoot(Dependencies{OpenRuntime: func(_ context.Context, endpoint settings.Runtime) (Runtime, RuntimeProfile, error) {
+		endpoints = append(endpoints, endpoint.Endpoint)
 		return nil, nil, want
 	}})
 	root.SetArgs([]string{"--runtime-url", "https://offline.example", "sessions", "ls"})
@@ -181,5 +180,16 @@ func TestRemoteWorkspaceDoesNotSelectLocalProjectConfiguration(t *testing.T) {
 	}
 	if request.Settings.UI.Mouse || request.Workspace != remote {
 		t.Fatalf("Runtime workspace changed CLI preferences = %+v", request)
+	}
+}
+
+func TestEmptyRemoteEndpointCannotSelectEmbeddedRuntime(t *testing.T) {
+	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) {
+		t.Fatal("empty remote target reached Runtime factory")
+		return nil, nil, nil
+	}})
+	root.SetArgs([]string{"--runtime-url=", "sessions", "ls"})
+	if err := root.ExecuteContext(t.Context()); err == nil {
+		t.Fatal("empty remote endpoint accepted")
 	}
 }

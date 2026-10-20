@@ -21,6 +21,9 @@ func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle
 	if err != nil {
 		return err
 	}
+	if err := packages.RecoverStaging(ctx); err != nil {
+		return err
+	}
 	return plugins.Initialize(ctx, stores.Installations, packages, func() ([]string, error) {
 		return distributionSources(ctx, directory)
 	}, stores.ProviderSelections, []plugins.DefaultProvider{

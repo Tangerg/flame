@@ -10,17 +10,22 @@ import (
 	"github.com/Tangerg/flame/runtime/storage/advisorylock"
 )
 
-// DataDirectorySetup serializes schema installation and configuration seeding.
-// It is deliberately not a Runtime-lifetime lease: after setup, Runtime
-// processes may share Directory.
-type DataDirectorySetup struct {
+var ErrDataDirectoryInUse = errors.New("runtime data directory is already in use")
+
+// DataDirectory owns the physical directory until every Runtime resource closes.
+type DataDirectory struct {
 	Directory string
 	lease     *advisorylock.Lease
+	identity  os.FileInfo
 }
 
-// PrepareDataDirectory canonicalizes and protects the shared data directory,
-// then acquires its short setup lease.
-func PrepareDataDirectory(ctx context.Context, directory string) (*DataDirectorySetup, error) {
+func OpenDataDirectory(ctx context.Context, directory string) (*DataDirectory, error) {
+	if ctx == nil {
+		return nil, errors.New("runtime ownership: context is required")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if directory == "" {
 		return nil, errors.New("runtime ownership: data directory is required")
 	}
@@ -36,20 +41,44 @@ func PrepareDataDirectory(ctx context.Context, directory string) (*DataDirectory
 		return nil, fmt.Errorf("runtime ownership: resolve data directory %q: %w", cleaned, err)
 	}
 	canonical = filepath.Clean(canonical)
-	if chmodErr := os.Chmod(canonical, 0o700); chmodErr != nil {
-		return nil, fmt.Errorf("runtime ownership: protect data directory %q: %w", canonical, chmodErr)
-	}
-	lease, err := advisorylock.AcquireDirectory(ctx, canonical)
+	identity, err := os.Stat(canonical)
 	if err != nil {
-		return nil, fmt.Errorf("runtime ownership: serialize data directory setup %q: %w", canonical, err)
+		return nil, err
 	}
-	return &DataDirectorySetup{Directory: canonical, lease: lease}, nil
+	lease, err := advisorylock.TryDirectory(canonical)
+	if err != nil {
+		return nil, fmt.Errorf("runtime ownership: acquire data directory %q: %w", canonical, err)
+	}
+	if lease == nil {
+		return nil, fmt.Errorf("%w: %q", ErrDataDirectoryInUse, canonical)
+	}
+	opened, err := os.Stat(canonical)
+	if err != nil || !os.SameFile(identity, opened) {
+		return nil, errors.Join(errors.New("runtime ownership: data directory changed during acquisition"), err, lease.Release())
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Join(err, lease.Release())
+	}
+	if err := os.Chmod(canonical, 0o700); err != nil {
+		return nil, errors.Join(fmt.Errorf("runtime ownership: protect data directory %q: %w", canonical, err), lease.Release())
+	}
+	return &DataDirectory{Directory: canonical, lease: lease, identity: identity}, nil
 }
 
-// Release ends the setup window through the lease's single cleanup owner.
-func (d *DataDirectorySetup) Release() error {
+func (d *DataDirectory) Validate() error {
+	current, err := os.Stat(d.Directory)
+	if err != nil {
+		return fmt.Errorf("runtime ownership: inspect data directory: %w", err)
+	}
+	if !os.SameFile(d.identity, current) {
+		return errors.New("runtime ownership: data directory changed while Runtime owns it")
+	}
+	return nil
+}
+
+func (d *DataDirectory) Close() error {
 	if err := d.lease.Release(); err != nil {
-		return fmt.Errorf("runtime ownership: release data directory setup %q: %w", d.Directory, err)
+		return fmt.Errorf("runtime ownership: release data directory %q: %w", d.Directory, err)
 	}
 	return nil
 }

@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
@@ -183,7 +185,7 @@ func remoteDeletionConnection(t *testing.T, malformed bool) (
 			t.Error(err)
 		}
 	})
-	connection, err := owner.Connection(t.Context(), server.URL)
+	connection, err := owner.Connection(t.Context(), settings.Runtime{Mode: settings.RuntimeRemote, Endpoint: server.URL})
 	if err != nil {
 		t.Fatal(err)
 	}

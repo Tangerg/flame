@@ -77,3 +77,5 @@ func (r *removeFailurePersistence) Remove(name string) error {
 	}
 	return r.Persistence.Remove(name)
 }
+
+func (r *removeFailurePersistence) Close() error { return closePersistence(r.Persistence) }

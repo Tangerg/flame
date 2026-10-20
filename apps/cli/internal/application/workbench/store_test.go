@@ -91,6 +91,10 @@ func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 		}
 	}
 
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	reopened, err := OpenDirectory(directory, Config{
 		HistoryCapacity: testCapacity(t, 2), StashCapacity: testCapacity(t, 2), WorkspaceCapacity: testCapacity(t, 2),
 	})
@@ -128,6 +132,9 @@ func TestStorePreservesRemoteWorkspaceIdentityAcrossRestart(t *testing.T) {
 		if err := store.RememberWorkspace(path); err != nil {
 			t.Fatal(err)
 		}
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
@@ -273,6 +280,10 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 		t.Fatal(stashDraftErr)
 	}
 
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -329,6 +340,10 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 				}
 			}
 
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
+
 			reopened, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
 			if err != nil {
 				t.Fatal(err)
@@ -339,6 +354,9 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 			stashes := reopened.Stashes()
 			if len(stashes) != 2 || stashes[0].ID != transfer.Stash.ID || !stashes[0].Message.Equal(draft) {
 				t.Fatalf("stashes after recovery = %+v", stashes)
+			}
+			if err := reopened.Close(); err != nil {
+				t.Fatal(err)
 			}
 			settled, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
 			if err != nil {
@@ -377,12 +395,20 @@ func TestStoreBlocksWritesWhenCommittedStashTransferJournalCannotRetire(t *testi
 	if _, found := store.Draft(sessionID); found {
 		t.Fatal("committed source draft remains")
 	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	persistence, err = statefile.Open(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	failing.Persistence = persistence
 	if _, err := Open(failing, Config{}); err == nil {
 		t.Fatal("reopen accepted a stash journal it could not retire")
 	}
 
 	failing.enabled = false
-	reopened, err := Open(persistence, Config{})
+	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -415,6 +441,10 @@ func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
 	newer := prompt.Message{Text: "new owner"}
 	if saveDraftErr := store.SaveDraft(sessionID, newer); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
+	}
+
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
 	}
 
 	reopened, err := OpenDirectory(directory, Config{})
@@ -516,6 +546,9 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 		deletions[0].SessionID != sessionID || deletions[0].Phase != SessionDeletionConfirmed {
 		t.Fatalf("session deletion tombstones = %+v", deletions)
 	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -538,6 +571,9 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	}
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
+	}
+	if err := reopened.Close(); err != nil {
+		t.Fatal(err)
 	}
 	reopened, err = OpenDirectory(directory, Config{})
 	if err != nil {
@@ -569,6 +605,10 @@ func TestStoreRecoversPreparedSessionDeletionWithStableIdentity(t *testing.T) {
 	}
 	if stageSessionDeletionErr := store.StageSessionDeletion(request, replay.UnprotectedGuard()); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
+	}
+
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
 	}
 
 	reopened, err := OpenDirectory(directory, Config{})
@@ -685,6 +725,10 @@ func TestStorePersistsAndAtomicallyActivatesSessionRollbackRecovery(t *testing.T
 		t.Fatal(stageSessionRollbackErr)
 	}
 
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -704,6 +748,10 @@ func TestStorePersistsAndAtomicallyActivatesSessionRollbackRecovery(t *testing.T
 	if recovery == nil || !recovery.Merged || recovery.DroppedCount != 1 || recovery.OpeningImages != 2 ||
 		recovery.Draft.Text != "restored opening\n\nnew thought" {
 		t.Fatalf("rollback activation = %+v", activation)
+	}
+
+	if err := reopened.Close(); err != nil {
+		t.Fatal(err)
 	}
 
 	reopened, err = OpenDirectory(directory, Config{})
@@ -947,6 +995,10 @@ func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) 
 	pending.Message.Text = "mutated"
 	pending.Options.Generation.Stop[0] = "mutated"
 
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -1009,6 +1061,9 @@ func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailur
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
 	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -1021,6 +1076,10 @@ func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailur
 	}
 	if pending := reopened.PendingRuns(command.SessionID); len(pending) != 0 {
 		t.Fatalf("retried settlement retained outbox: %+v", pending)
+	}
+
+	if err := reopened.Close(); err != nil {
+		t.Fatal(err)
 	}
 
 	settled, err := OpenDirectory(directory, Config{})
@@ -1074,6 +1133,9 @@ func TestBoundedHistoryRetainsAnUnsettledCommandIdentity(t *testing.T) {
 	}
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
 	}
 	reopened, err := OpenDirectory(directory, Config{HistoryCapacity: testCapacity(t, 1)})
 	if err != nil {
@@ -1253,6 +1315,9 @@ func TestCancelingDispatchPersistsBothMutationIdentities(t *testing.T) {
 	if replayed, markPendingRunCancelingErr := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, replay.UnprotectedGuard()); markPendingRunCancelingErr != nil || replayed != cancelID {
 		t.Fatalf("idempotent cancel transition = %q, %v; want %q", replayed, markPendingRunCancelingErr, cancelID)
 	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -1373,6 +1438,10 @@ func TestStorePersistsPendingInterruptResumeUntilExactSettlement(t *testing.T) {
 	}
 	pending.Command.Answers[0].Answer = conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}
 	pending.Interrupts[0] = conversation.Approval{RunID: "mutated"}
+
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
@@ -1512,6 +1581,9 @@ func TestStorePersistsTheCompleteMixedInterruptReview(t *testing.T) {
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
 	}
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {

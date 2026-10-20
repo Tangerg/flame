@@ -10,11 +10,50 @@ import (
 	"testing/synctest"
 	"time"
 
+	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func TestDirectoryLeaseOutlivesCloseTimeout(t *testing.T) {
+	path := t.TempDir()
+	directory, err := ownershipadapter.OpenDataDirectory(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unblock := make(chan struct{})
+	joined := make(chan struct{})
+	lifetime := newRuntimeLifetime(t.Context(), []TerminalResource{directory})
+	lifetime.shutdownWait = testShutdownWait(t, time.Millisecond)
+	lifetime.runCoordinator = shutdownFunc{wait: func(context.Context) error {
+		<-unblock
+		close(joined)
+		return nil
+	}}
+	if err := closeRuntimeLifetime(lifetime); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal(err)
+	}
+	if second, err := ownershipadapter.OpenDataDirectory(t.Context(), path); !errors.Is(err, ownershipadapter.ErrDataDirectoryInUse) {
+		if second != nil {
+			_ = second.Close()
+		}
+		t.Fatalf("directory released before teardown: %v", err)
+	}
+	close(unblock)
+	<-joined
+	if err := closeRuntimeLifetime(lifetime); err != nil {
+		t.Fatal(err)
+	}
+	successor, err := ownershipadapter.OpenDataDirectory(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := successor.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestInstanceShutdownOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {
 	var (

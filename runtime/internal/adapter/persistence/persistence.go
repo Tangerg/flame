@@ -8,11 +8,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
-	"runtime/debug"
 	"sync"
-	"time"
 
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
@@ -23,9 +20,10 @@ import (
 // Bundle holds Runtime's host stores in one SQLite database under DataDirectory.
 // Managed plugin processes open their private stores separately.
 type Bundle struct {
-	db        *sql.DB
-	closeOnce sync.Once
-	closeErr  error
+	db                *sql.DB
+	closeOnce         sync.Once
+	closeErr          error
+	validateDirectory func() error
 
 	DataDirectory string
 	// IdempotencyNamespace identifies the exact durable replay store without
@@ -69,91 +67,18 @@ type Bundle struct {
 // Config is the process-owned filesystem snapshot persistence consumes. It has
 // no environment or working-directory fallback: startup supplies every path.
 type Config struct {
-	DataDirectory string
-}
-
-const externalChangePollInterval = 100 * time.Millisecond
-
-// StartExternalChangeObserver reports commits made through a different SQLite
-// connection. PRAGMA data_version deliberately ignores commits on this
-// Bundle's own connection, whose use cases already publish precise notices.
-// The baseline is read before this method returns, so a caller can expose its
-// Runtime without leaving an unobserved startup window. Cancel ctx and wait on
-// the returned channel to join the observer. Each outage produces one diagnostic;
-// retries resume notifications only after another successful database read.
-func (b *Bundle) StartExternalChangeObserver(ctx context.Context, notify func()) (<-chan struct{}, error) {
-	if b == nil || b.db == nil || notify == nil {
-		return nil, errors.New("persistence: external change observer requires a Bundle and notification callback")
-	}
-	var previous int64
-	if err := b.db.QueryRowContext(ctx, `PRAGMA data_version`).Scan(&previous); err != nil {
-		return nil, fmt.Errorf("persistence: read external change baseline: %w", err)
-	}
-	done := make(chan struct{})
-	observer := &externalChangeObserver{db: b.db, notify: notify, version: previous}
-	go func() {
-		defer close(done)
-		ticker := time.NewTicker(externalChangePollInterval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				if !observer.poll(ctx) {
-					return
-				}
-			}
-		}
-	}()
-	return done, nil
-}
-
-// externalChangeObserver holds one observer's poll state across ticks: the last
-// data_version it saw, and whether the previous read failed so a persistent
-// outage is reported once rather than on every retry.
-type externalChangeObserver struct {
-	db      *sql.DB
-	notify  func()
-	version int64
-	failed  bool
-}
-
-// A failed fan-out must leave the version pending: there may be no later commit
-// to wake subscribers. Invalidations are safe to repeat after partial delivery.
-func (o *externalChangeObserver) poll(ctx context.Context) (running bool) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			if !o.failed {
-				slog.ErrorContext(ctx, "persistence: external change poll panicked",
-					"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
-			}
-			o.failed = true
-			running = true
-		}
-	}()
-	var current int64
-	if err := o.db.QueryRowContext(ctx, `PRAGMA data_version`).Scan(&current); err != nil {
-		if ctx.Err() != nil {
-			return false
-		}
-		if !o.failed {
-			slog.ErrorContext(ctx, "persistence: observe external changes", "error", err)
-		}
-		o.failed = true
-		return true
-	}
-	if current != o.version {
-		o.notify()
-		o.version = current
-	}
-	o.failed = false
-	return true
+	DataDirectory     string
+	ValidateDirectory func() error
 }
 
 // Open wires the persistence backends. The returned bundle owns the shared
 // SQLite handle and must be closed when the runtime process stops.
 func Open(ctx context.Context, config Config) (*Bundle, error) {
+	if config.ValidateDirectory != nil {
+		if err := config.ValidateDirectory(); err != nil {
+			return nil, err
+		}
+	}
 	dataDirectory, directoryErr := localruntime.DataDirectoryAt(config.DataDirectory)
 	if directoryErr != nil {
 		return nil, fmt.Errorf("persistence: data directory: %w", directoryErr)
@@ -174,10 +99,16 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		return nil, errors.Join(err, db.Close())
 	}
 	return &Bundle{
+		validateDirectory:    config.ValidateDirectory,
 		db:                   db,
 		DataDirectory:        config.DataDirectory,
 		IdempotencyNamespace: idempotencyNamespace,
 		Transactor: func(ctx context.Context, fn func(context.Context) error) error {
+			if config.ValidateDirectory != nil {
+				if err := config.ValidateDirectory(); err != nil {
+					return err
+				}
+			}
 			return sqlitebase.RunInTx(ctx, db, fn)
 		},
 		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
@@ -224,7 +155,17 @@ func (b *Bundle) Ping(ctx context.Context) error {
 	if b == nil || b.db == nil {
 		return errors.New("persistence: storage is closed")
 	}
+	if err := b.ValidateDirectory(); err != nil {
+		return err
+	}
 	return b.db.PingContext(ctx)
+}
+
+func (b *Bundle) ValidateDirectory() error {
+	if b.validateDirectory != nil {
+		return b.validateDirectory()
+	}
+	return nil
 }
 
 // Close releases the shared SQLite handle. It is safe to call repeatedly.

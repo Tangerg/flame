@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
@@ -61,13 +62,22 @@ func executeCommandWithRuntime(
 	t.Helper()
 	var out, errb bytes.Buffer
 	dependencies := Dependencies{
-		OpenRuntime:   func(context.Context, string) (Runtime, RuntimeProfile, error) { return runtime, profile, nil },
+		OpenRuntime:   func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) { return runtime, profile, nil },
 		OpenWorkbench: func(string) (*workbench.Store, error) { return workbench.OpenMemory(workbench.Config{}) },
 	}
 	root := NewRoot(dependencies)
 	root.SetOut(&out)
 	root.SetErr(&errb)
 	root.SetIn(strings.NewReader(stdin))
+	localTarget := true
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "--runtime-") || arg == "--config" {
+			localTarget = false
+		}
+	}
+	if localTarget && os.Getenv("FLAME_CLI_RUNTIME_ENDPOINT") == "" {
+		args = append([]string{"--runtime-mode", "embedded"}, args...)
+	}
 	root.SetArgs(args)
 	err := root.ExecuteContext(t.Context())
 	return out.String(), errb.String(), err
@@ -864,10 +874,13 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	if saveDraftErr := authoring.SaveDraft(target, prompt.Message{Text: "must be retired"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
+	if err := authoring.Close(); err != nil {
+		t.Fatal(err)
+	}
 	runtime := &postCommitDeleteRuntime{Runtime: base}
 	var output bytes.Buffer
 	root := NewRoot(Dependencies{
-		OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
+		OpenRuntime: func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) {
 			return runtime, new(commandRuntimeProfile(t)), nil
 		},
 		OpenWorkbench: func(string) (*workbench.Store, error) { return openTestWorkbench(stateDirectory) },
@@ -1078,7 +1091,7 @@ func TestCompletionCommand(t *testing.T) {
 // database, a socket, or anything else a real runtime needs.
 func TestHelpDoesNotResolveARuntime(t *testing.T) {
 	var resolved bool
-	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
+	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) {
 		resolved = true
 		return instantRuntime(), nil, nil
 	}})

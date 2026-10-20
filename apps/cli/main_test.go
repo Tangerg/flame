@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd"
@@ -835,7 +837,7 @@ func TestFlameProcess(t *testing.T) {
 	stateDirectory := filepath.Join(flameHome, "cli")
 	openWorkbench := workbenchFactory(stateDirectory)
 	dependencies := cmd.Dependencies{
-		OpenRuntime: func(context.Context, string) (cmd.Runtime, cmd.RuntimeProfile, error) {
+		OpenRuntime: func(context.Context, settings.Runtime) (cmd.Runtime, cmd.RuntimeProfile, error) {
 			announce()
 			return runtime, profile, nil
 		},
@@ -845,7 +847,7 @@ func TestFlameProcess(t *testing.T) {
 			return terminal.Run(ctx, terminal.Config{
 				Runtime: runtime, RuntimeProfile: profile, SessionID: request.SessionID, Workspace: request.Workspace,
 				InitialPrompt: request.InitialPrompt, Settings: &configured,
-				OpenWorkbench: func() (*workbench.Store, error) { return openWorkbench(request.Settings.Runtime.Endpoint) },
+				OpenWorkbench: func() (*workbench.Store, error) { return openWorkbench(request.Settings.Runtime.AuthoringPartition()) },
 			})
 		},
 		OpenWorkbench: openWorkbench,
@@ -874,7 +876,7 @@ func buildProductionBinary(t *testing.T) string {
 }
 
 func testProcessArguments(arguments ...string) []string {
-	return append([]string{"-test.run=^TestFlameProcess$", "--"}, arguments...)
+	return append([]string{"-test.run=^TestFlameProcess$", "--", "--runtime-mode", "embedded"}, arguments...)
 }
 
 func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T) {
@@ -930,7 +932,7 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 
 func runTestBinary(t *testing.T, binary string, environment []string, arguments ...string) []byte {
 	t.Helper()
-	command := exec.CommandContext(t.Context(), binary, arguments...)
+	command := exec.CommandContext(t.Context(), binary, append([]string{"--runtime-mode", "embedded"}, arguments...)...)
 	command.Env = environment
 	var diagnostics bytes.Buffer
 	command.Stderr = &diagnostics

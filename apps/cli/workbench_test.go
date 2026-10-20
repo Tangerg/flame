@@ -3,10 +3,15 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
@@ -17,7 +22,7 @@ func TestWorkbenchFactoryIsLazyForHelpAndCompletion(t *testing.T) {
 		t.Run(args[0], func(t *testing.T) {
 			base := filepath.Join(t.TempDir(), "authoring")
 			root := cmd.NewRoot(cmd.Dependencies{
-				OpenRuntime: func(context.Context, string) (cmd.Runtime, cmd.RuntimeProfile, error) {
+				OpenRuntime: func(context.Context, settings.Runtime) (cmd.Runtime, cmd.RuntimeProfile, error) {
 					t.Fatal("help or completion opened Runtime")
 					return nil, nil, nil
 				},
@@ -67,5 +72,51 @@ func TestWorkbenchFactoryIsolatesAndRecoversEachRuntimeTarget(t *testing.T) {
 		if err := store.Close(); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestWorkbenchFactoryRetainsUnknownOpeningUnderOnePartitionOwner(t *testing.T) {
+	open := workbenchFactory(t.TempDir())
+	const endpoint = "https://runtime.example"
+	first, err := open(endpoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = first.Close() })
+	const sessionID = "ses_shared"
+	const commandID replay.CommandID = "cli_00000000000000000000000000000001"
+	pending := workbench.PendingRun{
+		State:  workbench.PendingRunQueued,
+		Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
+		Command: prompt.StartRun{CommandID: commandID, SessionID: sessionID, Message: prompt.Message{Text: "original intent"}},
+	}
+	if err := first.StagePendingRun(pending); err != nil {
+		t.Fatal(err)
+	}
+	guard, err := replay.NewProtectedGuard("idp_00000000000000000000000000000001", time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := first.MarkPendingRunDispatching(sessionID, commandID, guard, nil); err != nil {
+		t.Fatal(err)
+	}
+	if second, err := open(endpoint); err == nil {
+		_ = second.Close()
+		t.Fatal("second partition writer admitted")
+	}
+	if err := first.SaveDraft(sessionID, prompt.Message{Text: "new draft"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := open(endpoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = reopened.Close() })
+	got := reopened.PendingRuns(sessionID)
+	if len(got) != 1 || got[0].State != workbench.PendingRunDispatching || got[0].Command.CommandID != commandID || got[0].Command.Message.Text != "original intent" {
+		t.Fatalf("unknown opening changed: %+v", got)
 	}
 }

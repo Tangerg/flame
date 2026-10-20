@@ -37,25 +37,22 @@ type Instance struct {
 	stores      *persistence.Bundle
 }
 
-// OpenInstance serializes canonical data-directory setup, opens persistence,
-// then releases that setup boundary before assembling and recovering one Instance.
-// Runtime processes may subsequently share the directory; finer application
-// ownership prevents conflicting execution and recovery.
+// OpenInstance exclusively owns the data directory through complete shutdown.
 func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ config.Settings, err error) {
 	if validateErr := cfg.validate(); validateErr != nil {
 		return nil, config.Settings{}, validateErr
 	}
-	setup, err := ownershipadapter.PrepareDataDirectory(ctx, cfg.DataDirectory)
+	directory, err := ownershipadapter.OpenDataDirectory(ctx, cfg.DataDirectory)
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	setupOwned := true
+	directoryOwned := true
 	defer func() {
-		if setupOwned {
-			err = errors.Join(err, setup.Release())
+		if directoryOwned {
+			err = errors.Join(err, directory.Close())
 		}
 	}()
-	cfg.DataDirectory = setup.Directory
+	cfg.DataDirectory = directory.Directory
 
 	buildID := cfg.BuildID
 	if buildID == "" {
@@ -68,7 +65,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	stores, err := persistence.Open(ctx, persistence.Config{DataDirectory: cfg.DataDirectory})
+	stores, err := persistence.Open(ctx, persistence.Config{DataDirectory: cfg.DataDirectory, ValidateDirectory: directory.Validate})
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
@@ -98,12 +95,10 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err = SeedUtilityRole(ctx, stores.UtilityRole, settings); err != nil {
 		return nil, config.Settings{}, err
 	}
-	if err = setup.Release(); err != nil {
-		return nil, config.Settings{}, err
-	}
-	setupOwned = false
-
 	assemblyConfig := ComposeConfig(settings, stores, chatResolver, providers, buildID)
+	// Resources close in reverse acquisition order. The directory must remain
+	// leased even when a constructor's bounded shutdown wait expires.
+	assemblyConfig.Resources = append([]TerminalResource{directory}, assemblyConfig.Resources...)
 	assemblyConfig.UserHome = cfg.UserHome
 	assemblyConfig.DefaultWorkspacePath = cfg.DefaultWorkspacePath
 	runtimeContext, stopRuntime := context.WithCancel(context.Background())
@@ -114,6 +109,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		}
 	}()
 	ownedLifetime := newRuntimeLifetime(runtimeContext, assemblyConfig.Resources)
+	directoryOwned = false
 	storesOwned = false
 	host, err := assemble(ctx, assemblyConfig, ownedLifetime, buildToolEnvironment)
 	if err != nil {
@@ -143,6 +139,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		runtimeContext,
 		serverInfo,
 		idempotencyNamespace,
+		directory.Validate,
 	)
 	if err != nil {
 		return nil, config.Settings{}, err
@@ -154,18 +151,10 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err = host.application.recoverUncertainExecutions(ctx); err != nil {
 		return nil, config.Settings{}, err
 	}
-	databaseChangesDone, err := stores.StartExternalChangeObserver(
-		runtimeContext,
-		host.application.notifyExternalChange,
-	)
-	if err != nil {
-		return nil, config.Settings{}, err
-	}
 	workerJoins := host.application.startWorkers(runtimeContext)
 
 	host.serverInfo = serverInfo
 	host.stores = stores
-	host.lifetime.databaseChangesDone = databaseChangesDone
 	host.lifetime.recoveryDone = workerJoins.recovery
 
 	runtimeOwned = false

@@ -33,7 +33,7 @@ const configIndependentAnnotation = "flame/config-independent"
 // not open sockets, databases, or other process-owned resources. Dynamic value
 // completion may resolve the Runtime when it needs authoritative catalog data.
 type Dependencies struct {
-	OpenRuntime   func(context.Context, string) (Runtime, RuntimeProfile, error)
+	OpenRuntime   func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error)
 	StartTerminal func(context.Context, TerminalRequest) error
 	OpenWorkbench func(string) (*workbench.Store, error)
 }
@@ -109,7 +109,7 @@ func NewRoot(dependencies Dependencies) *cobra.Command {
 			if err != nil {
 				return nil, nil, err
 			}
-			return dependencies.OpenRuntime(ctx, configured.Runtime.Endpoint)
+			return dependencies.OpenRuntime(ctx, configured.Runtime)
 		}
 	}
 	root := newRootCommand(v, dependencies.StartTerminal, prepare)
@@ -240,7 +240,7 @@ func runInteractive(
 // resolveWorkspace leaves remote filesystem interpretation with Runtime.
 func resolveWorkspace(cmd *cobra.Command, config settings.Config) (string, error) {
 	workspace, _ := cmd.Flags().GetString("workspace")
-	if config.Runtime.Endpoint != "" {
+	if config.Runtime.Mode == settings.RuntimeRemote {
 		return workspace, nil
 	}
 	if workspace != "" {
@@ -266,7 +266,7 @@ func (r runtimeProvider) workspacePath(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if configured.Runtime.Endpoint != "" {
+	if configured.Runtime.Mode == settings.RuntimeRemote {
 		return path, nil
 	}
 	return canonicalWorkspacePath(path)
@@ -280,7 +280,7 @@ func (r runtimeProvider) workbench() (*workbench.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	authoring, err := r.openWorkbench(configured.Runtime.Endpoint)
+	authoring, err := r.openWorkbench(configured.Runtime.AuthoringPartition())
 	if err != nil {
 		return nil, fmt.Errorf("open CLI workbench: %w", err)
 	}

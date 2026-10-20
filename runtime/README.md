@@ -122,6 +122,21 @@ inference. Former private selection/catalog implementations are removed. Moving
 the schema owner changes generated reference identities; rebuild Schedules
 contracts, typed consumers and component bytes together.
 
+## Data directory ownership
+
+One Runtime exclusively owns a physical data directory from before initialization
+through execution drain, receipt flush and store close. A second Open, including
+through a directory alias, fails immediately. Close may time out while shutdown
+continues; the directory remains leased until all owned resources have closed.
+Clients share this Runtime through its protocol. Embedded hosts must explicitly
+select their directory. Moving or replacing a live data root is unsupported and
+fails directory validation. Startup removes abandoned unpublished release staging;
+ordinary reclamation preserves live candidates.
+
+Stop the original binary before this breaking cut. Retain its directory separately
+and complete unresolved work using that binary; an older process does not honor
+the new lifetime lease. Opening does not migrate or discard unknown commands.
+
 ## First-party initialization
 
 Root `make build-runtime` produces `out/runtime/<platform>/flame-runtime` and its companion `plugins/` distribution. Run that executable in the foreground. The embedded Go binding uses the

@@ -38,6 +38,9 @@ func TestPendingResumePreservesMixedMemberReviewsAcrossRestart(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)

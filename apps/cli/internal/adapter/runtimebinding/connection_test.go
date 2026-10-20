@@ -2,6 +2,7 @@ package runtimebinding
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
@@ -32,7 +33,7 @@ func TestOwnerRetainsFailedConnectionUntilCleanupCompletes(t *testing.T) {
 	if owner.connection != failed || !owner.closing {
 		t.Fatal("owner did not retain the incompletely closed Runtime")
 	}
-	if _, err := owner.Connection(t.Context(), ""); !errors.Is(err, conversation.ErrDisconnected) {
+	if _, err := owner.Connection(t.Context(), settings.Runtime{Mode: settings.RuntimeEmbedded}); !errors.Is(err, conversation.ErrDisconnected) {
 		t.Fatalf("Connection during cleanup = %v, want ErrDisconnected", err)
 	}
 	if err := owner.Close(); err != nil {

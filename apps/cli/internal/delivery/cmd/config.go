@@ -14,8 +14,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd/render"
 )
 
@@ -27,6 +28,7 @@ type flagBinding struct {
 }
 
 var settingFlagBindings = [...]flagBinding{
+	{key: "runtime.mode", flag: "runtime-mode"},
 	{key: "runtime.endpoint", flag: "runtime-url"},
 	{key: "provider", flag: "provider"},
 	{key: "model", flag: "model"},
@@ -45,7 +47,8 @@ func configureRoot(v *viper.Viper, root *cobra.Command) {
 	v.AutomaticEnv()
 
 	flags := root.PersistentFlags()
-	flags.String("runtime-url", defaults.Runtime.Endpoint, "Connect to an existing Runtime base URL (default: own an embedded Runtime)")
+	flags.String("runtime-mode", string(defaults.Runtime.Mode), "Runtime connection mode: remote or embedded (exclusively owns local data)")
+	flags.String("runtime-url", defaults.Runtime.Endpoint, "Existing Runtime base URL for remote mode")
 	flags.String("config", "", "YAML configuration file (default: <workspace>/.flame.yaml or the user config directory)")
 	flags.String("provider", defaults.Provider, "Optional provider override for new runs (must be paired with --model)")
 	flags.String("model", defaults.Model, "Optional model override for new runs (must be paired with --provider)")
@@ -57,6 +60,7 @@ func configureRoot(v *viper.Viper, root *cobra.Command) {
 }
 
 func setDefaults(v *viper.Viper, defaults settings.Config) {
+	v.SetDefault("runtime.mode", defaults.Runtime.Mode)
 	v.SetDefault("runtime.endpoint", defaults.Runtime.Endpoint)
 	v.SetDefault("provider", defaults.Provider)
 	v.SetDefault("model", defaults.Model)
@@ -106,7 +110,7 @@ func loadConfig(v *viper.Viper, cmd *cobra.Command) error {
 		}
 		// Project preferences cannot choose where a process-owned bearer is sent.
 		// Validate the already-read bytes, not a second read of a mutable file.
-		if source.authority == projectConfigAuthority && v.InConfig("runtime.endpoint") {
+		if source.authority == projectConfigAuthority && (v.InConfig("runtime.endpoint") || v.InConfig("runtime.mode")) {
 			return errors.New("project configuration cannot select a runtime endpoint; use --runtime-url, FLAME_CLI_RUNTIME_ENDPOINT, user configuration, or an explicit --config")
 		}
 	}

@@ -15,12 +15,13 @@
 # Runtime-owned settings; inspect or change them from the interactive CLI with
 # /providers, /provider-config, and the related Runtime commands.
 
-# Empty uses a process-owned embedded Runtime. A base URL attaches to an
-# existing Runtime without taking over its lifecycle. FLAME_CLI_RUNTIME_ENDPOINT
-# or --runtime-url overrides this value. Supply authentication separately through
+# Remote mode connects to an existing Runtime. Explicit embedded mode owns the
+# local data directory until complete teardown. FLAME_CLI_RUNTIME_MODE and
+# FLAME_CLI_RUNTIME_ENDPOINT (or --runtime-mode and --runtime-url) select the target. Supply authentication separately through
 # FLAME_RUNTIME_TOKEN; credentials never belong in this preferences file.
 runtime:
-  endpoint: ""
+  mode: remote
+  endpoint: http://127.0.0.1:17171
 
 # Omit provider/model to inherit the active Session's durable selection. To
 # override it for new Runs, set one exact pair; the fields move together.

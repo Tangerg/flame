@@ -38,7 +38,9 @@ Run subscriptions reconnect with bounded backoff until canceled.
 
 ## Connect to a shared Runtime
 
-With no endpoint configured, CLI owns one embedded Runtime and closes it on exit.
+CLI defaults to remote mode at `http://127.0.0.1:17171`. Use `--runtime-mode embedded`
+to exclusively own the local Runtime data directory until shutdown completes.
+An empty or unreachable remote endpoint never selects an embedded Runtime.
 Set `--runtime-url`, `FLAME_CLI_RUNTIME_ENDPOINT`, or `runtime.endpoint` in user-level
 or explicitly selected `--config` YAML to attach to an already running Runtime
 through its HTTP/SSE binding. The value is the base URL, such as
@@ -77,7 +79,8 @@ its authoring state. It leaves accepted Runs running. `Ctrl-C` remains an explic
 Run cancellation; one-shot `flame run` also cancels its own Run when interrupted.
 Neither action shuts down the shared Runtime. Drafts, outboxes, deletion journals,
 and history are stored separately for each configured endpoint beneath
-`$FLAME_HOME/cli/targets/`; embedded state retains `$FLAME_HOME/cli`.
+`$FLAME_HOME/cli/targets/`; embedded state retains `$FLAME_HOME/cli`. One writable Workbench owns each physical
+partition from loading through Close; a second terminal targeting it is refused.
 Runtime's durable idempotency namespace still guards command replay independently
 of that local endpoint partition. Changing an endpoint's spelling selects a new
 local partition; it does not migrate pending commands automatically.

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	json "encoding/json/v2"
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"reflect"
 	"strings"
 	"testing"
@@ -179,7 +180,7 @@ func TestPluginCommandRejectsInvalidInputBeforeOpeningRuntime(t *testing.T) {
 		{"plugins", "get-command", "--command-id", "cli_11111111111111111111111111111111"},
 		{"plugins", "install", "--request", `{"source":"/package"}`, "--command-id", "invalid"},
 	} {
-		root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
+		root := NewRoot(Dependencies{OpenRuntime: func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) {
 			t.Fatal("invalid command opened Runtime")
 			return nil, nil, nil
 		}})

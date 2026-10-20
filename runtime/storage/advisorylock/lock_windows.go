@@ -109,7 +109,7 @@ func acquireDirectoryHandle(ctx context.Context, directory string, nonblocking b
 		return 0, err
 	}
 	name := fmt.Sprintf(
-		`Local\Flame-Advisory-Directory-%08x-%08x%08x`,
+		`Global\Flame-Advisory-Directory-%08x-%08x%08x`,
 		identity.VolumeSerialNumber, identity.FileIndexHigh, identity.FileIndexLow,
 	)
 	nameUTF16, err := windows.UTF16PtrFromString(name)

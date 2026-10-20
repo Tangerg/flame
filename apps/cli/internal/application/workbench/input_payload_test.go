@@ -48,6 +48,9 @@ func TestPreparedInputPreservesMaximumAttachmentOutsideRecordBudget(t *testing.T
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -139,6 +142,9 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 			if err := store.Close(); err != nil {
 				t.Fatal(err)
 			}
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
 			reopened, err := OpenDirectory(directory, Config{})
 			if err != nil {
 				t.Fatalf("unavailable input prevented preservation of the authoring state: %v", err)
@@ -213,6 +219,9 @@ func TestInputPublicationFailureLeavesQueuedCommandEditable(t *testing.T) {
 			if err := store.Close(); err != nil {
 				t.Fatal(err)
 			}
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
 			reopened, err := OpenDirectory(directory, Config{})
 			if err != nil {
 				t.Fatal(err)
@@ -255,18 +264,19 @@ func TestOpeningAnotherStoreDoesNotDeleteInputAwaitingPublication(t *testing.T) 
 	}
 	pending := steerTestPending(t, "ses_preparing", steerTestAttachment(t.TempDir()))
 	prepared := preparedTestInput(t, store, pending.Message(), pending.Command().Input)
-	reader, err := OpenDirectory(directory, Config{})
-	if err != nil {
-		t.Fatal(err)
+	if reader, err := OpenDirectory(directory, Config{}); err == nil {
+		_ = reader.Close()
+		t.Fatal("second writer admitted while input awaits publication")
 	}
-	if err := reader.Close(); err != nil {
-		t.Fatal(err)
-	}
+
 	source := prompt.Message{Text: "/steer " + pending.Message().Text, Attachments: pending.Message().Attachments}
 	if err := store.SaveDraft(pending.SessionID(), source); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.StagePendingSteer(pending, source, prepared); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Close(); err != nil {

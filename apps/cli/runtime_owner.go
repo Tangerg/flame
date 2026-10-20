@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/sideload"
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/terminal"
@@ -29,8 +30,8 @@ func newRuntimeOwnerAt(flameHome string) (*runtimebinding.Owner, error) {
 func runtimeDependencies(owner *runtimebinding.Owner, stateDirectory string) cmd.Dependencies {
 	openWorkbench := workbenchFactory(stateDirectory)
 	return cmd.Dependencies{
-		OpenRuntime: func(ctx context.Context, endpoint string) (cmd.Runtime, cmd.RuntimeProfile, error) {
-			connection, err := owner.Connection(ctx, endpoint)
+		OpenRuntime: func(ctx context.Context, target settings.Runtime) (cmd.Runtime, cmd.RuntimeProfile, error) {
+			connection, err := owner.Connection(ctx, target)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -38,12 +39,12 @@ func runtimeDependencies(owner *runtimebinding.Owner, stateDirectory string) cmd
 			return connection, profile, nil
 		},
 		StartTerminal: func(ctx context.Context, request cmd.TerminalRequest) error {
-			connection, err := owner.Connection(ctx, request.Settings.Runtime.Endpoint)
+			connection, err := owner.Connection(ctx, request.Settings.Runtime)
 			if err != nil {
 				return err
 			}
 			return startTerminal(ctx, connection, request, func() (*workbench.Store, error) {
-				return openWorkbench(request.Settings.Runtime.Endpoint)
+				return openWorkbench(request.Settings.Runtime.AuthoringPartition())
 			})
 		},
 		OpenWorkbench: openWorkbench,
@@ -64,7 +65,7 @@ func startTerminal(ctx context.Context, connection *runtimebinding.Connection, r
 		PluginSources: []extensions.Source{sideload.New(configured.Plugins.Directories)},
 		OpenWorkbench: openWorkbench,
 	}
-	if configured.Runtime.Endpoint != "" {
+	if configured.Runtime.Mode == settings.RuntimeRemote {
 		cfg.LocalDirectory = request.LocalDirectory
 		cfg.DetachOnExit = true
 	}

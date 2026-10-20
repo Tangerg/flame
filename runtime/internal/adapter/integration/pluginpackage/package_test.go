@@ -43,6 +43,32 @@ func testReleases(t *testing.T) *Releases {
 	return releases
 }
 
+func TestStartupRecoversSealedStagingAndNormalReclaimPreservesCandidates(t *testing.T) {
+	r := testReleases(t)
+	stage := filepath.Join(r.directory, ".stage-abandoned")
+	if err := os.Mkdir(stage, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(stage, "payload"), []byte("unpublished"), 0400); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(stage, 0500); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Reclaim(t.Context(), nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stage); err != nil {
+		t.Fatalf("normal reclaim removed staging: %v", err)
+	}
+	if err := r.RecoverStaging(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stage); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("staging survived startup: %v", err)
+	}
+}
+
 func testReleaseStore(t *testing.T) (*Releases, *sqlite.InstallationStore, *sqlite.MCPServerStore) {
 	t.Helper()
 	directory := t.TempDir()

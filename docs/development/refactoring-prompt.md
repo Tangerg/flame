@@ -8,7 +8,7 @@ Act as the refactoring engineer for Flame. Improve the system by repairing seman
 - Default scope: `runtime`, `packages/local-runtime`, `apps/cli`, and the documents necessary to explain their current behavior. Desktop is outside scope unless the user explicitly includes it.
 - Read the root `AGENTS.md`, the target module's `README.md`, [DESIGN_PHILOSOPHY.md](../../DESIGN_PHILOSOPHY.md), [REFACTORING.md](../../REFACTORING.md), and [DEVELOPMENT.md](../../DEVELOPMENT.md). Use those documents for current architecture, verification commands, and reference-project paths.
 - Breaking changes are allowed within scope. Migrate every affected in-scope consumer and remove the obsolete shape in the same batch. If completion requires an out-of-scope consumer change, explain the concrete dependency and obtain the missing scope before changing that shared contract.
-- Preserve existing protocol-extension and shared-data-directory commitments unless the user changes them. Prioritizing a single-Runtime product lifecycle does not authorize removing an existing multi-process capability.
+- Preserve supported protocol-extension contracts unless the task changes them. A physical Runtime data directory has one lifetime writer; clients share its protocol.
 - Use reference projects as read-only evidence for specific decisions. Do not copy their architecture, protocol, compatibility obligations, or framework implementation. Prefer released Scope contracts over local replacements.
 
 Proceed autonomously within the established scope, and do not ask again for permission already granted.
