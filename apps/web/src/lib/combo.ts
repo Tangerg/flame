@@ -108,6 +108,7 @@ const DISPATCH_CODES = new Map([
   ["-", "Minus"],
   ["=", "Equal"],
   ["`", "Backquote"],
+  ["space", "Space"],
 ]);
 
 function dispatchKey(key: string): string {

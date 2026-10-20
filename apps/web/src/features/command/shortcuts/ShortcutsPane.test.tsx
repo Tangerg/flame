@@ -5,6 +5,7 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { useShortcutOverrides } from "@/features/command/public/shortcutOverrides";
 import { loadPluginsForTest } from "@/test/kernel";
 import { ShortcutsPane } from "@/features/command/shortcuts/ShortcutsPane";
+import { ShortcutsProvider } from "@/features/command/ShortcutsProvider";
 const runs = { open: vi.fn(), search: vi.fn() };
 
 beforeEach(async () => {
@@ -134,6 +135,39 @@ describe("ShortcutsPane", () => {
     press({ key: "j", code: "KeyJ", ctrlKey: true, metaKey: true });
     expect(useShortcutOverrides.getState().overrides.open).toMatch(/j$/);
     expect(screen.getByRole<HTMLInputElement>("searchbox").disabled).toBe(false);
+  });
+
+  it("records Space as a binding that dispatches and resets to the original", () => {
+    const space = { key: " ", code: "Space" };
+    const view = render(
+      <>
+        <ShortcutsProvider />
+        <ShortcutsPane />
+      </>,
+    );
+    const activate = (init: KeyboardEventInit) =>
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent("keydown", init));
+      });
+    fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
+
+    press(space);
+    expect(useShortcutOverrides.getState().overrides.open).toBe("space");
+    expect(useShortcutOverrides.getState().recording).toBe(false);
+    expect(runs.open).not.toHaveBeenCalled();
+    expect(screen.getByText("Space")).toBeTruthy();
+
+    activate(space);
+    expect(runs.open).toHaveBeenCalledOnce();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(useShortcutOverrides.getState().overrides).toEqual({});
+    expect(screen.queryByText("Space")).toBeNull();
+    activate(space);
+    expect(runs.open).toHaveBeenCalledOnce();
+    activate({ key: "o", code: "KeyO", ctrlKey: true });
+    expect(runs.open).toHaveBeenCalledTimes(2);
+    view.unmount();
   });
 
   it("allows bare Enter in the recorder while Tab remains navigation", () => {

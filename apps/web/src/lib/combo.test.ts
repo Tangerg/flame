@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { matchKeybindingPress, parseKeybinding } from "tinykeys";
-import { ariaKeyShortcuts, comboGlyph, dispatchBinding, normalizeCombo } from "@/lib/combo";
+import {
+  ariaKeyShortcuts,
+  comboFromEvent,
+  comboGlyph,
+  dispatchBinding,
+  normalizeCombo,
+  splitCombo,
+} from "@/lib/combo";
 function keydown(key: string, code: string, modifiers: string[] = []): KeyboardEvent {
   return {
     key,
@@ -107,6 +114,23 @@ describe("a letter shortcut under a non-US keyboard layout", () => {
     expect(dispatchBinding("Mod+[")).toBe("$mod+BracketLeft");
     expect(dispatchBinding("Mod+k")).toBe("$mod+KeyK");
     expect(dispatchBinding("Escape")).toBe("Escape");
+  });
+});
+
+describe("a Space shortcut", () => {
+  it("survives capture, display and dispatch with and without modifiers", () => {
+    for (const modifiers of [{}, { ctrlKey: true, shiftKey: true }]) {
+      const event = new KeyboardEvent("keydown", { key: " ", code: "Space", ...modifiers });
+      const combo = comboFromEvent(event)!;
+      expect(combo).toMatch(/(^|\+)space$/);
+      expect(normalizeCombo(combo)).toBe(combo);
+      expect(splitCombo(combo).at(-1)).toBe("Space");
+      expect(matches(combo, event)).toBe(true);
+      expect(
+        matches(combo, new KeyboardEvent("keydown", { key: "k", code: "KeyK", ...modifiers })),
+      ).toBe(false);
+    }
+    expect(matches("Mod+Space", keydown(" ", "Space", ["Control"]))).toBe(true);
   });
 });
 
