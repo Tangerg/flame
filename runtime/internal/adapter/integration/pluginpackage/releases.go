@@ -168,15 +168,31 @@ func (r *Releases) publish(ctx context.Context, staged *staging, release plugin.
 		if _, err := r.verify(ctx, digest); err != nil {
 			return plugin.Release{}, err
 		}
+		// A prior publish killed after the move but before the re-seal leaves a
+		// writable root that the content digest does not cover (treeDigest skips
+		// "."). Re-seal it so recovery admits a sealed release.
+		if err := os.Chmod(destination, 0500); err != nil {
+			return plugin.Release{}, err
+		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return plugin.Release{}, err
 	} else {
+		// The staged root was sealed to 0500 for digesting, but macOS refuses to
+		// rename a directory without owner write. Restore write on the root alone,
+		// move it, then re-seal through the held capability; descendants stay
+		// read-only and the root is outside the content digest.
+		if err := staged.root.Chmod(".", 0700); err != nil {
+			return plugin.Release{}, err
+		}
 		if err := os.Rename(staged.path, destination); err != nil {
 			return plugin.Release{}, err
 		}
+		if err := staged.root.Chmod(".", 0500); err != nil {
+			return plugin.Release{}, errors.Join(err, removeSealed(destination))
+		}
 		info, err := staged.root.Stat(".")
 		if err != nil {
-			return plugin.Release{}, err
+			return plugin.Release{}, errors.Join(err, removeSealed(destination))
 		}
 		r.remember(digest, releaseIntegrity{treeContents: contents, directory: info})
 	}
