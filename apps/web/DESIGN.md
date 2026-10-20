@@ -3,18 +3,15 @@
 The visual specification for the desktop app: what each surface, colour, type
 step, shape and motion token is FOR.
 
-**It does not restate values.** Shared vocabulary and document rules live in `../../ui`; application palette values live in `src/styles/globals.css` and
+Shared vocabulary and document rules live in `../../packages/ui`; application palette values live in `src/styles/globals.css` and
 `src/features/theme/themes/*.ts`, and a document that copies them is a
-document that goes stale — this one carried a 339-line palette snapshot of a
-design three revisions old, and five of its sections cited that snapshot as
-canonical while its own opening line told the reader not to trust it. Where a
-value matters here, the token is named and the reader looks it up.
+document that goes stale. This specification describes design intent and names
+the tokens whose values remain in those source owners.
 
 Companion documents: `DESKTOP_UI_POLISH.md` is the desktop-feel regression list,
-`ARCHITECTURE.md` the structure, `CONTENT_RENDERING.md` the wire → render
-grammar. Where this document and the shipped design disagree, the shipped design
-wins; where the shipped design and the ChatGPT desktop reference disagree, that
-is a decision to make, not a rule to apply.
+`ARCHITECTURE.md` the structure and Runtime-to-view projection boundaries.
+Wire types and field presence belong to the
+[generated Runtime contract](../../runtime/contract/API_REFERENCE.md).
 
 ## 0. Design language (the five pillars)
 

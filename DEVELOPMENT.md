@@ -60,9 +60,7 @@ The coordinator discovers Go members from `go.work` and npm members from root
 `workspaces`. Native requirements classify the Desktop member explicitly; a
 non-native check does not claim that member passed. CI requires both jobs.
 Each Go member runs test/vet/build with `GOWORK=off` and read-only manifests, so
-workspace substitution cannot hide missing dependencies. Package tests run
-serially because their fixtures launch real backends and compiler jobs.
-Cross-module development
+workspace substitution cannot hide missing dependencies. Cross-module development
 and generation use the workspace. Independent distribution verification uses
 the frozen standard module artifacts described in
 [consumer reference](docs/reference/consumers.md).
