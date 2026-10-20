@@ -69,40 +69,63 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
     reset();
   };
 
-  const mutate = async (op: () => Promise<ProviderConfiguration>) => {
-    if (savingLatch.current) return null;
+  const saveFailure = (err: unknown) => failureText(err, t("providers.error.save"));
+
+  const commit = async (op: () => Promise<ProviderConfiguration>) => {
     savingLatch.current = true;
     setSaving(true);
     setSaved(false);
-    reset();
     try {
       return await op();
-    } catch (err) {
-      if (!wasGenerationRetired(err)) {
-        fail(failureText(err, t("providers.error.save")));
-      }
-      return null;
     } finally {
       savingLatch.current = false;
       setSaving(false);
     }
   };
 
-  const save = async () => {
+  const saveDraft = async () => {
     const submitted = draft;
-    const result = await mutate(() => update(submitted.toUpdate(p)));
-    if (!result) return false;
+    const result = await commit(() => update(submitted.toUpdate(p)));
     setDraft((current) => current.settle(submitted, result));
-    setSaved(true);
-    return true;
   };
 
-  const onClearKey = () => mutate(() => update({ provider: p.id, apiKey: { type: "clear" } }));
+  const mutate = async (op: () => Promise<unknown>) => {
+    if (savingLatch.current) return false;
+    reset();
+    try {
+      await op();
+      return true;
+    } catch (err) {
+      if (!wasGenerationRetired(err)) fail(saveFailure(err));
+      return false;
+    }
+  };
 
-  const onTest = async () => {
-    if (dirty && !(await save())) return;
+  const onSave = async () => {
+    if (await mutate(saveDraft)) setSaved(true);
+  };
+
+  const onClearKey = () =>
+    mutate(() => commit(() => update({ provider: p.id, apiKey: { type: "clear" } })));
+
+  const onTest = () => {
+    if (savingLatch.current) return;
     setSaved(false);
-    void run(() => test(p.id), t("providers.error.test"), wasGenerationRetired);
+    void run(
+      async () => {
+        if (dirty) {
+          try {
+            await saveDraft();
+          } catch (err) {
+            if (wasGenerationRetired(err)) throw err;
+            return { ok: false, error: saveFailure(err) };
+          }
+        }
+        return test(p.id);
+      },
+      t("providers.error.test"),
+      wasGenerationRetired,
+    );
   };
 
   const describedBy = feedback.state === "error" ? feedbackId : undefined;
@@ -184,12 +207,12 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
           size="sm"
           disabled={dirty ? !valid : !enabled}
           pending={feedback.state === "busy" || saving}
-          onClick={() => void onTest()}
+          onClick={onTest}
         >
-          {feedback.state === "busy"
-            ? t("providers.testing")
-            : dirty
-              ? t("providers.saveAndTest")
+          {dirty
+            ? t("providers.saveAndTest")
+            : feedback.state === "busy"
+              ? t("providers.testing")
               : t("providers.test")}
         </Button>
         <Button
@@ -197,7 +220,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
           size="sm"
           disabled={!dirty || !valid}
           pending={saving}
-          onClick={() => void save()}
+          onClick={() => void onSave()}
         >
           {saving ? t("providers.saving") : t("providers.save")}
         </Button>
