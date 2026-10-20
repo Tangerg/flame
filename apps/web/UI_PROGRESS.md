@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Continuous work is active in the isolated worktree. Files retains keyboard continuity through row removal and collapse; global shortcuts preserve Space; Skills, Usage, saved usage reports and Diff Refresh retain focus during reads, with their existing returns intact. Final frontend checks pass 383 files / 2,907 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
+Updated: 2026-10-21. Continuous work is active in the isolated worktree. Trajectory now names its accepted page, refreshes that same cursor/scope and settles explicit navigation at its visible reading summary without overriding later focus. Files, shortcut Space and the existing pending-read/return repairs remain integrated. Final frontend checks pass 384 files / 2,914 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -574,6 +574,39 @@ copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
 
+## Trajectory page scope and reading continuity
+
+`plugins/trajectory/component/component.tsx` keeps the accepted cursor chain and
+captured descendant scope as the sole page identity. Refresh rereads those values;
+it no longer silently returns an older-page reader to the newest page. Initial
+entry still negotiates scope. The visible status names the accepted page and
+record count, with singular/plural wording and an explicit last-accepted label
+after failure. Counts and filters remain local to that page; opaque cursors do
+not establish a total page count.
+
+Refresh and Newer/Older use the shared Button's existing `pending` contract.
+Native disablement represents only real first/last boundaries. One transient
+navigation origin is consumed after a successful accepted-page commit: the
+existing summary receives focus only while the initiating action or unclaimed
+document body owns it. Initial reads, refresh, failures, retired reads and later
+filter/Composer focus choices do not move it. The existing Panel owns revealing
+that focused body below its measured sticky controls; no local scroll mechanism,
+timer, competing page state or shared primitive change was needed. Filtering and
+same-page refresh preserve surviving record disclosure instances.
+
+Read-only reference work inspected ZCode's actual `ModelTrajectoryTimeline.tsx`,
+`ModelTrajectoryPane.tsx` and `ToolSummaryRow.tsx` for identity, explicit refresh
+and progressive evidence. ChatGPT's actual `details-73eaf369a9c5.js` and review
+file-tree component distinguish current identity, accepted material and retry;
+these are interface code rather than exporters. HeroUI's local controlled
+pagination and summary examples support an accepted position with true endpoint
+availability, adapted here to Flame's opaque cursors. Better-series accessibility
+and layout review preserved the existing type, semantic surface/focus tokens,
+Flame Orange/custom blue and persistent controls. Earlier Radix focus principles
+and Ace composition references remain applicable; static artwork supplies no
+keyboard evidence. Runtime trajectory generation, evidence, status, Session
+renaming and all command lifecycles retain their existing owners.
+
 ## Shortcut recording and activation
 
 `apps/web/src/lib/combo.ts` now includes the canonical `space` / physical `Space`
@@ -765,6 +798,17 @@ reachable controls and width semantics. Existing type, color and surface owners
 remain the visual basis.
 
 ## Verification checkpoint
+
+For Trajectory page scope and navigation (2026-10-21):
+
+- Actual baseline Wails reproduced both defects: Enter on Older lost focus to the document during its held read, and Refresh on accepted page 2 requested the newest cursor and returned to page 1. The page number was ordinarily hidden. This established a local accepted-page and navigation problem without changing Runtime pagination.
+- Bounded Claude Code CLI supplied the local implementation and seven regressions. Primary review used the actual Session fixture identity and extended same-page coverage to query/type/Run filtering and a surviving expanded record. The original 11 presentation tests passed. Against the frozen original component, all seven new tests failed and 11 passed; independently restoring only the old Refresh handler failed two tests and passed 16. Final focused validation passed **3 files / 23 tests**, including shared Button activation. It covers request cursor/captured scope, true boundaries, retained accepted data, pointer/Enter/Space repeats, failure/retry, summary focus through middle/last/newest pages and disappearing pagination, later focus, context replacement and unmount cancellation. Happy DOM does not establish native blur or geometry; actual Wails qualifies those separately.
+- Formatting, plugin build and plugin check passed, including all eleven exact ESM resources and author replacement protection. Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **384 files / 2,914 tests** and all subsequent gates. `make check-native` passed Desktop test/vet/build and the supported Wails build; its binary is arm64 Mach-O, macOS 13.0 minimum, SDK 26.5. Existing non-failing loopback diagnostics and duplicate `-lobjc` warnings remain separate. Three accepted component/resource/test hashes stayed unchanged throughout final native acceptance. The CLI's wrong-path shell lookup was refused by its allowlist and replaced with allowed source reads; no validation command was bypassed.
+- Actual final Wails used production components and the canonical fixture's sorted records split across three response pages. Temporary read gates held, accepted or rejected the actual public-client query without moving focus. English/light/14 px/Flame Orange covered Older, visible accepted-page focus, keyboard record entry, retained `apply_patch`/Tool calls/Run filters and expanded evidence, same-page Refresh failure and retry, duplicate refusal, last-page disablement, failed Newer and retry. Later search focus and a mixed CJK/English Composer draft remained authoritative when the read completed. No draft was submitted.
+- Native Window → Move & Resize → Left and the real keyboard splitter qualified a **320 px Dock** in dark 18 px type/custom blue. The accepted page summary wrapped completely, retained its Blue ring and appeared below sticky controls. Chinese/light/14 px/explicit Orange main content at **200%** qualified page 2, same-page Refresh and the singular page-3 summary after its Older action became natively unavailable. The existing shared Panel provided focus visibility in both constrained placements. Portable copy remains English under its existing context; the host is Chinese.
+- A final clean fixture omitted all temporary gates, hotkeys, counters and scene links. In a native narrow window at 200%, ordinary keyboard Older → page 2 → Refresh retained that page and action; Tab/Enter opened the Run, and actual wheel reading exposed its canonical identity and JSON beneath persistent controls. Older reached the single-record last page; Newer returned through page 2 to page 1, focusing each accepted summary and disabling the newest boundary. Explicit Close returned to the conversation, where a mixed-language draft could be entered. Native zoom was reset before quitting.
+- These scenes qualify isolated canonical responses in the actual Wails/WebKit host, not a live Runtime cursor store, provider execution, Session writes or admitted-release replacement. Existing explicit package selection/update and reload requirements remain. No protocol, schema, dependency or persisted-data migration is needed. VoiceOver, OS IME, measured pixel contrast, other-platform GUIs, browser/visual suites, performance baselines and unrelated standalone root/CLI/SDK suites were not run.
+- Cleanup completed: owned native/CLI/check/build processes exited, the app was unregistered, and its bundle, disposable data, overlays, temporary sources, prompts/reports, gates and logs were removed. New bundle-specific Caches/WebKit paths passed preexistence, UID and birth-time guards; HTTP storage, preferences and saved state were absent. Worktree-generated fixture, shared-package, web and native outputs were removed. Installed dependencies, shared compiler/package caches, read-only references, user data and unrelated work remain. Continue observing complete existing tasks; do not infer further defects from another page's pending controls alone.
 
 For Skills, Usage and Diff pending-read continuity (2026-10-21):
 
