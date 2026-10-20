@@ -11,18 +11,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	infraexec "github.com/Tangerg/flame/runtime/internal/infra/process/exec"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	modeltext "github.com/Tangerg/flame/runtime/model/text"
 	"github.com/Tangerg/flame/runtime/sandbox"
 	"github.com/Tangerg/scope/core/chat"
@@ -52,7 +52,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 			return "", err
 		}
 		toolCalls++
-		return resolution.Answers[0][0], nil
+		return resolution.Question().Answers()[0][0], nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +139,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	answers := []runs.InterruptAnswer{{
 		InterruptItemID: "item_question", MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
-		Resolution: interrupt.Resolution{Answers: [][]string{{"chosen"}}},
+		Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}}),
 	}}
 	committedInput := &runs.CommittedUserInput{
 		ItemID: "item_followup",
@@ -284,7 +284,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_ask_user", MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
-		Resolution: interrupt.Resolution{Answers: [][]string{{"chosen"}}},
+		Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}}),
 	}}, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +360,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_approval", MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
-		Resolution: interrupt.Resolution{Approved: true},
+		Resolution: testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.DecisionOf(true)}),
 	}}, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -425,7 +425,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 	binding := barrier.Interruptions()[0]
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_approval", MemberID: binding.MemberID,
-		RequestID: binding.RequestID, Resolution: interrupt.Resolution{Approved: true},
+		RequestID: binding.RequestID, Resolution: testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.DecisionOf(true)}),
 	}}, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -504,7 +504,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	binding := barrier.Interruptions()[0]
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_approval", MemberID: binding.MemberID,
-		RequestID: binding.RequestID, Resolution: interrupt.Resolution{Approved: true},
+		RequestID: binding.RequestID, Resolution: testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.DecisionOf(true)}),
 	}}, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -560,7 +560,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 		if requireErr != nil {
 			return "", requireErr
 		}
-		return resolution.Answers[0][0], nil
+		return resolution.Question().Answers()[0][0], nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -602,7 +602,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_question", MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
-		Resolution: interrupt.Resolution{Answers: [][]string{{"yes"}}},
+		Resolution: testsupport.QuestionAnswer(t, [][]string{{"yes"}}),
 	}}, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -720,13 +720,13 @@ func (p *promptingInteractionAuthorizer) ResolveToolApproval(
 	resolution interrupt.Resolution,
 ) (ToolAuthorizationDecision, error) {
 	p.resolved++
-	if !resolution.Approved {
+	if resolution.Approval().Decision != approval.Allow {
 		return DenyTool("denied by user"), nil
 	}
-	if resolution.Arguments == "" {
+	if resolution.Approval().EditedArguments == "" {
 		return AllowTool(), nil
 	}
-	arguments, err := domaintool.ParseArguments(resolution.Arguments)
+	arguments, err := domaintool.ParseArguments(resolution.Approval().EditedArguments)
 	if err != nil {
 		return AllowTool(), err
 	}

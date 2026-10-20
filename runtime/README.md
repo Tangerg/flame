@@ -122,6 +122,16 @@ inference. Former private selection/catalog implementations are removed. Moving
 the schema owner changes generated reference identities; rebuild Schedules
 contracts, typed consumers and component bytes together.
 
+## Accepted interrupt answers
+
+Question and Approval executor answers use disjoint, strict payloads. A Question
+contains only its ordered answers; an Approval contains its Domain verdict,
+edited arguments, reason and remember scope. Both first delivery and restart
+project the settled transcript Item through the same rule. Accepted continuation
+storage retains only routing. The former mixed `approved`/`answers` payload is
+refused. Finish old waiting work with its original executable and retain that
+original directory; the existing exact BuildID boundary governs checkpoint reuse.
+
 ## Data directory ownership
 
 One Runtime exclusively owns a physical data directory from before initialization

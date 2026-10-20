@@ -16,6 +16,8 @@ package approval
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -117,6 +119,30 @@ type Resolution struct {
 	EditedArguments string
 	Reason          string
 	RememberScope   Scope
+}
+
+func (r Resolution) Validate() error {
+	if !r.Decision.Valid() {
+		return fmt.Errorf("approval: unknown decision %q", r.Decision)
+	}
+	if r.RememberScope != "" && !r.RememberScope.Valid() {
+		return fmt.Errorf("approval: unknown remember scope %q", r.RememberScope)
+	}
+	if r.EditedArguments != "" {
+		if r.Decision != Allow {
+			return errors.New("approval: denial cannot edit arguments")
+		}
+		if _, err := tool.ParseArguments(r.EditedArguments); err != nil {
+			return fmt.Errorf("approval: edited arguments: %w", err)
+		}
+	}
+	if r.Reason != strings.TrimSpace(r.Reason) {
+		return errors.New("approval: denial reason has surrounding whitespace")
+	}
+	if r.Decision == Allow && r.Reason != "" {
+		return errors.New("approval: approval cannot carry a denial reason")
+	}
+	return nil
 }
 
 // Rule is one standing approval decision. A rule matches a tool call when the

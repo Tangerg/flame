@@ -216,7 +216,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	defer cancelResume()
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: binding.InterruptItemID, MemberID: binding.MemberID,
-		RequestID: binding.RequestID, Resolution: interrupt.Resolution{Answers: [][]string{{"chosen"}}},
+		RequestID: binding.RequestID, Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}}),
 	}}, nil); err != nil {
 		t.Fatal(err)
 	}

@@ -95,6 +95,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare resume acceptance: %w", err)
 	}
+	answers = acceptance.Answers()
 	ruleCandidates, err := rememberedRuleCandidates(sessionID, sess.Workspace().Path(), pending, itemsByID, answers)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare remembered rule candidates: %w", err)
@@ -221,22 +222,23 @@ func rememberedRuleCandidates(
 		if open.Kind() != interrupt.Approval || open.Approval == nil || !open.Approval.Rememberable {
 			continue
 		}
-		if answer.Resolution.RememberScope == "" {
+		resolution := answer.Resolution.Approval()
+		if resolution.RememberScope == "" {
 			continue
 		}
 		binding := pending.Bindings[index]
-		effective, err := effectiveApprovalArguments(items[open.ItemID], answer.Resolution)
+		effective, err := effectiveApprovalArguments(items[open.ItemID], *resolution)
 		if err != nil {
 			return nil, fmt.Errorf("item %q: %w", open.ItemID, err)
 		}
 		candidates = append(candidates, RememberedRuleCandidate{
 			Request: approval.RememberRequest{
-				Scope:             answer.Resolution.RememberScope,
+				Scope:             resolution.RememberScope,
 				SessionID:         sessionID,
 				ProjectDir:        projectDir,
 				Tool:              binding.ToolRef,
 				SourceFingerprint: binding.SourceFingerprint,
-				Decision:          approval.DecisionOf(answer.Resolution.Approved),
+				Decision:          resolution.Decision,
 			},
 			CallID:             binding.ToolCallID,
 			EffectiveArguments: effective,
@@ -249,9 +251,9 @@ func rememberedRuleCandidates(
 // from: the human's confirmed edit when an approval carried one, otherwise the
 // original held invocation. A held approval keeps its unexecuted arguments as
 // verbatim text, so that form is parsed when no edit replaced it.
-func effectiveApprovalArguments(item transcript.Item, resolution interrupt.Resolution) (tool.Arguments, error) {
-	if resolution.Approved && resolution.Arguments != "" {
-		return tool.ParseArguments(resolution.Arguments)
+func effectiveApprovalArguments(item transcript.Item, resolution approval.Resolution) (tool.Arguments, error) {
+	if resolution.Decision == approval.Allow && resolution.EditedArguments != "" {
+		return tool.ParseArguments(resolution.EditedArguments)
 	}
 	invocation, ok := item.ToolInvocation()
 	if !ok {

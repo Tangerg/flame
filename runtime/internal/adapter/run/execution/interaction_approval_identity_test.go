@@ -5,14 +5,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -59,7 +58,7 @@ func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	answer := interrupt.Resolution{Approved: true, RememberScope: approval.ScopeGlobal}
+	answer := testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.DecisionOf(true), RememberScope: approval.ScopeGlobal})
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: request.Tool.ModelName()}, func(context.Context, struct{}) (string, error) {
 		return "unused", nil
 	})
@@ -91,8 +90,9 @@ func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 			observed := observedInteractionTool{
 				ref: current.Tool, binding: binding, interpreter: toolset.NewInterpreter(nil), authorizer: authorizer,
 			}
-			invalidAnswer := answer
-			invalidAnswer.Arguments = `{"unexpected":true}`
+			value := *answer.Approval()
+			value.EditedArguments = `{"unexpected":true}`
+			invalidAnswer := testsupport.ApprovalAnswer(t, value)
 			_, _, _, err := observed.resolveToolApproval(t.Context(), current, *restored.Approval, invalidAnswer)
 			if _, known := errors.AsType[*toolcontract.Failure](err); err == nil || known {
 				t.Fatalf("identity mismatch became an ordinary argument failure: %v", err)

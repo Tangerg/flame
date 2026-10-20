@@ -6,11 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/optional"
-
 	"github.com/Tangerg/flame/runtime/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/optional"
 	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
@@ -255,8 +254,8 @@ func (i Item) ResolveToolApproval(resolution approval.Resolution) (Item, error) 
 	if i.kind != ToolCall || i.status != ItemRunning || i.tool == nil {
 		return Item{}, errors.New("transcript: only a running ToolCall can resolve approval")
 	}
-	if !resolution.Decision.Valid() {
-		return Item{}, fmt.Errorf("transcript: unknown Tool approval decision %q", resolution.Decision)
+	if err := resolution.Validate(); err != nil {
+		return Item{}, err
 	}
 	if i.approvalDecision != "" {
 		return Item{}, errors.New("transcript: ToolCall approval is already resolved")
@@ -384,8 +383,12 @@ func (i Item) validateToolCall() error {
 	if i.safetyClass != "" && !i.safetyClass.Valid() {
 		return fmt.Errorf("transcript: unknown Tool safety class %q", i.safetyClass)
 	}
-	if i.approvalDecision != "" && !i.approvalDecision.Valid() {
-		return fmt.Errorf("transcript: unknown Tool approval decision %q", i.approvalDecision)
+	if i.approvalDecision != "" {
+		if err := i.ApprovalResolution().Validate(); err != nil {
+			return err
+		}
+	} else if i.editedArguments != "" || i.denialReason != "" || i.rememberScope != "" {
+		return errors.New("transcript: unresolved Tool approval carries a verdict")
 	}
 	switch i.status {
 	case ItemRunning:

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	json "encoding/json/v2"
 	"reflect"
-	"slices"
 	"testing"
 )
 
@@ -89,10 +88,10 @@ func FuzzPromptCodec(f *testing.F) {
 
 func FuzzResolutionCodec(f *testing.F) {
 	for _, seed := range [][]byte{
-		[]byte(`{"approved":true,"arguments":"{}","remember_scope":"session"}`),
-		[]byte(`{"approved":false,"reason":"not now"}`),
-		[]byte(`{"approved":true,"answers":[["yes"]]}`),
-		[]byte(`{"approved":true,"answers":[null]}`),
+		[]byte(`{"approval":{"decision":"allow","arguments":"{}","remember_scope":"session"}}`),
+		[]byte(`{"approval":{"decision":"deny","reason":"not now"}}`),
+		[]byte(`{"question":{"answers":[["yes"]]}}`),
+		[]byte(`{"question":{"answers":[null]}}`),
 		[]byte(`{}`),
 	} {
 		f.Add(seed)
@@ -110,11 +109,8 @@ func FuzzResolutionCodec(f *testing.F) {
 		if err != nil {
 			t.Fatalf("decode re-encoded resolution: %v", err)
 		}
-		// Scope encodes nil answer slices as empty arrays; both contain no answers.
-		answersEqual := slices.EqualFunc(roundTripped.Answers, resolution.Answers, slices.Equal[[]string])
-		roundTripped.Answers, resolution.Answers = nil, nil
-		if !answersEqual || !reflect.DeepEqual(roundTripped, resolution) {
-			t.Fatalf("resolution changed across round trip: answers equal = %v, got %#v, want %#v", answersEqual, roundTripped, resolution)
+		if !reflect.DeepEqual(roundTripped, resolution) {
+			t.Fatalf("resolution changed across round trip: got %#v, want %#v", roundTripped, resolution)
 		}
 	})
 }

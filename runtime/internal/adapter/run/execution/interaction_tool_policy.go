@@ -115,15 +115,19 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 		return ToolAuthorizationDecision{}, err
 	}
 	arguments := request.Arguments
-	if resolution.Approved && resolution.Arguments != "" {
+	verdict := resolution.Approval()
+	if verdict == nil {
+		return ToolAuthorizationDecision{}, errors.New("execution: expected Tool approval answer")
+	}
+	if (verdict.Decision == approval.Allow) && verdict.EditedArguments != "" {
 		var err error
-		arguments, err = tool.ParseArguments(resolution.Arguments)
+		arguments, err = tool.ParseArguments(verdict.EditedArguments)
 		if err != nil {
 			return ToolAuthorizationDecision{}, fmt.Errorf("execution: parse approved Tool arguments: %w", err)
 		}
 	}
-	if !resolution.Approved {
-		return DenyTool(denialReason(resolution.Reason)), nil
+	if !(verdict.Decision == approval.Allow) {
+		return DenyTool(denialReason(verdict.Reason)), nil
 	}
 	if arguments.Canonical() == request.Arguments.Canonical() {
 		return AllowTool(), nil

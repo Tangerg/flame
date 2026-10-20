@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 // TestAskUser_Validation: malformed args and an empty questions list are
@@ -59,7 +60,7 @@ func TestAskUserKeepsOptionsOpenToARealUserAnswer(t *testing.T) {
 	var captured runs.Interrupt
 	tool, err := NewAskUser(func(_ context.Context, _ string, request runs.Interrupt) (interrupt.Resolution, error) {
 		captured = request
-		return interrupt.Resolution{Answers: [][]string{{"another database"}}}, nil
+		return testsupport.QuestionAnswer(t, [][]string{{"another database"}}), nil
 	})
 	if err != nil {
 		t.Fatal(err)

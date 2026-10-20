@@ -89,6 +89,9 @@ func Restore(ctx context.Context) (Continuation, bool, error) {
 	if err != nil {
 		return Continuation{}, true, err
 	}
+	if resolution.Kind() != prompt.Kind {
+		return Continuation{}, true, errors.New("run input: answer kind differs from the persisted prompt")
+	}
 	return Continuation{Key: state.Key, Interrupt: prompt, Resolution: resolution}, true, nil
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -25,7 +26,7 @@ func TestContinuationPreflightDoesNotAssembleOrAcquireAWriter(t *testing.T) {
 	}
 	var answers []runs.InterruptAnswer
 	for wait, target := range state.handoff.inputs {
-		answers = append(answers, runs.InterruptAnswer{MemberID: target.memberID.String(), RequestID: wait.String(), InterruptItemID: "item_answer", Resolution: interrupt.Resolution{Answers: [][]string{{"chosen"}}}})
+		answers = append(answers, runs.InterruptAnswer{MemberID: target.memberID.String(), RequestID: wait.String(), InterruptItemID: "item_answer", Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}})})
 	}
 	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		t.Fatal("preflight invoked a model")

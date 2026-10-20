@@ -7,13 +7,12 @@ import (
 	"testing"
 	"time"
 
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -88,10 +87,10 @@ func waitingDelegateQuestion(ctx context.Context, _ struct{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(resolution.Answers) != 1 || len(resolution.Answers[0]) != 1 {
+	if len(resolution.Question().Answers()) != 1 || len(resolution.Question().Answers()[0]) != 1 {
 		return "", errors.New("delegated question returned an invalid answer shape")
 	}
-	return resolution.Answers[0][0], nil
+	return resolution.Question().Answers()[0][0], nil
 }
 
 func takeFirstIdentifier(identifiers *[]string) string {

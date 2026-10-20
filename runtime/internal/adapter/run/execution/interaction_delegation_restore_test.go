@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *testing.T) {
@@ -79,7 +79,7 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 	if err := fixture.executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: binding.InterruptItemID, MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
-		Resolution: interrupt.Resolution{Answers: [][]string{{"restored value"}}},
+		Resolution: testsupport.QuestionAnswer(t, [][]string{{"restored value"}}),
 	}}, nil); err != nil {
 		t.Fatal(err)
 	}

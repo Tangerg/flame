@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -67,7 +66,7 @@ func TestResponseOnlyResumeAcceptanceCommitsWithAnswersAndRejectsKeyReuse(t *tes
 		if err != nil {
 			t.Fatal(err)
 		}
-		answers := mustResumeAcceptance(t, items, pending, []runs.InterruptAnswer{{InterruptItemID: "item_" + suffix, MemberID: "member_" + suffix, RequestID: "request_" + suffix, Resolution: interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}}}})
+		answers := mustResumeAcceptance(t, items, pending, []runs.InterruptAnswer{{InterruptItemID: "item_" + suffix, MemberID: "member_" + suffix, RequestID: "request_" + suffix, Resolution: testsupport.QuestionAnswer(t, [][]string{{"continue"}})}})
 		resume := testsupport.MustResumeRuns(time.Unix(10, 0).UTC(), []run.Run{parked}, []string{"seg_" + suffix})
 		opening := mustResumeOpening(t, testCommitID("run_commit_"+suffix), resume, nil, answers)
 		acceptance, err := runs.AcceptCommand("resume-once", strings.Repeat("a", 64), opening)

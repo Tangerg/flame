@@ -6,12 +6,11 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/fingerprint"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/agent"
 )
 
@@ -116,46 +115,36 @@ func TestApprovalPromptRequiresIdentityRegardlessOfRememberability(t *testing.T)
 	}
 }
 
-func TestResolutionCodecUsesAgentWireVocabulary(t *testing.T) {
-	raw, err := EncodeResolution(interrupt.Resolution{
-		Approved: true, Arguments: `{"command":"go test","description":"Run tests"}`, Answers: [][]string{{"yes"}},
-		RememberScope: approval.ScopeSession,
-	})
-	if err != nil {
-		t.Fatalf("EncodeResolution: %v", err)
-	}
-	var wire map[string]any
-	if unmarshalErr := json.Unmarshal(raw, &wire); unmarshalErr != nil {
-		t.Fatalf("decode encoded response: %v", unmarshalErr)
-	}
-	if wire["approved"] != true || wire["remember_scope"] != "session" || wire["answers"] == nil {
-		t.Fatalf("response wire = %#v", wire)
-	}
-	if _, found := wire["Approved"]; found {
-		t.Fatalf("response leaked Go field name: %#v", wire)
-	}
-	if _, decodeResolutionErr := DecodeResolution([]byte(`{"Answers":[]}`)); decodeResolutionErr == nil {
-		t.Fatal("DecodeResolution accepted a case-insensitive Go field name")
-	}
-	if _, decodeResolutionErr := DecodeResolution([]byte(`{"approved":true,"approved":false}`)); decodeResolutionErr == nil {
-		t.Fatal("DecodeResolution accepted a duplicate field")
-	}
-	for _, missing := range [][]byte{
-		[]byte(`{}`),
-		[]byte(`{"approved":null}`),
+func TestResolutionCodecUsesClosedAnswerVocabulary(t *testing.T) {
+	for _, answer := range []interrupt.Resolution{
+		testsupport.QuestionAnswer(t, [][]string{{"yes"}, {}}),
+		testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.Allow, EditedArguments: `{"command":"go test","description":"Run tests"}`, RememberScope: approval.ScopeSession}),
+		testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.Deny, Reason: "not now"}),
 	} {
-		if _, decodeResolutionErr := DecodeResolution(missing); decodeResolutionErr == nil {
-			t.Fatalf("DecodeResolution(%s) accepted a missing approval decision", missing)
+		raw, err := EncodeResolution(answer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		decoded, err := DecodeResolution(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		again, err := EncodeResolution(decoded)
+		if err != nil || string(raw) != string(again) {
+			t.Fatalf("answer bytes changed: %s -> %s: %v", raw, again, err)
 		}
 	}
-	denied, err := DecodeResolution([]byte(`{"approved":false,"reason":"not now"}`))
-	if err != nil || denied.Approved || denied.Reason != "not now" {
-		t.Fatalf("DecodeResolution explicit denial = %#v, %v", denied, err)
-	}
-	decoded, err := DecodeResolution(raw)
-	if err != nil || decoded.RememberScope != approval.ScopeSession ||
-		len(decoded.Answers) != 1 || len(decoded.Answers[0]) != 1 || decoded.Answers[0][0] != "yes" {
-		t.Fatalf("DecodeResolution = %#v, %v", decoded, err)
+	for _, raw := range []string{
+		`{}`, `{"approved":true}`, `{"question":null}`, `{"Question":{"answers":[["yes"]]}}`,
+		`{"question":{"answers":[["yes"]]},"approval":{"decision":"allow"}}`,
+		`{"approval":{"decision":"allow","decision":"deny"}}`,
+		`{"approval":{"decision":"deny","arguments":"{}"}}`,
+		`{"approval":{"decision":"allow","reason":"not now"}}`,
+		`{"question":{"answers":[]}}`,
+	} {
+		if _, err := DecodeResolution([]byte(raw)); err == nil {
+			t.Fatalf("invalid answer accepted: %s", raw)
+		}
 	}
 }
 
@@ -183,9 +172,7 @@ func TestResolutionSchemaGatesWhatTheCodecReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := EncodeResolution(interrupt.Resolution{
-		Approved: true, Answers: [][]string{{"yes"}}, RememberScope: approval.ScopeSession,
-	})
+	accepted, err := EncodeResolution(testsupport.QuestionAnswer(t, [][]string{{"yes"}}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,9 +180,10 @@ func TestResolutionSchemaGatesWhatTheCodecReads(t *testing.T) {
 		t.Fatalf("schema rejected an encoded resolution: %v", err)
 	}
 	for name, candidate := range map[string][]byte{
-		"missing decision": []byte(`{"reason":"not now"}`),
-		"unknown member":   []byte(`{"approved":true,"approve":true}`),
-		"wrong type":       []byte(`{"approved":"yes"}`),
+		"missing answer": []byte(`{}`),
+		"mixed answer":   []byte(`{"question":{"answers":[["yes"]]},"approval":{"decision":"allow"}}`),
+		"unknown member": []byte(`{"question":{"answers":[["yes"]]},"approved":true}`),
+		"wrong type":     []byte(`{"question":{"answers":"yes"}}`),
 	} {
 		if err := schema.Validate(candidate); err == nil {
 			t.Errorf("schema accepted %s: %s", name, candidate)

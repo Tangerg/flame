@@ -58,7 +58,7 @@ func TestAcceptedAnswerDeliveryAdvancesOnlyThePausedHead(t *testing.T) {
 			}
 			var answers []runs.InterruptAnswer
 			for index, binding := range barrier.Interruptions() {
-				answers = append(answers, runs.InterruptAnswer{InterruptItemID: fmt.Sprintf("item_answer_%d", index), MemberID: binding.MemberID, RequestID: binding.RequestID, Resolution: interrupt.Resolution{Answers: [][]string{{"chosen"}}}})
+				answers = append(answers, runs.InterruptAnswer{InterruptItemID: fmt.Sprintf("item_answer_%d", index), MemberID: binding.MemberID, RequestID: binding.RequestID, Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}})})
 			}
 			prepared, err := session.prepareContinuationAnswers(t.Context(), answers)
 			if err != nil {
@@ -116,7 +116,7 @@ func TestAcceptedAnswerDeliveryAdvancesOnlyThePausedHead(t *testing.T) {
 			executor.config.ExecutionTrees = testTrees(t)
 			conflicting := append([]runs.InterruptAnswer(nil), answers...)
 			for index := range conflicting {
-				conflicting[index].Resolution.Answers = [][]string{{"different"}}
+				conflicting[index].Resolution = testsupport.QuestionAnswer(t, [][]string{{"different"}})
 			}
 			if _, err := executor.PrepareContinuation(t.Context(), waiting, conflicting, nil); !errors.Is(err, runs.ErrExecutorStateLost) {
 				t.Fatalf("changed accepted payload passed preflight: %v", err)

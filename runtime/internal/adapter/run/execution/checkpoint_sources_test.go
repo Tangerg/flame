@@ -170,7 +170,7 @@ func TestWaitingRecoveryKeepsMCPManifestsPerGroup(t *testing.T) {
 	}
 	events := collectInteractionEvents(sequence)
 	binding := barrier.Interruptions()[0]
-	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{InterruptItemID: "item_question", MemberID: binding.MemberID, RequestID: binding.RequestID, Resolution: interrupt.Resolution{Answers: [][]string{{"yes"}}}}}, nil); err != nil {
+	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{InterruptItemID: "item_question", MemberID: binding.MemberID, RequestID: binding.RequestID, Resolution: testsupport.QuestionAnswer(t, [][]string{{"yes"}})}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	observed := <-events

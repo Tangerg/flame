@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -97,12 +98,13 @@ func resolveApprovalResponse(request transcript.Interrupt, response ResumeRespon
 	if response.Kind != interrupt.Approval || response.Approval == nil || response.Question != nil {
 		return interrupt.Resolution{}, errors.New("approval response is required")
 	}
-	approval := response.Approval
-	resolution := interrupt.Resolution{
-		Approved:      approval.Approved,
-		Arguments:     approval.Arguments,
-		Reason:        strings.TrimSpace(approval.Reason),
-		RememberScope: approval.RememberScope,
+	value := response.Approval
+	resolution, err := interrupt.NewApprovalAnswer(approval.Resolution{
+		Decision: approval.DecisionOf(value.Approved), EditedArguments: value.Arguments,
+		Reason: strings.TrimSpace(value.Reason), RememberScope: value.RememberScope,
+	})
+	if err != nil {
+		return interrupt.Resolution{}, err
 	}
 	answer := InterruptAnswer{InterruptItemID: response.ItemID, Resolution: resolution}
 	if err := answer.validateResolution(request); err != nil {
@@ -118,7 +120,10 @@ func resolveQuestionResponse(request transcript.Interrupt, response ResumeRespon
 	if request.Question == nil || len(request.Question.Fields) == 0 {
 		return interrupt.Resolution{}, errors.New("open question has no fields")
 	}
-	resolution := interrupt.Resolution{Approved: true, Answers: transcript.CloneAnswers(response.Question.Answers)}
+	resolution, err := interrupt.NewQuestionAnswer(response.Question.Answers)
+	if err != nil {
+		return interrupt.Resolution{}, err
+	}
 	answer := InterruptAnswer{InterruptItemID: response.ItemID, Resolution: resolution}
 	if err := answer.validateResolution(request); err != nil {
 		return interrupt.Resolution{}, err
@@ -126,10 +131,12 @@ func resolveQuestionResponse(request transcript.Interrupt, response ResumeRespon
 	return resolution, nil
 }
 
-// validateResolution checks the answer together with the exact interrupt that
-// gives its fields meaning. Resolution is shared executor vocabulary, so its
-// kind-specific invariant cannot live on that transport-shaped value alone.
+// validateResolution checks the closed answer against its exact open request.
+// Rememberability and question fields belong to that request.
 func (a InterruptAnswer) validateResolution(request transcript.Interrupt) error {
+	if a.Resolution.Kind() != request.Kind {
+		return errors.New("answer kind differs from its interrupt")
+	}
 	switch request.Kind {
 	case interrupt.Approval:
 		return a.validateApprovalResolution(request.Approval)
@@ -144,29 +151,9 @@ func (a InterruptAnswer) validateApprovalResolution(request *transcript.Approval
 	if request == nil {
 		return errors.New("approval request has no prompt")
 	}
-	resolution := a.Resolution
-	if resolution.Answers != nil {
-		return errors.New("approval resolution cannot carry question answers")
-	}
-	if resolution.RememberScope != "" && !resolution.RememberScope.Valid() {
-		return fmt.Errorf("unknown remember scope %q", resolution.RememberScope)
-	}
+	resolution := a.Resolution.Approval()
 	if resolution.RememberScope != "" && !request.Rememberable {
 		return errors.New("approval cannot be remembered")
-	}
-	if resolution.Arguments != "" {
-		if !resolution.Approved {
-			return errors.New("denial cannot edit arguments")
-		}
-		if err := validateArguments(resolution.Arguments); err != nil {
-			return fmt.Errorf("edited arguments: %w", err)
-		}
-	}
-	if resolution.Reason != strings.TrimSpace(resolution.Reason) {
-		return errors.New("denial reason has surrounding whitespace")
-	}
-	if resolution.Approved && resolution.Reason != "" {
-		return errors.New("approval cannot carry a denial reason")
 	}
 	return nil
 }
@@ -175,25 +162,19 @@ func (a InterruptAnswer) validateQuestionResolution(request *transcript.Question
 	if request == nil {
 		return errors.New("question request has no prompt")
 	}
-	resolution := a.Resolution
-	if !resolution.Approved {
-		return errors.New("question resolution must acknowledge the answer")
-	}
-	if resolution.Arguments != "" || resolution.Reason != "" || resolution.RememberScope != "" {
-		return errors.New("question resolution cannot carry approval fields")
-	}
-	if len(resolution.Answers) != len(request.Fields) {
+	answers := a.Resolution.Question().Answers()
+	if len(answers) != len(request.Fields) {
 		return &QuestionAnswerError{
 			ItemID: a.InterruptItemID,
 			Index:  -1,
 			Detail: fmt.Sprintf(
 				"must contain %d entries, got %d",
-				len(request.Fields), len(resolution.Answers),
+				len(request.Fields), len(answers),
 			),
 		}
 	}
 	for index, field := range request.Fields {
-		if err := field.ValidateAnswer(resolution.Answers[index]); err != nil {
+		if err := field.ValidateAnswer(answers[index]); err != nil {
 			return &QuestionAnswerError{
 				ItemID: a.InterruptItemID,
 				Index:  index,

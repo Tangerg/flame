@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -46,7 +46,7 @@ func TestAcceptedRevivalPreservesOwnershipAndInconclusiveFailures(t *testing.T) 
 			coordinator.newSegmentID = func() string { t.Fatal("revival allocated a Segment"); return "" }
 			coordinator.runs.(*fakeRunProjection).runs["run_1"] = resumed.State()
 			items := coordinator.items.(*fakeItemProjection).items
-			acceptance, err := NewResumeAcceptance("ses_1", pending, items, []InterruptAnswer{{InterruptItemID: "item_1", MemberID: "member_1", RequestID: "request_1", Resolution: interrupt.Resolution{Approved: true}}})
+			acceptance, err := NewResumeAcceptance("ses_1", pending, items, []InterruptAnswer{{InterruptItemID: "item_1", MemberID: "member_1", RequestID: "request_1", Resolution: testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.DecisionOf(true)})}})
 			if err != nil {
 				t.Fatal(err)
 			}

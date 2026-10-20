@@ -6,14 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type modeStore struct {
@@ -144,7 +143,7 @@ func TestRejectionKeepsPlanMode(t *testing.T) {
 		if pending.Question == nil || !strings.Contains(pending.Question.Fields[0].Prompt, "inspect") {
 			t.Fatalf("prompt does not present the canonical Plan: %+v", pending.Question)
 		}
-		return interrupt.Resolution{Answers: [][]string{{rejectLabel}}}, nil
+		return testsupport.QuestionAnswer(t, [][]string{{rejectLabel}}), nil
 	}
 	tool, err := newExit(policy, planReader{steps: []plandomain.Step{{Description: "inspect", Status: plandomain.StatusInProgress}}}, interrupt)
 	if err != nil {
@@ -172,7 +171,7 @@ func TestApprovalReturnsTheSessionToTheCurrentDefault(t *testing.T) {
 		if got := pending.Question.Arguments; got != `{}` {
 			t.Fatalf("interrupt arguments = %q", got)
 		}
-		return interrupt.Resolution{Answers: [][]string{{approveLabel}}}, nil
+		return testsupport.QuestionAnswer(t, [][]string{{approveLabel}}), nil
 	}
 	tool, err := newExit(policy, planReader{steps: []plandomain.Step{{Description: "implement", Status: plandomain.StatusPending}}}, interrupt)
 	if err != nil {

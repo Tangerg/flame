@@ -75,11 +75,11 @@ func answerCrashExecutor(t *testing.T, trees runs.ExecutionTreeStore, workspace 
 		if err != nil {
 			return "", err
 		}
-		_, writeErr := fmt.Fprintln(file, resolution.Answers[0][0])
+		_, writeErr := fmt.Fprintln(file, resolution.Question().Answers()[0][0])
 		if err := errors.Join(writeErr, file.Close()); err != nil {
 			return "", err
 		}
-		return resolution.Answers[0][0], nil
+		return resolution.Question().Answers()[0][0], nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -101,7 +101,7 @@ func checkpointAnswers(t *testing.T, checkpoint runs.ExecutorCheckpoint) []runs.
 	}
 	var answers []runs.InterruptAnswer
 	for waitID, target := range state.handoff.inputs {
-		answers = append(answers, runs.InterruptAnswer{InterruptItemID: "item_" + waitID.String(), MemberID: target.memberID.String(), RequestID: waitID.String(), Resolution: interrupt.Resolution{Answers: [][]string{{"chosen"}}}})
+		answers = append(answers, runs.InterruptAnswer{InterruptItemID: "item_" + waitID.String(), MemberID: target.memberID.String(), RequestID: waitID.String(), Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}})})
 	}
 	return answers
 }

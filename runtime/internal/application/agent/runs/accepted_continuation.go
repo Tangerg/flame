@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/resourceid"
@@ -127,16 +126,11 @@ func acceptedItemResolution(item transcript.Item) (interrupt.Resolution, error) 
 		if !question.Answered() {
 			return interrupt.Resolution{}, errors.New("question item is not answered")
 		}
-		return interrupt.Resolution{Answers: question.Answers}, nil
+		return interrupt.NewQuestionAnswer(question.Answers)
 	}
 	resolution := item.ApprovalResolution()
 	if resolution.Decision == "" {
 		return interrupt.Resolution{}, errors.New("approval item has no accepted resolution")
 	}
-	return interrupt.Resolution{
-		Approved:      resolution.Decision == approval.Allow,
-		Arguments:     resolution.EditedArguments,
-		Reason:        resolution.Reason,
-		RememberScope: resolution.RememberScope,
-	}, nil
+	return interrupt.NewApprovalAnswer(resolution)
 }

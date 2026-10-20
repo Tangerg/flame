@@ -107,7 +107,7 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 		InterruptItemID: stalePending.Bindings[0].InterruptItemID,
 		MemberID:        stalePending.Bindings[0].MemberID,
 		RequestID:       stalePending.Bindings[0].RequestID,
-		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
+		Resolution:      testsupport.QuestionAnswer(t, [][]string{{"continue"}}),
 	}})
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: ints, transcript: history}, Config{
 		State: state,
@@ -162,7 +162,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 		InterruptItemID: pending.Bindings[0].InterruptItemID,
 		MemberID:        pending.Bindings[0].MemberID,
 		RequestID:       pending.Bindings[0].RequestID,
-		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
+		Resolution:      testsupport.QuestionAnswer(t, [][]string{{"continue"}}),
 	}})
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: ints, transcript: history}, Config{
 		State: state,
@@ -745,7 +745,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	}
 	acceptance := mustResumeAcceptance(t, transcriptStore, pending, []runs.InterruptAnswer{{
 		InterruptItemID: "item_child", MemberID: "member_child", RequestID: "request_child",
-		Resolution: interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
+		Resolution: testsupport.QuestionAnswer(t, [][]string{{"continue"}}),
 	}})
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: interruptStore, transcript: transcriptStore}, Config{
 		State: runStore,

@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/packages/plugin-sdk/go/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
@@ -14,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 const (
@@ -100,7 +99,7 @@ func (e *exiter) exit(ctx context.Context, _ exitArgs) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if selectedChoice(resolution.Answers) != approveLabel {
+	if selectedChoice(resolution.Question().Answers()) != approveLabel {
 		return "Plan not approved. The session remains in Plan mode; revise the Plan or continue investigating.", nil
 	}
 	restored, changed, err := e.modes.ExitPlanMode(ctx, sessionID)

@@ -7,12 +7,11 @@ import (
 	"fmt"
 	"strings"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/packages/plugin-sdk/go/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // askUserArgs is the model-facing argument shape; [toolcontract.NewFunc] derives
@@ -102,7 +101,7 @@ func (a *asker) ask(ctx context.Context, args askUserArgs) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return answerText(in, res.Answers), nil
+	return answerText(in, res.Question().Answers()), nil
 }
 
 // answerText renders the human's answers as the tool's result text, pairing

@@ -3,12 +3,12 @@ package runs
 import (
 	"errors"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
@@ -35,7 +35,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 		t.Fatalf("approval answers = %#v", answers)
 	}
 	resolution := answers[0].Resolution
-	if !resolution.Approved || resolution.Arguments != `{"command":"echo edited","description":"Print edited"}` || resolution.RememberScope != approval.ScopeSession {
+	if resolution.Approval().Decision != approval.Allow || resolution.Approval().EditedArguments != `{"command":"echo edited","description":"Print edited"}` || resolution.Approval().RememberScope != approval.ScopeSession {
 		t.Fatalf("approval resolution = %#v", resolution)
 	}
 	deniedAnswers, err := resolveResumeResponses(approvalPending.interrupts, approvalPending.bindings, []ResumeResponse{{
@@ -49,7 +49,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 		t.Fatalf("denial answers = %#v, %v", deniedAnswers, err)
 	}
 	denied := deniedAnswers[0].Resolution
-	if denied.Approved || denied.Reason != "unsafe command" {
+	if (denied.Approval().Decision == approval.Allow) || denied.Approval().Reason != "unsafe command" {
 		t.Fatalf("denial resolution = %#v", denied)
 	}
 
@@ -74,7 +74,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 		t.Fatalf("question: %v", err)
 	}
 	resolution = answers[0].Resolution
-	if !resolution.Approved || len(resolution.Answers) != 1 || len(resolution.Answers[0]) != 1 || resolution.Answers[0][0] != "Go" {
+	if resolution.Kind() != interrupt.Question || len(resolution.Question().Answers()) != 1 || len(resolution.Question().Answers()[0]) != 1 || resolution.Question().Answers()[0][0] != "Go" {
 		t.Fatalf("question resolution = %#v", resolution)
 	}
 
@@ -164,14 +164,14 @@ func TestResolveResumeResponsesPreservesCompleteBarrierInCanonicalOrder(t *testi
 	if answers[0].InterruptItemID != "item_a" ||
 		answers[0].MemberID != "member_a" ||
 		answers[0].RequestID != "request_a" ||
-		!answers[0].Resolution.Approved {
+		answers[0].Resolution.Approval().Decision != approval.Allow {
 		t.Fatalf("answer[0] = %#v", answers[0])
 	}
 	if answers[1].InterruptItemID != "item_b" ||
 		answers[1].MemberID != "member_b" ||
 		answers[1].RequestID != "request_b" ||
-		answers[1].Resolution.Approved ||
-		answers[1].Resolution.Reason != "skip b" {
+		(answers[1].Resolution.Approval().Decision == approval.Allow) ||
+		answers[1].Resolution.Approval().Reason != "skip b" {
 		t.Fatalf("answer[1] = %#v", answers[1])
 	}
 }
@@ -196,8 +196,8 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("valid ordered answer: %v", err)
 	}
-	if !resolution.Approved || !slices.Equal(resolution.Answers[0], []string{"name"}) ||
-		!slices.Equal(resolution.Answers[1], []string{"A", "custom"}) {
+	if resolution.Kind() != interrupt.Question || !slices.Equal(resolution.Question().Answers()[0], []string{"name"}) ||
+		!slices.Equal(resolution.Question().Answers()[1], []string{"A", "custom"}) {
 		t.Fatalf("resolution = %#v", resolution)
 	}
 
@@ -205,8 +205,8 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("explicit skipped answers: %v", err)
 	}
-	if !skipped.Approved || len(skipped.Answers) != len(question.Fields) ||
-		len(skipped.Answers[0]) != 0 || len(skipped.Answers[1]) != 0 {
+	if skipped.Kind() != interrupt.Question || len(skipped.Question().Answers()) != len(question.Fields) ||
+		len(skipped.Question().Answers()[0]) != 0 || len(skipped.Question().Answers()[1]) != 0 {
 		t.Fatalf("skipped resolution = %#v", skipped)
 	}
 
@@ -238,55 +238,18 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 	}
 }
 
-func TestInterruptAnswerValidatesKindSpecificResolutionShape(t *testing.T) {
-	approvalRequest := transcript.Interrupt{
-		Kind: interrupt.Approval,
-		Approval: &transcript.Approval{
-			Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium", Rememberable: true,
-		},
-	}
-	questionRequest := transcript.Interrupt{
-		Kind: interrupt.Question,
-		Question: &transcript.Question{Fields: []transcript.QuestionField{{
-			Prompt: "Name it", Kind: transcript.QuestionText,
-		}}},
-	}
-
-	tests := []struct {
-		name       string
-		request    transcript.Interrupt
-		resolution interrupt.Resolution
-		want       string
-	}{
-		{
-			name: "approval carries question answers", request: approvalRequest,
-			resolution: interrupt.Resolution{Approved: true, Answers: [][]string{}},
-			want:       "cannot carry question answers",
-		},
-		{
-			name: "denial edits arguments", request: approvalRequest,
-			resolution: interrupt.Resolution{Arguments: `{}`},
-			want:       "denial cannot edit arguments",
-		},
-		{
-			name: "question is not acknowledged", request: questionRequest,
-			resolution: interrupt.Resolution{Answers: [][]string{{"name"}}},
-			want:       "must acknowledge",
-		},
-		{
-			name: "question carries approval fields", request: questionRequest,
-			resolution: interrupt.Resolution{Approved: true, Answers: [][]string{{"name"}}, Reason: "no"},
-			want:       "cannot carry approval fields",
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			answer := InterruptAnswer{Resolution: test.resolution}
-			err := answer.validateResolution(test.request)
-			if err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("validateResolution error = %v, want containing %q", err, test.want)
-			}
-		})
+func TestInterruptAnswerRefusesAnAnswerForAnotherKind(t *testing.T) {
+	for _, request := range []transcript.Interrupt{
+		{Kind: interrupt.Approval, Approval: &transcript.Approval{}},
+		{Kind: interrupt.Question, Question: &transcript.Question{}},
+	} {
+		answer := testsupport.QuestionAnswer(t, [][]string{{"name"}})
+		if request.Kind == interrupt.Question {
+			answer = testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.Allow})
+		}
+		if err := (InterruptAnswer{Resolution: answer}).validateResolution(request); err == nil {
+			t.Fatal("cross-kind answer accepted")
+		}
 	}
 }
 

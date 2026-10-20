@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
@@ -499,11 +500,15 @@ func (o *observedInteractionTool) resolveToolApproval(
 	if err := validateToolApprovalPrompt(request, prompt); err != nil {
 		return tool.Arguments{}, false, "", err
 	}
-	if resolution.Approved {
+	verdict := resolution.Approval()
+	if verdict == nil {
+		return tool.Arguments{}, false, "", errors.New("execution: expected Tool approval answer")
+	}
+	if verdict.Decision == approval.Allow {
 		arguments := request.Arguments
-		if resolution.Arguments != "" {
+		if verdict.EditedArguments != "" {
 			var err error
-			arguments, err = tool.ParseArguments(resolution.Arguments)
+			arguments, err = tool.ParseArguments(verdict.EditedArguments)
 			if err != nil {
 				return tool.Arguments{}, false, "", fmt.Errorf("execution: parse approved Tool arguments: %w", err)
 			}

@@ -55,14 +55,17 @@ func DecodeResolution(raw []byte) (interrupt.Resolution, error) {
 // EncodeResolution converts a typed human decision to the JSON the executor
 // validates against its pending-input response schema before continuing.
 func EncodeResolution(resolution interrupt.Resolution) (jsontext.Value, error) {
-	if resolution.RememberScope != "" && !resolution.RememberScope.Valid() {
-		return nil, fmt.Errorf("run input codec: unknown remember scope %q", resolution.RememberScope)
+	wire := ResolutionPayload{}
+	switch resolution.Kind() {
+	case interrupt.Question:
+		wire.Question = &questionAnswerPayload{Answers: resolution.Question().Answers()}
+	case interrupt.Approval:
+		value := resolution.Approval()
+		wire.Approval = &approvalAnswerPayload{Decision: value.Decision, Arguments: value.EditedArguments, Reason: value.Reason, RememberScope: value.RememberScope}
+	default:
+		return nil, errors.New("run input codec: answer is required")
 	}
-	approved := resolution.Approved
-	encoded, err := agent.EncodePayload(ResolutionPayload{
-		Approved: &approved, Arguments: resolution.Arguments, Answers: resolution.Answers,
-		Reason: resolution.Reason, RememberScope: resolution.RememberScope,
-	})
+	encoded, err := agent.EncodePayload(wire)
 	if err != nil {
 		return nil, fmt.Errorf("run input codec: encode resolution: %w", err)
 	}
@@ -200,31 +203,33 @@ func questionOptionsFrom(options []questionOptionWire) []runs.QuestionOptionSpec
 	return result
 }
 
-// ResolutionPayload is the exact technical response shape used by the executor
-// continuation codec. Callers should use [EncodeResolution] and
-// [DecodeResolution].
+// ResolutionPayload is the closed response contract shared by the checkpoint
+// codec and Scope's pending-input schema.
 type ResolutionPayload struct {
-	Approved      *bool          `json:"approved"`
-	Arguments     string         `json:"arguments,omitempty"`
-	Answers       [][]string     `json:"answers,omitempty"`
-	Reason        string         `json:"reason,omitempty"`
-	RememberScope approval.Scope `json:"remember_scope,omitempty"`
+	Question *questionAnswerPayload `json:"question,omitempty" jsonschema:"oneof_required=question"`
+	Approval *approvalAnswerPayload `json:"approval,omitempty" jsonschema:"oneof_required=approval"`
 }
 
-// Resolution converts the validated technical payload to its Domain value.
+type questionAnswerPayload struct {
+	Answers [][]string `json:"answers" jsonschema:"minItems=1"`
+}
+
+type approvalAnswerPayload struct {
+	Decision      approval.Decision `json:"decision" jsonschema:"enum=allow,enum=deny"`
+	Arguments     string            `json:"arguments,omitempty"`
+	Reason        string            `json:"reason,omitempty"`
+	RememberScope approval.Scope    `json:"remember_scope,omitempty"`
+}
+
 func (r ResolutionPayload) Resolution() (interrupt.Resolution, error) {
-	if r.Approved == nil {
-		return interrupt.Resolution{}, errors.New("run input codec: approved is required")
+	if (r.Question == nil) == (r.Approval == nil) {
+		return interrupt.Resolution{}, errors.New("run input codec: exactly one answer kind is required")
 	}
-	if r.RememberScope != "" && !r.RememberScope.Valid() {
-		return interrupt.Resolution{}, fmt.Errorf("run input codec: unknown remember scope %q", r.RememberScope)
+	if r.Question != nil {
+		return interrupt.NewQuestionAnswer(r.Question.Answers)
 	}
-	answers := r.Answers
-	if len(answers) == 0 {
-		answers = nil
-	}
-	return interrupt.Resolution{
-		Approved: *r.Approved, Arguments: r.Arguments, Answers: answers,
-		Reason: r.Reason, RememberScope: r.RememberScope,
-	}, nil
+	return interrupt.NewApprovalAnswer(approval.Resolution{
+		Decision: r.Approval.Decision, EditedArguments: r.Approval.Arguments,
+		Reason: r.Approval.Reason, RememberScope: r.Approval.RememberScope,
+	})
 }

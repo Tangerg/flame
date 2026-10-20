@@ -41,21 +41,29 @@ func NewResumeAcceptance(
 ) (ResumeAcceptance, error) {
 	acceptance := ResumeAcceptance{
 		sessionID: sessionID, expected: expected.Clone(), items: maps.Clone(items),
-		answers: cloneInterruptAnswers(answers),
+		answers: slices.Clone(answers),
 	}
 	if err := acceptance.Validate(); err != nil {
 		return ResumeAcceptance{}, err
 	}
-	return acceptance, nil
-}
-
-func cloneInterruptAnswers(answers []InterruptAnswer) []InterruptAnswer {
-	owned := make([]InterruptAnswer, len(answers))
-	for index, answer := range answers {
-		owned[index] = answer
-		owned[index].Resolution.Answers = transcript.CloneAnswers(answer.Resolution.Answers)
+	replacements, err := acceptance.ItemReplacements()
+	if err != nil {
+		return ResumeAcceptance{}, err
 	}
-	return owned
+	for index, answer := range acceptance.answers {
+		for _, replacement := range replacements {
+			item := replacement.State()
+			if item.ID() != answer.InterruptItemID {
+				continue
+			}
+			resolution, err := acceptedItemResolution(item)
+			if err != nil {
+				return ResumeAcceptance{}, err
+			}
+			acceptance.answers[index].Resolution = resolution
+		}
+	}
+	return acceptance, nil
 }
 
 func (r ResumeAcceptance) Validate() error {
@@ -98,7 +106,7 @@ func (r ResumeAcceptance) SessionID() string { return r.sessionID }
 func (r ResumeAcceptance) Pending() Pending { return r.expected.Clone() }
 
 // Answers returns the isolated executor-bound answer set in canonical Pending order.
-func (r ResumeAcceptance) Answers() []InterruptAnswer { return cloneInterruptAnswers(r.answers) }
+func (r ResumeAcceptance) Answers() []InterruptAnswer { return slices.Clone(r.answers) }
 
 // WithRememberedRules binds the standing rules the acceptance persists together
 // with its answers. Each rule is already derived from a confirmed invocation and
@@ -141,14 +149,9 @@ func (r ResumeAcceptance) ItemReplacements() ([]transcript.Replacement, error) {
 		itemReplacement, err := transcript.Replace(expected, func(expected transcript.Item) (transcript.Item, error) {
 			switch open.Kind() {
 			case interrupt.Question:
-				return expected.AnswerQuestion(answer.Resolution.Answers)
+				return expected.AnswerQuestion(answer.Resolution.Question().Answers())
 			case interrupt.Approval:
-				return expected.ResolveToolApproval(approval.Resolution{
-					Decision:        approval.DecisionOf(answer.Resolution.Approved),
-					EditedArguments: answer.Resolution.Arguments,
-					Reason:          answer.Resolution.Reason,
-					RememberScope:   answer.Resolution.RememberScope,
-				})
+				return expected.ResolveToolApproval(*answer.Resolution.Approval())
 			default:
 				return transcript.Item{}, fmt.Errorf("unknown interrupt kind %q", open.Kind())
 			}

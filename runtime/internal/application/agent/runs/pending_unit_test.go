@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -21,7 +22,7 @@ func TestResumeClaimSettlesReviewedToolCallsFromTheirItems(t *testing.T) {
 			InterruptItemID: binding.InterruptItemID,
 			MemberID:        binding.MemberID,
 			RequestID:       binding.RequestID,
-			Resolution:      interrupt.Resolution{Approved: index == 0},
+			Resolution:      testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.DecisionOf(index == 0)}),
 		}
 	}
 	items := fixtureItems(pending)
@@ -53,8 +54,8 @@ func TestResumeClaimSettlesReviewedToolCallsFromTheirItems(t *testing.T) {
 		t.Fatalf("approval call bindings = %+v", calls)
 	}
 
-	claim.answers[0].Resolution.Answers = [][]string{{"unexpected"}}
-	if err := claim.Validate(); err == nil || !strings.Contains(err.Error(), "cannot carry question answers") {
+	claim.answers[0].Resolution = testsupport.QuestionAnswer(t, [][]string{{"unexpected"}})
+	if err := claim.Validate(); err == nil || !strings.Contains(err.Error(), "answer kind differs") {
 		t.Fatalf("Validate cross-kind resolution error = %v", err)
 	}
 }
@@ -75,7 +76,7 @@ func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
 	}}
 	answers := []InterruptAnswer{{
 		InterruptItemID: "item_grandchild", MemberID: "member_grandchild", RequestID: "request_grandchild",
-		Resolution: interrupt.Resolution{Approved: true, Answers: [][]string{{"yes"}}},
+		Resolution: testsupport.QuestionAnswer(t, [][]string{{"yes"}}),
 	}}
 
 	claim, err := NewResumeAcceptance(
@@ -86,17 +87,17 @@ func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
 	}
 	delete(items, "item_grandchild")
 	pending.Continuations[0].MemberID = "member_changed"
-	answers[0].Resolution.Answers[0][0] = "changed input"
+	answers[0].Resolution.Question().Answers()[0][0] = "changed input"
 
 	ownedPending := claim.Pending()
 	ownedAnswers := claim.Answers()
 	ownedPending.Continuations[0].MemberID = "member_changed_again"
-	ownedAnswers[0].Resolution.Answers[0][0] = "changed accessor"
+	ownedAnswers[0].Resolution.Question().Answers()[0][0] = "changed accessor"
 
 	gotPending := claim.Pending()
 	gotAnswers := claim.Answers()
 	if gotPending.Continuations[0].MemberID != "member_grandchild" ||
-		gotAnswers[0].Resolution.Answers[0][0] != "yes" {
+		gotAnswers[0].Resolution.Question().Answers()[0][0] != "yes" {
 		t.Fatalf("Resume claim ownership = pending:%+v answers:%+v", gotPending, gotAnswers)
 	}
 	if err := claim.Validate(); err != nil {
@@ -311,4 +312,59 @@ func validTreePending() Pending {
 			},
 		},
 		CreatedAt: createdAt}
+}
+
+func TestAcceptedAnswersHaveOneFreshAndRecoveryProjection(t *testing.T) {
+	for _, shape := range []string{"question", "approval", "mixed"} {
+		t.Run(shape, func(t *testing.T) {
+			pending := validTreePending()
+			for index := range pending.Interrupts {
+				if shape == "question" || (shape == "mixed" && index == 0) {
+					pending.Interrupts[index].Approval = nil
+					binding := pending.Bindings[index]
+					pending.Bindings[index] = InterruptBinding{InterruptItemID: binding.InterruptItemID, MemberID: binding.MemberID, RequestID: binding.RequestID}
+				}
+			}
+			items := fixtureItems(pending)
+			open, err := pending.ProjectInterrupts(items)
+			if err != nil {
+				t.Fatal(err)
+			}
+			responses := make([]ResumeResponse, len(open))
+			for index, request := range open {
+				responses[index] = ResumeResponse{ItemID: request.ItemID, Kind: request.Kind}
+				if request.Kind == interrupt.Question {
+					responses[index].Question = &QuestionResponse{Answers: [][]string{{"chosen"}}}
+				} else {
+					responses[index].Approval = &ApprovalResponse{Approved: index == 0}
+				}
+			}
+			resolved, err := resolveResumeResponses(open, pending.Bindings, responses)
+			if err != nil {
+				t.Fatal(err)
+			}
+			acceptance, err := NewResumeAcceptance(fixtureSessionID, pending, items, resolved)
+			if err != nil {
+				t.Fatal(err)
+			}
+			replacements, err := acceptance.ItemReplacements()
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, replacement := range replacements {
+				stored, err := transcript.RestoreItem(replacement.State().Snapshot())
+				if err != nil {
+					t.Fatal(err)
+				}
+				items[stored.ID()] = stored
+			}
+			revived, err := (AcceptedContinuation{SessionID: fixtureSessionID, Pending: pending}).answers(items)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(acceptance.Answers(), revived) {
+				t.Fatalf("accepted answers changed after restore: fresh=%+v revived=%+v", acceptance.Answers(), revived)
+			}
+		})
+	}
 }
