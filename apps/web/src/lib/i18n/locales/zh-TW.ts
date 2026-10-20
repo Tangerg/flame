@@ -101,6 +101,7 @@ export const zhTW: Record<string, string> = {
   "composer.placeholder": "描述你要做的事，@ 引用檔案或符號",
   "composer.switchModel": "切換模型",
   "composer.switchReasoningEffort": "切換思考強度",
+  "composer.model.unavailable": "目前模型目錄中無法使用",
   "composer.model.title": "模型",
   "composer.model.recent": "最近使用",
   "composer.model.search.placeholder": "搜尋模型…",

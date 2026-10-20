@@ -51,11 +51,11 @@ describe("ReasoningEffortPill", () => {
     });
   });
 
-  it("falls back to the model default when the remembered effort is not offered", () => {
+  it("shows the authored effort even when the catalog no longer offers it", () => {
     state.selection = { model: model(["low", "high", "max"]), reasoningEffort: "medium" };
     render(<ReasoningEffortPill />);
     expect(screen.getByRole("button", { name: "Switch reasoning effort" }).textContent).toContain(
-      "High",
+      "Medium",
     );
   });
 

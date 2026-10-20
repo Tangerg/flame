@@ -1,20 +1,11 @@
-import { queryClient } from "@/lib/queryClient";
-import { MODELS_KEY, useModels } from "@/features/providers/public/queries";
-import { type SelectableModel } from "@/features/providers/public/queries";
-import {
-  AGENT_SESSIONS_KEY,
-  useAgentSessions,
-  type AgentSessionSummary,
-} from "@/features/agent/public/session";
-import { getActiveSessionId, useActiveSessionId } from "@/features/agent/public/session";
+import { useModels } from "@/features/providers/public/queries";
+import { useAgentSessions, type AgentSessionSummary } from "@/features/agent/public/session";
+import { useActiveSessionId } from "@/features/agent/public/session";
 import {
   resolveComposerModelSelection,
   type ComposerSessionModelSelection,
 } from "@/features/composer/application/modelSelection";
-import {
-  selectedComposerModelPreference,
-  useComposerModelPreference,
-} from "@/features/composer/public/modelPreference";
+import { useComposerModelPreference } from "@/features/composer/public/modelPreference";
 function activeSessionModelSelection(
   activeSessionId: string,
   sessions: readonly AgentSessionSummary[] | undefined,
@@ -40,17 +31,6 @@ export function useSelectedModelSelection() {
     models,
     preference,
     activeSessionModelSelection(activeSessionId, sessions),
-  );
-}
-
-export function selectedModelSelection() {
-  return resolveComposerModelSelection(
-    queryClient.getQueryData<SelectableModel[]>([MODELS_KEY]) ?? [],
-    selectedComposerModelPreference(),
-    activeSessionModelSelection(
-      getActiveSessionId(),
-      queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]),
-    ),
   );
 }
 

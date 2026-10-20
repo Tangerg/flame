@@ -12,6 +12,7 @@ import { useRecentModelsStore, type RecentModel } from "@/features/composer/adap
 import { AgentComposerChip } from "@/ui/agent/index";
 import { useSetComposerModelPreference } from "@/features/composer/public/modelPreference";
 import { useSelectedModelSelection } from "@/features/composer/public/selectedModel";
+type Selection = NonNullable<ReturnType<typeof useSelectedModelSelection>>;
 
 function modelItemId(model: SelectableModel): string {
   return JSON.stringify([model.provider, model.id]);
@@ -19,8 +20,8 @@ function modelItemId(model: SelectableModel): string {
 
 const RECENT_GROUP_ID = "__recent";
 
-function modelItem(model: SelectableModel, selected: SelectableModel | undefined, t: Translate) {
-  const active = model.provider === selected?.provider && model.id === selected.id;
+function modelItem(model: SelectableModel, selection: Selection | undefined, t: Translate) {
+  const active = model.provider === selection?.provider && model.id === selection.modelId;
   return {
     id: modelItemId(model),
     label: model.label,
@@ -34,7 +35,7 @@ function modelItem(model: SelectableModel, selected: SelectableModel | undefined
 
 function modelGroups(
   models: readonly SelectableModel[],
-  selected: SelectableModel | undefined,
+  selection: Selection | undefined,
   recent: readonly RecentModel[],
   t: Translate,
 ): CatalogPickerGroup[] {
@@ -56,7 +57,7 @@ function modelGroups(
     label: providerDisplayName(provider),
     leading: <ProviderIcon provider={provider} size="md" />,
     count: items.length,
-    items: items.map((model) => modelItem(model, selected, t)),
+    items: items.map((model) => modelItem(model, selection, t)),
   }));
 
   return shelf.length > 0
@@ -66,7 +67,7 @@ function modelGroups(
           label: t("composer.model.recent"),
           leading: <Icon name="history" size="md" />,
           count: shelf.length,
-          items: shelf.map((model) => modelItem(model, selected, t)),
+          items: shelf.map((model) => modelItem(model, selection, t)),
         },
         ...providers,
       ]
@@ -120,15 +121,15 @@ export function ModelPicker() {
   const recent = useRecentModelsStore((state) => state.recent);
   const remember = useRecentModelsStore((state) => state.remember);
   const groups = useMemo(
-    () => modelGroups(models, selected, recent, t),
-    [models, recent, selected, t],
+    () => modelGroups(models, selection, recent, t),
+    [models, recent, selection, t],
   );
   const modelsByItemId = useMemo(
     () => new Map(models.map((model) => [modelItemId(model), model])),
     [models],
   );
 
-  if (models.length === 0) {
+  if (models.length === 0 && !selection) {
     if (isError) {
       return (
         <Button
@@ -147,12 +148,14 @@ export function ModelPicker() {
     return <ModelPickerPlaceholder />;
   }
 
+  const label = selected?.label ?? selection?.modelId ?? t("composer.switchModel");
+
   return (
     <RailCatalogPicker
       groups={groups}
       openAtGroupId={
-        selected && groups.some((group) => group.id === selected.provider)
-          ? selected.provider
+        selection && groups.some((group) => group.id === selection.provider)
+          ? selection.provider
           : groups[0]?.id
       }
       label={t("composer.switchModel")}
@@ -175,17 +178,19 @@ export function ModelPicker() {
         <AgentComposerChip
           aria-label={t("composer.switchModel")}
           title={
-            selected ? `${selected.label} · ${providerDisplayName(selected.provider)}` : undefined
+            selection
+              ? `${label} · ${providerDisplayName(selection.provider)}${selected ? "" : ` · ${t("composer.model.unavailable")}`}`
+              : undefined
           }
           shrink="gives"
           leading={
-            selected ? (
-              <ProviderIcon provider={selected.provider} size="composer" />
+            selection ? (
+              <ProviderIcon provider={selection.provider} size="composer" />
             ) : (
               <Icon name="server" size="composer" />
             )
           }
-          label={selected?.label ?? t("composer.switchModel")}
+          label={label}
         />
       }
       side="top"

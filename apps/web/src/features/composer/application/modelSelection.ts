@@ -13,9 +13,10 @@ export interface ComposerSessionModelSelection {
 }
 
 export interface ResolvedComposerModelSelection<T extends ComposerModelOption> {
-  model: T;
+  provider: string;
+  modelId: string;
+  model: T | undefined;
   reasoningEffort?: string;
-  explicit: boolean;
 }
 
 export function resolveComposerModelSelection<T extends ComposerModelOption>(
@@ -28,13 +29,12 @@ export function resolveComposerModelSelection<T extends ComposerModelOption>(
       (candidate) =>
         candidate.provider === preference.provider && candidate.id === preference.model,
     );
-    if (preferred) {
-      return {
-        model: preferred,
-        reasoningEffort: preferred.reasoningLevelOrDefault(preference.reasoningEffort),
-        explicit: true,
-      };
-    }
+    return {
+      provider: preference.provider,
+      modelId: preference.model,
+      model: preferred,
+      reasoningEffort: preference.reasoningEffort,
+    };
   }
   if (activeSessionSelection === undefined) return undefined;
   // An implicit selection is whatever the Runtime will run: the Session's own
@@ -48,34 +48,34 @@ export function resolveComposerModelSelection<T extends ComposerModelOption>(
     );
     return sessionModel
       ? {
+          provider: activeSessionSelection.provider,
+          modelId: activeSessionSelection.model,
           model: sessionModel,
           reasoningEffort:
             activeSessionSelection.reasoningEffort ?? sessionModel.reasoningLevelOrDefault(),
-          explicit: false,
         }
       : undefined;
   }
   const runtimeDefault = models.find((candidate) => candidate.default);
   return runtimeDefault
     ? {
+        provider: runtimeDefault.provider,
+        modelId: runtimeDefault.id,
         model: runtimeDefault,
         reasoningEffort: runtimeDefault.reasoningLevelOrDefault(),
-        explicit: false,
       }
     : undefined;
 }
 
-export function resolveComposerRunOptions(
-  selection: ResolvedComposerModelSelection<ComposerModelOption> | undefined,
-): {
+export function resolveComposerRunOptions(preference: ComposerModelPreference): {
   provider?: string;
   model?: string;
   reasoningEffort?: string;
 } {
-  if (!selection?.explicit) return {};
+  if (preference.kind !== "explicit") return {};
   return {
-    provider: selection.model.provider,
-    model: selection.model.id,
-    ...(selection.reasoningEffort ? { reasoningEffort: selection.reasoningEffort } : {}),
+    provider: preference.provider,
+    model: preference.model,
+    ...(preference.reasoningEffort ? { reasoningEffort: preference.reasoningEffort } : {}),
   };
 }
