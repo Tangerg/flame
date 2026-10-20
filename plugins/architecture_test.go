@@ -53,7 +53,7 @@ func outwardDependency(path string) bool {
 	for _, prefix := range []string{
 		"database/sql", "net/http", "os", "github.com/Tangerg/go-sdk/mcp",
 		"github.com/Tangerg/scope/agent", "github.com/Tangerg/scope/core/chatclient",
-		"github.com/Tangerg/flame/packages/plugin-sdk", "github.com/Tangerg/flame/runtime/storage",
+		"github.com/Tangerg/flame/packages/plugin-sdk/go", "github.com/Tangerg/flame/runtime/storage",
 		"github.com/Tangerg/flame/runtime/sandbox", "github.com/Tangerg/flame/runtime/transport",
 	} {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
@@ -69,7 +69,7 @@ func outwardDependency(path string) bool {
 }
 
 func TestPluginPolicyBoundaryRejectsConcreteAdapters(t *testing.T) {
-	for _, dependency := range []string{"net/http", "database/sql", "github.com/Tangerg/flame/plugins/memory/backend/sqlite", "github.com/Tangerg/flame/packages/plugin-sdk"} {
+	for _, dependency := range []string{"net/http", "database/sql", "github.com/Tangerg/flame/plugins/memory/backend/sqlite", "github.com/Tangerg/flame/packages/plugin-sdk/go"} {
 		if !outwardDependency(dependency) {
 			t.Fatalf("policy boundary admitted %s", dependency)
 		}

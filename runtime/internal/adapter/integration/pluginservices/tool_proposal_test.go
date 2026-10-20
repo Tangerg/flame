@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"

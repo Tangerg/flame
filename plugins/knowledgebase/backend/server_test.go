@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"

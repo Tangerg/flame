@@ -10,7 +10,7 @@ import (
 	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
 	"github.com/Tangerg/flame/runtime/capability"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"

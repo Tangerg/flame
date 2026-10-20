@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/backend/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/plugins/schedules/backend/rpc"

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	private "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	private "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	storage "github.com/Tangerg/flame/runtime/storage/sqlite"

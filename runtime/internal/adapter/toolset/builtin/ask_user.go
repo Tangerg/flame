@@ -9,7 +9,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
+	"github.com/Tangerg/flame/packages/plugin-sdk/go/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"

@@ -5,8 +5,8 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"

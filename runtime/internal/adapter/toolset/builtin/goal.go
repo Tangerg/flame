@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
+	"github.com/Tangerg/flame/packages/plugin-sdk/go/toolfailure"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"

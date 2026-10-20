@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/google/uuid"

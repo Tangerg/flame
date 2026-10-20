@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/runtime/capability"
 	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"

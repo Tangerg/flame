@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/scope/core/jsonschema"
 

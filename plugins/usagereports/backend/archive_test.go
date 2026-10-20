@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
 	"github.com/Tangerg/flame/plugins/usagereports/backend/domain"
 	"github.com/Tangerg/flame/plugins/usagereports/backend/rpc"
 	"github.com/Tangerg/flame/runtime/idempotency"

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
+	"github.com/Tangerg/flame/packages/plugin-sdk/go/toolfailure"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/scope/core/chat"

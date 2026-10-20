@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/runtime/capability"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"

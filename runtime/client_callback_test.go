@@ -13,7 +13,7 @@ import (
 
 	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"

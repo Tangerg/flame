@@ -7,7 +7,7 @@ import (
 
 	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )

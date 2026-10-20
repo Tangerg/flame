@@ -7,7 +7,7 @@ import (
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"

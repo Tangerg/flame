@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/flame/plugins/web/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"

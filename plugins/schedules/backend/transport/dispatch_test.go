@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	"github.com/Tangerg/flame/plugins/schedules/backend/sqlite"

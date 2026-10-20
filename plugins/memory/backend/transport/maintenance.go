@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	json "encoding/json/v2"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
 	app "github.com/Tangerg/flame/plugins/memory/backend/application"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/plugins/memory/backend/rpc"

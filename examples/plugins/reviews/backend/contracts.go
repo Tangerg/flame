@@ -8,7 +8,7 @@ package reviews
 //go:generate sh -c "go run ./cmd/contracts --analyzer-capability > ../package/io.github.tangerg.flame/contracts/analyzer-capability.generated.json"
 
 import (
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/runtime/capability"
 )
 

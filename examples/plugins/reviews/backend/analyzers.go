@@ -9,7 +9,7 @@ import (
 	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/point"

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"

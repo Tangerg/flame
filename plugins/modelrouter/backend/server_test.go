@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"

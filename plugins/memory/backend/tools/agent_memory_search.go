@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/runtime/dependency"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
+	"github.com/Tangerg/flame/packages/plugin-sdk/go/toolfailure"
 	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/runtime/optional"
 )

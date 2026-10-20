@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	memorysqlite "github.com/Tangerg/flame/plugins/memory/backend/sqlite"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/plugins/github/backend/domain"
 	"github.com/Tangerg/flame/plugins/github/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
