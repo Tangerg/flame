@@ -755,6 +755,9 @@ export const zhTW: Record<string, string> = {
   "mcp.importing": "正在匯入…",
   "mcp.import.ok_other": "已匯入 {{count}} 個伺服器",
   "mcp.import.renamed": "已重新命名以符合執行階段的要求：{{names}}",
+  "mcp.import.interrupted":
+    "Runtime 連線已更換，已匯入 {{count}} / {{total}} 個伺服器，其餘匯入已中斷。",
+  "mcp.import.partial": "已匯入 {{count}} / {{total}} 個伺服器。",
   "mcp.import.error": "無法匯入該設定。",
   "mcp.import.nameCollision":
     "伺服器「<first/>」和「<second/>」都會變成「<canonical/>」，請為它們設定不同的名稱",

@@ -22,6 +22,27 @@ afterEach(() => {
 });
 
 describe("MCPServerMutationOwner", () => {
+  it("refuses commands captured before retirement even after installing a successor", async () => {
+    const create = vi.fn();
+    owner = MCPServerMutationOwner.install({ create } as unknown as MCPServerGateway);
+    const captured = MCPServerMutationOwner.capture()!;
+    const successor = vi.fn();
+    owner.replaceRuntimeGeneration(() => ({ create: successor }) as unknown as MCPServerGateway);
+    await expect(
+      captured.importServers([
+        {
+          name: "old-draft",
+          transport: "stdio",
+          command: "old",
+          enabled: true,
+          handshakeTimeout: { type: "unbounded" },
+        },
+      ]),
+    ).resolves.toEqual({ status: "retired", completed: 0, total: 1 });
+    expect(create).not.toHaveBeenCalled();
+    expect(successor).not.toHaveBeenCalled();
+  });
+
   it("publishes one material generation for install, Runtime replacement, and final disposal", () => {
     const start = MCPServerMutationOwner.materialGeneration();
     const gateway = {} as MCPServerGateway;

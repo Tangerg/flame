@@ -5,11 +5,7 @@ import {
   type MCPServerSettings,
   userMCPServer,
 } from "@/features/mcp/application/mcpServerQueries";
-import {
-  createMCPServer,
-  deleteMCPServer,
-  setMCPServerEnabled,
-} from "@/features/mcp/application/mcpServerConfig";
+import { setMCPServerEnabled } from "@/features/mcp/application/mcpServerConfig";
 import { type MCPServerGateway } from "@/features/mcp/application/ports/mcpServerGateway";
 import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
@@ -51,7 +47,7 @@ describe("MCP server configuration", () => {
     } as unknown as MCPServerGateway);
 
     await expect(
-      createMCPServer({
+      MCPServerMutationOwner.capture()!.create({
         name: "local",
         transport: "stdio",
         enabled: true,
@@ -105,7 +101,7 @@ describe("MCP server configuration", () => {
     } as unknown as MCPServerGateway);
 
     const disabled = setMCPServerEnabled(userMCPServer("cloud"), false);
-    const deleted = deleteMCPServer(userMCPServer("cloud"));
+    const deleted = MCPServerMutationOwner.capture()!.delete(userMCPServer("cloud"));
     await Promise.resolve();
     expect(remove).not.toHaveBeenCalled();
 

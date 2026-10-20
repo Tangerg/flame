@@ -1,3 +1,4 @@
+import { HookTrustMutationOwner } from "@/features/hooks/application/hookTrust";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type FlameClient } from "@flame/runtime-client";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -15,7 +16,7 @@ describe("hooks plugin Runtime generation wiring", () => {
     const retired = deferred();
     const setTrust = vi.fn(() => retired.promise);
     let runtimeClient = () => ({ hooks: { setTrust } }) as unknown as FlameClient;
-    let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
+    let generation: RuntimeConnectionGeneration | null = null;
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.runtime-generation",
@@ -38,11 +39,17 @@ describe("hooks plugin Runtime generation wiring", () => {
       createHooksPlugin(() => runtimeClient()),
     );
 
+    expect(() => HookTrustMutationOwner.current()).toThrow("not installed");
+    generation = RuntimeConnectionGeneration.forProcess("runtime_1");
+    for (const subscriber of subscribers) subscriber();
     const command = rejected(setHookTrust("/repo", true));
     await vi.waitFor(() => expect(setTrust).toHaveBeenCalledOnce());
 
     const successorTrust = vi.fn().mockResolvedValue(undefined);
     runtimeClient = () => ({ hooks: { setTrust: successorTrust } }) as unknown as FlameClient;
+    generation = null;
+    for (const subscriber of subscribers) subscriber();
+    expect(() => HookTrustMutationOwner.current()).toThrow("not installed");
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({

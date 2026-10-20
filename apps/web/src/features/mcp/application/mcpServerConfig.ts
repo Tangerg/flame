@@ -3,12 +3,9 @@ import {
   type MCPServerID,
   type MCPServerSettings,
 } from "@/features/mcp/application/mcpServerQueries";
-import { type MCPServerInput } from "@/features/mcp/application/mcpServerInput";
-import { type MCPServerTestOutcome } from "@/features/mcp/application/ports/mcpServerGateway";
 import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
-export type { MCPServerInput } from "@/features/mcp/application/mcpServerInput";
+import { type MCPServerCommands } from "@/features/mcp/application/mcpServerMutationOwner";
 export type { MCPTransport } from "@/features/mcp/application/mcpServerQueries";
-export type { MCPServerTestOutcome } from "@/features/mcp/application/ports/mcpServerGateway";
 
 export type { MCPServerSettings };
 
@@ -20,14 +17,6 @@ export function useMCPServerMutationMaterialGeneration(): bigint {
   );
 }
 
-export function createMCPServer(input: MCPServerInput): Promise<MCPServerSettings> {
-  return MCPServerMutationOwner.current().create(input);
-}
-
-function updateMCPServer(server: MCPServerID, input: MCPServerInput): Promise<MCPServerSettings> {
-  return MCPServerMutationOwner.current().update(server, input);
-}
-
 export function setMCPServerEnabled(
   server: MCPServerID,
   enabled: boolean,
@@ -35,27 +24,16 @@ export function setMCPServerEnabled(
   return MCPServerMutationOwner.current().setEnabled(server, enabled);
 }
 
-export function deleteMCPServer(server: MCPServerID): Promise<void> {
-  return MCPServerMutationOwner.current().delete(server);
-}
-
 export function reconnectMCPServer(server: MCPServerID): Promise<void> {
   return MCPServerMutationOwner.current().reconnect(server);
 }
 
-export function useCreateMCPServer(): (input: MCPServerInput) => Promise<void> {
-  return useCallback((input) => createMCPServer(input).then(() => undefined), []);
-}
-
-export function useUpdateMCPServer(): (
-  server: MCPServerID,
-  input: MCPServerInput,
-) => Promise<void> {
-  return useCallback((server, input) => updateMCPServer(server, input).then(() => undefined), []);
-}
-
-export function useDeleteMCPServer(): (server: MCPServerID) => Promise<void> {
-  return useCallback((server) => deleteMCPServer(server), []);
+export function useMCPServerCommands(): MCPServerCommands | null {
+  return useSyncExternalStore(
+    MCPServerMutationOwner.subscribeMaterialGeneration,
+    MCPServerMutationOwner.capture,
+    MCPServerMutationOwner.capture,
+  );
 }
 
 export function useSetMCPServerEnabled(): (server: MCPServerID, enabled: boolean) => Promise<void> {
@@ -74,10 +52,6 @@ export function useAuthorizeMCPServer(): (
 
 export async function authorizeMCPServer(server: MCPServerID, signal?: AbortSignal): Promise<void> {
   await MCPServerMutationOwner.current().authorize(server, signal);
-}
-
-export function useTestMCPServer(): (input: MCPServerInput) => Promise<MCPServerTestOutcome> {
-  return useCallback((input) => MCPServerMutationOwner.current().test(input), []);
 }
 
 export function setMCPToolExposure(

@@ -17,9 +17,20 @@ export function createMCPServersPlugin(runtimeClient: () => FlameClient) {
     name: "flame.builtin.mcp-servers-pane",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
-      const gateway = installMCPServerGateway(runtimeClient);
-      ctx.cleanup(() => gateway.dispose());
-      ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
+      let gateway =
+        ctx.runtime.connectionGeneration() === null
+          ? undefined
+          : installMCPServerGateway(runtimeClient);
+      ctx.cleanup(() => gateway?.dispose());
+      ctx.cleanup(
+        followRuntimeGeneration(ctx.runtime, (next) => {
+          if (next === null) {
+            gateway?.dispose();
+            gateway = undefined;
+          } else if (gateway) gateway.replaceRuntimeGeneration();
+          else gateway = installMCPServerGateway(runtimeClient);
+        }),
+      );
       registerMCPDataProviders(ctx, runtimeClient);
       registerSettingsPane(ctx, {
         id: MCP_SERVERS_PANE,

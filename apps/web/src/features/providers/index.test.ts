@@ -77,7 +77,7 @@ describe("providers plugin Runtime generation wiring", () => {
     });
     let activeClient = { providers: { update } } as unknown as FlameClient;
     const runtimeClient = () => activeClient;
-    let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
+    let generation: RuntimeConnectionGeneration | null = null;
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.runtime-generation",
@@ -96,6 +96,9 @@ describe("providers plugin Runtime generation wiring", () => {
       },
     });
     await loadPluginsForTest(runtime, createProvidersPlugin(runtimeClient));
+    expect(() => ProviderMutationOwner.current()).toThrow("not installed");
+    generation = RuntimeConnectionGeneration.forProcess("runtime_1");
+    for (const subscriber of subscribers) subscriber();
     expect(lookupDataProvider(PROVIDERS_KEY)).toBeDefined();
     queryClient.setQueryData([PROVIDERS_KEY], [provider()]);
 
@@ -108,6 +111,9 @@ describe("providers plugin Runtime generation wiring", () => {
     await vi.waitFor(() => expect(update).toHaveBeenCalledOnce());
 
     activeClient = { providers: { update: updateSuccessor } } as unknown as FlameClient;
+    generation = null;
+    for (const subscriber of subscribers) subscriber();
+    expect(() => ProviderMutationOwner.current()).toThrow("not installed");
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({

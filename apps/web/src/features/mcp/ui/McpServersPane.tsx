@@ -6,12 +6,14 @@ import { Button, RecordGroup } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { useMCPServers } from "@/features/mcp/application/mcpServerQueries";
 import { mcpServerLabel } from "@/lib/toolSource";
+import { useMCPServerCommands } from "@/features/mcp/application/mcpServerConfig";
 import { JsonImport } from "@/features/mcp/ui/JsonImport";
 import { ServerForm } from "@/features/mcp/ui/ServerForm";
 import { ServerRow } from "@/features/mcp/ui/ServerRow";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
 export function McpServersPane() {
   const t = useT();
+  const commands = useMCPServerCommands();
   const { data, isLoading, error, refetch } = useMCPServers();
   const [adding, setAdding] = useState<HTMLElement | null>(null);
   const panelId = useId();
@@ -23,7 +25,7 @@ export function McpServersPane() {
         <Button
           variant="primary"
           size="sm"
-          disabled={adding !== null}
+          disabled={adding !== null || commands === null}
           aria-expanded={adding !== null}
           aria-controls={panelId}
           onClick={(event) => setAdding(event.currentTarget)}

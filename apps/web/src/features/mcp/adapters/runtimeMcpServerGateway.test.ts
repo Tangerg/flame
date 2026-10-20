@@ -3,7 +3,6 @@ import { type FlameClient } from "@flame/runtime-client";
 import { queryClient } from "@/lib/queryClient";
 import {
   authorizeMCPServer,
-  createMCPServer,
   reconnectMCPServer,
   setMCPServerEnabled,
   setMCPToolExposure,
@@ -55,7 +54,7 @@ describe("runtimeMcpServerGateway", () => {
       () => ({ mcp: { test } }) as unknown as FlameClient,
     ).dispose;
     await expect(
-      MCPServerMutationOwner.current().test({
+      MCPServerMutationOwner.capture()!.test({
         name: "probe",
         transport: "stdio",
         enabled: true,
@@ -116,7 +115,7 @@ describe("runtimeMcpServerGateway", () => {
     const runtimeClient = () => ({ mcp: { create } }) as unknown as FlameClient;
     uninstall = installMCPServerGateway(() => runtimeClient()).dispose;
 
-    await createMCPServer(input);
+    await MCPServerMutationOwner.capture()!.create(input);
 
     expect(validateWire("MCPServerCandidate", create.mock.calls[0]?.[0])).toEqual([]);
   });
@@ -133,7 +132,7 @@ describe("runtimeMcpServerGateway", () => {
     uninstall = installMCPServerGateway(() => runtimeClient()).dispose;
 
     await expect(
-      createMCPServer({
+      MCPServerMutationOwner.capture()!.create({
         name: "local-tools",
         transport: "stdio",
         enabled: true,

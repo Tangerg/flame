@@ -812,6 +812,9 @@ export const es: Record<string, string> = {
   "mcp.import.ok_many": "{{count}} de servidores importados",
   "mcp.import.ok_other": "{{count}} servidores importados",
   "mcp.import.renamed": "Se renombraron para que el runtime las acepte: {{names}}",
+  "mcp.import.interrupted":
+    "La conexión de Runtime cambió: se importaron {{count}} de {{total}} servidores antes de la interrupción.",
+  "mcp.import.partial": "Se importaron {{count}} de {{total}} servidores.",
   "mcp.import.error": "No se pudo importar esa configuración.",
   "mcp.import.nameCollision":
     'Los servidores "<first/>" y "<second/>" se convierten ambos en "<canonical/>"; dales nombres distintos',

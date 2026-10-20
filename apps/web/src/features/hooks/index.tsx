@@ -16,9 +16,20 @@ export function createHooksPlugin(runtimeClient: () => FlameClient) {
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
       registerHookDataProviders(ctx, runtimeClient);
-      const gateway = installHookTrustGateway(runtimeClient);
-      ctx.cleanup(() => gateway.dispose());
-      ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
+      let gateway =
+        ctx.runtime.connectionGeneration() === null
+          ? undefined
+          : installHookTrustGateway(runtimeClient);
+      ctx.cleanup(() => gateway?.dispose());
+      ctx.cleanup(
+        followRuntimeGeneration(ctx.runtime, (next) => {
+          if (next === null) {
+            gateway?.dispose();
+            gateway = undefined;
+          } else if (gateway) gateway.replaceRuntimeGeneration();
+          else gateway = installHookTrustGateway(runtimeClient);
+        }),
+      );
       registerSettingsPane(ctx, {
         id: HOOKS_PANE,
         label: "settings.pane.hooks",

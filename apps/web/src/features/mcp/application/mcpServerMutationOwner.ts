@@ -1,4 +1,4 @@
-import { GenerationRetiredError } from "@/lib/asyncOwnership";
+import { GenerationRetiredError, wasGenerationRetired } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
@@ -24,6 +24,16 @@ interface MCPServerMutation<T> {
   commit(result: T): void;
 }
 
+type MCPServerImportOutcome = {
+  completed: number;
+  total: number;
+} & ({ status: "completed" | "retired" } | { status: "failed"; error: unknown });
+
+export type MCPServerCommands = Pick<
+  MCPServerMutationGeneration,
+  "create" | "update" | "delete" | "test" | "importServers" | "retired"
+>;
+
 class MCPServerMutationGeneration {
   readonly #gateway: MCPServerGateway;
   readonly #lifetime = new AbortController();
@@ -33,6 +43,26 @@ class MCPServerMutationGeneration {
 
   constructor(gateway: MCPServerGateway) {
     this.#gateway = gateway;
+  }
+
+  get retired(): boolean {
+    return this.#cohort.retired;
+  }
+
+  async importServers(inputs: readonly MCPServerInput[]): Promise<MCPServerImportOutcome> {
+    const servers = structuredClone(inputs);
+    let completed = 0;
+    for (const server of servers) {
+      try {
+        await this.create(server);
+        completed += 1;
+      } catch (error) {
+        return wasGenerationRetired(error)
+          ? { status: "retired", completed, total: servers.length }
+          : { status: "failed", error, completed, total: servers.length };
+      }
+    }
+    return { status: "completed", completed, total: servers.length };
   }
 
   create(input: MCPServerInput): Promise<MCPServerSettings> {
@@ -159,6 +189,11 @@ export class MCPServerMutationOwner {
     return owner;
   }
 
+  static capture(): MCPServerCommands | null {
+    const owner = mcpServerMutationPublication.current();
+    return !owner || owner.#disposed ? null : owner.#generation;
+  }
+
   static materialGeneration(): bigint {
     return MCPServerMutationOwner.#materialGeneration;
   }
@@ -168,20 +203,8 @@ export class MCPServerMutationOwner {
     return () => MCPServerMutationOwner.#materialListeners.delete(listener);
   }
 
-  create(input: MCPServerInput): Promise<MCPServerSettings> {
-    return this.#generation.create(input);
-  }
-
-  update(server: MCPServerID, input: MCPServerInput): Promise<MCPServerSettings> {
-    return this.#generation.update(server, input);
-  }
-
   setEnabled(server: MCPServerID, enabled: boolean): Promise<MCPServerSettings> {
     return this.#generation.setEnabled(server, enabled);
-  }
-
-  delete(server: MCPServerID): Promise<void> {
-    return this.#generation.delete(server);
   }
 
   setToolExposure(server: MCPServerID, name: string, disabled: boolean): Promise<void> {
@@ -190,10 +213,6 @@ export class MCPServerMutationOwner {
 
   reconnect(server: MCPServerID): Promise<void> {
     return this.#generation.reconnect(server);
-  }
-
-  test(input: MCPServerInput): Promise<MCPServerTestOutcome> {
-    return this.#generation.test(input);
   }
 
   authorize(server: MCPServerID, signal?: AbortSignal): Promise<void> {

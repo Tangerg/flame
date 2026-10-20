@@ -312,6 +312,13 @@ replay rules; the graphical application supplies its storage lifetime and render
 the outcome. A delayed result may settle its original command, but cannot
 advance a retired view generation.
 
+A null connection generation withdraws callable Provider, MCP, and Hook mutation
+owners. Discovery must establish a successor before installing writable owners
+again. MCP configuration drafts capture one concrete generation's command handle
+when opened and retire with it. Sequential JSON import belongs to that same
+Application handle, which reports its confirmed completed prefix if retirement
+interrupts the batch. A successor never receives the remainder of an old intent.
+
 Cancellation projects the Runtime's committed canceled Run. A `run_finished`
 refusal followed by a successful terminal read preserves the committed outcome;
 other command failures remain visible even when a terminal Run is readable.

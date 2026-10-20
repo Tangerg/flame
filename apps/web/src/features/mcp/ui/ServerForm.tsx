@@ -20,10 +20,7 @@ import { type MCPServerSettings } from "@/features/mcp/application/mcpServerConf
 import {
   type MCPTransport,
   useMCPServerMutationMaterialGeneration,
-  useCreateMCPServer,
-  useDeleteMCPServer,
-  useTestMCPServer,
-  useUpdateMCPServer,
+  useMCPServerCommands,
 } from "@/features/mcp/application/mcpServerConfig";
 import { useT } from "@/lib/i18n/index";
 import { MCPServerEdit, type MCPServerFields } from "@/features/mcp/application/mcpServerDraft";
@@ -40,10 +37,11 @@ interface Props {
 
 export function ServerForm({ server, opener, onDone, onCancel }: Props) {
   const t = useT();
-  const create = useCreateMCPServer();
-  const update = useUpdateMCPServer();
-  const remove = useDeleteMCPServer();
-  const test = useTestMCPServer();
+  const currentCommands = useMCPServerCommands();
+  const [commands] = useState(currentCommands);
+  useLayoutEffect(() => {
+    if (!commands || commands.retired) onCancel();
+  }, [commands, currentCommands, onCancel]);
   const isEdit = server !== undefined;
   const firstField = useRef<HTMLInputElement>(null);
   const presented = useRef(false);
@@ -78,13 +76,15 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
   const needsEnvironmentDisposition = edit.environmentNeedsDisposition;
   const valid = edit.isValid;
 
+  if (!commands || commands.retired) return null;
+
   const onSave = async () => {
     setSaving(true);
     reset();
     try {
       const input = buildInput();
-      if (server) await update(server.id, input);
-      else await create(input);
+      if (server) await commands.update(server.id, input);
+      else await commands.create(input);
       if (presented.current) onDone();
     } catch (err) {
       if (!presented.current || wasGenerationRetired(err)) return;
@@ -94,14 +94,15 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
     }
   };
 
-  const onTest = () => run(() => test(buildInput()), t("mcp.error.test"), wasGenerationRetired);
+  const onTest = () =>
+    run(() => commands.test(buildInput()), t("mcp.error.test"), wasGenerationRetired);
 
   const onDelete = async () => {
     if (!server) return;
     setSaving(true);
     reset();
     try {
-      await remove(server.id);
+      await commands.delete(server.id);
       if (presented.current) onDone();
     } catch (err) {
       if (!presented.current || wasGenerationRetired(err)) return;

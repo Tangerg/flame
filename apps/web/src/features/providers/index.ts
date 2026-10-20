@@ -18,11 +18,22 @@ export function createProvidersPlugin(runtimeClient: () => FlameClient) {
     name: "flame.builtin.providers",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
-      const gateway = installProviderGateway(runtimeClient);
-      ctx.cleanup(() => gateway.dispose());
+      let gateway =
+        ctx.runtime.connectionGeneration() === null
+          ? undefined
+          : installProviderGateway(runtimeClient);
+      ctx.cleanup(() => gateway?.dispose());
       ctx.cleanup(observeProviderDraftLifetime());
       registerProviderDataProviders(ctx, runtimeClient);
-      ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
+      ctx.cleanup(
+        followRuntimeGeneration(ctx.runtime, (next) => {
+          if (next === null) {
+            gateway?.dispose();
+            gateway = undefined;
+          } else if (gateway) gateway.replaceRuntimeGeneration();
+          else gateway = installProviderGateway(runtimeClient);
+        }),
+      );
       registerSettingsPane(ctx, {
         id: PROVIDERS_PANE,
         label: "settings.pane.providers",

@@ -151,6 +151,27 @@ function expectDisabledControls(names: readonly string[], role: "switch" | "tab"
 }
 
 describe("MCP server test feedback", () => {
+  it("closes an authored draft on Runtime replacement and never submits it to the successor", async () => {
+    const create = vi.fn<MCPServerGateway["create"]>();
+    const opener = await mount({ create });
+    fireEvent.change(field("Server name"), { target: { value: "old-draft" } });
+    fireEvent.change(field("Command"), { target: { value: "old-command" } });
+    const oldSubmit = screen.getByRole("button", { name: "Add server" });
+    const successorCreate = vi.fn<MCPServerGateway["create"]>();
+    await act(async () =>
+      owner!.replaceRuntimeGeneration(
+        () => ({ create: successorCreate }) as unknown as MCPServerGateway,
+      ),
+    );
+    fireEvent.click(oldSubmit);
+    expect(create).not.toHaveBeenCalled();
+    expect(successorCreate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("textbox", { name: "Server name" })).toBeNull();
+    fireEvent.click(opener);
+    expect(field("Server name").value).toBe("");
+    expect(field("Command").value).toBe("");
+  });
+
   it("updates its existing polite region for repeated successful tests without moving focus", async () => {
     const first = Promise.withResolvers<MCPServerTestOutcome>();
     const repeated = Promise.withResolvers<MCPServerTestOutcome>();

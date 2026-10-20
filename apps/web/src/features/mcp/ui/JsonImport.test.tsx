@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { useNotificationStore } from "@/features/notifications/public/notifications";
@@ -78,6 +78,51 @@ const colliding = JSON.stringify(
 );
 
 describe("JsonImport", () => {
+  it("clears an unsubmitted JSON draft when its captured Runtime retires", async () => {
+    const original = runtimeGateway();
+    const source = await openImport(original.gateway);
+    fireEvent.change(source, { target: { value: colliding } });
+    const successor = runtimeGateway();
+    await act(async () => owner!.replaceRuntimeGeneration(() => successor.gateway));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Import from JSON" }));
+    expect(
+      (await screen.findByRole<HTMLTextAreaElement>("textbox", { name: "JSON configuration" }))
+        .value,
+    ).toBe("");
+    expect(original.create).not.toHaveBeenCalled();
+    expect(successor.create).not.toHaveBeenCalled();
+  });
+
+  it("reports a completed prefix when Runtime replacement interrupts the same import", async () => {
+    const original = runtimeGateway();
+    const source = await openImport(original.gateway);
+    const successor = runtimeGateway();
+    const commands = MCPServerMutationOwner.capture()!;
+    const create = commands.create.bind(commands);
+    vi.spyOn(commands, "create").mockImplementation(async (input) => {
+      const result = await create(input);
+      if (input.name === "first") owner!.replaceRuntimeGeneration(() => successor.gateway);
+      return result;
+    });
+    fireEvent.change(source, {
+      target: {
+        value: JSON.stringify({
+          mcpServers: { first: { command: "first" }, second: { command: "second" } },
+        }),
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    await waitFor(() =>
+      expect(useNotificationStore.getState().log.map((entry) => entry.message)).toEqual([
+        "Imported 1 of 2 servers before the Runtime connection changed.",
+      ]),
+    );
+    expect(original.create.mock.calls.map(([input]) => input.name)).toEqual(["first"]);
+    expect(successor.create).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
   it("rejects names that collide after normalization before creating any server", async () => {
     const { gateway, create } = runtimeGateway();
     const source = await openImport(gateway);

@@ -1,3 +1,4 @@
+import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { type FlameClient } from "@flame/runtime-client";
@@ -23,7 +24,7 @@ describe("MCP servers plugin Runtime generation wiring", () => {
     const retired = Promise.withResolvers<ReturnType<typeof runtimeServer>>();
     const update = vi.fn(() => retired.promise);
     let runtimeClient = () => ({ mcp: { update } }) as unknown as FlameClient;
-    let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
+    let generation: RuntimeConnectionGeneration | null = null;
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.mcp-runtime-generation",
@@ -45,6 +46,9 @@ describe("MCP servers plugin Runtime generation wiring", () => {
       runtime,
       createMCPServersPlugin(() => runtimeClient()),
     );
+    expect(() => MCPServerMutationOwner.current()).toThrow("not installed");
+    generation = RuntimeConnectionGeneration.forProcess("runtime_1");
+    for (const subscriber of subscribers) subscriber();
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
 
     const command = rejected(setMCPServerEnabled(userMCPServer("cloud"), false));
@@ -54,6 +58,9 @@ describe("MCP servers plugin Runtime generation wiring", () => {
       .fn()
       .mockResolvedValue(runtimeServer({ status: { type: "disabled" } }));
     runtimeClient = () => ({ mcp: { update: successorUpdate } }) as unknown as FlameClient;
+    generation = null;
+    for (const subscriber of subscribers) subscriber();
+    expect(() => MCPServerMutationOwner.current()).toThrow("not installed");
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({
