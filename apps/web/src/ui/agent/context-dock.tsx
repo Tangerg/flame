@@ -14,6 +14,7 @@ import { color, motion, space, surface, type, weight } from "@flame/ui/tokens.st
 import { Icon, type IconName } from "@/ui/icons/index";
 import { ContextMenu } from "@/ui/atoms/menu";
 import { IconButton } from "@flame/ui/icon-button";
+import { isImeKey } from "@flame/ui";
 import { reveal } from "@/ui/atoms/reveal";
 import { ResizeHandle, type ResizeHandleProps } from "@/ui/atoms/resize-handle";
 import { TabsPrimitive } from "@/ui/primitives/index";
@@ -154,20 +155,43 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
   const rootRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const activeId = tabs.find((tab) => tab.active)?.id ?? tabs[0]?.id;
-  const closeAndFocus = (action: () => void) => {
+  const actAndSettleFocus = (
+    id: string,
+    action: () => void,
+    target: () => HTMLElement | null | undefined,
+  ) => {
+    const doc = rootRef.current?.ownerDocument;
+    const origin = doc?.activeElement;
+    const menu = Array.from(doc?.querySelectorAll<HTMLElement>("[data-dock-tab-menu]") ?? []).find(
+      (element) => element.dataset.dockTabMenu === id,
+    );
+    const ownsFocus =
+      origin != null &&
+      (origin === doc?.body || rootRef.current?.contains(origin) || menu?.contains(origin));
+    action();
+    if (!doc || !ownsFocus) return;
+    requestAnimationFrame(() => {
+      const focused = doc.activeElement;
+      if (focused !== origin && focused !== doc.body && !menu?.contains(focused)) return;
+      const next = target();
+      if (next?.isConnected) next.focus({ preventScroll: true });
+    });
+  };
+  const closeAndFocus = (id: string, action: () => void) => {
     const header = rootRef.current?.parentElement;
     const reopen = Array.from(
       header?.querySelectorAll<HTMLElement>(
         'button:not(:disabled), [tabindex]:not([tabindex="-1"])',
       ) ?? [],
     ).find((candidate) => !candidate.closest('[role="tablist"]'));
-    action();
-    requestAnimationFrame(() => {
-      const remaining =
+    actAndSettleFocus(
+      id,
+      action,
+      () =>
         rootRef.current?.querySelector<HTMLElement>('[role="tab"][data-active]') ??
-        rootRef.current?.querySelector<HTMLElement>('[role="tab"]');
-      (remaining ?? reopen)?.focus({ preventScroll: true });
-    });
+        rootRef.current?.querySelector<HTMLElement>('[role="tab"]') ??
+        reopen,
+    );
   };
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -207,17 +231,27 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
       onValueChange={(id) => tabs.find((tab) => tab.id === id)?.onSelect?.()}
       className="agent-dock-tabs"
     >
-      <TabsPrimitive.List aria-label={ariaLabel} {...stylex.props(styles.contents)} activateOnFocus>
+      <TabsPrimitive.List
+        aria-label={ariaLabel}
+        {...stylex.props(styles.contents)}
+        activateOnFocus
+        onMouseDown={(event) => {
+          if (event.button === 1) event.preventDefault();
+        }}
+      >
         {tabs.map((tab, index) => {
           const close = () => {
-            closeAndFocus(tab.onClose);
+            closeAndFocus(tab.id, tab.onClose);
           };
           const move = (toIndex: number) => {
             const trigger = Array.from(
               rootRef.current?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [],
             ).find((element) => element.dataset.dockTabId === tab.id);
-            reorder?.onMove(tab.id, toIndex);
-            requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
+            actAndSettleFocus(
+              tab.id,
+              () => reorder?.onMove(tab.id, toIndex),
+              () => trigger,
+            );
           };
           const row = (
             <div
@@ -254,6 +288,7 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
                 data-focus-inset=""
                 onKeyDown={(event) => {
                   if (event.key !== "Delete" && event.key !== "Backspace") return;
+                  if (event.defaultPrevented || isImeKey(event.nativeEvent)) return;
                   event.preventDefault();
                   close();
                 }}
@@ -279,7 +314,7 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
           return (
             <ContextMenu.Root key={tab.id}>
               <ContextMenu.Trigger render={row} />
-              <ContextMenu.Content>
+              <ContextMenu.Content data-dock-tab-menu={tab.id}>
                 {reorder && (
                   <>
                     <ContextMenu.IconItem
@@ -306,7 +341,7 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
                   <ContextMenu.IconItem
                     icon="close-others"
                     disabled={tabs.length < 2}
-                    onSelect={() => closeAndFocus(tab.onCloseOthers!)}
+                    onSelect={() => closeAndFocus(tab.id, tab.onCloseOthers!)}
                   >
                     {tab.closeOthersLabel}
                   </ContextMenu.IconItem>
@@ -314,7 +349,7 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
                 {tab.onCloseAll && (
                   <ContextMenu.IconItem
                     icon="close-all"
-                    onSelect={() => closeAndFocus(tab.onCloseAll!)}
+                    onSelect={() => closeAndFocus(tab.id, tab.onCloseAll!)}
                   >
                     {tab.closeAllLabel}
                   </ContextMenu.IconItem>
