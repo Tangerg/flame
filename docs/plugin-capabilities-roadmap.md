@@ -1,8 +1,9 @@
 # Plugin capabilities roadmap
 
-Forward-looking TODO for extending Flame's plugin line beyond Memory and Schedules.
+Capability worklist extending Flame's plugin line beyond Memory and Schedules.
 Knowledge base, GitHub, Model router, Guardrails, Web research, Saved usage
-reports and Native sandbox are now implemented as ordinary first-party backends. The architecture refactor is covered
+reports, Native sandbox and File watch are now ordinary first-party backends.
+The architecture refactor is covered
 by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is about
 *which capabilities to build next as plugins, and in what order.*
 
@@ -15,11 +16,12 @@ by `plugin-refactor-progress.md` / `plugin-refactor-handoff.md`; this file is ab
   entry now receives the same call-scoped canonical host grant as its public
   `plugins.call` entry, through the single owner `Pool.OpenRPC` (commit
   `a15f2f9e4`). Memory keeps its own narrow model/embedding grant by design.
-- Nine first-party backends: `runtime/internal/plugins/memory`,
+- Ten first-party backends: `runtime/internal/plugins/memory`,
   `runtime/internal/plugins/schedules`, `runtime/internal/plugins/knowledgebase`,
   `runtime/internal/plugins/github`, `runtime/internal/plugins/modelrouter`,
   `runtime/internal/plugins/guardrails`, `runtime/internal/plugins/web`,
-  `runtime/internal/plugins/usagereports`, `runtime/internal/plugins/sandbox`.
+  `runtime/internal/plugins/usagereports`, `runtime/internal/plugins/sandbox`,
+  `runtime/internal/plugins/filewatch`.
 - Examples: `examples/plugins/reviews` (backend + typed ops + MCP tools + a
   declared analyzer dependency + board UI; one analyzer business is exposed as
   *both* a typed query and the `analyze_review` Tool), `examples/plugins/composition`
@@ -58,6 +60,10 @@ model *selection* is a published contract a plugin may contribute; model
   `CallTextEmbedding`). Independent model exchange: `flame.model/selected-call.v1`
   / `selected-stream.v1` (`CallSelectedModel`, `StreamSelectedModel`).
 - Accept a durable Run from a backend: the schedules pattern (canonical RPC).
+- Workspace observation: the public `runtime.subscribe` stream with
+  `files.changed` and exact `WatchSpec` paths. Runtime owns path admission,
+  sequence/resync and cancellation/join. A declared background contribution
+  starts the source from `ActivationResource.Start`; the plugin owns its meaning.
 - Composition / UI: `context.compose` with collection / selection / decoration;
   consumer-defined points; `placement: export` components; `workspaceView`.
 - Private store: `plugin/sqlite` (original-input admission, nullable settlement,
@@ -84,11 +90,11 @@ model *selection* is a published contract a plugin may contribute; model
 - [x] **Usage / cost reports, daily / weekly summaries.** A projection plugin: it
       *reads* core accounting facts and owns its own report store + UI. Accounting
       totals stay core. Good vehicle to also measure composition/callback latency.
-- [ ] **Event-driven watchers / triggers (webhook, file-watch → start a Run).**
+- [x] **Event-driven watchers / triggers (webhook, file-watch → start a Run).**
       Same "accept a durable Run" shape as schedules, but event- not time-driven.
-      **Gap:** there is no external-event *ingress* contract today — how an external
-      event reaches the plugin backend process is unbuilt. This one needs a new,
-      root-cause ingress mechanism first; do not bolt it onto tool/callback.
+      File watch now uses the existing public workspace subscription and declared
+      background activation. Its source needs no new core event bus or Tool
+      ingress. A webhook listener would be a separate concrete source requirement.
 
 ## Recommended sequencing
 
@@ -106,8 +112,8 @@ model *selection* is a published contract a plugin may contribute; model
 The user directed the remaining design to the local `study/codex-server` reference
 (snapshot `7c073196a1`, location in `DEVELOPMENT.md`). Its implementation separates
 execution target, permission policy and platform enforcement. Docker and Seatbelt
-are therefore not competing choices at one boundary. Native sandbox is complete;
-file ingress remains unchecked until its implementation and verification.
+are therefore not competing choices at one boundary. Native sandbox and file
+ingress are complete and verified within the boundaries below.
 
 - Code execution: reuse Flame's existing native confinement mechanism for the
   actual execution platform. The current macOS `sandbox.Workspace` owns a temporary
@@ -122,9 +128,11 @@ file ingress remains unchecked until its implementation and verification.
 - Event ingress: use workspace file changes as the first concrete source.
   Codex's `fs/watch` → `fs/changed` → `fs/unwatch` protocol supplies a useful
   connection-scoped subscription/lifetime precedent. Its `fs_watch.rs` only emits
-  notifications; starting a Turn is a separate canonical operation. Flame needs
-  its own published watch subscription mechanism, with host-owned path admission,
-  source lifetime and bounded delivery. The plugin owns trigger rules, accepted
+  notifications; starting a Turn is a separate canonical operation. Tracing Flame
+  established that its existing published `runtime.subscribe` already owns path
+  admission, source lifetime and bounded delivery. The original gap assessment
+  was stale; the installed source now consumes that contract. The plugin owns
+  trigger rules, accepted
   event facts and captured dispatch intent; core owns canonical Run acceptance,
   lifecycle and accounting. Coalesced OS changes are observations, not a durable
   event log; accepted plugin dispatch intent must survive interruption/restart.
@@ -362,6 +370,49 @@ worktree rebases onto `main`; subjects and changed owners identify each round.
   One acceptance fixture incorrectly searched text content instead of Scope's
   structured `details`; it now checks the actual status, exit code and output.
   No plugin UI or shared presentation code changed in this round.
+
+- `2becf4a4d` implements File watch. The existing public Runtime workspace
+  subscription supplies the source; no core event bus, duplicate watcher, Tool
+  ingress or Run engine was needed. One installation owns one persistent trigger
+  with up to 32 exact paths. Activation starts observation only after setup and
+  joins it on withdrawal. Configuration acceptance and actual observation status
+  remain distinct facts. An initialization/stream failure requires explicit rearm.
+- Before Run I/O, one private transaction captures the original rule revision,
+  observed paths/time, stream generation/sequence, exact model choice,
+  Session/Run identities and automatic installation invocation. Reconciliation
+  queries core acceptance for that exact request before submission. Disable,
+  definition edits, lost replies and restart cannot rewrite or repeat accepted
+  work. Core remains the sole Run, execution and accounting authority.
+- Coalesced notifications are observations, not durable writes. Resync or a
+  sequence gap captures an explicit request to inspect all configured paths;
+  it never invents a specific write. Startup establishes a new baseline without
+  replaying unobserved changes. The private bound is 32 pending intents and 256
+  retained observations; only confirmed history may be pruned. Read lists carry
+  compact headers, with one full capture per detail query to respect frame budgets.
+- File watch verification passed: Runtime build/vet, changed backend tests with
+  race detection, dependency/naming gates, SDK and MCP/plugin adapter suites,
+  Reviews tests, and real installed stdio observation/typed operations. The
+  acceptance fixture withholds a real core opening and its acceptance reads,
+  disables the rule, then restarts and confirms the same intent without another
+  model call. It also verifies rearm and a second external edit. Native sandbox's
+  installed typed/model test passed again alongside it.
+- Generated schemas treat an omitted optional trigger as disable; a pointer
+  alone does not admit JSON null. Configuration, storage projection and generated
+  consumers use that one contract. `fc9303273` supplies the previously omitted
+  core observation time in the public Usage sample; both sample/schema tests pass.
+- The full frontend run exposed a restart fixture that waited for Memory and
+  Schedules while its paused tree retained other MCP sources from earlier cases.
+  `1408216b4` waits for the previously published source set through existing public
+  MCP queries before Resume. The same-name Tool identity and approval assertions
+  remain intact; all 49 HTTP lifecycle cases pass together. Core's accepted
+  activation-failure semantics did not change.
+- All eight candidate capabilities are complete. On main baseline `12ede5f0d`,
+  the full frontend check passed, including all 383 files / 2865 tests, static
+  boundaries, resource reproducibility, production bundle budgets and module
+  linkage. The plugin check passed separately. Runtime build and changed Go
+  validation above are green; no graphical component API or core authority moved
+  into a plugin. The existing composition/callback baseline below remains the
+  measured reference; no speculative performance tuning was added.
 
 ## Composition and callback baseline
 
