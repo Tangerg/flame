@@ -176,6 +176,13 @@ retirement. Failed pagination keeps the accepted page/cursor. Shared-client reco
 and backend background activation are covered separately from excluded graphical
 window-reload interaction.
 
+Catalog loading, failed reads and accepted empty pages remain distinct. Only an
+accepted page supplies records, counts or an empty result; it stays visible while
+another read is pending or fails. Read failures name Refresh as the recovery
+action and claim retained data only when a page was accepted. Refresh preserves
+its keyboard position during reads while blocking repeated activation; unresolved
+commands retain their independent native disablement.
+
 ## Declared background activation
 
 The schedules-provider contribution declares background activation independently of
