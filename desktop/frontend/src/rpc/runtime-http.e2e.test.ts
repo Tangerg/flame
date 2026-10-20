@@ -3173,10 +3173,7 @@ for await (const line of lines) {
       ],
     });
     const firstResumeEvents = await collectRunEvents(originalOpeningEvents(resumed));
-    expect(
-      firstResumeEvents.at(-1)?.event,
-      JSON.stringify(firstResumeEvents.at(-1)?.event),
-    ).toMatchObject({
+    expect(firstResumeEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
       run: { status: "waiting" },
       interrupts: expect.arrayContaining([expect.anything()]),
