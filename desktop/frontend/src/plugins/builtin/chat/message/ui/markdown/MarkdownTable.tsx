@@ -1,5 +1,6 @@
 import { iconGlyph } from "@/ui/icons";
 import { useCallback, useRef, useState, type ReactNode } from "react";
+import { FileReferencePresentationContext } from "@/plugins/builtin/chat/file-references/public/FileRefLink";
 import { copyRichText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { useCopyFeedback } from "@flame/ui";
@@ -16,7 +17,9 @@ export function MarkdownTable({ markdownSource, children }: Props) {
   const t = useT();
   const scroll = useScrollReach();
   const reachable = scroll.tabIndex === 0;
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [preview, setPreview] = useState<"closed" | "open" | "navigated">("closed");
+  const previewOpen = preview === "open";
+  const expandRef = useRef<HTMLButtonElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const writeTable = useCallback(
     (plainText: string) =>
@@ -33,13 +36,15 @@ export function MarkdownTable({ markdownSource, children }: Props) {
       <div className="md-table-actions" data-reveal="hover" data-markdown-copy="exclude">
         <LightboxDialog
           open={previewOpen}
-          onOpenChange={setPreviewOpen}
+          onOpenChange={(open) => setPreview(open ? "open" : "closed")}
+          finalFocus={preview !== "navigated"}
           title={t("message.table.preview")}
           kind="document"
           closeLabel={t("message.table.closePreview")}
           contentLabel={t("message.table.content")}
           trigger={
             <IconButton
+              ref={expandRef}
               icon={iconGlyph("maximize")}
               size="xs"
               quiet
@@ -49,11 +54,15 @@ export function MarkdownTable({ markdownSource, children }: Props) {
             />
           }
         >
-          <div className="md md-table-preview" data-prose="">
-            <table dir="auto" data-slot="prose-table">
-              {children}
-            </table>
-          </div>
+          <FileReferencePresentationContext
+            value={{ origin: expandRef, onOpen: () => setPreview("navigated") }}
+          >
+            <div className="md md-table-preview" data-prose="">
+              <table dir="auto" data-slot="prose-table">
+                {children}
+              </table>
+            </div>
+          </FileReferencePresentationContext>
         </LightboxDialog>
         <IconButton
           icon={iconGlyph(copied ? "check" : "copy")}

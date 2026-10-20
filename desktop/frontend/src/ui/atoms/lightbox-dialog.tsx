@@ -1,5 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
-import { useRef, type KeyboardEventHandler, type ReactElement, type ReactNode } from "react";
+import {
+  useRef,
+  type ComponentProps,
+  type KeyboardEventHandler,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { cn } from "@/lib/classNames";
 import { iconGlyph } from "@/ui/icons";
 import { layout, space, surface, type, weight } from "@flame/ui/tokens.stylex";
@@ -80,6 +86,7 @@ interface LightboxBaseProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
+  finalFocus?: ComponentProps<typeof DialogPrimitive.Popup>["finalFocus"];
   trigger: ReactElement;
   title: ReactNode;
   children: ReactNode;
@@ -95,6 +102,7 @@ export function LightboxDialog(props: LightboxDialogProps) {
     open,
     onOpenChange,
     onKeyDown,
+    finalFocus,
     trigger,
     title,
     children,
@@ -113,6 +121,7 @@ export function LightboxDialog(props: LightboxDialogProps) {
         <DialogPrimitive.Popup
           ref={popupRef}
           initialFocus={kind === "document" ? documentRef : popupRef}
+          finalFocus={finalFocus}
           tabIndex={-1}
           aria-describedby={undefined}
           onKeyDown={onKeyDown}

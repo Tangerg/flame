@@ -1,10 +1,19 @@
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  within,
+} from "@testing-library/react";
 import { useState } from "react";
 import { SearchField } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceViewSpec } from "@/plugins/sdk";
 import { navigator } from "@/lib/navigation";
 import { FileRefLink } from "@/plugins/builtin/chat/file-references/public/FileRefLink";
+import { MessageTurn } from "@/plugins/builtin/chat/message/public/rendering";
 import {
   activateWorkspaceSessionScope,
   openWorkspaceFile,
@@ -12,9 +21,33 @@ import {
   openWorkspaceView,
   openWorkspaceViewInDock,
   showWorkspaceDock,
+  useWorkspaceFileViewer,
   useWorkspaceSubagentRunId,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { ChatPanel } from "./ChatPanel";
+
+const TABLE = "| File | Note |\n|---|---|\n| app/ui/resizer.ts:6 | README.md:4 |";
+
+function AnswerTurn({ text }: { text: string }) {
+  return (
+    <MessageTurn
+      row={{
+        message: {
+          id: "answer",
+          runId: "run-answer",
+          role: "assistant",
+          blocks: [{ kind: "text", itemId: "answer-text", text, status: "complete" }],
+        },
+        runOwner: { kind: "owned", runId: "run-answer", status: "finished" },
+        facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map<string, string>() },
+      }}
+      ctx={{ expandedIds: new Set(), onToggleExpand: () => {}, textReveal: "instant" }}
+      sessionId="ses_first"
+      isLast
+      isRunning={false}
+    />
+  );
+}
 
 const model = vi.hoisted(() => ({ sessionId: "ses_first", views: [] as WorkspaceViewSpec[] }));
 vi.mock("@/plugins/builtin/agent/public/session", () => ({
@@ -49,6 +82,7 @@ vi.mock("./ChatStream", async () => {
     ChatStream: () => (
       <>
         <FileRefLink path="src/main.ts" line={4} />
+        <AnswerTurn text={"| Path |\n|---|\n| src/stream.ts:2 |\n| docs/selected.md:9 |"} />
         <button onClick={(event) => openWorkspaceSubagentRun("child", event.currentTarget)}>
           Inspect task
         </button>
@@ -70,6 +104,7 @@ function ChildReader() {
         Inspect nested task
       </button>
       <FileRefLink path="src/child.ts" line={8} />
+      <AnswerTurn text={TABLE} />
     </>
   );
 }
@@ -366,5 +401,151 @@ describe("material inspection focus", () => {
     });
     view.rerender(<ChatPanel onSend={() => true} />);
     expect(screen.queryByRole("button", { name: "Back to conversation" })).toBeNull();
+  });
+});
+
+describe("table preview file references", () => {
+  function conversation() {
+    return screen.getByRole("region", { name: "Conversation" });
+  }
+
+  async function openPreview(scope: HTMLElement) {
+    const expand = await within(scope).findByRole("button", { name: "Expand table" });
+    act(() => expand.focus());
+    fireEvent.click(expand);
+    return { expand, dialog: screen.getByRole("dialog", { name: "Table preview" }) };
+  }
+
+  async function settle() {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+
+  it("ends the preview, opens the exact line in the Dock and returns to the source table", async () => {
+    const viewer = renderHook(useWorkspaceFileViewer);
+    render(<ChatPanel onSend={() => true} />);
+    const { expand, dialog } = await openPreview(conversation());
+    const reference = within(dialog).getByRole("button", { name: "src/stream.ts:2" });
+    act(() => reference.focus());
+    fireEvent.click(reference, { detail: 1 });
+    await settle();
+
+    expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
+    expect(viewer.result.current).toEqual({ path: "src/stream.ts", line: 2 });
+    expect(navigator().get().dock).toBe("file");
+    const dock = screen.getByRole("complementary", { name: "Files" });
+    expect(document.activeElement).toBe(dock);
+
+    fireEvent.keyDown(dock, { key: "Escape" });
+    expect(document.activeElement).toBe(expand);
+  });
+
+  it("returns through a task table preview to the same task and then the conversation", async () => {
+    const viewer = renderHook(useWorkspaceFileViewer);
+    render(<ChatPanel onSend={() => true} />);
+    const source = screen.getByRole("button", { name: "Inspect task" });
+    act(() => source.focus());
+    fireEvent.click(source);
+    const task = screen.getByRole("complementary", { name: "Subagents" });
+    fireEvent.click(within(task).getByRole("button", { name: "Evidence 0" }));
+    const { expand, dialog } = await openPreview(task);
+    const reference = within(dialog).getByRole("button", { name: "README.md:4" });
+    act(() => reference.focus());
+    fireEvent.keyDown(reference, { key: "Enter" });
+    await settle();
+
+    expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
+    expect(viewer.result.current).toEqual({ path: "README.md", line: 4 });
+    expect(document.activeElement).toBe(screen.getByRole("complementary", { name: "Files" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to task" }));
+    expect(navigator().get()).toMatchObject({ dock: "subagents", subagent: "child" });
+    expect(document.activeElement).toBe(expand);
+    expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
+
+    fireEvent.keyDown(screen.getByRole("complementary", { name: "Subagents" }), {
+      key: "Escape",
+    });
+    expect(document.activeElement).toBe(source);
+  });
+
+  it("returns a main-only table preview inspection to the same main source", async () => {
+    model.views.push({
+      id: "main-table",
+      title: "Table material",
+      component: () => <AnswerTurn text={TABLE} />,
+    });
+    openWorkspaceView("main-table");
+    render(<ChatPanel onSend={() => true} />);
+    const { expand, dialog } = await openPreview(
+      screen.getByRole("region", { name: "Table material" }),
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "app/ui/resizer.ts:6" }));
+    await settle();
+    expect(navigator().get()).toMatchObject({ view: null, dock: "file" });
+
+    fireEvent.keyDown(screen.getByRole("complementary", { name: "Files" }), { key: "Escape" });
+    expect(navigator().get().view).toBe("main-table");
+    expect(document.activeElement).toBe(expand);
+  });
+
+  it("keeps the inline table reference as its own origin", async () => {
+    render(<ChatPanel onSend={() => true} />);
+    const reference = await within(conversation()).findByRole("button", {
+      name: "src/stream.ts:2",
+    });
+    act(() => reference.focus());
+    fireEvent.click(reference, { detail: 1 });
+    expect(navigator().get().dock).toBe("file");
+
+    fireEvent.keyDown(screen.getByRole("complementary", { name: "Files" }), { key: "Escape" });
+    expect(document.activeElement).toBe(reference);
+  });
+
+  it("keeps a selected reference inert without blocking keyboard activation", async () => {
+    const viewer = renderHook(useWorkspaceFileViewer);
+    render(<ChatPanel onSend={() => true} />);
+    const { dialog } = await openPreview(conversation());
+    const reference = within(dialog).getByRole("button", { name: "docs/selected.md:9" });
+    const range = document.createRange();
+    range.selectNodeContents(reference.closest("td")!);
+    const selection = document.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    try {
+      fireEvent.click(reference, { detail: 1 });
+      expect(screen.getByRole("dialog", { name: "Table preview" })).toBe(dialog);
+      expect(viewer.result.current?.path).not.toBe("docs/selected.md");
+      expect(navigator().get().dock).toBeNull();
+
+      act(() => reference.focus());
+      fireEvent.keyDown(reference, { key: "Enter" });
+      expect(viewer.result.current).toEqual({ path: "docs/selected.md", line: 9 });
+    } finally {
+      selection.removeAllRanges();
+    }
+  });
+
+  it("returns an ordinary close to Expand before and after a navigated preview", async () => {
+    render(<ChatPanel onSend={() => true} />);
+    let { expand, dialog } = await openPreview(conversation());
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await settle();
+    expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
+    expect(navigator().get().dock).toBeNull();
+    expect(document.activeElement).toBe(expand);
+
+    ({ dialog } = await openPreview(conversation()));
+    fireEvent.click(within(dialog).getByRole("button", { name: "src/stream.ts:2" }));
+    await settle();
+    fireEvent.keyDown(screen.getByRole("complementary", { name: "Files" }), { key: "Escape" });
+    expect(document.activeElement).toBe(expand);
+
+    ({ expand, dialog } = await openPreview(conversation()));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close table preview" }));
+    await settle();
+    expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
+    expect(document.activeElement).toBe(expand);
   });
 });

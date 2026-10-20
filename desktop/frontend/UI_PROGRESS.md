@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. MCP draft lifetime and import-name validation are integrated; pending commands hold their submitted fields. Captured Tool JSON retains its original literal tokens during indentation and copy. Ordinary pasted-text editing/return is integrated at `d15175820`; the oversized-editor qualification at `50015e78c` remains a separate native limit. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. Table-preview file navigation now ends the preview and retains the original table/task return anchor. MCP draft lifetime and import-name validation are integrated; pending commands hold their submitted fields. Captured Tool JSON retains its original literal tokens during indentation and copy. Ordinary pasted-text editing/return is integrated at `d15175820`; the oversized-editor qualification at `50015e78c` remains a separate native limit. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -17,6 +17,8 @@ The generic Tool inspector also preserves the original JSON tokens in its result
 Pasted-text review exposed a separate native defect: Put back in message discarded the current edit, restored the original paste and left focus on the document. The repair sends the edited text through one ComposerDraft transition and chooses a close destination from the owner's actual result. Full frontend gates, the supported Wails build and ordinary native editing/return paths pass. The separate 50,002-line preview retains its exact text but still loses readable native accessibility state at the approved typography. Plain native and captured static-DOM controls isolate initialization and font-dependent conditions, qualified below. Neither standalone experiment repairs the production path; no initialization workaround or font substitution was retained.
 
 MCP configuration editors now retire obsolete connection-test feedback when a field changes. Cancel retires the editor while the existing command owner finishes admitted work; an old completion cannot close a newly opened draft. Pending fields remain focusable and read-only, transport and retained-secret choices hold their submitted values, and Test refuses another operation without leaving the tab order. Failed commands retain the exact editable draft and the user's current focus. JSON import now rejects source names that collapse to one canonical name before admitting any create. The parser owns collision data; the view localizes recovery copy and renders each original/final name as literal text. Successful order and rename notices retain their existing owners.
+
+A file reference activated inside an expanded Markdown table now ends that bounded preview and enters the existing Workspace inspection flow. Its source is the surviving Expand table control, so returning restores the same table and retains a delegated task's prior source. Ordinary Close/Escape still return to Expand; reopening resets that policy. Inline references, text selection and table copy retain their owners. Native acceptance covers Actual Size, narrow windows and a 320 px Dock. A separate 200% probe exposed the existing narrow/full-pane host navigation gap described below; it does not qualify that complete flow.
 
 Task-oriented layout and interaction apply across the conversation, Context Dock, settings and installed views. Preserve the approved brand, shared reading hierarchy, Composer, code/table/selection fixes, sidebar-matching Dock seam and custom-accent theme owner. The earlier `cap`-based inline-icon sizing tip is a suggestion for future typography work, not a global icon redesign.
 
@@ -165,6 +167,14 @@ provides formatting edits and their application. Flame uses that source-editing
 API in the existing inspector projection, with strict syntax qualification and
 regressions for token fidelity.
 
+Table-reference review compared ZCode's actual `components/ui/dialog.tsx`,
+HeroUI's controlled Modal examples and the [Radix Dialog focus model](https://www.radix-ui.com/primitives/docs/components/dialog).
+Those sources distinguish a bounded modal's trigger/close lifecycle from a
+persistent material destination. Flame keeps Base UI and its existing Workspace
+inspection owner: navigation ends the temporary copy, while the surviving source
+control carries the return context. This review applies the better-series focus
+and layout guidance without changing established typography, colors or geometry.
+
 For color-system work, retain the user's [Radix Colors](https://www.radix-ui.com/colors) and [HeroUI colors](https://heroui.com/en/docs/react/getting-started/colors) references. The default brand color is **Flame Orange `#FB6E30`**; users can choose their own interface accent through the existing theme owner. Approved brand artwork retains its original color. Avoid recreating the palette, appearance store or brand identity.
 
 The older review at `/Users/tangerg/Desktop/flame/desktop/docs/Flame-Desktop-UI-Review-ZCode-2026-09-23.md` contains historical observations and reference pointers. Revalidate its findings against current code and behavior before using any item as a new task.
@@ -188,6 +198,8 @@ The older review at `/Users/tangerg/Desktop/flame/desktop/docs/Flame-Desktop-UI-
 | Authoring and acceptance      | One captured submission owns draft consumption and history. Rejected input stays editable; delayed acceptance preserves successor revisions, Session changes, attachment staging and other controls' focus. Goal and slash extensions share this settlement contract.                                                                                          |
 
 File-reference gesture behavior lives in `/Users/tangerg/Desktop/flame/desktop/frontend/src/plugins/builtin/chat/file-references/public/FileRefLink.tsx`: pointer activation consults the browser's existing selection; keyboard activation remains available. It introduces no separate selection state. Read current callers and coverage before changing this boundary.
+
+`FileReferencePresentationContext` carries only a transient presentation's source ref and completion callback. `MarkdownTable` supplies it to the preview copy, leaving inline references unchanged. The existing file command still owns navigation and the existing inspection owner still records ancestry, previous inspection and active focus. One local `closed`/`open`/`navigated` state selects the preview's close policy. `LightboxDialog` forwards Base UI's typed `finalFocus` option; a file navigation suppresses dialog refocus while ordinary dismissal keeps the default. No route observer, focus retry, new navigation record or Runtime contract was added.
 
 Activity disclosures now retain their quiet chevron before hover, making the
 summary-to-evidence route discoverable. Their existing toggle, rotation and
@@ -534,6 +546,17 @@ remain the visual basis.
 
 ## Verification checkpoint
 
+For table-preview file navigation:
+
+- The old actual Wails build reproduced pointer and keyboard file activation opening the requested file behind the still-visible preview, with focus outside the modal. Closing it and returning then focused Conversation because the Portal reference had retired. The bounded Claude Code CLI implementation was reviewed; its original-source recheck failed four new cases and passed eighteen existing/preservation cases. The final source was restored before the primary agent's checks and native builds.
+- The primary focused run passed 13 files and 140 tests. The six new integration cases use the public `MessageTurn` and real Workspace navigation: pointer and keyboard entry, exact path/line, task and main-only source returns, inline origins, selection refusal and ordinary dismissal after reopening. Shared UI `npm run check` passed 58 tests and its independently packed UI/icons consumer; portable `npm run check` passed all ten resource checks.
+- The final frontend `VITEST_MAX_WORKERS=2 npm run check` passed 382 files and 2864 tests, followed by every required source, style, locale, resource, bundle and module gate. Non-failing loopback `ECONNREFUSED` diagnostics remain unclassified. The supported production Wails arm64 build passed with actual dependency installation; `vtool` confirmed macOS 13.0. The existing duplicate `-lobjc` linker warning was non-failing. Go, Runtime, SDK, shared package sources and dependencies are unchanged.
+- Actual Wails acceptance checked English/dark/18 px/custom blue at 1440 × 900 and Chinese/light/14 px/Flame Orange in a native system-resized 1122 × 950 window with a pointer-resized 320 px Dock. Enter and Space enter the exact file after the preview exits. Dock Escape and explicit source return restore Expand; ordinary Escape/Close after reopening also restore it. Dragging the path keeps the preview open, native Copy/paste retains its literal text, and keyboard reference activation remains available. Inline entry still returns to its own reference and preserves Composer text.
+- A real delegated-message scene extended the canonical captured data with 39 rows. Wheel and Page Down reached later rows while the preview title, column headings and Close remained available. Opening the last README reference focused Files, Back to task restored the same task's Expand control, Enter reopened it, and Back to conversation restored the original Sub-agent entry. The original table viewport and source narrative stayed in place; returning does not automatically reopen the completed preview.
+- Additional native 200% probing used the existing full-width material action. Preview file activation retained the exact file/line and the full-pane source, but the narrow host initially hid the file behind its manual full-width entry. The full-width file header exposes Close rather than Back to task. Restoring Actual Size and closing the main file revealed the Dock return, which restored the full-width task/table. This is a separate unchanged host presentation/return gap, not a passing 200% end-to-end result or a diagnosis of the previously documented WebKit scrolling limit.
+- Acceptance ran production components and the native Wails host with isolated canonical in-memory data, not a live user Runtime or filesystem. No browser/visual suite or performance baseline was run. VoiceOver, native IME, pixel contrast, other platforms and fresh native image/pasted-text Lightbox coverage were not run. Their unchanged callers remain covered by the full frontend regressions.
+- The baseline, three fixed-scene processes and Claude Code CLI exited. Both owned bundles were unregistered, and the four newly created bundle caches/WebKit directories were removed after UID/birth checks. The owned review root, fixture output, binaries, disposable data, logs and CLI temporary files were removed. User data, reference caches and unrelated processes remain intact.
+
 For MCP JSON import name validation:
 
 - `application/mcpImport.ts` now rejects distinct source keys that normalize to one server name, including case folding, punctuation cleanup and truncation. One local Map records the source of each canonical name. `McpImportNameCollision` carries both source names and their shared target; the parser still completes before the view admits any create. Existing normalization, input order, rename reporting and Runtime create/conflict ownership remain.
@@ -738,6 +761,14 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 ## Future review candidates
 
+Table-preview file handoff is implemented and qualified above. Preserve its
+surviving source anchor and the distinction between ordinary dismissal and
+navigation. The next reproduced gap belongs to the host: when geometry cannot
+present a Dock, an explicit file inspection requires a separate full-width open,
+and the full-width header provides no return-to-source action. Investigate that
+presentation/focus boundary using the existing inspection record; do not add a
+second navigation stack or expand the completed table/selection repair.
+
 The native tab-to-handle investigation is complete. Pure keyboard traversal and
 resizing are qualified above; clicked-label reverse traversal reproduces in bare
 HTML and remains a platform limitation. Preserve the existing geometry and focus
@@ -777,7 +808,7 @@ cancellation while extending other task paths.
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.
 5. **Continue across other pages.** Memory authoring, command feedback and local cancellation are completed at Actual Size, with verification above. Its draft deliberately permits independent approval/unpin work in the catalog; preserve that model rather than applying Schedules' modal choice to every form. Other settings, installed views and dialogs still need task-specific inspection of location, scope, current-object actions and return paths. Retain the approved brand and Composer contracts.
 
-These are review candidates, not defects or required rewrites. The latest objective resumes work and supersedes the earlier Schedules pause. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
+Except for the explicitly reproduced narrow/full-pane host gap above, these are review candidates, not defects or required rewrites. The latest objective resumes work and supersedes the earlier Schedules pause. Separate reproduced defects from design judgments and unverified hypotheses. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 
 ## Working and maintenance practice
 

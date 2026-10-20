@@ -1,6 +1,15 @@
-import { Fragment } from "react";
+import { createContext, Fragment, use, type RefObject } from "react";
 import { openWorkspaceFile } from "@/plugins/builtin/workspace/public/navigation";
 import { Pressable } from "@/ui";
+
+export interface FileReferencePresentation {
+  origin: RefObject<HTMLElement | null>;
+  onOpen: () => void;
+}
+
+export const FileReferencePresentationContext = createContext<FileReferencePresentation | null>(
+  null,
+);
 
 export function FileRefLink({
   path,
@@ -11,6 +20,7 @@ export function FileRefLink({
   line: number;
   column?: number;
 }) {
+  const presentation = use(FileReferencePresentationContext);
   const label = line > 0 ? `${path}:${line}${column > 0 ? `:${column}` : ""}` : path;
   return (
     <Pressable
@@ -27,7 +37,8 @@ export function FileRefLink({
           selection.containsNode(event.currentTarget, true)
         )
           return;
-        openWorkspaceFile(path, line, event.currentTarget);
+        openWorkspaceFile(path, line, presentation?.origin.current ?? event.currentTarget);
+        presentation?.onOpen();
       }}
     >
       {label.split("/").map((segment, index) => (
