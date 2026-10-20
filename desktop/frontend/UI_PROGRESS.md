@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-20. Captured Tool JSON now retains its original literal tokens during indentation and copy. Ordinary pasted-text editing/return is integrated at `d15175820`; the oversized-editor qualification at `50015e78c` remains a separate native limit. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
+Updated: 2026-10-20. MCP configuration drafts now own their test feedback and completion callbacks; pending commands hold their submitted fields. Captured Tool JSON retains its original literal tokens during indentation and copy. Ordinary pasted-text editing/return is integrated at `d15175820`; the oversized-editor qualification at `50015e78c` remains a separate native limit. The approved brand, Composer, CLI and earlier reading/Context Dock work remain integrated; Git history retains their chronology.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -15,6 +15,8 @@ Recorded Tool readers now share the literal code reader's local Select All bound
 The generic Tool inspector also preserves the original JSON tokens in its result and secondary Arguments. Two-space indentation edits source whitespace instead of recreating values: large IDs, precise decimals, exponent spellings, negative zero, duplicate members and string escapes survive both reading and copying. Invalid structured text remains literal. The existing result-first hierarchy, CodeBody selection/copy and direct raw-argument action retain their owners.
 
 Pasted-text review exposed a separate native defect: Put back in message discarded the current edit, restored the original paste and left focus on the document. The repair sends the edited text through one ComposerDraft transition and chooses a close destination from the owner's actual result. Full frontend gates, the supported Wails build and ordinary native editing/return paths pass. The separate 50,002-line preview retains its exact text but still loses readable native accessibility state at the approved typography. Plain native and captured static-DOM controls isolate initialization and font-dependent conditions, qualified below. Neither standalone experiment repairs the production path; no initialization workaround or font substitution was retained.
+
+MCP configuration editors now retire obsolete connection-test feedback when a field changes. Cancel retires the editor while the existing command owner finishes admitted work; an old completion cannot close a newly opened draft. Pending fields remain focusable and read-only, transport and retained-secret choices hold their submitted values, and Test refuses another operation without leaving the tab order. Failed commands retain the exact editable draft and the user's current focus.
 
 Task-oriented layout and interaction apply across the conversation, Context Dock, settings and installed views. Preserve the approved brand, shared reading hierarchy, Composer, code/table/selection fixes, sidebar-matching Dock seam and custom-accent theme owner. The earlier `cap`-based inline-icon sizing tip is a suggestion for future typography work, not a global icon redesign.
 
@@ -178,6 +180,7 @@ The older review at `/Users/tangerg/Desktop/flame/desktop/docs/Flame-Desktop-UI-
 | Code and recorded output      | One stable bounded code-reading region retains literal selection, scroll and focus as syntax highlighting arrives. Shared captions, wrapping and copy behavior are established. Loading messages no longer expose raw Markdown source as a temporary presentation.                                                                                             |
 | Selection and file references | Ordinary action-button drags cannot select the surrounding application. Reading text and inline file references remain selectable. Dragging a file reference preserves selection without navigating the Dock; ordinary clicks and Enter/Space still open its path and line. Native copy and whitespace dismissal work.                                         |
 | Tool rows                     | Rows reserve action space only when real actions exist. Recorded paths wrap at directory boundaries and retain literal copy. Expanded groups remain visible and clickable as the Dock narrows; the WebKit grid sizing repair preserves reversible transitions.                                                                                                 |
+| MCP configuration drafts      | The mounted editor owns feedback and view completion. Existing MCP commands retain their captured inputs, Runtime generation and cache-repair owner. Pending field/control presentation comes from the shared primitives. |
 | Context Dock                  | File identity and return navigation precede a separate wrapping mode/action row. Full directories remain available beneath the filename. Opening from the tree focuses the return action; returning restores the tree cursor without stealing another region's focus. Panels grow through their complete content; fixed pane seams paint above child surfaces. |
 | Subagent stop controls        | Shared filled stop marks and quiet circular controls replace the checkbox-like outline squares. Their placement is consistent across the narrative, Dock list and detail view; terminal entries reserve no dead cancel slot.                                                                                                                                   |
 | Main and delegated messages   | Both use `MessageTurn` and `MessageBlock` for spacing, prose, bubbles, long-input folding, tools, code, tables, media and message actions. Child rows retain their own Run and referenced facts. Their overview keeps its scroll position; returning restores the originating task's focus.                                                                    |
@@ -531,6 +534,26 @@ remain the visual basis.
 
 ## Verification checkpoint
 
+For MCP configuration draft ownership:
+
+- `settings/mcp-servers/ui/ServerForm.tsx` now resets the existing feedback lease on draft edits and deletion. Its layout lifetime fences save/delete callbacks after the editor retires. Fields use shared `pending`; transport and retained-secret switches hold their submitted choices. Cancel remains available, while the existing mutation owner still commits acknowledged work. No Runtime, gateway, draft/credential model, independent ToolControls command, shared UI or dependency changed.
+- Claude Code CLI (`claude-opus-5-5`) supplied the bounded implementation. All eight new regressions failed against the pinned original form; its three existing tests passed. The final primary focused run passed **13 files / 75 tests**, including feedback, captured command completion, reopened drafts, HTTP/stdio failure recovery and pending control refusal. The first full run stopped at `check:chrome` because Test used native `disabled` for pending work. Primary review corrected it to shared `pending` and added focus/refusal assertions; no check was bypassed.
+- The final `VITEST_MAX_WORKERS=2 npm run check` passed **381 files / 2,851 tests** and every subsequent gate. The supported `wails3 task build` passed actual dependency installation, all ten portable ESM builds and production bundling. `file`/`vtool` confirmed arm64, macOS 13.0 and SDK 26.5. Existing non-failing loopback `ECONNREFUSED` and duplicate `-lobjc` diagnostics remain unclassified or unchanged.
+- Actual Wails with the pinned original form reproduced stale Connection OK after changing Command, editable fields during save, and an old acknowledgement closing a newly opened Add draft. Final production components used a canonical isolated memory transport with explicit test/command responses. English/dark/18 px/custom blue at 1440 × 900 and Chinese/light/14 px/Flame Orange at native 1122 × 950 checked pointer, keyboard, focus, wheel scrolling and window resize. Old tests stay silent after edits; current tests remain visible. Read-only fields reject keyboard changes. Cancel/reopen preserves a new Add or Edit draft and its focus when the original command commits its captured input. HTTP save and stdio delete rejection retain the draft and unlock fields. Native pending Test traversal/Return refuses a second request; later rejection preserves that moved focus. Cancel returns to the actual Add/Edit opener.
+- The scope follows ZCode's actual `settings/McpServerList.tsx` and `McpServerForm.tsx` object/editor separation, Flame's existing feedback and command contracts, and the retained HeroUI/Radix control/focus principles. The inline editor remains appropriate to this bounded configuration task; no modal or new interaction framework was added.
+
+  | Domain | Evidence and qualification |
+  | --- | --- |
+  | Accessibility | Named controls, stable status/error feedback, pending focus/refusal and actual native returns; VoiceOver unverified |
+  | Layout | Existing RecordForm/FormRow, readable fields/actions and failure feedback in normal/narrow native scenes |
+  | Writing | Test feedback follows its captured draft; save/delete errors stay with retained configuration |
+  | Typography | Mixed Chinese/English, literal addresses and existing 14/18 px roles retained |
+  | Colors | Existing light/dark, custom blue, Flame Orange, focus and feedback roles retained; pixel contrast unmeasured |
+  | UI polish | Shared pending/read-only/disabled treatment and existing normal-motion controls retained |
+
+- Review verdict: the changed draft lifecycle and pending contracts pass the recorded scenes. No live Runtime writes, MCP process, network dial, OAuth, secret installation, OS IME, browser/visual suite or performance benchmark was exercised. Independent tool-policy actions, target removal during deletion, root Escape and other management forms are not newly qualified. No protocol or persisted-data migration is needed.
+- All owned native/CLI/test/build processes exited. The private bundles, baseline, fixture, homes, binaries, overlay, prompts/logs/reports and bundle-specific WebKit/cache paths were removed after ownership/birth-time checks. An accidental CLI `npx eslint` download was isolated to a newly created cache entry and removed; its temporary source probe was already deleted. Shared dependency/compiler caches, reference resources, unrelated worktrees/processes and user data remain.
+
 For captured Tool JSON fidelity:
 
 - The baseline model changed `9007199254740993` to `9007199254740992`, converted an overflowing exponent to `null`, collapsed negative zero and dropped earlier duplicate members. Actual Wails with the pinned original model reproduced these changes in both Result and Arguments, including a rounded uint64 receipt ID, a shortened precise decimal and decoded string escapes. The existing result Copy button followed by system paste produced the same incorrect text. The captured `argumentsText` and result strings themselves remained intact.
@@ -729,6 +752,8 @@ Captured generic Tool JSON fidelity is now implemented and natively qualified
 above. Preserve its whitespace-only projection rather than recreating captured
 values for display. Continue the remaining material and task paths from current
 source; this fix does not requalify every specialized renderer or wire contract.
+
+MCP configuration draft feedback, pending fields and view completion are now qualified above. Preserve the admitted command owner while inspecting remaining import and management task paths. The JSON importer's sequential creates and generic failure feedback deserve a partial-acknowledgement review before any retry behavior changes; this is a source-based candidate, not a completed native qualification.
 
 Memory query/draft continuity, original-command observation and main-only source
 retention are now implemented and qualified above. Do not recreate them or make

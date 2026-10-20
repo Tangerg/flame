@@ -1,7 +1,18 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { queryClient } from "@/lib/queryClient";
+import { DATA_PROVIDER } from "@/plugins/sdk";
+import { contributeForTest } from "@/plugins/sdk/testKernel";
 import { MCPServerMutationOwner } from "../application/mcpServerMutationOwner";
+import {
+  MCP_EXPOSURE_KEY,
+  MCP_SERVERS_KEY,
+  MCP_TOOLS_KEY,
+  userMCPServer,
+  type MCPServerSettings,
+} from "../application/mcpServerQueries";
 import type { MCPServerGateway, MCPServerTestOutcome } from "../application/ports/mcpServerGateway";
 import { ServerForm } from "./ServerForm";
 
@@ -11,9 +22,33 @@ afterEach(() => {
   cleanup();
   owner?.dispose();
   owner = undefined;
+  queryClient.clear();
 });
 
-function Harness() {
+const httpServer: MCPServerSettings = {
+  id: userMCPServer("remote-tools"),
+  status: "connected",
+  type: "streamableHttp",
+  enabled: true,
+  url: "https://tools.example/mcp",
+  authorizationMasked: "Bearer ****",
+  headersMasked: { "X-Team": "****" },
+  handshakeTimeout: { type: "bounded", seconds: 30 },
+};
+
+const stdioServer: MCPServerSettings = {
+  id: userMCPServer("workspace-tools"),
+  status: "connected",
+  type: "stdio",
+  enabled: true,
+  command: "npx",
+  args: ["-y", "@modelcontextprotocol/server-filesystem"],
+  envMasked: { API_KEY: "****" },
+  dir: "/work",
+  handshakeTimeout: { type: "unbounded" },
+};
+
+function Harness({ server }: { server?: MCPServerSettings }) {
   const [opener, setOpener] = useState<HTMLButtonElement | null>(null);
   return (
     <>
@@ -22,6 +57,7 @@ function Harness() {
       </button>
       {opener && (
         <ServerForm
+          server={server}
           opener={opener}
           onDone={() => setOpener(null)}
           onCancel={() => setOpener(null)}
@@ -31,8 +67,29 @@ function Harness() {
   );
 }
 
+async function mount(gateway: Partial<MCPServerGateway>, server?: MCPServerSettings) {
+  if (server) {
+    await contributeForTest((ctx) => {
+      for (const key of [MCP_TOOLS_KEY, MCP_EXPOSURE_KEY, "approval-rules"]) {
+        ctx.contribute(DATA_PROVIDER, { key, fetcher: async () => [] });
+      }
+    });
+  }
+  queryClient.setQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY], server ? [server] : []);
+  owner = MCPServerMutationOwner.install(gateway as MCPServerGateway);
+  render(
+    <QueryClientProvider client={queryClient}>
+      <Harness server={server} />
+    </QueryClientProvider>,
+  );
+  const opener = screen.getByRole("button", { name: "Configure MCP server" });
+  fireEvent.click(opener);
+  await waitFor(() => expect(screen.getAllByRole("status")).toHaveLength(1));
+  return opener;
+}
+
 function openDraft(test: MCPServerGateway["test"]) {
-  owner = MCPServerMutationOwner.install({ test } as unknown as MCPServerGateway);
+  owner = MCPServerMutationOwner.install({ test } as MCPServerGateway);
   render(<Harness />);
   const opener = screen.getByRole("button", { name: "Configure MCP server" });
   fireEvent.click(opener);
@@ -46,6 +103,49 @@ function openDraft(test: MCPServerGateway["test"]) {
   const trigger = screen.getByRole("button", { name: "Test" });
   trigger.focus();
   return { opener, status, trigger };
+}
+
+async function settle() {
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+}
+
+function servers() {
+  return queryClient.getQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY]);
+}
+
+function field(name: string) {
+  return screen.getByLabelText<HTMLInputElement | HTMLTextAreaElement>(name, {
+    selector: "input, textarea",
+  });
+}
+
+function expectHeldFields(names: readonly string[], held: boolean) {
+  const fields = names.map((name) => {
+    const element = field(name);
+    return {
+      name,
+      readOnly: element.readOnly,
+      disabled: element.disabled,
+      ariaDisabled: element.getAttribute("aria-disabled"),
+    };
+  });
+  expect(fields).toEqual(
+    names.map((name) => ({
+      name,
+      readOnly: held,
+      disabled: false,
+      ariaDisabled: held ? "true" : null,
+    })),
+  );
+}
+
+function expectDisabledControls(names: readonly string[], role: "switch" | "tab", held: boolean) {
+  const controls = names.map((name) => ({
+    name,
+    disabled: screen.getByRole(role, { name }).hasAttribute("data-disabled"),
+  }));
+  expect(controls).toEqual(names.map((name) => ({ name, disabled: held })));
 }
 
 describe("MCP server test feedback", () => {
@@ -120,5 +220,217 @@ describe("MCP server test feedback", () => {
     fireEvent.click(cancel);
     await waitFor(() => expect(document.activeElement).toBe(opener));
     expect(screen.queryByRole("textbox", { name: "Server name" })).toBeNull();
+  });
+
+  it("retires a completed connection result when the draft changes", async () => {
+    const test = vi.fn<MCPServerGateway["test"]>().mockResolvedValue({ ok: true });
+    const { status, trigger } = openDraft(test);
+    fireEvent.click(trigger);
+    await waitFor(() => expect(status.textContent).toContain("Connection OK"));
+
+    const command = field("Command");
+    command.focus();
+    fireEvent.change(command, { target: { value: "uvx" } });
+
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status.textContent).toBe("");
+    expect(document.activeElement).toBe(command);
+  });
+
+  it.each([
+    {
+      name: "success",
+      settle: (p: PromiseWithResolvers<MCPServerTestOutcome>) => p.resolve({ ok: true }),
+    },
+    {
+      name: "unsuccessful connection",
+      settle: (p: PromiseWithResolvers<MCPServerTestOutcome>) =>
+        p.resolve({ ok: false, error: "The server rejected the connection." }),
+    },
+    {
+      name: "failed request",
+      settle: (p: PromiseWithResolvers<MCPServerTestOutcome>) =>
+        p.reject(new Error("The Runtime connection was interrupted.")),
+    },
+  ])("does not publish an in-flight $name onto a changed draft", async ({ settle: finish }) => {
+    const pending = Promise.withResolvers<MCPServerTestOutcome>();
+    const test = vi.fn(() => pending.promise);
+    const { status, trigger } = openDraft(test);
+    fireEvent.click(trigger);
+    await waitFor(() => expect(test).toHaveBeenCalledOnce());
+
+    fireEvent.change(field("Command"), { target: { value: "uvx" } });
+    await act(async () => finish(pending));
+
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status.textContent).toBe("");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("button", { name: "Test" })).toBe(trigger);
+  });
+});
+
+describe("MCP server form presentation lifetime", () => {
+  it("lets a save admitted by a canceled form finish without closing the reopened draft", async () => {
+    const created = Promise.withResolvers<MCPServerSettings>();
+    const create = vi.fn<MCPServerGateway["create"]>(() => created.promise);
+    const opener = await mount({ create });
+    fireEvent.change(field("Server name"), { target: { value: "workspace-tools" } });
+    fireEvent.change(field("Command"), { target: { value: "npx" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
+    await waitFor(() => expect(create).toHaveBeenCalledOnce());
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("textbox", { name: "Server name" })).toBeNull();
+    fireEvent.click(opener);
+    const name = field("Server name");
+    expect(document.activeElement).toBe(name);
+    fireEvent.change(name, { target: { value: "another-draft" } });
+
+    const saved: MCPServerSettings = { ...stdioServer, args: [], envMasked: undefined };
+    await act(async () => created.resolve(saved));
+    await waitFor(() => expect(servers()).toEqual([saved]));
+    await settle();
+
+    expect(field("Server name")).toBe(name);
+    expect(name.value).toBe("another-draft");
+    expect(document.activeElement).toBe(name);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("lets a delete admitted by a canceled form finish without closing the reopened draft", async () => {
+    const deleted = Promise.withResolvers<void>();
+    const remove = vi.fn<MCPServerGateway["delete"]>(() => deleted.promise);
+    const opener = await mount({ delete: remove }, stdioServer);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(remove).toHaveBeenCalledWith(stdioServer.id));
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("textbox", { name: "Command" })).toBeNull();
+    fireEvent.click(opener);
+    const command = field("Command");
+    expect(document.activeElement).toBe(command);
+    fireEvent.change(command, { target: { value: "uvx" } });
+
+    await act(async () => deleted.resolve());
+    await waitFor(() => expect(servers()).toEqual([]));
+    await settle();
+
+    expect(field("Command")).toBe(command);
+    expect(command.value).toBe("uvx");
+    expect(document.activeElement).toBe(command);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("MCP server form while a mutation is pending", () => {
+  it("holds HTTP configuration during save and releases the exact draft on failure", async () => {
+    const updated = Promise.withResolvers<MCPServerSettings>();
+    const update = vi.fn<MCPServerGateway["update"]>(() => updated.promise);
+    const test = vi.fn<MCPServerGateway["test"]>().mockResolvedValue({ ok: true });
+    await mount({ update, test }, httpServer);
+    const textFields = [
+      "Server URL",
+      "Authorization token",
+      "Headers — KEY=value, one per line",
+      "Description",
+    ];
+    const switches = ["Remove stored authorization", "Remove stored headers"];
+    const tabs = ["stdio", "Streamable HTTP"];
+    fireEvent.change(field("Server URL"), { target: { value: "https://tools.example/v2" } });
+    fireEvent.change(field("Description"), { target: { value: "Team tools" } });
+    fireEvent.click(screen.getByText("Remove stored headers"));
+
+    const save = screen.getByRole("button", { name: "Save" });
+    save.focus();
+    fireEvent.click(save);
+    await waitFor(() => expect(update).toHaveBeenCalledOnce());
+    expect(update).toHaveBeenCalledWith(
+      httpServer.id,
+      expect.objectContaining({
+        url: "https://tools.example/v2",
+        description: "Team tools",
+        headers: null,
+      }),
+    );
+
+    expectHeldFields(textFields, true);
+    expect((screen.getByRole("spinbutton") as HTMLInputElement).readOnly).toBe(true);
+    expectDisabledControls(switches, "switch", true);
+    expectDisabledControls(tabs, "tab", true);
+    const trigger = screen.getByRole<HTMLButtonElement>("button", { name: "Test" });
+    expect(trigger.disabled).toBe(false);
+    expect(trigger.getAttribute("aria-disabled")).toBe("true");
+    trigger.focus();
+    await act(async () => fireEvent.click(trigger));
+    expect(test).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(trigger);
+    save.focus();
+    expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+
+    await act(async () => updated.reject(new Error("The Runtime rejected the update.")));
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "The Runtime rejected the update.",
+    );
+    expectHeldFields(textFields, false);
+    expect((screen.getByRole("spinbutton") as HTMLInputElement).readOnly).toBe(false);
+    expectDisabledControls(switches, "switch", false);
+    expectDisabledControls(tabs, "tab", false);
+    expect(field("Server URL").value).toBe("https://tools.example/v2");
+    expect(field("Description").value).toBe("Team tools");
+    expect(
+      screen.getByRole("switch", { name: "Remove stored headers" }).hasAttribute("data-checked"),
+    ).toBe(true);
+    expect(document.activeElement).toBe(save);
+  });
+
+  it("holds stdio configuration during delete and retires earlier test feedback", async () => {
+    const deleted = Promise.withResolvers<void>();
+    const remove = vi.fn<MCPServerGateway["delete"]>(() => deleted.promise);
+    const test = vi.fn<MCPServerGateway["test"]>().mockResolvedValue({ ok: true });
+    await mount({ delete: remove, test }, stdioServer);
+    const textFields = [
+      "Command",
+      "Arguments — one per line",
+      "Environment — KEY=value, one per line",
+      "Working directory",
+      "Description",
+    ];
+    const status = screen.getByRole("status");
+    fireEvent.change(field("Description"), { target: { value: "Local files" } });
+    fireEvent.click(screen.getByRole("button", { name: "Test" }));
+    await waitFor(() => expect(status.textContent).toContain("Connection OK"));
+
+    const destroy = screen.getByRole("button", { name: "Delete" });
+    destroy.focus();
+    fireEvent.click(destroy);
+    await waitFor(() => expect(remove).toHaveBeenCalledOnce());
+
+    expect(status.textContent).toBe("");
+    expectHeldFields(textFields, true);
+    expectDisabledControls(["Remove stored environment"], "switch", true);
+    expectDisabledControls(["stdio", "Streamable HTTP"], "tab", true);
+    const trigger = screen.getByRole<HTMLButtonElement>("button", { name: "Test" });
+    expect(trigger.disabled).toBe(false);
+    expect(trigger.getAttribute("aria-disabled")).toBe("true");
+    await act(async () => fireEvent.click(trigger));
+    expect(test).toHaveBeenCalledOnce();
+    expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+
+    await act(async () => deleted.reject(new Error("The Runtime rejected the removal.")));
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "The Runtime rejected the removal.",
+    );
+    expectHeldFields(textFields, false);
+    expectDisabledControls(["Remove stored environment"], "switch", false);
+    expectDisabledControls(["stdio", "Streamable HTTP"], "tab", false);
+    expect(field("Description").value).toBe("Local files");
+    expect(servers()).toEqual([stdioServer]);
+    expect(document.activeElement).toBe(destroy);
   });
 });

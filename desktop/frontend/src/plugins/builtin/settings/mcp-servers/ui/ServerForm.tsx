@@ -46,8 +46,13 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
   const test = useTestMCPServer();
   const isEdit = server !== undefined;
   const firstField = useRef<HTMLInputElement>(null);
+  const presented = useRef(false);
   useLayoutEffect(() => {
+    presented.current = true;
     firstField.current?.focus();
+    return () => {
+      presented.current = false;
+    };
   }, []);
 
   const [edit, setEdit] = useState<MCPServerEdit>(() => MCPServerEdit.of(server));
@@ -63,6 +68,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
 
   const updateDraft = <K extends keyof MCPServerFields>(key: K, value: MCPServerFields[K]) => {
     setEdit((current) => current.with(key, value));
+    reset();
   };
 
   const buildInput = () => edit.toInput();
@@ -79,12 +85,12 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
       const input = buildInput();
       if (server) await update(server.id, input);
       else await create(input);
-      onDone();
+      if (presented.current) onDone();
     } catch (err) {
-      if (wasGenerationRetired(err)) return;
+      if (!presented.current || wasGenerationRetired(err)) return;
       fail(failureText(err, t("mcp.error.save")));
     } finally {
-      setSaving(false);
+      if (presented.current) setSaving(false);
     }
   };
 
@@ -93,14 +99,15 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
   const onDelete = async () => {
     if (!server) return;
     setSaving(true);
+    reset();
     try {
       await remove(server.id);
-      onDone();
+      if (presented.current) onDone();
     } catch (err) {
-      if (wasGenerationRetired(err)) return;
+      if (!presented.current || wasGenerationRetired(err)) return;
       fail(failureText(err, t("mcp.error.remove")));
     } finally {
-      setSaving(false);
+      if (presented.current) setSaving(false);
     }
   };
 
@@ -113,6 +120,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
             ref={isEdit ? undefined : firstField}
             type="text"
             aria-label={t("mcp.form.name.aria")}
+            pending={saving}
             value={draft.name}
             disabled={isEdit}
             onChange={(e) => updateDraft("name", e.target.value)}
@@ -128,6 +136,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
             ]}
             onChange={(value) => updateDraft("transport", value)}
             ariaLabel={t("mcp.form.transport.aria")}
+            disabled={saving}
           />
         </FormGroup>
       </FormRow>
@@ -140,6 +149,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               font="mono"
               type="text"
               aria-label={t("mcp.form.command.aria")}
+              pending={saving}
               value={draft.command}
               onChange={(e) => updateDraft("command", e.target.value)}
               placeholder={t("mcp.form.command.placeholder")}
@@ -151,6 +161,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
                 font="mono"
                 rows={3}
                 aria-label={t("mcp.form.args")}
+                pending={saving}
                 value={draft.args}
                 onChange={(event) => updateDraft("args", event.target.value)}
                 placeholder={t("mcp.form.args.placeholder")}
@@ -162,6 +173,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
                   font="mono"
                   rows={3}
                   aria-label={t("mcp.form.env")}
+                  pending={saving}
                   value={draft.environment.text}
                   onChange={(event) =>
                     updateDraft("environment", draft.environment.edited(event.target.value))
@@ -180,6 +192,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
                       updateDraft("environment", draft.environment.cleared(value))
                     }
                     ariaLabel={t("mcp.form.env.clear")}
+                    disabled={saving}
                   />
                 </label>
               )}
@@ -195,6 +208,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               font="mono"
               type="text"
               aria-label={t("mcp.form.dir.aria")}
+              pending={saving}
               value={draft.dir}
               onChange={(e) => updateDraft("dir", e.target.value)}
               placeholder={t("mcp.form.dir.placeholder")}
@@ -209,6 +223,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               font="mono"
               type="text"
               aria-label={t("mcp.form.url.aria")}
+              pending={saving}
               value={draft.url}
               onChange={(e) => updateDraft("url", e.target.value)}
               placeholder={t("mcp.form.url.placeholder")}
@@ -219,6 +234,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               font="mono"
               type="password"
               aria-label={t("mcp.form.auth.aria")}
+              pending={saving}
               value={draft.authorization.text}
               onChange={(e) =>
                 updateDraft("authorization", draft.authorization.edited(e.target.value))
@@ -235,6 +251,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
                   updateDraft("authorization", draft.authorization.cleared(value))
                 }
                 ariaLabel={t("mcp.form.auth.clear")}
+                disabled={saving}
               />
             </label>
           )}
@@ -248,6 +265,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               font="mono"
               rows={3}
               aria-label={t("mcp.form.headers")}
+              pending={saving}
               value={draft.headers.text}
               onChange={(event) => updateDraft("headers", draft.headers.edited(event.target.value))}
               placeholder={
@@ -262,6 +280,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
                 checked={draft.headers.disposition === "clear"}
                 onCheckedChange={(value) => updateDraft("headers", draft.headers.cleared(value))}
                 ariaLabel={t("mcp.form.headers.clear")}
+                disabled={saving}
               />
             </label>
           )}
@@ -280,6 +299,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
             min={0}
             inputMode="numeric"
             aria-label={t("mcp.form.timeout")}
+            pending={saving}
             value={draft.timeoutSec}
             onChange={(e) => updateDraft("timeoutSec", e.target.value)}
             placeholder={t("mcp.form.timeout.placeholder")}
@@ -290,6 +310,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
           <TextField
             type="text"
             aria-label={t("mcp.form.description.aria")}
+            pending={saving}
             value={draft.description}
             onChange={(e) => updateDraft("description", e.target.value)}
             placeholder={t("mcp.form.description.placeholder")}
@@ -323,7 +344,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
           variant="outline"
           size="sm"
           disabled={!valid}
-          pending={feedback.state === "busy"}
+          pending={saving || feedback.state === "busy"}
           onClick={() => void onTest()}
         >
           {feedback.state === "busy" ? t("mcp.testing") : t("mcp.test")}
