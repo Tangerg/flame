@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Continuous work is active in the isolated worktree. Dock background-tab closure now preserves surviving authoring/reading focus; close and move settlement respects later choices and composition-safe deletion. Schedules read/empty recovery, Trajectory page scope/navigation, Files, shortcut Space and existing return repairs remain integrated. Final frontend checks pass 385 files / 2,930 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
+Updated: 2026-10-21. Continuous work is active in the isolated worktree. A loaded model catalog now remains selectable when the current model is unresolved, without silently choosing a replacement; open search and authoring context survive that condition. Dock focus, Schedules read/empty recovery, Trajectory page scope/navigation and previous repairs remain integrated. Final frontend checks pass 385 files / 2,938 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -584,6 +584,48 @@ copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
 
+## Composer model catalog recovery
+
+`src/features/composer/ui/ModelPicker.tsx` now treats catalog availability separately
+from resolution of the current model. When a nonempty catalog cannot resolve the
+Session's exact selection, the existing localized Switch model action and neutral
+server glyph remain available. Provider and recent groups still contain only
+known catalog entries, with no row marked as current. Loading, empty and failed
+catalog branches retain their existing behavior.
+
+Integration retains the already-authored primary `main` contract from
+`02ac171c8`: an explicit preference carries its provider/model identity even when
+catalog metadata is unavailable, and sending reads that preference directly.
+Its owner/callers/tests and localized unavailable hint are included as an exact
+frontend dependency. Such a preference still displays its original identity,
+provider and unavailable hint, including an empty catalog. The neutral action is
+reserved for absence of a resolved identity. Choosing a replacement remains an
+explicit user decision; this presentation repair does not advance the selection
+on its own.
+
+The existing selection resolver still reports unknown when a durable Session's
+model is absent, its summary is pending, or a new Session has no Runtime default.
+Opening, searching and cancelling the picker do not choose another model or write
+a preference. An explicit choice still writes the exact provider/model pair,
+remembers that item and keeps a supported prior effort or the selected model's
+own default. Once resolved, the trigger, provider scope and current-row treatment
+retain their established behavior. An open search also survives loss of the
+current selection instead of unmounting with the old loading placeholder.
+No new state owner, fallback model, effect, focus workaround, command or wire
+contract was introduced.
+
+Read-only research inspected ZCode's actual
+`chat-input-toolbar/modelSelection.ts`: trigger display and catalog membership
+are distinct concerns. Its `useModelSelectionView.ts` also distinguishes retained
+catalog data from a resolved effective selection; its service and retry machinery
+were not copied. HeroUI's local `select/controlled.tsx` keeps a nullable controlled
+value and a usable placeholder, while `popover/basic.tsx` keeps the bounded task
+with its trigger. These support the task model rather than a replacement control
+system. Better-writing guidance favors the existing localized action over an
+indefinite loading signal; better-accessibility/layout review retains Base UI's
+keyboard/focus behavior, shared chip sizing, semantic surfaces and Orange/custom
+accent roles. Static Ace references supply no selection or focus evidence.
+
 ## Trajectory page scope and reading continuity
 
 `plugins/trajectory/component/component.tsx` keeps the accepted cursor chain and
@@ -840,6 +882,19 @@ reachable controls and width semantics. Existing type, color and surface owners
 remain the visual basis.
 
 ## Verification checkpoint
+
+For Composer model catalog recovery (2026-10-21):
+
+- Actual baseline Wails used a loaded catalog, Session-following preference and a Session model absent from that catalog. The Composer remained editable, but its model position stayed a noninteractive loading skeleton; neither pointer nor Tab could reach a model choice. The existing resolver intentionally returned unknown, so the repair belongs to catalog presentation rather than Runtime or default-selection policy.
+- Focused baseline passed **3 files / 22 tests**. Bounded Claude Code CLI supplied the two-file change and five regressions; primary reviewed the diff and added loss of the current selection during an open search, with subsequent keyboard selection. The first CLI invocation's path allowlist refused edits and made no changes; an edit-only invocation completed without denials or shell access. Primary ran all checks. Frozen original component with the final tests failed **6 cases and passed the original 8**; the accepted implementation passed **3 files / 28 tests** across ModelPicker, CatalogPicker and the selection resolver. Coverage includes no implicit writes/current marker, browse/search/cancel, exact explicit choice and model-default effort, later catalog removal/restoration, retained open query and existing reasoning/identity contracts. Original assertions remain intact.
+- Before integration, the three-path primary guard stopped on the existing `02ac171c8` explicit-preference contract. Primary imported that exact frontend dependency and adapted ModelPicker to preserve its identity/provider/unavailable hint. Selection/send/reasoning owner files match primary `main`. An additional preservation regression covers choosing a replacement only after an explicit action. Against the original primary component, final regressions failed **6 and passed 10**; final focused checks passed **5 files / 35 tests**, including send preference and reasoning consumers. This extends the initial 3-file/28-test qualification to the actual integration contract.
+- Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **385 files / 2,938 tests** and every subsequent type/lint/format, boundary/contract/style/token/locale/resource, production-bundle and module-linkage gate. Eleven portable ESM resources remain unchanged. `make check-native` passed Desktop tests/vet/build and the supported Wails build; the final binary is arm64 Mach-O, minimum macOS 13.0, SDK 26.5. Both accepted component/test hashes remained unchanged throughout final native acceptance. Existing non-failing loopback diagnostics and duplicate `-lobjc` warnings remain separate.
+- Actual Wails English/light/14 px/Flame Orange qualified unknown action → keyboard open → no-result query → first Escape clears → second Escape cancels and returns to the model trigger. A temporary input-only long catalog qualified independent wheel scrolling; explicit GPT selection restored its exact identity and default Medium effort, with a mixed-language draft retained and editable. These native variants changed only fixture input facts, including a missing Session model and a later configured Alibaba catalog; no product transport or semantic owner changed.
+- English/dark/18 px/custom blue covered native Window → Move & Resize → Left and real keyboard resizing to a **320 px Dock**. Provider browsing did not choose a model until the user acted. Alibaba → keyboard Qwen selection updated the exact identity, removed inapplicable reasoning, and reopened in Alibaba. Cross-provider ID search selected a long OpenAI model with its default Medium effort. At **200%**, the existing workspace presentation retreated to the conversation; its model catalog, selected-row reveal, close return and subsequent Tab to reasoning remained usable.
+- Chinese/light/14 px/Orange at **200%** qualified the localized unknown action, two-stage query/cancel, explicit selection/default effort and keyboard return to the retained Composer draft. A final clean fixture used canonical catalog/Session responses, with no temporary input variants, gates, hotkeys, counters or scene links presented. Normal GPT selection retained an existing explicit High effort. Search/selection, reopen/cancel at 200%, model-trigger return and Shift-Tab back to continued draft editing all passed. Native zoom was reset before quitting.
+- The integrated `02ac171c8` source then repeated the dark/18 px/Blue narrow-window, 320 px Dock, long-list wheel, provider selection, query/cancel and 200% return paths, plus Chinese/14 px/Orange unknown selection and retained draft editing at 200%. A separate input-only explicit preference for `custom/authored-model` kept its full identity/provider/unavailable hint after search and cancellation; only deliberate GPT selection changed it and restored Medium. A final canonical clean scene retained High through model reselection, reopened/cancelled at 200%, returned to the Composer and kept its complete mixed-language draft while editing. Both final component/test hashes stayed unchanged across these repeated scenes.
+- These are production components in the actual Wails host over an isolated memory transport. They do not certify live provider execution or credential changes; no draft or Run command was submitted. Unknown-default and pending-summary selection semantics remain qualified by deterministic owner tests, not injected native latency. VoiceOver, native OS composition, measured pixel contrast, other-platform GUIs, browser/visual suites, performance benchmarks and unrelated standalone root/CLI/SDK suites were not run. No Runtime, protocol, shared primitive, theme, stored schema, installed resource or package dependency changed; no migration is required.
+- Cleanup completed: owned CLI/check/build/native processes exited, the app was unregistered, and its bundle, isolated data, overlays, temporary sources/configuration, prompts/results and logs were removed. Newly created bundle-specific Caches/WebKit paths passed preexistence/UID/birth-time guards; HTTP storage, preferences and saved state were absent. Worktree-generated fixtures, Vite state, staging, icons/UI bundles and native outputs were removed after tracked-path checks. Installed dependencies, global compiler/package caches, reference artwork, user data and unrelated processes were retained.
 
 For Dock tab closure, movement and continued work (2026-10-21):
 
@@ -1219,6 +1274,12 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 Continuous work is explicitly resumed. The candidates below require current
 source and native evidence before selecting each next batch.
+
+Model catalog recovery is implemented and natively qualified above. Keep catalog
+availability independent from resolution of the current model, and retain the
+existing unknown selection instead of introducing an automatic fallback. Continue
+from remaining complete task paths; do not repeat this resolved skeleton/choice
+investigation or broaden it into a provider/Runtime state rewrite.
 
 Files cursor removal/collapse, visible arrow focus and browse/read/return are
 implemented and qualified above. Preserve the single stored cursor, root-owned

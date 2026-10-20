@@ -20,8 +20,8 @@ function modelItemId(model: SelectableModel): string {
 
 const RECENT_GROUP_ID = "__recent";
 
-function modelItem(model: SelectableModel, selection: Selection, t: Translate) {
-  const active = model.provider === selection.provider && model.id === selection.modelId;
+function modelItem(model: SelectableModel, selection: Selection | undefined, t: Translate) {
+  const active = model.provider === selection?.provider && model.id === selection.modelId;
   return {
     id: modelItemId(model),
     label: model.label,
@@ -35,7 +35,7 @@ function modelItem(model: SelectableModel, selection: Selection, t: Translate) {
 
 function modelGroups(
   models: readonly SelectableModel[],
-  selection: Selection,
+  selection: Selection | undefined,
   recent: readonly RecentModel[],
   t: Translate,
 ): CatalogPickerGroup[] {
@@ -121,7 +121,7 @@ export function ModelPicker() {
   const recent = useRecentModelsStore((state) => state.recent);
   const remember = useRecentModelsStore((state) => state.remember);
   const groups = useMemo(
-    () => (selection ? modelGroups(models, selection, recent, t) : []),
+    () => modelGroups(models, selection, recent, t),
     [models, recent, selection, t],
   );
   const modelsByItemId = useMemo(
@@ -148,14 +148,15 @@ export function ModelPicker() {
     return <ModelPickerPlaceholder />;
   }
 
-  if (!selection) return <ModelPickerPlaceholder />;
-  const label = selected?.label ?? selection.modelId;
+  const label = selected?.label ?? selection?.modelId ?? t("composer.switchModel");
 
   return (
     <RailCatalogPicker
       groups={groups}
       openAtGroupId={
-        groups.some((group) => group.id === selection.provider) ? selection.provider : groups[0]?.id
+        selection && groups.some((group) => group.id === selection.provider)
+          ? selection.provider
+          : groups[0]?.id
       }
       label={t("composer.switchModel")}
       heading={t("composer.model.title")}
@@ -165,7 +166,7 @@ export function ModelPicker() {
         const model = modelsByItemId.get(item.id);
         if (!model) return;
         remember({ provider: model.provider, id: model.id });
-        const reasoningEffort = model.reasoningLevelOrDefault(selection.reasoningEffort);
+        const reasoningEffort = model.reasoningLevelOrDefault(selection?.reasoningEffort);
         setModel({
           kind: "explicit",
           provider: model.provider,
@@ -176,9 +177,19 @@ export function ModelPicker() {
       trigger={
         <AgentComposerChip
           aria-label={t("composer.switchModel")}
-          title={`${label} · ${providerDisplayName(selection.provider)}${selected ? "" : ` · ${t("composer.model.unavailable")}`}`}
+          title={
+            selection
+              ? `${label} · ${providerDisplayName(selection.provider)}${selected ? "" : ` · ${t("composer.model.unavailable")}`}`
+              : undefined
+          }
           shrink="gives"
-          leading={<ProviderIcon provider={selection.provider} size="composer" />}
+          leading={
+            selection ? (
+              <ProviderIcon provider={selection.provider} size="composer" />
+            ) : (
+              <Icon name="server" size="composer" />
+            )
+          }
           label={label}
         />
       }

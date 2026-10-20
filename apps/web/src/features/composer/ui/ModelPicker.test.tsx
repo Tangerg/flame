@@ -4,12 +4,14 @@ import { ModelPicker } from "@/features/composer/ui/ModelPicker";
 import { useRecentModelsStore } from "@/features/composer/adapters/recentModels";
 const state = vi.hoisted(() => ({
   models: [] as ModelFixture[],
-  selection: null as {
-    provider: string;
-    modelId: string;
-    model: ModelFixture | undefined;
-    reasoningEffort?: string;
-  } | null,
+  selection: undefined as
+    | {
+        provider: string;
+        modelId: string;
+        model: ModelFixture | undefined;
+        reasoningEffort?: string;
+      }
+    | undefined,
   setModel: vi.fn(),
 }));
 
@@ -242,5 +244,172 @@ describe("ModelPicker", () => {
     const current = options().getByRole("option", { name: /DeepSeek Reasoner/ });
     expect(current.hasAttribute("data-current")).toBe(true);
     expect(screen.queryByRole("button", { name: "Switch reasoning effort" })).toBeNull();
+  });
+
+  it("keeps an unavailable explicit identity until a replacement is chosen", async () => {
+    state.selection = {
+      provider: "custom",
+      modelId: "authored-model",
+      model: undefined,
+      reasoningEffort: "authored-effort",
+    };
+    render(<ModelPicker />);
+    const trigger = screen.getByRole("button", { name: "Switch model" });
+    expect(trigger.textContent).toContain("authored-model");
+    expect(trigger.title).toContain("Unavailable in the current catalog");
+    fireEvent.click(trigger);
+    const search = await screen.findByRole("combobox", { name: "Search models…" });
+    expect(screen.getAllByRole("option").some((item) => item.hasAttribute("data-current"))).toBe(
+      false,
+    );
+    expect(state.setModel).not.toHaveBeenCalled();
+    fireEvent.change(search, { target: { value: "reasoner" } });
+    fireEvent.click(await screen.findByRole("option", { name: /DeepSeek Reasoner/ }));
+    expect(state.setModel).toHaveBeenCalledExactlyOnceWith({
+      kind: "explicit",
+      provider: "deepseek",
+      model: "DeepSeek Reasoner",
+      reasoningEffort: "high",
+    });
+  });
+
+  describe("when the catalog does not contain the current model", () => {
+    beforeEach(() => {
+      state.selection = undefined;
+    });
+
+    it("stays a picker that names its action instead of a model", () => {
+      render(<ModelPicker />);
+      const trigger = screen.getByRole("button", { name: "Switch model" });
+      expect(trigger.hasAttribute("disabled")).toBe(false);
+      expect(trigger.querySelector('[data-slot="composer-chip-label"]')?.textContent).toBe(
+        "Switch model",
+      );
+    });
+
+    it("browses and searches the catalog without marking a current model", async () => {
+      render(<ModelPicker />);
+      fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+      const search = await screen.findByPlaceholderText("Search models…");
+
+      expectRail(["Mistral", "DeepSeek"]);
+      expect(screen.getByRole("button", { name: "Mistral", pressed: true })).toBeTruthy();
+      expect(options().getByText("Mistral Local")).toBeTruthy();
+      expect(
+        options()
+          .getAllByRole("option")
+          .some((option) => option.hasAttribute("data-current")),
+      ).toBe(false);
+
+      fireEvent.change(search, { target: { value: "reasoner" } });
+      await waitFor(() => {
+        expect(options().getByText("DeepSeek Reasoner")).toBeTruthy();
+        expect(options().queryByText("Mistral Local")).toBeNull();
+      });
+    });
+
+    it("leaves the preference and recents untouched when dismissed", async () => {
+      render(<ModelPicker />);
+      const trigger = screen.getByRole("button", { name: "Switch model" });
+      fireEvent.click(trigger);
+      const search = await screen.findByPlaceholderText("Search models…");
+
+      fireEvent.keyDown(search, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+      await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+      expect(state.setModel).not.toHaveBeenCalled();
+      expect(useRecentModelsStore.getState().recent).toEqual([]);
+    });
+
+    it("selects the exact model explicitly with that model's default effort", async () => {
+      render(<ModelPicker />);
+      fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+      const search = await screen.findByPlaceholderText("Search models…");
+
+      fireEvent.change(search, { target: { value: "reasoner" } });
+      await waitFor(() => expect(options().getByText("DeepSeek Reasoner")).toBeTruthy());
+      fireEvent.click(options().getByText("DeepSeek Reasoner"));
+
+      expect(state.setModel).toHaveBeenCalledTimes(1);
+      expect(state.setModel).toHaveBeenCalledWith({
+        kind: "explicit",
+        provider: "deepseek",
+        model: "DeepSeek Reasoner",
+        reasoningEffort: "high",
+      });
+      expect(useRecentModelsStore.getState().recent).toEqual([
+        expect.objectContaining({ provider: "deepseek", id: "DeepSeek Reasoner" }),
+      ]);
+    });
+  });
+
+  it("keeps an open search available when its current selection disappears", async () => {
+    const current = state.models[1]!;
+    const { rerender } = render(<ModelPicker />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    const search = await screen.findByRole("combobox", { name: "Search models…" });
+    fireEvent.change(search, { target: { value: "reasoner" } });
+    await screen.findByRole("option", { name: /DeepSeek Reasoner/ });
+
+    state.models = state.models.filter((entry) => entry !== current);
+    state.selection = undefined;
+    rerender(<ModelPicker />);
+
+    expect(screen.getByRole("combobox", { name: "Search models…" })).toBe(search);
+    expect((search as HTMLInputElement).value).toBe("reasoner");
+    expect(screen.getByRole("option", { name: /DeepSeek Reasoner/ })).toBeTruthy();
+    expect(state.setModel).not.toHaveBeenCalled();
+    expect(useRecentModelsStore.getState().recent).toEqual([]);
+
+    search.focus();
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    fireEvent.keyDown(search, { key: "Enter" });
+    await waitFor(() =>
+      expect(state.setModel).toHaveBeenCalledExactlyOnceWith({
+        kind: "explicit",
+        provider: "deepseek",
+        model: "DeepSeek Reasoner",
+        reasoningEffort: "high",
+      }),
+    );
+  });
+
+  it("stays usable while the catalog drops and later restores the current model", async () => {
+    const current = state.models[1]!;
+    const { rerender } = render(<ModelPicker />);
+    const label = () =>
+      screen
+        .getByRole("button", { name: "Switch model" })
+        .querySelector('[data-slot="composer-chip-label"]')?.textContent;
+    expect(label()).toBe("DeepSeek Chat");
+
+    state.models = state.models.filter((entry) => entry !== current);
+    state.selection = undefined;
+    rerender(<ModelPicker />);
+    expect(label()).toBe("Switch model");
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    await screen.findByPlaceholderText("Search models…");
+    expect(options().queryByText("DeepSeek Chat")).toBeNull();
+    fireEvent.keyDown(screen.getByPlaceholderText("Search models…"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+
+    state.models = [...state.models, current];
+    state.selection = {
+      provider: current.provider,
+      modelId: current.id,
+      model: current,
+      reasoningEffort: "high",
+    };
+    rerender(<ModelPicker />);
+    expect(label()).toBe("DeepSeek Chat");
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    await screen.findByPlaceholderText("Search models…");
+    expect(screen.getByRole("button", { name: "DeepSeek", pressed: true })).toBeTruthy();
+    expect(
+      options()
+        .getByRole("option", { name: /DeepSeek Chat/ })
+        .hasAttribute("data-current"),
+    ).toBe(true);
+    expect(state.setModel).not.toHaveBeenCalled();
   });
 });
