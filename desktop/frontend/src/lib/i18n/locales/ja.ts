@@ -770,6 +770,8 @@ export const ja: Record<string, string> = {
   "mcp.import.ok_other": "{{count}} 個のサーバーをインポートしました",
   "mcp.import.renamed": "ランタイムが受け付ける形式に改名しました: {{names}}",
   "mcp.import.error": "その設定をインポートできませんでした。",
+  "mcp.import.nameCollision":
+    "サーバー「<first/>」と「<second/>」はどちらも「<canonical/>」になります。別々の名前を付けてください",
   "mcp.tools.manage": "ツールを管理",
   "mcp.tools.enabled": "有効",
   "mcp.tools.autoApprove": "自動承認",

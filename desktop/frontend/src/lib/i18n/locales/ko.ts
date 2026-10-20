@@ -767,6 +767,8 @@ export const ko: Record<string, string> = {
   "mcp.import.ok_other": "서버 {{count}}개를 가져왔습니다",
   "mcp.import.renamed": "런타임이 허용하는 형식으로 이름을 변경했습니다: {{names}}",
   "mcp.import.error": "해당 설정을 가져올 수 없습니다.",
+  "mcp.import.nameCollision":
+    '서버 "<first/>" 및 "<second/>"의 이름이 모두 "<canonical/>"(으)로 바뀝니다. 서로 다른 이름을 지정하세요',
   "mcp.tools.manage": "도구 관리",
   "mcp.tools.enabled": "사용",
   "mcp.tools.autoApprove": "자동 승인",

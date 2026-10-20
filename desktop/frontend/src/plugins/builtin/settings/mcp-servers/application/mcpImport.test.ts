@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMcpImport } from "./mcpImport";
+import { McpImportNameCollision, parseMcpImport } from "./mcpImport";
 
 describe("parseMcpImport", () => {
   it("normalizes stdio and remote servers into MCP config inputs", () => {
@@ -45,6 +45,61 @@ describe("parseMcpImport", () => {
         headers: { "X-Trace": "abc" },
         handshakeTimeout: { type: "bounded", seconds: 30 },
       },
+    ]);
+  });
+
+  it.each([
+    { kind: "case folding", first: "GitHub", second: "github", canonical: "github" },
+    {
+      kind: "punctuation cleanup",
+      first: "docs tools",
+      second: "_docs-tools_",
+      canonical: "docs-tools",
+    },
+    {
+      kind: "truncation",
+      first: `${"a".repeat(32)}-one`,
+      second: `${"a".repeat(32)}-two`,
+      canonical: "a".repeat(32),
+    },
+  ])("rejects distinct source names that collide after $kind", ({ first, second, canonical }) => {
+    const text = JSON.stringify({
+      mcpServers: {
+        [first]: { command: "first" },
+        [second]: { url: "https://example.com/mcp" },
+      },
+    });
+
+    const thrown = (() => {
+      try {
+        parseMcpImport(text);
+      } catch (err) {
+        return err;
+      }
+    })();
+    expect(thrown).toBeInstanceOf(McpImportNameCollision);
+    expect(thrown).toMatchObject({ first, second, canonical });
+  });
+
+  it("keeps order and reports renames when normalized names stay distinct", () => {
+    const result = parseMcpImport(
+      JSON.stringify({
+        mcpServers: {
+          "My Server": { command: "first" },
+          "my-server-2": { command: "second" },
+          Other: { url: "https://example.com/mcp" },
+        },
+      }),
+    );
+
+    expect(result.servers.map((server) => server.name)).toEqual([
+      "my-server",
+      "my-server-2",
+      "other",
+    ]);
+    expect(result.renamed).toEqual([
+      { from: "My Server", to: "my-server" },
+      { from: "Other", to: "other" },
     ]);
   });
 

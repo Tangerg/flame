@@ -499,6 +499,8 @@ export const en: Record<string, string> = {
   "mcp.import.ok_other": "Imported {{count}} servers",
   "mcp.import.renamed": "Renamed to match what the runtime accepts: {{names}}",
   "mcp.import.error": "Couldn't import that config.",
+  "mcp.import.nameCollision":
+    'Servers "<first/>" and "<second/>" both become "<canonical/>"; give them distinct names',
   "mcp.tools.manage": "Manage tools",
   "mcp.tools.enabled": "Enabled",
   "mcp.tools.autoApprove": "Auto-approve",

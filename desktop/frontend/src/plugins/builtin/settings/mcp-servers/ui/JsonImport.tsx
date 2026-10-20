@@ -1,12 +1,12 @@
 import { failureText } from "@/lib/rpcErrors";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Icon, SystemMessage, TextButton } from "@/ui";
 import { Button, FormField, ModalDialog, TextArea } from "@flame/ui";
 import { useCreateMCPServer } from "../application/mcpServerConfig";
 import { notifyInfo } from "@/plugins/sdk";
-import { useT } from "@/lib/i18n";
-import { parseMcpImport } from "../application/mcpImport";
+import { Trans, useT } from "@/lib/i18n";
+import { McpImportNameCollision, parseMcpImport } from "../application/mcpImport";
 
 const CONFIG_EXAMPLE = JSON.stringify(
   {
@@ -27,7 +27,7 @@ export function JsonImport() {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<{ message: string }>();
+  const [error, setError] = useState<{ message: ReactNode }>();
   useLayoutEffect(() => {
     if (error) errorRef.current?.scrollIntoView({ block: "nearest" });
   }, [error]);
@@ -51,6 +51,21 @@ export function JsonImport() {
       setOpen(false);
     } catch (err) {
       if (wasGenerationRetired(err)) return;
+      if (err instanceof McpImportNameCollision) {
+        setError({
+          message: (
+            <Trans
+              i18nKey="mcp.import.nameCollision"
+              components={{
+                first: <span>{err.first}</span>,
+                second: <span>{err.second}</span>,
+                canonical: <span>{err.canonical}</span>,
+              }}
+            />
+          ),
+        });
+        return;
+      }
       setError({ message: failureText(err, t("mcp.import.error")) });
     } finally {
       setBusy(false);

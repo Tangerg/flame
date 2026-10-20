@@ -52,6 +52,17 @@ export interface McpImportResult {
   renamed: { from: string; to: string }[];
 }
 
+export class McpImportNameCollision extends Error {
+  constructor(
+    readonly first: string,
+    readonly second: string,
+    readonly canonical: string,
+  ) {
+    super("mcp_import_name_collision");
+    this.name = "McpImportNameCollision";
+  }
+}
+
 function wireServerName(name: string): string | null {
   const shaped = name
     .toLowerCase()
@@ -75,11 +86,15 @@ export function parseMcpImport(text: string): McpImportResult {
   }
   const servers: MCPServerInput[] = [];
   const renamed: { from: string; to: string }[] = [];
+  const sources = new Map<string, string>();
   for (const [key, s] of Object.entries(parsed.data.mcpServers)) {
     const name = wireServerName(key);
     if (name === null) {
       throw new Error(`Server "${key}" has no name the runtime can accept`);
     }
+    const earlier = sources.get(name);
+    if (earlier !== undefined) throw new McpImportNameCollision(earlier, key, name);
+    sources.set(name, key);
     if (name !== key) renamed.push({ from: key, to: name });
     const type = s.type
       ? s.type === "stdio"

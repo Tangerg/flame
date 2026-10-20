@@ -801,6 +801,8 @@ export const de: Record<string, string> = {
   "mcp.import.ok_other": "{{count}} Server importiert",
   "mcp.import.renamed": "Umbenannt, damit die Runtime sie akzeptiert: {{names}}",
   "mcp.import.error": "Diese Konfiguration konnte nicht importiert werden.",
+  "mcp.import.nameCollision":
+    "Die Server „<first/>“ und „<second/>“ werden beide zu „<canonical/>“; gib ihnen unterschiedliche Namen",
   "mcp.tools.manage": "Tools verwalten",
   "mcp.tools.enabled": "Aktiviert",
   "mcp.tools.autoApprove": "Automatisch genehmigen",

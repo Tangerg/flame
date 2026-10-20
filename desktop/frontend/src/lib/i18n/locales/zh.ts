@@ -383,6 +383,8 @@ export const zh: Record<string, string> = {
   "mcp.import.ok_other": "已导入 {{count}} 个服务器",
   "mcp.import.renamed": "已重命名以符合运行时的要求：{{names}}",
   "mcp.import.error": "无法导入该配置。",
+  "mcp.import.nameCollision":
+    "服务器“<first/>”和“<second/>”都会变成“<canonical/>”，请为它们使用不同的名称",
   "mcp.tools.manage": "管理工具",
   "mcp.tools.enabled": "启用",
   "mcp.tools.autoApprove": "自动批准",

@@ -756,6 +756,8 @@ export const zhTW: Record<string, string> = {
   "mcp.import.ok_other": "已匯入 {{count}} 個伺服器",
   "mcp.import.renamed": "已重新命名以符合執行階段的要求：{{names}}",
   "mcp.import.error": "無法匯入該設定。",
+  "mcp.import.nameCollision":
+    "伺服器「<first/>」和「<second/>」都會變成「<canonical/>」，請為它們設定不同的名稱",
   "mcp.tools.manage": "管理工具",
   "mcp.tools.enabled": "已啟用",
   "mcp.tools.autoApprove": "自動核准",
