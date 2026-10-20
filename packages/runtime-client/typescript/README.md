@@ -22,6 +22,15 @@ responses. Retrying continues that original command. Presentation components
 must not rebuild settlement or invent a replacement identity. Streaming reads
 and durable commands retain their registry-classified distinction.
 
+The client installs a mutation journal by default, using the supplied capabilities
+reader for its scope. Every mutation, including one with an explicit key, must
+reserve its immutable input and Runtime store namespace before
+dispatch. Missing scope or failed persistence refuses the command without opening
+transport. That refused handle cannot later capture a different target through
+`retry()`; start a new user action after the prerequisite recovers. A successfully
+reserved command retains its original identity and receipt lookup even while
+discovery is unavailable, and cannot dispatch into another store.
+
 Run `npm run check --workspace @flame/runtime-client` from the root after
 `make setup`. Independent author checks consume a real packed package, rather
 than workspace-private paths. No former package name or wildcard client export

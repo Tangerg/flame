@@ -121,24 +121,24 @@ export async function callPluginStream<T>(
     throw new TypeError("Plugin stream requires a streaming command method");
   parseJSON(input.input);
   const { request, reservation } = await journal.capturePluginCommand(intent, input, prepare);
-  return reservation.track(() =>
-    wire.openMutation(
-      "plugins.stream",
-      request,
-      (key, attempt, prepared) =>
-        deliverPluginStream(
-          client,
-          wire,
-          prepared,
-          reservation,
-          key,
-          consume,
-          decode,
-          attempt.signal,
-        ),
-      signal,
-      reservation.idempotencyKey,
-    ),
+  return wire.openMutation(
+    "plugins.stream",
+    request,
+    (key, attempt, prepared) =>
+      deliverPluginStream(
+        client,
+        wire,
+        prepared,
+        reservation,
+        key,
+        consume,
+        decode,
+        attempt.signal,
+      ),
+    signal,
+    undefined,
+    reservation.idempotencyKey,
+    () => reservation,
   );
 }
 

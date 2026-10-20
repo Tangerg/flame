@@ -82,7 +82,9 @@ describe("createFlameClient", () => {
       mutationJournal: {
         pendingCommands: () => [],
         pendingPluginCommands: () => [],
-        reserve: () => undefined,
+        reserve: () => {
+          throw new Error("unexpected mutation reservation");
+        },
         capturePluginCommand: async () => {
           throw new Error("unexpected plugin command capture");
         },
@@ -106,7 +108,9 @@ describe("createFlameClient", () => {
         },
         pendingCommands: () => [],
         pendingPluginCommands: () => [],
-        reserve: () => undefined,
+        reserve: () => {
+          throw new Error("unexpected mutation reservation");
+        },
         dispose: () => {
           throw failure;
         },
@@ -133,7 +137,9 @@ describe("createFlameClient", () => {
         },
         pendingCommands: () => [],
         pendingPluginCommands: () => [],
-        reserve: () => undefined,
+        reserve: () => {
+          throw new Error("unexpected mutation reservation");
+        },
         dispose: () => {
           throw journalFailure;
         },
@@ -167,7 +173,9 @@ describe("createFlameClient", () => {
       mutationJournal: {
         pendingCommands: () => [],
         pendingPluginCommands: () => [],
-        reserve: () => undefined,
+        reserve: () => {
+          throw new Error("unexpected mutation reservation");
+        },
         capturePluginCommand: async () => {
           throw new Error("unexpected plugin command capture");
         },

@@ -47,7 +47,7 @@ export interface MutationJournal {
     params: unknown,
     preferredKey?: string,
     requestMeta?: RequestMeta | null,
-  ): MutationReservation | undefined;
+  ): MutationReservation;
   dispose(): void;
 }
 
@@ -223,7 +223,7 @@ class MutationAuthority implements MutationJournal {
     params: unknown,
     preferredKey?: string,
     requestMeta: RequestMeta | null = null,
-  ): MutationReservation | undefined {
+  ): MutationReservation {
     this.#assertCurrent();
     const identity = this.#journal.reserve(
       method,
@@ -232,7 +232,6 @@ class MutationAuthority implements MutationJournal {
       (idempotencyKey) => this.#claims.has(idempotencyKey),
       requestMeta,
     );
-    if (!identity) return undefined;
     return this.#claim(identity);
   }
 

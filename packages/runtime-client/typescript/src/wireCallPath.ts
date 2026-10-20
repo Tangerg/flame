@@ -82,11 +82,14 @@ interface MutationDelivery {
   readonly requestMeta: RequestMeta | null;
   readonly steerItemId: string | null;
   bindSteerItem(userItemId: string): void;
-  lookupNamespace(): string | undefined;
-  authorizeDispatch(): string | undefined;
+  lookupNamespace(): string;
+  authorizeDispatch(): string;
 }
 
-export function createWireCallPath(client: RpcClient, options: MethodsOptions): WireCallPath {
+export function createWireCallPath(
+  client: RpcClient,
+  options: MethodsOptions & { mutationJournal: MutationJournal },
+): WireCallPath {
   const refuse = <M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
@@ -136,37 +139,26 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
     reserveOriginal?: () => MutationReservation,
   ): MutationPromise<Result> => {
     const preparedParams = structuredClone(params);
-    const preferredJournalKey = journalKey ?? crypto.randomUUID();
-    let reservation: ReturnType<MutationJournal["reserve"]>;
+    const preferredJournalKey = requestedKey ?? journalKey ?? crypto.randomUUID();
+    let reservation: MutationReservation;
     try {
       checkRequest(method, preparedParams);
-      reservation =
-        requestedKey !== undefined
-          ? undefined
-          : reserveOriginal
-            ? reserveOriginal()
-            : options.mutationJournal?.reserve(
-                method,
-                preparedParams,
-                preferredJournalKey,
-                structuredClone(options.requestMeta?.() ?? null),
-              );
+      reservation = reserveOriginal
+        ? reserveOriginal()
+        : options.mutationJournal.reserve(
+            method,
+            preparedParams,
+            preferredJournalKey,
+            structuredClone(options.requestMeta?.() ?? null),
+          );
     } catch (error) {
       const failedKey = requestedKey ?? preferredJournalKey;
-      const retry = (retryOptions?: { signal?: AbortSignal }): MutationPromise<Result> =>
-        openMutation(
-          method,
-          preparedParams,
-          execute,
-          retryOptions === undefined ? signal : retryOptions.signal,
-          requestedKey,
-          preferredJournalKey,
-          reserveOriginal,
-        );
-      return Object.defineProperties(Promise.reject(error), {
-        idempotencyKey: { enumerable: true, value: failedKey },
-        retry: { enumerable: true, value: retry },
-      }) as MutationPromise<Result>;
+      const refused = (): MutationPromise<Result> =>
+        Object.defineProperties(Promise.reject(error), {
+          idempotencyKey: { enumerable: true, value: failedKey },
+          retry: { enumerable: true, value: refused },
+        }) as MutationPromise<Result>;
+      return refused();
     }
     const create = () =>
       createMutationPromise(
@@ -175,25 +167,23 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
             idempotencyKey,
             {
               ...attempt,
-              requestMeta: reservation?.requestMeta ?? null,
+              requestMeta: reservation.requestMeta,
               get steerItemId() {
-                return reservation?.steerItemId ?? null;
+                return reservation.steerItemId;
               },
               bindSteerItem: (userItemId) => {
-                if (!reservation)
-                  throw new Error("Steer input identity requires a reserved command");
                 reservation.bindSteerItem(userItemId);
               },
-              lookupNamespace: () => reservation?.lookupNamespace(),
-              authorizeDispatch: () => reservation?.authorizeDispatch(),
+              lookupNamespace: () => reservation.lookupNamespace(),
+              authorizeDispatch: () => reservation.authorizeDispatch(),
             },
             preparedParams,
           );
         },
-        requestedKey ?? reservation?.idempotencyKey,
+        reservation.idempotencyKey,
         { signal },
       );
-    return reservation ? reservation.track(create) : create();
+    return reservation.track(create);
   };
 
   const invoke = (<M extends WireMethodName>(

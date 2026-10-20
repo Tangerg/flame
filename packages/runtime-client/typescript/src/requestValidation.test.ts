@@ -27,7 +27,9 @@ describe("generated request validation", () => {
 
   it("refuses invalid mutations before reserving a durable replay identity", async () => {
     const transport = createMemoryTransport();
-    const reserve = vi.fn(() => undefined);
+    const reserve = vi.fn(() => {
+      throw new Error("unexpected mutation reservation");
+    });
     const client = createFlameClient(transport, {
       mutationJournal: {
         pendingCommands: () => [],

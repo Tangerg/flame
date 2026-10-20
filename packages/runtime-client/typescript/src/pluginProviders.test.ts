@@ -2,6 +2,8 @@ import { expect, it } from "vitest";
 import type { RpcCallOptions, RpcClient } from "./client";
 import { RpcTransportError } from "./errors";
 import { createMethods } from "./methods";
+import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
+import type { ServerCapabilities } from "@flame/runtime-client/wire";
 
 it("provider selection preserves inspected identity and the original command after lost acknowledgement", async () => {
   const selection = {
@@ -13,18 +15,21 @@ it("provider selection preserves inspected identity and the original command aft
   const attempts: { params: unknown; key: string | undefined }[] = [];
   const providerReads: { params: unknown; key: string | undefined }[] = [];
   let lost = true;
-  const methods = createMethods({
-    call: async (method: string, params: unknown, options?: RpcCallOptions) => {
-      if (method === "plugins.listProviders") {
-        providerReads.push({ params: structuredClone(params), key: options?.idempotencyKey });
-        return { data: [original] };
-      }
-      expect(method).toBe("plugins.selectProvider");
-      attempts.push({ params: structuredClone(params), key: options?.idempotencyKey });
-      if (lost) throw new RpcTransportError("acknowledgement lost");
-      return original;
-    },
-  } as unknown as RpcClient);
+  const methods = createMethods(
+    {
+      call: async (method: string, params: unknown, options?: RpcCallOptions) => {
+        if (method === "plugins.listProviders") {
+          providerReads.push({ params: structuredClone(params), key: options?.idempotencyKey });
+          return { data: [original] };
+        }
+        expect(method).toBe("plugins.selectProvider");
+        attempts.push({ params: structuredClone(params), key: options?.idempotencyKey });
+        if (lost) throw new RpcTransportError("acknowledgement lost");
+        return original;
+      },
+    } as unknown as RpcClient,
+    { capabilities: () => discovery.capabilities as ServerCapabilities },
+  );
   await expect(methods.plugins.listProviders()).resolves.toEqual({ data: [original] });
   expect(providerReads).toEqual([{ params: {}, key: undefined }]);
   const command = methods.plugins.selectProvider(selection);
@@ -50,19 +55,22 @@ it("composition changes preserve original ordered members and command identity a
   const attempts: { params: unknown; key: string | undefined }[] = [];
   const resolutions: { params: unknown; key: string | undefined }[] = [];
   let lost = true;
-  const methods = createMethods({
-    call: async (method: string, params: unknown, options?: RpcCallOptions) => {
-      if (method === "plugins.listCompositions") return { data: [original] };
-      if (method === "plugins.resolveComposition") {
-        resolutions.push({ params: structuredClone(params), key: options?.idempotencyKey });
-        return { data: [] };
-      }
-      expect(method).toBe("plugins.setComposition");
-      attempts.push({ params: structuredClone(params), key: options?.idempotencyKey });
-      if (lost) throw new RpcTransportError("acknowledgement lost");
-      return original;
-    },
-  } as unknown as RpcClient);
+  const methods = createMethods(
+    {
+      call: async (method: string, params: unknown, options?: RpcCallOptions) => {
+        if (method === "plugins.listCompositions") return { data: [original] };
+        if (method === "plugins.resolveComposition") {
+          resolutions.push({ params: structuredClone(params), key: options?.idempotencyKey });
+          return { data: [] };
+        }
+        expect(method).toBe("plugins.setComposition");
+        attempts.push({ params: structuredClone(params), key: options?.idempotencyKey });
+        if (lost) throw new RpcTransportError("acknowledgement lost");
+        return original;
+      },
+    } as unknown as RpcClient,
+    { capabilities: () => discovery.capabilities as ServerCapabilities },
+  );
   const command = methods.plugins.setComposition(input);
   input.members.reverse();
   await expect(command).rejects.toBeInstanceOf(RpcTransportError);

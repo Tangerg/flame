@@ -103,7 +103,7 @@ export interface DurableMutationJournal {
     preferredKey: string | undefined,
     claimed: (idempotencyKey: string) => boolean,
     requestMeta: RequestMeta | null,
-  ): DurableMutationIdentity | undefined;
+  ): DurableMutationIdentity;
   authorizeDispatch(identity: DurableMutationIdentity): string;
   lookupNamespace(identity: DurableMutationIdentity): string;
   bindSteerItem(identity: DurableMutationIdentity, userItemId: string): void;
@@ -551,7 +551,6 @@ export function openDurableMutationJournal(
       }
     },
     reserve(method, params, preferredKey, claimed, requestMeta) {
-      const scope = options.scope();
       if (preferredKey !== undefined && !validText(preferredKey, MAX_IDENTITY_LENGTH)) {
         throw new MutationJournalError("Runtime mutation identity candidate is invalid");
       }
@@ -580,7 +579,7 @@ export function openDurableMutationJournal(
         .filter((candidate) => matches(candidate) && !claimed(candidate.idempotencyKey))
         .toSorted((left, right) => left.createdAt - right.createdAt)[0];
       if (!entry) {
-        if (!validScope(scope)) return undefined;
+        const scope = currentScope();
         if (entries.length >= MAX_ENTRIES) {
           throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
         }

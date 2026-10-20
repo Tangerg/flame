@@ -13,6 +13,7 @@ import { createRpcClient, type RpcCallOptions, type RpcClient } from "./client";
 import { RpcError, RpcConnectionError, RpcProtocolError, RpcTransportError } from "./errors";
 import { asRunId, asSegmentId, asSessionId } from "./ids";
 import { createMethods } from "./methods";
+import { createWireCallPath } from "./wireCallPath";
 import { checkRequest } from "./request";
 import {
   createMutationJournal,
@@ -88,7 +89,10 @@ describe("methods factory", () => {
     async (type) => {
       const transport = createMemoryTransport();
       const client = createRpcClient(transport);
-      const methods = createMethods(client);
+      const methods = createMethods(client, {
+        capabilities: () =>
+          discovery.capabilities as import("@flame/runtime-client/wire").ServerCapabilities,
+      });
       const cancellation = methods.runs.cancel(asRunId("run_1"), "operator stopped");
       const request = await waitForRequest(transport, "runs.cancel");
       transport.inject({
@@ -111,7 +115,10 @@ describe("methods factory", () => {
       if (attempts.length < 3) throw new RpcTransportError("acknowledgement lost");
       return session;
     });
-    const methods = createMethods({ call } as unknown as RpcClient);
+    const methods = createMethods({ call } as unknown as RpcClient, {
+      capabilities: () =>
+        discovery.capabilities as import("@flame/runtime-client/wire").ServerCapabilities,
+    });
     const params = {
       sessionId: "ses_1",
       expectedRevision: 7,
@@ -166,7 +173,10 @@ describe("methods factory", () => {
       if (attempts.length < 3) throw new RpcTransportError("connection lost");
       return { id: "ses_1" };
     });
-    const methods = createMethods({ call } as unknown as RpcClient);
+    const methods = createMethods({ call } as unknown as RpcClient, {
+      capabilities: () =>
+        discovery.capabilities as import("@flame/runtime-client/wire").ServerCapabilities,
+    });
     const params = { title: "original", workspace: { path: "/original" } };
     const mutation = methods.sessions.create(params);
     params.title = "edited before dispatch";
@@ -510,7 +520,16 @@ describe("methods factory", () => {
 
   it("forwards the complete generated Goal start contract", async () => {
     const call = vi.fn().mockResolvedValue({ sessionId: "ses_1" });
-    const methods = createMethods({ call } as unknown as RpcClient);
+    const methods = createMethods({ call } as unknown as RpcClient, {
+      capabilities: () =>
+        ({
+          ...discovery.capabilities,
+          features: {
+            ...discovery.capabilities.features,
+            goals: { enabled: true, clientOptIn: false, requiredByRunProtocol: false },
+          },
+        }) as import("@flame/runtime-client/wire").ServerCapabilities,
+    });
 
     await methods.goals.start({
       sessionId: asSessionId("ses_1"),
@@ -540,7 +559,16 @@ describe("methods factory", () => {
       status: "active",
       used: { runs: 0, costUsd: 0, steps: 0 },
     });
-    const methods = createMethods({ call } as unknown as RpcClient);
+    const methods = createMethods({ call } as unknown as RpcClient, {
+      capabilities: () =>
+        ({
+          ...discovery.capabilities,
+          features: {
+            ...discovery.capabilities.features,
+            goals: { enabled: true, clientOptIn: false, requiredByRunProtocol: false },
+          },
+        }) as import("@flame/runtime-client/wire").ServerCapabilities,
+    });
 
     await methods.goals.update({
       sessionId: asSessionId("ses_1"),
@@ -585,7 +613,10 @@ describe("methods factory", () => {
       .mockResolvedValueOnce({ ...session, id: "ses_fork_1" })
       .mockResolvedValueOnce({ ...session, id: "ses_fork_2" });
     const client = { call } as unknown as RpcClient;
-    const methods = createMethods(client);
+    const methods = createMethods(client, {
+      capabilities: () =>
+        discovery.capabilities as import("@flame/runtime-client/wire").ServerCapabilities,
+    });
 
     const attempt = methods.sessions.fork({ sessionId: asSessionId("ses_1") });
     await expect(attempt).resolves.toMatchObject({
@@ -814,7 +845,82 @@ describe("methods factory", () => {
     replacementJournal.dispose();
   });
 
-  it("does not open the transport until mutation identity persistence recovers", async () => {
+  it("keeps discovery readable but refuses mutation before the default journal has scope", async () => {
+    const call = vi.fn().mockResolvedValue(discovery);
+    const methods = createMethods({ call } as unknown as RpcClient);
+    await expect(methods.sessions.fork({ sessionId: asSessionId("ses_1") })).rejects.toBeInstanceOf(
+      MutationJournalScopeUnavailableError,
+    );
+    expect(call).not.toHaveBeenCalled();
+    await expect(methods.runtime.discover()).resolves.toEqual(discovery);
+    expect(call).toHaveBeenCalledExactlyOnceWith("runtime.discover", {}, { signal: undefined });
+  });
+
+  it.each(["fork", "mcp", "provider"] as const)(
+    "refuses an unscoped %s command without later retargeting its handle",
+    async (operation) => {
+      const values = new Map<string, unknown>();
+      let namespace: string | null = null;
+      const journal = createMutationJournal({
+        storage: {
+          get: (key) => values.get(key),
+          set: (key, value) => void values.set(key, structuredClone(value)),
+          remove: (key) => void values.delete(key),
+          keys: () => [...values.keys()],
+        },
+        scope: () => (namespace === null ? null : { namespace, retentionSeconds: 86_400 }),
+      });
+      const call = vi.fn().mockResolvedValue({});
+      const methods = createMethods({ call } as unknown as RpcClient, { mutationJournal: journal });
+      const command =
+        operation === "fork"
+          ? methods.sessions.fork({ sessionId: asSessionId("ses_1") })
+          : operation === "mcp"
+            ? methods.mcp.create({
+                name: "new",
+                enabled: true,
+                connection: { type: "stdio", command: "server" },
+                handshakeTimeout: { type: "unbounded" },
+              })
+            : methods.providers.update({
+                provider: "openai",
+                apiKey: { type: "set", value: "credential" },
+              });
+      await expect(command).rejects.toBeInstanceOf(MutationJournalScopeUnavailableError);
+      namespace = "idp_successor";
+      const replay = command.retry();
+      expect(replay.idempotencyKey).toBe(command.idempotencyKey);
+      await expect(replay).rejects.toBeInstanceOf(MutationJournalScopeUnavailableError);
+      expect(call).not.toHaveBeenCalled();
+      expect(values.size).toBe(0);
+      journal.dispose();
+    },
+  );
+
+  it("requires a durable namespace even with an explicit mutation key", async () => {
+    let available = false;
+    const journal = createMutationJournal({
+      scope: () => (available ? { namespace: "idp_original", retentionSeconds: 86_400 } : null),
+    });
+    const call = vi.fn().mockResolvedValue(session);
+    const path = createWireCallPath({ call } as unknown as RpcClient, { mutationJournal: journal });
+    const params = { sessionId: asSessionId("ses_1") };
+    const refused = path.call("sessions.fork", params, { idempotencyKey: "explicit-key" });
+    await expect(refused).rejects.toBeInstanceOf(MutationJournalScopeUnavailableError);
+    available = true;
+    await expect(refused.retry()).rejects.toBeInstanceOf(MutationJournalScopeUnavailableError);
+    expect(call).not.toHaveBeenCalled();
+    await expect(
+      path.call("sessions.fork", params, { idempotencyKey: "new-action-key" }),
+    ).resolves.toEqual(session);
+    expect(call).toHaveBeenCalledExactlyOnceWith("sessions.fork", params, {
+      idempotencyKey: "new-action-key",
+      idempotencyNamespace: "idp_original",
+    });
+    journal.dispose();
+  });
+
+  it("requires a new action after identity persistence failed before reservation", async () => {
     let failWrites = true;
     const values = new Map<string, unknown>();
     const storage: MutationJournalStorage = {
@@ -843,8 +949,10 @@ describe("methods factory", () => {
     expect(call).not.toHaveBeenCalled();
 
     failWrites = false;
-    const recovered = failed.retry();
-    expect(recovered.idempotencyKey).toBe(failed.idempotencyKey);
+    await expect(failed.retry()).rejects.toThrow("not persisted");
+    expect(call).not.toHaveBeenCalled();
+    const recovered = methods.sessions.fork({ sessionId: asSessionId("ses_1") });
+    expect(recovered.idempotencyKey).not.toBe(failed.idempotencyKey);
     await expect(recovered).resolves.toMatchObject({ id: "ses_fork_1" });
     expect(call).toHaveBeenCalledOnce();
     persistentJournal.dispose();
@@ -914,7 +1022,10 @@ describe("methods factory", () => {
       .fn()
       .mockResolvedValueOnce({ ...session, id: "ses_fork_1" })
       .mockResolvedValueOnce({ ...session, id: "ses_fork_2" });
-    const methods = createMethods({ call } as unknown as RpcClient);
+    const methods = createMethods({ call } as unknown as RpcClient, {
+      capabilities: () =>
+        discovery.capabilities as import("@flame/runtime-client/wire").ServerCapabilities,
+    });
 
     const first = methods.sessions.fork({ sessionId: asSessionId("ses_1") });
     const second = methods.sessions.fork({ sessionId: asSessionId("ses_1") });
@@ -940,7 +1051,10 @@ describe("methods factory", () => {
       )
       .mockResolvedValueOnce({ id: "session_1" });
     const client = { call } as unknown as RpcClient;
-    const methods = createMethods(client);
+    const methods = createMethods(client, {
+      capabilities: () =>
+        discovery.capabilities as import("@flame/runtime-client/wire").ServerCapabilities,
+    });
 
     const attempt = methods.sessions.create({
       title: "same",

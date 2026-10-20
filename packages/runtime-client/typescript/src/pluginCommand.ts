@@ -117,15 +117,15 @@ export async function callPluginCommand<T>(
     throw new TypeError("Unary plugin command requires a unary method");
   parseJSON(input.input);
   const { request, reservation } = await journal.capturePluginCommand(intent, input, prepare);
-  return reservation.track(() =>
-    wire.openMutation(
-      "plugins.call",
-      request,
-      (key, attempt, prepared) =>
-        deliverPluginCommand(wire, prepared, reservation, key, decode, attempt.signal),
-      signal,
-      reservation.idempotencyKey,
-    ),
+  return wire.openMutation(
+    "plugins.call",
+    request,
+    (key, attempt, prepared) =>
+      deliverPluginCommand(wire, prepared, reservation, key, decode, attempt.signal),
+    signal,
+    undefined,
+    reservation.idempotencyKey,
+    () => reservation,
   );
 }
 
