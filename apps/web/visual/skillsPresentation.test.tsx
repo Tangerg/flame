@@ -90,6 +90,29 @@ const instructions = (name: string) =>
 const back = () =>
   fireEvent.click(screen.getByRole("button", { name: "Back to available Skills" }));
 
+async function holdRefresh(
+  refresh: HTMLElement,
+  read: { mock: { calls: unknown[][] } },
+  call: number,
+) {
+  refresh.focus();
+  fireEvent.click(refresh);
+  await waitFor(() => expect(read).toHaveBeenCalledTimes(call));
+  const signal = read.mock.calls[call - 1]!.at(-1) as AbortSignal;
+  expect(document.activeElement).toBe(refresh);
+  refresh.blur();
+  refresh.focus();
+  expect(document.activeElement).toBe(refresh);
+  expect(refresh.matches(":disabled")).toBe(false);
+  expect(refresh.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(refresh);
+  fireEvent.keyDown(refresh, { key: "Enter" });
+  fireEvent.keyDown(refresh, { key: " " });
+  fireEvent.keyUp(refresh, { key: " " });
+  expect(read).toHaveBeenCalledTimes(call);
+  expect(signal.aborted).toBe(false);
+}
+
 it("opens a named document directly from its filtered catalog row and returns to it", async () => {
   const { listDiscovered } = await mountSkills();
   fireEvent.change(screen.getByRole("searchbox", { name: "Search this catalog" }), {
@@ -176,6 +199,153 @@ it("names a first document failure without a retained claim, retries it and labe
   back();
   expect(screen.queryByRole("alert")).toBeNull();
   expect(readButtons()).toHaveLength(2);
+});
+
+it("keeps a pending document Refresh focusable and inert while the opened document and its return remain", async () => {
+  const { listDiscovered, getDiscovered } = await mountSkills();
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this catalog" });
+  fireEvent.change(search, { target: { value: "runtime" } });
+  const [opener] = readButtons();
+  opener!.focus();
+  fireEvent.click(opener!);
+  await waitFor(() =>
+    expect(instructions("runtime-boundaries")?.textContent).toBe(RUNTIME_BOUNDARIES.instructions),
+  );
+  const pending = [
+    Promise.withResolvers<SkillDetail>(),
+    Promise.withResolvers<SkillDetail>(),
+    Promise.withResolvers<SkillDetail>(),
+  ];
+  for (const deferred of pending) getDiscovered.mockImplementationOnce(() => deferred.promise);
+  const refresh = screen.getByRole<HTMLElement>("button", { name: "Refresh document" });
+
+  function expectOpenedDocument() {
+    expect(screen.getByRole("heading", { name: "runtime-boundaries" })).toBeTruthy();
+    expect(instructions("runtime-boundaries")?.textContent).toBe(RUNTIME_BOUNDARIES.instructions);
+    expect(getDiscovered).toHaveBeenLastCalledWith("runtime-boundaries", expect.any(AbortSignal));
+  }
+
+  await holdRefresh(refresh, getDiscovered, 2);
+  expect(screen.getByText("Reading runtime-boundaries…")).toBeTruthy();
+  expectOpenedDocument();
+  await act(async () => pending[0]!.resolve(RUNTIME_BOUNDARIES));
+  await waitFor(() => expect(screen.queryByText("Reading runtime-boundaries…")).toBeNull());
+  expect(refresh.getAttribute("aria-disabled")).not.toBe("true");
+  expect(document.activeElement).toBe(refresh);
+  expectOpenedDocument();
+
+  await holdRefresh(refresh, getDiscovered, 3);
+  await act(async () => pending[1]!.reject(new Error("owner offline")));
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "Could not refresh runtime-boundaries: owner offline",
+  );
+  expect(screen.getByText("Showing the last accepted read of runtime-boundaries.")).toBeTruthy();
+  expect(document.activeElement).toBe(refresh);
+  expectOpenedDocument();
+
+  await holdRefresh(refresh, getDiscovered, 4);
+  const outside = screen.getByRole<HTMLElement>("button", { name: "Outside action" });
+  outside.focus();
+  await act(async () => pending[2]!.resolve(RUNTIME_BOUNDARIES));
+  await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+  expect(document.activeElement).toBe(outside);
+  expectOpenedDocument();
+
+  back();
+  expect(
+    screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this catalog" }).value,
+  ).toBe("runtime");
+  expect(readButtons()).toHaveLength(1);
+  expect(document.activeElement).toBe(opener);
+  expect(listDiscovered).toHaveBeenCalledTimes(2);
+});
+
+it("lets Escape from a pending document Refresh return to its catalog row and retire that read", async () => {
+  const { listDiscovered, getDiscovered, outsideEscape } = await mountSkills();
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this catalog" });
+  fireEvent.change(search, { target: { value: "runtime" } });
+  const [opener] = readButtons();
+  opener!.focus();
+  fireEvent.click(opener!);
+  await waitFor(() =>
+    expect(instructions("runtime-boundaries")?.textContent).toBe(RUNTIME_BOUNDARIES.instructions),
+  );
+  const held = Promise.withResolvers<SkillDetail>();
+  getDiscovered.mockImplementationOnce(() => held.promise);
+  const refresh = screen.getByRole<HTMLElement>("button", { name: "Refresh document" });
+  await holdRefresh(refresh, getDiscovered, 2);
+  const signal = getDiscovered.mock.calls[1]!.at(-1) as AbortSignal;
+
+  expect((await screen.findByRole("tooltip")).textContent).toBe("Refresh document");
+  fireEvent.keyDown(refresh, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+  expect(signal.aborted).toBe(false);
+  expect(instructions("runtime-boundaries")).toBeTruthy();
+  expect(outsideEscape).not.toHaveBeenCalled();
+
+  fireEvent.keyDown(refresh, { key: "Escape" });
+  expect(outsideEscape).not.toHaveBeenCalled();
+  expect(signal.aborted).toBe(true);
+  expect(screen.queryByRole("button", { name: "Refresh document" })).toBeNull();
+  expect(instructions("runtime-boundaries")).toBeNull();
+  expect(
+    screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this catalog" }).value,
+  ).toBe("runtime");
+  expect(readButtons()).toEqual([opener]);
+  expect(document.activeElement).toBe(opener);
+
+  await act(async () => held.resolve(RUNTIME_BOUNDARIES));
+  expect(screen.queryByRole("button", { name: "Refresh document" })).toBeNull();
+  expect(screen.queryByText("Reading runtime-boundaries…")).toBeNull();
+  expect(instructions("runtime-boundaries")).toBeNull();
+  expect(readButtons()).toEqual([opener]);
+  expect(document.activeElement).toBe(opener);
+  expect(getDiscovered).toHaveBeenCalledTimes(2);
+  expect(listDiscovered).toHaveBeenCalledTimes(2);
+  expect(outsideEscape).not.toHaveBeenCalled();
+});
+
+it("keeps a pending catalog Refresh focusable and inert while its query and accepted rows remain", async () => {
+  const { listDiscovered } = await mountSkills();
+  const pending = [
+    Promise.withResolvers<SkillDiscovery>(),
+    Promise.withResolvers<SkillDiscovery>(),
+    Promise.withResolvers<SkillDiscovery>(),
+  ];
+  for (const deferred of pending) listDiscovered.mockImplementationOnce(() => deferred.promise);
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this catalog" });
+  fireEvent.change(search, { target: { value: "runtime" } });
+  const refresh = screen.getByRole<HTMLElement>("button", { name: "Refresh" });
+
+  function expectAcceptedQuery() {
+    expect(search.value).toBe("runtime");
+    expect(readButtons()).toHaveLength(1);
+    expect(listDiscovered).toHaveBeenLastCalledWith(expect.any(AbortSignal));
+  }
+
+  await holdRefresh(refresh, listDiscovered, 3);
+  expect(screen.getByText("Reading Skills…")).toBeTruthy();
+  expectAcceptedQuery();
+  await act(async () => pending[0]!.resolve(VISUAL_SKILL_DISCOVERY));
+  await waitFor(() => expect(screen.queryByText("Reading Skills…")).toBeNull());
+  expect(refresh.getAttribute("aria-disabled")).not.toBe("true");
+  expect(document.activeElement).toBe(refresh);
+  expectAcceptedQuery();
+
+  await holdRefresh(refresh, listDiscovered, 4);
+  await act(async () => pending[1]!.reject(new Error("catalog offline")));
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "Could not read available skills: catalog offline The last accepted read is retained.",
+  );
+  expect(document.activeElement).toBe(refresh);
+  expectAcceptedQuery();
+
+  await holdRefresh(refresh, listDiscovered, 5);
+  search.focus();
+  await act(async () => pending[2]!.resolve(VISUAL_SKILL_DISCOVERY));
+  await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+  expect(document.activeElement).toBe(search);
+  expectAcceptedQuery();
 });
 
 it("keeps a later focus choice and ignores document reads retired by return, a newer choice or retirement", async () => {
@@ -329,6 +499,9 @@ it("keeps an unconfirmed proposal command and its original identity across catal
   await act(async () => acknowledgement.resolve());
   await screen.findByText(/The original command outcome is not confirmed/);
   expect(screen.getByText(`Original command: ${original.idempotencyKey}`)).toBeTruthy();
+  const refresh = screen.getByRole<HTMLElement>("button", { name: "Refresh" });
+  expect(refresh.matches(":disabled")).toBe(true);
+  expect(refresh.hasAttribute("aria-disabled")).toBe(false);
   fireEvent.click(available);
   expect(screen.getByRole("tab", { name: "Skill proposals" }).getAttribute("aria-selected")).toBe(
     "true",

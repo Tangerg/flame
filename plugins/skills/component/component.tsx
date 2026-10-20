@@ -99,7 +99,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                   icon={Refresh}
                   aria-label="Refresh document"
                   size="md"
-                  disabled={opened.loading}
+                  pending={opened.loading}
                   onClick={() => void readDocument(opened.name)}
                 />
               }
@@ -152,7 +152,8 @@ export function Skills({ context }: { context: ComponentContext }) {
                   icon={Refresh}
                   aria-label="Refresh"
                   size="md"
-                  disabled={read.loading || Boolean(command)}
+                  disabled={Boolean(command)}
+                  pending={read.loading}
                   onClick={() => void refresh()}
                 />
               }
