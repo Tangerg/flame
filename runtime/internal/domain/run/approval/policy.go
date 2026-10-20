@@ -17,8 +17,8 @@ package approval
 import (
 	"errors"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
 var (

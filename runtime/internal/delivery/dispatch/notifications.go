@@ -3,8 +3,8 @@ package dispatch
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 const (

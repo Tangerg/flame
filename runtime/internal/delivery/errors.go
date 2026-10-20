@@ -9,13 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ProblemDetailed is implemented by an internal service error that contributes
-// structured fields to a client-visible protocol problem.
-type ProblemDetailed interface {
-	error
-	Enrich(*protocol.ProblemData)
-}
-
 // CapabilityGapError carries every missing capability of one operation.
 type CapabilityGapError struct {
 	Requirements []protocol.CapabilityRequirement

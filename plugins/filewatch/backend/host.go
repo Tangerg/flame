@@ -5,16 +5,17 @@ import (
 	"errors"
 	"iter"
 
+	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
-	flameruntime "github.com/Tangerg/flame/runtime"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type runHost struct{ client *flameruntime.Client }
+type runHost struct{ client *runtimeclient.Client }
 
 func connectHost(ctx context.Context, ref pluginsdk.CallbackRef) (*runHost, error) {
-	client, err := flameruntime.ConnectCallback(ctx, ref)
+	client, err := runtimeclient.ConnectCallback(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +23,7 @@ func connectHost(ctx context.Context, ref pluginsdk.CallbackRef) (*runHost, erro
 }
 
 func (h *runHost) Namespace(ctx context.Context) (string, error) {
-	discovery, err := h.client.Discover(ctx, flameruntime.CallOptions{})
+	discovery, err := h.client.Discover(ctx, protocol.CallOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -31,7 +32,7 @@ func (h *runHost) Namespace(ctx context.Context) (string, error) {
 
 func (h *runHost) Watch(ctx context.Context, generation string, trigger domain.Trigger) (iter.Seq2[protocol.RuntimeEvent, error], error) {
 	draft := trigger.Draft()
-	workspace, err := h.client.ResolveWorkspace(ctx, protocol.ResolveWorkspaceRequest{Ref: &protocol.WorkspaceRef{Path: draft.Workspace}}, flameruntime.CallOptions{})
+	workspace, err := h.client.ResolveWorkspace(ctx, protocol.ResolveWorkspaceRequest{Ref: &protocol.WorkspaceRef{Path: draft.Workspace}}, protocol.CallOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func (h *runHost) Watch(ctx context.Context, generation string, trigger domain.T
 	_, events, err := h.client.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
 		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 		Watches: []protocol.WatchSpec{{WatchID: generation, Workspace: protocol.WorkspaceRef{Path: draft.Workspace}, Paths: draft.Paths}},
-	}, flameruntime.SubscriptionOptions{})
+	}, protocol.SubscriptionOptions{})
 	return events, err
 }
 
@@ -57,7 +58,7 @@ func (h *runHost) Admit(ctx context.Context, namespace string, observation domai
 		Provider:   capture.Trigger.Provider, Model: capture.Trigger.Model, ReasoningEffort: capture.Trigger.ReasoningEffort,
 	}
 	key := "filewatch:run:" + capture.RunID
-	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: namespace, Key: key, Operation: protocol.RunCommandStart, Request: &start}, flameruntime.CallOptions{})
+	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: namespace, Key: key, Operation: protocol.RunCommandStart, Request: &start}, protocol.CallOptions{})
 	if err != nil {
 		return err
 	}
@@ -69,18 +70,18 @@ func (h *runHost) Admit(ctx context.Context, namespace string, observation domai
 		return nil
 	case protocol.RunAcceptanceNotRecorded:
 	default:
-		return flameruntime.ErrInvalidResponse
+		return protocol.ErrInvalidResponse
 	}
-	ack, _, err := h.client.StartRun(ctx, start, flameruntime.RunCommandOptions{IdempotencyKey: key})
+	ack, _, err := h.client.StartRun(ctx, start, protocol.RunCommandOptions{IdempotencyKey: key})
 	if err != nil {
 		return err
 	}
 	if ack.RunID != capture.RunID {
-		return flameruntime.ErrInvalidResponse
+		return protocol.ErrInvalidResponse
 	}
 	return nil
 }
 
 func (h *runHost) Notify(ctx context.Context, contribution string) error {
-	return h.client.NotifyPluginChange(ctx, protocol.PluginChangeNotice{Contribution: contribution}, flameruntime.CommandOptions{})
+	return h.client.NotifyPluginChange(ctx, protocol.PluginChangeNotice{Contribution: contribution}, protocol.CommandOptions{})
 }

@@ -1,0 +1,647 @@
+package terminal
+
+import (
+	"context"
+	"errors"
+	"slices"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/core/programtest"
+)
+
+type workspaceServiceStub struct {
+	mu          sync.Mutex
+	changes     []workspace.Change
+	calls       map[string]int
+	diffRequest workspace.DiffRequest
+	headRequest workspace.HeadRequest
+	search      workspace.SearchRequest
+	files       workspace.FilesRequest
+	read        workspace.ReadRequest
+}
+
+func newWorkspaceServiceStub() *workspaceServiceStub {
+	return &workspaceServiceStub{
+		changes: []workspace.Change{{Path: "main.go", Status: protocol.FileStatusModified}},
+		calls:   make(map[string]int),
+	}
+}
+
+func (w *workspaceServiceStub) called(operation string) {
+	w.mu.Lock()
+	w.calls[operation]++
+	w.mu.Unlock()
+}
+
+func (w *workspaceServiceStub) callCount(operation string) int {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.calls[operation]
+}
+
+func (w *workspaceServiceStub) setChanges(changes ...workspace.Change) {
+	w.mu.Lock()
+	w.changes = append([]workspace.Change(nil), changes...)
+	w.mu.Unlock()
+}
+
+func (w *workspaceServiceStub) Resolve(_ context.Context, request workspace.ResolveRequest) (workspace.Workspace, error) {
+	w.called("resolve")
+	return workspace.Workspace{Path: request.Path, ProjectRoot: request.Path, Availability: protocol.WorkspaceAvailable}, nil
+}
+
+func (w *workspaceServiceStub) List(context.Context) ([]workspace.Summary, error) {
+	w.called("list")
+	lastActive := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
+	return []workspace.Summary{{
+		Workspace: workspace.Workspace{Path: "/tmp/flame-cli-test", ProjectRoot: "/tmp/project-root", Availability: protocol.WorkspaceAvailable},
+		Name:      "flame-cli-test", Sessions: 1, LastActive: &lastActive,
+	}}, nil
+}
+
+func (w *workspaceServiceStub) Changes(context.Context, string) ([]workspace.Change, error) {
+	w.called("changes")
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return append([]workspace.Change(nil), w.changes...), nil
+}
+
+func (w *workspaceServiceStub) Diff(_ context.Context, request workspace.DiffRequest) (workspace.Diff, error) {
+	w.called("diff")
+	w.mu.Lock()
+	w.diffRequest = request
+	w.mu.Unlock()
+	return workspace.Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineMergeBase, Commit: strings.Repeat("1", 40)}, Patch: "diff --git a/main.go b/main.go\n+var current = true"}, nil
+}
+
+func (w *workspaceServiceStub) lastDiffRequest() workspace.DiffRequest {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.diffRequest
+}
+
+func (w *workspaceServiceStub) Head(_ context.Context, request workspace.HeadRequest) (workspace.FileHead, error) {
+	w.called("head")
+	w.mu.Lock()
+	w.headRequest = request
+	w.mu.Unlock()
+	return workspace.FileHead{Lines: []protocol.FileLine{{LineNumber: 1, Text: "package main"}}}, nil
+}
+
+func (w *workspaceServiceStub) Search(_ context.Context, request workspace.SearchRequest) (workspace.SearchResult, error) {
+	w.called("search")
+	w.mu.Lock()
+	w.search = request
+	w.mu.Unlock()
+	return workspace.SearchResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1}, nil
+}
+
+func (w *workspaceServiceStub) Files(_ context.Context, request workspace.FilesRequest) (workspace.FileListing, error) {
+	w.called("files")
+	w.mu.Lock()
+	w.files = request
+	w.mu.Unlock()
+	size := int64(42)
+	return workspace.FileListing{Entries: []workspace.FileEntry{{
+		Path: "main.go", Type: protocol.FileEntryFile, SizeBytes: &size,
+		ModifiedAt: time.Date(2026, 8, 12, 9, 0, 0, 0, time.UTC),
+	}}}, nil
+}
+
+func (w *workspaceServiceStub) Read(_ context.Context, request workspace.ReadRequest) (workspace.FileContent, error) {
+	w.called("read")
+	w.mu.Lock()
+	w.read = request
+	w.mu.Unlock()
+	return workspace.FileContent{Content: "package main\n", TotalLines: 1}, nil
+}
+
+func (w *workspaceServiceStub) inspectionRequests() (workspace.HeadRequest, workspace.SearchRequest, workspace.FilesRequest, workspace.ReadRequest) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.headRequest, w.search, w.files, w.read
+}
+
+type changeSourceStub struct {
+	events chan changefeed.Event
+}
+
+type changeReaderFunc func(context.Context, string) ([]workspace.Change, error)
+
+func (c changeReaderFunc) Changes(ctx context.Context, path string) ([]workspace.Change, error) {
+	return c(ctx, path)
+}
+
+type changeSourceFunc func(context.Context, changefeed.Subscription) (changefeed.EventStream, error)
+
+func (c changeSourceFunc) Supports(topic protocol.RuntimeTopic) bool {
+	return topic == protocol.TopicFilesChanged
+}
+
+func (c changeSourceFunc) Subscribe(ctx context.Context, subscription changefeed.Subscription) (changefeed.EventStream, error) {
+	return c(ctx, subscription)
+}
+
+func (c *changeSourceStub) Supports(topic protocol.RuntimeTopic) bool {
+	return topic == protocol.TopicFilesChanged
+}
+
+func (c *changeSourceStub) Subscribe(ctx context.Context, _ changefeed.Subscription) (changefeed.EventStream, error) {
+	return func(yield func(changefeed.Event, error) bool) {
+		for {
+			select {
+			case event := <-c.events:
+				if !yield(event, nil) {
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}, nil
+}
+
+func runUIWithWorkspaceBackend(t *testing.T, service Workspaces, source changefeed.Source) (*programtest.Host, func()) {
+	t.Helper()
+	backend := runtimefixture.New()
+	backend.Instant = true
+	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() {
+		done <- Run(ctx, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Workspaces: service, Changes: source, Workspace: "/tmp/flame-cli-test", Host: host})
+	}()
+	var once sync.Once
+	stop := func() {
+		once.Do(func() {
+			cancel()
+			if err := <-done; err != nil {
+				t.Errorf("terminal session stopped with %v", err)
+			}
+		})
+	}
+	t.Cleanup(stop)
+	return host, stop
+}
+
+func TestWorkspaceCommandsConsumeEveryInspectionRead(t *testing.T) {
+	service := newWorkspaceServiceStub()
+	host, stop := runUIWithWorkspaceBackend(t, service, nil)
+	host.Shows(t, "Ask flame")
+
+	commands := []struct {
+		input string
+		show  string
+		call  string
+	}{
+		{input: "/workspaces", show: "Runtime workspaces", call: "list"},
+		{input: "/changes", show: "Workspace changes", call: "changes"},
+		{input: "/diff main.go", show: "Workspace diff", call: "diff"},
+		{input: "/preview main.go", show: "File preview", call: "head"},
+		{input: "/grep package", show: "Workspace search", call: "search"},
+		{input: "/browse", show: "Workspace files", call: "files"},
+		{input: "/read main.go", show: "Workspace file", call: "read"},
+	}
+	for _, command := range commands {
+		host.Type(command.input)
+		host.Press(input.Enter)
+		host.Shows(t, command.show)
+		if command.input == "/workspaces" {
+			host.Shows(t, "project /tmp/project-root")
+			host.Shows(t, "2026-08-12T09:00:00Z")
+		}
+		if service.callCount(command.call) == 0 {
+			t.Fatalf("%s did not call %s", command.input, command.call)
+		}
+		host.Press(input.Esc)
+		host.Shows(t, "Ask flame")
+	}
+	stop()
+}
+
+func TestWorkspaceDiffConsumesModeFormatLimitAndPath(t *testing.T) {
+	service := newWorkspaceServiceStub()
+	host, stop := runUIWithWorkspaceBackend(t, service, nil)
+	host.Shows(t, "Ask flame")
+	host.Type("/diff --base --rows --limit 50 dir with spaces/main.go")
+	host.Press(input.Enter)
+	host.Shows(t, "Workspace diff")
+	host.Shows(t, "base · rows · dir with spaces/main.go")
+	host.Shows(t, "Merge base "+strings.Repeat("1", 40))
+	request := service.lastDiffRequest()
+	rows, explicit, err := request.RowLimit.Rows()
+	if request.Mode != protocol.DiffModeBase || request.Format != protocol.DiffFormatRows ||
+		err != nil || !explicit || rows != 50 || request.Path != "dir with spaces/main.go" {
+		t.Fatalf("diff request = %+v", request)
+	}
+	stop()
+}
+
+func TestWorkspaceDiffOptionsRejectAmbiguousOrInvalidInput(t *testing.T) {
+	t.Parallel()
+
+	for _, argument := range []string{
+		"--base --worktree",
+		"--rows --raw",
+		"--limit 0",
+		"--limit 10",
+		"--unknown",
+	} {
+		if _, err := parseWorkspaceDiffSelection(argument); err == nil {
+			t.Errorf("parseWorkspaceDiffSelection(%q) accepted invalid input", argument)
+		}
+	}
+	selection, err := parseWorkspaceDiffSelection("-- --generated.go")
+	if err != nil || selection.path != "--generated.go" {
+		t.Fatalf("option terminator = (%+v, %v)", selection, err)
+	}
+}
+
+func TestWorkspaceCommandsConsumeEveryPublishedQueryOption(t *testing.T) {
+	service := newWorkspaceServiceStub()
+	host, stop := runUIWithWorkspaceBackend(t, service, nil)
+	host.Shows(t, "Ask flame")
+
+	for _, command := range []struct {
+		input string
+		show  string
+	}{
+		{input: "/preview --lines 25 dir with spaces/main.go", show: "File preview"},
+		{input: "/grep --path internal --limit 75 transition conflict", show: "Workspace search"},
+		{input: "/browse --recursive --ignored --glob *.go dir with spaces", show: "Workspace files"},
+		{input: "/read --start 10 --end 20 --max-bytes 4096 dir with spaces/main.go", show: "Workspace file"},
+	} {
+		host.Type(command.input)
+		host.Press(input.Enter)
+		host.Shows(t, command.show)
+		if command.show == "Workspace files" {
+			host.Shows(t, "42 B · 2026-08-12T09:00:00Z")
+		}
+		host.Press(input.Esc)
+		host.Shows(t, "Ask flame")
+	}
+
+	head, search, files, read := service.inspectionRequests()
+	headLines, headErr := head.LineLimit.Lines()
+	if headErr != nil || head.Path != "dir with spaces/main.go" || headLines != 25 {
+		t.Errorf("head request = %+v", head)
+	}
+	searchLimit, searchErr := search.Limit.Matches()
+	if searchErr != nil || search.Path != "internal" || searchLimit != 75 || search.Query != "transition conflict" {
+		t.Errorf("search request = %+v", search)
+	}
+	if files.Path != "dir with spaces" || files.Glob != "*.go" || !files.Recursive || !files.IncludeIgnored {
+		t.Errorf("files request = %+v", files)
+	}
+	start, end, rangeErr := read.Range.Bounds()
+	bytes, byteErr := read.ByteLimit.Bytes()
+	if rangeErr != nil || byteErr != nil || read.Path != "dir with spaces/main.go" || start != 10 || end != 20 || bytes != 4096 {
+		t.Errorf("read request = %+v", read)
+	}
+	stop()
+}
+
+func TestWorkspaceQueryOptionsFailBeforeStartingARead(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		parse func(string) error
+		input string
+	}{
+		{name: "preview duplicate", input: "--lines 2 --lines 3 main.go", parse: func(value string) error { _, err := parseWorkspaceHeadSelection(value); return err }},
+		{name: "search missing query", input: "--limit 5", parse: func(value string) error { _, err := parseWorkspaceSearchSelection(value); return err }},
+		{name: "browse missing glob", input: "--glob", parse: func(value string) error { _, err := parseWorkspaceFilesSelection(value); return err }},
+		{name: "read incomplete range", input: "--end 5 main.go", parse: func(value string) error { _, err := parseWorkspaceReadSelection(value); return err }},
+		{name: "read reversed range", input: "--start 10 --end 5 main.go", parse: func(value string) error { _, err := parseWorkspaceReadSelection(value); return err }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			if err := test.parse(test.input); err == nil {
+				t.Fatalf("parser accepted %q", test.input)
+			}
+		})
+	}
+}
+
+func TestFileInvalidationsRefetchAuthoritativeChangesAndRecoverSequenceGaps(t *testing.T) {
+	service := newWorkspaceServiceStub()
+	source := &changeSourceStub{events: make(chan changefeed.Event, 4)}
+	host, stop := runUIWithWorkspaceBackend(t, service, source)
+	host.Shows(t, "Δ1")
+	host.Type("/changes")
+	host.Press(input.Enter)
+	host.Shows(t, "Workspace changes")
+
+	service.setChanges(
+		workspace.Change{Path: "main.go", Status: protocol.FileStatusModified},
+		workspace.Change{Path: "new.go", Status: protocol.FileStatusUntracked},
+	)
+	source.events <- changefeed.Event{
+		Type: protocol.RuntimeFilesChanged, Sequence: 1,
+		WatchID: workspaceWatchID, Workspace: "/tmp/flame-cli-test", Paths: []string{"new.go"},
+	}
+	host.Shows(t, "2 files")
+	host.Shows(t, "new.go")
+	host.Press(input.Esc)
+	host.Shows(t, "Δ2")
+
+	service.setChanges(
+		workspace.Change{Path: "main.go", Status: protocol.FileStatusModified},
+		workspace.Change{Path: "new.go", Status: protocol.FileStatusUntracked},
+		workspace.Change{Path: "old.go", Status: protocol.FileStatusDeleted},
+	)
+	// Sequence 2 was deliberately missed. The monitor must detect the gap and
+	// refetch instead of trusting the event payload as state.
+	source.events <- changefeed.Event{
+		Type: protocol.RuntimeFilesChanged, Sequence: 3,
+		WatchID: workspaceWatchID, Workspace: "/tmp/flame-cli-test", Paths: []string{"old.go"},
+	}
+	host.Shows(t, "Δ3")
+	stop()
+}
+
+func TestRuntimeChangeMonitorDoesNotRegressAfterAStaleFrame(t *testing.T) {
+	t.Parallel()
+	invalidations, resyncs := 0, 0
+	monitor := runtimeChangeMonitor{
+		subscriptionLimits: testSubscriptionLimits,
+		applyEvent: func(changefeed.Event) error {
+			invalidations++
+			return nil
+		},
+		applyResync: func([]protocol.RuntimeTopic) error {
+			resyncs++
+			return nil
+		},
+	}
+	tracker := changefeed.NewSequenceTracker()
+	topics := []protocol.RuntimeTopic{protocol.TopicSessionsChanged}
+	consume := func(sequence uint64) bool {
+		t.Helper()
+		applied, err := monitor.consumeChangeEvent(t.Context(), topics, false, tracker, changefeed.Event{
+			Type: protocol.RuntimeSessionsChanged, Sequence: sequence,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return applied
+	}
+	if !consume(1) || !consume(3) {
+		t.Fatal("contiguous/gap frames did not advance the monitor")
+	}
+	if consume(2) {
+		t.Fatal("stale frame was reapplied")
+	}
+	if !consume(4) {
+		t.Fatal("successor after stale frame was not contiguous")
+	}
+	if invalidations != 2 || resyncs != 1 {
+		t.Fatalf("monitor effects = invalidations %d, resyncs %d", invalidations, resyncs)
+	}
+}
+
+func TestWorkspaceMonitorSubscribesBeforeItsAuthoritativeRead(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	var mu sync.Mutex
+	var order []string
+	record := func(step string) {
+		mu.Lock()
+		order = append(order, step)
+		mu.Unlock()
+	}
+	monitor := runtimeChangeMonitor{
+		subscriptionLimits: testSubscriptionLimits,
+		workspace:          "/workspace", watchFiles: true,
+		source: changeSourceFunc(func(ctx context.Context, _ changefeed.Subscription) (changefeed.EventStream, error) {
+			record("subscribe")
+			return func(func(changefeed.Event, error) bool) { <-ctx.Done() }, nil
+		}),
+		repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
+			record("read")
+			return []workspace.Change{}, nil
+		}),
+		applyFiles: func([]workspace.Change) error {
+			record("apply")
+			cancel()
+			return nil
+		},
+	}
+	_ = monitor.run(ctx)
+	mu.Lock()
+	defer mu.Unlock()
+	want := []string{"subscribe", "read", "apply"}
+	if !slices.Equal(order, want) {
+		t.Fatalf("monitor order = %v, want %v", order, want)
+	}
+}
+
+func TestWorkspaceMonitorReadsFilesWhenTheChangeSourceCannotWatchThem(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	source := &runtimeChangeSourceStub{
+		events: make(chan changefeed.Event), subscription: make(chan changefeed.Subscription, 1),
+		supported: []protocol.RuntimeTopic{protocol.TopicSessionsChanged},
+	}
+	read := make(chan struct{}, 1)
+	applied := make(chan []workspace.Change, 1)
+	monitor := runtimeChangeMonitor{
+		subscriptionLimits: testSubscriptionLimits,
+		workspace:          "/workspace", source: source, watchFiles: true,
+		repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
+			read <- struct{}{}
+			return []workspace.Change{{Path: "main.go", Status: protocol.FileStatusModified}}, nil
+		}),
+		applyFiles: func(changes []workspace.Change) error {
+			applied <- changes
+			cancel()
+			return nil
+		},
+	}
+	done := make(chan struct{})
+	go func() {
+		_ = monitor.run(ctx)
+		close(done)
+	}()
+
+	subscription := <-source.subscription
+	if !slices.Equal(subscription.Topics, []protocol.RuntimeTopic{protocol.TopicSessionsChanged}) || len(subscription.Watches) != 0 {
+		t.Fatalf("subscription = %+v", subscription)
+	}
+	select {
+	case <-read:
+	case <-time.After(time.Second):
+		t.Fatal("file projection was not read")
+	}
+	select {
+	case changes := <-applied:
+		if len(changes) != 1 || changes[0].Path != "main.go" {
+			t.Fatalf("applied changes = %+v", changes)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("file projection was not applied")
+	}
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("monitor did not stop")
+	}
+}
+
+func TestWorkspaceMonitorDoesNotRequestAFileWatchWithoutTheNegotiatedCapability(t *testing.T) {
+	t.Parallel()
+
+	source := &runtimeChangeSourceStub{supported: []protocol.RuntimeTopic{
+		protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
+	}}
+	monitor := runtimeChangeMonitor{
+		subscriptionLimits: testSubscriptionLimits,
+		source:             source, repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
+			return nil, nil
+		}),
+	}
+	if topics := monitor.supportedTopics(); !slices.Equal(topics, []protocol.RuntimeTopic{protocol.TopicSessionsChanged}) {
+		t.Fatalf("topics without fileWatch = %v", topics)
+	}
+	monitor.watchFiles = true
+	if topics := monitor.supportedTopics(); !slices.Equal(topics, []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged}) {
+		t.Fatalf("topics with fileWatch = %v", topics)
+	}
+}
+
+func TestWorkspaceMonitorObservesStateOnlyWithPlanProjection(t *testing.T) {
+	t.Parallel()
+
+	source := &runtimeChangeSourceStub{supported: []protocol.RuntimeTopic{
+		protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
+		protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
+	}}
+	monitor := runtimeChangeMonitor{subscriptionLimits: testSubscriptionLimits, source: source}
+	withoutPlan := []protocol.RuntimeTopic{
+		protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicInterruptsChanged,
+	}
+	if topics := monitor.supportedTopics(); !slices.Equal(topics, withoutPlan) {
+		t.Fatalf("topics without plan = %v, want %v", topics, withoutPlan)
+	}
+	monitor.resources.plan = true
+	withPlan := []protocol.RuntimeTopic{
+		protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
+		protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
+	}
+	if topics := monitor.supportedTopics(); !slices.Equal(topics, withPlan) {
+		t.Fatalf("topics with plan = %v, want %v", topics, withPlan)
+	}
+}
+
+func TestWorkspaceMonitorWatchesAuthoredResourcesWithoutGitProjection(t *testing.T) {
+	t.Parallel()
+
+	source := &runtimeChangeSourceStub{
+		events:       make(chan changefeed.Event),
+		subscription: make(chan changefeed.Subscription, 1),
+		supported: []protocol.RuntimeTopic{
+			protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
+			protocol.TopicSkillsChanged, protocol.TopicHooksChanged,
+		},
+	}
+	monitor := runtimeChangeMonitor{
+		subscriptionLimits: testSubscriptionLimits,
+		workspace:          "/workspace", source: source, watchFiles: true,
+		resources: runtimeResourceObservation{skills: true, hooks: true},
+	}
+	wantTopics := []protocol.RuntimeTopic{
+		protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
+		protocol.TopicSkillsChanged, protocol.TopicHooksChanged,
+	}
+	if topics := monitor.supportedTopics(); !slices.Equal(topics, wantTopics) {
+		t.Fatalf("authored-resource topics without Git = %v, want %v", topics, wantTopics)
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- monitor.run(ctx) }()
+	subscription := awaitValue(t, source.subscription, "authored-resource workspace watch")
+	if !slices.Equal(subscription.Topics, wantTopics) ||
+		!slices.Equal(subscription.Watches, []changefeed.Watch{{ID: workspaceWatchID, Workspace: "/workspace"}}) {
+		t.Fatalf("authored-resource subscription without Git = %+v", subscription)
+	}
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("monitor error = %v, want context cancellation", err)
+	}
+}
+
+func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
+	t.Parallel()
+
+	features := map[string]protocol.FeatureCapability{
+		protocol.FeaturePlan:    {},
+		protocol.FeatureGoals:   {},
+		protocol.FeatureSkills:  {},
+		protocol.FeatureMCP:     {},
+		protocol.FeaturePlugins: {},
+	}
+	profile := terminalProfileWithFeatures(t, features)
+	application := &app{
+		runtimeProfile: &profile,
+		goals:          new(goalServiceStub),
+		skills:         newSkillServiceStub(),
+		mcp:            newMCPServiceStub(),
+		schedules:      newScheduleServiceStub(),
+		hooks:          &hookServiceStub{},
+	}
+	if got := application.observedRuntimeResources(); got != (runtimeResourceObservation{hooks: true, models: true, approvals: true}) {
+		t.Fatalf("resources with disabled features = %+v", got)
+	}
+	for feature := range features {
+		capability := features[feature]
+		capability.Enabled = true
+		features[feature] = capability
+	}
+	profile = terminalProfileWithFeatures(t, features)
+	want := runtimeResourceObservation{
+		plan: true, goals: true, skills: true, mcp: true, schedules: true, hooks: true,
+		models: true, approvals: true,
+	}
+	if got := application.observedRuntimeResources(); got != want {
+		t.Fatalf("resources with enabled features = %+v, want %+v", got, want)
+	}
+}
+
+var _ Workspaces = (*workspaceServiceStub)(nil)
+var _ changefeed.Source = (*changeSourceStub)(nil)
+
+// perWorkspaceChanges serves the stub's changes for the original workspace
+// only; any other workspace's read waits for cancellation, so the header can
+// show nothing but what it retained from the previous workspace.
+type perWorkspaceChanges struct {
+	*workspaceServiceStub
+}
+
+func (p perWorkspaceChanges) Changes(ctx context.Context, path string) ([]workspace.Change, error) {
+	if path == "/tmp/flame-cli-test" {
+		return p.workspaceServiceStub.Changes(ctx, path)
+	}
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func TestWorkspaceChangeCountDoesNotFollowTheSessionIntoAnotherWorkspace(t *testing.T) {
+	host, stop := runUIWithWorkspaceBackend(t, perWorkspaceChanges{newWorkspaceServiceStub()}, nil)
+	host.Shows(t, "Δ1")
+	host.Type("/workspace " + t.TempDir())
+	host.Press(input.Enter)
+	host.Shows(t, "session · ")
+	host.Hides(t, "Δ1")
+	stop()
+}

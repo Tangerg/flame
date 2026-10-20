@@ -3,12 +3,13 @@ package mcp
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"

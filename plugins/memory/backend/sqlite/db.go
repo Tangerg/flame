@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 

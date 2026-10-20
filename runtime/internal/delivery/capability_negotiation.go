@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"fmt"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -70,7 +71,7 @@ func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, 
 			capabilities.InterruptKinds = append(capabilities.InterruptKinds, kind)
 			continue
 		}
-		return run.Capabilities{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown interruptTypes value %q", declared))
+		return run.Capabilities{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown interruptTypes value %q", declared))
 	}
 	return capabilities.Normalized(), nil
 }

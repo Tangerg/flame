@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"

@@ -7,7 +7,6 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -98,7 +97,7 @@ func mustProblemContracts() []ProblemContract {
 		}
 	}
 
-	add(ProblemChannelRPC, delivery.ProblemTypes()...)
+	add(ProblemChannelRPC, protocol.ProblemTypes()...)
 	add(ProblemChannelExecution, slices.Sorted(maps.Keys(executionRecovery))...)
 
 	common := []string{"detail", "docUrl"}

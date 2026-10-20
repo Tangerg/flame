@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
@@ -121,9 +120,9 @@ func composeSystemPromptText(t *testing.T, config WorkingContextConfig, cwd stri
 type stubAgentMemory struct{ content string }
 
 func (s stubAgentMemory) Items(_ context.Context, scope string, _ string) ([]MemoryPromptItem, error) {
-	if scope != string(agentmemory.ScopeProject) || strings.TrimSpace(s.content) == "" {
+	if scope != string("project") || strings.TrimSpace(s.content) == "" {
 		return nil, nil
 	}
 	// Pinned so it reaches the always-on core (the composer injects pinned only).
-	return []MemoryPromptItem{testMemoryPromptItem(agentmemory.ItemSnapshot{Content: s.content, Pinned: true, Status: agentmemory.StatusActive})}, nil
+	return []MemoryPromptItem{testMemoryPromptItem(MemoryPromptItem{Content: s.content, Pinned: true})}, nil
 }

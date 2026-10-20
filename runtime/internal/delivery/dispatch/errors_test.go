@@ -8,13 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 func TestBackendTransportErrorCannotBypassCoreProblemProjection(t *testing.T) {
-	failure := delivery.NewFailure(errors.Join(protocol.ErrInternalError, transport.NewError(0, "private downstream failure", nil)), "the runtime could not complete the request")
+	failure := protocol.NewFailure(errors.Join(protocol.ErrInternalError, transport.NewError(0, "private downstream failure", nil)), "the runtime could not complete the request")
 	rpcErr := errorToRPC(failure)
 	if rpcErr.Code != codeInternalError || rpcErr.Message != protocol.ProblemInternalError {
 		t.Fatalf("backend transport replaced the Core error contract: %+v", rpcErr)
@@ -28,7 +27,7 @@ func TestBackendTransportErrorCannotBypassCoreProblemProjection(t *testing.T) {
 func TestCancellationProjectionPreservesSafeWireProblem(t *testing.T) {
 	for _, cause := range []error{context.Canceled, context.DeadlineExceeded, errors.New("unknown failure")} {
 		t.Run(cause.Error(), func(t *testing.T) {
-			failure := delivery.ProjectError(fmt.Errorf("private endpoint credential: %w", cause))
+			failure := protocol.ProjectError(fmt.Errorf("private endpoint credential: %w", cause))
 			if !errors.Is(failure, protocol.ErrInternalError) {
 				t.Fatalf("failure = %v, want internal_error", failure)
 			}

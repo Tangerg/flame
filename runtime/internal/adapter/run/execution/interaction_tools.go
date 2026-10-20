@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/fingerprint"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"

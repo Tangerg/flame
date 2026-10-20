@@ -3,12 +3,13 @@ package toolset
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	"github.com/Tangerg/flame/runtime/fingerprint"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"

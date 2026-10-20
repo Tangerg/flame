@@ -1,0 +1,123 @@
+export {
+  isErrorType,
+  OperationFailure,
+  RpcConnectionError,
+  RpcError,
+  RpcProtocolError,
+  RpcTransportError,
+} from "./errors";
+export { asItemId, asRunId, asSegmentId, asSessionId } from "./ids";
+export type { ItemId, RunId, SegmentId } from "./ids";
+export type { MutationAttemptOptions, MutationPromise } from "./mutation";
+export { MutationLookupError } from "./mutation";
+export { createMutationJournal } from "./mutationJournal";
+export type { PluginCommandRecovery } from "./pluginCommand";
+export type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
+export {
+  createMutationSettler,
+  MUTATION_ATTEMPT_TIMEOUT_MS,
+  MutationSettlementClosedError,
+} from "./mutationSettlement";
+export type { MutationSettler } from "./mutationSettlement";
+export type {
+  Methods,
+  StreamingResult,
+  RunOpeningResult,
+  RunCommandRecovery,
+  SteerCommandResult,
+  SteerMutationPromise,
+} from "./methods";
+export type { ResourceSubscription } from "./resources";
+export { createFlameClient } from "./sdk";
+export type { FlameClient } from "./sdk";
+export { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-client/wire";
+export type {
+  ClientCapabilities,
+  ServerCapabilities,
+  FeatureCapability,
+  RequestMeta,
+  DiscoverResponse,
+  Session,
+  WorkspaceSummary,
+  SessionArtifact,
+  SessionTrajectory,
+  ExportTrajectoryRequest,
+  ExportTrajectoryResponse,
+  FeedbackEntry,
+  SessionSnapshot,
+  ListSessionTrajectoryRequest,
+  TrajectoryEntry,
+  ModelInvocation,
+  ModelInvocationState,
+  ModelInvocationUsage,
+  ToolAttempt,
+  ToolAttemptState,
+  RunRef,
+  RunAcceptance,
+  GetRunAcceptanceRequest,
+  RunOutcome,
+  RunProgress,
+  RunMetrics,
+  RunProtocolProfile,
+  StartRunResponse,
+  CancelRunResponse,
+  Item,
+  ContentBlock,
+  Question,
+  ToolInvocation,
+  RunEvent,
+  StreamEvent,
+  ItemDelta,
+  Interrupt,
+  PendingInterruptSet,
+  Plan,
+  InterruptResponse,
+  Goal,
+  WorkspaceFileChange,
+  PlanStep,
+  Usage,
+  ProblemData,
+  Provider,
+  ProviderConfigChange,
+  ApprovalRule,
+  ToolRef,
+  SetApprovalRuleRequest,
+  MCPToolExposure,
+  SetMCPToolExposureRequest,
+  MCPServer,
+  MCPServerID,
+  MCPOrigin,
+  MCPHandshakeTimeout,
+  MCPAuthorizationAttempt,
+  MCPConnectionInput,
+  MCPAuthorizationChange,
+  MCPEnvironmentChange,
+  MCPHeadersChange,
+  MCPServerCandidate,
+  UpdateMCPServerRequest,
+  RuntimeTopic,
+} from "@flame/runtime-client/wire";
+export type { WireFeature } from "@flame/runtime-client/methods";
+export { createSidecarClient } from "./sidecar";
+export type { LivenessStatus, ReadinessStatus, RuntimeInfo, SidecarClient } from "./sidecar";
+export { createHttpTransport } from "./transports/http";
+export { JSONRPC_VERSION } from "./types";
+export { ExactNumber, parseJSON, stringifyJSON } from "./json";
+export type { JSONNumber } from "./json";
+export { normalizeRuntimeEndpoint } from "./endpoint";
+
+export * from "./client";
+export * from "./endpoint";
+export * from "./errors";
+export * from "./ids";
+export * from "./json";
+export * from "./methods";
+export * from "./mutation";
+export * from "./mutationJournal";
+export * from "./request";
+export * from "./sdk";
+export * from "./sidecar";
+export * from "./transport";
+export * from "./transports/http";
+
+export { mutationSettlementIsUnknown } from "./mutation";

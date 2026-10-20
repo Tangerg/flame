@@ -13,11 +13,11 @@ import (
 	"slices"
 	"sync"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/runtime/dependency"

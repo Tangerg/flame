@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"encoding/json/jsontext"
+
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -57,17 +58,17 @@ func (r *replayStore) invoke(
 ) Result {
 	fingerprint, err := operationFingerprint(method.Meta.Name, parameters)
 	if err != nil {
-		return failed(ProjectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
+		return failed(projectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
 	}
 	release, err := r.inFlight.Acquire(ctx, key)
 	if err != nil {
-		return failed(ProjectError(err))
+		return failed(projectError(err))
 	}
 	defer release()
 
 	if pending, ok := r.pendingCompletion(key); ok {
 		if pending.Fingerprint != fingerprint {
-			return failed(NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
+			return failed(protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
 		}
 		completionErr := r.completeDetached(ctx, pending)
 		if completionErr != nil {
@@ -84,13 +85,13 @@ func (r *replayStore) invoke(
 	record, claimed, err := r.store.Claim(ctx, key, fingerprint)
 	if err != nil {
 		if errors.Is(err, idempotency.ErrKeyConflict) {
-			return failed(NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
+			return failed(protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
 		}
-		return failed(ProjectError(fmt.Errorf("idempotency: claim replay key: %w", err)))
+		return failed(projectError(fmt.Errorf("idempotency: claim replay key: %w", err)))
 	}
 	if !claimed {
 		if len(record.Payload) == 0 {
-			return failed(NewFailure(protocol.ErrIdempotencyInProgress, "command outcome is not yet known; retain the original request identity"))
+			return failed(protocol.NewFailure(protocol.ErrIdempotencyInProgress, "command outcome is not yet known; retain the original request identity"))
 		}
 		return r.replay(method, record.Payload)
 	}
@@ -98,12 +99,12 @@ func (r *replayStore) invoke(
 	result := execute()
 	payload, err := encodeStoredOutcome(result)
 	if err != nil {
-		return failed(ProjectError(fmt.Errorf("idempotency: encode operation outcome: %w", err)))
+		return failed(projectError(fmt.Errorf("idempotency: encode operation outcome: %w", err)))
 	}
 	record = idempotency.Record{Key: key, Fingerprint: fingerprint, Payload: payload}
 	if err := r.completeDetached(ctx, record); err != nil {
 		if errors.Is(err, idempotency.ErrKeyConflict) {
-			return failed(NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
+			return failed(protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
 		}
 		r.rememberPendingCompletion(record)
 		// The execution outcome is known even though its receipt is unconfirmed.
@@ -120,17 +121,17 @@ func (r *replayStore) invoke(
 func (r *replayStore) replay(method *Method, payload []byte) Result {
 	var stored storedOutcome
 	if err := decodeStoredJSON(payload, &stored); err != nil {
-		return failed(ProjectError(fmt.Errorf("idempotency: decode stored outcome: %w", err)))
+		return failed(projectError(fmt.Errorf("idempotency: decode stored outcome: %w", err)))
 	}
 	if (len(stored.Value) == 0) == (stored.Problem == nil) {
-		return failed(ProjectError(errors.New("idempotency: stored outcome must contain exactly one value or problem")))
+		return failed(projectError(errors.New("idempotency: stored outcome must contain exactly one value or problem")))
 	}
 	if stored.Problem != nil {
 		return failed(failureFromData(*stored.Problem))
 	}
 	value, err := method.Meta.DecodeResult(stored.Value)
 	if err != nil {
-		return failed(ProjectError(fmt.Errorf("idempotency: decode stored result: %w", err)))
+		return failed(projectError(fmt.Errorf("idempotency: decode stored result: %w", err)))
 	}
 	return Result{Value: value}
 }
@@ -210,14 +211,14 @@ func (r *replayStore) flushPending(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func (r *replayStore) persistenceFailure(err error) *Failure {
+func (r *replayStore) persistenceFailure(err error) *protocol.Failure {
 	if errors.Is(err, idempotency.ErrKeyConflict) {
-		return NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation")
+		return protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation")
 	}
 	if errors.Is(err, idempotency.ErrClaimLost) || errors.Is(err, idempotency.ErrOutcomeConflict) {
-		return ProjectError(fmt.Errorf("idempotency: persist execution outcome: %w", err))
+		return projectError(fmt.Errorf("idempotency: persist execution outcome: %w", err))
 	}
-	return NewFailure(protocol.ErrIdempotencyInProgress, "operation outcome persistence is still pending")
+	return protocol.NewFailure(protocol.ErrIdempotencyInProgress, "operation outcome persistence is still pending")
 }
 
 func (r *replayStore) pendingCompletion(key string) (idempotency.Record, bool) {

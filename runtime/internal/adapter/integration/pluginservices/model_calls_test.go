@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -25,7 +26,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"

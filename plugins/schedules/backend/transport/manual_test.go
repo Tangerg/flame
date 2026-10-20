@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/storage/directories"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	"github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
@@ -17,7 +18,6 @@ import (
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	models "github.com/Tangerg/flame/runtime/model/catalog"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

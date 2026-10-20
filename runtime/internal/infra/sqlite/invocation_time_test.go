@@ -1,9 +1,10 @@
 package sqlite_test
 
 import (
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"testing"
 	"time"
+
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"

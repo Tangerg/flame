@@ -6,21 +6,23 @@ import (
 	"iter"
 	"testing"
 
+	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type typedStreamCaller struct {
 	request protocol.CallPluginRequest
-	options PluginCallOptions
+	options protocol.PluginCallOptions
 	calls   int
 	events  []protocol.PluginStreamEvent
 	err     error
 }
 
-func (c *typedStreamCaller) StreamPlugin(_ context.Context, request protocol.CallPluginRequest, options PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+func (c *typedStreamCaller) StreamPlugin(_ context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
 	c.calls++
 	c.request, c.options = request, options
 	return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
@@ -35,7 +37,7 @@ func (c *typedStreamCaller) StreamPlugin(_ context.Context, request protocol.Cal
 	}, nil
 }
 
-func bindTypedStream(t *testing.T, caller PluginStreamer) *PluginStreamingMethod[map[string]string, uint64, bool] {
+func bindTypedStream(t *testing.T, caller runtimeclient.PluginStreamer) *runtimeclient.PluginStreamingMethod[map[string]string, uint64, bool] {
 	t.Helper()
 	method, err := pluginsdk.NewStreamingMethod[map[string]string, uint64, bool](pluginsdk.MethodConfig{Name: "records.stream", Kind: capability.Mutation, Target: "installation", Description: "Stream original records."})
 	if err != nil {
@@ -46,7 +48,7 @@ func bindTypedStream(t *testing.T, caller PluginStreamer) *PluginStreamingMethod
 		t.Fatal(err)
 	}
 	id := testsupport.InstallationID(t).String()
-	bound, err := BindPluginStreamingMethod(caller, PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: capability.Target{Scope: "installation", Reference: id}}, method)
+	bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: capability.Target{Scope: "installation", Reference: id}}, method)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +60,7 @@ func TestTypedInstalledStreamFreezesBeforeLazySingleConsumption(t *testing.T) {
 	bound := bindTypedStream(t, caller)
 	input := map[string]string{"value": "original"}
 	info := &protocol.ClientInfo{Name: "original", Version: "1"}
-	stream := bound.Stream(t.Context(), input, PluginCallOptions{IdempotencyKey: "original", RequestMeta: protocol.RequestMeta{ClientInfo: info}})
+	stream := bound.Stream(t.Context(), input, protocol.PluginCallOptions{IdempotencyKey: "original", RequestMeta: protocol.RequestMeta{ClientInfo: info}})
 	input["value"], info.Name = "replacement", "replacement"
 	if caller.calls != 0 {
 		t.Fatal("lazy stream performed I/O before consumption")
@@ -74,7 +76,7 @@ func TestTypedInstalledStreamFreezesBeforeLazySingleConsumption(t *testing.T) {
 		t.Fatalf("captured stream=%+v request=%s metadata=%+v", values, caller.request.Input, caller.options.RequestMeta)
 	}
 	for _, err := range stream {
-		if !errors.Is(err, ErrClosed) {
+		if !errors.Is(err, runtimeclient.ErrClosed) {
 			t.Fatalf("second consumption=%v", err)
 		}
 	}
@@ -93,11 +95,11 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 		{name: "known refusal", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamFailure, Failure: &protocol.PluginCallFailure{Code: "refused", Message: "owner refused"}}}, known: true},
 		{name: "invalid chunk", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamChunk, Value: `"invalid"`}}},
 		{name: "missing final", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamChunk, Value: `1`}}},
-		{name: "late failure", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamResult, Value: `true`}}, err: errors.Join(ErrAcknowledgementUnknown, errors.New("late source failure"))},
+		{name: "late failure", events: []protocol.PluginStreamEvent{{Kind: protocol.PluginStreamResult, Value: `true`}}, err: errors.Join(runtimeclient.ErrAcknowledgementUnknown, errors.New("late source failure"))},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			caller := &typedStreamCaller{events: test.events, err: test.err}
-			stream := bindTypedStream(t, caller).Stream(t.Context(), map[string]string{}, PluginCallOptions{IdempotencyKey: "original"})
+			stream := bindTypedStream(t, caller).Stream(t.Context(), map[string]string{}, protocol.PluginCallOptions{IdempotencyKey: "original"})
 			var failure error
 			for value, err := range stream {
 				if value.Result != nil {
@@ -108,7 +110,7 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 				}
 			}
 			_, known := errors.AsType[*capability.Refusal](failure)
-			if failure == nil || known != test.known || errors.Is(failure, ErrAcknowledgementUnknown) == test.known || caller.calls != 1 {
+			if failure == nil || known != test.known || errors.Is(failure, runtimeclient.ErrAcknowledgementUnknown) == test.known || caller.calls != 1 {
 				t.Fatalf("outcome=%v known=%v calls=%d", failure, known, caller.calls)
 			}
 		})
@@ -130,13 +132,13 @@ func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *
 			caller.events = append(caller.events, protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: `true`})
 		}
 		id := testsupport.InstallationID(t).String()
-		bound, err := BindPluginStreamingMethod(caller, PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: capability.Target{Scope: "installation", Reference: id}}, method)
+		bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: capability.Target{Scope: "installation", Reference: id}}, method)
 		if err != nil {
 			t.Fatal(err)
 		}
 		chunks, finals := 0, 0
 		var streamErr error
-		for value, err := range bound.Stream(t.Context(), struct{}{}, PluginCallOptions{}) {
+		for value, err := range bound.Stream(t.Context(), struct{}{}, protocol.PluginCallOptions{}) {
 			if err != nil {
 				streamErr = err
 				break
@@ -151,7 +153,7 @@ func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *
 				finals++
 			}
 		}
-		if chunks != 1 || (finals == 1) != complete || (streamErr == nil) != complete || errors.Is(streamErr, ErrAcknowledgementUnknown) || caller.options.IdempotencyKey != "" {
+		if chunks != 1 || (finals == 1) != complete || (streamErr == nil) != complete || errors.Is(streamErr, runtimeclient.ErrAcknowledgementUnknown) || caller.options.IdempotencyKey != "" {
 			t.Fatalf("query stream acquired command semantics: chunks=%d finals=%d error=%v options=%+v", chunks, finals, streamErr, caller.options)
 		}
 	}

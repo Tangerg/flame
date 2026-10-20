@@ -1,0 +1,9 @@
+**/node_modules/
+**/dist/
+**/generated/
+**/*.generated.*
+**/package/**/components/
+out/
+apps/desktop/assets/web/
+runtime/contract/
+**/package/**/contracts/

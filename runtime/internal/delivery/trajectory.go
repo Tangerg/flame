@@ -12,7 +12,7 @@ const SessionsTrajectory Name = "sessions.trajectory"
 
 func registerSessionTrajectory(registry *Registry) {
 	registry.query(MethodMeta{
-		Name:         SessionsTrajectory,
+		Name: SessionsTrajectory, GoName: "ListSessionTrajectory",
 		Materializes: []Name{RunsList, ItemsList, ModelInvocationsList, ModelInvocationsEndpoints},
 		Errors:       []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: []CapabilityRule{{

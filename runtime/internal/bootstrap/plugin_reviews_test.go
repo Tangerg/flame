@@ -66,7 +66,7 @@ func reviewCLIInvocation(t *testing.T, runtime *poMCPRuntime) (func(...string) (
 	directory := t.TempDir()
 	executable := filepath.Join(directory, "flame")
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", executable, ".")
-	build.Dir = filepath.Join("..", "..", "..", "cli")
+	build.Dir = filepath.Join("..", "..", "..", "apps", "cli")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %s, %v", output, err)
 	}

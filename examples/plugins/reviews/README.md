@@ -11,7 +11,7 @@ Skill. It runs through Flame's existing installation-origin MCP connection,
 deferred Tool discovery, approval Interrupt, Run execution and result storage.
 It declares an ordinary React board bound to the same operations.
 
-The backend uses the public Go binding in `github.com/Tangerg/flame/runtime/plugin`.
+The backend uses the public Go binding in `github.com/Tangerg/flame/packages/plugin-sdk`.
 Its typed list and update operations share the same private use cases and receipt
 owner as the model Tools. The public installed operation entrance is available
 through Runtime Go, Runtime Protocol, `plugins call`, and the TypeScript client.
@@ -24,20 +24,20 @@ method schemas; the former per-operation MCP endpoints are not registered.
 
 `backend/contracts.go` owns the method descriptions, typed bindings and
 the consumer's callable capability contract. The pure public `runtime/capability`
-package admits that contract; `runtime/plugin` binds it to MCP without a second
+package admits that contract; `packages/plugin-sdk` binds it to MCP without a second
 schema or fingerprint owner.
 The Status and Outcome types publish their closed vocabularies to Scope's schema
 derivation. From `backend`, `go generate ./...` projects the same methods into
 `package/io.github.tangerg.flame/contracts/{capability.generated.json,schema.json,methods.generated.json,API_REFERENCE.md}`
-and `client/methods.generated.ts` through Runtime's existing `contractgen`.
+and `component/methods.generated.ts` through Runtime's existing `contractgen`.
 Do not edit those generated files or maintain a second input/output schema.
 The canonical capability descriptor supplies the same contract for live export
 resolution, original-binding restoration and the generated TypeScript token.
 Schema and method references are presentation projections. Capability calls and
 receipt queries carry the original export identity; omitting it is refused before
 the business owner. The package declares its generic installed contribution and analyzer point.
-The ordinary board is compiled from `client/board.tsx` through the public SDK.
-The same Go-owned analyzer point also generates `client/analyzers.generated.ts`
+The ordinary board is compiled from `component/board.tsx` through the public SDK.
+The same Go-owned analyzer point also generates `component/analyzers.generated.ts`
 as an exact JSON string; TypeScript does not copy its applicability predicate.
 On refresh, the board resolves point metadata against its accepted review status
 and publishes that read model with the review. Analyze appears only when that
@@ -313,8 +313,8 @@ entrance.
 
 ## Ordinary component source
 
-`client/board.tsx` exports the ordinary React `Board` component through the public
-`@flame/plugin-sdk` context. It reads the owner, submits the inspected revision,
+`component/board.tsx` exports the ordinary React `Board` component through the public
+`@flame/component-sdk` context. It reads the owner, submits the inspected revision,
 shows explicit conflict/refusal, preserves the original mutation identity for
 reconciliation, and invokes the installed analyzer query. Refresh failures retain
 previously read reviews; an uncertain command disables fresh changes.

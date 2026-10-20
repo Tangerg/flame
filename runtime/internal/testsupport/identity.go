@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/resourceid"
 	"github.com/google/uuid"
 )

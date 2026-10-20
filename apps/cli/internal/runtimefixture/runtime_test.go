@@ -1,0 +1,986 @@
+package runtimefixture
+
+import (
+	"context"
+	"errors"
+	"math"
+	"slices"
+	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/apps/cli/internal/exactint"
+	"github.com/Tangerg/flame/runtime/protocol"
+)
+
+func TestMockIdentitySequenceDoesNotWrapAndOverwriteExistingSession(t *testing.T) {
+	runtime := New()
+	runtime.identities.value.SetUint64(math.MaxUint64)
+	runtime.sessions["ses_mock_0"] = &sessionState{meta: conversation.Session{ID: "ses_mock_0", Title: "existing"}}
+
+	created, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.ID != "ses_mock_18446744073709551616" || runtime.sessions["ses_mock_0"].meta.Title != "existing" {
+		t.Fatalf("created session %q overwrote the existing wrapped identity", created.ID)
+	}
+}
+
+func TestPlanReplacementValidatesOnlyItsUncommittedSteps(t *testing.T) {
+	t.Parallel()
+
+	step := ReplacePlan(0, []protocol.PlanStep{{ID: "step_1", Status: protocol.PlanStatusPending}})
+	if err := validateSteps([]Step{step}, false); err == nil {
+		t.Fatal("Plan replacement accepted a step without a description")
+	}
+
+	step = ReplacePlan(0, []protocol.PlanStep{{ID: "step_1", Description: "verify", Status: protocol.PlanStatusPending}})
+	if err := validateSteps([]Step{step}, false); err != nil {
+		t.Fatalf("uncommitted Plan steps: %v", err)
+	}
+}
+
+func TestMockSessionUpdateRevisionExhaustionIsAtomic(t *testing.T) {
+	runtime := New()
+	state := runtime.sessions["ses_demo_1"]
+	state.meta.Revision = exactint.Maximum
+	original := state.meta
+	replacement := "replacement title"
+
+	if _, err := runtime.UpdateSession(t.Context(), conversation.UpdateSession{
+		SessionID: state.meta.ID, ExpectedRevision: exactint.Maximum, Title: &replacement,
+	}); err == nil {
+		t.Fatal("session update accepted exhausted revision")
+	}
+	if !state.meta.Equal(original) {
+		t.Fatalf("session after exhausted update = %+v, want %+v", state.meta, original)
+	}
+}
+
+func TestMockSessionRollbackRevisionExhaustionIsAtomic(t *testing.T) {
+	runtime := New()
+	state := runtime.sessions["ses_demo_1"]
+	state.meta.Revision = exactint.Maximum
+	originalMeta := state.meta
+	originalRuns := slices.Clone(state.runs)
+	originalItems := len(state.items)
+	originalRuntimeRuns := len(runtime.runs)
+
+	if _, err := runtime.RollbackSession(t.Context(), conversation.RollbackSession{
+		SessionID: state.meta.ID, Scope: protocol.RestoreHistory,
+	}); err == nil {
+		t.Fatal("session rollback accepted exhausted revision")
+	}
+	if !state.meta.Equal(originalMeta) || !slices.Equal(state.runs, originalRuns) ||
+		len(state.items) != originalItems || len(runtime.runs) != originalRuntimeRuns {
+		t.Fatalf("rollback exhaustion partially mutated session: meta %+v runs %v items %d runtime runs %d",
+			state.meta, state.runs, len(state.items), len(runtime.runs))
+	}
+}
+
+func TestMockSteerRevisionExhaustionDoesNotEmitPartialEvent(t *testing.T) {
+	runtime := New()
+	session := runtime.sessions["ses_demo_1"]
+	session.meta.Revision = exactint.Maximum
+	originalItems := len(session.items)
+	segment := &segmentState{id: "seg_exhausted", changed: make(chan struct{})}
+	run := &runState{
+		id: "run_exhausted", sessionID: session.meta.ID, lineage: conversation.RootRunLineage(),
+		status: protocol.RunStatusRunning, active: segment.id,
+		segments: map[string]*segmentState{segment.id: segment}, cancel: make(chan struct{}),
+	}
+	runtime.runs[run.id] = run
+	session.active = run.id
+
+	_, err := runtime.SteerRun(t.Context(), prompt.SteerRun{
+		RunID: run.id, SegmentID: segment.id, Message: prompt.Message{Text: "do not partially emit"},
+	})
+	if !errors.Is(err, errSessionRevisionExhausted) {
+		t.Fatalf("steer after revision exhaustion error = %v", err)
+	}
+	if session.meta.Revision != exactint.Maximum || len(session.items) != originalItems || len(segment.events) != 0 {
+		t.Fatalf("exhausted steer mutated revision/items/events = %d/%d/%d",
+			session.meta.Revision, len(session.items), len(segment.events))
+	}
+}
+
+func TestMockStartRunRevisionExhaustionIsAtomic(t *testing.T) {
+	runtime := New()
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := runtime.sessions[session.ID]
+	state.meta.Revision = exactint.Maximum
+	originalRuntimeRuns := len(runtime.runs)
+
+	_, err = runtime.StartRun(t.Context(), testStartRun(session.ID, "do not partially start"))
+	if !errors.Is(err, errSessionRevisionExhausted) {
+		t.Fatalf("start after revision exhaustion error = %v", err)
+	}
+	if state.meta.Status != protocol.SessionStatusIdle || state.meta.Revision != exactint.Maximum ||
+		state.active != "" || len(state.runs) != 0 || len(state.items) != 0 || len(runtime.runs) != originalRuntimeRuns {
+		t.Fatalf("start exhaustion partially mutated session: meta %+v active %q runs %v items %d runtime runs %d",
+			state.meta, state.active, state.runs, len(state.items), len(runtime.runs))
+	}
+}
+
+func TestMockBackgroundEventRevisionExhaustionTerminatesTheSegmentWithoutPartialEvent(t *testing.T) {
+	runtime := New()
+	runtime.Script = func(string) Script {
+		return Script{Prelude: []Step{
+			eventStep(0, conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "must not commit"}}),
+			finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+		}}
+	}
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := runtime.sessions[session.ID]
+	state.meta.Revision = exactint.Maximum - uint64(startRunRevisionChanges(state))
+
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "exhaust after opening"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	events, streamErr := collectSegment(opened)
+	if !errors.Is(streamErr, errSessionRevisionExhausted) {
+		t.Fatalf("background event exhaustion stream error = %v", streamErr)
+	}
+	if state.meta.Revision != exactint.Maximum || len(events) != 2 || len(state.items) != 1 {
+		t.Fatalf("background exhaustion committed partial event: revision %d events %d items %d",
+			state.meta.Revision, len(events), len(state.items))
+	}
+	if run := runtime.runs[opened.RunID]; run.status != protocol.RunStatusRunning || run.active != opened.SegmentID {
+		t.Fatalf("background exhaustion invented lifecycle transition: %+v", projectRun(run))
+	}
+}
+
+func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T) {
+	runtime := New()
+	runtime.Instant = true
+	runtime.Script = func(string) Script {
+		return Script{
+			Interrupts: []conversation.Interrupt{approvalFixture("approval", "approve")},
+			Continue: func([]conversation.InterruptAnswer) []Step {
+				return []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+			},
+		}
+	}
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := runtime.sessions[session.ID]
+	state.meta.Revision = exactint.Maximum - uint64(startRunRevisionChanges(state))
+
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "cannot partially wait"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, streamErr := collectSegment(opened)
+	if !errors.Is(streamErr, errSessionRevisionExhausted) {
+		t.Fatalf("park exhaustion stream error = %v", streamErr)
+	}
+	run := runtime.runs[opened.RunID]
+	if state.meta.Status != protocol.SessionStatusRunning || run.status != protocol.RunStatusRunning ||
+		len(run.interrupts) != 0 || len(run.answers) != 0 || len(state.items) != 1 {
+		t.Fatalf("park exhaustion published partial waiting state: meta %+v run %+v interrupts %d answers %d items %d",
+			state.meta, projectRun(run), len(run.interrupts), len(run.answers), len(state.items))
+	}
+}
+
+func TestMockFinishRevisionExhaustionLeavesTheRunExecutingAndReportsTheStreamFailure(t *testing.T) {
+	runtime := New()
+	runtime.Script = func(string) Script {
+		return Script{Prelude: []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
+	}
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := runtime.sessions[session.ID]
+	state.meta.Revision = exactint.Maximum - uint64(startRunRevisionChanges(state)) - uint64(sessionEventRevisionChange())
+
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "cannot partially finish"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, streamErr := collectSegment(opened)
+	if !errors.Is(streamErr, errSessionRevisionExhausted) {
+		t.Fatalf("finish exhaustion stream error = %v", streamErr)
+	}
+	run := runtime.runs[opened.RunID]
+	if state.meta.Status != protocol.SessionStatusRunning || run.status != protocol.RunStatusRunning ||
+		run.active != opened.SegmentID || run.outcome.Status != "" {
+		t.Fatalf("finish exhaustion partially transitioned session/run: %+v / %+v", state.meta, projectRun(run))
+	}
+}
+
+func TestMockCancelRevisionExhaustionIsAtomic(t *testing.T) {
+	runtime := New()
+	runtime.Script = func(string) Script {
+		return Script{Prelude: []Step{finishStep(time.Hour, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
+	}
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := runtime.sessions[session.ID]
+	state.meta.Revision = exactint.Maximum - uint64(startRunRevisionChanges(state)) - uint64(sessionEventRevisionChange())
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "cannot partially cancel"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalMeta := state.meta
+	originalRun := projectRun(runtime.runs[opened.RunID])
+	originalEvents := len(runtime.runs[opened.RunID].segments[opened.SegmentID].events)
+
+	_, err = runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: opened.RunID})
+	if !errors.Is(err, errSessionRevisionExhausted) {
+		t.Fatalf("cancel after revision exhaustion error = %v", err)
+	}
+	run := runtime.runs[opened.RunID]
+	if !state.meta.Equal(originalMeta) || !projectRun(run).Equal(originalRun) ||
+		len(run.segments[opened.SegmentID].events) != originalEvents {
+		t.Fatalf("cancel exhaustion partially mutated session/run: %+v / %+v", state.meta, projectRun(run))
+	}
+	select {
+	case <-run.cancel:
+		t.Fatal("cancel exhaustion closed the run cancellation signal")
+	default:
+	}
+}
+
+func collectSegment(stream conversation.SegmentStream) ([]conversation.RunEvent, error) {
+	var events []conversation.RunEvent
+	for event, err := range stream.Events {
+		if err != nil {
+			return events, err
+		}
+		events = append(events, event)
+	}
+	return events, nil
+}
+
+func TestRuntimePreservesAuthoredMessageTextAcrossRunMutations(t *testing.T) {
+	runtime := New()
+	startText := "\n  preserve start indentation  \t"
+	resumeText := "  preserve resume indentation\n"
+	steerText := "\tpreserve steer indentation  "
+	var scriptInput string
+	runtime.Script = func(input string) Script {
+		scriptInput = input
+		return Script{
+			Interrupts: []conversation.Interrupt{approvalFixture("approval", "Continue")},
+			Continue: func([]conversation.InterruptAnswer) []Step {
+				return []Step{finishStep(time.Hour, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+			},
+		}
+	}
+
+	opened, err := runtime.StartRun(t.Context(), testStartRun("ses_demo_1", startText))
+	if err != nil {
+		t.Fatal(err)
+	}
+	openingEvents, err := collectSegment(opened)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scriptInput != startText || !slices.Contains(authoredUserTexts(openingEvents), startText) {
+		t.Fatalf("start text = script %q, events %q", scriptInput, authoredUserTexts(openingEvents))
+	}
+	snapshot, err := runtime.GetSession(t.Context(), "ses_demo_1")
+	if err != nil || len(snapshot.Interrupts) != 1 {
+		t.Fatalf("waiting snapshot = %+v, %v", snapshot, err)
+	}
+
+	continued, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{
+		RunID: opened.RunID,
+		Answers: []conversation.InterruptAnswer{{
+			ItemID: conversation.InterruptItemID(snapshot.Interrupts[0]),
+			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+		}},
+		Message: &prompt.Message{Text: resumeText},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.SteerRun(t.Context(), prompt.SteerRun{
+		RunID: opened.RunID, SegmentID: continued.SegmentID,
+		Message: prompt.Message{Text: steerText},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: opened.RunID}); err != nil {
+		t.Fatal(err)
+	}
+	continuedEvents, err := collectSegment(continued)
+	if err != nil {
+		t.Fatal(err)
+	}
+	texts := authoredUserTexts(continuedEvents)
+	if !slices.Contains(texts, resumeText) || !slices.Contains(texts, steerText) {
+		t.Fatalf("continued user text = %q", texts)
+	}
+}
+
+func authoredUserTexts(events []conversation.RunEvent) []string {
+	var texts []string
+	for _, event := range events {
+		completed, ok := event.Event.(conversation.BlockCompleted)
+		if ok && completed.Block.Kind == conversation.BlockUser {
+			texts = append(texts, completed.Block.Text)
+		}
+	}
+	return texts
+}
+
+func TestRuntimeStartResumeAndColdRestore(t *testing.T) {
+	runtime := New()
+	runtime.Instant = true
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	opened, projection := startWaitingRun(t, runtime, session.ID)
+	interrupt := requireWaitingProjection(t, runtime, session.ID, opened)
+	resumeApprovedRun(t, runtime, opened, projection, interrupt)
+	requireCompletedColdProjection(t, runtime, session.ID, opened.RunID, interrupt)
+}
+
+func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
+	runtime := New()
+	runtime.Instant = true
+	runtime.Script = func(string) Script {
+		return Script{
+			Interrupts: []conversation.Interrupt{approvalFixture("approval", "approve")},
+			Continue: func([]conversation.InterruptAnswer) []Step {
+				return []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+			},
+		}
+	}
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "wait for approval"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection := conversation.New()
+	drain(t, opened, projection)
+	interrupt := projection.Interrupts()[0]
+	state := runtime.sessions[session.ID]
+	state.meta.Revision = exactint.Maximum
+	run := runtime.runs[opened.RunID]
+	originalMeta := state.meta
+	originalRun := projectRun(run)
+	originalItems := len(state.items)
+	originalAnswers := len(run.answers)
+	originalSegments := len(run.segments)
+	originalRules := len(runtime.rules)
+
+	_, err = runtime.ResumeRun(t.Context(), conversation.ResumeRun{RunID: opened.RunID, Answers: []conversation.InterruptAnswer{{
+		ItemID: conversation.InterruptItemID(interrupt), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+	}}})
+	if !errors.Is(err, errSessionRevisionExhausted) {
+		t.Fatalf("resume after revision exhaustion error = %v", err)
+	}
+	if !state.meta.Equal(originalMeta) || !projectRun(run).Equal(originalRun) || len(state.items) != originalItems ||
+		len(run.answers) != originalAnswers || len(run.segments) != originalSegments || len(runtime.rules) != originalRules {
+		t.Fatalf("resume exhaustion partially mutated state: meta %+v run %+v items %d answers %d segments %d rules %d",
+			state.meta, projectRun(run), len(state.items), len(run.answers), len(run.segments), len(runtime.rules))
+	}
+}
+
+func testStartRun(sessionID, text string) prompt.StartRun {
+	return prompt.StartRun{
+		SessionID: sessionID, Message: prompt.Message{Text: text},
+		Options: prompt.RunOptions{},
+	}
+}
+
+func TestApprovalCatalogRejectsEmptyIdentitiesConsistently(t *testing.T) {
+	t.Parallel()
+
+	runtime := New()
+	if _, err := runtime.ListApprovalRules(t.Context(), "  "); err == nil {
+		t.Fatal("empty session identity was accepted")
+	}
+	if err := runtime.DeleteApprovalRule(t.Context(), "\t"); err == nil {
+		t.Fatal("empty rule identity was accepted")
+	}
+}
+
+func TestSessionCatalogRejectsInvalidLocalFilters(t *testing.T) {
+	t.Parallel()
+
+	runtime := New()
+	for _, query := range []conversation.SessionQuery{
+		{PageSize: conversation.DefaultPageSize(), Search: "bad\x00query"},
+	} {
+		if _, err := runtime.ListSessions(t.Context(), query); err == nil {
+			t.Fatalf("ListSessions accepted %+v", query)
+		}
+	}
+}
+
+func TestProjectApprovalRulesFollowTheResolvedProjectRoot(t *testing.T) {
+	t.Parallel()
+
+	runtime := New()
+	runtime.mu.Lock()
+	runtime.sessions["ses_demo_1"].meta.Workspace.ProjectRoot = "/tmp/demo"
+	runtime.sessions["ses_demo_2"].meta.Workspace.ProjectRoot = "/tmp/demo"
+	runtime.rules = []storedRule{{view: protocol.ApprovalRule{
+		ID: "rule_project", Scope: protocol.ApprovalRuleScopeProject, Dir: "/tmp/demo",
+		Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, ModelName: "shell", Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: "go test ./..."}, Decision: protocol.ApprovalRuleDecisionAllow,
+	}}}
+	runtime.mu.Unlock()
+
+	for _, sessionID := range []string{"ses_demo_1", "ses_demo_2"} {
+		rules, err := runtime.ListApprovalRules(t.Context(), sessionID)
+		if err != nil || len(rules) != 1 {
+			t.Fatalf("project rules for %s = %+v, %v", sessionID, rules, err)
+		}
+	}
+	rules, err := runtime.ListApprovalRules(t.Context(), "ses_demo_3")
+	if err != nil || len(rules) != 0 {
+		t.Fatalf("unrelated project rules = %+v, %v", rules, err)
+	}
+}
+
+func startWaitingRun(t *testing.T, runtime *Runtime, sessionID string) (conversation.SegmentStream, *conversation.Conversation) {
+	t.Helper()
+	opened, err := runtime.StartRun(t.Context(), prompt.StartRun{
+		SessionID: sessionID, Message: prompt.Message{Text: "fix the flaky test"},
+		Options: prompt.RunOptions{Provider: "mock", Model: "balanced"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection := conversation.New()
+	drain(t, opened, projection)
+	if projection.Phase() != conversation.Waiting || len(projection.Interrupts()) != 1 {
+		t.Fatalf("after first segment: phase %v, interrupts %d", projection.Phase(), len(projection.Interrupts()))
+	}
+	return opened, projection
+}
+
+func requireWaitingProjection(t *testing.T, runtime *Runtime, sessionID string, opened conversation.SegmentStream) conversation.Interrupt {
+	t.Helper()
+	waiting, err := runtime.GetSession(t.Context(), sessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(waiting.Interrupts) != 1 {
+		t.Fatalf("waiting interrupts = %d, want 1", len(waiting.Interrupts))
+	}
+	waitingRun, ok := waiting.LatestRun()
+	if !ok {
+		t.Fatal("waiting snapshot has no run")
+	}
+	interrupt := waiting.Interrupts[0]
+	approvalItem, ok := snapshotBlock(waiting, opened.RunID, conversation.InterruptItemID(interrupt))
+	if !ok || approvalItem.Kind != conversation.BlockTool || approvalItem.Status != conversation.BlockStatusRunning || waitingRun.Usage.InputTokens == 0 {
+		t.Fatalf("waiting approval projection = item %+v, usage %+v", approvalItem, waitingRun.Usage)
+	}
+	return interrupt
+}
+
+func resumeApprovedRun(t *testing.T, runtime *Runtime, opened conversation.SegmentStream, projection *conversation.Conversation, interrupt conversation.Interrupt) {
+	t.Helper()
+	continued, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{
+		RunID: opened.RunID,
+		Answers: []conversation.InterruptAnswer{{
+			ItemID: conversation.InterruptItemID(interrupt),
+			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if continued.SegmentID == opened.SegmentID {
+		t.Fatal("resume reused the first segment")
+	}
+	drain(t, continued, projection)
+	if projection.Outcome().Status != protocol.OutcomeCompleted {
+		t.Fatalf("outcome = %+v", projection.Outcome())
+	}
+}
+
+func requireCompletedColdProjection(t *testing.T, runtime *Runtime, sessionID, runID string, interrupt conversation.Interrupt) {
+	t.Helper()
+	snapshot, err := runtime.GetSession(t.Context(), sessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, active := snapshot.ActiveRun(); active || len(snapshot.Interrupts) != 0 || len(snapshot.Transcript) < 4 {
+		t.Fatalf("snapshot = runs %+v, interrupts %d, transcript %d", snapshot.Runs, len(snapshot.Interrupts), len(snapshot.Transcript))
+	}
+	_, ok := snapshot.LatestRun()
+	if !ok {
+		t.Fatal("latest run is missing")
+	}
+	approvalItem, ok := snapshotBlock(snapshot, runID, conversation.InterruptItemID(interrupt))
+	if !ok || approvalItem.Status != conversation.BlockStatusCompleted || approvalItem.Tool.Status != conversation.ToolOK {
+		t.Fatalf("completed approval item = %+v", approvalItem)
+	}
+	rules, err := runtime.ListApprovalRules(t.Context(), sessionID)
+	if err != nil || len(rules) != 1 || rules[0].Scope != protocol.ApprovalRuleScopeProject {
+		t.Fatalf("rules = %+v, %v", rules, err)
+	}
+}
+
+func TestRuntimeReconnectUsesOpaqueReplayCheckpoint(t *testing.T) {
+	runtime := New()
+	runtime.Faults = []SubscriptionFault{{Kind: FaultDisconnect, After: 1}}
+	runtime.Script = func(string) Script {
+		return Script{Prelude: []Step{
+			eventStep(30*time.Millisecond, conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "done"}}),
+			finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+		}}
+	}
+	session, _ := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "hello"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection := conversation.New()
+	var disconnected error
+	for event, streamErr := range opened.Events {
+		if streamErr != nil {
+			disconnected = streamErr
+			break
+		}
+		if _, applyRunEventErr := projection.ApplyRunEvent(event); applyRunEventErr != nil {
+			t.Fatal(applyRunEventErr)
+		}
+	}
+	if !errors.Is(disconnected, conversation.ErrDisconnected) {
+		t.Fatalf("stream error = %v", disconnected)
+	}
+	checkpoint := projection.Checkpoint()
+	if checkpoint == "" {
+		t.Fatal("no replay checkpoint was retained")
+	}
+	rebound, err := runtime.SubscribeRun(t.Context(), conversation.SubscribeRun{
+		RunID: opened.RunID, SegmentID: opened.SegmentID, AfterEventID: checkpoint,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	drain(t, rebound, projection)
+	if projection.Outcome().Status != protocol.OutcomeCompleted {
+		t.Fatalf("outcome = %+v", projection.Outcome())
+	}
+}
+
+func TestRuntimeSubscribeWithoutCheckpointAttachesAtHead(t *testing.T) {
+	runtime := New()
+	runtime.Script = func(string) Script {
+		return Script{Prelude: []Step{finishStep(time.Second, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
+	}
+	session, _ := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "hello"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := timeLimitedContext(t, 20*time.Millisecond)
+	defer cancel()
+	attached, err := runtime.SubscribeRun(ctx, conversation.SubscribeRun{RunID: opened.RunID, SegmentID: opened.SegmentID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for event, streamErr := range attached.Events {
+		if streamErr != nil {
+			break
+		}
+		count++
+		_ = event
+	}
+	if count != 0 {
+		t.Fatalf("attach-at-head replayed %d historical events", count)
+	}
+	_, _ = runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: opened.RunID})
+}
+
+func TestRuntimeForkStartsWithAFreshProjectionAtRunBoundary(t *testing.T) {
+	runtime := New()
+	forked, err := runtime.ForkSession(t.Context(), conversation.ForkSession{SessionID: "ses_demo_1", FromRunID: "run_demo_history"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := runtime.GetSession(t.Context(), forked.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.Transcript) != 0 || len(snapshot.Runs) != 0 {
+		t.Fatalf("fork projection = %d blocks, %d runs", len(snapshot.Transcript), len(snapshot.Runs))
+	}
+}
+
+func TestRuntimeRollbackRestoresTheEarliestDroppedOpeningInput(t *testing.T) {
+	runtime := New()
+	result, err := runtime.RollbackSession(t.Context(), conversation.RollbackSession{
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Dropped) != 1 {
+		t.Fatalf("dropped runs = %+v", result.Dropped)
+	}
+	input, ok := result.FirstOpeningInput()
+	text, images := input.OpeningText()
+	if !ok || text != "Why is the cache expiry test flaky?" || images != 0 {
+		t.Fatalf("opening input = (%q, %d, %t)", text, images, ok)
+	}
+	snapshot, err := runtime.GetSession(t.Context(), "ses_demo_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.Runs) != 0 || len(snapshot.Transcript) != 0 {
+		t.Fatalf("snapshot after rollback = %+v", snapshot)
+	}
+}
+
+func TestRuntimeForkExcludesAnActiveTail(t *testing.T) {
+	runtime := New()
+	runtime.Script = func(string) Script {
+		return Script{Prelude: []Step{finishStep(time.Hour, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
+	}
+	opened, err := runtime.StartRun(t.Context(), testStartRun("ses_demo_1", "active tail"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	forked, err := runtime.ForkSession(t.Context(), conversation.ForkSession{SessionID: "ses_demo_1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := runtime.GetSession(t.Context(), forked.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.Transcript) != 0 || len(snapshot.Runs) != 0 {
+		t.Fatalf("fork copied a parent projection: blocks=%+v runs=%+v", snapshot.Transcript, snapshot.Runs)
+	}
+	if _, err := runtime.ForkSession(t.Context(), conversation.ForkSession{SessionID: "ses_demo_1", FromRunID: opened.RunID}); !errors.Is(err, conversation.ErrRunNotFound) {
+		t.Fatalf("explicit active boundary error = %v", err)
+	}
+	_, _ = runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: opened.RunID})
+}
+
+func TestRuntimeForkCopiesThePlanAtItsRunBoundary(t *testing.T) {
+	runtime := New()
+	runtime.Script = func(authoredPrompt string) Script {
+		plan := []protocol.PlanStep{{ID: "1", Description: authoredPrompt + " plan", Status: protocol.PlanStatusInProgress}}
+		delay := time.Duration(0)
+		if authoredPrompt == "active" {
+			delay = time.Hour
+		}
+		return Script{Prelude: []Step{
+			replacePlanStep(0, plan),
+			finishStep(delay, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+		}}
+	}
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "boundary"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	drain(t, first, conversation.New())
+	second, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "active"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for event, streamErr := range second.Events {
+		if streamErr != nil {
+			t.Fatal(streamErr)
+		}
+		if _, changed := event.Event.(conversation.PlanChanged); changed {
+			break
+		}
+	}
+	forked, err := runtime.ForkSession(t.Context(), conversation.ForkSession{SessionID: session.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := runtime.GetSession(t.Context(), forked.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Plan == nil || snapshot.Plan.State == nil || snapshot.Plan.State.Revision != 1 || len(snapshot.Plan.State.Steps) != 1 || snapshot.Plan.State.Steps[0].Description != "boundary plan" {
+		t.Fatalf("fork plan = %+v", snapshot.Plan)
+	}
+	if len(snapshot.Transcript) != 0 || len(snapshot.Runs) != 0 {
+		t.Fatalf("fork copied a parent projection: blocks=%+v runs=%+v", snapshot.Transcript, snapshot.Runs)
+	}
+	_, _ = runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: second.RunID})
+}
+
+func TestRuntimeColdReadTracksAndSettlesRunningItems(t *testing.T) {
+	runtime := New()
+	runtime.Script = func(string) Script {
+		return Script{Prelude: []Step{
+			eventStep(0, conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
+			eventStep(0, conversation.BlockStarted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning}}}),
+			finishStep(time.Hour, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+		}}
+	}
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "run"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	startedCount := 0
+	for event, streamErr := range opened.Events {
+		if streamErr != nil {
+			t.Fatal(streamErr)
+		}
+		if _, started := event.Event.(conversation.BlockStarted); started {
+			startedCount++
+			if startedCount == 2 {
+				break
+			}
+		}
+	}
+	running, err := runtime.GetSession(t.Context(), session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(running.Transcript) != 2 {
+		t.Fatalf("cold transcript includes a provisional assistant start: %+v", running.Transcript)
+	}
+	if got := running.Transcript[len(running.Transcript)-1]; got.Status != conversation.BlockStatusRunning || got.ID != opened.RunID+":tool" || got.Kind != conversation.BlockTool {
+		t.Fatalf("running item = %+v", got)
+	}
+	if _, cancelRunErr := runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: opened.RunID}); cancelRunErr != nil {
+		t.Fatal(cancelRunErr)
+	}
+	settled, err := runtime.GetSession(t.Context(), session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := settled.Transcript[len(settled.Transcript)-1]; got.Status != conversation.BlockStatusIncomplete {
+		t.Fatalf("settled item = %+v", got)
+	}
+}
+
+func TestScriptContinuationReceivesFixtureLocalItemIDs(t *testing.T) {
+	runtime := New()
+	runtime.Instant = true
+	var received string
+	runtime.Script = func(string) Script {
+		return Script{
+			Interrupts: []conversation.Interrupt{approvalFixture("approval", "approve")},
+			Continue: func(answers []conversation.InterruptAnswer) []Step {
+				received = answers[0].ItemID
+				return []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+			},
+		}
+	}
+	session, _ := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "ask"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection := conversation.New()
+	drain(t, opened, projection)
+	interrupt := projection.Interrupts()[0]
+	continued, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{RunID: opened.RunID, Answers: []conversation.InterruptAnswer{{
+		ItemID: conversation.InterruptItemID(interrupt), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	drain(t, continued, projection)
+	if received != "approval" {
+		t.Fatalf("continuation item id = %q, want fixture-local id", received)
+	}
+}
+
+func TestApprovalArgumentOverrideBecomesTheCompletedToolProjection(t *testing.T) {
+	runtime := New()
+	runtime.Instant = true
+	original := []byte(`{"command":"rm generated.txt"}`)
+	runtime.Script = func(string) Script {
+		return Script{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
+				ItemID: "approval", Title: "Run command",
+				Tool: &conversation.ToolCall{
+					Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning, ArgumentsJSON: original,
+				},
+			}},
+			Continue: func([]conversation.InterruptAnswer) []Step {
+				return []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+			},
+		}
+	}
+	session, _ := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	opened, err := runtime.StartRun(t.Context(), prompt.StartRun{
+		SessionID: session.ID, Message: prompt.Message{Text: "run safely"},
+		Options: prompt.RunOptions{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection := conversation.New()
+	drain(t, opened, projection)
+	interrupt := projection.Interrupts()[0]
+	override, err := conversation.ParseToolArgumentOverride([]byte(`{"command":"echo safe"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	continued, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{
+		RunID: opened.RunID, Answers: []conversation.InterruptAnswer{{
+			ItemID: conversation.InterruptItemID(interrupt),
+			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, ArgumentOverride: override},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	drain(t, continued, projection)
+	snapshot, err := runtime.GetSession(t.Context(), session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed, ok := snapshotBlock(snapshot, opened.RunID, conversation.InterruptItemID(interrupt))
+	if !ok || completed.Tool == nil || string(completed.Tool.ArgumentsJSON) != `{"command":"echo safe"}` {
+		t.Fatalf("completed edited tool = %+v", completed)
+	}
+	if string(original) != `{"command":"rm generated.txt"}` {
+		t.Fatalf("mock mutated fixture arguments: %s", original)
+	}
+}
+
+func TestInvalidFaultConfigurationDoesNotMutateRunState(t *testing.T) {
+	runtime := New()
+	runtime.Faults = []SubscriptionFault{{Kind: FaultKind("unknown"), After: 1}}
+	session, _ := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	if _, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "start")); err == nil {
+		t.Fatal("invalid subscription fault was ignored")
+	}
+	snapshot, err := runtime.GetSession(t.Context(), session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.Runs) != 0 || len(snapshot.Transcript) != 0 || snapshot.Session.Status != protocol.SessionStatusIdle {
+		t.Fatalf("failed start mutated snapshot: %+v", snapshot)
+	}
+}
+
+func TestRememberedRulesRemoveOnlyMatchedApprovalsFromThePendingSet(t *testing.T) {
+	runtime := New()
+	runtime.Instant = true
+	runtime.rules = []storedRule{{view: protocol.ApprovalRule{
+		ID: "rule_1", Scope: protocol.ApprovalRuleScopeGlobal, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, ModelName: "shell", Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: "go test ./..."}, Decision: protocol.ApprovalRuleDecisionAllow,
+	}}}
+	var continuedWith []conversation.InterruptAnswer
+	runtime.Script = func(string) Script {
+		return Script{
+			Interrupts: []conversation.Interrupt{
+				func() conversation.Approval {
+					approval := approvalFixture("approval", "run tests")
+					approval.RuleHint, approval.Rememberable = "shell:go test ./...", true
+					return approval
+				}(),
+				conversation.Question{ItemID: "question", Title: "Target", Fields: []conversation.QuestionField{{Prompt: "Target", Kind: conversation.QuestionText}}},
+			},
+			Continue: func(answers []conversation.InterruptAnswer) []Step {
+				continuedWith = cloneAnswers(answers)
+				return []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+			},
+		}
+	}
+	session, _ := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "ask"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection := conversation.New()
+	drain(t, opened, projection)
+	pending := projection.Interrupts()
+	if len(pending) != 1 {
+		t.Fatalf("pending interrupts = %+v, want only the unmatched question", pending)
+	}
+	question, ok := pending[0].(conversation.Question)
+	if !ok {
+		t.Fatalf("pending interrupt = %T, want question", pending[0])
+	}
+	waiting, err := runtime.GetSession(t.Context(), session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	questionItem, found := snapshotBlock(waiting, opened.RunID, question.ItemID)
+	if !found || questionItem.Kind != conversation.BlockQuestion || questionItem.Question == nil {
+		t.Fatalf("durable question item = %+v", questionItem)
+	}
+	continued, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{RunID: opened.RunID, Answers: []conversation.InterruptAnswer{{
+		ItemID: question.ItemID, Answer: conversation.QuestionAnswer{Values: [][]string{{"linux"}}},
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted, err := runtime.GetSession(t.Context(), session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	questionItem, found = snapshotBlock(accepted, opened.RunID, question.ItemID)
+	if !found || questionItem.Question == nil || !questionItem.Question.Answered() ||
+		questionItem.Question.Answers[0][0] != "linux" {
+		t.Fatalf("durable accepted question = %+v", questionItem)
+	}
+	drain(t, continued, projection)
+	if len(continuedWith) != 2 || continuedWith[0].ItemID != "approval" || continuedWith[1].ItemID != "question" {
+		t.Fatalf("continuation answers = %+v, want the complete fixture-local set", continuedWith)
+	}
+}
+
+func drain(t *testing.T, stream conversation.SegmentStream, projection *conversation.Conversation) {
+	t.Helper()
+	if err := stream.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	for event, streamErr := range stream.Events {
+		if streamErr != nil {
+			t.Fatal(streamErr)
+		}
+		if _, err := projection.ApplyRunEvent(event); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func approvalFixture(itemID, title string) conversation.Approval {
+	return conversation.Approval{
+		ItemID: itemID, Title: title,
+		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+	}
+}
+
+func snapshotBlock(snapshot conversation.SessionSnapshot, runID, itemID string) (conversation.Block, bool) {
+	for _, block := range snapshot.Transcript {
+		if block.RunID == runID && block.ID == itemID {
+			return block, true
+		}
+	}
+	return conversation.Block{}, false
+}
+
+func timeLimitedContext(t *testing.T, timeout time.Duration) (context.Context, context.CancelFunc) {
+	t.Helper()
+	return context.WithTimeout(t.Context(), timeout)
+}

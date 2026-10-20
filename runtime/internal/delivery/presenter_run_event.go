@@ -130,7 +130,7 @@ func presentedRunEvent(event runs.ProjectionEvent) (presented protocol.StreamEve
 			// projection shape the presenter could not read.
 			slog.Error("delivery: run event presenter panicked",
 				"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
-			err = NewFailure(protocol.ErrInternalError, fmt.Sprintf("the runtime could not present a run event: %v", recovered))
+			err = protocol.NewFailure(protocol.ErrInternalError, fmt.Sprintf("the runtime could not present a run event: %v", recovered))
 		}
 	}()
 	return presentRunEvent(event), nil

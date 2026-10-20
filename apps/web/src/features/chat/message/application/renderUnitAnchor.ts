@@ -1,0 +1,23 @@
+import { type MessageRenderUnit } from "@/features/agent/public/messagePresentation";
+export const BLOCK_ANCHOR_ATTR = "data-block-anchor";
+
+// Grouping changes the navigation target, but not the identity of its first material.
+export function renderUnitKey(messageId: string, unit: MessageRenderUnit): string {
+  if (unit.kind === "wave" && unit.units[0]) return renderUnitKey(messageId, unit.units[0]);
+  if (unit.kind === "toolGroup") return `${messageId}:t:${unit.tools[0]?.id ?? "0"}`;
+  return renderUnitAnchor(messageId, unit);
+}
+
+export function renderUnitAnchor(messageId: string, unit: MessageRenderUnit): string {
+  if (unit.kind === "wave") {
+    const first = unit.units[0];
+    return first ? `${messageId}:w:${renderUnitAnchor(messageId, first)}` : `${messageId}:w:0`;
+  }
+  if (unit.kind === "toolGroup") return `${messageId}:g:${unit.tools[0]?.id ?? "0"}`;
+  const { block, index } = unit;
+  if (block.kind === "tool") return `${messageId}:t:${block.toolCallId}`;
+  if ((block.kind === "approval" || block.kind === "question") && block.itemId) {
+    return `${messageId}:i:${block.itemId}`;
+  }
+  return `${messageId}:b:${index}`;
+}

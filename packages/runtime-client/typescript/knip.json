@@ -1,0 +1,4 @@
+{
+  "ignore": ["src/generated/**", "testing/generated/**"],
+  "entry": ["src/validation/wireCheck.ts"]
+}

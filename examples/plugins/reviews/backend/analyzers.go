@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	flameruntime "github.com/Tangerg/flame/runtime"
+	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+	"github.com/Tangerg/flame/runtime/protocol"
+
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/point"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
@@ -20,8 +22,8 @@ type Analysis struct {
 }
 
 type AnalyzerCaller interface {
-	flameruntime.PointResolver
-	flameruntime.PluginCaller
+	runtimeclient.PointResolver
+	runtimeclient.PluginCaller
 }
 
 func AnalyzeReview(ctx context.Context, caller AnalyzerCaller, target capability.Target, review Snapshot) (Analysis, error) {
@@ -29,7 +31,7 @@ func AnalyzeReview(ctx context.Context, caller AnalyzerCaller, target capability
 	if err != nil {
 		return Analysis{}, err
 	}
-	values, err := flameruntime.ResolvePointValues[Analyzer](ctx, caller, contract, target, map[string]any{"reviewStatus": review.Status}, nil, flameruntime.CallOptions{})
+	values, err := runtimeclient.ResolvePointValues[Analyzer](ctx, caller, contract, target, map[string]any{"reviewStatus": review.Status}, nil, protocol.CallOptions{})
 	if err != nil {
 		return Analysis{}, err
 	}
@@ -39,7 +41,7 @@ func AnalyzeReview(ctx context.Context, caller AnalyzerCaller, target capability
 	}
 	findings := make([]Finding, 0)
 	for _, value := range values {
-		method, err := flameruntime.BindPluginMethod(caller, flameruntime.PluginBinding{
+		method, err := runtimeclient.BindPluginMethod(caller, runtimeclient.PluginBinding{
 			InstallationID: value.InstallationID, Digest: value.Digest,
 			Contribution: value.Value.Contribution, Contract: contracts.Capability,
 			Target: capability.Target{Scope: "installation", Reference: value.InstallationID},
@@ -47,7 +49,7 @@ func AnalyzeReview(ctx context.Context, caller AnalyzerCaller, target capability
 		if err != nil {
 			return Analysis{}, err
 		}
-		result, err := method.Call(ctx, review, flameruntime.PluginCallOptions{})
+		result, err := method.Call(ctx, review, protocol.PluginCallOptions{})
 		if err != nil {
 			return Analysis{}, fmt.Errorf("reviews: analyzer %s: %w", value.Value.Title, err)
 		}

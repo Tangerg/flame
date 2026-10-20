@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	json "encoding/json/v2"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	app "github.com/Tangerg/flame/plugins/memory/backend/application"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/plugins/memory/backend/rpc"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 

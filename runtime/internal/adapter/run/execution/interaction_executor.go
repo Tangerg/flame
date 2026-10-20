@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -20,7 +21,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/resourceid"
 	agent "github.com/Tangerg/scope/agent"

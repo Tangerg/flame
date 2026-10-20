@@ -21,7 +21,7 @@ func wirePageError(err error) error {
 		errors.Is(err, pagination.ErrInvalidCursorMaterial) ||
 		errors.Is(err, pagination.ErrCursorTooLarge) ||
 		errors.Is(err, pagination.ErrInvalidLimit) {
-		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return err
 }
@@ -124,7 +124,7 @@ func itemScopeFromWire(scope protocol.ItemListScope) (sessions.ItemScope, error)
 		}
 		return sessions.RunItems(scope.RunID), nil
 	default:
-		return sessions.ItemScope{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("scope.type must be %q or %q", protocol.ItemScopeSession, protocol.ItemScopeRun))
+		return sessions.ItemScope{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("scope.type must be %q or %q", protocol.ItemScopeSession, protocol.ItemScopeRun))
 	}
 }
 
@@ -138,7 +138,7 @@ func sequenceOrderFromWire(order protocol.ItemOrder) (transcript.SequenceOrder, 
 	case protocol.ItemOrderDesc:
 		return transcript.NewestFirst, nil
 	default:
-		return "", NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown order %q", order))
+		return "", protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown order %q", order))
 	}
 }
 

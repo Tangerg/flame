@@ -8,12 +8,12 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"

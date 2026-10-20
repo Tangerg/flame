@@ -39,5 +39,5 @@ Regenerate the contract with:
 go generate ./plugins/sandbox/backend/rpc
 ```
 
-Build the ordinary target package with `plugins/build.mjs`; installation never
+Build the ordinary target package with `plugins/scripts/build-packages.mjs`; installation never
 compiles source. The backend uses no shared UI components or new dependencies.

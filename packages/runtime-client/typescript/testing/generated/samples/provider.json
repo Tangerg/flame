@@ -1,0 +1,10 @@
+{
+  "id": "openai",
+  "baseUrl": "https://api.openai.com/v1",
+  "credential": {
+    "masked": "sk****78",
+    "source": "stored"
+  },
+  "configured": true,
+  "credentialRequirement": "apiKeyRequired"
+}

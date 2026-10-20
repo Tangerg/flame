@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"iter"
 	"log/slog"
 	"slices"
@@ -15,6 +14,8 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"

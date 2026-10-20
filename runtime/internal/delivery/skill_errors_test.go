@@ -38,7 +38,7 @@ func TestSkillDetailDistinguishesInvalidMissingAndUnavailableResources(t *testin
 			if !errors.Is(err, tt.want) || !errors.Is(err, tt.cause) {
 				t.Fatalf("Get = %v; want %v and preserved %v", err, tt.want, tt.cause)
 			}
-			problem := ProjectError(err).Problem()
+			problem := projectError(err).Problem()
 			if problem.Type != tt.want.Error() || strings.Contains(problem.Detail, "secret-token") || strings.Contains(problem.Detail, root) {
 				t.Fatalf("unsafe or misclassified problem: %+v", problem)
 			}

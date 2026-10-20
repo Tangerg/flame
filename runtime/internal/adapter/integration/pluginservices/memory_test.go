@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	memorysqlite "github.com/Tangerg/flame/plugins/memory/backend/sqlite"
@@ -29,7 +30,6 @@ import (
 	hostsqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )

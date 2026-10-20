@@ -1,0 +1,63 @@
+import { type AgentRunFact } from "@/features/agent/public/events";
+import { type AgentRunMetrics, type AgentRunView } from "@/features/agent/public/sessionView";
+import { type AgentFoldSource } from "@/features/agent/application/fold/source";
+function projectRunMetrics(metrics: AgentRunMetrics): AgentRunMetrics {
+  return {
+    steps: metrics.steps,
+    activeDurationMillis: metrics.activeDurationMillis,
+    ...(metrics.usage ? { usage: { ...metrics.usage } } : {}),
+  };
+}
+
+export function projectRunRef(run: AgentRunFact): AgentRunView {
+  return {
+    id: run.id,
+    sessionId: run.sessionId,
+    parentRunId: run.parentRunId,
+    rootRunId: run.rootRunId,
+    spawnedByItemId: run.spawnedByItemId,
+    status: run.status,
+    activeSegmentId: run.activeSegmentId,
+    outcome: run.outcome,
+    modelSelection: run.modelSelection ? { ...run.modelSelection } : null,
+    metrics: projectRunMetrics(run.metrics),
+    progress: null,
+    contextTokens: run.contextTokens ?? null,
+    createdAt: run.createdAt,
+    finishedAt: run.finishedAt,
+  };
+}
+
+export function projectStartedRun(run: AgentRunFact, source: AgentFoldSource): AgentRunView {
+  if (run.id !== source.runId) {
+    throw new Error(`agent.fold.startedRunMismatch:eventRun=${source.runId};payloadRun=${run.id}`);
+  }
+  if (!source.segmentId) {
+    throw new Error(`agent.fold.startedSegmentMissing:run=${run.id}`);
+  }
+  const projected = projectRunRef(run);
+  if (projected.status !== "running") {
+    throw new Error(
+      `agent.fold.startedStatusMismatch:run=${run.id};status=${projected.status};expected=running`,
+    );
+  }
+  if (projected.activeSegmentId !== source.segmentId) {
+    throw new Error(
+      `agent.fold.startedSegmentMismatch:run=${run.id};payloadSegment=${projected.activeSegmentId ?? "missing"};eventSegment=${source.segmentId}`,
+    );
+  }
+  return projected;
+}
+
+export function projectFinishedRun(run: AgentRunFact, source: AgentFoldSource): AgentRunView {
+  if (run.id !== source.runId) {
+    throw new Error(`agent.fold.finishedRunMismatch:eventRun=${source.runId};payloadRun=${run.id}`);
+  }
+  const projected = projectRunRef(run);
+  if (projected.status === "running") {
+    throw new Error(
+      `agent.fold.finishedStatusMismatch:run=${run.id};status=running;expected=waitingOrFinished`,
+    );
+  }
+  return projected;
+}

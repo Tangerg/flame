@@ -1,0 +1,236 @@
+import { describe, expect, it, vi } from "vitest";
+import { type RunEvent, type RunRef } from "@flame/runtime-client";
+import { createRunEventBatcher } from "@/features/agent/adapters/runEventBatcher";
+let sequence = 0;
+
+const envelope = (event: RunEvent["event"]): RunEvent => ({
+  event,
+  eventId: `evt_batch_${++sequence}`,
+  runId: "run_1",
+  segmentId: "seg_1",
+  timestamp: "2026-06-03T00:00:00.000Z",
+});
+
+const run: RunRef = {
+  id: "run_1",
+  sessionId: "ses_1",
+  status: "running",
+  activeSegmentId: "seg_1",
+  createdAt: "2026-06-03T00:00:00.000Z",
+  metrics: { steps: 0, activeDurationMillis: 0 },
+  protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+  provider: "openai",
+  model: "gpt-5",
+};
+
+const runStarted = (): RunEvent => envelope({ type: "segment.started", run });
+
+const runFinished = (): RunEvent => {
+  const { activeSegmentId: _activeSegmentId, ...rest } = run;
+  return envelope({
+    type: "segment.finished",
+    run: {
+      ...rest,
+      status: "finished",
+      outcome: { type: "completed" },
+      metrics: { steps: 0, activeDurationMillis: 1 },
+      finishedAt: "2026-06-03T00:00:01.000Z",
+    },
+  });
+};
+
+function frameScheduler() {
+  const scheduled: Array<() => void> = [];
+  const scheduleFrame = vi.fn((flush: () => void) => {
+    scheduled.push(flush);
+    return scheduled.length;
+  });
+  const cancelFrame = vi.fn();
+  return {
+    scheduleFrame,
+    cancelFrame,
+    flushNext: () => scheduled.shift()?.(),
+  };
+}
+
+const collectBatch = (target: RunEvent[][]) => (batch: RunEvent[]) => {
+  target.push(batch);
+  return true;
+};
+
+describe("createRunEventBatcher", () => {
+  it("coalesces queued events into one frame and reports finished runs", () => {
+    const applied: RunEvent[][] = [];
+    const onRunFinished = vi.fn();
+    const frames = frameScheduler();
+    const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
+      readEpoch: () => 0n,
+      apply: collectBatch(applied),
+      onRunFinished,
+      scheduleFrame: frames.scheduleFrame,
+      cancelFrame: frames.cancelFrame,
+    });
+
+    batcher.enqueue(runStarted());
+    batcher.enqueue(runFinished());
+
+    expect(frames.scheduleFrame).toHaveBeenCalledTimes(1);
+    expect(applied).toEqual([]);
+
+    frames.flushNext();
+
+    expect(applied).toHaveLength(1);
+    expect(applied[0]!.map((entry) => entry.event.type)).toEqual([
+      "segment.started",
+      "segment.finished",
+    ]);
+    expect(applied[0]![1]!.runId).toBe("run_1");
+    expect(onRunFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops a queued batch when the view epoch changes before flush", () => {
+    let epoch = 1;
+    const applied: RunEvent[][] = [];
+    const frames = frameScheduler();
+    const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
+      readEpoch: () => BigInt(epoch),
+      apply: collectBatch(applied),
+      scheduleFrame: frames.scheduleFrame,
+      cancelFrame: frames.cancelFrame,
+    });
+
+    batcher.enqueue(runStarted());
+    epoch = 2;
+    frames.flushNext();
+
+    expect(applied).toEqual([]);
+
+    batcher.enqueue(runFinished());
+    frames.flushNext();
+
+    expect(applied).toHaveLength(1);
+    expect(applied[0]![0]!.event.type).toBe("segment.finished");
+  });
+
+  it("does not publish a cursor or terminal effect for a rejected fold", () => {
+    const frames = frameScheduler();
+    const onApplied = vi.fn();
+    const onRunFinished = vi.fn();
+    const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
+      readEpoch: () => 0n,
+      apply: () => false,
+      onApplied,
+      onRunFinished,
+      scheduleFrame: frames.scheduleFrame,
+      cancelFrame: frames.cancelFrame,
+    });
+
+    batcher.enqueue(runFinished());
+    frames.flushNext();
+
+    expect(onApplied).not.toHaveBeenCalled();
+    expect(onRunFinished).not.toHaveBeenCalled();
+  });
+
+  it("bounds a hidden-window queue when animation frames do not run", () => {
+    const applied: RunEvent[][] = [];
+    const frames = frameScheduler();
+    const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
+      readEpoch: () => 0n,
+      apply: collectBatch(applied),
+      scheduleFrame: frames.scheduleFrame,
+      cancelFrame: frames.cancelFrame,
+      maximumQueuedEvents: 2,
+    });
+
+    for (let event = 0; event < 5; event++) batcher.enqueue(runStarted());
+
+    expect(applied.map((batch) => batch.length)).toEqual([2, 2]);
+    batcher.flush();
+    expect(applied.map((batch) => batch.length)).toEqual([2, 2, 1]);
+  });
+
+  it("can land the queued tail synchronously before a durable snapshot", () => {
+    const applied: RunEvent[][] = [];
+    const frames = frameScheduler();
+    const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
+      readEpoch: () => 0n,
+      apply: collectBatch(applied),
+      scheduleFrame: frames.scheduleFrame,
+      cancelFrame: frames.cancelFrame,
+    });
+
+    batcher.enqueue(runStarted());
+    batcher.enqueue(runFinished());
+    batcher.flush();
+
+    expect(frames.cancelFrame).toHaveBeenCalledWith(1);
+    expect(applied).toHaveLength(1);
+    expect(applied[0]!.map((entry) => entry.event.type)).toEqual([
+      "segment.started",
+      "segment.finished",
+    ]);
+
+    frames.flushNext();
+    expect(applied).toHaveLength(1);
+  });
+
+  it("cancels pending frames and ignores future events after dispose", () => {
+    const applied: RunEvent[][] = [];
+    const frames = frameScheduler();
+    const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
+      readEpoch: () => 0n,
+      apply: collectBatch(applied),
+      scheduleFrame: frames.scheduleFrame,
+      cancelFrame: frames.cancelFrame,
+    });
+
+    batcher.enqueue(runStarted());
+    batcher.dispose();
+    batcher.enqueue(runFinished());
+    frames.flushNext();
+
+    expect(frames.cancelFrame).toHaveBeenCalledWith(1);
+    expect(frames.scheduleFrame).toHaveBeenCalledTimes(1);
+    expect(applied).toEqual([]);
+  });
+});
+
+describe("projection failure barrier", () => {
+  it.each(["frame", "capacity", "tail"])("retires the batcher after %s failure", (trigger) => {
+    const frames = frameScheduler();
+    const failure = new Error("invalid authoritative fact");
+    const apply = vi.fn(() => {
+      throw failure;
+    });
+    const onFailure = vi.fn();
+    const onApplied = vi.fn();
+    const onRunFinished = vi.fn();
+    const batcher = createRunEventBatcher({
+      readEpoch: () => 0n,
+      apply,
+      onFailure,
+      onApplied,
+      onRunFinished,
+      scheduleFrame: frames.scheduleFrame,
+      cancelFrame: frames.cancelFrame,
+      maximumQueuedEvents: trigger === "capacity" ? 1 : 256,
+    });
+    batcher.enqueue(runFinished());
+    if (trigger === "frame") frames.flushNext();
+    if (trigger === "tail") batcher.flush();
+    batcher.enqueue(runStarted());
+    batcher.flush();
+    frames.flushNext();
+    expect(onFailure).toHaveBeenCalledExactlyOnceWith(failure);
+    expect(apply).toHaveBeenCalledOnce();
+    expect(onApplied).not.toHaveBeenCalled();
+    expect(onRunFinished).not.toHaveBeenCalled();
+  });
+});

@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/resourceid"
 )
 

@@ -1,6 +1,6 @@
 # Flame development workflow
 
-Repository rules live in [`AGENTS.md`](AGENTS.md), design rationale in [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md), and the structural method in [`REFACTORING.md`](REFACTORING.md). Module-specific boundaries live in [`cli/ARCHITECTURE.md`](cli/ARCHITECTURE.md), [`runtime/doc/ARCHITECTURE.md`](runtime/doc/ARCHITECTURE.md), and [`desktop/frontend/ARCHITECTURE.md`](desktop/frontend/ARCHITECTURE.md).
+Repository rules live in [`AGENTS.md`](AGENTS.md), design rationale in [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md), and the structural method in [`REFACTORING.md`](REFACTORING.md). Module-specific boundaries live in [`cli/ARCHITECTURE.md`](apps/cli/ARCHITECTURE.md), [`runtime/docs/ARCHITECTURE.md`](runtime/docs/ARCHITECTURE.md), and [`apps/web/ARCHITECTURE.md`](apps/web/ARCHITECTURE.md).
 
 ## Active boundary
 
@@ -36,42 +36,48 @@ Use released Scope modules and provider libraries. Do not copy their implementat
 
 An optional provider capability remains separate from the ordinary chat contract. Advertise it only when the concrete provider implements the exact behavior; do not approximate a missing capability in a generic Flame layer.
 
-## Verification
+## Verification and toolchains
 
-Application development uses the repository's `go.work`. Run checks from each owning
-module with the workspace enabled:
+Use the Go version declared in `go.work` (currently 1.27.0), npm 11 or newer,
+and a Node release accepted by the root `engines` constraint. CI selects Node
+22.22.1. Desktop uses the exact Wails v3 version selected in its module; macOS
+is the supported native verification and distribution platform.
 
-```sh
-go test ./...
-go vet ./...
-go build ./...
-```
+Run from the repository root:
 
-Coordinated changes use the participating modules' local sources; publishing a Runtime
-module is not a prerequisite for workspace verification. For an independent module
-release, disable the workspace and verify the published dependency graph:
+| Command                                 | Responsibility                                                                                                               |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `make setup`                            | Check the toolchain, prepare immutable candidate modules, install root npm dependencies/hooks and shared assets              |
+| `make generate`                         | Invoke real Go and npm output owners in dependency order                                                                     |
+| `make check`                            | SDK closure/direction guards, clean generated drift, every non-native Go member and npm workspace check                      |
+| `make check-native`                     | Stage the same Web build, test/vet/build Desktop and run its Wails macOS build                                               |
+| `make check-author`                     | Export independent author namespaces, pack JS dependencies and verify Go vendor execution without network or checkout access |
+| `make dev-web` / `make dev-desktop`     | Browser/native development of the same Web product                                                                           |
+| `make build-runtime` / `make build-cli` | Headless executable and companion plugin distribution                                                                        |
+| `make package-desktop`                  | Complete Web staging and Wails/native packaging                                                                              |
 
-```sh
-cd runtime
-GOWORK=off go test ./...
-GOWORK=off go vet ./...
-GOWORK=off go build ./...
+The coordinator discovers Go members from `go.work` and npm members from root
+`workspaces`. Native requirements classify the Desktop member explicitly; a
+non-native check does not claim that member passed. CI requires both jobs.
+Workspace checks invoke local sources. Independent distribution verification
+uses `GOWORK=off` and the frozen standard module artifacts described in
+[consumer reference](docs/reference/consumers.md).
 
-cd ../cli
-GOWORK=off go test ./...
-GOWORK=off go vet ./...
-GOWORK=off go build ./...
-```
+Owner checks can be run directly, for example `go test ./runtime/...` or
+`npm run typecheck --workspace @flame/web`. Use `npm ci` only at the root, then
+`make setup`/`make generate` for prerequisites. Do not create package-local
+locks or install graphs. `make check-generated` rebuilds in a disposable source
+copy and detects added, deleted and changed generated files without rewriting
+the working tree. Component builds always include current icons, UI, SDK policy,
+contracts and root lock; no incomplete timestamp cache is enabled.
 
-The graphical client has one required gate, run from `desktop/frontend`:
+Only edit hand-authored sources. Registry-owned Go methods and metadata,
+Runtime wire/schema/methods, SDK sample copies, plugin contracts and installed
+component ESM are generated projections. Runtime owns the raw canonical JSON
+samples in `runtime/contract/samples`.
 
-```sh
-npm run check
-```
-
-Its TypeScript dependencies are installed after `runtime/contract/typescript` and after `icons` and `ui` have been installed and built. The desktop task graph performs both prerequisites. For direct frontend commands, run `npm ci && npm run build` from `icons`, then from `ui`. Run `npm run check` in `ui` and `plugins` for shared presentation changes. Run the shared client's `npm run check` when changing that boundary. Wails native builds follow the supported targets in `desktop/Taskfile.yml`; a browser build does not prove a native package works.
-
-Run `go generate ./...` in Runtime when the protocol catalog changes. Run `go mod tidy` only when imports or dependencies change, and inspect any `go.mod`, `go.sum`, or `go.work.sum` changes before keeping them. Always run `git diff --check`.
+Run `go mod tidy` for dependency changes and inspect every manifest/checksum
+diff. Run `git diff --check`. Do not change global Go/npm configuration.
 
 Use targeted race tests only for changed concurrent ownership. Do not invent multi-Runtime, multi-client, or multi-server coverage when the product path has one Runtime and one CLI. Use real PTY tests only for terminal mode, input decoding, resize, focus, or restoration. The default test suite must remain offline and credential-independent.
 

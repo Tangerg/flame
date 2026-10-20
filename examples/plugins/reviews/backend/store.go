@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/jsonschema"
 
 	_ "modernc.org/sqlite"

@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

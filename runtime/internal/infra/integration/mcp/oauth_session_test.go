@@ -5,18 +5,19 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"net/http"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/go-sdk/auth"
 	"golang.org/x/oauth2"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
 func TestSupersededOAuthHandlersCannotChangeReplacementCredentials(t *testing.T) {

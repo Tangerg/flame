@@ -18,7 +18,7 @@ func TestIsolatedSessionUpdateIsGatedOnTheIsolationCapability(t *testing.T) {
 		t.Fatalf("%s is not published", SessionsUpdate)
 	}
 	isolate, release := true, false
-	refusal := func(t *testing.T, available bool, isolated *bool) *Failure {
+	refusal := func(t *testing.T, available bool, isolated *bool) *protocol.Failure {
 		t.Helper()
 		handler := &Handler{}
 		handler.features.isolation = available

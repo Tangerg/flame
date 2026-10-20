@@ -1,0 +1,397 @@
+package terminal
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"slices"
+	"strings"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
+
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/core/layout"
+)
+
+func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
+	a.dialogs.modelPicker = newPicker(theme, glyphs, "search models",
+		func(model protocol.Model) string {
+			label := model.DisplayName
+			if label == "" {
+				label = model.ID
+			}
+			if model.Deprecated {
+				label += " · deprecated"
+			}
+			return label
+		},
+		func(model protocol.Model) string { return model.Provider + "/" + model.ID },
+		func(model protocol.Model) {
+			if !a.dialogs.modelDialog.Open() {
+				return
+			}
+			a.dialogs.modelDialog.Dismiss()
+			a.selectSessionModel(model)
+		},
+	)
+	a.dialogs.modelDialog = newPresentationDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Models", Body: a.dialogs.modelPicker,
+		Where: layout.Placement{Width: 76, Height: 14},
+	})
+	a.dialogs.modelPicker.cancel = a.dialogs.modelDialog.Dismiss
+
+	a.dialogs.approvalModePicker = newPicker(theme, glyphs, "search approval modes",
+		func(policy protocol.ApprovalModePolicy) string { return approvalModeTitle(policy.Mode) },
+		approvalPolicyDetail,
+		func(policy protocol.ApprovalModePolicy) {
+			if !a.dialogs.approvalModeDialog.Open() {
+				return
+			}
+			a.dialogs.approvalModeDialog.Dismiss()
+			a.setApprovalMode(policy.Mode)
+		},
+	)
+	a.dialogs.approvalModeDialog = newPresentationDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Runtime approval mode", Body: a.dialogs.approvalModePicker,
+		Where: layout.Placement{Width: 88, Height: 9},
+	})
+	a.dialogs.approvalModePicker.cancel = a.dialogs.approvalModeDialog.Dismiss
+}
+
+func (a *app) selectSessionModel(model protocol.Model) {
+	sessionID := a.session.current.ID
+	a.runSessionChange("selecting model",
+		func(ctx context.Context) (conversation.Session, error) {
+			latest, err := a.runtime.GetSession(ctx, sessionID)
+			if err != nil {
+				return conversation.Session{}, err
+			}
+			return a.runtime.UpdateSession(ctx, conversation.UpdateSession{
+				SessionID:        sessionID,
+				Model:            &conversation.ModelRef{Provider: model.Provider, Model: model.ID},
+				ExpectedRevision: latest.Session.Revision,
+			})
+		},
+		func(updated conversation.Session) error {
+			// The Session now owns the choice. A retained launch override would
+			// outrank it here and follow the user into every other Session.
+			a.options.Provider, a.options.Model, a.options.ReasoningEffort = "", "", ""
+			a.setActiveSession(updated)
+			a.syncOptions("model · " + updated.Provider + "/" + updated.Model)
+			return nil
+		},
+	)
+}
+
+func (a *app) ChooseModel() {
+	if a.execution.observing() {
+		a.message("model changes apply between runs")
+		return
+	}
+	a.message("loading models")
+	a.loadModelPicker(true)
+}
+
+func (a *app) loadModelPicker(reset bool) {
+	a.runOperation(pickerCatalogOperation, true,
+		func(ctx context.Context) ([]protocol.Model, error) { return a.runtime.ListModels(ctx) },
+		func(models []protocol.Model, err error) {
+			if err != nil && len(models) == 0 {
+				a.message("could not load models: " + err.Error())
+				return
+			}
+			if reset {
+				a.dialogs.modelPicker.Reset()
+			}
+			a.dialogs.modelPicker.SetItems(models)
+			a.dialogs.modelDialog.Show()
+			a.status.note("choose a provider-qualified model")
+			if err != nil {
+				a.message("model catalog incomplete: " + err.Error())
+			}
+		},
+	)
+}
+
+func (a *app) ChooseApprovalMode() {
+	if a.execution.observing() {
+		a.message("approval mode changes apply between runs")
+		return
+	}
+	a.runOperation(pickerCatalogOperation, true,
+		func(ctx context.Context) (protocol.ApprovalModeResult, error) { return a.runtime.GetApprovalMode(ctx) },
+		func(result protocol.ApprovalModeResult, err error) {
+			if err != nil {
+				a.message("could not read approval modes: " + err.Error())
+				return
+			}
+			a.dialogs.approvalModePicker.Reset()
+			a.dialogs.approvalModePicker.SetItems(result.Modes)
+			a.dialogs.approvalModeDialog.Show()
+			a.status.note("choose the runtime approval mode")
+		},
+	)
+}
+
+func (a *app) setApprovalMode(mode protocol.ApprovalMode) {
+	a.runAdmissionMutation(approvalModeOperation, true,
+		func(ctx context.Context) (protocol.ApprovalModeResult, error) {
+			return a.runtime.SetApprovalMode(ctx, mode)
+		},
+		func(applied protocol.ApprovalModeResult, err error) {
+			if err != nil {
+				a.message("could not set approval mode: " + err.Error())
+				return
+			}
+			a.message("approval mode · " + string(applied.Mode))
+		},
+	)
+}
+
+func (a *app) ShowRuntimeStatus() {
+	a.runOperation(pickerCatalogOperation, true,
+		func(ctx context.Context) (protocol.ApprovalModeResult, error) { return a.runtime.GetApprovalMode(ctx) },
+		func(result protocol.ApprovalModeResult, err error) {
+			if err != nil {
+				a.message("could not read runtime status: " + err.Error())
+				return
+			}
+			a.transcript.Append(&kit.Entry{
+				Theme: a.transcript.theme, Label: "runtime options",
+				Body: runtimeStatusText(a.runtimeProfile, a.displayOptions(), result.Mode),
+			})
+		},
+	)
+}
+
+func runtimeStatusText(profile RuntimeProfile, options prompt.RunOptions, mode protocol.ApprovalMode) string {
+	lines := []string{
+		"model: " + modelLabel(options),
+		"approval mode: " + string(mode),
+	}
+	features := profile.AvailableFeatureNames()
+	if len(features) == 0 {
+		features = []string{"none"}
+	}
+	discovery := profile.Discovery()
+	capabilities := discovery.Capabilities
+	limits := capabilities.Limits
+	profileLines := []string{
+		fmt.Sprintf("runtime: %s %s", discovery.ServerInfo.Name, discovery.ServerInfo.Version),
+		"protocol: " + discovery.ProtocolVersion,
+		"default workspace: " + discovery.ServerInfo.DefaultWorkspace.Path,
+		"home: " + discovery.ServerInfo.Home,
+		"available features: " + strings.Join(features, ", "),
+		fmt.Sprintf("run concurrency: %s", runConcurrencyLabel(limits.MaxConcurrentRuns)),
+		fmt.Sprintf("run replay: %d events / %s / %s", limits.RunReplay.MaxEvents, formatRuntimeBytes(limits.RunReplay.MaxBytes), limits.RunReplay.Scope),
+		"command replay retention: " + formatRuntimeSeconds(limits.Idempotency.RetentionSeconds),
+		"MCP authorization retention: " + formatRuntimeSeconds(limits.MCPAuthorizationAttempts.RetentionSeconds),
+		fmt.Sprintf("runtime subscriptions: %d topics / %d watches", limits.RuntimeSubscription.MaxTopics, limits.RuntimeSubscription.MaxWatches),
+		fmt.Sprintf("surface: %d run events / %d topics / %d streaming methods", len(capabilities.RunEvents), len(capabilities.RuntimeTopics), len(capabilities.StreamingMethods)),
+	}
+	return strings.Join(slices.Concat(profileLines, lines), "\n")
+}
+
+func runConcurrencyLabel(maximum *int) string {
+	if maximum == nil {
+		return "unbounded"
+	}
+	return fmt.Sprintf("at most %d runs", *maximum)
+}
+
+func formatRuntimeSeconds(value int) string {
+	if value%3600 == 0 {
+		return fmt.Sprintf("%dh", value/3600)
+	}
+	if value%60 == 0 {
+		return fmt.Sprintf("%dm", value/60)
+	}
+	return fmt.Sprintf("%ds", value)
+}
+
+func formatRuntimeBytes(value int) string {
+	const unit = 1024
+	switch {
+	case value >= unit*unit && value%(unit*unit) == 0:
+		return fmt.Sprintf("%d MiB", value/(unit*unit))
+	case value >= unit && value%unit == 0:
+		return fmt.Sprintf("%d KiB", value/unit)
+	default:
+		return fmt.Sprintf("%d B", value)
+	}
+}
+
+func (a *app) ShowApprovalRules() {
+	a.executeRuntimeReaderQuery(a.approvalRulesReaderQuery())
+}
+
+func (a *app) approvalRulesReaderQuery() runtimeReaderQuery {
+	sessionID := a.session.current.ID
+	return runtimeReaderQuery{
+		status: "loading approval rules", mode: runtimeReaderApprovalRules,
+		read: func(ctx context.Context) (readerDocument, error) {
+			rules, err := a.runtime.ListApprovalRules(ctx, sessionID)
+			if err != nil {
+				return readerDocument{}, err
+			}
+			return approvalRulesDocument(rules)
+		},
+	}
+}
+
+func approvalRulesDocument(rules []protocol.ApprovalRule) (readerDocument, error) {
+	if len(rules) == 0 {
+		return paragraphDocument("Approval rules", "none remembered", []string{"No remembered approval rules."}), nil
+	}
+	lines := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		subject := conversation.ApprovalSubject(rule.Subject)
+		source, err := mcp.ToolLabel(rule.Tool)
+		if err != nil {
+			return readerDocument{}, err
+		}
+		lines = append(lines, fmt.Sprintf("%s  %s  %s  %s:%s  %s  stale=%t", rule.ID, rule.Scope, rule.Decision, rule.ModelName, subject, source, rule.Stale))
+	}
+	return paragraphDocument("Approval rules", fmt.Sprintf("%d remembered", len(rules)), lines), nil
+}
+
+func (a *app) PrepareDeleteApprovalRule(identity string) error {
+	identity = strings.TrimSpace(identity)
+	if identity == "" {
+		return errors.New("usage: /rule-delete <rule-id>")
+	}
+	sessionID := a.session.current.ID
+	a.status.note("loading approval rule to forget")
+	if !a.runOperation(approvalRuleOperation, false,
+		func(ctx context.Context) (protocol.ApprovalRule, error) {
+			rules, err := a.runtime.ListApprovalRules(ctx, sessionID)
+			if err != nil {
+				return protocol.ApprovalRule{}, err
+			}
+			return resolveApprovalRule(rules, identity)
+		},
+		func(rule protocol.ApprovalRule, err error) {
+			if err != nil {
+				a.message("load approval rule failed: " + err.Error())
+				return
+			}
+			subject := conversation.ApprovalSubject(rule.Subject)
+			a.confirmAction(
+				"Forget approval rule",
+				"Forget "+rule.ID+" ("+rule.ModelName+":"+subject+")?",
+				"Forget permanently",
+				func() { a.deleteApprovalRule(sessionID, rule.ID) },
+			)
+		},
+	) {
+		return errors.New("another approval operation is running")
+	}
+	return nil
+}
+
+func resolveApprovalRule(rules []protocol.ApprovalRule, identity string) (protocol.ApprovalRule, error) {
+	return resolveByID(rules, identity, "approval rule", func(rule protocol.ApprovalRule) string { return rule.ID })
+}
+
+type approvalRuleDeletionResult struct {
+	id    string
+	rules []protocol.ApprovalRule
+}
+
+func (a *app) deleteApprovalRule(sessionID, id string) {
+	a.status.note("forgetting approval rule " + id)
+	if !a.runAdmissionMutation(approvalRuleOperation, false,
+		func(ctx context.Context) (approvalRuleDeletionResult, error) {
+			if err := a.runtime.DeleteApprovalRule(ctx, id); err != nil {
+				return approvalRuleDeletionResult{}, err
+			}
+			rules, err := a.runtime.ListApprovalRules(ctx, sessionID)
+			return approvalRuleDeletionResult{id: id, rules: rules}, err
+		},
+		func(deleted approvalRuleDeletionResult, err error) {
+			if err != nil {
+				a.message("forget approval rule failed: " + err.Error())
+				return
+			}
+			a.status.note("approval rule forgotten · " + deleted.id)
+			if a.session.current.ID == sessionID {
+				document, err := approvalRulesDocument(deleted.rules)
+				if err != nil {
+					a.message("forget approval rule: " + err.Error())
+					return
+				}
+				a.setRuntimeReader(runtimeReaderApprovalRules)
+				a.openReaderDocument(document)
+			}
+		},
+	) {
+		a.message("another approval operation is running")
+	}
+}
+
+func (a *app) syncOptions(message string) {
+	a.prompt.SetOptions(a.displayOptions())
+	a.brand.SetOptions(a.displayOptions())
+	a.message(message)
+}
+
+func approvalModeTitle(mode protocol.ApprovalMode) string {
+	switch mode {
+	case protocol.ApprovalModeSafe:
+		return "Safe"
+	case protocol.ApprovalModeBalanced:
+		return "Balanced"
+	case protocol.ApprovalModeYolo:
+		return "Yolo"
+	default:
+		return string(mode)
+	}
+}
+
+// approvalPolicyDetail describes a mode from the gates the Runtime publishes
+// for it, so the picker cannot drift from the policy it selects.
+func approvalPolicyDetail(policy protocol.ApprovalModePolicy) string {
+	return "write " + approvalGateText(policy.Write) +
+		" · exec " + approvalGateText(policy.Exec) +
+		" · network " + approvalGateText(policy.Network)
+}
+
+func approvalGateText(gate protocol.ApprovalGate) string {
+	switch gate {
+	case protocol.ApprovalGatePass:
+		return "allowed"
+	case protocol.ApprovalGatePrompt:
+		return "asks first"
+	case protocol.ApprovalGateDeny:
+		return "refused"
+	default:
+		return string(gate)
+	}
+}
+
+func (a *app) setApprovalRule(request protocol.SetApprovalRuleRequest) error {
+	source, err := mcp.ToolLabel(request.Tool)
+	if err != nil {
+		return err
+	}
+	label := "remembering global " + string(request.Decision) + " for " + source
+	a.status.note(label)
+	if !a.runAdmissionMutation(approvalRuleOperation, false,
+		func(ctx context.Context) (struct{}, error) {
+			return struct{}{}, a.runtime.SetApprovalRule(ctx, request)
+		},
+		func(_ struct{}, err error) {
+			if err != nil {
+				a.message(label + " failed: " + err.Error())
+				return
+			}
+			a.message(label + " accepted")
+		},
+	) {
+		return errors.New("another approval operation is running")
+	}
+	return nil
+}

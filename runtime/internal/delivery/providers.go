@@ -13,14 +13,14 @@ const (
 )
 
 func registerProviders(registry *Registry) {
-	registry.query(MethodMeta{Name: ProvidersList},
+	registry.query(MethodMeta{Name: ProvidersList, GoName: "ListProviders"},
 		func(service interface {
 			ListProviders(context.Context) (*protocol.Page[protocol.Provider], error)
 		}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.Provider], error) {
 			return service.ListProviders(ctx)
 		})
 
-	registry.command(MethodMeta{Name: ProvidersUpdate},
+	registry.command(MethodMeta{Name: ProvidersUpdate, GoName: "UpdateProvider"},
 		func(service interface {
 			UpdateProvider(context.Context, protocol.UpdateProviderRequest) (*protocol.Provider, error)
 		}, ctx context.Context, request protocol.UpdateProviderRequest) (*protocol.Provider, error) {
@@ -29,7 +29,7 @@ func registerProviders(registry *Registry) {
 
 	// The probe's verdict rides its own result, so the call succeeds even when
 	// the provider does not; the read persists nothing and needs no replay guard.
-	registry.query(MethodMeta{Name: ProvidersTest},
+	registry.query(MethodMeta{Name: ProvidersTest, GoName: "TestProvider"},
 		func(service interface {
 			TestProvider(context.Context, string) (*protocol.ProviderTestResult, error)
 		}, ctx context.Context, request protocol.TestProviderRequest) (*protocol.ProviderTestResult, error) {

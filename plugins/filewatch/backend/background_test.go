@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"maps"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -16,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"

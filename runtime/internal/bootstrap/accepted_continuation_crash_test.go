@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -21,7 +22,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/localruntime"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	modernsqlite "modernc.org/sqlite"

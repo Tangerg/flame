@@ -1,0 +1,38 @@
+{
+  "name": "flame",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": "^22.22.1 || ^24.11.0 || >=26.0.0",
+    "npm": ">=11"
+  },
+  "workspaces": [
+    "apps/web",
+    "packages/runtime-client/typescript",
+    "packages/component-sdk",
+    "packages/ui",
+    "packages/icons",
+    "plugins",
+    "examples/plugins/composition",
+    "examples/plugins/reviews/component"
+  ],
+  "scripts": {
+    "prepare": "husky .husky",
+    "check": "make check",
+    "generate": "make generate",
+    "lint": "oxlint tooling --deny-warnings",
+    "format:check": "prettier --check tooling package.json package-lock.json README.md DEVELOPMENT.md docs .github/workflows"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "prettier": "^3.9.10",
+    "oxlint": "^1.87.0"
+  },
+  "overrides": {
+    "katex": "0.19.0"
+  }
+}

@@ -1,26 +1,23 @@
 package execution
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"strings"
 	"testing"
-
-	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"time"
 )
 
-func testAgentMemoryItemID(t *testing.T, digit byte) agentmemory.ItemID {
+func testAgentMemoryItemID(t *testing.T, digit byte) string {
 	t.Helper()
-	id, err := agentmemory.ParseItemID(agentmemory.ItemIDPrefix + strings.Repeat(
-		string(digit),
-		agentmemory.MaximumItemIDCharacters-len(agentmemory.ItemIDPrefix),
-	))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return id
+	return "mem_" + strings.Repeat(string(digit), 32)
 }
-
-func testMemoryPromptItem(snapshot agentmemory.ItemSnapshot) MemoryPromptItem {
-	item := testsupport.MustAgentMemoryItem(snapshot)
-	return MemoryPromptItem{ID: item.ID().String(), Content: item.Content(), Pinned: item.Pinned(), UpdatedAt: item.UpdatedAt()}
+func testMemoryPromptItem(item MemoryPromptItem) MemoryPromptItem {
+	if item.ID == "" {
+		item.ID = fmt.Sprintf("mem_%x", sha256.Sum256([]byte(item.Content)))
+	}
+	if item.UpdatedAt.IsZero() {
+		item.UpdatedAt = time.Unix(1, 0).UTC()
+	}
+	return item
 }

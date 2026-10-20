@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/idempotency"
@@ -15,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

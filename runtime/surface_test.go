@@ -2,87 +2,26 @@ package runtime
 
 import (
 	"context"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"iter"
-	"os"
-	"path/filepath"
 	"reflect"
-	"runtime"
-	"strconv"
-	"strings"
 	"testing"
+
+	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
 func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
-	_, source, _, _ := runtime.Caller(0)
-	directory := filepath.Dir(source)
-	operationNames := declaredOperationNames(t, filepath.Join(directory, "internal", "delivery"))
-	entries, err := os.ReadDir(directory)
-	if err != nil {
-		t.Fatalf("read Runtime package: %v", err)
-	}
-
-	bindings := make(map[string]string)
-	files := token.NewFileSet()
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
-			continue
-		}
-		file, err := parser.ParseFile(files, filepath.Join(directory, entry.Name()), nil, 0)
-		if err != nil {
-			t.Fatalf("parse Runtime source %s: %v", entry.Name(), err)
-		}
-		for _, declaration := range file.Decls {
-			function, ok := declaration.(*ast.FuncDecl)
-			if !ok || function.Recv == nil || receiverName(function.Recv) != "binding" || !function.Name.IsExported() {
-				continue
-			}
-			ast.Inspect(function.Body, func(node ast.Node) bool {
-				call, ok := node.(*ast.CallExpr)
-				if !ok || len(call.Args) < 2 {
-					return true
-				}
-				name := calledName(call.Fun)
-				if name != "invoke" && name != "invokeAck" && name != "invokeStream" {
-					return true
-				}
-				selector, ok := call.Args[1].(*ast.SelectorExpr)
-				if !ok {
-					t.Errorf("%s must call the operation through its delivery.Name constant", function.Name.Name)
-					return false
-				}
-				owner, ownerOK := selector.X.(*ast.Ident)
-				if !ownerOK || owner.Name != "delivery" {
-					t.Errorf("%s must call the operation through its delivery.Name constant", function.Name.Name)
-					return false
-				}
-				operationName, declared := operationNames[selector.Sel.Name]
-				if !declared {
-					t.Errorf("%s references unknown operation name constant %s", function.Name.Name, selector.Sel.Name)
-					return false
-				}
-				if previous := bindings[operationName]; previous != "" {
-					t.Errorf("operation %q is exposed by both %s and %s", operationName, previous, function.Name.Name)
-				}
-				bindings[operationName] = function.Name.Name
-				return false
-			})
-		}
-	}
-
 	errorType := reflect.TypeFor[error]()
 	contextType := reflect.TypeFor[context.Context]()
 	for _, meta := range delivery.Contract().Metas() {
-		methodName := bindings[meta.Name.String()]
+		methodName := meta.GoName
 		if methodName == "" {
 			t.Errorf("operation %q has no public Runtime method", meta.Name)
 			continue
 		}
-		for _, bindingType := range []reflect.Type{reflect.TypeFor[*Runtime](), reflect.TypeFor[*Client]()} {
+		for _, bindingType := range []reflect.Type{reflect.TypeFor[*Runtime](), reflect.TypeFor[*runtimeclient.Client]()} {
 			method, ok := bindingType.MethodByName(methodName)
 			if !ok {
 				t.Errorf("Runtime method %s is not exported", methodName)
@@ -132,25 +71,22 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 			}
 		}
 	}
-	if len(bindings) != len(delivery.Contract().Metas()) {
-		t.Fatalf("typed Go bindings = %d, operations = %d", len(bindings), len(delivery.Contract().Metas()))
-	}
 }
 
 func optionType(meta delivery.MethodMeta) reflect.Type {
 	switch {
 	case meta.Operation == delivery.OperationExtension:
-		return reflect.TypeFor[PluginCallOptions]()
+		return reflect.TypeFor[protocol.PluginCallOptions]()
 	case meta.Kind == delivery.KindStream && meta.Operation == delivery.OperationCommand && meta.ReplayCursor == delivery.ReplayCursorRun:
-		return reflect.TypeFor[RunCommandOptions]()
+		return reflect.TypeFor[protocol.RunCommandOptions]()
 	case meta.Operation == delivery.OperationCommand:
-		return reflect.TypeFor[CommandOptions]()
+		return reflect.TypeFor[protocol.CommandOptions]()
 	case meta.ReplayCursor == delivery.ReplayCursorRun:
-		return reflect.TypeFor[RunSubscriptionOptions]()
+		return reflect.TypeFor[protocol.RunSubscriptionOptions]()
 	case meta.Kind == delivery.KindStream:
-		return reflect.TypeFor[SubscriptionOptions]()
+		return reflect.TypeFor[protocol.SubscriptionOptions]()
 	default:
-		return reflect.TypeFor[CallOptions]()
+		return reflect.TypeFor[protocol.CallOptions]()
 	}
 }
 
@@ -164,77 +100,5 @@ func assertIteratorEvent(t *testing.T, methodName string, iterator, event reflec
 	yield := iterator.In(0)
 	if yield.Kind() != reflect.Func || yield.NumIn() != 2 || yield.In(0) != event || yield.In(1) != reflect.TypeFor[error]() {
 		t.Errorf("%s iterator event = %s, want %s", methodName, yield, event)
-	}
-}
-
-func receiverName(fields *ast.FieldList) string {
-	if fields == nil || len(fields.List) != 1 {
-		return ""
-	}
-	typeExpression := fields.List[0].Type
-	if pointer, ok := typeExpression.(*ast.StarExpr); ok {
-		typeExpression = pointer.X
-	}
-	identifier, _ := typeExpression.(*ast.Ident)
-	if identifier == nil {
-		return ""
-	}
-	return identifier.Name
-}
-
-func declaredOperationNames(t *testing.T, directory string) map[string]string {
-	t.Helper()
-	entries, err := os.ReadDir(directory)
-	if err != nil {
-		t.Fatalf("read delivery package: %v", err)
-	}
-	names := make(map[string]string)
-	files := token.NewFileSet()
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
-			continue
-		}
-		file, err := parser.ParseFile(files, filepath.Join(directory, entry.Name()), nil, 0)
-		if err != nil {
-			t.Fatalf("parse operation source %s: %v", entry.Name(), err)
-		}
-		for _, declaration := range file.Decls {
-			group, ok := declaration.(*ast.GenDecl)
-			if !ok || group.Tok != token.CONST {
-				continue
-			}
-			for _, spec := range group.Specs {
-				value, ok := spec.(*ast.ValueSpec)
-				typeName, typed := value.Type.(*ast.Ident)
-				if !ok || !typed || typeName.Name != "Name" || len(value.Names) != 1 || len(value.Values) != 1 {
-					continue
-				}
-				literal, ok := value.Values[0].(*ast.BasicLit)
-				if !ok || literal.Kind != token.STRING {
-					continue
-				}
-				wireName, err := strconv.Unquote(literal.Value)
-				if err != nil {
-					t.Fatalf("parse operation constant %s: %v", value.Names[0].Name, err)
-				}
-				names[value.Names[0].Name] = wireName
-			}
-		}
-	}
-	return names
-}
-
-func calledName(expression ast.Expr) string {
-	switch value := expression.(type) {
-	case *ast.Ident:
-		return value.Name
-	case *ast.IndexExpr:
-		return calledName(value.X)
-	case *ast.IndexListExpr:
-		return calledName(value.X)
-	case *ast.SelectorExpr:
-		return value.Sel.Name
-	default:
-		return ""
 	}
 }

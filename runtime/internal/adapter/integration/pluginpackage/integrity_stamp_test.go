@@ -11,9 +11,9 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
 // settle launches until the cached proof is settled. A filesystem whose clock

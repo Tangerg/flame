@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -14,7 +15,6 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )

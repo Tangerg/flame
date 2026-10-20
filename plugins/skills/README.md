@@ -1,7 +1,7 @@
 # Skills component
 
 This optional component consumes the public Runtime Skills operations through
-`@flame/plugin-sdk`. It ships ordinary prebuilt ESM with no executable or own
+`@flame/component-sdk`. It ships ordinary prebuilt ESM with no executable or own
 callable contribution. Runtime owns discovery, managed documents, proposal revision
 checks, publication, archiving and their command outcomes.
 

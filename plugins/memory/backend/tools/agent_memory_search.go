@@ -7,14 +7,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/dependency"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
 	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/runtime/optional"
-	"github.com/Tangerg/flame/runtime/plugin/toolfailure"
 )
 
 const (

@@ -10,9 +10,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 

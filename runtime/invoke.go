@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"iter"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
@@ -45,7 +47,7 @@ func (r *binding) invoke[Request, Response any](
 	}
 	value, ok := result.ValueAs[Response]()
 	if !ok {
-		return zero, fmt.Errorf("runtime: %s returned an invalid response type: %w", name, ErrInvalidResponse)
+		return zero, fmt.Errorf("runtime: %s returned an invalid response type: %w", name, protocol.ErrInvalidResponse)
 	}
 	return value, nil
 }
@@ -79,7 +81,7 @@ func (r *binding) invokeStream[Request, Ack, Event any](
 	}
 	ack, ok := result.ValueAs[Ack]()
 	if !ok || result.Events == nil {
-		return zero, nil, fmt.Errorf("runtime: %s returned an invalid stream: %w", name, ErrInvalidResponse)
+		return zero, nil, fmt.Errorf("runtime: %s returned an invalid stream: %w", name, protocol.ErrInvalidResponse)
 	}
 	return ack, func(yield func(Event, error) bool) {
 		var zero Event
@@ -90,7 +92,7 @@ func (r *binding) invokeStream[Request, Ack, Event any](
 			}
 			event, ok := value.(Event)
 			if !ok {
-				yield(zero, fmt.Errorf("runtime: %s returned an invalid event type: %w", name, ErrInvalidResponse))
+				yield(zero, fmt.Errorf("runtime: %s returned an invalid event type: %w", name, protocol.ErrInvalidResponse))
 				return
 			}
 			if !yield(event, nil) {

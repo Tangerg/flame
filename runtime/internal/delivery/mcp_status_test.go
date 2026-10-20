@@ -120,7 +120,7 @@ func TestMCPAuthorizationWireRejectsUnknownAttemptStatus(t *testing.T) {
 	if err == nil || attempt.Status.Type != "" {
 		t.Fatalf("authorization attempt = (%+v, %v), want zero/error", attempt, err)
 	}
-	if failure := ProjectError(err); failure.Problem().Type != protocol.ProblemInternalError {
+	if failure := projectError(err); failure.Problem().Type != protocol.ProblemInternalError {
 		t.Fatalf("unknown attempt status reported as a business verdict: %+v", failure.Problem())
 	}
 }
@@ -137,7 +137,7 @@ func TestMCPServerWireRejectsUnknownDomainState(t *testing.T) {
 	if err == nil || server.Status.Type != "" {
 		t.Fatalf("presentMCPServer(unknown state) = (%+v, %v), want zero/error", server, err)
 	}
-	if failure := ProjectError(err); failure.Problem().Type != protocol.ProblemInternalError {
+	if failure := projectError(err); failure.Problem().Type != protocol.ProblemInternalError {
 		t.Fatalf("unknown state reported as a business verdict: %+v", failure.Problem())
 	}
 }

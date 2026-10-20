@@ -17,7 +17,7 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 			installed := map[string]*protocol.PluginInstallation{}
 			install := func(name string) {
 				t.Helper()
-				source, err := filepath.Abs("../../../examples/plugins/composition/" + name)
+				source, err := filepath.Abs("../../../examples/plugins/composition/" + name + "/package")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -89,7 +89,7 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 			refused(delivery.PluginsReadResource, resource, protocol.ErrPluginDisabled)
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: provider.ID, Enabled: true}, "reenable-provider")
 			resolve("consumer", "panels", 1)
-			source, err := filepath.Abs("../../../examples/plugins/composition/provider")
+			source, err := filepath.Abs("../../../examples/plugins/composition/provider/package")
 			if err != nil {
 				t.Fatal(err)
 			}

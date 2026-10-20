@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/backend/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	"github.com/google/uuid"
 )
 

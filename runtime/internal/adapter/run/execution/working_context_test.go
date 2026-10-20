@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -45,7 +44,7 @@ func TestWorkingContextRecallPreservesConversationAndOpeningInput(t *testing.T) 
 	}
 	original := cloneChatMessages(seed)
 	search := &fakeAgentMemorySearcher{items: []MemoryPromptItem{
-		testMemoryPromptItem(agentmemory.ItemSnapshot{ID: testAgentMemoryItemID(t, '1'), Content: "relevant fact"}),
+		testMemoryPromptItem(MemoryPromptItem{ID: testAgentMemoryItemID(t, '1'), Content: "relevant fact"}),
 	}}
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: search})
 	cwd := t.TempDir()

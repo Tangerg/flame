@@ -49,8 +49,8 @@ Ordered lists retain their authored starting number and ordinary items.
 Build shared UI dependencies and rebuild or check the component from the repository:
 
 ```sh
-node plugins/build-components.mjs
-node plugins/build-components.mjs --check
+node plugins/scripts/build-components.mjs
+node plugins/scripts/build-components.mjs --check
 ```
 
 The source owns the generated namespace-local `components/component.js`. The three

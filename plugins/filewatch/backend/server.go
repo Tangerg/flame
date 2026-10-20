@@ -6,10 +6,10 @@ import (
 	"io"
 	"sync"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/plugins/filewatch/backend/rpc"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

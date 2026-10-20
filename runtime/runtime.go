@@ -10,10 +10,10 @@ import (
 	"slices"
 	"sync"
 
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/localruntime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

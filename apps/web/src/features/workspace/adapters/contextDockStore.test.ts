@@ -1,0 +1,318 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  useContextDockStore,
+  WorkspaceFileFocus,
+} from "@/features/workspace/adapters/contextDockStore";
+const EMPTY = {
+  activeSessionScopeId: null,
+  sessionScopes: new Map(),
+  dockViewIds: [],
+  lastViewId: null,
+  fileFocus: WorkspaceFileFocus.empty(),
+  fileViewer: null,
+  expandedToolIds: new Set<string>(),
+};
+
+const dock = () => useContextDockStore.getState();
+
+beforeEach(() => {
+  localStorage.removeItem(useContextDockStore.persist.getOptions().name!);
+  useContextDockStore.setState({ ...EMPTY, sessionScopes: new Map() });
+});
+
+describe("the round trip", () => {
+  it("gets back everything it chose to persist", async () => {
+    dock().activateSessionScope("s1");
+    dock().adoptDockLocation("skills");
+    dock().adoptDockLocation("diff");
+    dock().setFileViewer({ path: "a/b.ts", line: 12 });
+    dock().toggleExpandedTool("tool_1");
+
+    const key = useContextDockStore.persist.getOptions().name!;
+    const payload = localStorage.getItem(key) ?? "null";
+    const written = (JSON.parse(payload) as { state: unknown }).state;
+    expect(written).toBeTruthy();
+
+    useContextDockStore.setState({ ...EMPTY, sessionScopes: new Map() });
+    localStorage.setItem(key, payload);
+    await useContextDockStore.persist.rehydrate();
+
+    const partialize = useContextDockStore.persist.getOptions().partialize!;
+    expect(JSON.parse(JSON.stringify(partialize(dock() as never)))).toEqual(written);
+  });
+});
+
+describe("the open tab set", () => {
+  it("holds a tab open once", () => {
+    dock().adoptDockLocation("diff");
+    dock().adoptDockLocation("diff");
+    expect(dock().dockViewIds).toEqual(["diff"]);
+  });
+
+  it("answers which tab takes the place of a closed one", () => {
+    dock().adoptDockLocation("skills");
+    dock().adoptDockLocation("diff");
+    dock().adoptDockLocation("search");
+
+    expect(dock().closeDockTab("diff")).toBe("search");
+    expect(dock().dockViewIds).toEqual(["skills", "search"]);
+  });
+
+  it("falls back to the tab before it when the last one closes", () => {
+    dock().adoptDockLocation("skills");
+    dock().adoptDockLocation("diff");
+
+    expect(dock().closeDockTab("diff")).toBe("skills");
+  });
+
+  it("answers null when the last tab closes, and for a tab it never had", () => {
+    dock().adoptDockLocation("diff");
+    expect(dock().closeDockTab("diff")).toBeNull();
+    expect(dock().closeDockTab("nope")).toBeNull();
+  });
+
+  it("keeps only the named tab when the others close", () => {
+    dock().adoptDockLocation("skills");
+    dock().adoptDockLocation("diff");
+    dock().adoptDockLocation("search");
+
+    dock().closeOtherDockTabs("diff");
+    expect(dock().dockViewIds).toEqual(["diff"]);
+  });
+
+  it("leaves the set alone when closing the others around a tab it never had", () => {
+    dock().adoptDockLocation("skills");
+    dock().closeOtherDockTabs("nope");
+    expect(dock().dockViewIds).toEqual(["skills"]);
+  });
+
+  it("forgets the remembered destination when every tab closes", () => {
+    dock().adoptDockLocation("skills");
+
+    dock().closeAllDockTabs();
+    expect(dock().dockViewIds).toEqual([]);
+    expect(dock().lastViewId).toBeNull();
+  });
+
+  it("moves a tab to the requested position", () => {
+    dock().adoptDockLocation("skills");
+    dock().adoptDockLocation("diff");
+    dock().adoptDockLocation("search");
+
+    dock().reorderDockTab("skills", 2);
+    expect(dock().dockViewIds).toEqual(["diff", "search", "skills"]);
+  });
+
+  it("clamps a reorder into the open set and ignores an unknown tab", () => {
+    dock().adoptDockLocation("skills");
+    dock().adoptDockLocation("diff");
+
+    dock().reorderDockTab("diff", 99);
+    expect(dock().dockViewIds).toEqual(["skills", "diff"]);
+
+    dock().reorderDockTab("skills", 99);
+    expect(dock().dockViewIds).toEqual(["diff", "skills"]);
+
+    dock().reorderDockTab("nope", 0);
+    expect(dock().dockViewIds).toEqual(["diff", "skills"]);
+  });
+});
+
+describe("what a re-open returns to", () => {
+  it("adopts an authoritative location into both facts in one update", () => {
+    let notifications = 0;
+    const unsubscribe = useContextDockStore.subscribe(() => {
+      notifications += 1;
+    });
+
+    dock().adoptDockLocation("diff");
+
+    unsubscribe();
+    expect(notifications).toBe(1);
+    expect(dock()).toMatchObject({ dockViewIds: ["diff"], lastViewId: "diff" });
+  });
+
+  it("is the destination last shown, when it is still open", () => {
+    dock().adoptDockLocation("skills");
+    dock().adoptDockLocation("diff");
+
+    expect(dock().dockTabToShow("search")).toBe("diff");
+  });
+
+  it("remembers the remaining tab when the last shown one closes", () => {
+    dock().adoptDockLocation("skills");
+    dock().adoptDockLocation("diff");
+    dock().closeDockTab("diff");
+
+    expect(dock().dockTabToShow("search")).toBe("skills");
+  });
+
+  it("is the caller's default when nothing is open", () => {
+    expect(dock().dockTabToShow("search")).toBe("search");
+  });
+});
+
+describe("per-session scopes", () => {
+  it("keeps repeated file-focus intents distinct beyond the safe-integer boundary", () => {
+    const boundary = WorkspaceFileFocus.restore("a.ts", BigInt(Number.MAX_SAFE_INTEGER));
+    const first = boundary.moveTo("a.ts");
+    const second = first.moveTo("a.ts");
+
+    expect(second.revision).toBeGreaterThan(first.revision);
+  });
+
+  it("gives repeated file-focus intents distinct revisions", () => {
+    dock().focusFile("a.ts");
+    const first = dock().fileFocus;
+
+    dock().focusFile("a.ts");
+
+    expect(first).toMatchObject({ path: "a.ts", revision: 1n });
+    expect(dock().fileFocus).toMatchObject({ path: "a.ts", revision: 2n });
+    expect(dock().fileFocus).not.toBe(first);
+  });
+
+  it("keeps each session's tabs and returns the destination it remembers", () => {
+    dock().activateSessionScope("s1");
+    dock().adoptDockLocation("diff");
+    dock().focusFile("a.ts");
+
+    expect(dock().activateSessionScope("s2")).toBeNull();
+    expect(dock().dockViewIds).toEqual([]);
+    expect(dock().fileFocus).toMatchObject({ path: "", revision: 0n });
+
+    expect(dock().activateSessionScope("s1")).toBe("diff");
+    expect(dock().dockViewIds).toEqual(["diff"]);
+    expect(dock().fileFocus).toMatchObject({ path: "a.ts", revision: 1n });
+  });
+
+  it("is a no-op for the session already in scope", () => {
+    dock().activateSessionScope("s1");
+    dock().adoptDockLocation("diff");
+
+    expect(dock().activateSessionScope("s1")).toBe("diff");
+    expect(dock().dockViewIds).toEqual(["diff"]);
+  });
+
+  it("forgets scopes for sessions no longer held open", () => {
+    dock().activateSessionScope("s1");
+    dock().adoptDockLocation("diff");
+    dock().activateSessionScope("s2");
+
+    dock().forgetSessionScopes(["s2"]);
+
+    expect([...dock().sessionScopes.keys()]).toEqual([]);
+  });
+
+  it("retires the active scope when the Session owner has already released it", async () => {
+    dock().activateSessionScope("s1");
+    dock().adoptDockLocation("diff");
+    dock().activateSessionScope("s2");
+    dock().adoptDockLocation("skills");
+
+    dock().forgetSessionScopes(["s1"]);
+
+    expect(dock()).toMatchObject({
+      activeSessionScopeId: null,
+      dockViewIds: [],
+      lastViewId: null,
+    });
+    await vi.waitFor(() => {
+      const persisted = JSON.parse(
+        localStorage.getItem(useContextDockStore.persist.getOptions().name!) ?? "null",
+      ) as {
+        state: { sessionScopes: [string, unknown][] };
+      };
+      expect(persisted.state.sessionScopes.map(([sessionId]) => sessionId)).toEqual(["s1"]);
+    });
+  });
+
+  it("restores inactive tabs and file targets after renderer replacement", async () => {
+    dock().activateSessionScope("s1");
+    dock().adoptDockLocation("skills");
+    dock().adoptDockLocation("diff");
+    dock().adoptDockLocation("file");
+    dock().adoptDockLocation("diff");
+    dock().focusFile("src/runtime.ts");
+    dock().setFileViewer({ path: "src/runtime.ts", line: 42 });
+    dock().toggleExpandedTool("call-from-retired-renderer");
+
+    await vi.waitFor(() =>
+      expect(localStorage.getItem(useContextDockStore.persist.getOptions().name!)).not.toBeNull(),
+    );
+    const persisted = JSON.parse(
+      localStorage.getItem(useContextDockStore.persist.getOptions().name!) ?? "null",
+    ) as {
+      state: { sessionScopes: [string, { fileFocus: { revision: string } }][] };
+    };
+    expect(persisted.state.sessionScopes[0]?.[1].fileFocus.revision).toBe("1");
+
+    vi.resetModules();
+    const replacementModule = await import("@/features/workspace/adapters/contextDockStore");
+    replacementModule.activateContextDockStorage("https://runtime.test");
+    const replacement = replacementModule.useContextDockStore;
+    const persistedReplacement = replacement as typeof replacement & {
+      persist: { rehydrate: () => Promise<void> | void };
+    };
+    await persistedReplacement.persist.rehydrate();
+    replacement.getState().activateSessionScope("s1");
+
+    expect(replacement.getState()).toMatchObject({
+      dockViewIds: ["skills", "diff", "file"],
+      lastViewId: "diff",
+      fileFocus: { path: "src/runtime.ts", revision: 1n },
+      fileViewer: { path: "src/runtime.ts", line: 42 },
+      expandedToolIds: new Set(),
+    });
+  });
+});
+
+describe("tool disclosure inside a scope", () => {
+  it("toggles a tool open and shut", () => {
+    dock().toggleExpandedTool("call-1");
+    expect(dock().expandedToolIds).toEqual(new Set(["call-1"]));
+
+    dock().toggleExpandedTool("call-1");
+    expect(dock().expandedToolIds).toEqual(new Set());
+  });
+
+  it("records and clears a file viewer target", () => {
+    dock().setFileViewer({ path: "a.ts", line: 0 });
+    expect(dock().fileViewer).toEqual({ path: "a.ts", line: 0 });
+    dock().setFileViewer(null);
+    expect(dock().fileViewer).toBeNull();
+  });
+});
+
+describe("renderer storage validation", () => {
+  it("rejects persisted catalog entries masquerading as tabs", async () => {
+    dock().activateSessionScope("s1");
+    dock().adoptDockLocation("diff");
+    const key = useContextDockStore.persist.getOptions().name!;
+    const payload = JSON.parse(localStorage.getItem(key)!) as {
+      state: { sessionScopes: [string, { dockViewIds: string[] }][] };
+    };
+    payload.state.sessionScopes[0]![1].dockViewIds = ["catalog"];
+    useContextDockStore.setState({ ...EMPTY, sessionScopes: new Map() });
+    localStorage.setItem(key, JSON.stringify(payload));
+
+    await useContextDockStore.persist.rehydrate();
+    dock().activateSessionScope("s1");
+
+    expect(dock().dockViewIds).toEqual([]);
+  });
+
+  it("falls back to empty memory when the current payload is malformed", async () => {
+    localStorage.setItem(
+      useContextDockStore.persist.getOptions().name!,
+      JSON.stringify({
+        state: { sessionScopes: [["s1", { dockViewIds: "not-an-array" }]] },
+      }),
+    );
+
+    await useContextDockStore.persist.rehydrate();
+
+    expect(dock().sessionScopes.size).toBe(0);
+    expect(dock().dockViewIds).toEqual([]);
+  });
+});

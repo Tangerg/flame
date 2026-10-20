@@ -7,11 +7,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/optional"
 )
 

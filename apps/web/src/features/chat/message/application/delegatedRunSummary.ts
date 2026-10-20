@@ -1,0 +1,71 @@
+import { type DotTone } from "@/lib/tone";
+import { type Tone } from "@flame/ui/badge";
+import { type Translate } from "@/lib/i18n/index";
+import { type AgentRunView } from "@/features/agent/public/sessionView";
+import {
+  agentRunDetail,
+  agentRunPresentationState,
+  type AgentRunPresentationState,
+} from "@/features/agent/public/runPresentation";
+export interface DelegatedRunSummary {
+  label: string;
+  statusLabel: string;
+  dotTone: DotTone;
+  ink: Tone;
+  detail: string | null;
+  cancelable: boolean;
+}
+
+const STATUS_VIEW: Record<
+  AgentRunPresentationState,
+  { labelKey: string; dotTone: DotTone; ink: Tone }
+> = {
+  running: {
+    labelKey: "agent.runTree.status.running",
+    dotTone: "running",
+    ink: "info",
+  },
+  waiting: {
+    labelKey: "agent.runTree.status.waiting",
+    dotTone: "waiting",
+    ink: "warning",
+  },
+  finished: {
+    labelKey: "agent.runTree.status.finished",
+    dotTone: "ok",
+    ink: "neutral",
+  },
+  error: {
+    labelKey: "agent.runTree.status.error",
+    dotTone: "err",
+    ink: "negative",
+  },
+  canceled: {
+    labelKey: "agent.runTree.status.canceled",
+    dotTone: "idle",
+    ink: "neutral",
+  },
+};
+
+export function delegatedRunSummary(
+  t: Translate,
+  run: AgentRunView,
+  ordinal: number,
+  siblingCount: number,
+  taskLabel?: string,
+): DelegatedRunSummary {
+  const status = agentRunPresentationState(run);
+  const statusView = STATUS_VIEW[status];
+  const identity =
+    siblingCount === 1
+      ? t("agent.runTree.delegated.one")
+      : t("agent.runTree.delegated.many", { index: ordinal, count: siblingCount });
+  return {
+    label: taskLabel ? (siblingCount === 1 ? taskLabel : `${taskLabel} · ${identity}`) : identity,
+    statusLabel: t(statusView.labelKey),
+    dotTone: statusView.dotTone,
+    ink: statusView.ink,
+    detail: agentRunDetail(run),
+    cancelable: run.status !== "finished",
+  };
+}

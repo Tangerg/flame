@@ -40,7 +40,7 @@ func memoryQuery(r *poMCPRuntime, input memoryrpc.ListInput) (protocol.CallPlugi
 func memoryQueryResult(r *poMCPRuntime, input memoryrpc.ListInput) delivery.Result {
 	request, err := memoryQuery(r, input)
 	if err != nil {
-		return delivery.Result{Failure: delivery.NewFailure(err, err.Error())}
+		return delivery.Result{Failure: protocol.NewFailure(err, err.Error())}
 	}
 	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
 }

@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -17,11 +16,11 @@ type analyzerCaller struct {
 	calls   []protocol.CallPluginRequest
 }
 
-func (c *analyzerCaller) ResolvePluginPoint(_ context.Context, _ protocol.ResolvePluginPointRequest, _ flameruntime.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error) {
+func (c *analyzerCaller) ResolvePluginPoint(_ context.Context, _ protocol.ResolvePluginPointRequest, _ protocol.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error) {
 	return &protocol.Page[protocol.PluginPointBinding]{Data: []protocol.PluginPointBinding{c.value}}, nil
 }
 
-func (c *analyzerCaller) CallPlugin(_ context.Context, request protocol.CallPluginRequest, _ flameruntime.PluginCallOptions) (*protocol.CallPluginResponse, error) {
+func (c *analyzerCaller) CallPlugin(_ context.Context, request protocol.CallPluginRequest, _ protocol.PluginCallOptions) (*protocol.CallPluginResponse, error) {
 	c.calls = append(c.calls, request)
 	output, err := jsoninput.Encode(Findings{Findings: []Finding{c.finding}})
 	if err != nil {

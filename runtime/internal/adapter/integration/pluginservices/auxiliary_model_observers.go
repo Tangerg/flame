@@ -3,6 +3,7 @@ package pluginservices
 import (
 	"context"
 	"errors"
+
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/scope/core/chat"
 )

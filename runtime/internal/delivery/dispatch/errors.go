@@ -4,9 +4,8 @@ import (
 	json "encoding/json/v2"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 type rpcCodeSpec struct {
@@ -85,12 +84,12 @@ func errorToRPC(err error) *transport.Error {
 	}
 	// Nested transports may use the same JSON-RPC type with another vocabulary.
 	// Only Delivery's projected problem may define this Core response envelope.
-	return marshalFailure(delivery.ProjectError(err))
+	return marshalFailure(protocol.ProjectError(err))
 }
 
-func marshalFailure(failure *delivery.Failure) *transport.Error {
+func marshalFailure(failure *protocol.Failure) *transport.Error {
 	if failure == nil {
-		failure = delivery.NewFailure(protocol.ErrInternalError, "the runtime could not complete the request")
+		failure = protocol.NewFailure(protocol.ErrInternalError, "the runtime could not complete the request")
 	}
 	problem := failure.Problem()
 	code, ok := problemCode(problem.Type)
@@ -105,7 +104,7 @@ func marshalFailure(failure *delivery.Failure) *transport.Error {
 }
 
 func problemError(sentinel error, detail string) *transport.Error {
-	return marshalFailure(delivery.NewFailure(sentinel, detail))
+	return marshalFailure(protocol.NewFailure(sentinel, detail))
 }
 
 func invalidProblemResponse(detail string) *transport.Error {

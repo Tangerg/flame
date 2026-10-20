@@ -645,7 +645,7 @@ func subscriptionEventSequence(
 // fan-out cap and whether this runtime actually advertises each topic.
 func (s *Handler) subscribedTopics(requested []protocol.RuntimeTopic) (map[protocol.RuntimeTopic]bool, error) {
 	if len(requested) > protocol.MaxSubscriptionTopics {
-		return nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("at most %d topics per subscription", protocol.MaxSubscriptionTopics))
+		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("at most %d topics per subscription", protocol.MaxSubscriptionTopics))
 	}
 	advertised := s.capabilities().RuntimeTopics
 	topics := make(map[protocol.RuntimeTopic]bool, len(requested))
@@ -673,19 +673,19 @@ func validateWorkspaceWatches(watches []protocol.WatchSpec, topics map[protocol.
 		return nil, nil, nil
 	}
 	if !topics[protocol.TopicFilesChanged] {
-		return nil, nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("watches require the %s topic", protocol.TopicFilesChanged))
+		return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("watches require the %s topic", protocol.TopicFilesChanged))
 	}
 	if len(watches) > protocol.MaxSubscriptionWatches {
-		return nil, nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("at most %d watches per subscription", protocol.MaxSubscriptionWatches))
+		return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("at most %d watches per subscription", protocol.MaxSubscriptionWatches))
 	}
 	workingDirectories = make([]string, 0, len(watches))
 	watchIDs = make([]string, 0, len(watches))
 	for _, spec := range watches {
 		if spec.WatchID == "" {
-			return nil, nil, NewFailure(protocol.ErrInvalidParams, "watchId is required")
+			return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "watchId is required")
 		}
 		if slices.Contains(watchIDs, spec.WatchID) {
-			return nil, nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("watchId %q is registered twice", spec.WatchID))
+			return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("watchId %q is registered twice", spec.WatchID))
 		}
 		workingDirectories = append(workingDirectories, spec.Workspace.Path)
 		watchIDs = append(watchIDs, spec.WatchID)

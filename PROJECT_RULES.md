@@ -1,6 +1,6 @@
 # Repository instructions
 
-Flame is an agent product. `runtime` owns durable product semantics and exposes them through one in-process Go binding and one Runtime Protocol. `cli` and `desktop` (Web/Wails) are consumers that own command, terminal, and graphical interaction. Scope supplies released framework and provider libraries; Flame does not rebuild them.
+Flame is an agent product. `runtime` owns durable product semantics and exposes them through one in-process Go binding and one Runtime Protocol. `apps/cli`, `apps/web` and `apps/desktop` (Wails) are consumers that own command, terminal, and graphical interaction. Scope supplies released framework and provider libraries; Flame does not rebuild them.
 
 Stable design rationale lives in [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md). Structural changes follow [`REFACTORING.md`](REFACTORING.md). Repository workflow, verification, active scope, and reference-project rules live in [`DEVELOPMENT.md`](DEVELOPMENT.md). Read the target module's `README.md` before changing that module.
 

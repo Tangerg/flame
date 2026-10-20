@@ -1,0 +1,274 @@
+package runtimebinding
+
+import (
+	"context"
+	"slices"
+	"testing"
+
+	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/runtime/protocol"
+)
+
+const (
+	skillRevision      = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	otherSkillRevision = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+)
+
+type skillBindingStub struct {
+	t       *testing.T
+	actions []string
+}
+
+type invalidSkillBindingStub struct {
+	*skillBindingStub
+	discovered *protocol.SkillDiscovery
+	managed    *protocol.Page[protocol.ManagedSkill]
+	proposals  *protocol.Page[protocol.SkillProposal]
+}
+
+func (s *invalidSkillBindingStub) ListDiscoveredSkills(_ context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.SkillDiscovery, error) {
+	s.assertCall(request.Workspace.Path, options.RequestMeta)
+	if s.discovered == nil {
+		return nil, nil
+	}
+	owned := *s.discovered
+	owned.Skills = slices.Clone(owned.Skills)
+	return &owned, nil
+}
+
+func (s *invalidSkillBindingStub) ListManagedSkills(_ context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
+	s.assertMeta(options.RequestMeta)
+	if s.managed == nil {
+		return nil, nil
+	}
+	owned := *s.managed
+	owned.Data = slices.Clone(owned.Data)
+	return &owned, nil
+}
+
+func (s *invalidSkillBindingStub) ListSkillProposals(_ context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
+	s.assertCall(request.Workspace.Path, options.RequestMeta)
+	return s.proposals, nil
+}
+
+func (s *skillBindingStub) ListDiscoveredSkills(_ context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.SkillDiscovery, error) {
+	s.assertCall(request.Workspace.Path, options.RequestMeta)
+	return &protocol.SkillDiscovery{Skills: []protocol.Skill{{Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject}}, Diagnostics: []protocol.SkillDiagnostic{}}, nil
+}
+
+func (s *skillBindingStub) ListManagedSkills(_ context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
+	s.assertMeta(options.RequestMeta)
+	return protocol.NewPage([]protocol.ManagedSkill{{Name: "review", Description: "Review code", Lifecycle: protocol.SkillLifecycleArchived}}), nil
+}
+
+func (s *skillBindingStub) ListSkillProposals(_ context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
+	s.assertCall(request.Workspace.Path, options.RequestMeta)
+	return protocol.NewPage([]protocol.SkillProposal{{
+		Name: "release-checks", Revision: skillRevision, Scope: protocol.SkillProposalScopeUser,
+		Description: "Release safely", Instructions: "Run every release gate.",
+		Origin: protocol.SkillProposalOriginRequested, SourceSession: "ses_1",
+	}}), nil
+}
+
+func (s *skillBindingStub) ArchiveSkill(_ context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error {
+	s.assertCommand("archive:"+request.Name, options)
+	return nil
+}
+
+func (s *skillBindingStub) RestoreSkill(_ context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error {
+	s.assertCommand("restore:"+request.Name, options)
+	return nil
+}
+
+func (s *skillBindingStub) ApproveSkillProposal(_ context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error {
+	s.assertReference("approve", request, options)
+	return nil
+}
+
+func (s *skillBindingStub) RejectSkillProposal(_ context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error {
+	s.assertReference("reject", request, options)
+	return nil
+}
+
+func (s *skillBindingStub) assertCall(workspace string, meta protocol.RequestMeta) {
+	s.t.Helper()
+	if workspace != "/workspace" {
+		s.t.Fatalf("skill call = workspace %q, meta %+v", workspace, meta)
+	}
+	s.assertMeta(meta)
+}
+
+func (s *skillBindingStub) assertMeta(meta protocol.RequestMeta) {
+	s.t.Helper()
+	if meta.ProtocolVersion != protocol.ProtocolVersion {
+		s.t.Fatalf("skill call meta = %+v", meta)
+	}
+}
+
+func (s *skillBindingStub) assertCommand(action string, options protocol.CommandOptions) {
+	s.t.Helper()
+	if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
+		s.t.Fatalf("skill command options = %+v", options)
+	}
+	s.actions = append(s.actions, action)
+}
+
+func (s *skillBindingStub) assertReference(action string, request protocol.SkillProposalRef, options protocol.CommandOptions) {
+	s.t.Helper()
+	s.assertCommand(action+":"+string(request.Scope)+"/"+request.Name, options)
+	if request.Workspace.Path != "/workspace" || request.Revision != skillRevision {
+		s.t.Fatalf("skill proposal reference = %+v", request)
+	}
+}
+
+func TestSkillAdapterProjectsCatalogsAndExactMutationReferences(t *testing.T) {
+	stub := &skillBindingStub{t: t}
+	runtime := &Connection{skills: stub, meta: requestMeta("test")}
+	discovered, err := runtime.Discover(t.Context(), "/workspace")
+	if err != nil || len(discovered.Skills) != 1 || workspace.DiscoveredSkillKey(discovered.Skills[0]) != "project/release-checks" {
+		t.Fatalf("Discover = (%+v, %v)", discovered, err)
+	}
+	detail, err := runtime.InspectSkill(t.Context(), "/workspace", "release-checks")
+	if err != nil || detail.Revision != skillRevision || detail.Instructions != "Read the actual bundle." {
+		t.Fatalf("InspectSkill = (%+v, %v)", detail, err)
+	}
+	managed, err := runtime.Managed(t.Context())
+	if err != nil || len(managed) != 1 || managed[0].Lifecycle != protocol.SkillLifecycleArchived {
+		t.Fatalf("Managed = (%+v, %v)", managed, err)
+	}
+	proposals, err := runtime.Proposals(t.Context(), "/workspace")
+	if err != nil || len(proposals) != 1 || proposals[0].Key() != "user/release-checks@0123456789ab" {
+		t.Fatalf("Proposals = (%+v, %v)", proposals, err)
+	}
+	if archiveErr := runtime.Archive(t.Context(), "review"); archiveErr != nil {
+		t.Fatal(archiveErr)
+	}
+	if restoreErr := runtime.Restore(t.Context(), "review"); restoreErr != nil {
+		t.Fatal(restoreErr)
+	}
+	reference, err := proposals[0].Reference("/workspace")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Approve(t.Context(), reference); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Reject(t.Context(), reference); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"archive:review", "restore:review", "approve:user/release-checks", "reject:user/release-checks"}
+	if len(stub.actions) != len(want) {
+		t.Fatalf("actions = %v, want %v", stub.actions, want)
+	}
+	for index := range want {
+		if stub.actions[index] != want[index] {
+			t.Fatalf("actions = %v, want %v", stub.actions, want)
+		}
+	}
+}
+
+func TestSkillAdapterTransfersOwnedProtocolCatalogs(t *testing.T) {
+	discoveredPage := &protocol.SkillDiscovery{Skills: []protocol.Skill{{
+		Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject,
+	}}, Diagnostics: []protocol.SkillDiagnostic{}}
+	managedPage := protocol.NewPage([]protocol.ManagedSkill{{
+		Name: "review", Description: "Review code", Lifecycle: protocol.SkillLifecycleActive,
+	}})
+	stub := &invalidSkillBindingStub{
+		skillBindingStub: &skillBindingStub{t: t}, discovered: discoveredPage, managed: managedPage,
+	}
+	runtime := &Connection{skills: stub, meta: requestMeta("test")}
+	discovered, err := runtime.Discover(t.Context(), "/workspace")
+	if err != nil {
+		t.Fatal(err)
+	}
+	managed, err := runtime.Managed(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	discoveredPage.Skills[0].Description = "mutated"
+	managedPage.Data[0].Description = "mutated"
+	if discovered.Skills[0].Description != "Release safely" || managed[0].Description != "Review code" {
+		t.Fatal("skill projections alias runtime catalog storage")
+	}
+}
+
+func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		stub *invalidSkillBindingStub
+		read func(*Connection) error
+	}{
+		{
+			name: "shadowed discovered name",
+			stub: &invalidSkillBindingStub{discovered: &protocol.SkillDiscovery{Skills: []protocol.Skill{
+				{Name: "review", Scope: protocol.SkillScopeProject},
+				{Name: "review", Scope: protocol.SkillScopeUser},
+			}, Diagnostics: []protocol.SkillDiagnostic{}}},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Discover(t.Context(), "/workspace")
+				return err
+			},
+		}, {
+			name: "repeated managed name",
+			stub: &invalidSkillBindingStub{managed: protocol.NewPage([]protocol.ManagedSkill{
+				{Name: "review", Lifecycle: protocol.SkillLifecycleActive},
+				{Name: "review", Lifecycle: protocol.SkillLifecycleArchived},
+			})},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Managed(t.Context())
+				return err
+			},
+		}, {
+			name: "repeated proposal slot",
+			stub: &invalidSkillBindingStub{proposals: protocol.NewPage([]protocol.SkillProposal{
+				{Name: "review", Revision: skillRevision, Scope: protocol.SkillProposalScopeProject, Description: "Review code", Instructions: "Inspect code."},
+				{Name: "review", Revision: otherSkillRevision, Scope: protocol.SkillProposalScopeProject, Description: "Review again", Instructions: "Inspect code again."},
+			})},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Proposals(t.Context(), "/workspace")
+				return err
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			test.stub.skillBindingStub = &skillBindingStub{t: t}
+			runtime := &Connection{skills: test.stub, meta: requestMeta("test")}
+			err := test.read(runtime)
+			if err == nil {
+				t.Fatal("invalid skill value was accepted")
+			}
+			requireRuntimeContractViolation(t, err)
+		})
+	}
+}
+
+// TestProfileAnswersOptionalAdapterAvailability fixes where the "does this
+// Runtime offer the surface" question is answered. It is the Profile, read once
+// by the composition root. An accessor must not answer it by returning a nil
+// pointer: assigned into a consumer's interface field that arrives as a non-nil
+// interface wrapping nil, so the consumer's own "is this wired?" check cannot
+// fire and its first call dereferences nil.
+func TestProfileAnswersOptionalAdapterAvailability(t *testing.T) {
+	runtime := &Connection{profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
+		protocol.FeatureSkills: {Enabled: true}, protocol.FeatureMCP: {Enabled: true},
+	})}
+	profile := runtime.Profile()
+	if !profile.Supports(protocol.FeatureSkills) || !profile.Supports(protocol.FeatureMCP) ||
+		profile.Supports(protocol.FeatureGoals) {
+		t.Fatalf("profile features = %+v", profile.Discovery().Capabilities.Features)
+	}
+	if profile.Supports(protocol.FeaturePlugins) {
+		t.Fatal("fixture advertises the context features this case must not")
+	}
+
+	// Unadvertised is exactly the state that used to hand back a nil pointer.
+	if runtime.AgentMemory() == nil {
+		t.Fatal("context adapter accessor returned a nil pointer a consumer cannot detect")
+	}
+}
+
+func (s *skillBindingStub) GetDiscoveredSkill(_ context.Context, request protocol.SkillDetailRequest, options protocol.CallOptions) (*protocol.SkillDetail, error) {
+	s.assertCall(request.Workspace.Path, options.RequestMeta)
+	return &protocol.SkillDetail{Skill: protocol.Skill{Name: request.Name, Scope: protocol.SkillScopeProject}, Path: "/workspace/.flame/skills/" + request.Name + "/SKILL.md", Revision: skillRevision, Instructions: "Read the actual bundle."}, nil
+}

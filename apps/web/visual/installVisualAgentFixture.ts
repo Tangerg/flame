@@ -1,0 +1,381 @@
+import { type FlameClient } from "@flame/runtime-client";
+import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
+import { type CommandResult, type ServerCapabilities } from "@flame/runtime-client/wire";
+import { createMutationPromise } from "@flame/runtime-client";
+import { subagentsView } from "@/features/chat/message/subagents";
+import { installAgentStatePorts } from "@/features/agent/adapters/agentStatePorts";
+import { registerApprovalPolicyDataProviders } from "@/features/agent/adapters/runtimeDataProviders";
+import { navigator } from "@/lib/navigation";
+import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
+import { useAgentStore } from "@/features/agent/adapters/agentStore";
+import { reduceAgentEvent } from "@/features/agent/application/fold/reducer";
+import { AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
+import { installInterruptResponseCoordinator } from "@/features/agent/application/hitl/interruptResponseCoordinator";
+import {
+  configureAgentRuntimeGateway,
+  type AgentRuntimeGateway,
+  type AgentSteerSubmission,
+} from "@/features/agent/application/ports/runtimeGateway";
+import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
+import { type AgentSessionView } from "@/features/agent/public/sessionView";
+import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "@/features/agent/public/session";
+import {
+  getActiveSessionId,
+  getAgentSessionLifecycleSnapshot,
+  subscribeActiveSessionId,
+  subscribeAgentSessionLifecycle,
+} from "@/features/agent/public/session";
+import { AGENT_SESSIONS } from "@/features/agent/public/services";
+import { APPROVAL_MODE_KEY } from "@/features/agent/public/approvalPolicy";
+import { type ApprovalModeResult } from "@/features/agent/public/approvalPolicy";
+import { composerBootstrap } from "@/features/composer/index";
+import { composerKeymap } from "@/features/composer/index";
+import { composerSend } from "@/features/composer/index";
+import { composerToolbar } from "@/features/composer/index";
+import contextUsage from "@/features/chat/context-usage/index";
+import narrativeRails from "@/features/chat/narrative-rails/index";
+import { messageCopy } from "@/features/chat/message-actions/index";
+import { messageEdit } from "@/features/chat/message-actions/index";
+import { createMessageFeedbackPlugin } from "@/features/chat/message-actions/index";
+import { messageRegenerate } from "@/features/chat/message-actions/index";
+import { builtinVisualStyles } from "@/features/theme/visualStyles/index";
+import customTheme from "@/features/theme/themes/custom-theme";
+import flameDark from "@/features/theme/themes/flame-dark";
+import flameLight from "@/features/theme/themes/flame-light";
+import { defaultAccents } from "@/features/theme/defaultAccents";
+import { createGoalPlugin } from "@/features/goal/index";
+import { type GoalState } from "@/features/goal/application/goalReadModel";
+import planProgress from "@/features/chat/plan-progress/index";
+import { workbenchChat } from "@/features/shell/workbench/index";
+import { MODELS_KEY } from "@/features/providers/public/queries";
+import { SelectableModel } from "@/features/providers/public/queries";
+import { installWorkspaceNavigationPort } from "@/features/workspace/adapters/navigationStatePort";
+import { installRuntimeCapabilityPort } from "@/features/connection/adapters/runtimeConnectionProjection";
+import { queryClient } from "@/lib/queryClient";
+import { loadPluginsForTest } from "@/test/kernel";
+import { toolRenderingPlugins } from "@/app/builtinPlugins";
+import { commitVisualInterruptResponses } from "./interruptResponses";
+import { DATA_PROVIDER } from "@/extensions/dataProvider";
+import { definePlugin } from "@/extensions/definePlugin";
+import { useRuntimeConnectionStore } from "@/features/connection/adapters/runtimeConnectionProjection";
+import { visualNavigationBootstrap, visualRuntimeStream } from "./visualRuntimePorts";
+import { visualToolResults } from "./visualToolResults";
+import {
+  WORKSPACE_PROJECTS_KEY,
+  type WorkspaceProjectSummary,
+} from "@/features/workspace/public/queries";
+import {
+  WORKSPACE_LIST_FILES_KEY,
+  type WorkspaceFileEntry,
+} from "@/features/workspace/application/workspaceQueries";
+import { useComposerStore } from "@/features/composer/adapters/composerStore";
+import {
+  projectRuntimeAgentSnapshot,
+  type RuntimeAgentSessionSnapshot,
+  AGENT_SESSION_TAIL_EVENTS,
+  VISUAL_GOALS,
+  VISUAL_ROOT_RUN_ID,
+  VISUAL_SESSION_ID,
+  type VisualAgentState,
+} from "./agentSessionSnapshots";
+import { installVisualRuntimeServiceStatusPort } from "./installVisualRuntimeServiceStatusPort";
+import { VISUAL_MODELS } from "./runtimeSnapshots";
+function visualSession(
+  state: VisualAgentState,
+  snapshot: RuntimeAgentSessionSnapshot,
+): AgentSessionSummary {
+  const root = snapshot.runs.find((run) => run.id === VISUAL_ROOT_RUN_ID);
+  return {
+    id: VISUAL_SESSION_ID,
+    revision: 7,
+    title: `Agent · ${state}`,
+    status: root && root.status !== "finished" ? root.status : "idle",
+    provider: VISUAL_MODELS[0]!.provider,
+    model: VISUAL_MODELS[0]!.id,
+    reasoningEffort: VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel,
+    workspace: {
+      path: VISUAL_WORKSPACE_PATH,
+      availability: state === "cwd-missing" ? "missing" : "available",
+    },
+    time: "2026-07-31T08:00:00.000Z",
+  };
+}
+
+function visualAgentRuntimeGateway(
+  snapshot: RuntimeAgentSessionSnapshot,
+  session: AgentSessionSummary,
+  runtimeClient: () => FlameClient,
+): AgentRuntimeGateway {
+  return {
+    createSession: async ({ cwd }) => ({
+      ...session,
+      workspace: { ...session.workspace, path: cwd },
+    }),
+    deleteSession: async () => undefined,
+    updateSession: async ({ expectedRevision, title, favorite, cwd }) => ({
+      ...session,
+      revision: expectedRevision + 1,
+      ...(title !== undefined ? { title } : {}),
+      ...(favorite !== undefined ? { favorite } : {}),
+      ...(cwd !== undefined ? { workspace: { ...session.workspace, path: cwd } } : {}),
+    }),
+    forkSession: async () => ({ id: `${VISUAL_SESSION_ID}_fork` }),
+    loadSessionSnapshot: async () => ({
+      snapshot: projectRuntimeAgentSnapshot(snapshot),
+      projectAssociatedSharedMaterial: (shared) => shared,
+    }),
+    loadSessionUsage: async () => ({}),
+    rollbackSession: async () => ({ droppedRuns: [] }),
+    steerRun: (runId, segmentId, input) => {
+      const mutation = createMutationPromise(async () => {
+        document.documentElement.dataset.visualSteeredRun = runId;
+        document.documentElement.dataset.visualSteeredSegment = segmentId;
+        document.documentElement.dataset.visualSentInput = JSON.stringify(input);
+        return { type: "accepted" as const, userItemId: "item_visual_steer" };
+      });
+      const expose = (current: typeof mutation): AgentSteerSubmission =>
+        Object.defineProperties(
+          current.then((value) => value),
+          {
+            idempotencyKey: { value: current.idempotencyKey },
+            inputIdentity: { value: Promise.resolve("item_visual_steer") },
+            retry: { value: () => expose(current.retry()) },
+          },
+        ) as AgentSteerSubmission;
+      return expose(mutation);
+    },
+    isSteerReceiptUnknown: () => false,
+    isRunGone: () => false,
+    isReplayLost: () => false,
+    setApprovalMode: (mode) => runtimeClient().approval.setMode(mode),
+    allowMCPTool: async () => undefined,
+    forgetApprovalRule: async () => undefined,
+  };
+}
+
+const fileListProvider = definePlugin({
+  name: "flame.visual.file-list",
+  setup(ctx) {
+    ctx.contribute(DATA_PROVIDER, {
+      key: WORKSPACE_LIST_FILES_KEY,
+      fetcher: async () =>
+        [
+          { path: "runtime/session/store.go", name: "store.go", type: "file", sizeBytes: 12_288 },
+          {
+            path: "runtime/session/store_test.go",
+            name: "store_test.go",
+            type: "file",
+            sizeBytes: 8_192,
+          },
+          {
+            path: "runtime/contract/openrpc.json",
+            name: "openrpc.json",
+            type: "file",
+            sizeBytes: 40_960,
+          },
+          {
+            path: "apps/web/src/main.tsx",
+            name: "main.tsx",
+            type: "file",
+            sizeBytes: 1_024,
+          },
+          { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
+        ] satisfies WorkspaceFileEntry[],
+    });
+  },
+});
+
+const visualAgentSessions = (runtimeClient: () => FlameClient) =>
+  definePlugin({
+    name: "flame.visual.agent-session-ports",
+    provides: { sessions: AGENT_SESSIONS },
+    setup(ctx) {
+      registerApprovalPolicyDataProviders(ctx, runtimeClient);
+      return {
+        sessions: {
+          getActiveSessionId,
+          getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
+          subscribeActiveSessionId,
+          subscribeLifecycle: subscribeAgentSessionLifecycle,
+          subscribeDeleted: () => () => undefined,
+        },
+      };
+    },
+  });
+
+const visualAgentLifecycle = definePlugin({
+  name: "flame.visual.agent-lifecycle",
+  setup(ctx) {
+    const commands = AgentCommandOwner.install();
+    const disposeInterruptResponses = installInterruptResponseCoordinator();
+    ctx.cleanup(() => {
+      disposeInterruptResponses();
+      commands.dispose();
+    });
+  },
+});
+
+export async function installVisualAgentFixture(
+  runtimeClient: () => FlameClient,
+  state: VisualAgentState,
+  commandOutput: string | undefined,
+  snapshot: RuntimeAgentSessionSnapshot,
+  capabilities: ServerCapabilities,
+): Promise<AgentSessionView> {
+  if (commandOutput !== undefined) {
+    const command = snapshot.items.find(
+      (item) => item.type === "toolCall" && item.tool.name === "shell",
+    );
+    if (!command || command.type !== "toolCall")
+      throw new Error("The fixture needs a shell call to show command output");
+    snapshot.items = snapshot.items.map((item) =>
+      item === command
+        ? {
+            ...command,
+            tool: {
+              ...command.tool,
+              result: { ...(command.tool.result as CommandResult), output: commandOutput },
+            },
+          }
+        : item,
+    );
+  }
+  const projectless = state === "empty" || state === "runtime-down";
+  queryClient.clear();
+  installRuntimeCapabilityPort();
+  useRuntimeConnectionStore.setState({ capabilities });
+  installVisualRuntimeServiceStatusPort(state === "runtime-down" ? "unavailable" : "ready");
+  installAgentStatePorts();
+  installWorkspaceNavigationPort(() => "https://visual.flame.test");
+  configureAgentRuntimeGateway(
+    visualAgentRuntimeGateway(snapshot, visualSession(state, snapshot), runtimeClient),
+  );
+
+  useAgentSessionStore.setState({
+    openSessionIds: projectless ? [] : [VISUAL_SESSION_ID],
+    lastSessionId: projectless ? "" : VISUAL_SESSION_ID,
+  });
+  navigator().go({ session: projectless ? "" : VISUAL_SESSION_ID });
+  queryClient.setQueryDefaults([AGENT_SESSIONS_KEY], { staleTime: Infinity });
+  queryClient.setQueryDefaults([WORKSPACE_PROJECTS_KEY], { staleTime: Infinity });
+  queryClient.setQueryDefaults([MODELS_KEY], { staleTime: Infinity });
+  queryClient.setQueryDefaults([APPROVAL_MODE_KEY], { staleTime: Infinity });
+  queryClient.setQueryData(
+    [AGENT_SESSIONS_KEY],
+    projectless ? [] : [visualSession(state, snapshot)],
+  );
+  queryClient.setQueryData<WorkspaceProjectSummary[]>([WORKSPACE_PROJECTS_KEY], []);
+  queryClient.setQueryData(
+    [MODELS_KEY],
+    VISUAL_MODELS.map(
+      (model) =>
+        new SelectableModel({
+          ...model,
+          ...model.capabilities,
+          label: model.displayName ?? model.id,
+        }),
+    ),
+  );
+  queryClient.setQueryData<ApprovalModeResult>(
+    [APPROVAL_MODE_KEY],
+    await runtimeClient().approval.getMode(),
+  );
+  await loadPluginsForTest(
+    flameLight,
+    defaultAccents,
+    flameDark,
+    customTheme,
+    ...builtinVisualStyles,
+    visualAgentSessions(runtimeClient),
+    visualRuntimeStream,
+    visualNavigationBootstrap,
+    visualAgentLifecycle,
+    composerBootstrap,
+    composerKeymap,
+    composerToolbar,
+    contextUsage,
+    composerSend,
+    narrativeRails,
+    workbenchChat,
+    messageCopy,
+    messageEdit,
+    messageRegenerate,
+    createMessageFeedbackPlugin(runtimeClient),
+    createGoalPlugin(runtimeClient),
+    planProgress,
+    subagentsView,
+    ...toolRenderingPlugins,
+    visualToolResults(runtimeClient),
+    fileListProvider,
+  );
+
+  useComposerStore.setState((current) => ({
+    composer: current.composer.edit((draft) =>
+      draft.withValue(state === "steer" ? "Tighten the error copy and continue." : ""),
+    ),
+    modelPreference: {
+      kind: "explicit",
+      provider: VISUAL_MODELS[0]!.provider,
+      model: VISUAL_MODELS[0]!.id,
+      ...(VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel
+        ? { reasoningEffort: VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel }
+        : {}),
+    },
+  }));
+
+  let view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
+  for (const event of AGENT_SESSION_TAIL_EVENTS[state]) {
+    view = reduceAgentEvent(view, event);
+  }
+  view = {
+    ...view,
+    shared: {
+      ...view.shared,
+      goal: {
+        available: true,
+        goal: VISUAL_GOALS[state] ?? null,
+      } satisfies GoalState,
+    },
+  };
+
+  const store = useAgentStore.getState();
+  store.ensureSession(VISUAL_SESSION_ID);
+  const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
+  if (!refresh || !store.commitViewRefresh(VISUAL_SESSION_ID, refresh, view)) {
+    throw new Error(`Failed to install visual agent state "${state}"`);
+  }
+  store.setSend(VISUAL_SESSION_ID, (input) => {
+    document.documentElement.dataset.visualSentInput = JSON.stringify(input);
+    return true;
+  });
+  store.setStop(VISUAL_SESSION_ID, () => {
+    document.documentElement.dataset.visualStoppedRoot = VISUAL_ROOT_RUN_ID;
+    return true;
+  });
+  store.setResume(VISUAL_SESSION_ID, (runId, responses, onSettled) => {
+    commitVisualInterruptResponses(snapshot, responses);
+    document.documentElement.dataset.visualResumedRun = runId;
+    document.documentElement.dataset.visualResumedItem = responses[0]?.itemId ?? "";
+    document.documentElement.dataset.visualResumedResponse = JSON.stringify(
+      responses[0]?.response ?? null,
+    );
+    onSettled?.();
+    const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
+    if (
+      !refresh ||
+      !store.commitViewRefresh(
+        VISUAL_SESSION_ID,
+        refresh,
+        projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot)),
+      )
+    ) {
+      throw new Error("Failed to publish the visual Runtime response");
+    }
+    return true;
+  });
+  store.setCancelRun(VISUAL_SESSION_ID, (runId) => {
+    document.documentElement.dataset.visualCanceledRun = runId;
+  });
+
+  return view;
+}

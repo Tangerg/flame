@@ -1,0 +1,19 @@
+import { type AgentInput } from "@/features/agent/public/input";
+import { type ComposerDraftInput } from "@/features/composer/public/draft";
+export function agentInputToComposerDraft(input: AgentInput): ComposerDraftInput {
+  return {
+    text: input.parts
+      .filter(
+        (part): part is Extract<AgentInput["parts"][number], { kind: "text" }> =>
+          part.kind === "text",
+      )
+      .map((part) => part.text)
+      .join("\n\n"),
+    images: input.parts
+      .filter(
+        (part): part is Extract<AgentInput["parts"][number], { kind: "image" }> =>
+          part.kind === "image",
+      )
+      .map((part) => ({ mime: part.mime, data: part.data })),
+  };
+}

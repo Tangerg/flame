@@ -16,7 +16,7 @@ func registerInterrupts(registry *Registry) {
 	// run_not_root is declared because the filter can name a child, and that is a
 	// different answer from "nothing is waiting".
 	registry.query(MethodMeta{
-		Name: InterruptsList,
+		Name: InterruptsList, GoName: "ListInterrupts",
 		Errors: []string{
 			protocol.ErrRunNotRoot.Error(),
 			protocol.ErrCapabilityNotNeg.Error(),

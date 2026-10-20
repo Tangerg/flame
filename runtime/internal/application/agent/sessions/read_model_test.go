@@ -3,8 +3,9 @@ package sessions
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/scope/core/chat"
 	"testing"
+
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"

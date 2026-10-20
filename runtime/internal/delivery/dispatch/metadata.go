@@ -5,8 +5,8 @@ import (
 	json "encoding/json/v2"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 const requestMetaField = "_meta"

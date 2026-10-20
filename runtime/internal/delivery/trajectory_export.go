@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -20,7 +21,7 @@ type trajectoryExportUseCases interface {
 
 func registerExportTrajectory(registry *Registry) {
 	registry.query(MethodMeta{
-		Name: SessionsExportTrajectory,
+		Name: SessionsExportTrajectory, GoName: "ExportTrajectory",
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(), protocol.ErrSessionBusy.Error(),
 			protocol.ErrExportTooLarge.Error(),
@@ -60,10 +61,10 @@ func (s *Handler) ExportTrajectory(ctx context.Context, request protocol.ExportT
 
 func wireTrajectoryExportError(err error) error {
 	if errors.Is(err, sessions.ErrSessionBusy) {
-		return NewFailure(errors.Join(protocol.ErrSessionBusy, err), "finish or cancel the Session's active or waiting Run before exporting its trajectory")
+		return protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), "finish or cancel the Session's active or waiting Run before exporting its trajectory")
 	}
 	if errors.Is(err, sessions.ErrExportTooLarge) {
-		return NewFailure(errors.Join(protocol.ErrExportTooLarge, err), "trajectory export exceeds 64 MiB or 100000 stored records; no partial trajectory was exported")
+		return protocol.NewFailure(errors.Join(protocol.ErrExportTooLarge, err), "trajectory export exceeds 64 MiB or 100000 stored records; no partial trajectory was exported")
 	}
 	return wireSessionErr(err)
 }

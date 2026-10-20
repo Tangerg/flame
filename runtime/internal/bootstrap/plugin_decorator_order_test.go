@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"

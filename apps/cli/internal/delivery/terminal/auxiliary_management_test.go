@@ -1,0 +1,296 @@
+package terminal
+
+import (
+	"context"
+	"encoding/json/jsontext"
+	"slices"
+	"sync"
+	"testing"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/input"
+)
+
+type diagnosticToolServiceStub struct {
+	invoked chan workspace.DiagnosticToolInvocation
+}
+
+func (d *diagnosticToolServiceStub) Tools(context.Context) ([]workspace.DiagnosticToolDescriptor, error) {
+	return []workspace.DiagnosticToolDescriptor{{
+		Name: "inspect.cache", Description: "inspect cache ownership",
+		Schema: jsontext.Value(`{"type":"object","properties":{"depth":{"type":"number"}}}`),
+	}}, nil
+}
+
+func (d *diagnosticToolServiceStub) Invoke(_ context.Context, invocation workspace.DiagnosticToolInvocation) (workspace.DiagnosticToolResult, error) {
+	d.invoked <- invocation
+	return workspace.DiagnosticToolResult{JSON: jsontext.Value(`{"entries":2,"healthy":true}`)}, nil
+}
+
+func TestDiagnosticToolsRenderSchemaAndConfinedResultAcrossResize(t *testing.T) {
+	tools := &diagnosticToolServiceStub{invoked: make(chan workspace.DiagnosticToolInvocation, 1)}
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), DiagnosticTools: tools, Workspace: "/workspace"})
+	host.Shows(t, "Ask flame")
+	host.Type("/tools")
+	host.Press(input.Enter)
+	host.Shows(t, "Diagnostic tools")
+	host.Shows(t, "inspect.cache")
+	host.Press(input.Esc)
+	host.Shows(t, "Ask flame")
+	host.Type(`/tool-invoke inspect {"depth":2}`)
+	host.Press(input.Enter)
+	invocation := awaitValue(t, tools.invoked, "diagnostic invocation")
+	if invocation.Tool.Name != "inspect.cache" || invocation.Workspace != "/workspace" || string(invocation.Arguments) != `{"depth":2}` {
+		t.Fatalf("invocation = %+v", invocation)
+	}
+	host.Shows(t, "Diagnostic · inspect.cache")
+	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+		t.Fatal("diagnostic result did not survive a minimal viewport")
+	}
+	showsPlain(t, host, `"healthy": true`)
+	stop()
+}
+
+type authoringContextServiceStub struct{}
+
+func (authoringContextServiceStub) Documents(context.Context, string) ([]protocol.AgentDoc, error) {
+	return []protocol.AgentDoc{{Path: "/workspace/AGENTS.md", Scope: protocol.AgentDocScopeProjectRoot}}, nil
+}
+
+func TestAuthoringDocumentsUseTheUnifiedReaderPath(t *testing.T) {
+	runtime := &recordingRuntime{Runtime: runtimefixture.New()}
+	runtime.Instant = true
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtime, AuthoringContext: authoringContextServiceStub{}, Workspace: "/workspace"})
+	host.Shows(t, "Ask flame")
+	host.Type("/agent-docs")
+	host.Press(input.Enter)
+	host.Shows(t, "/workspace/AGENTS.md")
+	stop()
+}
+
+type hookServiceStub struct {
+	mu      sync.Mutex
+	trusted bool
+	changed chan bool
+}
+
+type blockingHookTrustService struct {
+	Hooks
+	started  chan bool
+	release  chan struct{}
+	canceled chan struct{}
+}
+
+func (b *blockingHookTrustService) SetProjectTrust(ctx context.Context, projectRoot string, trusted bool) error {
+	b.started <- trusted
+	select {
+	case <-b.release:
+		return b.Hooks.SetProjectTrust(ctx, projectRoot, trusted)
+	case <-ctx.Done():
+		close(b.canceled)
+		return context.Cause(ctx)
+	}
+}
+
+func (h *hookServiceStub) Catalog(context.Context, string) (workspace.HookCatalog, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return workspace.HookCatalog{ProjectRoot: "/workspace", ProjectTrusted: h.trusted, Hooks: []protocol.HookInfo{{
+		Event: protocol.HookEventPreToolUse, Matcher: "shell*", Command: "./check.sh", Scope: protocol.HookScopeProject,
+		Source: "/workspace/.flame/hooks.json", Active: h.trusted,
+	}}}, nil
+}
+
+func (h *hookServiceStub) SetProjectTrust(_ context.Context, _ string, trusted bool) error {
+	h.mu.Lock()
+	h.trusted = trusted
+	h.mu.Unlock()
+	h.changed <- trusted
+	return nil
+}
+
+func TestHookAuditAndTrustRequireResizeSafeConfirmation(t *testing.T) {
+	hooks := &hookServiceStub{changed: make(chan bool, 1)}
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Hooks: hooks, Workspace: "/workspace"})
+	host.Shows(t, "Ask flame")
+	host.Type("/hooks")
+	host.Press(input.Enter)
+	host.Shows(t, "Shell command")
+	host.Shows(t, "./check.sh")
+	host.Press(input.Esc)
+	host.Shows(t, "Ask flame")
+	host.Type("/hooks-trust")
+	host.Press(input.Enter)
+	host.Shows(t, "Trust project hooks")
+	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+		t.Fatal("hook trust confirmation did not survive a minimal viewport")
+	}
+	host.Press(input.Down)
+	host.Press(input.Enter)
+	if trusted := awaitValue(t, hooks.changed, "hook trust change"); !trusted {
+		t.Fatal("project trust was not enabled")
+	}
+	host.Shows(t, "project trust true")
+	stop()
+}
+
+func TestHookChangeConvergesTheOpenAuditProjection(t *testing.T) {
+	hooks := &hookServiceStub{changed: make(chan bool, 1)}
+	source := &runtimeChangeSourceStub{
+		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
+		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicHooksChanged},
+	}
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Hooks: hooks, Changes: source, Workspace: "/workspace"})
+	host.Shows(t, "Ask flame")
+	subscription := awaitValue(t, source.subscription, "hook change subscription")
+	if !slices.Equal(subscription.Topics, []protocol.RuntimeTopic{protocol.TopicHooksChanged}) {
+		t.Fatalf("hook subscription = %v", subscription.Topics)
+	}
+	host.Type("/hooks")
+	host.Press(input.Enter)
+	host.Shows(t, "project trust false")
+
+	if err := hooks.SetProjectTrust(t.Context(), "/workspace", true); err != nil {
+		t.Fatal(err)
+	}
+	source.events <- changefeed.Event{Type: protocol.RuntimeHooksChanged, Sequence: 1}
+	awaitValue(t, source.applied, "hook invalidation")
+	host.Shows(t, "project trust true")
+	host.Shows(t, "PreToolUse · active")
+	stop()
+}
+
+func TestHookTrustMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
+	backend := runtimefixture.New()
+	base := &hookServiceStub{changed: make(chan bool, 1)}
+	hooks := &blockingHookTrustService{
+		Hooks: base, started: make(chan bool, 1), release: make(chan struct{}), canceled: make(chan struct{}),
+	}
+	release := sync.OnceFunc(func() { close(hooks.release) })
+	t.Cleanup(release)
+	source := &runtimeChangeSourceStub{
+		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
+		applied: make(chan changefeed.Event, 1),
+	}
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Hooks: hooks, Changes: source, SessionID: "ses_demo_1"})
+	host.Shows(t, "Ask flame")
+	awaitValue(t, source.subscription, "runtime change subscription")
+	host.Type("/hooks-trust")
+	host.Press(input.Enter)
+	host.Shows(t, "Trust project hooks")
+	host.Press(input.Down)
+	host.Press(input.Enter)
+	if trusted := awaitValue(t, hooks.started, "hook trust mutation"); !trusted {
+		t.Fatal("hook trust mutation revoked trust")
+	}
+	if _, err := backend.RollbackSession(t.Context(), conversation.RollbackSession{
+		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	source.events <- changefeed.Event{
+		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
+		SessionIDs: []string{"ses_demo_1"},
+	}
+	awaitValue(t, source.applied, "same-session invalidation")
+	select {
+	case <-hooks.canceled:
+		t.Fatal("session projection replacement canceled the hook trust mutation")
+	default:
+	}
+	release()
+	if trusted := awaitValue(t, base.changed, "hook trust change"); !trusted {
+		t.Fatal("project trust was not enabled")
+	}
+	catalog, err := base.Catalog(t.Context(), "/tmp/demo/store")
+	if err != nil || !catalog.ProjectTrusted {
+		t.Fatalf("hook catalog after trust = (%+v, %v)", catalog, err)
+	}
+	stop()
+}
+
+type feedbackServiceStub struct{ recorded chan protocol.FeedbackRequest }
+
+type blockingFeedbackService struct {
+	Feedback
+	started  chan protocol.FeedbackRequest
+	release  chan struct{}
+	canceled chan struct{}
+}
+
+func (b *blockingFeedbackService) Record(ctx context.Context, request protocol.FeedbackRequest) error {
+	b.started <- request
+	select {
+	case <-b.release:
+		return b.Feedback.Record(ctx, request)
+	case <-ctx.Done():
+		close(b.canceled)
+		return context.Cause(ctx)
+	}
+}
+
+func (f *feedbackServiceStub) Record(_ context.Context, request protocol.FeedbackRequest) error {
+	f.recorded <- request
+	return nil
+}
+
+func TestParseFeedbackRatingUsesRuntimeVocabulary(t *testing.T) {
+	rating, err := parseFeedbackRating("  positive  ")
+	if err != nil || rating != protocol.FeedbackPositive {
+		t.Fatalf("parseFeedbackRating = (%q, %v)", rating, err)
+	}
+	if _, err := parseFeedbackRating("mixed"); err == nil {
+		t.Fatal("accepted rating outside the Runtime vocabulary")
+	}
+}
+
+func TestFeedbackTargetsLatestDurableAssistantItem(t *testing.T) {
+	feedbacks := &feedbackServiceStub{recorded: make(chan protocol.FeedbackRequest, 1)}
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Feedback: feedbacks, SessionID: "ses_demo_1"})
+	host.Shows(t, "The fixed sleep races the janitor")
+	host.Type("/feedback positive useful explanation")
+	host.Press(input.Enter)
+	signal := awaitValue(t, feedbacks.recorded, "feedback")
+	if signal.SessionID != "ses_demo_1" || signal.RunID == "" || signal.ItemID != "demo_answer" || signal.Rating != protocol.FeedbackPositive || signal.Text != "useful explanation" {
+		t.Fatalf("feedback signal = %+v", signal)
+	}
+	host.Shows(t, "feedback recorded · positive")
+	stop()
+}
+
+func TestFeedbackMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
+	backend := runtimefixture.New()
+	base := &feedbackServiceStub{recorded: make(chan protocol.FeedbackRequest, 1)}
+	feedbacks := &blockingFeedbackService{
+		Feedback: base, started: make(chan protocol.FeedbackRequest, 1), release: make(chan struct{}), canceled: make(chan struct{}),
+	}
+	release := sync.OnceFunc(func() { close(feedbacks.release) })
+	t.Cleanup(release)
+	source := &runtimeChangeSourceStub{
+		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
+		applied: make(chan changefeed.Event, 1),
+	}
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Feedback: feedbacks, Changes: source, SessionID: "ses_demo_1"})
+	host.Shows(t, "The fixed sleep races the janitor")
+	awaitValue(t, source.subscription, "runtime change subscription")
+	host.Type("/feedback positive durable signal")
+	host.Press(input.Enter)
+	signal := awaitValue(t, feedbacks.started, "feedback mutation")
+	title := "Projection changed during feedback"
+	installChangedSessionProjection(t, backend, source, "ses_demo_1", title)
+	host.Shows(t, title)
+	select {
+	case <-feedbacks.canceled:
+		t.Fatal("session projection replacement canceled feedback")
+	default:
+	}
+	release()
+	if recorded := awaitValue(t, base.recorded, "committed feedback"); recorded != signal {
+		t.Fatalf("recorded feedback = %+v, want %+v", recorded, signal)
+	}
+	stop()
+}

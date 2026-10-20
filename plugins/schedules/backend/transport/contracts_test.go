@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	rpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	"github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
 	"github.com/Tangerg/flame/runtime/capability"
 	models "github.com/Tangerg/flame/runtime/model/catalog"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/storage/directories"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -48,7 +48,7 @@ func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	data, err := os.ReadFile(filepath.Join("..", "..", "io.github.tangerg.flame", "contracts", "capability.generated.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "package", "io.github.tangerg.flame", "contracts", "capability.generated.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

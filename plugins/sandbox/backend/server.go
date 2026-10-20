@@ -5,11 +5,11 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"

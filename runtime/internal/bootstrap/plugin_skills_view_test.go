@@ -33,7 +33,7 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 		t.Fatal(err)
 	}
 	r := poMCPOpen(t, cfg)
-	source, err := filepath.Abs("../../../plugins/skills")
+	source, err := filepath.Abs(filepath.Join(firstPartyPackages, "skills"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
@@ -31,7 +30,7 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 		t.Fatal(canonicalErr)
 	}
 	pinnedMemoryID := testAgentMemoryItemID(t, '1')
-	memory := provenanceMemoryReader{items: []MemoryPromptItem{testMemoryPromptItem(agentmemory.ItemSnapshot{
+	memory := provenanceMemoryReader{items: []MemoryPromptItem{testMemoryPromptItem(MemoryPromptItem{
 		ID: pinnedMemoryID, Content: "remember this", Pinned: true,
 	})}}
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
@@ -59,7 +58,7 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 	if !slices.Equal(gotKinds, wantKinds) {
 		t.Fatalf("source kinds=%v, want %v", gotKinds, wantKinds)
 	}
-	if provenance[1].Reference != pinnedMemoryID.String() ||
+	if provenance[1].Reference != pinnedMemoryID ||
 		provenance[1].Purpose != contextPurposeData ||
 		provenance[2].Reference != canonicalDocument {
 		t.Fatalf("provenance=%+v", provenance)
@@ -97,7 +96,7 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
 		Hooks: provenanceHookResolver{bound: apphooks.NewBound(hooks, apphooks.NewRunner(nil, nil))},
 		AgentMemorySearch: &fakeAgentMemorySearcher{
-			items: []MemoryPromptItem{testMemoryPromptItem(agentmemory.ItemSnapshot{ID: recalledMemoryID, Content: "recalled fact"})},
+			items: []MemoryPromptItem{testMemoryPromptItem(MemoryPromptItem{ID: recalledMemoryID, Content: "recalled fact"})},
 		},
 	})
 	messages, err := composer.ComposeWorkingContext(t.Context(), runs.WorkingContextInput{
@@ -139,7 +138,7 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 	}
 	recalled := decodeContextProvenance(t, messages[1].Parts[2].Metadata)
 	if len(recalled) != 1 || recalled[0].Kind != contextSourceRecalledMemory ||
-		recalled[0].Reference != recalledMemoryID.String() ||
+		recalled[0].Reference != recalledMemoryID ||
 		recalled[0].Purpose != contextPurposeData {
 		t.Fatalf("recall provenance=%+v", recalled)
 	}
@@ -217,7 +216,7 @@ func (p provenanceMemoryReader) Items(
 	scope string,
 	_ string,
 ) ([]MemoryPromptItem, error) {
-	if scope != string(agentmemory.ScopeProject) {
+	if scope != string("project") {
 		return nil, nil
 	}
 	return slices.Clone(p.items), nil

@@ -7,9 +7,11 @@ import (
 	"iter"
 	"reflect"
 
+	transportmeta "github.com/Tangerg/flame/runtime/internal/delivery/transport"
+
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 // Router adapts JSON-RPC envelopes to the binding-neutral Delivery Endpoint.
@@ -49,9 +51,9 @@ func (r *Router) Dispatch(ctx context.Context, message transport.Message) Result
 	requestCopy := *request
 	request = &requestCopy
 	options := delivery.Options{
-		IdempotencyKey:       transport.IdempotencyKeyFrom(ctx),
-		IdempotencyNamespace: transport.IdempotencyNamespaceFrom(ctx),
-		AfterEventID:         transport.LastEventIDFrom(ctx),
+		IdempotencyKey:       transportmeta.IdempotencyKeyFrom(ctx),
+		IdempotencyNamespace: transportmeta.IdempotencyNamespaceFrom(ctx),
+		AfterEventID:         transportmeta.LastEventIDFrom(ctx),
 	}
 	metadata, metadataError := extractRequestMeta(request)
 	if metadataError != nil {
@@ -70,7 +72,7 @@ func (r *Router) Dispatch(ctx context.Context, message transport.Message) Result
 	meta, found := delivery.Contract().Lookup(name)
 	if !found {
 		return responseError(request.ID, errorToRPC(
-			delivery.NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", request.Method)),
+			protocol.NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", request.Method)),
 		))
 	}
 	parameters, decodeError := decodeParameters(request.Params, meta.Params)
@@ -80,10 +82,10 @@ func (r *Router) Dispatch(ctx context.Context, message transport.Message) Result
 	return adaptResult(request.ID, r.endpoint.Invoke(ctx, name, parameters, options))
 }
 
-func decodeParameters(raw []byte, parameterType reflect.Type) (any, *delivery.Failure) {
+func decodeParameters(raw []byte, parameterType reflect.Type) (any, *protocol.Failure) {
 	target := reflect.New(parameterType)
 	if err := decodeParams(raw, target.Interface()); err != nil {
-		return nil, delivery.ProjectError(err)
+		return nil, protocol.ProjectError(err)
 	}
 	return target.Elem().Interface(), nil
 }

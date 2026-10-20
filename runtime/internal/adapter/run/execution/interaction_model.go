@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 )

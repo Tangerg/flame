@@ -65,8 +65,8 @@ func newWireChecks(registry *delivery.Registry, shapes *dispatch.Shapes, set *sc
 	imports := slices.Sorted(maps.Keys(emitter.used))
 	imports = append(imports, "distinctViolations")
 	slices.Sort(imports)
-	fmt.Fprintf(&out, "import { %s } from \"./wireCheck\";\n", strings.Join(imports, ", "))
-	out.WriteString("import type { WireCheck, WireViolation } from \"./wireCheck\";\n\n")
+	fmt.Fprintf(&out, "import { %s } from \"../validation/wireCheck\";\n", strings.Join(imports, ", "))
+	out.WriteString("import type { WireCheck, WireViolation } from \"../validation/wireCheck\";\n\n")
 	out.WriteString("import type { WireMethodName } from \"./wire.methods.generated\";\n\n")
 	if len(shapes.Notifications()) > 0 || len(runtimehttp.Contract().Endpoints) > 0 {
 		out.WriteString("import type * as Wire from \"./wire.generated\";\n\n")

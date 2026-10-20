@@ -42,7 +42,7 @@ func TestFreshRuntimeSubscriptionObservesFirstSkill(t *testing.T) {
 	defer cancel()
 	_, events, err := rt.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
 		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged, protocol.TopicSessionsChanged},
-	}, SubscriptionOptions{})
+	}, protocol.SubscriptionOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestRuntimePreservesCallerCancellation(t *testing.T) {
 				ctx, cancel = context.WithDeadline(t.Context(), time.Time{})
 			}
 			cancel()
-			page, err := runtime.ListProviders(ctx, CallOptions{})
+			page, err := runtime.ListProviders(ctx, protocol.CallOptions{})
 			if page != nil || !errors.Is(err, cause) {
 				t.Fatalf("ListProviders = (%+v, %v), want caller %v", page, err, cause)
 			}
@@ -103,7 +103,7 @@ func TestRuntimePreservesCallerCancellation(t *testing.T) {
 			}
 		})
 	}
-	if _, err := runtime.ListProviders(t.Context(), CallOptions{}); err != nil {
+	if _, err := runtime.ListProviders(t.Context(), protocol.CallOptions{}); err != nil {
 		t.Fatalf("query after caller cancellation: %v", err)
 	}
 }
@@ -131,7 +131,7 @@ func TestRuntimeModelDiscoveryDistinguishesMissingConfigurationFromEmptyEndpoint
 	})
 	for _, providerID := range []string{"openai-compatible", "anthropic-compatible", "azureopenai"} {
 		t.Run(providerID, func(t *testing.T) {
-			page, err := runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: providerID}, CallOptions{})
+			page, err := runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: providerID}, protocol.CallOptions{})
 			if page != nil || !errors.Is(err, protocol.ErrInvalidParams) {
 				t.Fatalf("ListModels without endpoint = (%+v, %v), want configuration error", page, err)
 			}
@@ -156,10 +156,10 @@ func TestRuntimeModelDiscoveryDistinguishesMissingConfigurationFromEmptyEndpoint
 	if _, err := runtime.UpdateProvider(t.Context(), protocol.UpdateProviderRequest{
 		Provider: "openai-compatible",
 		BaseURL:  &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &server.URL},
-	}, CommandOptions{IdempotencyKey: "set-model-discovery-endpoint"}); err != nil {
+	}, protocol.CommandOptions{IdempotencyKey: "set-model-discovery-endpoint"}); err != nil {
 		t.Fatal(err)
 	}
-	page, err := runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, CallOptions{})
+	page, err := runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, protocol.CallOptions{})
 	if page != nil || !errors.Is(err, protocol.ErrInvalidParams) || requests.Load() != 0 {
 		t.Fatalf("ListModels without credential = (%+v, %v), requests=%d; want configuration error before discovery", page, err, requests.Load())
 	}
@@ -167,20 +167,20 @@ func TestRuntimeModelDiscoveryDistinguishesMissingConfigurationFromEmptyEndpoint
 	if _, err := runtime.UpdateProvider(t.Context(), protocol.UpdateProviderRequest{
 		Provider: "openai-compatible",
 		APIKey:   &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &key},
-	}, CommandOptions{IdempotencyKey: "set-model-discovery-credential"}); err != nil {
+	}, protocol.CommandOptions{IdempotencyKey: "set-model-discovery-credential"}); err != nil {
 		t.Fatal(err)
 	}
-	page, err = runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, CallOptions{})
+	page, err = runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, protocol.CallOptions{})
 	if err != nil || page == nil || len(page.Data) != 0 || requests.Load() != 1 {
 		t.Fatalf("ListModels with empty endpoint = (%+v, %v), requests=%d; want an authoritative empty catalog", page, err, requests.Load())
 	}
 	response.Store(`{"data":[{"id":"model-z"},{"id":"model-a"},{"id":"model-z"}]}`)
-	page, err = runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, CallOptions{})
+	page, err = runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, protocol.CallOptions{})
 	if err != nil || page == nil || len(page.Data) != 2 || page.Data[0].ID != "model-a" || page.Data[1].ID != "model-z" {
 		t.Fatalf("ListModels with repeated remote identities = (%+v, %v), want sorted unique models", page, err)
 	}
 	response.Store(`{"data":[{"id":"model-z"},{"id":"invalid model"},{"id":"model-z"}]}`)
-	page, err = runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, CallOptions{})
+	page, err = runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, protocol.CallOptions{})
 	if page != nil || !errors.Is(err, protocol.ErrProviderError) {
 		t.Fatalf("ListModels with invalid remote identity = (%+v, %v), want provider error", page, err)
 	}
@@ -216,7 +216,7 @@ func TestRuntimeRestartDoesNotUndoAStoredProviderClear(t *testing.T) {
 	if _, err := runtime.UpdateProvider(t.Context(), protocol.UpdateProviderRequest{
 		Provider: "anthropic",
 		APIKey:   &protocol.ProviderConfigChange{Type: protocol.ProviderConfigClear},
-	}, CommandOptions{IdempotencyKey: "clear-provider-before-restart"}); err != nil {
+	}, protocol.CommandOptions{IdempotencyKey: "clear-provider-before-restart"}); err != nil {
 		_ = runtime.Close()
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestRuntimeRestartDoesNotUndoAStoredProviderClear(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
-	providers, err := reopened.ListProviders(t.Context(), CallOptions{})
+	providers, err := reopened.ListProviders(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +276,7 @@ func TestRuntimeCanConfigureRequiredKeyProviderAfterStartup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	providers, err := runtime.ListProviders(t.Context(), CallOptions{})
+	providers, err := runtime.ListProviders(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		_ = runtime.Close()
 		t.Fatal(err)
@@ -294,7 +294,7 @@ func TestRuntimeCanConfigureRequiredKeyProviderAfterStartup(t *testing.T) {
 			Type:  protocol.ProviderConfigSet,
 			Value: &key,
 		},
-	}, CommandOptions{IdempotencyKey: "configure-provider-after-startup"})
+	}, protocol.CommandOptions{IdempotencyKey: "configure-provider-after-startup"})
 	if err != nil {
 		_ = runtime.Close()
 		t.Fatal(err)
@@ -312,7 +312,7 @@ func TestRuntimeCanConfigureRequiredKeyProviderAfterStartup(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
-	providers, err = reopened.ListProviders(t.Context(), CallOptions{})
+	providers, err = reopened.ListProviders(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -383,14 +383,14 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = runtime.Close() })
 
-	discovery, err := runtime.Discover(t.Context(), CallOptions{})
+	discovery, err := runtime.Discover(t.Context(), protocol.CallOptions{})
 	if err != nil || discovery.ProtocolVersion != protocol.ProtocolVersion {
 		t.Fatalf("Discover = (%+v, %v)", discovery, err)
 	}
 	if discovery.ServerInfo.Name != runtimeidentity.ProductName {
 		t.Fatalf("Discover server brand = %q, want %q", discovery.ServerInfo.Name, runtimeidentity.ProductName)
 	}
-	if _, discoverErr := runtime.Discover(t.Context(), CallOptions{RequestMeta: protocol.RequestMeta{
+	if _, discoverErr := runtime.Discover(t.Context(), protocol.CallOptions{RequestMeta: protocol.RequestMeta{
 		ProtocolVersion: "1900-01-01",
 	}}); !errors.Is(discoverErr, protocol.ErrInvalidProtocolVersion) {
 		t.Fatalf("unsupported protocol error = %v", discoverErr)
@@ -405,16 +405,16 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 		Workspace: &protocol.WorkspaceRef{Path: config.DefaultWorkspacePath},
 		Title:     "in-process",
 	}
-	first, err := runtime.CreateSession(t.Context(), create, CommandOptions{IdempotencyKey: "create-once"})
+	first, err := runtime.CreateSession(t.Context(), create, protocol.CommandOptions{IdempotencyKey: "create-once"})
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
-	replayed, err := runtime.CreateSession(t.Context(), create, CommandOptions{IdempotencyKey: "create-once"})
+	replayed, err := runtime.CreateSession(t.Context(), create, protocol.CommandOptions{IdempotencyKey: "create-once"})
 	if err != nil || replayed.ID != first.ID {
 		t.Fatalf("replayed CreateSession = (%+v, %v), want %s", replayed, err, first.ID)
 	}
 	create.Title = "different"
-	if _, createSessionErr := runtime.CreateSession(t.Context(), create, CommandOptions{IdempotencyKey: "create-once"}); !errors.Is(createSessionErr, protocol.ErrIdempotencyConflict) {
+	if _, createSessionErr := runtime.CreateSession(t.Context(), create, protocol.CommandOptions{IdempotencyKey: "create-once"}); !errors.Is(createSessionErr, protocol.ErrIdempotencyConflict) {
 		t.Fatalf("idempotency conflict error = %v", createSessionErr)
 	}
 
@@ -425,7 +425,7 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 
 	_, events, err := second.SubscribeRuntime(t.Context(), protocol.RuntimeSubscribeRequest{
 		Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged},
-	}, SubscriptionOptions{})
+	}, protocol.SubscriptionOptions{})
 	if err != nil {
 		t.Fatalf("SubscribeRuntime: %v", err)
 	}
@@ -444,7 +444,7 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 	if _, createSessionErr := runtime.CreateSession(t.Context(), protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: config.DefaultWorkspacePath},
 		Title:     "notifies",
-	}, CommandOptions{IdempotencyKey: "create-notification"}); createSessionErr != nil {
+	}, protocol.CommandOptions{IdempotencyKey: "create-notification"}); createSessionErr != nil {
 		t.Fatalf("CreateSession for notification: %v", createSessionErr)
 	}
 	select {
@@ -464,7 +464,7 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 	if closeErr := runtime.Close(); closeErr != nil {
 		t.Fatalf("Close: %v", closeErr)
 	}
-	if _, discoverErr := runtime.Discover(t.Context(), CallOptions{}); !errors.Is(discoverErr, ErrClosed) {
+	if _, discoverErr := runtime.Discover(t.Context(), protocol.CallOptions{}); !errors.Is(discoverErr, ErrClosed) {
 		t.Fatalf("Discover after Close error = %v, want ErrClosed", discoverErr)
 	}
 

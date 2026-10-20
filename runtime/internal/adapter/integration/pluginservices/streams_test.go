@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
@@ -24,7 +25,6 @@ import (
 	hostsqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

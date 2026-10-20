@@ -1,0 +1,18 @@
+import { type ApprovalRuleSummary } from "@/features/agent/public/approvalPolicy";
+import { forgetRule, forgetRules } from "@/features/agent/public/approvalPolicy";
+import { useApprovalMode, useApprovalRules } from "@/features/agent/public/approvalPolicy";
+export function useApprovalModeConfig() {
+  return useApprovalMode();
+}
+
+export function useApprovalRuleConfigs(sessionId: string | undefined) {
+  return useApprovalRules({ sessionId });
+}
+
+export async function forgetApprovalRule(id: string): Promise<void> {
+  await forgetRule(id);
+}
+
+export async function forgetApprovalRules(rules: ApprovalRuleSummary[]): Promise<void> {
+  return forgetRules(rules.map((rule) => rule.id));
+}

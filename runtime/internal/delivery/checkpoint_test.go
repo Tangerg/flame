@@ -124,7 +124,7 @@ func TestRollbackConflictPreservesFilesAndHistory(t *testing.T) {
 			if !errors.Is(err, protocol.ErrCheckpointConflict) {
 				t.Fatalf("rollback = %v, want checkpoint conflict", err)
 			}
-			if problem := ProjectError(err).Problem(); problem.Type != protocol.ErrCheckpointConflict.Error() {
+			if problem := projectError(err).Problem(); problem.Type != protocol.ErrCheckpointConflict.Error() {
 				t.Fatalf("rollback problem = %+v", problem)
 			}
 			if got, err := os.ReadFile(path); err != nil || string(got) != material {
@@ -146,7 +146,7 @@ func TestRollbackCleanupFailureDoesNotPublishDefinitiveCheckpointRefusal(t *test
 	for _, refusal := range []error{sessions.ErrCheckpointUnavailable, sessions.ErrCheckpointConflict} {
 		cleanup := errors.New("intent cleanup failed")
 		err := wireRollbackErr(errors.Join(sessions.ErrRollbackRecoveryPending, refusal, cleanup), "ses_test")
-		problem := ProjectError(err).Problem()
+		problem := projectError(err).Problem()
 		if problem.Type != protocol.ProblemInternalError || !errors.Is(err, cleanup) {
 			t.Fatalf("failed cleanup = %+v / %v, want pending internal error with cleanup cause", problem, err)
 		}
@@ -173,7 +173,7 @@ func TestRecoverRollbackKeepsIntentWhenUnarchivedMaterialBlocksCheckout(t *testi
 	_, err := s.RollbackSession(t.Context(), protocol.RollbackSessionRequest{
 		SessionID: sid, ToRunID: "run1", RestoreType: protocol.RestoreBoth,
 	})
-	if !errors.Is(err, sessions.ErrRollbackRecoveryPending) || ProjectError(err).Problem().Type != protocol.ProblemInternalError {
+	if !errors.Is(err, sessions.ErrRollbackRecoveryPending) || projectError(err).Problem().Type != protocol.ProblemInternalError {
 		t.Fatalf("adopted rollback refusal = %v, want pending recovery", err)
 	}
 	coordinator := s.sessions.(*sessions.Coordinator)

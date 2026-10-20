@@ -217,7 +217,7 @@ func buildFeature(data []byte) (featureArtifacts, error) {
 	if slices.ContainsFunc(slices.Collect(maps.Values(set.defs)), func(node *schema) bool {
 		return strings.Contains(emitter.typeOf(node), "JSONNumber")
 	}) {
-		emitter.line("import type { JSONNumber } from \"@flame/runtime-contract/client\";")
+		emitter.line("import type { JSONNumber } from \"@flame/runtime-client\";")
 	}
 	emitter.line("")
 	for _, name := range slices.Sorted(maps.Keys(set.defs)) {

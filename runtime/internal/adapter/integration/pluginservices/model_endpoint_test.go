@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -14,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
 

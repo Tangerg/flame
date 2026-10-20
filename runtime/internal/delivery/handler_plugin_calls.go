@@ -6,10 +6,10 @@ import (
 	"iter"
 
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/point"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -59,21 +59,21 @@ func (s *Handler) RetirePluginCommand(ctx context.Context, in protocol.PluginCom
 
 func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePluginPointRequest) (*protocol.Page[protocol.PluginPointBinding], error) {
 	if s.pluginCalls == nil {
-		return nil, NewFailure(protocol.ErrPluginUnavailable, "plugin points are unavailable")
+		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin points are unavailable")
 	}
 	contract, err := point.Parse([]byte(in.Contract))
 	if err != nil {
-		return nil, InvalidParameters(err)
+		return nil, protocol.InvalidParameters(err)
 	}
 	order := make([]plugins.PointReference, 0, len(in.Order))
 	for _, value := range in.Order {
 		installation, err := resourceid.ParseInstallation(value.InstallationID)
 		if err != nil {
-			return nil, InvalidParameters(err)
+			return nil, protocol.InvalidParameters(err)
 		}
 		contribution, err := plugin.ParseContributionID(value.Contribution)
 		if err != nil {
-			return nil, InvalidParameters(err)
+			return nil, protocol.InvalidParameters(err)
 		}
 		order = append(order, plugins.PointReference{Installation: installation, Contribution: contribution})
 	}
@@ -90,7 +90,7 @@ func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePlu
 
 func (s *Handler) ResolvePluginRequirements(ctx context.Context, in protocol.ResolvePluginRequirementsRequest) (*protocol.Page[protocol.PluginCollaborator], error) {
 	if s.pluginCalls == nil {
-		return nil, NewFailure(protocol.ErrPluginUnavailable, "plugin requirements are unavailable")
+		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin requirements are unavailable")
 	}
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {
@@ -98,7 +98,7 @@ func (s *Handler) ResolvePluginRequirements(ctx context.Context, in protocol.Res
 	}
 	contribution, err := plugin.ParseContributionID(in.Contribution)
 	if err != nil {
-		return nil, InvalidParameters(err)
+		return nil, protocol.InvalidParameters(err)
 	}
 	resolved, err := s.pluginCalls.Resolve(ctx, id, digest, contribution)
 	if err != nil {
@@ -116,15 +116,11 @@ func (s *Handler) ResolvePluginRequirements(ctx context.Context, in protocol.Res
 }
 
 func pluginCallOperation(in protocol.CallPluginRequest) (OperationKind, error) {
-	contract, err := capability.Parse([]byte(in.Contract))
+	kind, err := capability.KindFor([]byte(in.Contract), in.Method)
 	if err != nil {
-		return "", InvalidParameters(err)
+		return "", protocol.InvalidParameters(err)
 	}
-	method, found := contract.Method(in.Method)
-	if !found {
-		return "", InvalidParameters(plugin.ErrInvalid)
-	}
-	if method.Kind() == capability.Mutation {
+	if kind == capability.Mutation {
 		return OperationCommand, nil
 	}
 	return OperationQuery, nil
@@ -132,7 +128,7 @@ func pluginCallOperation(in protocol.CallPluginRequest) (OperationKind, error) {
 
 func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (*protocol.CallPluginResponse, error), error) {
 	if s.pluginCalls == nil {
-		return "", nil, NewFailure(protocol.ErrPluginUnavailable, "plugin calls are unavailable")
+		return "", nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin calls are unavailable")
 	}
 	request, err := parsePluginCall(in)
 	if err != nil {
@@ -165,22 +161,22 @@ func parsePluginCall(in protocol.CallPluginRequest) (plugins.CallRequest, error)
 	}
 	contribution, err := plugin.ParseContributionID(in.Contribution)
 	if err != nil {
-		return plugins.CallRequest{}, InvalidParameters(err)
+		return plugins.CallRequest{}, protocol.InvalidParameters(err)
 	}
 	contract, err := capability.Parse([]byte(in.Contract))
 	if err != nil {
-		return plugins.CallRequest{}, InvalidParameters(err)
+		return plugins.CallRequest{}, protocol.InvalidParameters(err)
 	}
 	input, err := jsoninput.Parse([]byte(in.Input))
 	if err != nil {
-		return plugins.CallRequest{}, InvalidParameters(err)
+		return plugins.CallRequest{}, protocol.InvalidParameters(err)
 	}
 	return plugins.CallRequest{Installation: id, Digest: digest, Contribution: contribution, Contract: contract, Method: in.Method, Input: input, Target: in.Target}, nil
 }
 
 func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
 	if s.pluginCalls == nil {
-		return "", nil, NewFailure(protocol.ErrPluginUnavailable, "plugin streams are unavailable")
+		return "", nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin streams are unavailable")
 	}
 	request, err := parsePluginCall(in)
 	if err != nil {
@@ -233,11 +229,11 @@ func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPlugi
 
 func (s *Handler) NotifyPluginChange(ctx context.Context, notice protocol.PluginChangeNotice) error {
 	if s.pluginCalls == nil {
-		return NewFailure(protocol.ErrPluginUnavailable, "plugin changes are unavailable")
+		return protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin changes are unavailable")
 	}
 	contribution, err := plugin.ParseContributionID(notice.Contribution)
 	if err != nil {
-		return InvalidParameters(err)
+		return protocol.InvalidParameters(err)
 	}
 	return wirePluginError(s.pluginCalls.NotifyChange(ctx, contribution))
 }

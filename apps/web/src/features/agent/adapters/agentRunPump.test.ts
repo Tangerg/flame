@@ -1,0 +1,674 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type RunEvent, type RunRef } from "@flame/runtime-client";
+import {
+  asRunId,
+  asSegmentId,
+  asSessionId,
+  RpcConnectionError,
+  RpcProtocolError,
+} from "@flame/runtime-client";
+import {
+  createAgentRunPump,
+  type RunStream,
+  type RunStreamReattachment,
+  type RunStreamPosition,
+} from "@/features/agent/adapters/agentRunPump";
+const RUN = asRunId("run_1");
+
+const SEGMENT = asSegmentId("seg_1");
+
+let nextFrame = 0;
+
+beforeEach(() => {
+  vi.stubGlobal("requestAnimationFrame", () => ++nextFrame);
+  vi.stubGlobal("cancelAnimationFrame", () => undefined);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  nextFrame = 0;
+});
+
+function frame(eventId: string, event: RunEvent["event"], segmentId = SEGMENT): RunEvent {
+  return {
+    runId: RUN,
+    segmentId,
+    eventId,
+    timestamp: "2026-07-29T00:00:00Z",
+    event,
+  } as RunEvent;
+}
+
+const progressed: RunEvent["event"] = { type: "segment.progress", progress: { step: 1 } } as never;
+
+const finished: RunEvent["event"] = {
+  type: "segment.finished",
+  outcome: { type: "completed" },
+  metrics: { steps: 1, activeDurationMillis: 1 },
+} as never;
+
+function streamOf(events: RunEvent[], headEventId?: string): RunStream {
+  return {
+    result: { runId: RUN, segmentId: SEGMENT, ...(headEventId ? { headEventId } : {}) },
+    events: (async function* () {
+      for (const ev of events) yield ev;
+    })(),
+  };
+}
+
+function terminalRun(): RunRef {
+  return {
+    id: RUN,
+    sessionId: asSessionId("ses_1"),
+    status: "finished",
+    createdAt: "2026-07-29T00:00:00Z",
+    finishedAt: "2026-07-29T00:00:01Z",
+    outcome: { type: "completed" },
+    metrics: { steps: 1, activeDurationMillis: 1 },
+    protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+    provider: "openai",
+    model: "gpt-5",
+  };
+}
+
+function pumpWith(
+  reattach: (position: RunStreamPosition) => Promise<RunStreamReattachment | null>,
+) {
+  const positions: RunStreamPosition[] = [];
+  const pump = createAgentRunPump({
+    sessionId: "ses_1",
+    isCancelled: () => false,
+    readEpoch: () => 0n,
+    applyEvents: vi.fn(() => true),
+    reattach: (position) => {
+      positions.push(position);
+      return reattach(position);
+    },
+  });
+  return { pump, positions };
+}
+
+describe("agent run pump reattach", () => {
+  it("bounds successful acknowledgements followed by EOF at the same opaque cursor", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const positions: RunStreamPosition[] = [];
+    const onSynchronizationFailed = vi.fn();
+    const applyEvents = vi.fn(() => true);
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents,
+      onSynchronizationFailed,
+      reattach: async (position) => {
+        positions.push(position);
+        return { ...streamOf([], "opaque:cursor"), cursor: "opaque:cursor" };
+      },
+    });
+    const settled = pump
+      .pump(streamOf([], "opaque:cursor"), new AbortController().signal)
+      .catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(99);
+    expect(positions).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(positions).toHaveLength(1);
+    await vi.runAllTimersAsync();
+    expect(await settled).toMatchObject({
+      message: expect.stringContaining("run synchronization incomplete"),
+    });
+    expect(positions.map(({ recovery }) => recovery)).toEqual(["replay", "replay", "cold"]);
+    expect(positions.every(({ lastEventId }) => lastEventId === "opaque:cursor")).toBe(true);
+    expect(applyEvents).not.toHaveBeenCalled();
+    expect(onSynchronizationFailed).toHaveBeenCalledOnce();
+    expect(pump.isActive()).toBe(false);
+  });
+
+  it("resets no-progress recovery when a folded fact advances the opaque cursor", async () => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    const { pump, positions } = pumpWith((position) =>
+      Promise.resolve({
+        ...streamOf(
+          ++attempts === 2
+            ? [frame("new-cursor", progressed)]
+            : attempts === 4
+              ? [frame("terminal", finished)]
+              : [],
+        ),
+        cursor: position.lastEventId,
+      }),
+    );
+    const settled = pump.pump(streamOf([], "initial"), new AbortController().signal);
+    await vi.runAllTimersAsync();
+    await settled;
+    expect(positions).toHaveLength(4);
+    expect(positions.every(({ recovery }) => recovery === "replay")).toBe(true);
+    expect(positions.at(-1)?.lastEventId).toBe("new-cursor");
+  });
+
+  it("gives a later outage a fresh cold budget after genuine progress", async () => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    const { pump, positions } = pumpWith((position) =>
+      Promise.resolve({
+        ...streamOf(
+          ++attempts === 3
+            ? [frame("new-cursor", progressed)]
+            : attempts === 7
+              ? [frame("terminal", finished)]
+              : [],
+        ),
+        cursor: position.lastEventId,
+      }),
+    );
+    const settled = pump.pump(streamOf([], "initial"), new AbortController().signal);
+    await vi.runAllTimersAsync();
+    await settled;
+    expect(positions.filter(({ recovery }) => recovery === "cold")).toHaveLength(2);
+  });
+
+  it("cancels the local backoff without reopening the stream", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const { pump, positions } = pumpWith(async () => null);
+    const settled = pump.pump(streamOf([], "cursor"), controller.signal);
+    await vi.advanceTimersByTimeAsync(25);
+    controller.abort();
+    await settled;
+    expect(positions).toHaveLength(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("stops a second invalid stream and retains its request diagnostic", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const failure = new RpcProtocolError("event", [], "request-second");
+    const invalid = (): RunStream => ({
+      result: { runId: RUN, segmentId: SEGMENT },
+      events: { [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(failure) }) },
+    });
+    const { pump, positions } = pumpWith(async () => ({ ...invalid(), cursor: null }));
+    const settled = pump
+      .pump(invalid(), new AbortController().signal)
+      .catch((error: unknown) => error);
+    await vi.runAllTimersAsync();
+    expect(await settled).toMatchObject({ cause: failure });
+    expect(positions).toHaveLength(1);
+    expect(positions[0]?.recovery).toBe("cold");
+  });
+
+  it("resumes from the last event it folded when a stream ends without a terminal", async () => {
+    const { pump, positions } = pumpWith((position) =>
+      Promise.resolve({ ...streamOf([frame("evt_9", finished)]), cursor: position.lastEventId }),
+    );
+
+    await pump.pump(streamOf([frame("evt_7", progressed)]), new AbortController().signal);
+
+    expect(positions).toHaveLength(1);
+    expect(positions[0]).toMatchObject({
+      runId: RUN,
+      segmentId: SEGMENT,
+      lastEventId: "evt_7",
+      recovery: "replay",
+    });
+  });
+
+  it("does not advance the replay cursor past a batch rejected by a newer view epoch", async () => {
+    let epoch = 0n;
+    const positions: RunStreamPosition[] = [];
+    const applyEvents = vi.fn();
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => epoch,
+      applyEvents,
+      reattach: (position) => {
+        positions.push(position);
+        return Promise.resolve(null);
+      },
+    });
+    const interrupted: RunStream = {
+      result: { runId: RUN, segmentId: SEGMENT },
+      events: (async function* () {
+        yield frame("evt_not_folded", progressed);
+        epoch = 1n;
+      })(),
+    };
+
+    await pump.pump(interrupted, new AbortController().signal);
+
+    expect(applyEvents).not.toHaveBeenCalled();
+    expect(positions[0]?.lastEventId).toBeNull();
+  });
+
+  it("requests cold recovery after an authoritative protocol violation", async () => {
+    const failed: RunStream = {
+      result: { runId: RUN, segmentId: SEGMENT },
+      events: (async function* () {
+        yield frame("evt_7", progressed);
+        throw new RpcProtocolError("notifications.run.event params", [
+          { path: "event.item", detail: "is required" },
+        ]);
+      })(),
+    };
+    const { pump, positions } = pumpWith((position) =>
+      Promise.resolve({ ...streamOf([frame("evt_9", finished)]), cursor: position.lastEventId }),
+    );
+
+    await pump.pump(failed, new AbortController().signal);
+
+    expect(positions[0]).toMatchObject({ lastEventId: "evt_7", recovery: "cold" });
+  });
+
+  it("does not diagnose an expected Runtime connection loss as an Agent failure", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const failed: RunStream = {
+      result: { runId: RUN, segmentId: SEGMENT },
+      events: (async function* () {
+        yield frame("evt_before_disconnect", progressed);
+        throw new RpcConnectionError("network error");
+      })(),
+    };
+    const readRunSnapshot = vi.fn(() => Promise.reject(new RpcConnectionError("fetch failed")));
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
+      readRunSnapshot,
+      reattach: () => Promise.resolve(null),
+    });
+
+    await pump.pump(failed, new AbortController().signal);
+
+    expect(readRunSnapshot).toHaveBeenCalledOnce();
+    expect(warning).not.toHaveBeenCalled();
+  });
+
+  it("hands back the head the attach captured when it folded nothing", async () => {
+    const { pump, positions } = pumpWith((position) =>
+      Promise.resolve({ ...streamOf([frame("evt_5", finished)]), cursor: position.lastEventId }),
+    );
+
+    await pump.pump(streamOf([], "evt_head"), new AbortController().signal);
+
+    expect(positions[0]?.lastEventId).toBe("evt_head");
+  });
+
+  it("stops at the segment's own terminal", async () => {
+    const { pump, positions } = pumpWith(() => Promise.resolve(null));
+
+    await pump.pump(
+      streamOf([frame("evt_1", progressed), frame("evt_2", finished)]),
+      new AbortController().signal,
+    );
+
+    expect(positions).toHaveLength(0);
+  });
+
+  it("folds the stream tail before publishing the idle ownership boundary", async () => {
+    const order: string[] = [];
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents: (events) => {
+        order.push(...events.map((entry) => entry.event.type));
+        return true;
+      },
+      readRunSnapshot: async () => {
+        order.push("exact-read");
+        return terminalRun();
+      },
+      applyRunSnapshot: () => order.push("snapshot"),
+      onIdle: () => order.push("idle"),
+    });
+
+    await pump.pump(
+      streamOf([frame("evt_1", progressed), frame("evt_2", finished)]),
+      new AbortController().signal,
+    );
+
+    expect(order).toEqual([
+      "segment.progress",
+      "segment.finished",
+      "exact-read",
+      "snapshot",
+      "idle",
+    ]);
+    expect(pump.isActive()).toBe(false);
+  });
+
+  it("does not fold an older exact read after a newer pump takes ownership", async () => {
+    const exactRead = Promise.withResolvers<RunRef>();
+    const applyRunSnapshot = vi.fn();
+    const readRunSnapshot = vi.fn(() => exactRead.promise);
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
+      readRunSnapshot,
+      applyRunSnapshot,
+    });
+    const oldController = new AbortController();
+    const newController = new AbortController();
+    const newerSegment = asSegmentId("seg_newer");
+
+    const older = pump.pump(streamOf([frame("evt_old_terminal", finished)]), oldController.signal);
+    await vi.waitFor(() => expect(readRunSnapshot).toHaveBeenCalledOnce());
+    const newer = pump.pump(parkedStream(newerSegment, newController.signal), newController.signal);
+    await Promise.resolve();
+
+    exactRead.resolve(terminalRun());
+    await older;
+    expect(applyRunSnapshot).not.toHaveBeenCalled();
+    expect(pump.isFollowing(RUN, newerSegment)).toBe(true);
+
+    newController.abort();
+    await newer;
+  });
+
+  it("releases live ownership and ignores a late exact read after abort", async () => {
+    const exactRead = Promise.withResolvers<RunRef>();
+    const applyRunSnapshot = vi.fn();
+    const onIdle = vi.fn();
+    const readRunSnapshot = vi.fn(() => exactRead.promise);
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
+      readRunSnapshot,
+      applyRunSnapshot,
+      onIdle,
+    });
+    const controller = new AbortController();
+    const running = pump.pump(
+      streamOf([frame("evt_terminal_before_abort", finished)]),
+      controller.signal,
+    );
+    await vi.waitFor(() => expect(readRunSnapshot).toHaveBeenCalledOnce());
+
+    controller.abort();
+    await running;
+
+    expect(pump.isActive()).toBe(false);
+    expect(onIdle).toHaveBeenCalledOnce();
+    expect(applyRunSnapshot).not.toHaveBeenCalled();
+
+    exactRead.resolve(terminalRun());
+    await Promise.resolve();
+    expect(applyRunSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("keeps its own cursor across a replaying reattach", async () => {
+    let attempt = 0;
+    const { pump, positions } = pumpWith((position) => {
+      attempt += 1;
+      return Promise.resolve({
+        ...(attempt === 1
+          ? streamOf([], "evt_head_ahead")
+          : streamOf([frame("evt_terminal", finished)])),
+        cursor: position.lastEventId,
+      });
+    });
+
+    await pump.pump(streamOf([frame("evt_3", progressed)]), new AbortController().signal);
+
+    expect(positions.map((p) => p.lastEventId)).toEqual(["evt_3", "evt_3"]);
+  });
+
+  it("uses a cold recovery's successor cursor even when its tail disconnects before any event", async () => {
+    let attempt = 0;
+    const { pump, positions } = pumpWith(() => {
+      attempt += 1;
+      return Promise.resolve({
+        ...streamOf(attempt === 1 ? [] : [frame("evt_terminal", finished)], "evt_new_head"),
+        cursor: "evt_new_head",
+      });
+    });
+    const failed: RunStream = {
+      result: { runId: RUN, segmentId: SEGMENT },
+      events: (async function* () {
+        yield frame("evt_old", progressed);
+        throw new RpcProtocolError("event", []);
+      })(),
+    };
+    await pump.pump(failed, new AbortController().signal);
+    expect(positions.map(({ lastEventId, recovery }) => ({ lastEventId, recovery }))).toEqual([
+      { lastEventId: "evt_old", recovery: "cold" },
+      { lastEventId: "evt_new_head", recovery: "replay" },
+    ]);
+  });
+
+  it("gives up when the run is no longer attachable", async () => {
+    const { pump, positions } = pumpWith(() => Promise.resolve(null));
+
+    await pump.pump(streamOf([frame("evt_4", progressed)]), new AbortController().signal);
+
+    expect(positions).toHaveLength(1);
+  });
+
+  it("does not reattach a stream the caller aborted", async () => {
+    const { pump, positions } = pumpWith(() => Promise.resolve(null));
+    const ctrl = new AbortController();
+    ctrl.abort();
+
+    await pump.pump(streamOf([frame("evt_6", progressed)]), ctrl.signal);
+
+    expect(positions).toHaveLength(0);
+  });
+
+  it("releases live ownership when an iterator ignores cancellation", async () => {
+    let releaseNext!: (result: IteratorResult<RunEvent>) => void;
+    const close = vi.fn(async () => ({ value: undefined, done: true }) as const);
+    const onIdle = vi.fn();
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
+      onIdle,
+    });
+    const controller = new AbortController();
+    const running = pump.pump(
+      {
+        result: { runId: RUN, segmentId: SEGMENT },
+        events: {
+          [Symbol.asyncIterator]: () => ({
+            next: () =>
+              new Promise<IteratorResult<RunEvent>>((resolve) => {
+                releaseNext = resolve;
+              }),
+            return: close,
+          }),
+        },
+      },
+      controller.signal,
+    );
+    await vi.waitFor(() => expect(releaseNext).toBeTypeOf("function"));
+
+    controller.abort();
+    await running;
+
+    expect(close).toHaveBeenCalledOnce();
+    expect(onIdle).toHaveBeenCalledOnce();
+    expect(pump.isActive()).toBe(false);
+    releaseNext({ value: undefined as never, done: true });
+  });
+
+  it("does not let a retired pump reattach after its iterator settles late", async () => {
+    const lateNext = Promise.withResolvers<IteratorResult<RunEvent>>();
+    const reattach = vi.fn(() => Promise.resolve(null));
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
+      reattach,
+    });
+    const oldController = new AbortController();
+    const newController = new AbortController();
+    const oldSegment = asSegmentId("seg_old");
+    const newSegment = asSegmentId("seg_new");
+    const older = pump.pump(
+      {
+        result: { runId: RUN, segmentId: oldSegment },
+        events: {
+          [Symbol.asyncIterator]: () => ({ next: () => lateNext.promise }),
+        },
+      },
+      oldController.signal,
+    );
+    await Promise.resolve();
+
+    const newer = pump.pump(parkedStream(newSegment, newController.signal), newController.signal);
+    await Promise.resolve();
+    lateNext.resolve({ value: undefined as never, done: true });
+    await older;
+
+    expect(reattach).not.toHaveBeenCalled();
+    newController.abort();
+    await newer;
+  });
+
+  it("does not let an older pump clear a newer segment for the same run", async () => {
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents: vi.fn(() => true),
+    });
+    const oldController = new AbortController();
+    const newController = new AbortController();
+    const oldSegment = asSegmentId("seg_old");
+    const newSegment = asSegmentId("seg_new");
+
+    const older = pump.pump(parkedStream(oldSegment, oldController.signal), oldController.signal);
+    await Promise.resolve();
+    const newer = pump.pump(parkedStream(newSegment, newController.signal), newController.signal);
+    await Promise.resolve();
+    expect(pump.isFollowing(RUN, newSegment)).toBe(true);
+
+    oldController.abort();
+    await older;
+    expect(pump.isFollowing(RUN, newSegment)).toBe(true);
+
+    newController.abort();
+    await newer;
+    expect(pump.isFollowing(RUN, newSegment)).toBe(false);
+  });
+});
+
+function parkedStream(segmentId: ReturnType<typeof asSegmentId>, signal: AbortSignal): RunStream {
+  return {
+    result: { runId: RUN, segmentId },
+    events: {
+      [Symbol.asyncIterator]() {
+        return {
+          async next(): Promise<IteratorResult<RunEvent>> {
+            await new Promise<never>((_, reject) => {
+              if (signal.aborted) {
+                reject(new Error("aborted"));
+                return;
+              }
+              signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+            });
+            return { done: true, value: undefined as never };
+          },
+        };
+      },
+    },
+  };
+}
+
+describe("failed projection recovery", () => {
+  it.each(["frame", "capacity", "tail"])(
+    "cold-recovers a %s fold failure without acknowledging it",
+    async (trigger) => {
+      let scheduled: (() => void) | undefined;
+      vi.stubGlobal("requestAnimationFrame", (callback: () => void) => {
+        scheduled = callback;
+        return 1;
+      });
+      const applyEvents = vi
+        .fn()
+        .mockImplementationOnce(() => {
+          throw new Error("fold rejected");
+        })
+        .mockReturnValue(true);
+      const reattach = vi.fn(async (_position: RunStreamPosition) => ({
+        ...streamOf([frame("recovered", finished)]),
+        cursor: "snapshot_head",
+      }));
+      const retired = vi.fn();
+      const broken: RunStream = {
+        result: { runId: RUN, segmentId: SEGMENT, headEventId: "before_failure" },
+        events: {
+          [Symbol.asyncIterator]() {
+            let count = 0;
+            return {
+              next: async () => {
+                if (trigger === "frame" && count > 0) {
+                  scheduled?.();
+                  return new Promise<IteratorResult<RunEvent>>(() => {});
+                }
+                if (count++ < (trigger === "capacity" ? 256 : 1))
+                  return { done: false, value: frame(`bad_${count}`, finished) };
+                return { done: true, value: undefined };
+              },
+              return: async () => {
+                retired();
+                return { done: true, value: undefined };
+              },
+            };
+          },
+        },
+      };
+      const pump = createAgentRunPump({
+        sessionId: "ses_1",
+        isCancelled: () => false,
+        readEpoch: () => 0n,
+        applyEvents,
+        reattach,
+      });
+      await pump.pump(broken, new AbortController().signal);
+      expect(reattach).toHaveBeenCalledOnce();
+      expect(reattach.mock.calls[0]?.[0]).toMatchObject({
+        recovery: "cold",
+        lastEventId: "before_failure",
+      });
+      expect(applyEvents).toHaveBeenCalledTimes(2);
+      expect(retired).toHaveBeenCalledTimes(trigger === "tail" ? 0 : 1);
+    },
+  );
+
+  it("reports an incomplete synchronization when the recovered tail also fails", async () => {
+    const failure = new Error("invalid fact");
+    const onSynchronizationFailed = vi.fn();
+    const reattach = vi.fn(async () => ({
+      ...streamOf([frame("bad_again", finished)]),
+      cursor: "head",
+    }));
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents: () => {
+        throw failure;
+      },
+      reattach,
+      onSynchronizationFailed,
+    });
+    await expect(
+      pump.pump(streamOf([frame("bad", finished)]), new AbortController().signal),
+    ).rejects.toThrow("run synchronization incomplete");
+    expect(reattach).toHaveBeenCalledOnce();
+    expect(onSynchronizationFailed).toHaveBeenCalledOnce();
+    expect(pump.isActive()).toBe(false);
+  });
+});

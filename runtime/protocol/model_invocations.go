@@ -1,8 +1,9 @@
 package protocol
 
 import (
-	"github.com/Tangerg/flame/runtime/capability"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/capability"
 )
 
 type ListModelEndpointsRequest struct {

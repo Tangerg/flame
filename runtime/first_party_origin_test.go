@@ -27,7 +27,7 @@ func TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource(t *testin
 			t.Error(err)
 		}
 	})
-	installed, err := current.ListPlugins(t.Context(), CallOptions{})
+	installed, err := current.ListPlugins(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,14 +48,14 @@ func TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource(t *testin
 	if err := os.CopyFS(source, os.DirFS(filepath.Join(filepath.Dir(executable), "plugins", "usage"))); err != nil {
 		t.Fatal(err)
 	}
-	ordinary, err := current.InstallPlugin(t.Context(), protocol.InstallPluginRequest{Source: source}, CommandOptions{})
+	ordinary, err := current.InstallPlugin(t.Context(), protocol.InstallPluginRequest{Source: source}, protocol.CommandOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ordinary.ID == bundled.ID || ordinary.Source == bundled.Source || !reflect.DeepEqual(ordinary.Selected, bundled.Selected) {
 		t.Fatalf("independent origin changed the contract or reused installation ownership: bundled=%+v ordinary=%+v", bundled, ordinary)
 	}
-	if _, err := current.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: ordinary.ID, Enabled: true}, CommandOptions{}); err != nil {
+	if _, err := current.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: ordinary.ID, Enabled: true}, protocol.CommandOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	read := func(installation protocol.PluginInstallation) *protocol.PluginResource {
@@ -66,7 +66,7 @@ func TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource(t *testin
 				ComponentID:          "usage",
 			},
 			Path: installation.Selected.Components[0].Entry,
-		}, CallOptions{})
+		}, protocol.CallOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,7 +76,7 @@ func TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource(t *testin
 	if actual := read(*ordinary); !reflect.DeepEqual(actual, expected) || actual.Body == "" {
 		t.Fatalf("independent source did not serve the exact admitted resource: %+v", actual)
 	}
-	if _, err := current.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: bundled.ID, Enabled: false}, CommandOptions{}); err != nil {
+	if _, err := current.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: bundled.ID, Enabled: false}, protocol.CommandOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if actual := read(*ordinary); !reflect.DeepEqual(actual, expected) {
@@ -93,7 +93,7 @@ func TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource(t *testin
 	if actual := read(*ordinary); !reflect.DeepEqual(actual, expected) {
 		t.Fatal("restart replaced the independent installation's admitted resource")
 	}
-	installed, err = current.ListPlugins(t.Context(), CallOptions{})
+	installed, err = current.ListPlugins(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource(t *testin
 			t.Fatal("restart silently reenabled the withdrawn bundled installation")
 		}
 	}
-	if err := current.UninstallPlugin(t.Context(), protocol.PluginRequest{InstallationID: ordinary.ID}, CommandOptions{}); err != nil {
+	if err := current.UninstallPlugin(t.Context(), protocol.PluginRequest{InstallationID: ordinary.ID}, protocol.CommandOptions{}); err != nil {
 		t.Fatal(err)
 	}
 }

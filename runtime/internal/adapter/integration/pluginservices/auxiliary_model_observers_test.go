@@ -8,12 +8,12 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
 

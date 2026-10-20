@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 // capabilityRuntime is a Runtime that only answers discovery — enough to drive

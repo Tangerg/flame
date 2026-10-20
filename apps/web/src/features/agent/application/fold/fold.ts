@@ -1,0 +1,393 @@
+import { type AgentInterrupt, type AgentItem } from "@/features/agent/public/events";
+import { type BlockStatus, type ContentBlock } from "@/features/agent/public/contentBlock";
+import {
+  type AgentSessionView,
+  type Message,
+  type PendingInterrupt,
+  type ToolCall,
+} from "@/features/agent/public/sessionView";
+import {
+  contentText,
+  projectToolCall,
+  mapQuestion,
+  mapQuestionAnswers,
+  userContentBlocks,
+  commandString,
+  editableArgs,
+} from "@/features/agent/application/fold/projections";
+function mutateMessage(
+  state: AgentSessionView,
+  id: string,
+  fn: (m: Message) => Message,
+): AgentSessionView {
+  return { ...state, messages: state.messages.map((m) => (m.id === id ? fn(m) : m)) };
+}
+
+function ensureTurn(
+  state: AgentSessionView,
+  runId: string,
+  itemId: string,
+  createdAt?: string,
+): { state: AgentSessionView; id: string } {
+  const assistantTurnMessageId = state.assistantTurnByRunId[runId];
+  const open =
+    assistantTurnMessageId &&
+    state.messages.some((message) => message.id === assistantTurnMessageId)
+      ? assistantTurnMessageId
+      : null;
+  if (open) return { state, id: open };
+  const id = `turn:${itemId}`;
+  if (state.messages.some((m) => m.id === id)) {
+    return {
+      state: {
+        ...state,
+        assistantTurnByRunId: { ...state.assistantTurnByRunId, [runId]: id },
+      },
+      id,
+    };
+  }
+
+  const msg: Message = {
+    id,
+    role: "assistant",
+    phase: "commentary",
+    createdAt,
+    runId,
+    blocks: [],
+  };
+  return {
+    state: {
+      ...state,
+      messages: [...state.messages, msg],
+      assistantTurnByRunId: { ...state.assistantTurnByRunId, [runId]: id },
+    },
+    id,
+  };
+}
+
+export function appendToTurn(
+  state: AgentSessionView,
+  runId: string,
+  itemId: string,
+  block: ContentBlock,
+  createdAt?: string,
+): AgentSessionView {
+  const { state: next, id } = ensureTurn(state, runId, itemId, createdAt);
+  return mutateMessage(next, id, (message) => ({
+    ...message,
+    blocks: [...message.blocks, block],
+  }));
+}
+
+export function patchRunBlock(
+  state: AgentSessionView,
+  runId: string,
+  match: (block: ContentBlock) => boolean,
+  patch: (block: ContentBlock) => ContentBlock,
+): AgentSessionView {
+  let patched = false;
+  const messages = state.messages.map((message) => {
+    if (patched || message.runId !== runId || !message.blocks.some(match)) return message;
+    patched = true;
+    return {
+      ...message,
+      blocks: message.blocks.map((block) => (match(block) ? patch(block) : block)),
+    };
+  });
+  return patched ? { ...state, messages } : state;
+}
+
+function upsertBlock(
+  state: AgentSessionView,
+  item: { id: string; runId: string; createdAt: string },
+  match: (b: ContentBlock) => boolean,
+  make: () => ContentBlock,
+  patch: (b: ContentBlock) => ContentBlock,
+): AgentSessionView {
+  if (
+    state.messages.some((message) => message.runId === item.runId && message.blocks.some(match))
+  ) {
+    return patchRunBlock(state, item.runId, match, patch);
+  }
+  return appendToTurn(state, item.runId, item.id, make(), item.createdAt);
+}
+
+export function updateTool(
+  state: AgentSessionView,
+  runId: string,
+  id: string,
+  fn: (t: ToolCall) => ToolCall,
+): AgentSessionView {
+  const existing = state.toolCalls[id];
+  if (!existing || existing.runId !== runId) return state;
+  return { ...state, toolCalls: { ...state.toolCalls, [id]: fn(existing) } };
+}
+
+export function mergeRunPendingInterrupts(
+  state: AgentSessionView,
+  runId: string,
+  interrupts: readonly PendingInterrupt[],
+): AgentSessionView {
+  if (interrupts.length === 0) return state;
+  if (!state.runsById[runId]) {
+    throw new Error(`agent.fold.runMissing:event=interrupt;run=${runId}`);
+  }
+  const existing = state.pendingInterrupts.find((group) => group.runId === runId);
+  const known = new Set(existing?.interrupts.map((interrupt) => interrupt.itemId));
+  const fresh = interrupts.filter((interrupt) => !known.has(interrupt.itemId));
+  if (fresh.length === 0) return state;
+  if (!existing) {
+    return {
+      ...state,
+      pendingInterrupts: [...state.pendingInterrupts, { runId, interrupts: fresh }],
+    };
+  }
+  return {
+    ...state,
+    pendingInterrupts: state.pendingInterrupts.map((group) =>
+      group.runId === runId ? { ...group, interrupts: [...group.interrupts, ...fresh] } : group,
+    ),
+  };
+}
+
+// A run that is no longer waiting has no open interrupt; the Runtime's Pending
+// projection holds them only while their tree is parked.
+export function dropRunPendingInterrupts(state: AgentSessionView, runId: string): AgentSessionView {
+  if (!state.pendingInterrupts.some((group) => group.runId === runId)) return state;
+  return {
+    ...state,
+    pendingInterrupts: state.pendingInterrupts.filter((group) => group.runId !== runId),
+  };
+}
+
+type ItemOf<T extends AgentItem["type"]> = Extract<AgentItem, { type: T }>;
+
+export function appendUserMessage(
+  state: AgentSessionView,
+  item: ItemOf<"userMessage">,
+): AgentSessionView {
+  const durable = state.messages.find((message) => message.id === item.id);
+  if (durable) {
+    const withOwner =
+      durable.runId === item.runId
+        ? state
+        : {
+            ...state,
+            messages: state.messages.map((message) =>
+              message.id === item.id
+                ? {
+                    ...message,
+                    runId: item.runId,
+                    createdAt: item.createdAt,
+                    blocks: userContentBlocks(item.content),
+                  }
+                : message,
+            ),
+          };
+    return closeAssistantTurn(withOwner, item.runId);
+  }
+  const msg: Message = {
+    id: item.id,
+    role: "user",
+    createdAt: item.createdAt,
+    runId: item.runId,
+    blocks: userContentBlocks(item.content),
+  };
+  return closeAssistantTurn({ ...state, messages: [...state.messages, msg] }, item.runId);
+}
+
+export function foldAgentMessage(
+  state: AgentSessionView,
+  item: ItemOf<"agentMessage">,
+  status: BlockStatus,
+): AgentSessionView {
+  const blocks: ContentBlock[] =
+    status === "running"
+      ? [{ kind: "text", itemId: item.id, text: contentText(item.content), status }]
+      : (item.content ?? []).map((part): ContentBlock =>
+          part.type === "text"
+            ? { kind: "text", itemId: item.id, text: part.text, status }
+            : { kind: "image", itemId: item.id, mime: part.mime, data: part.data },
+        );
+  // Empty terminal Items still need their identity so replay cannot open another turn.
+  if (blocks.length === 0) blocks.push({ kind: "text", itemId: item.id, text: "", status });
+  if (item.phase === "finalAnswer") return foldFinalMessage(state, item, blocks);
+  const owns = (block: ContentBlock) => assistantItemBlock(block, item.id);
+  const existing = state.messages.find(
+    (message) => message.runId === item.runId && message.blocks.some(owns),
+  );
+  const turn = existing
+    ? { state, id: existing.id }
+    : ensureTurn(state, item.runId, item.id, item.createdAt);
+  return mutateMessage(turn.state, turn.id, (message) => {
+    const first = message.blocks.findIndex(owns);
+    const retained = message.blocks.filter((block) => !owns(block));
+    retained.splice(first < 0 ? retained.length : first, 0, ...blocks);
+    return { ...message, blocks: retained };
+  });
+}
+
+function assistantItemBlock(block: ContentBlock, itemId: string): boolean {
+  return (block.kind === "text" || block.kind === "image") && block.itemId === itemId;
+}
+
+function foldFinalMessage(
+  state: AgentSessionView,
+  item: ItemOf<"agentMessage">,
+  blocks: ContentBlock[],
+): AgentSessionView {
+  const finalId = `final:${item.id}`;
+
+  let foundFinal = false;
+  const messages: Message[] = [];
+  for (const message of state.messages) {
+    if (message.id === finalId) {
+      foundFinal = true;
+      messages.push({ ...message, phase: "finalAnswer", blocks });
+      continue;
+    }
+    if (message.runId !== item.runId) {
+      messages.push(message);
+      continue;
+    }
+    const retained = message.blocks.filter((candidate) => !assistantItemBlock(candidate, item.id));
+    if (retained.length === message.blocks.length) {
+      messages.push(message);
+    } else if (retained.length > 0) {
+      messages.push({ ...message, phase: "commentary", blocks: retained });
+    }
+  }
+
+  if (!foundFinal) {
+    messages.push({
+      id: finalId,
+      role: "assistant",
+      phase: "finalAnswer",
+      createdAt: item.createdAt,
+      runId: item.runId,
+      blocks,
+    });
+  }
+  return closeAssistantTurn({ ...state, messages }, item.runId);
+}
+
+export function foldReasoning(
+  state: AgentSessionView,
+  item: ItemOf<"reasoning">,
+  status: BlockStatus,
+): AgentSessionView {
+  const text = item.text ?? "";
+  return upsertBlock(
+    state,
+    item,
+    (b) => b.kind === "reasoning" && b.reasoningId === item.id,
+    () => ({ kind: "reasoning", reasoningId: item.id, text, status }),
+    (b) => (b.kind === "reasoning" ? { ...b, text: text || b.text, status } : b),
+  );
+}
+
+export function foldQuestion(
+  state: AgentSessionView,
+  item: ItemOf<"question">,
+  status: BlockStatus,
+): AgentSessionView {
+  const questions = mapQuestion(item.question);
+  const answers = mapQuestionAnswers(item.question);
+  return upsertBlock(
+    state,
+    item,
+    (b) => b.kind === "question" && b.itemId === item.id,
+    () => ({
+      kind: "question",
+      status,
+      itemId: item.id,
+      questions,
+      answered: answers !== undefined,
+      answers,
+    }),
+    (b) =>
+      b.kind === "question"
+        ? {
+            ...b,
+            status,
+            questions,
+            answered: answers !== undefined,
+            answers,
+          }
+        : b,
+  );
+}
+
+export function foldCompaction(
+  state: AgentSessionView,
+  item: ItemOf<"compaction">,
+): AgentSessionView {
+  const block: ContentBlock = {
+    kind: "compaction",
+    summary: item.summary,
+    droppedMessages: item.droppedMessages,
+  };
+  if (state.messages.some((m) => m.id === item.id)) {
+    return mutateMessage(state, item.id, (m) => ({ ...m, blocks: [block] }));
+  }
+  const msg: Message = {
+    id: item.id,
+    role: "system",
+    createdAt: item.createdAt,
+    runId: item.runId,
+    blocks: [block],
+  };
+  return { ...state, messages: [...state.messages, msg] };
+}
+
+export function writeApproval(
+  state: AgentSessionView,
+  item: { id: string; runId: string; createdAt: string },
+  payload: Extract<AgentInterrupt, { type: "approval" }>["payload"],
+): AgentSessionView {
+  const block: ContentBlock = {
+    kind: "approval",
+    itemId: item.id,
+    toolName: payload.tool.name,
+    command: commandString(payload.tool),
+    reason: payload.reason ?? "",
+    args: editableArgs(payload.tool),
+    rememberable: payload.rememberable ?? false,
+  };
+  return upsertBlock(
+    state,
+    item,
+    (candidate) => candidate.kind === "approval" && candidate.itemId === item.id,
+    () => block,
+    () => block,
+  );
+}
+
+export function writeToolCall(state: AgentSessionView, item: ItemOf<"toolCall">): AgentSessionView {
+  const withBlock =
+    state.toolCalls[item.id] === undefined
+      ? appendToTurn(
+          state,
+          item.runId,
+          item.id,
+          { kind: "tool", toolCallId: item.id },
+          item.startedAt,
+        )
+      : state;
+  const tool = projectToolCall(item, withBlock.toolCalls[item.id]);
+  const next = { ...withBlock, toolCalls: { ...withBlock.toolCalls, [item.id]: tool } };
+  return item.approvalDecision === undefined
+    ? next
+    : writeApproval(
+        next,
+        { id: item.id, runId: item.runId, createdAt: item.startedAt },
+        { tool: item.tool },
+      );
+}
+
+function closeAssistantTurn(state: AgentSessionView, runId: string): AgentSessionView {
+  if (!(runId in state.assistantTurnByRunId)) return state;
+  const assistantTurnByRunId = { ...state.assistantTurnByRunId };
+  delete assistantTurnByRunId[runId];
+  return { ...state, assistantTurnByRunId };
+}

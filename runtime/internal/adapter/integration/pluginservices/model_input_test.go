@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )

@@ -1,0 +1,84 @@
+import { describe, expect, it } from "vitest";
+import {
+  canPresentDock,
+  clampDockWidth,
+  clampSidebarWidth,
+  defaultDockWidth,
+  DOCK_MIN_WIDTH_PX,
+  CONVERSATION_READING_MIN_PX,
+  dockRatioFromWidth,
+  dockWidthFromRatio,
+  maxDockWidth,
+  maxSidebarWidth,
+  SIDEBAR_DEFAULT_WIDTH_PX,
+  SIDEBAR_MIN_WIDTH_PX,
+} from "@/lib/shellGeometry";
+describe("sidebar geometry", () => {
+  it("matches the Codex desktop default and bounded resize range", () => {
+    expect(SIDEBAR_DEFAULT_WIDTH_PX).toBe(275);
+    expect(maxSidebarWidth(1440)).toBe(520);
+    expect(clampSidebarWidth(900, 1440)).toBe(520);
+    expect(clampSidebarWidth(320, 1440)).toBe(320);
+  });
+
+  it("keeps both the drawer and reading plane operable in a narrow window", () => {
+    expect(maxSidebarWidth(720)).toBe(720 - CONVERSATION_READING_MIN_PX);
+    expect(clampSidebarWidth(900, 720)).toBe(720 - CONVERSATION_READING_MIN_PX);
+    expect(clampSidebarWidth(100, 720)).toBe(SIDEBAR_MIN_WIDTH_PX);
+  });
+});
+
+describe("dock geometry", () => {
+  it("keeps a real reading column beside a default dock in the smallest window", () => {
+    const rowWidth = 1120 - SIDEBAR_DEFAULT_WIDTH_PX;
+    expect(rowWidth - defaultDockWidth(rowWidth)).toBeGreaterThanOrEqual(420);
+  });
+
+  it("reserves the conversation's safe area before the flank may claim anything", () => {
+    expect(maxDockWidth(1120)).toBe(1120 - CONVERSATION_READING_MIN_PX);
+    expect(clampDockWidth(2000, 1120)).toBe(680);
+    expect(clampDockWidth(420, 1120)).toBe(420);
+    expect(clampDockWidth(100, 1120)).toBe(DOCK_MIN_WIDTH_PX);
+  });
+
+  it("never lets the widest measure fall under the floor, at any row width", () => {
+    for (let rowWidth = 0; rowWidth <= 4000; rowWidth += 1) {
+      expect(maxDockWidth(rowWidth)).toBeGreaterThanOrEqual(DOCK_MIN_WIDTH_PX);
+    }
+    expect(maxDockWidth(400)).toBe(DOCK_MIN_WIDTH_PX);
+    expect(clampDockWidth(1000, 400)).toBe(DOCK_MIN_WIDTH_PX);
+  });
+
+  it("folds the dock when the row cannot hold the floor beside the safe area", () => {
+    expect(canPresentDock(DOCK_MIN_WIDTH_PX + CONVERSATION_READING_MIN_PX - 1)).toBe(false);
+    expect(canPresentDock(DOCK_MIN_WIDTH_PX + CONVERSATION_READING_MIN_PX)).toBe(true);
+  });
+
+  it("round-trips a position in the range through a ratio", () => {
+    const rowWidth = 1440;
+    for (const width of [320, 500, 768, 1000]) {
+      expect(dockWidthFromRatio(dockRatioFromWidth(width, rowWidth), rowWidth)).toBe(width);
+    }
+    expect(dockWidthFromRatio(0, rowWidth)).toBe(DOCK_MIN_WIDTH_PX);
+    expect(dockWidthFromRatio(1, rowWidth)).toBe(maxDockWidth(rowWidth));
+  });
+
+  it("keeps a stored ratio meaningful when the row changes size", () => {
+    const ratio = dockRatioFromWidth(768, 1440);
+    expect(dockWidthFromRatio(ratio, 1440)).toBe(768);
+    expect(dockWidthFromRatio(ratio, 1920)).toBeGreaterThan(768);
+    expect(dockWidthFromRatio(ratio, 1100)).toBeLessThan(768);
+  });
+
+  it("answers a safe ratio for a degenerate range or a broken stored value", () => {
+    expect(dockRatioFromWidth(500, 400)).toBe(1);
+    expect(dockWidthFromRatio(Number.NaN, 1440)).toBe(maxDockWidth(1440));
+  });
+
+  it("keeps the automatic dock subordinate as the reading area grows", () => {
+    expect(defaultDockWidth(1440)).toBe(480);
+    expect(defaultDockWidth(2000)).toBe(480);
+    expect(defaultDockWidth(800)).toBe(360);
+    expect(defaultDockWidth(500)).toBe(DOCK_MIN_WIDTH_PX);
+  });
+});

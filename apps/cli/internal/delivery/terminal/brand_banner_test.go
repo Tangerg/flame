@@ -1,0 +1,112 @@
+package terminal
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/core/text"
+)
+
+func TestBrandBannerProjectsBuildModelAndWorkspaceResponsively(t *testing.T) {
+	session := conversation.Session{Provider: "mock", Model: "balanced", ReasoningEffort: "high", Workspace: workspace.Workspace{
+		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable,
+	}}
+	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "1.2.3", session, displayRunOptions(defaultRunOptions(t), session))
+
+	wide := drawStatic(t, banner, 96, 14)
+	for _, want := range []string{"█████ █      ███", "Flame CLI  v1.2.3", "mock/balanced · reasoning high", "/workspace/scope"} {
+		if !strings.Contains(wide, want) {
+			t.Errorf("wide brand banner does not contain %q:\n%s", want, wide)
+		}
+	}
+
+	compact := drawStatic(t, banner, brandMarkMinWidth-1, 5)
+	for _, want := range []string{"FLAME", "Flame CLI  v1.2.3", "/workspace/scope"} {
+		if !strings.Contains(compact, want) {
+			t.Errorf("compact brand banner does not contain %q:\n%s", want, compact)
+		}
+	}
+	if strings.Contains(compact, "████") {
+		t.Fatalf("compact brand banner retained its large mark:\n%s", compact)
+	}
+
+	minimal := drawStatic(t, banner, 1, 1)
+	if strings.TrimSpace(minimal) == "" {
+		t.Fatal("minimal brand banner rendered nothing")
+	}
+}
+
+func TestLargeBrandMarksFitTheirResponsiveBreakpoint(t *testing.T) {
+	for name, mark := range map[string][]string{"unicode": unicodeBrandMark, "ASCII": asciiBrandMark} {
+		t.Run(name, func(t *testing.T) {
+			markWidth := text.Width(mark[0])
+			for row, line := range mark {
+				width := text.Width(line)
+				if width != markWidth {
+					t.Fatalf("mark row %d width = %d, want aligned width %d", row, width, markWidth)
+				}
+				if width > brandMarkMinWidth {
+					t.Fatalf("mark row %d width = %d, exceeds breakpoint %d", row, width, brandMarkMinWidth)
+				}
+			}
+		})
+	}
+}
+
+func TestBrandBannerUsesASCIIMarkForASCIITerminals(t *testing.T) {
+	banner := newBrandBanner(kit.Dark(), kit.ASCII(), "dev", conversation.Session{}, prompt.RunOptions{})
+	got := drawStatic(t, banner, 72, 12)
+	if !strings.Contains(got, "FFFFF L      AAA") || strings.Contains(got, "██") {
+		t.Fatalf("ASCII brand banner used the wrong mark:\n%s", got)
+	}
+}
+
+func TestTranscriptBrandIsAOneShotEntranceProjection(t *testing.T) {
+	view := testTranscriptView(t)
+	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, prompt.RunOptions{})
+	view.SetEntrance(banner)
+
+	if empty := drawRoot(t, view, 72, 12); !strings.Contains(empty, "Flame CLI  vtest") {
+		t.Fatalf("empty transcript does not show the brand:\n%s", empty)
+	}
+	view.Append(newUserMessageBlock(kit.Dark(), selfSpeaker, "inspect this repository"))
+	filled := drawRoot(t, view, 72, 12)
+	if !strings.Contains(filled, "inspect this repository") || strings.Contains(filled, "Flame CLI") {
+		t.Fatalf("conversation did not replace the brand:\n%s", filled)
+	}
+
+	view.Reset()
+	if cleared := drawRoot(t, view, 72, 12); strings.Contains(cleared, "Flame CLI") {
+		t.Fatalf("reset transcript restored the consumed brand:\n%s", cleared)
+	}
+}
+
+func TestTranscriptResetConsumesAnUnshownEntranceProjection(t *testing.T) {
+	view := testTranscriptView(t)
+	view.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, prompt.RunOptions{}))
+
+	view.Reset()
+	if got := drawRoot(t, view, 72, 12); strings.Contains(got, "Flame CLI") {
+		t.Fatalf("reset transcript restored the startup brand:\n%s", got)
+	}
+}
+
+func TestReplacementTranscriptDoesNotInheritTheBrand(t *testing.T) {
+	initial := testTranscriptView(t)
+	initial.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, prompt.RunOptions{}))
+	initial.images = newTerminalImagePresenter(program.Images{})
+	a := &app{ctx: t.Context(), transcript: initial, syntax: initial.syntax, settings: settings.Default()}
+
+	replacement := a.newTranscript()
+	t.Cleanup(replacement.Close)
+	if got := drawRoot(t, replacement, 72, 12); strings.Contains(got, "Flame CLI") {
+		t.Fatalf("replacement transcript inherited the startup brand:\n%s", got)
+	}
+}

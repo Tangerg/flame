@@ -22,7 +22,7 @@ func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	request := memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "must not be silently resubmitted"})
-	invoke := func() *delivery.Failure {
+	invoke := func() *protocol.Failure {
 		return r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}).Failure
 	}
 	if failure := invoke(); failure == nil {

@@ -13,7 +13,7 @@ import (
 
 func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 	r := poMCPOpen(t, poMCPConfig(t))
-	source, err := filepath.Abs("../../../plugins/tool-results")
+	source, err := filepath.Abs(filepath.Join(firstPartyPackages, "tool-results"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 
 func TestFileComponentUsesSelectedImmutableBytes(t *testing.T) {
 	r := poMCPOpen(t, poMCPConfig(t))
-	source, err := filepath.Abs("../../../plugins/file-renderers")
+	source, err := filepath.Abs(filepath.Join(firstPartyPackages, "file-renderers"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,60 @@
+import { failureText } from "@/lib/rpcErrors";
+import { useLayoutEffect, useRef, useState } from "react";
+export type AsyncFeedback =
+  { state: "idle" | "busy" } | { state: "ok" } | { state: "error"; reason: string };
+
+export function useAsyncFeedback(materialGeneration?: unknown) {
+  const generation = useRef(materialGeneration);
+  const lease = useRef<object>({});
+  const [material, setMaterial] = useState<{ generation: unknown; feedback: AsyncFeedback }>(
+    () => ({
+      generation: materialGeneration,
+      feedback: { state: "idle" },
+    }),
+  );
+  useLayoutEffect(() => {
+    if (Object.is(generation.current, materialGeneration)) return;
+    generation.current = materialGeneration;
+    lease.current = {};
+  }, [materialGeneration]);
+  const feedback = Object.is(material.generation, materialGeneration)
+    ? material.feedback
+    : ({ state: "idle" } satisfies AsyncFeedback);
+
+  const publish = (next: AsyncFeedback) => {
+    setMaterial({ generation: generation.current, feedback: next });
+  };
+
+  const reset = () => {
+    lease.current = {};
+    publish({ state: "idle" });
+  };
+
+  const fail = (reason: string) => publish({ state: "error", reason });
+
+  const run = async (
+    op: () => Promise<{ ok: boolean; error?: string }>,
+    fallback: string,
+    ignoreError?: (error: unknown) => boolean,
+  ) => {
+    const admittedLease = (lease.current = {});
+    const admittedGeneration = generation.current;
+    publish({ state: "busy" });
+    try {
+      const r = await op();
+      if (lease.current !== admittedLease || !Object.is(generation.current, admittedGeneration))
+        return;
+      publish(r.ok ? { state: "ok" } : { state: "error", reason: r.error ?? fallback });
+    } catch (err) {
+      if (lease.current !== admittedLease || !Object.is(generation.current, admittedGeneration))
+        return;
+      if (ignoreError?.(err)) {
+        publish({ state: "idle" });
+        return;
+      }
+      fail(failureText(err, fallback));
+    }
+  };
+
+  return { feedback, reset, fail, run };
+}

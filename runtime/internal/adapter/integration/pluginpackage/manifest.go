@@ -18,11 +18,11 @@ import (
 	"github.com/Tangerg/flame/runtime/point"
 
 	"github.com/Tangerg/flame/runtime/exactjson"
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 	sdk "github.com/Tangerg/scope/skills"

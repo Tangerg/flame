@@ -13,7 +13,7 @@ import (
 func TestSessionActionUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T) {
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
-	source, err := filepath.Abs("../../../plugins/trajectory")
+	source, err := filepath.Abs(filepath.Join(firstPartyPackages, "trajectory"))
 	if err != nil {
 		t.Fatal(err)
 	}

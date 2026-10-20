@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"

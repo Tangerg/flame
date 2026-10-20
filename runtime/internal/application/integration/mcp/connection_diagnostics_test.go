@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"log/slog"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"

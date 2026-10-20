@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { needsProviderSetup } from "@/features/providers/application/providerSetup";
+describe("needsProviderSetup", () => {
+  it("does not show setup while providers are still loading", () => {
+    expect(needsProviderSetup(undefined)).toBe(false);
+  });
+
+  it("shows setup only when every provider lacks a saved key", () => {
+    expect(needsProviderSetup([{ configured: false }])).toBe(true);
+    expect(needsProviderSetup([{ configured: false }, { configured: true }])).toBe(false);
+  });
+});

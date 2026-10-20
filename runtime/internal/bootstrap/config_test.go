@@ -2,10 +2,11 @@ package bootstrap
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"

@@ -1,0 +1,26 @@
+import * as stylex from "@stylexjs/stylex";
+import { type DotTone } from "@/lib/tone";
+import { cn } from "@/lib/classNames";
+import { color, corner, motion, space } from "@flame/ui/tokens.stylex";
+const styles = stylex.create({
+  base: {
+    display: "inline-block",
+    height: space.s1_5,
+    width: space.s1_5,
+    flexShrink: 0,
+  },
+  idle: { backgroundColor: color.fgFaint },
+  running: {
+    backgroundColor: color.accentText,
+    boxShadow: "var(--shadow-live-glow)",
+    animation: motion.pulseDot,
+  },
+  waiting: { backgroundColor: color.warning },
+  ok: { backgroundColor: color.success },
+  err: { backgroundColor: color.negative },
+});
+
+export function StatusDot({ tone = "idle", className }: { tone?: DotTone; className?: string }) {
+  const styled = stylex.props(styles.base, corner.pill, styles[tone]);
+  return <span aria-hidden="true" {...styled} className={cn(styled.className, className)} />;
+}

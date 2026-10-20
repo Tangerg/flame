@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

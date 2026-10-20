@@ -1,0 +1,21 @@
+{
+  "id": {"origin": {"type": "user"}, "name": "filesystem"},
+  "description": "Local filesystem access",
+  "connection": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/dev/project"],
+    "envMasked": {
+      "NODE_ENV": "********"
+    },
+    "dir": "/Users/dev/project"
+  },
+  "handshakeTimeout": {
+    "type": "bounded",
+    "seconds": 30
+  },
+  "status": {
+    "type": "connected",
+    "toolCount": 8
+  }
+}

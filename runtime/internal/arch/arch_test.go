@@ -1884,7 +1884,7 @@ func layerOf(rel string) string {
 		return ringTestSupport
 	}
 	switch rel {
-	case "dependency", "exactint", "exactjson", "internal/fingerprint", "identity", "optional", "resourceid", "instant", "jsoninput", "capability", "point", "model", "workspace":
+	case "contract/samples", "dependency", "exactint", "exactjson", "fingerprint", "identity", "optional", "resourceid", "instant", "jsoninput", "capability", "point", "model", "workspace":
 		return ringValue
 	case "pagination", "internal/cancellation", "internal/capture", "internal/completion", "idempotency", "internal/keylock", "internal/opaquetoken":
 		return ringMechanism
@@ -1974,12 +1974,12 @@ func moduleRoot(t *testing.T) string {
 		t.Fatalf("getwd: %v", err)
 	}
 	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+		if _, err := os.Stat(filepath.Join(dir, "runtime.go")); err == nil {
 			return dir
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			t.Fatal("go.mod not found walking up from test dir")
+			t.Fatal("Runtime source root not found walking up from test dir")
 		}
 		dir = parent
 	}

@@ -32,14 +32,13 @@ import (
 // Without it, "generated" degrades into "generated once".
 func TestGeneratedContractHasNoDrift(t *testing.T) {
 	root := moduleRoot(t)
-	regenerated, regeneratedTS, regeneratedValidators := regenerateContract(t, root)
+	regenerated, _, regeneratedValidators := regenerateContract(t, root)
 
 	// Some artifacts land outside contract/'s root — the published TypeScript binding
 	// in its own subdirectory and the Go validator beside the shapes it checks. Their
 	// homes may hold other files, so the rule runs one way: every file the generator
 	// writes there must match the copy in the tree.
 	for _, outside := range []struct{ fresh, committed string }{
-		{regeneratedTS, filepath.Join(root, tsWireDir)},
 		{regeneratedValidators, filepath.Join(root, validatorDir)},
 	} {
 		for _, name := range artifactNames(t, outside.fresh) {
@@ -75,7 +74,7 @@ func TestGeneratedContractHasNoDrift(t *testing.T) {
 // generation directive on the dispatch contract catalog. Client modules own how
 // they consume or vendor this output; the runtime never writes into their trees.
 const (
-	tsWireDir       = "contract/typescript"
+	tsWireDir       = "contract/samples"
 	tsWireValidator = "wire.validate.generated.ts"
 	validatorDir    = "protocol"
 	validatorFile   = "wire_constraints.generated.go"
@@ -274,7 +273,7 @@ func TestProtocolVersionAgreesEverywhere(t *testing.T) {
 	// The client's own constant is NOT read here: it is generated from the same
 	// code, so gate 1 already holds it. Test fixtures are not read either — a
 	// refusal test has to be able to name a version this build rejects.
-	samples, err := filepath.Glob(filepath.Join(root, tsWireDir, "samples", "*.json"))
+	samples, err := filepath.Glob(filepath.Join(root, "contract", "samples", "*.json"))
 	if err != nil {
 		t.Fatalf("glob canonical samples: %v", err)
 	}
@@ -310,7 +309,7 @@ func TestProtocolContractIsRuntimeOwned(t *testing.T) {
 		strings.Join([]string{"desktop", "docs", "protocol"}, "/"),
 		strings.Join([]string{`filepath.Join(root, "`, `..", "`, `desktop"`}, ""),
 	}
-	for _, rel := range []string{"README.md", "cmd", "internal", "doc/README.md", "doc/ARCHITECTURE.md"} {
+	for _, rel := range []string{"README.md", "cmd", "internal", "docs/README.md", "docs/ARCHITECTURE.md"} {
 		path := filepath.Join(root, rel)
 		info, err := os.Stat(path)
 		if err != nil {
@@ -559,11 +558,18 @@ func collectRefs(node any) []string {
 // it, the way a shape goes unpublished is silently: nobody notices that no method
 // reaches it.
 var notOnTheWire = map[string]string{
-	"Feature":          "the published capability vocabulary's registry entry; its wire projection is FeatureCapability",
-	"ConstraintError":  "the Go validator's error carrier; its wire projection is ProblemData.errors",
-	"PageContinuation": "a composed value owner flattened into every Page instantiation, never a standalone JSON frame",
-	"PageQuery":        "a composed cursor-query owner flattened into each paginated request, never a standalone JSON frame",
-	"RecordedUsage":    "a composed usage block flattened into each usage report, never a standalone JSON frame",
+	"Failure":                "Go error carrier; ProblemData owns its wire projection",
+	"SubscriptionOptions":    "Go call metadata projected to headers and request metadata",
+	"RunSubscriptionOptions": "Go call metadata projected to headers and request metadata",
+	"RunCommandOptions":      "Go call metadata projected to headers and request metadata",
+	"PluginCallOptions":      "Go call metadata projected to headers and request metadata",
+	"CommandOptions":         "Go call metadata projected to headers and request metadata",
+	"CallOptions":            "Go call metadata projected to headers and request metadata",
+	"Feature":                "the published capability vocabulary's registry entry; its wire projection is FeatureCapability",
+	"ConstraintError":        "the Go validator's error carrier; its wire projection is ProblemData.errors",
+	"PageContinuation":       "a composed value owner flattened into every Page instantiation, never a standalone JSON frame",
+	"PageQuery":              "a composed cursor-query owner flattened into each paginated request, never a standalone JSON frame",
+	"RecordedUsage":          "a composed usage block flattened into each usage report, never a standalone JSON frame",
 }
 
 // TestEveryWireStructIsPublished checks the bundle against the protocol package.
@@ -664,7 +670,8 @@ func TestValueConstraintsAgreeAcrossArtifacts(t *testing.T) {
 		t.Fatalf("decode schema.json: %v", err)
 	}
 	validator := string(readArtifact(t, filepath.Join(root, validatorDir), validatorFile))
-	checks := checkEntries(t, string(readArtifact(t, filepath.Join(root, tsWireDir), tsWireValidator)))
+	_, generatedTS, _ := regenerateContract(t, root)
+	checks := checkEntries(t, string(readArtifact(t, filepath.Join(generatedTS, "src", "generated"), tsWireValidator)))
 
 	shapes := dispatch.WireShapes()
 	unions := make(map[reflect.Type]dispatch.UnionSpec)

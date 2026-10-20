@@ -19,7 +19,7 @@ func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(filepath.Join("..", "..", "io.github.tangerg.flame", "contracts", "capability.generated.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "package", "io.github.tangerg.flame", "contracts", "capability.generated.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

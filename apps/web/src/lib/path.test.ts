@@ -1,0 +1,35 @@
+import { describe, expect, it } from "vitest";
+import { basename, fileExtension, splitFilePath } from "@/lib/path";
+describe("a directory path carrying its trailing separator", () => {
+  it.each([
+    ["a/b/", "a", "b"],
+    ["a/b//", "a", "b"],
+    ["/Users/me/project/", "/Users/me", "project"],
+    ["a/", "", "a"],
+  ])("splits %o into %o + %o", (path, directory, name) => {
+    expect(splitFilePath(path)).toEqual({ directory, name });
+    expect(basename(path)).toBe(name);
+  });
+
+  it("agrees with basename on a root and on an empty path", () => {
+    for (const path of ["/", ""]) {
+      expect(splitFilePath(path).name).toBe(basename(path));
+    }
+  });
+
+  it("still splits an ordinary file path", () => {
+    expect(splitFilePath("src/lib/path.ts")).toEqual({ directory: "src/lib", name: "path.ts" });
+    expect(splitFilePath("path.ts")).toEqual({ directory: "", name: "path.ts" });
+  });
+});
+
+describe("a file extension", () => {
+  it.each([
+    ["docs/README.MD", "md"],
+    ["src/a.test.ts", "ts"],
+    ["a.dir/Makefile", ""],
+    ["config/.gitignore", ""],
+  ])("of %o is %o", (path, extension) => {
+    expect(fileExtension(path)).toBe(extension);
+  });
+});

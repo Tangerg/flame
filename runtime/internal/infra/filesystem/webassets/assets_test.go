@@ -1,9 +1,10 @@
 package webassets_test
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/webassets"
 	"path/filepath"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/webassets"
 )
 
 func TestWebApplicationRejectsMissingOrInvalidDistribution(t *testing.T) {

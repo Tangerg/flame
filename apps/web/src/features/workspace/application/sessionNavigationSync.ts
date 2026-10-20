@@ -1,0 +1,38 @@
+import { type AgentOpenSessions } from "@/features/agent/public/session";
+type AgentSessionListener = (sessionId: string) => void;
+
+type AgentSessionLifecycleListener = (state: AgentOpenSessions) => void;
+
+export interface WorkspaceSessionNavigationPorts {
+  getActiveSessionId: () => string;
+  getLifecycleSnapshot: () => AgentOpenSessions;
+  subscribeActiveSessionId: (listener: AgentSessionListener) => () => void;
+  subscribeLifecycle: (listener: AgentSessionLifecycleListener) => () => void;
+  adoptSessionScope: (sessionId: string) => void;
+  activateSessionScope: (sessionId: string) => void;
+  forgetSessionScopes: (openSessionIds: string[]) => void;
+}
+
+export function syncWorkspaceSessionLifecycle(
+  state: AgentOpenSessions,
+  ports: Pick<WorkspaceSessionNavigationPorts, "forgetSessionScopes">,
+): void {
+  ports.forgetSessionScopes(state.openSessionIds);
+}
+
+export function bindWorkspaceSessionNavigation(ports: WorkspaceSessionNavigationPorts): () => void {
+  ports.forgetSessionScopes(ports.getLifecycleSnapshot().openSessionIds);
+  ports.adoptSessionScope(ports.getActiveSessionId());
+
+  const unsubscribeSession = ports.subscribeActiveSessionId((sessionId) => {
+    ports.activateSessionScope(sessionId);
+  });
+  const unsubscribeLifecycle = ports.subscribeLifecycle((state) => {
+    syncWorkspaceSessionLifecycle(state, ports);
+  });
+
+  return () => {
+    unsubscribeSession();
+    unsubscribeLifecycle();
+  };
+}

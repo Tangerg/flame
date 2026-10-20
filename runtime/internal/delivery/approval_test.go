@@ -180,7 +180,7 @@ func TestSetApprovalRuleProjectsActionableFailures(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			handler := handlerWithApprovals(t, &approvalPolicyFake{setRuleErr: test.cause}, fakeSessionLookup{})
 			err := handler.SetApprovalRule(t.Context(), protocol.SetApprovalRuleRequest{Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, Scope: protocol.ApprovalRuleScopeGlobal, Decision: protocol.ApprovalRuleDecisionAllow})
-			if failure := ProjectError(err); !errors.Is(failure, test.want) {
+			if failure := projectError(err); !errors.Is(failure, test.want) {
 				t.Fatalf("failure = %v, want %v", failure, test.want)
 			}
 			if test.cause == approval.ErrInvalidRule && !errors.Is(err, test.cause) {

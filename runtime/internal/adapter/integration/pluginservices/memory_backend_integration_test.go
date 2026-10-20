@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	"github.com/Tangerg/flame/plugins/memory/backend/sqlite"
@@ -20,7 +21,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/storage/directories"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"

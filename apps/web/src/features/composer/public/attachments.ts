@@ -1,0 +1,35 @@
+import { type ComposerImage, type PastedText } from "@/features/composer/domain/draft";
+import { composerState } from "@/features/composer/application/ports/state";
+export type { ComposerImage, PastedText } from "@/features/composer/domain/draft";
+
+export function useComposerImages(): readonly ComposerImage[] {
+  return composerState().useImages();
+}
+
+export function useComposerPastes(): readonly PastedText[] {
+  return composerState().usePastes();
+}
+
+export function useAddComposerImageFiles(): (files: File[]) => void {
+  return composerState().useAddImageFiles();
+}
+
+export function useRemoveComposerImage(): (id: string) => void {
+  return composerState().useRemoveImage();
+}
+
+export function useAddComposerPaste(): (text: string) => void {
+  return composerState().useAddPaste();
+}
+
+export function useRemoveComposerPaste(): (id: string) => void {
+  return composerState().useRemovePaste();
+}
+
+export function useEditComposerPaste(): (id: string, text: string) => boolean {
+  return composerState().useEditPaste();
+}
+
+export function useRestoreComposerPaste(): (id: string, text: string) => void {
+  return composerState().useRestorePaste();
+}

@@ -1,8 +1,0 @@
-# Conventional Commits enforcement via commitlint. The hook fires from
-# the Flame repo root. Linked worktrees supply an absolute message path;
-# preserve it when changing to the directory that owns commitlint's config.
-case "$1" in
-  /*) MSG="$1" ;;
-  *) MSG="$PWD/$1" ;;
-esac
-cd desktop/frontend && npx commitlint --edit "$MSG"

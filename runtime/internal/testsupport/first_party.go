@@ -27,7 +27,7 @@ func RunWithFirstPartyPackages(tests *testing.M) int {
 		fmt.Fprintln(os.Stderr, "locate first-party test sources")
 		return 1
 	}
-	script := filepath.Join(filepath.Dir(file), "../../..", "plugins", "build.mjs")
+	script := filepath.Join(filepath.Dir(file), "../../..", "plugins", "scripts", "build-packages.mjs")
 	command := exec.Command("node", script, "--os", goruntime.GOOS, "--arch", goruntime.GOARCH, "--output", directory)
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	status := 1

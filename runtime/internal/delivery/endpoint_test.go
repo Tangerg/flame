@@ -493,9 +493,9 @@ func TestEndpointRefusesAnEventItCannotPublish(t *testing.T) {
 		// A client can neither cause nor act on this, so the wire keeps the
 		// unclassified detail. The reason is the only thing that identifies the
 		// Runtime bug, and nothing downstream can recompute it.
-		var failure *Failure
+		var failure *protocol.Failure
 		if !errors.As(err, &failure) {
-			t.Fatalf("err = %v; want a *Failure", err)
+			t.Fatalf("err = %v; want a *protocol.Failure", err)
 		}
 		if detail := failure.Problem().Detail; detail != "the runtime produced an invalid event" {
 			t.Fatalf("wire detail = %q; want the unclassified message", detail)

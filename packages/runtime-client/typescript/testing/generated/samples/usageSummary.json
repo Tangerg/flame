@@ -1,0 +1,126 @@
+{
+  "observedAt": "2026-10-15T00:00:00Z",
+  "total": {
+    "inputTokens": 125000,
+    "outputTokens": 42000,
+    "cacheReadTokens": 60000,
+    "costUsd": 1.2345
+  },
+  "recordedCostUsd": 1.2345,
+  "coverage": {
+    "calls": 7,
+    "reportedCalls": 7,
+    "pricedCalls": 7,
+    "startedCalls": 0,
+    "completedCalls": 7,
+    "failedCalls": 0,
+    "unknownCalls": 0
+  },
+  "byProvider": [
+    {
+      "key": "anthropic",
+      "total": {
+        "inputTokens": 125000,
+        "outputTokens": 42000,
+        "cacheReadTokens": 60000,
+        "costUsd": 1.2345
+      },
+      "recordedCostUsd": 1.2345,
+      "coverage": {
+        "calls": 7,
+        "reportedCalls": 7,
+        "pricedCalls": 7,
+        "startedCalls": 0,
+        "completedCalls": 7,
+        "failedCalls": 0,
+        "unknownCalls": 0
+      }
+    }
+  ],
+  "byModel": [
+    {
+      "key": "anthropic/claude-sonnet-4-5",
+      "total": {
+        "inputTokens": 125000,
+        "outputTokens": 42000,
+        "cacheReadTokens": 60000,
+        "costUsd": 1.2345
+      },
+      "recordedCostUsd": 1.2345,
+      "coverage": {
+        "calls": 7,
+        "reportedCalls": 7,
+        "pricedCalls": 7,
+        "startedCalls": 0,
+        "completedCalls": 7,
+        "failedCalls": 0,
+        "unknownCalls": 0
+      }
+    }
+  ],
+  "byDay": [
+    {
+      "key": "2026-10-14",
+      "total": {
+        "inputTokens": 125000,
+        "outputTokens": 42000,
+        "cacheReadTokens": 60000,
+        "costUsd": 1.2345
+      },
+      "recordedCostUsd": 1.2345,
+      "coverage": {
+        "calls": 7,
+        "reportedCalls": 7,
+        "pricedCalls": 7,
+        "startedCalls": 0,
+        "completedCalls": 7,
+        "failedCalls": 0,
+        "unknownCalls": 0
+      }
+    }
+  ],
+  "byOrigin": [
+    {
+      "key": "human",
+      "total": {
+        "inputTokens": 125000,
+        "outputTokens": 42000,
+        "cacheReadTokens": 60000,
+        "costUsd": 1.2345
+      },
+      "recordedCostUsd": 1.2345,
+      "coverage": {
+        "calls": 7,
+        "reportedCalls": 7,
+        "pricedCalls": 7,
+        "startedCalls": 0,
+        "completedCalls": 7,
+        "failedCalls": 0,
+        "unknownCalls": 0
+      }
+    }
+  ],
+  "byScope": [
+    {
+      "key": "run",
+      "total": {
+        "inputTokens": 125000,
+        "outputTokens": 42000,
+        "cacheReadTokens": 60000,
+        "costUsd": 1.2345
+      },
+      "recordedCostUsd": 1.2345,
+      "coverage": {
+        "calls": 7,
+        "reportedCalls": 7,
+        "pricedCalls": 7,
+        "startedCalls": 0,
+        "completedCalls": 7,
+        "failedCalls": 0,
+        "unknownCalls": 0
+      }
+    }
+  ],
+  "sessions": 3,
+  "runs": 7
+}

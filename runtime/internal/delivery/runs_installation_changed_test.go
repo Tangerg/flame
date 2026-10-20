@@ -24,11 +24,11 @@ func (installationChangedExecution) StageRoot(context.Context, runs.RootExecutio
 
 func requirePluginChanged(t *testing.T, err error) {
 	t.Helper()
-	problem := ProjectError(err).Problem()
+	problem := projectError(err).Problem()
 	if problem.Type != protocol.ErrPluginChanged.Error() {
 		t.Fatalf("problem = %+v, want plugin_changed", problem)
 	}
-	if recovery, _ := RecoveryFor(problem.Type); recovery != protocol.RecoveryPromptUser {
+	if recovery, _ := protocol.RecoveryFor(problem.Type); recovery != protocol.RecoveryPromptUser {
 		t.Fatalf("recovery = %q, want the person to decide on a retry", recovery)
 	}
 	if strings.Contains(problem.Detail, "940ac827") || strings.Contains(problem.Detail, "execution:") {

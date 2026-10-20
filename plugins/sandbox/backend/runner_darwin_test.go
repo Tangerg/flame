@@ -12,12 +12,12 @@ import (
 	"strings"
 	"testing"
 
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 )
 
 func TestNativeExecutionConfinesEffectsAndReplaysTheOriginalOutcomeAfterReopen(t *testing.T) {

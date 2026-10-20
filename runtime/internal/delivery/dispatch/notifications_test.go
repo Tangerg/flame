@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 func TestDispatchNotificationSuppressesMetadataErrors(t *testing.T) {

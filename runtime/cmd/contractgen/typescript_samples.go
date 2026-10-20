@@ -27,7 +27,7 @@ func newWireSamples() string {
 // Which canonical sample is which shape. The samples in ./samples are hand-written;
 // only this index is generated, from the same binding the Go round-trip reads.
 
-import type { WireTypeName } from "./wire.validate.generated";
+import type { WireTypeName } from "../../src/generated/wire.validate.generated";
 
 /** One hand-written sample and the published shape it must satisfy. */
 export interface WireSample {

@@ -1,9 +1,10 @@
 package mcp
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"slices"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )

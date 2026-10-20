@@ -7,23 +7,21 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
-
-	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 )
 
 type failingMemoryPartition struct {
-	scope agentmemory.Scope
+	scope string
 }
 
 func (f failingMemoryPartition) Items(_ context.Context, scope string, _ string) ([]MemoryPromptItem, error) {
 	if scope == string(f.scope) {
 		return nil, errors.New("memory storage unavailable")
 	}
-	return []MemoryPromptItem{testMemoryPromptItem(agentmemory.ItemSnapshot{Content: "healthy partition fact", Pinned: true})}, nil
+	return []MemoryPromptItem{testMemoryPromptItem(MemoryPromptItem{Content: "healthy partition fact", Pinned: true})}, nil
 }
 
 func TestPinnedMemoryFailurePreservesHealthyPartitionAndDiagnostics(t *testing.T) {
-	for _, scope := range []agentmemory.Scope{agentmemory.ScopeProject, agentmemory.ScopeUser} {
+	for _, scope := range []string{"project", "user"} {
 		t.Run(string(scope), func(t *testing.T) {
 			var diagnostics bytes.Buffer
 			previous := slog.Default()

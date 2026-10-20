@@ -1,10 +1,8 @@
 go 1.27.0
 
 use (
-	./cli
-	./desktop
+	.
+	./apps/desktop
+	./packages/local-runtime
 	./examples/plugins/reviews/backend
-	./runtime
-	./plugins
-	./runtime/localruntime
 )

@@ -1,0 +1,196 @@
+import { type VisualStyleMotion } from "@/lib/appearance";
+type VisualStyleTokenName =
+  | "style-shape-2xs"
+  | "style-shape-xs"
+  | "style-shape-sm"
+  | "style-shape-md"
+  | "style-shape-lg"
+  | "style-shape-xl"
+  | "style-shape-composer"
+  | "style-shape-bubble"
+  | "layout-page-width"
+  | "layout-page-gutter"
+  | "layout-page-block"
+  | "layout-compact-gutter"
+  | "layout-content-gap"
+  | "layout-label-gap"
+  | "layout-row-padding"
+  | "layout-section-gap"
+  | "layout-card-padding"
+  | "layout-field-gap"
+  | "layout-control-gap"
+  | "layout-menu-inset"
+  | "field-background"
+  | "field-border"
+  | "field-shadow"
+  | "mark-radius"
+  | "menu-item-radius"
+  | "button-radius"
+  | "field-radius"
+  | "segmented-radius"
+  | "segment-radius"
+  | "surface-card-radius"
+  | "row-radius"
+  | "floating-panel-radius"
+  | "floating-tip-radius"
+  | "dock-tab-radius"
+  | "control-height-xs"
+  | "control-height-sm"
+  | "control-height-md"
+  | "control-height-lg"
+  | "menu-row-height"
+  | "dock-tab-height"
+  | "surface-header-height"
+  | "control-edge-width"
+  | "hairline-width"
+  | "composer-edge-width"
+  | "wash-hover"
+  | "wash-selected"
+  | "app-drawer-surface"
+  | "app-content-surface"
+  | "app-header-surface"
+  | "app-dock-surface"
+  | "app-dock-tabstrip-surface"
+  | "dock-tab-active-surface"
+  | "app-card-surface"
+  | "surface-emphasis"
+  | "app-composer-surface"
+  | "app-composer-tray-surface"
+  | "app-composer-project-tray-surface"
+  | "app-floating-surface"
+  | "composer-backdrop"
+  | "composer-tray-backdrop"
+  | "composer-tray-edge-color"
+  | "floating-backdrop"
+  | "app-card-edge"
+  | "app-pane-split"
+  | "app-pane-split-end"
+  | "app-header-edge"
+  | "app-pane-wash"
+  | "app-pane-wash-end"
+  | "seam-line"
+  | "shadow-control"
+  | "shadow-composer-depth"
+  | "shadow-ring"
+  | "shadow-raised"
+  | "shadow-overlay"
+  | "shadow-popover"
+  | "shadow-modal"
+  | "shadow-well"
+  | "shadow-surface-card";
+
+export type VisualStyleTokens = Record<VisualStyleTokenName, string>;
+
+const WORKBENCH_TOKENS: VisualStyleTokens = {
+  "style-shape-2xs": "2px",
+  "style-shape-xs": "4px",
+  "style-shape-sm": "6px",
+  "style-shape-md": "8px",
+  "style-shape-lg": "10px",
+  "style-shape-xl": "12px",
+  "style-shape-composer": "20px",
+  "style-shape-bubble": "16px",
+  "layout-page-width": "56rem",
+  "layout-page-gutter": "calc(var(--spacing) * 6)",
+  "layout-page-block": "calc(var(--spacing) * 8)",
+  "layout-compact-gutter": "calc(var(--spacing) * 4)",
+  "layout-content-gap": "calc(var(--spacing) * 3)",
+  "layout-label-gap": "calc(var(--spacing) * 1.5)",
+  "layout-row-padding": "calc(var(--spacing) * 3)",
+  "layout-section-gap": "calc(var(--spacing) * 6)",
+  "layout-card-padding": "calc(var(--spacing) * 5)",
+  "layout-field-gap": "calc(var(--spacing) * 4)",
+  "layout-control-gap": "calc(var(--spacing) * 2)",
+  "layout-menu-inset": "calc(var(--spacing) * 1)",
+  "field-background": "var(--color-elevated)",
+  "field-border": "var(--color-control-edge)",
+  "field-shadow": "var(--shadow-control)",
+  "mark-radius": "var(--shape-sm)",
+  "menu-item-radius": "max(0px, calc(var(--floating-panel-radius) - var(--layout-menu-inset)))",
+  "button-radius": "var(--shape-xl)",
+  "field-radius": "var(--shape-xl)",
+  "segmented-radius": "var(--shape-lg)",
+  "segment-radius": "max(0px, calc(var(--segmented-radius) - var(--spacing) * 0.5))",
+  "surface-card-radius": "var(--shape-bubble)",
+  "row-radius": "var(--shape-lg)",
+  "floating-panel-radius": "var(--shape-bubble)",
+  "floating-tip-radius": "var(--shape-md)",
+  "dock-tab-radius": "var(--shape-lg)",
+
+  "control-height-xs": "24px",
+  "control-height-sm": "28px",
+  "control-height-md": "32px",
+  "control-height-lg": "36px",
+  "menu-row-height": "30px",
+  "dock-tab-height": "28px",
+  "surface-header-height": "46px",
+  "control-edge-width": "1px",
+  "hairline-width": "0.5px",
+  "composer-edge-width": "var(--hairline-width)",
+
+  "wash-hover": "color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 1.25), transparent)",
+  "wash-selected":
+    "color-mix(in srgb, var(--color-accent) calc(var(--wash-step) * 2.5), transparent)",
+
+  "app-drawer-surface": "var(--color-drawer)",
+  "app-content-surface": "var(--color-bg)",
+  "app-header-surface": "transparent",
+  "app-dock-surface": "color-mix(in oklab, var(--color-bg) 25%, var(--color-surface))",
+  "app-dock-tabstrip-surface":
+    "color-mix(in oklab, var(--color-text) calc(var(--depth-step) * 0.75), var(--app-dock-surface))",
+  "dock-tab-active-surface": "var(--app-dock-surface)",
+  "app-card-surface": "var(--color-elevated)",
+  "surface-emphasis":
+    "linear-gradient(145deg, color-mix(in oklab, var(--color-accent) 18%, var(--app-card-surface)), color-mix(in oklab, var(--color-accent) 5%, var(--app-card-surface)))",
+  "app-composer-surface": "color-mix(in oklab, var(--app-content-surface) 86%, transparent)",
+  "composer-backdrop": "blur(20px) saturate(1.4)",
+  "app-composer-tray-surface": "color-mix(in oklab, var(--app-content-surface) 70%, transparent)",
+  "app-composer-project-tray-surface":
+    "color-mix(in srgb, var(--color-text) 4%, var(--app-content-surface))",
+  "composer-tray-backdrop": "blur(8px)",
+  "composer-tray-edge-color": "color-mix(in oklab, var(--color-border) 80%, transparent)",
+  "app-floating-surface": "var(--color-elevated)",
+  "floating-backdrop": "blur(8px) saturate(1.4)",
+  "app-card-edge": "inset 0.5px 0 0 0",
+  "app-pane-split": "inset 0.5px 0 0 0",
+  "app-pane-split-end": "inset -0.5px 0 0 0",
+  "app-header-edge": "inset 0 -0.5px 0 0",
+  "app-pane-wash": "inset 12px 0 12px -6px",
+  "app-pane-wash-end": "inset -12px 0 12px -6px",
+  "seam-line": "var(--color-border-strong)",
+
+  "shadow-control": "0 1px 2px color-mix(in oklab, var(--shadow-cast) 20%, transparent)",
+  "shadow-composer-depth":
+    "0 2px 8px 0 color-mix(in oklab, var(--shadow-cast) 20%, transparent), 0 4px 80px 8px color-mix(in oklab, var(--shadow-cast) 12%, transparent)",
+  "shadow-ring": "0 0 0 0.5px var(--seam-line)",
+  "shadow-raised":
+    "var(--shadow-ring), 0 1px 2px -1px color-mix(in oklab, var(--shadow-cast) 40%, transparent)",
+  "shadow-overlay":
+    "var(--shadow-ring), 0 4px 8px -2px color-mix(in oklab, var(--shadow-cast) 50%, transparent)",
+  "shadow-popover":
+    "var(--shadow-ring), 0 8px 16px -4px color-mix(in oklab, var(--shadow-cast) 60%, transparent)",
+  "shadow-modal":
+    "var(--shadow-ring), 0 16px 32px -8px color-mix(in oklab, var(--shadow-cast) 95%, transparent)",
+  "shadow-well": "none",
+  "shadow-surface-card":
+    "0 2px 4px color-mix(in oklab, var(--shadow-cast) 20%, transparent), 0 1px 2px color-mix(in oklab, var(--shadow-cast) 30%, transparent)",
+};
+
+export function visualStyleTokens(overrides: Partial<VisualStyleTokens>): VisualStyleTokens {
+  return { ...WORKBENCH_TOKENS, ...overrides };
+}
+
+export function visualStyleMotionTokens(motion: VisualStyleMotion): Record<string, string> {
+  const bezier = (value: readonly [number, number, number, number]) =>
+    `cubic-bezier(${value.join(", ")})`;
+  return {
+    "dur-instant-base": `${motion.instantMs}ms`,
+    "dur-fast-base": `${motion.fastMs}ms`,
+    "dur-med-base": `${motion.mediumMs}ms`,
+    "dur-slow-base": `${motion.slowMs}ms`,
+    "dur-drawer-base": `${motion.drawerMs}ms`,
+    "ease-out": bezier(motion.easeOut),
+    "ease-drawer": `linear(${motion.drawerProgress.join(", ")})`,
+    "press-scale": String(motion.pressScale),
+  };
+}

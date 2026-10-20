@@ -105,14 +105,14 @@ func mapGoalErr(err error) error {
 	}
 	switch {
 	case errors.Is(err, goals.ErrGoalActive), errors.Is(err, goals.ErrGoalOwned):
-		return NewFailure(errors.Join(protocol.ErrSessionBusy, err), err.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), err.Error())
 	case errors.Is(err, goals.ErrNoGoal),
 		errors.Is(err, goal.ErrNotResumable),
 		errors.Is(err, goal.ErrNotEditable),
 		modelchoice.IsInvalid(err),
 		errors.Is(err, goal.ErrInvalid),
 		errors.Is(err, modelchoice.ErrUnsupported):
-		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	default:
 		return err
 	}

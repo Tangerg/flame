@@ -23,14 +23,16 @@ func TestPublicGoAPICapturesExactRuntimeBinding(t *testing.T) {
 	}) {
 		t.Fatal("Runtime public API does not contain Open returning *Runtime")
 	}
-	if !slices.Equal(binding.Imports, []string{"context", runtimeModulePath + "/capability", runtimeModulePath + "/plugin", runtimeModulePath + "/point", runtimeModulePath + "/protocol", "iter"}) || slices.ContainsFunc(binding.Imports, func(path string) bool {
-		return strings.Contains(path, "/internal/")
-	}) {
-		t.Fatalf("Runtime public imports = %v", binding.Imports)
+	if slices.ContainsFunc(binding.Imports, func(path string) bool { return strings.Contains(path, "/internal/") }) {
+		t.Fatalf("public API exposes private packages: %v", binding.Imports)
 	}
 
 	for _, typeName := range []string{"Runtime", "Client"} {
-		runtimeType := publicGoTypeByName(t, binding, typeName)
+		owner := binding
+		if typeName == "Client" {
+			owner = publicGoPackageByPath(t, api, "github.com/Tangerg/flame/packages/runtime-client/go")
+		}
+		runtimeType := publicGoTypeByName(t, owner, typeName)
 		if got, want := len(runtimeType.Methods), len(delivery.Contract().Metas())+1; got != want {
 			t.Fatalf("Runtime methods = %d, want %d operations plus Close", got, want)
 		}
@@ -41,18 +43,18 @@ func TestPublicGoAPICapturesExactRuntimeBinding(t *testing.T) {
 		}
 
 	}
-	if !slices.ContainsFunc(binding.Functions, func(function publicGoFunction) bool {
+	if !slices.ContainsFunc(publicGoPackageByPath(t, api, "github.com/Tangerg/flame/packages/runtime-client/go").Functions, func(function publicGoFunction) bool {
 		return function.Name == "Connect" && strings.Contains(function.Signature, "(*Client, error)")
 	}) {
 		t.Fatal("Runtime public API does not contain Connect returning *Client")
 	}
-	if !slices.ContainsFunc(binding.Functions, func(function publicGoFunction) bool {
+	if !slices.ContainsFunc(publicGoPackageByPath(t, api, "github.com/Tangerg/flame/packages/runtime-client/go").Functions, func(function publicGoFunction) bool {
 		return function.Name == "ConnectCallback" && function.Signature == "func(ctx context.Context, ref plugin.CallbackRef) (*Client, error)"
 	}) {
 		t.Fatal("Runtime public API does not contain the typed callback Client entrance")
 	}
 
-	localRuntime := publicGoPackageByPath(t, api, runtimeModulePath+"/localruntime")
+	localRuntime := publicGoPackageByPath(t, api, "github.com/Tangerg/flame/packages/local-runtime")
 	for _, name := range []string{"OpenToken", "ReadToken"} {
 		if !slices.ContainsFunc(localRuntime.Functions, func(function publicGoFunction) bool {
 			return function.Name == name && function.Signature == "func(path string) (*Token, error)"

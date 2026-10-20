@@ -16,11 +16,11 @@ import (
 func TestEveryDeclarableProblemTypeHasARecoveryAction(t *testing.T) {
 	t.Parallel()
 
-	for _, problemType := range delivery.ProblemTypes() {
-		if !delivery.IsMethodProblemType(problemType) {
+	for _, problemType := range protocol.ProblemTypes() {
+		if !protocol.IsMethodProblemType(problemType) {
 			continue
 		}
-		if _, declared := delivery.RecoveryFor(problemType); !declared {
+		if _, declared := protocol.RecoveryFor(problemType); !declared {
 			t.Errorf("%s is declarable and has no recovery action", problemType)
 		}
 	}
@@ -29,7 +29,7 @@ func TestEveryDeclarableProblemTypeHasARecoveryAction(t *testing.T) {
 func TestMethodDeclarabilityComesFromTheRPCErrorRegistry(t *testing.T) {
 	t.Parallel()
 
-	if !delivery.IsMethodProblemType(protocol.ErrRunNotFound.Error()) {
+	if !protocol.IsMethodProblemType(protocol.ErrRunNotFound.Error()) {
 		t.Fatal("run_not_found should be method-declarable")
 	}
 	for _, boundaryProblem := range []string{
@@ -37,7 +37,7 @@ func TestMethodDeclarabilityComesFromTheRPCErrorRegistry(t *testing.T) {
 		protocol.ErrMethodNotFound.Error(),
 		protocol.ErrIdempotencyConflict.Error(),
 	} {
-		if delivery.IsMethodProblemType(boundaryProblem) {
+		if protocol.IsMethodProblemType(boundaryProblem) {
 			t.Fatalf("%s is a boundary failure, not a method-declarable problem", boundaryProblem)
 		}
 	}

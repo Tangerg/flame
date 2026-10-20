@@ -8,12 +8,14 @@ import (
 	"path/filepath"
 	"runtime"
 
+	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+	"github.com/Tangerg/flame/runtime/protocol"
+
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
-	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	processsandbox "github.com/Tangerg/flame/runtime/sandbox"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	toolshell "github.com/Tangerg/scope/tools/shell"
@@ -26,12 +28,12 @@ func coreHome(ctx context.Context) (home string, err error) {
 	if err != nil {
 		return "", err
 	}
-	client, err := flameruntime.ConnectCallback(ctx, ref)
+	client, err := runtimeclient.ConnectCallback(ctx, ref)
 	if err != nil {
 		return "", err
 	}
 	defer func() { err = errors.Join(err, client.Close()) }()
-	discovery, err := client.Discover(ctx, flameruntime.CallOptions{})
+	discovery, err := client.Discover(ctx, protocol.CallOptions{})
 	if err != nil {
 		return "", err
 	}

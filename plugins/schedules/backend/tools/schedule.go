@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/dependency"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/pagination"
-	"github.com/Tangerg/flame/runtime/plugin/toolfailure"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )

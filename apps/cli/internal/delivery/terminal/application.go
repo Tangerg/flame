@@ -1,0 +1,518 @@
+package terminal
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/attachment"
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/sessionartifact"
+	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
+	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/oolong/components/headless"
+	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/core/keymap"
+	"github.com/Tangerg/oolong/core/layout"
+	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/highlight"
+)
+
+const (
+	sendPrompt       keymap.Action = settings.ActionSend
+	insertNewline    keymap.Action = settings.ActionNewline
+	cancelRun        keymap.Action = settings.ActionCancelRun
+	quitApp          keymap.Action = settings.ActionQuit
+	commandPalette   keymap.Action = settings.ActionCommandPalette
+	showShortcuts    keymap.Action = settings.ActionShortcuts
+	showSessions     keymap.Action = settings.ActionSessions
+	showTimeline     keymap.Action = settings.ActionTimeline
+	searchTranscript keymap.Action = settings.ActionSearch
+	manageQueue      keymap.Action = settings.ActionManageQueue
+	chooseModel      keymap.Action = settings.ActionChooseModel
+	toggleDetails    keymap.Action = settings.ActionToggleDetails
+	openReader       keymap.Action = "open reader"
+	historyPrevious  keymap.Action = settings.ActionHistoryPrevious
+	historyNext      keymap.Action = settings.ActionHistoryNext
+	nextMatch        keymap.Action = settings.ActionNextMatch
+	previousMatch    keymap.Action = settings.ActionPreviousMatch
+	scrollPageUp     keymap.Action = settings.ActionScrollPageUp
+	scrollPageDown   keymap.Action = settings.ActionScrollPageDown
+	scrollTop        keymap.Action = settings.ActionScrollTop
+	scrollBottom     keymap.Action = settings.ActionScrollBottom
+	editPrompt       keymap.Action = settings.ActionExternalEditor
+	queueFollowUp    keymap.Action = "queue-follow-up"
+	queueOrSendNext  keymap.Action = "queue-or-send-next"
+)
+
+type app struct {
+	ctx              context.Context
+	loop             *program.Runtime
+	runtime          Runtime
+	workspaces       Workspaces
+	changes          changefeed.Source
+	transfers        session.TransferService
+	usage            Usage
+	modelConfig      ModelConfiguration
+	goals            Goals
+	skills           Skills
+	mcp              MCPManagement
+	schedules        Schedules
+	agentMemory      AgentMemory
+	diagnosticTools  DiagnosticTools
+	authoringContext AuthoringContext
+	hooks            Hooks
+	feedback         Feedback
+	runtimeProfile   RuntimeProfile
+	replayPolicy     mutation.ReplayPolicy
+	artifacts        sessionartifact.Store
+	registry         *extensions.Registry
+	pluginHost       *extensions.Host
+	pluginIssues     []extensions.SourceIssue
+	operations       *operationOwner
+	session          sessionState
+	execution        executionState
+	steers           steerReceipts
+	dialogs          dialogState
+
+	transcript  *transcriptView
+	brand       *brandBanner
+	header      *sessionHeader
+	activity    *activityView
+	queueView   *queueView
+	queueDrawer *queueDrawer
+	status      *statusView
+	settings    settings.Config
+
+	options        prompt.RunOptions
+	composer       kit.Composer
+	prompt         *promptView
+	commands       commandCatalog
+	completion     headless.Completion
+	completionGate completionGate
+	shell          *shellView
+	stack          headless.Stack
+	queue          *workbench.Queue
+	workbench      *workbench.Store
+	drafts         *draftPersistence
+	draftState     draftObservation
+	stopDraftSave  func()
+	editor         *draftEditor
+	localDirectory string
+	detachOnExit   bool
+
+	attachments        *attachment.Resolver
+	attachmentElements map[uint64]prompt.Attachment
+	history            promptHistory
+	workbenchHealth    workbenchHealth
+	commandOperations  commandOperationRegistry
+	confirmation       pressConfirmation
+	applicationKeys    *keymap.Map
+	globalKeys         *keymap.Map
+	applicationMatcher keymap.Matcher
+	globalMatcher      keymap.Matcher
+	attention          attentionCenter
+
+	closed         bool
+	closeErr       error
+	syntax         highlight.Renderer
+	prepareDiagram diagramPreparation
+}
+
+type appConfig struct {
+	context          context.Context
+	runtime          Runtime
+	workspaces       Workspaces
+	changes          changefeed.Source
+	transfers        session.TransferService
+	usage            Usage
+	modelConfig      ModelConfiguration
+	goals            Goals
+	skills           Skills
+	mcp              MCPManagement
+	schedules        Schedules
+	agentMemory      AgentMemory
+	diagnosticTools  DiagnosticTools
+	authoringContext AuthoringContext
+	hooks            Hooks
+	feedback         Feedback
+	runtimeProfile   RuntimeProfile
+	replayPolicy     mutation.ReplayPolicy
+	clientVersion    string
+	snapshot         conversation.SessionSnapshot
+	registry         *extensions.Registry
+	pluginHost       *extensions.Host
+	pluginIssues     []extensions.SourceIssue
+	attachments      *attachment.Resolver
+	initialDraft     prompt.Message
+	recoveredSteers  []runworkflow.SteerResult
+	settings         settings.Config
+
+	options        prompt.RunOptions
+	keyBindings    keyBindings
+	queue          *workbench.Queue
+	workbench      *workbench.Store
+	editor         *draftEditor
+	localDirectory string
+	detachOnExit   bool
+}
+
+type terminalAppearance struct {
+	theme  kit.Theme
+	glyphs kit.Glyphs
+	syntax highlight.Renderer
+}
+
+func newTerminalAppearance(loop *program.Runtime) terminalAppearance {
+	ground := loop.Environment().Ground()
+	style := highlight.Style("github-dark")
+	if !ground.BG.Default() && !ground.BG.RGB().Dark() {
+		style = "github"
+	}
+	return terminalAppearance{
+		theme: kit.Suited(ground), glyphs: kit.GlyphsFor(loop.Environment().Locale()), syntax: highlight.New(style),
+	}
+}
+
+func newApp(loop *program.Runtime, cfg appConfig) *app {
+	cfg.keyBindings.setResolver(loop.After)
+	appearance := newTerminalAppearance(loop)
+	transcript := newTranscriptView(appearance.theme, appearance.glyphs, loop.Environment().Locale(), loop.Environment().Wheel(), appearance.syntax, cfg.settings.UI.TranscriptRetain, cfg.settings.UI.ToolDetails, loop.Clipboard())
+	brand := newBrandBanner(
+		appearance.theme,
+		appearance.glyphs,
+		cfg.clientVersion,
+		cfg.snapshot.Session,
+		displayRunOptions(cfg.options, cfg.snapshot.Session),
+	)
+	transcript.SetEntrance(brand)
+	a := &app{
+		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
+		runtimeProfile: cfg.runtimeProfile, replayPolicy: cfg.replayPolicy,
+		changes: cfg.changes, transfers: cfg.transfers, usage: cfg.usage, modelConfig: cfg.modelConfig,
+		goals: cfg.goals, skills: cfg.skills, mcp: cfg.mcp, schedules: cfg.schedules,
+		agentMemory:      cfg.agentMemory,
+		diagnosticTools:  cfg.diagnosticTools,
+		authoringContext: cfg.authoringContext, hooks: cfg.hooks, feedback: cfg.feedback,
+		session:    sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
+		registry:   cfg.registry,
+		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
+		execution:          executionState{conversation: conversation.New()},
+		operations:         newOperationOwner(cfg.context),
+		transcript:         transcript,
+		brand:              brand,
+		header:             newSessionHeader(appearance.theme, appearance.glyphs, cfg.snapshot.Session),
+		activity:           newActivityView(appearance.theme, appearance.glyphs),
+		queueView:          newQueueView(appearance.theme, appearance.glyphs),
+		status:             newStatusView(appearance.theme, appearance.glyphs),
+		queue:              cfg.queue,
+		workbench:          cfg.workbench,
+		editor:             cfg.editor,
+		localDirectory:     cfg.localDirectory,
+		detachOnExit:       cfg.detachOnExit,
+		settings:           cfg.settings.Clone(),
+		options:            cfg.options,
+		syntax:             appearance.syntax,
+		attachments:        cfg.attachments,
+		attachmentElements: make(map[uint64]prompt.Attachment),
+		commandOperations:  newCommandOperationRegistry(),
+		commands:           newCommandCatalog(),
+		attention:          newAttentionCenter(),
+		applicationKeys:    cfg.keyBindings.application,
+		globalKeys:         cfg.keyBindings.global,
+	}
+	a.drafts = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
+		loop.Dispatcher().Post(func() {
+			if a.closed || !a.drafts.Current(result.revision) {
+				return
+			}
+			a.reportWorkbenchIssue(workbenchDraft, result.err)
+		})
+	})
+	a.transcript.images = newTerminalImagePresenter(loop.Images())
+	diagramTheme := "dark"
+	ground := loop.Environment().Ground()
+	if !ground.BG.Default() && !ground.BG.RGB().Dark() {
+		diagramTheme = "default"
+	}
+	a.prepareDiagram = prepareMermaid(diagramTheme)
+	a.configureMarkdown(a.transcript)
+	a.configureComposer(appearance, cfg.keyBindings.editor, cfg.initialDraft)
+	a.configureCompletion(appearance)
+	a.registerCommands()
+	a.buildInterface(appearance, cfg.keyBindings.editor)
+	for _, result := range cfg.recoveredSteers {
+		a.steers.accept(result)
+	}
+	a.restore(cfg.snapshot)
+	a.restoreSessionOutbox()
+	_ = a.persistDraft()
+	a.followRuntimeChanges()
+	return a
+}
+
+func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map, initial prompt.Message) {
+	a.composer = kit.Composer{
+		Theme: appearance.theme, Prompt: appearance.glyphs.Marker + " ",
+		MaxRows: 6,
+	}
+	a.composer.Editor().Placeholder = "Ask flame to inspect, explain, or change something"
+	a.composer.Editor().Keys = keys
+	a.composer.Editor().Clipboard = a.loop.Clipboard()
+	if a.workbench != nil {
+		a.history.Load(a.workbench.History())
+	}
+	a.restoreComposer(initial)
+}
+
+func (a *app) configureCompletion(appearance terminalAppearance) {
+	completionKeys := headless.DefaultCompletionKeys()
+	completionKeys.Bind(headless.Accept, input.Chord{Code: input.Enter})
+	a.completion = headless.Completion{
+		Look: appearance.theme.Look(appearance.glyphs), Keys: completionKeys,
+		Accept: func(candidate headless.Candidate, token headless.Token) {
+			// Acceptance closes both halves of completion: Oolong has already
+			// dismissed the list, while the application must retire its async
+			// producer so an older file lookup cannot reopen the accepted token.
+			a.operations.Cancel(completionOperation)
+			if token.Trigger.Prefix == "@" {
+				a.acceptAttachmentCompletion(candidate.Text, token)
+				return
+			}
+			a.completionGate.Reset()
+			a.composer.Editor().Replace(token.Start, token.End, candidate.Text)
+			a.scheduleDraftPersistence()
+		},
+	}
+}
+
+func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.Map) {
+	theme, glyphs := appearance.theme, appearance.glyphs
+	a.prompt = newPromptView(theme, glyphs, editorKeys, &a.composer, a.displayOptions())
+	a.shell = newShellView(a.header, a.transcript, a.activity, a.queueView, a.status, a.prompt)
+	a.wireTranscript(a.transcript)
+	a.shell.Focus(true)
+	a.stack.SetBase(a.shell)
+	a.buildQueueDrawer(theme, glyphs, editorKeys)
+	a.buildApprovalDialog(theme, glyphs)
+	a.buildSessionPicker(theme, glyphs)
+	a.buildWorkspacePicker(theme, glyphs)
+	a.buildTimeline(theme, glyphs)
+	a.buildRuntimePickers(theme, glyphs)
+	a.buildCommandPalette(theme, glyphs)
+	a.buildShortcutDialog(theme, glyphs, editorKeys)
+	a.buildSearchDialog(theme, glyphs)
+	a.buildReader(theme, glyphs)
+	a.listenForSearch()
+	a.setWindowTitle()
+}
+
+func (a *app) wireTranscript(transcript *transcriptView) {
+	a.prompt.SetTranscriptKeys(transcript.Keys())
+	transcript.OnFocusChange(a.prompt.SetTranscriptFocused)
+	transcript.OnSelection(a.prompt.SetTranscriptSelection)
+	transcript.OnCopy(func(string) {
+		if !a.execution.conversation.Busy() && !a.execution.following {
+			a.status.note("copied selected transcript text")
+		}
+	})
+}
+
+func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs) {
+	a.dialogs.sessionCenter = newSessionCenterPane(theme, glyphs, func(session conversation.Session) {
+		a.dialogs.sessionDialog.Dismiss()
+		a.switchSession(session.ID)
+	})
+	a.dialogs.sessionCenter.loadMore = a.loadMoreSessions
+	a.dialogs.sessionCenter.toggleFavorite = a.toggleSessionFavorite
+	a.dialogs.sessionCenter.rename = a.openSessionRename
+	a.dialogs.sessionCenter.delete = a.openSessionDelete
+	a.dialogs.sessionDialog = newPresentationDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Sessions · Center", Body: a.dialogs.sessionCenter,
+		Where: layout.Placement{Width: 96, Height: 24},
+	})
+	a.dialogs.sessionCenter.picker.cancel = func() {
+		a.operations.Cancel(pickerCatalogOperation)
+		a.dialogs.sessionDialog.Dismiss()
+	}
+}
+
+func (a *app) Draw(frame headless.Frame) {
+	a.stack.Draw(frame)
+	if a.stack.Depth() == 0 && a.completion.Open() {
+		a.drawCompletion(frame)
+	}
+}
+
+func (a *app) Close(ctx context.Context) error {
+	if a.closed {
+		return a.closeErr
+	}
+	var closeErr error
+	if !a.execution.blocksAdmission() && a.execution.opening != nil {
+		if err := a.attemptQueuedDispatchSettlement(a.execution.opening.CommandID); err != nil {
+			closeErr = errors.Join(closeErr, fmt.Errorf("settle acknowledged run start: %w", err))
+		} else {
+			a.execution.opening = nil
+		}
+	}
+	a.closed = true
+	var (
+		target           conversation.CancelRun
+		openingCommandID replay.CommandID
+		cancelRuntime    bool
+		cancelReplay     replay.Guard
+	)
+	if a.execution.pendingCancel != nil {
+		target, openingCommandID, cancelRuntime = a.execution.pendingCancel.request, a.execution.pendingCancel.openingCommandID, true
+		cancelReplay = a.execution.pendingCancel.replay
+	} else if !a.detachOnExit {
+		target, cancelRuntime = a.activeCancellation()
+		openingCommandID = a.openingCommandForRun(target.RunID)
+		var err error
+		cancelReplay, err = a.replayPolicy.NewGuard()
+		if err != nil {
+			closeErr = errors.Join(closeErr, err)
+			cancelRuntime = false
+		}
+	}
+	var (
+		pendingStart  workbench.PendingRun
+		cancelOpening bool
+	)
+	if !cancelRuntime && closeErr == nil {
+		if a.detachOnExit {
+			for _, pending := range a.workbench.PendingRuns(a.session.current.ID) {
+				if pending.State == workbench.PendingRunCanceling {
+					pendingStart, cancelOpening = pending, true
+					break
+				}
+			}
+		} else {
+			var err error
+			pendingStart, cancelOpening, err = a.stageOpeningCancellation()
+			closeErr = errors.Join(closeErr, err)
+		}
+	}
+	a.dropStream()
+	a.operations.Cancel(completionOperation)
+	a.cancelPluginCommands()
+	a.operations.Close()
+	a.cancelScheduledDraftSave()
+	// Flush is a serialization barrier: any autosave already in the filesystem
+	// finishes first, then the last visible composer state is written last.
+	closeErr = errors.Join(closeErr, a.persistDraft())
+	closeErr = errors.Join(closeErr, a.drafts.Close())
+	if cancelRuntime {
+		if err := a.cancelRuntimeNow(ctx, target, cancelReplay); err == nil {
+			closeErr = errors.Join(closeErr, a.retireCanceledRuntimeOwnership(target.RunID, openingCommandID))
+		} else {
+			closeErr = errors.Join(closeErr, err)
+		}
+	} else if cancelOpening {
+		closeErr = errors.Join(closeErr, a.cancelOpeningRunNow(ctx, pendingStart))
+	}
+	a.transcript.Close()
+	closeErr = errors.Join(closeErr, a.transcript.releaseErr)
+	if a.dialogs.reader != nil {
+		a.dialogs.reader.Shutdown()
+	}
+	if a.execution.stopClock != nil {
+		a.execution.stopClock()
+		a.execution.stopClock = nil
+	}
+	a.closeErr = closeErr
+	return closeErr
+}
+
+func (a *app) submit() {
+	message, err := a.composerMessage()
+	if err != nil {
+		a.message(err.Error())
+		return
+	}
+	if message.IsEmpty() {
+		a.sendNextQueuedIfBusy()
+		return
+	}
+	if name, arg, command := parseSlashCommand(strings.TrimSpace(message.Text)); command {
+		a.runCommand(name, arg, func() {
+			a.restoreComposer(prompt.Message{Attachments: message.Attachments})
+			a.operations.Cancel(completionOperation)
+			a.completion.Dismiss()
+		})
+		return
+	}
+	a.dispatchPrompt(message)
+}
+
+// dispatchPrompt owns the single path from an authored message to either the
+// active run or its durable follow-up queue. Callers such as prompt submission
+// cannot bypass session-change exclusion, prompt history, or composer cleanup.
+func (a *app) dispatchPrompt(message prompt.Message) {
+	if err := a.validateMessageCapabilities(message); err != nil {
+		a.message(err.Error())
+		return
+	}
+	if a.operations.Active(sessionChangeOperation) {
+		a.message("wait for the current session change to finish")
+		return
+	}
+	commandID := mutation.NewCommandID()
+	if _, err := a.queue.EnqueueCommand(commandID, a.session.current.ID, message, a.options); err != nil {
+		a.reportWorkbenchIssue(workbenchRunOutbox, err)
+		a.message("prompt submission blocked: " + err.Error())
+		return
+	}
+	a.reportWorkbenchIssue(workbenchRunOutbox, nil)
+	if a.runAdmissionBlocked() {
+		a.enqueueDeferredPrompt()
+		return
+	}
+	a.operations.Cancel(pickerCatalogOperation)
+	a.dialogs.sessionDialog.Dismiss()
+	a.dialogs.modelDialog.Dismiss()
+	a.resetComposer()
+	a.operations.Cancel(completionOperation)
+	a.completion.Dismiss()
+	if !a.drainQueue() {
+		a.syncQueue()
+	}
+}
+
+func (a *app) sendNextQueuedIfBusy() {
+	if !a.execution.blocksAdmission() {
+		return
+	}
+	state := a.queue.State(a.session.current.ID)
+	if len(state.Entries) == 0 {
+		return
+	}
+	index := 0
+	if _, dispatching := state.DispatchingID(); dispatching {
+		index = 1
+	}
+	if index >= len(state.Entries) || state.Entries[index].Held {
+		return
+	}
+	if err := a.sendQueuedNow(state.Entries[index].ID); err != nil {
+		a.message(err.Error())
+	}
+}
+
+func (a *app) message(label string) {
+	if a.execution.conversation.Phase() == conversation.Running {
+		a.status.active(label)
+		return
+	}
+	a.status.note(label)
+}

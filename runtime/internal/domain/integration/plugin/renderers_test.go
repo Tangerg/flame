@@ -1,8 +1,9 @@
 package plugin
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/fingerprint"
 )
 
 func TestRendererComponentAdmissionAndReleaseCopies(t *testing.T) {

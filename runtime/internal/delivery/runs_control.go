@@ -24,7 +24,7 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 	_, settlementFailed := errors.AsType[*runs.CancellationSettlementError](err)
 	switch {
 	case settlementFailed:
-		return nil, NewFailure(errors.Join(protocol.ErrInternalError, err), "cancellation settlement could not be confirmed")
+		return nil, protocol.NewFailure(errors.Join(protocol.ErrInternalError, err), "cancellation settlement could not be confirmed")
 	case errors.Is(err, runs.ErrRunNotFound):
 		return nil, protocol.ErrRunNotFound
 	case errors.Is(err, runs.ErrRunFinished):
@@ -32,7 +32,7 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 	case errors.Is(err, runs.ErrSessionBusy):
 		return nil, protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrInvalidCancellationReason):
-		return nil, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return nil, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrChildRunNotAllowed):
 		return nil, NewCapabilityGapError(protocol.CapabilityRequirement{
 			Type: protocol.RequirementFeature,
@@ -76,10 +76,10 @@ func wireSteerError(err error) error {
 			Field:  fmt.Sprintf("input[%d].%s", input.Index, input.Field),
 			Detail: input.Detail,
 		}}}
-		return NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), constraint.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), constraint.Error())
 	}
 	if errors.Is(err, runs.ErrInputRequired) || errors.Is(err, runs.ErrUnsupportedMedia) {
-		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return wireLiveSegmentError(err)
 }

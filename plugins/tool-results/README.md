@@ -68,5 +68,5 @@ The component is trusted workbench code using shared React, the public SDK and U
 controls/provider context. It uses the common exact-release resource lease and logical
 component lifetime; replacement may require a window reload. The HTML guest, channel,
 source, resource and dedicated builder are removed. Rebuild through
-`node plugins/build-components.mjs`; verify with the same command's `--check` option.
+`node plugins/scripts/build-components.mjs`; verify with the same command's `--check` option.
 Do not edit generated namespace-local `components/component.js`.

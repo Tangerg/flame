@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -14,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	hostsqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

@@ -3,11 +3,12 @@ package segment
 import (
 	"context"
 	"errors"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"iter"
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"

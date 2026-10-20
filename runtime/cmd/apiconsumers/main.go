@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
 func main() {
@@ -22,7 +24,11 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	if err := json.MarshalWrite(os.Stdout, collect(root)); err != nil {
+	methods := map[string]string{}
+	for _, meta := range delivery.Contract().Metas() {
+		methods[meta.GoName] = meta.Name.String()
+	}
+	if err := json.MarshalWrite(os.Stdout, collect(root, methods)); err != nil {
 		fail(err)
 	}
 }
@@ -48,7 +54,7 @@ func readGoDirectory(directory string) []os.DirEntry {
 	}
 }
 
-func collect(root string) map[string][]string {
+func collect(root string, methods map[string]string) map[string][]string {
 	files := token.NewFileSet()
 	parse := func(directory string) []*ast.File {
 		entries := readGoDirectory(directory)
@@ -65,67 +71,7 @@ func collect(root string) map[string][]string {
 		}
 		return parsed
 	}
-	names := map[string]string{}
-	for _, file := range parse(filepath.Join(root, "runtime/internal/delivery")) {
-		ast.Inspect(file, func(node ast.Node) bool {
-			spec, ok := node.(*ast.ValueSpec)
-			if !ok || len(spec.Names) != 1 || len(spec.Values) != 1 {
-				return true
-			}
-			kind, ok := spec.Type.(*ast.Ident)
-			if !ok || kind.Name != "Name" {
-				return true
-			}
-			value, ok := spec.Values[0].(*ast.BasicLit)
-			if !ok || value.Kind != token.STRING {
-				return true
-			}
-			name, err := strconv.Unquote(value.Value)
-			if err != nil {
-				fail(err)
-			}
-			names[spec.Names[0].Name] = name
-			return true
-		})
-	}
-	methods := map[string]string{}
-	for _, file := range parse(filepath.Join(root, "runtime")) {
-		for _, declaration := range file.Decls {
-			method, ok := declaration.(*ast.FuncDecl)
-			if !ok || method.Recv == nil || method.Body == nil {
-				continue
-			}
-			receiver, ok := method.Recv.List[0].Type.(*ast.StarExpr)
-			if !ok {
-				continue
-			}
-			kind, ok := receiver.X.(*ast.Ident)
-			if !ok || kind.Name != "binding" {
-				continue
-			}
-			ast.Inspect(method.Body, func(node ast.Node) bool {
-				call, ok := node.(*ast.CallExpr)
-				if !ok {
-					return true
-				}
-				for _, argument := range call.Args {
-					selector, ok := argument.(*ast.SelectorExpr)
-					if !ok {
-						continue
-					}
-					owner, ok := selector.X.(*ast.Ident)
-					if !ok || owner.Name != "delivery" {
-						continue
-					}
-					if name, exists := names[selector.Sel.Name]; exists {
-						methods[method.Name.Name] = name
-					}
-				}
-				return true
-			})
-		}
-	}
-	cli := parse(filepath.Join(root, "cli/internal/adapter/runtimebinding"))
+	cli := parse(filepath.Join(root, "apps/cli/internal/adapter/runtimebinding"))
 	interfaces := map[string]map[string]bool{}
 	ports := map[string]map[string]bool{}
 	for _, file := range cli {
@@ -222,8 +168,11 @@ func collect(root string) map[string][]string {
 			})
 		}
 	}
-	for _, entry := range []string{"plugins/schedules/backend", "plugins/memory/backend"} {
-		directory := filepath.Join(root, entry)
+	backends, err := filepath.Glob(filepath.Join(root, "plugins", "*", "backend"))
+	if err != nil {
+		fail(err)
+	}
+	for _, directory := range backends {
 		if _, err := os.Stat(directory); os.IsNotExist(err) {
 			continue
 		}
@@ -236,10 +185,13 @@ func collect(root string) map[string][]string {
 				if err != nil {
 					fail(err)
 				}
-				if path != "github.com/Tangerg/flame/runtime" {
+				if path != "github.com/Tangerg/flame/runtime" && path != "github.com/Tangerg/flame/packages/runtime-client/go" {
 					continue
 				}
 				alias := "runtime"
+				if path == "github.com/Tangerg/flame/packages/runtime-client/go" {
+					alias = "runtimeclient"
+				}
 				if value.Name != nil {
 					alias = value.Name.Name
 				}

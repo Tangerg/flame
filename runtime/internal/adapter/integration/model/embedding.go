@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
@@ -14,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 	"github.com/google/uuid"

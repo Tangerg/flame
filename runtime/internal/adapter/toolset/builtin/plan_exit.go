@@ -7,13 +7,13 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/plugin/toolfailure"
 )
 
 const (

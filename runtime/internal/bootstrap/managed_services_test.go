@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"
@@ -22,7 +23,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	plugin "github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"

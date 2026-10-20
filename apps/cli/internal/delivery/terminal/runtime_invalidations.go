@@ -1,0 +1,330 @@
+package terminal
+
+import (
+	"context"
+	"errors"
+	"slices"
+	"time"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
+)
+
+var runtimeRecoveryBackoff = func() retry.Backoff {
+	backoff, err := retry.NewBackoff(100*time.Millisecond, 5*time.Second)
+	if err != nil {
+		panic("invalid static runtime recovery backoff: " + err.Error())
+	}
+	return backoff
+}()
+
+func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
+	if event.Type == protocol.RuntimeResync {
+		a.applyRuntimeResync(event.Topics)
+		return
+	}
+	a.refreshGoalReader(goalInvalidationAffectsSession(event, a.session.current.ID))
+	a.refreshSkillReader(event.Type == protocol.RuntimeSkillsChanged)
+	a.refreshMCPReader(event.Type == protocol.RuntimeMCPChanged)
+	a.refreshScheduleReader(event.Type == protocol.RuntimePluginDataChanged)
+	a.refreshHooksReader(event.Type == protocol.RuntimeHooksChanged)
+	a.refreshModelReader(event.Type == protocol.RuntimeModelsChanged)
+	a.refreshApprovalReader(event.Type == protocol.RuntimeApprovalsChanged || event.Type == protocol.RuntimeMCPChanged)
+	a.refreshAgentMemoryReader(event.Type == protocol.RuntimePluginDataChanged)
+	a.applySessionInvalidation(
+		invalidatesSessionCatalog(event),
+		invalidationAffectsSession(event, a.session.current.ID, a.execution.conversation.RunID()),
+	)
+}
+
+func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
+	a.refreshGoalReader(slices.Contains(topics, protocol.TopicGoalsChanged))
+	a.refreshSkillReader(slices.Contains(topics, protocol.TopicSkillsChanged))
+	a.refreshMCPReader(slices.Contains(topics, protocol.TopicMCPChanged))
+	a.refreshScheduleReader(slices.Contains(topics, protocol.TopicPluginDataChanged))
+	a.refreshHooksReader(slices.Contains(topics, protocol.TopicHooksChanged))
+	a.refreshModelReader(slices.Contains(topics, protocol.TopicModelsChanged))
+	a.refreshApprovalReader(slices.Contains(topics, protocol.TopicApprovalsChanged) || slices.Contains(topics, protocol.TopicMCPChanged))
+	a.refreshAgentMemoryReader(slices.Contains(topics, protocol.TopicPluginDataChanged))
+	a.applySessionInvalidation(
+		invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}),
+		resyncAffectsSession(topics),
+	)
+}
+
+func (a *app) refreshHooksReader(affected bool) {
+	if affected && a.hooks != nil && a.dialogs.runtimeReader == runtimeReaderHooks && a.dialogs.readerDialog.Open() {
+		a.refreshRuntimeReader(a.hooksReaderQuery())
+	}
+}
+
+func (a *app) refreshScheduleReader(affected bool) {
+	if affected && a.schedules != nil && a.dialogs.runtimeReader == runtimeReaderSchedules && a.dialogs.readerDialog.Open() {
+		a.refreshRuntimeReader(a.schedulesReaderQuery())
+	}
+}
+
+func (a *app) refreshMCPReader(affected bool) {
+	if !affected || a.mcp == nil || !a.dialogs.readerDialog.Open() {
+		return
+	}
+	switch a.dialogs.runtimeReader {
+	case runtimeReaderMCPServers:
+		a.refreshRuntimeReader(a.mcpServersReaderQuery())
+	case runtimeReaderMCPTools:
+		a.refreshRuntimeReader(a.mcpToolsReaderQuery(a.dialogs.mcpToolServer))
+	}
+}
+
+func (a *app) refreshSkillReader(affected bool) {
+	if !affected || a.skills == nil || !a.dialogs.readerDialog.Open() {
+		return
+	}
+	switch a.dialogs.runtimeReader {
+	case runtimeReaderDiscoveredSkills:
+		a.refreshRuntimeReader(a.discoveredSkillsReaderQuery())
+	case runtimeReaderSkillDetail:
+		a.refreshRuntimeReader(a.skillDetailReaderQuery(a.dialogs.runtimeSelection.skillName))
+	case runtimeReaderManagedSkills:
+		a.refreshRuntimeReader(a.managedSkillsReaderQuery())
+	case runtimeReaderSkillProposals:
+		a.refreshRuntimeReader(a.skillProposalsReaderQuery())
+	}
+}
+
+func (a *app) refreshGoalReader(affected bool) {
+	if affected && a.goals != nil && a.dialogs.runtimeReader == runtimeReaderGoal && a.dialogs.readerDialog.Open() {
+		a.refreshRuntimeReader(a.goalReaderQuery())
+	}
+}
+
+func (a *app) refreshModelReader(affected bool) {
+	if !affected {
+		return
+	}
+	if a.dialogs.modelDialog.Open() {
+		a.loadModelPicker(false)
+	}
+	if !a.dialogs.readerDialog.Open() {
+		return
+	}
+	switch a.dialogs.runtimeReader {
+	case runtimeReaderModels:
+		a.refreshRuntimeReader(a.modelsReaderQuery())
+	case runtimeReaderModelRoles:
+		if a.modelConfig != nil {
+			a.refreshRuntimeReader(a.modelRolesReaderQuery())
+		}
+	case runtimeReaderProviders:
+		if a.modelConfig != nil {
+			a.refreshRuntimeReader(a.providersReaderQuery())
+		}
+	}
+}
+
+func (a *app) refreshApprovalReader(affected bool) {
+	if affected && a.dialogs.runtimeReader == runtimeReaderApprovalRules && a.dialogs.readerDialog.Open() {
+		a.refreshRuntimeReader(a.approvalRulesReaderQuery())
+	}
+}
+
+func (a *app) refreshAgentMemoryReader(affected bool) {
+	if affected && a.agentMemory != nil && a.dialogs.runtimeReader == runtimeReaderAgentMemory && a.dialogs.readerDialog.Open() {
+		a.refreshRuntimeReader(a.agentMemoryReaderQuery(a.dialogs.runtimeSelection.agentMemoryTarget))
+	}
+}
+
+func (a *app) refreshRuntimeReader(query runtimeReaderQuery) {
+	read := query.read
+	query.read = func(ctx context.Context) (readerDocument, error) {
+		failures := 0
+		for {
+			document, err := read(ctx)
+			if err == nil || !retry.IsReconnectable(err) {
+				return document, err
+			}
+			failures++
+			if err := runtimeRecoveryBackoff.Wait(ctx, failures); err != nil {
+				return readerDocument{}, err
+			}
+		}
+	}
+	a.executeRuntimeReaderQuery(query)
+}
+
+func goalInvalidationAffectsSession(event changefeed.Event, sessionID string) bool {
+	if event.Type == protocol.RuntimeResync {
+		return slices.Contains(event.Topics, protocol.TopicGoalsChanged)
+	}
+	return event.Type == protocol.RuntimeGoalsChanged &&
+		(len(event.SessionIDs) == 0 || slices.Contains(event.SessionIDs, sessionID))
+}
+
+func (a *app) applySessionInvalidation(catalogChanged, currentSessionChanged bool) {
+	if catalogChanged && a.dialogs.sessionDialog.Open() {
+		a.dialogs.sessionCenter.Reset()
+		a.loadSessionPage("", false)
+	}
+	if !currentSessionChanged {
+		return
+	}
+	a.session.invalidated = true
+	if a.execution.conversation.Phase() == conversation.Running || a.execution.following || a.execution.pendingCancel != nil ||
+		a.operations.Active(sessionChangeOperation) {
+		return
+	}
+	a.refreshInvalidatedSession(false)
+}
+
+func invalidatesSessionCatalog(event changefeed.Event) bool {
+	if event.Type == protocol.RuntimeResync {
+		return slices.Contains(event.Topics, protocol.TopicSessionsChanged) ||
+			slices.Contains(event.Topics, protocol.TopicRunsChanged)
+	}
+	return event.Type == protocol.RuntimeSessionsChanged ||
+		event.Type == protocol.RuntimeRunsChanged
+}
+
+func resyncAffectsSession(topics []protocol.RuntimeTopic) bool {
+	return slices.ContainsFunc(topics, func(topic protocol.RuntimeTopic) bool {
+		return topic == protocol.TopicSessionsChanged || topic == protocol.TopicRunsChanged ||
+			topic == protocol.TopicPlanChanged || topic == protocol.TopicGoalsChanged ||
+			topic == protocol.TopicInterruptsChanged
+	})
+}
+
+func invalidationAffectsSession(event changefeed.Event, sessionID, runID string) bool {
+	if event.Type == protocol.RuntimeResync {
+		return resyncAffectsSession(event.Topics)
+	}
+	switch event.Type {
+	case protocol.RuntimeSessionsChanged:
+		return len(event.SessionIDs) == 0 || slices.Contains(event.SessionIDs, sessionID)
+	case protocol.RuntimePlanChanged, protocol.RuntimeGoalsChanged:
+		return len(event.SessionIDs) == 0 || slices.Contains(event.SessionIDs, sessionID)
+	case protocol.RuntimeRunsChanged, protocol.RuntimeInterruptsChanged:
+		if len(event.SessionIDs) != 0 {
+			return slices.Contains(event.SessionIDs, sessionID)
+		}
+		return len(event.RunIDs) == 0 || slices.Contains(event.RunIDs, runID)
+	default:
+		return false
+	}
+}
+
+// refreshInvalidatedSession normally defers replacement while a trusted live
+// stream owns the projection. A settlement fence means Runtime has already
+// returned a terminal fact, so the cold read must replace even a locally stale
+// running phase before queued work can be admitted.
+func (a *app) refreshInvalidatedSession(settlementFence bool) {
+	sessionID := a.session.current.ID
+	a.session.invalidated = false
+	read := func(ctx context.Context) (conversation.SessionSnapshot, error) {
+		return a.readInvalidatedSession(ctx, sessionID)
+	}
+	apply := func(snapshot conversation.SessionSnapshot, err error) {
+		a.applyInvalidatedSessionRefresh(sessionID, settlementFence, snapshot, err)
+	}
+	// Every authoritative refresh fences queued Run admission. Settlement
+	// refreshes additionally replace an ordinary read already in flight so a
+	// weaker coalesced request cannot discard that obligation.
+	started := a.runSessionAdmissionFence(sessionInvalidationOperation, settlementFence, read, apply)
+	if !started {
+		a.session.invalidated = true
+	}
+}
+
+// applyInvalidatedSessionRefresh reconciles one authoritative read on the UI
+// loop after its operation lease has been released. Successful ordinary reads
+// explicitly reopen queued admission; failed reads leave invalidation asserted.
+func (a *app) applyInvalidatedSessionRefresh(
+	sessionID string,
+	settlementFence bool,
+	snapshot conversation.SessionSnapshot,
+	err error,
+) {
+	if a.session.current.ID != sessionID {
+		return
+	}
+	if a.session.invalidated {
+		a.refreshInvalidatedSession(settlementFence)
+		return
+	}
+	if err != nil {
+		a.session.invalidated = true
+		if errors.Is(err, conversation.ErrSessionNotFound) && a.execution.conversation.Phase() == conversation.Idle && !a.execution.following {
+			a.message("the active session was deleted; creating a replacement")
+			a.replaceDeletedSessionInWorkspace(a.session.current.Workspace.Path)
+			return
+		}
+		a.message("refresh session after runtime change failed: " + err.Error())
+		return
+	}
+	if !settlementFence && (a.execution.conversation.Phase() == conversation.Running || a.execution.following) {
+		a.session.invalidated = true
+		return
+	}
+	conversationMatches := a.execution.conversation.MatchesSnapshot(snapshot)
+	sessionMatches := a.session.current.Equal(snapshot.Session)
+	if conversationMatches && a.session.current.Workspace == snapshot.Session.Workspace {
+		if !sessionMatches {
+			a.installSessionMetadata(snapshot.Session)
+		}
+	} else {
+		if err := a.installSnapshot(snapshot); err != nil {
+			a.session.invalidated = true
+			a.message("refresh session after runtime change failed: " + err.Error())
+			return
+		}
+	}
+	if settlementFence && a.execution.conversation.Phase() == conversation.Idle {
+		a.finishFollowing()
+		return
+	}
+	if !conversationMatches || !sessionMatches {
+		a.message("session refreshed after runtime change")
+	}
+	if !settlementFence {
+		a.drainQueue()
+	}
+}
+
+func (a *app) readInvalidatedSession(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
+	failures := 0
+	for {
+		snapshot, err := a.runtime.GetSession(ctx, sessionID)
+		if err == nil || !retry.IsReconnectable(err) {
+			return snapshot, err
+		}
+		failures++
+		if err := runtimeRecoveryBackoff.Wait(ctx, failures); err != nil {
+			return conversation.SessionSnapshot{}, err
+		}
+	}
+}
+
+func (a *app) installSessionMetadata(session conversation.Session) {
+	a.setActiveSession(session)
+	a.dialogs.sessionCenter.Replace(session)
+}
+
+// dismissInterruptProjection drops only the obsolete terminal-side answer
+// draft. It never answers or cancels the runtime interrupt.
+func (a *app) dismissInterruptProjection() {
+	a.clearApprovalProjection()
+	a.dialogs.questionnaire = nil
+	a.dialogs.interruptReview = nil
+	if a.dialogs.approvalDialog != nil {
+		a.dialogs.approvalDialog.Dismiss()
+	}
+	if a.dialogs.questionDialog != nil {
+		a.dialogs.questionDialog.Controller().Dismiss()
+		a.dialogs.questionDialog = nil
+	}
+	if a.dialogs.reviewDialog != nil {
+		a.dialogs.reviewDialog.Controller().Dismiss()
+		a.dialogs.reviewDialog = nil
+	}
+}

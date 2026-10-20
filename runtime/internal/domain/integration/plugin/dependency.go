@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/resourceid"
 )
 

@@ -3,13 +3,14 @@ package reviews
 import (
 	json "encoding/json/v2"
 	"errors"
-	contractsdk "github.com/Tangerg/flame/runtime/capability"
 	"reflect"
 	"testing"
 
+	contractsdk "github.com/Tangerg/flame/runtime/capability"
+
 	"github.com/Tangerg/flame/runtime/jsoninput"
 
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

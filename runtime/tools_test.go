@@ -42,7 +42,7 @@ func TestDirectToolBindingPreservesScopeInputRejection(t *testing.T) {
 	} {
 		result, err := rt.InvokeTool(t.Context(), protocol.InvokeToolRequest{
 			Name: "read", Arguments: arguments,
-		}, CommandOptions{})
+		}, protocol.CommandOptions{})
 		if result != nil || !errors.Is(err, protocol.ErrInvalidParams) {
 			t.Fatalf("InvokeTool(%v) = (%v, %v), want invalid params", arguments, result, err)
 		}
@@ -53,7 +53,7 @@ func TestDirectToolBindingPreservesScopeInputRejection(t *testing.T) {
 	}
 	result, err := rt.InvokeTool(t.Context(), protocol.InvokeToolRequest{
 		Name: "read", Arguments: map[string]any{"path": path},
-	}, CommandOptions{})
+	}, protocol.CommandOptions{})
 	if err != nil {
 		t.Fatalf("valid read after input rejection: %v", err)
 	}

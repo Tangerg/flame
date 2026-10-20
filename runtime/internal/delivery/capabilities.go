@@ -11,17 +11,17 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func (e *Endpoint) enforceCapabilities(ctx context.Context, meta MethodMeta, parameters any) *Failure {
+func (e *Endpoint) enforceCapabilities(ctx context.Context, meta MethodMeta, parameters any) *protocol.Failure {
 	for _, rule := range meta.CapabilityRules {
 		if len(rule.When) != 0 && !matchesAll(rule.When, reflect.ValueOf(parameters)) {
 			continue
 		}
 		missing, err := e.missingFeatureRequirements(ctx, rule.Requires)
 		if err != nil {
-			return ProjectError(err)
+			return projectError(err)
 		}
 		if len(missing) != 0 {
-			return ProjectError(NewCapabilityGapError(missing...))
+			return projectError(NewCapabilityGapError(missing...))
 		}
 	}
 	return nil

@@ -1,15 +1,15 @@
 package rpc
 
-//go:generate sh -c "go run github.com/Tangerg/flame/plugins/usagereports/backend/cmd/contracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../../io.github.tangerg.flame/contracts --ts ../../src"
+//go:generate sh -c "go run github.com/Tangerg/flame/plugins/usagereports/backend/cmd/contracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../component"
 
 import (
 	"errors"
 	"time"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/plugins/usagereports/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 type CaptureInput struct {

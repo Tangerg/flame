@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/go-sdk/jsonrpc"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 type blockedChunkWriter struct {

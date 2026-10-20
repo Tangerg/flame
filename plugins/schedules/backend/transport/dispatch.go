@@ -6,9 +6,9 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/backend/application"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 

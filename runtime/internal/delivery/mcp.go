@@ -21,19 +21,19 @@ const (
 )
 
 func registerMCP(registry *Registry) {
-	registry.query(MethodMeta{Name: MCPToolsExposure, CapabilityRules: requires(protocol.FeatureMCP)}, func(service interface {
+	registry.query(MethodMeta{Name: MCPToolsExposure, GoName: "GetMCPToolExposure", CapabilityRules: requires(protocol.FeatureMCP)}, func(service interface {
 		GetMCPToolExposure(context.Context, protocol.MCPServerRequest) (*protocol.MCPToolExposure, error)
 	}, ctx context.Context, request protocol.MCPServerRequest) (*protocol.MCPToolExposure, error) {
 		return service.GetMCPToolExposure(ctx, request)
 	})
-	registry.commandAck(MethodMeta{Name: MCPToolsSetExposure, CapabilityRules: requires(protocol.FeatureMCP)}, func(service interface {
+	registry.commandAck(MethodMeta{Name: MCPToolsSetExposure, GoName: "SetMCPToolExposure", CapabilityRules: requires(protocol.FeatureMCP)}, func(service interface {
 		SetMCPToolExposure(context.Context, protocol.SetMCPToolExposureRequest) error
 	}, ctx context.Context, request protocol.SetMCPToolExposureRequest) error {
 		return service.SetMCPToolExposure(ctx, request)
 	})
 
 	registry.query(MethodMeta{
-		Name:            MCPServersList,
+		Name: MCPServersList, GoName: "ListMCPServers",
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
 		ListMCPServers(context.Context) (*protocol.Page[protocol.MCPServer], error)
@@ -42,7 +42,7 @@ func registerMCP(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name:            MCPServersCreate,
+		Name: MCPServersCreate, GoName: "CreateMCPServer",
 		Errors:          []string{protocol.ErrMCPServerAlreadyExists.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
@@ -52,7 +52,7 @@ func registerMCP(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name:            MCPServersUpdate,
+		Name: MCPServersUpdate, GoName: "UpdateMCPServer",
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
@@ -62,7 +62,7 @@ func registerMCP(registry *Registry) {
 	})
 
 	registry.commandAck(MethodMeta{
-		Name:            MCPServersDelete,
+		Name: MCPServersDelete, GoName: "DeleteMCPServer",
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
@@ -73,7 +73,7 @@ func registerMCP(registry *Registry) {
 
 	// A connection probe persists nothing, so a retry is not a replay concern.
 	registry.query(MethodMeta{
-		Name:            MCPServersTest,
+		Name: MCPServersTest, GoName: "TestMCPServer",
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
 		TestMCPServer(context.Context, protocol.MCPServerCandidate) (*protocol.MCPTestResult, error)
@@ -82,7 +82,7 @@ func registerMCP(registry *Registry) {
 	})
 
 	registry.query(MethodMeta{
-		Name:            MCPToolsList,
+		Name: MCPToolsList, GoName: "ListMCPTools",
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
 		ListMCPTools(context.Context, protocol.MCPListToolsRequest) (*protocol.Page[protocol.MCPTool], error)
@@ -91,7 +91,7 @@ func registerMCP(registry *Registry) {
 	})
 
 	registry.commandAck(MethodMeta{
-		Name:            MCPServersReconnect,
+		Name: MCPServersReconnect, GoName: "ReconnectMCPServer",
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPServerDisabled.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
@@ -101,7 +101,7 @@ func registerMCP(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name:            MCPAuthorizationAttemptsCreate,
+		Name: MCPAuthorizationAttemptsCreate, GoName: "CreateMCPAuthorizationAttempt",
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPServerDisabled.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
@@ -111,7 +111,7 @@ func registerMCP(registry *Registry) {
 	})
 
 	registry.query(MethodMeta{
-		Name:            MCPAuthorizationAttemptsGet,
+		Name: MCPAuthorizationAttemptsGet, GoName: "GetMCPAuthorizationAttempt",
 		Errors:          []string{protocol.ErrMCPAuthorizationAttemptNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {

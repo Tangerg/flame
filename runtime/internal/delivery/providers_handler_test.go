@@ -3,8 +3,9 @@ package delivery
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"

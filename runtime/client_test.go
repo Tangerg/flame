@@ -13,11 +13,13 @@ import (
 	"testing"
 	"time"
 
+	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 	"github.com/Tangerg/sse"
 )
 
@@ -25,7 +27,7 @@ func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
 	rt, server, discovery := remoteRuntime(t)
 	first := remoteTestClient(t, server.URL)
 	second := remoteTestClient(t, server.URL)
-	options := CommandOptions{IdempotencyKey: "shared-create", IdempotencyNamespace: discovery.Capabilities.Limits.Idempotency.Namespace}
+	options := protocol.CommandOptions{IdempotencyKey: "shared-create", IdempotencyNamespace: discovery.Capabilities.Limits.Idempotency.Namespace}
 	request := protocol.CreateSessionRequest{Title: "shared session"}
 	created, err := first.CreateSession(t.Context(), request, options)
 	if err != nil {
@@ -37,7 +39,7 @@ func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
 	}
 	_, events, err := first.SubscribeRuntime(t.Context(), protocol.RuntimeSubscribeRequest{
 		Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged},
-	}, SubscriptionOptions{})
+	}, protocol.SubscriptionOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,28 +47,28 @@ func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, err := range events {
-		if !errors.Is(err, ErrClosed) {
+		if !errors.Is(err, runtimeclient.ErrClosed) {
 			t.Fatalf("closed client stream error = %v", err)
 		}
 	}
-	if _, err := first.Discover(t.Context(), CallOptions{}); !errors.Is(err, ErrClosed) {
+	if _, err := first.Discover(t.Context(), protocol.CallOptions{}); !errors.Is(err, runtimeclient.ErrClosed) {
 		t.Fatalf("closed client discovery = %v", err)
 	}
-	if _, err := rt.Discover(t.Context(), CallOptions{}); err != nil {
+	if _, err := rt.Discover(t.Context(), protocol.CallOptions{}); err != nil {
 		t.Fatalf("closing client stopped Runtime: %v", err)
 	}
-	if got, err := second.GetSession(t.Context(), protocol.GetSessionRequest{SessionID: created.ID}, CallOptions{}); err != nil || got.ID != created.ID {
+	if got, err := second.GetSession(t.Context(), protocol.GetSessionRequest{SessionID: created.ID}, protocol.CallOptions{}); err != nil || got.ID != created.ID {
 		t.Fatalf("surviving client = (%+v, %v)", got, err)
 	}
 
 	options.IdempotencyNamespace = testsupport.AlternateIdempotencyNamespace
-	if _, err := second.CreateSession(t.Context(), request, options); !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) || errors.Is(err, ErrAcknowledgementUnknown) {
+	if _, err := second.CreateSession(t.Context(), request, options); !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
 		t.Fatalf("store fence = %v", err)
 	}
-	if _, err := second.Discover(t.Context(), CallOptions{RequestMeta: protocol.RequestMeta{ProtocolVersion: "1900-01-01"}}); !errors.Is(err, protocol.ErrInvalidProtocolVersion) {
+	if _, err := second.Discover(t.Context(), protocol.CallOptions{RequestMeta: protocol.RequestMeta{ProtocolVersion: "1900-01-01"}}); !errors.Is(err, protocol.ErrInvalidProtocolVersion) {
 		t.Fatalf("protocol negotiation = %v", err)
 	}
-	_, err = second.ListRuns(t.Context(), protocol.ListRunsRequest{IncludeDescendants: true}, CallOptions{
+	_, err = second.ListRuns(t.Context(), protocol.ListRunsRequest{IncludeDescendants: true}, protocol.CallOptions{
 		RequestMeta: protocol.RequestMeta{ClientCapabilities: &protocol.ClientCapabilities{}},
 	})
 	var problem protocol.ProblemError
@@ -79,16 +81,16 @@ func TestAcceptanceLookupUsesOriginalQueryIdentityInBothBindings(t *testing.T) {
 	rt, server, discovery := remoteRuntime(t)
 	client := remoteTestClient(t, server.URL)
 	bindings := []interface {
-		GetRunAcceptance(context.Context, protocol.GetRunAcceptanceRequest, CallOptions) (*protocol.RunAcceptance, error)
+		GetRunAcceptance(context.Context, protocol.GetRunAcceptanceRequest, protocol.CallOptions) (*protocol.RunAcceptance, error)
 	}{rt, client}
 	for _, binding := range bindings {
 		request := protocol.GetRunAcceptanceRequest{Namespace: discovery.Capabilities.Limits.Idempotency.Namespace, Key: "unrecorded-command", Operation: protocol.RunCommandResume}
-		result, err := binding.GetRunAcceptance(t.Context(), request, CallOptions{})
+		result, err := binding.GetRunAcceptance(t.Context(), request, protocol.CallOptions{})
 		if err != nil || result.Type != protocol.RunAcceptanceNotRecorded {
 			t.Fatalf("read-only lookup=%+v,%v", result, err)
 		}
 		request.Namespace = testsupport.AlternateIdempotencyNamespace
-		if _, err := binding.GetRunAcceptance(t.Context(), request, CallOptions{}); !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) {
+		if _, err := binding.GetRunAcceptance(t.Context(), request, protocol.CallOptions{}); !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) {
 			t.Fatalf("namespace fence=%v", err)
 		}
 	}
@@ -97,25 +99,30 @@ func TestAcceptanceLookupUsesOriginalQueryIdentityInBothBindings(t *testing.T) {
 func TestRunCommandsRequireOriginalIdentityInBothBindings(t *testing.T) {
 	rt, server, _ := remoteRuntime(t)
 	client := remoteTestClient(t, server.URL)
-	session, err := rt.CreateSession(t.Context(), protocol.CreateSessionRequest{}, CommandOptions{})
+	session, err := rt.CreateSession(t.Context(), protocol.CreateSessionRequest{}, protocol.CommandOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, target := range []struct {
 		name string
-		api  *binding
-	}{{"Go", &rt.binding}, {"HTTP", &client.binding}} {
+		api  interface {
+			StartRun(context.Context, protocol.StartRunRequest, protocol.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+			ResumeRun(context.Context, protocol.ResumeRunRequest, protocol.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+			SteerRun(context.Context, protocol.SteerRunRequest, protocol.CommandOptions) (*protocol.SteerRunResponse, error)
+			GetSessionSnapshot(context.Context, protocol.GetSessionSnapshotRequest, protocol.CallOptions) (*protocol.SessionSnapshot, error)
+		}
+	}{{"Go", rt}, {"HTTP", client}} {
 		t.Run(target.name, func(t *testing.T) {
 			input := []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "original input"}}
-			_, _, startErr := target.api.StartRun(t.Context(), protocol.StartRunRequest{SessionID: session.ID, Input: input}, RunCommandOptions{})
-			_, _, resumeErr := target.api.ResumeRun(t.Context(), protocol.ResumeRunRequest{RunID: "run_missing", Responses: []protocol.InterruptResponse{{ItemID: "item_missing", Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseAnswer, Answers: [][]string{{"answer"}}}}}}, RunCommandOptions{})
-			_, steerErr := target.api.SteerRun(t.Context(), protocol.SteerRunRequest{RunID: "run_missing", ExpectedSegmentID: "seg_missing", Input: input}, CommandOptions{})
+			_, _, startErr := target.api.StartRun(t.Context(), protocol.StartRunRequest{SessionID: session.ID, Input: input}, protocol.RunCommandOptions{})
+			_, _, resumeErr := target.api.ResumeRun(t.Context(), protocol.ResumeRunRequest{RunID: "run_missing", Responses: []protocol.InterruptResponse{{ItemID: "item_missing", Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseAnswer, Answers: [][]string{{"answer"}}}}}}, protocol.RunCommandOptions{})
+			_, steerErr := target.api.SteerRun(t.Context(), protocol.SteerRunRequest{RunID: "run_missing", ExpectedSegmentID: "seg_missing", Input: input}, protocol.CommandOptions{})
 			for _, err := range []error{startErr, resumeErr, steerErr} {
-				if !errors.Is(err, protocol.ErrInvalidParams) || errors.Is(err, ErrAcknowledgementUnknown) {
+				if !errors.Is(err, protocol.ErrInvalidParams) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
 					t.Fatalf("unkeyed Run command = %v, want definitive refusal", err)
 				}
 			}
-			material, err := target.api.GetSessionSnapshot(t.Context(), protocol.GetSessionSnapshotRequest{SessionID: session.ID}, CallOptions{})
+			material, err := target.api.GetSessionSnapshot(t.Context(), protocol.GetSessionSnapshotRequest{SessionID: session.ID}, protocol.CallOptions{})
 			if err != nil || len(material.Runs) != 0 || len(material.Items) != 0 {
 				t.Fatalf("refused command changed Session material: %+v, %v", material, err)
 			}
@@ -125,16 +132,16 @@ func TestRunCommandsRequireOriginalIdentityInBothBindings(t *testing.T) {
 
 func TestClientPreservesAnAbsentGoal(t *testing.T) {
 	rt, server, _ := remoteRuntime(t)
-	session, err := rt.CreateSession(t.Context(), protocol.CreateSessionRequest{Title: "without a goal"}, CommandOptions{})
+	session, err := rt.CreateSession(t.Context(), protocol.CreateSessionRequest{Title: "without a goal"}, protocol.CommandOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := protocol.GoalRequest{SessionID: session.ID}
-	if goal, err := rt.GetGoal(t.Context(), request, CallOptions{}); err != nil || goal != nil {
+	if goal, err := rt.GetGoal(t.Context(), request, protocol.CallOptions{}); err != nil || goal != nil {
 		t.Fatalf("local absent goal = (%+v, %v)", goal, err)
 	}
 	client := remoteTestClient(t, server.URL)
-	if goal, err := client.GetGoal(t.Context(), request, CallOptions{}); err != nil || goal != nil {
+	if goal, err := client.GetGoal(t.Context(), request, protocol.CallOptions{}); err != nil || goal != nil {
 		t.Fatalf("remote absent goal = (%+v, %v)", goal, err)
 	}
 }
@@ -162,7 +169,7 @@ func TestClientPreservesOpaqueNullToolResult(t *testing.T) {
 		}
 	}
 	client := remoteTestClient(t, server.URL)
-	if value, err := client.InvokeTool(t.Context(), request, CommandOptions{}); err != nil || value != nil {
+	if value, err := client.InvokeTool(t.Context(), request, protocol.CommandOptions{}); err != nil || value != nil {
 		t.Fatalf("remote opaque result = (%v, %v)", value, err)
 	}
 }
@@ -190,12 +197,12 @@ func TestClientRetainsUnknownAcknowledgementAfterCommittedMutation(t *testing.T)
 	t.Cleanup(server.Close)
 	client := remoteTestClient(t, server.URL)
 	request := protocol.CreateSessionRequest{Title: "committed before disconnect"}
-	options := CommandOptions{IdempotencyKey: "retained-command", IdempotencyNamespace: discovery.Capabilities.Limits.Idempotency.Namespace}
+	options := protocol.CommandOptions{IdempotencyKey: "retained-command", IdempotencyNamespace: discovery.Capabilities.Limits.Idempotency.Namespace}
 	_, err = client.CreateSession(t.Context(), request, options)
-	if !errors.Is(err, ErrAcknowledgementUnknown) || attempts.Load() != 1 {
+	if !errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) || attempts.Load() != 1 {
 		t.Fatalf("lost acknowledgement = %v, dispatches = %d", err, attempts.Load())
 	}
-	page, err := rt.ListSessions(t.Context(), protocol.ListSessionsRequest{}, CallOptions{})
+	page, err := rt.ListSessions(t.Context(), protocol.ListSessionsRequest{}, protocol.CallOptions{})
 	if err != nil || len(page.Data) != 1 {
 		t.Fatalf("durable mutation = (%+v, %v)", page, err)
 	}
@@ -218,7 +225,7 @@ func TestClientCarriesSnapshotAndOpaqueReplayCursor(t *testing.T) {
 	t.Cleanup(server.Close)
 	client := remoteTestClient(t, server.URL)
 	request := protocol.SubscribeRunRequest{RunID: "run_test", SegmentID: "seg_test", Snapshot: true}
-	ack, events, err := client.SubscribeRun(t.Context(), request, RunSubscriptionOptions{})
+	ack, events, err := client.SubscribeRun(t.Context(), request, protocol.RunSubscriptionOptions{})
 	if err != nil || ack.Snapshot == nil || ack.HeadEventID == nil || *ack.HeadEventID != "evt_opaque_head" {
 		t.Fatalf("snapshot handoff = (%+v, %v)", ack, err)
 	}
@@ -233,7 +240,7 @@ func TestClientCarriesSnapshotAndOpaqueReplayCursor(t *testing.T) {
 		t.Fatalf("tail events = %d", count)
 	}
 	request.Snapshot = false
-	_, replay, err := client.SubscribeRun(t.Context(), request, RunSubscriptionOptions{AfterEventID: *ack.HeadEventID})
+	_, replay, err := client.SubscribeRun(t.Context(), request, protocol.RunSubscriptionOptions{AfterEventID: *ack.HeadEventID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +276,7 @@ func TestClientRejectsMalformedAcknowledgementsWithoutLosingUncertainty(t *testi
 			}))
 			t.Cleanup(server.Close)
 			client := remoteTestClient(t, server.URL)
-			if err := client.DeleteSession(t.Context(), protocol.DeleteSessionRequest{SessionID: "ses_test"}, CommandOptions{}); !errors.Is(err, ErrInvalidResponse) || !errors.Is(err, ErrAcknowledgementUnknown) {
+			if err := client.DeleteSession(t.Context(), protocol.DeleteSessionRequest{SessionID: "ses_test"}, protocol.CommandOptions{}); !errors.Is(err, protocol.ErrInvalidResponse) || !errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
 				t.Fatalf("malformed command ack = %v", err)
 			}
 		})
@@ -285,8 +292,8 @@ func TestClientDoesNotFollowRedirectsOrTransmitCredentials(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 	client := remoteTestClient(t, server.URL)
-	_, err := client.Discover(t.Context(), CallOptions{})
-	var failure *TransportError
+	_, err := client.Discover(t.Context(), protocol.CallOptions{})
+	var failure *runtimeclient.TransportError
 	if !errors.As(err, &failure) || failure.StatusCode != http.StatusTemporaryRedirect || forwarded.Load() != 0 {
 		t.Fatalf("redirect = %v, forwarded = %d", err, forwarded.Load())
 	}
@@ -301,10 +308,10 @@ func TestClientDistinguishesPostAcknowledgementLossFromMalformedStream(t *testin
 		frame string
 		want  error
 	}{
-		{name: "truncated observation", want: ErrDisconnected},
-		{name: "malformed notification", frame: "data: {not-json}\n\n", want: ErrInvalidResponse},
-		{name: "invalid UTF-8", frame: "data: {\"text\":\"\xff\"}\n\n", want: ErrInvalidResponse},
-		{name: "unexpected SSE event", frame: "event: other\ndata: {}\n\n", want: ErrInvalidResponse},
+		{name: "truncated observation", want: runtimeclient.ErrDisconnected},
+		{name: "malformed notification", frame: "data: {not-json}\n\n", want: protocol.ErrInvalidResponse},
+		{name: "invalid UTF-8", frame: "data: {\"text\":\"\xff\"}\n\n", want: protocol.ErrInvalidResponse},
+		{name: "unexpected SSE event", frame: "event: other\ndata: {}\n\n", want: protocol.ErrInvalidResponse},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -340,7 +347,7 @@ func TestClientDistinguishesPostAcknowledgementLossFromMalformedStream(t *testin
 			client := remoteTestClient(t, server.URL)
 			ack, events, err := client.StartRun(t.Context(), protocol.StartRunRequest{
 				SessionID: "ses_test", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "hello"}},
-			}, RunCommandOptions{IdempotencyKey: "decode-stream"})
+			}, protocol.RunCommandOptions{IdempotencyKey: "decode-stream"})
 			if err != nil || ack.RunID != "run_test" {
 				t.Fatalf("acknowledgement = (%+v, %v)", ack, err)
 			}
@@ -348,10 +355,10 @@ func TestClientDistinguishesPostAcknowledgementLossFromMalformedStream(t *testin
 			for _, err := range events {
 				failure = err
 			}
-			if !errors.Is(failure, test.want) || errors.Is(failure, ErrAcknowledgementUnknown) {
+			if !errors.Is(failure, test.want) || errors.Is(failure, runtimeclient.ErrAcknowledgementUnknown) {
 				t.Fatalf("post-ack failure = %v, want %v without unknown acknowledgement", failure, test.want)
 			}
-			if test.want == ErrInvalidResponse && errors.Is(failure, ErrDisconnected) {
+			if test.want == protocol.ErrInvalidResponse && errors.Is(failure, runtimeclient.ErrDisconnected) {
 				t.Fatalf("malformed stream was classified reconnectable: %v", failure)
 			}
 		})
@@ -381,7 +388,7 @@ func TestClientCancellationClosesAnUnconsumedStream(t *testing.T) {
 	client := remoteTestClient(t, server.URL)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	_, _, err := client.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}}, SubscriptionOptions{})
+	_, _, err := client.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}}, protocol.SubscriptionOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,14 +402,14 @@ func TestClientCancellationClosesAnUnconsumedStream(t *testing.T) {
 
 func TestClientRecognizesDefinitiveTransportRefusal(t *testing.T) {
 	_, server, _ := remoteRuntime(t)
-	client, err := Connect(t.Context(), RemoteConfig{Endpoint: server.URL, Token: "wrong-token"})
+	client, err := runtimeclient.Connect(t.Context(), runtimeclient.RemoteConfig{Endpoint: server.URL, Token: "wrong-token"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = client.Close() })
-	err = client.DeleteSession(t.Context(), protocol.DeleteSessionRequest{SessionID: "ses_test"}, CommandOptions{IdempotencyKey: "not-dispatched"})
-	var refusal *TransportError
-	if !errors.As(err, &refusal) || refusal.StatusCode != http.StatusUnauthorized || errors.Is(err, ErrAcknowledgementUnknown) || errors.Is(err, ErrDisconnected) {
+	err = client.DeleteSession(t.Context(), protocol.DeleteSessionRequest{SessionID: "ses_test"}, protocol.CommandOptions{IdempotencyKey: "not-dispatched"})
+	var refusal *runtimeclient.TransportError
+	if !errors.As(err, &refusal) || refusal.StatusCode != http.StatusUnauthorized || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) || errors.Is(err, runtimeclient.ErrDisconnected) {
 		t.Fatalf("authentication refusal = %v", err)
 	}
 }
@@ -414,24 +421,24 @@ func TestClientMessageBudgetDoesNotAuthorizeReconnect(t *testing.T) {
 		_, _ = io.WriteString(w, strings.Repeat(" ", 65))
 	}))
 	t.Cleanup(server.Close)
-	client, err := Connect(t.Context(), RemoteConfig{Endpoint: server.URL, MaxMessageBytes: 64})
+	client, err := runtimeclient.Connect(t.Context(), runtimeclient.RemoteConfig{Endpoint: server.URL, MaxMessageBytes: 64})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = client.Close() })
-	err = client.DeleteSession(t.Context(), protocol.DeleteSessionRequest{SessionID: "ses_test"}, CommandOptions{})
-	if !errors.Is(err, ErrInvalidResponse) || !errors.Is(err, ErrAcknowledgementUnknown) || errors.Is(err, ErrDisconnected) {
+	err = client.DeleteSession(t.Context(), protocol.DeleteSessionRequest{SessionID: "ses_test"}, protocol.CommandOptions{})
+	if !errors.Is(err, protocol.ErrInvalidResponse) || !errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) || errors.Is(err, runtimeclient.ErrDisconnected) {
 		t.Fatalf("bounded response failure = %v", err)
 	}
 }
 
 func TestConnectValidatesWithoutContactingOrOwningRuntime(t *testing.T) {
 	for _, endpoint := range []string{"", "file:///tmp/flame", "http://user:secret@localhost", "http://localhost?token=secret", "http://localhost/#fragment"} {
-		if _, err := Connect(t.Context(), RemoteConfig{Endpoint: endpoint}); err == nil || strings.Contains(err.Error(), "secret") {
+		if _, err := runtimeclient.Connect(t.Context(), runtimeclient.RemoteConfig{Endpoint: endpoint}); err == nil || strings.Contains(err.Error(), "secret") {
 			t.Fatalf("invalid endpoint %q = %v", endpoint, err)
 		}
 	}
-	if _, err := Connect(t.Context(), RemoteConfig{Endpoint: "http://localhost", MaxMessageBytes: -1}); err == nil {
+	if _, err := runtimeclient.Connect(t.Context(), runtimeclient.RemoteConfig{Endpoint: "http://localhost", MaxMessageBytes: -1}); err == nil {
 		t.Fatal("negative message budget was accepted")
 	}
 	var contacts atomic.Int32
@@ -458,7 +465,7 @@ func remoteRuntime(t *testing.T) (*Runtime, *httptest.Server, *protocol.Discover
 			t.Error(err)
 		}
 	})
-	discovery, err := rt.Discover(t.Context(), CallOptions{})
+	discovery, err := rt.Discover(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -483,9 +490,9 @@ func remoteHTTPHandler(t *testing.T, endpoint *delivery.Endpoint, info protocol.
 	return server.Handler()
 }
 
-func remoteTestClient(t *testing.T, endpoint string) *Client {
+func remoteTestClient(t *testing.T, endpoint string) *runtimeclient.Client {
 	t.Helper()
-	client, err := Connect(t.Context(), RemoteConfig{Endpoint: endpoint, Token: "test-local-token"})
+	client, err := runtimeclient.Connect(t.Context(), runtimeclient.RemoteConfig{Endpoint: endpoint, Token: "test-local-token"})
 	if err != nil {
 		t.Fatal(err)
 	}

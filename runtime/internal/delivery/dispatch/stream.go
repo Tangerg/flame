@@ -1,6 +1,6 @@
 package dispatch
 
-import "github.com/Tangerg/flame/runtime/internal/delivery/transport"
+import transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 
 // StreamFrame is one ready-to-write downstream notification on a streaming
 // method's event stream. The dispatch produces these from domain events so

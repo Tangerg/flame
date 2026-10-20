@@ -1,8 +1,8 @@
 package dispatch
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 func responseResult(id transport.ID, result any) Result {

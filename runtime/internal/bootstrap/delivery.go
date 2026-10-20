@@ -4,13 +4,13 @@ import (
 	"context"
 	"net/http"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

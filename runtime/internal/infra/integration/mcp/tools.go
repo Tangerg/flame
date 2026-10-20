@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"

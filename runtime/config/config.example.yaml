@@ -68,13 +68,13 @@ baseURL: ""
 # Runtime HTTP transport settings. Each is overridable by the matching
 # FLAME_SERVER_* env var.
 server:
-  listen: 127.0.0.1:17171   # loopback endpoint for local protocol clients
-  noLocalToken: false       # true = disable the local-process gate (dev / same-origin)
-  localTokenPath: ""        # default: $FLAME_HOME/runtime/local-token
+  listen: 127.0.0.1:17171 # loopback endpoint for local protocol clients
+  noLocalToken: false # true = disable the local-process gate (dev / same-origin)
+  localTokenPath: "" # default: $FLAME_HOME/runtime/local-token
   # Empty uses the exact Wails + repository Vite origins built into the Runtime.
   # Add origins only for a different browser client; "*" is development-only.
   corsOrigins: []
-  # Optional absolute path to desktop/frontend/dist. Assets are public, while
+  # Optional absolute path to apps/web/dist. Assets are public, while
   # /v2/rpc still requires the token. Overridden by FLAME_SERVER_WEBDIRECTORY.
   webDirectory: ""
 

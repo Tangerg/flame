@@ -5,15 +5,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	rpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 func TestGeneratedMemoryContractMatchesLiveMethods(t *testing.T) {
 	_, session, _ := connectMemoryBackend(t, filepath.Join(t.TempDir(), "memory.db"))
-	data, err := os.ReadFile(filepath.Join("..", "..", "io.github.tangerg.flame", "contracts", "capability.generated.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "package", "io.github.tangerg.flame", "contracts", "capability.generated.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

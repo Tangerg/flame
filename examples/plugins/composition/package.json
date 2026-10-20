@@ -5,18 +5,24 @@
   "scripts": {
     "build": "node build.mjs",
     "check:resources": "node build.mjs --check",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "generate": "npm run build",
+    "lint": "oxlint consumer/component provider/component build.mjs --deny-warnings",
+    "format:check": "prettier --check consumer/component provider/component build.mjs package.json tsconfig.json",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run check:resources"
   },
   "dependencies": {
-    "@flame/plugin-sdk": "file:../../../plugin-sdk",
-    "@flame/ui": "file:../../../ui",
-    "@flame/runtime-contract": "file:../../../runtime/contract/typescript",
+    "@flame/component-sdk": "*",
+    "@flame/ui": "*",
+    "@flame/runtime-client": "*",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
     "@types/react": "^19.3.0",
-    "rolldown": "^1.2.13"
+    "rolldown": "^1.2.13",
+    "oxlint": "^1.87.0",
+    "prettier": "^3.9.10"
   }
 }

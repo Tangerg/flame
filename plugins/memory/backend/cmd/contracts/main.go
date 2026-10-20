@@ -20,13 +20,13 @@ func main() {
 	policyJSON := flag.String("caller-json", "", "published caller policy JSON output")
 	policyGo := flag.String("caller-go", "", "generated Core caller policy Go output")
 	flag.Parse()
-	if *policyJSON == "" && *policyGo != "" {
-		log.Fatal("caller JSON output is required with caller Go output")
-	}
-	if *policyJSON != "" {
+	if *policyJSON != "" || *policyGo != "" {
 		if err := writeCallerPolicy(*policyJSON, *policyGo); err != nil {
 			log.Fatal(err)
 		}
+	}
+	if *policyGo != "" && *policyJSON == "" {
+		return
 	}
 	contracts, err := rpc.NewContracts()
 	if err != nil {
@@ -42,9 +42,12 @@ func main() {
 }
 
 func writeCallerPolicy(jsonPath, goPath string) error {
-	jsonPath, err := filepath.Abs(jsonPath)
-	if err != nil {
-		return err
+	var err error
+	if jsonPath != "" {
+		jsonPath, err = filepath.Abs(jsonPath)
+		if err != nil {
+			return err
+		}
 	}
 	if goPath != "" {
 		goPath, err = filepath.Abs(goPath)

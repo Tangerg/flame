@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/identity"
+
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -19,7 +21,7 @@ func ParseContributionID(value string) (ContributionID, error) {
 }
 func (id ContributionID) String() string { return string(id) }
 func (id ContributionID) Validate() error {
-	if !idPattern.MatchString(string(id)) {
+	if !identity.ValidDeclarationID(string(id)) {
 		return fmt.Errorf("%w: contribution identity", ErrInvalid)
 	}
 	return nil

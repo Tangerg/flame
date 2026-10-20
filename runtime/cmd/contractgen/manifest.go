@@ -479,7 +479,7 @@ func errorTypes(registry *delivery.Registry, codes map[string]int) []errorEntry 
 	}
 	out := make([]errorEntry, 0, len(codes))
 	for problemType, code := range codes {
-		recovery, declared := delivery.RecoveryFor(problemType)
+		recovery, declared := protocol.RecoveryFor(problemType)
 		if !declared {
 			panic("contractgen: problem type " + problemType + " declares no recovery action")
 		}
@@ -487,7 +487,7 @@ func errorTypes(registry *delivery.Registry, codes map[string]int) []errorEntry 
 		slices.Sort(methods)
 		out = append(out, errorEntry{
 			Type: problemType, Code: code, Recovery: string(recovery),
-			RetryAfterSeconds: delivery.RetryAfterFor(problemType),
+			RetryAfterSeconds: protocol.RetryAfterFor(problemType),
 			Methods:           methods,
 		})
 	}

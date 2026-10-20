@@ -47,7 +47,7 @@ func TestExecutableCLIPluginCommandCallsTheHostWithoutAPage(t *testing.T) {
 	directory := t.TempDir()
 	binary := filepath.Join(directory, "flame")
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, ".")
-	build.Dir = filepath.Join("..", "..", "..", "cli")
+	build.Dir = filepath.Join("..", "..", "..", "apps", "cli")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %s, %v", output, err)
 	}

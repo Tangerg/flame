@@ -3,8 +3,8 @@ package mcpserver_test
 import (
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/resourceid"
 )
 

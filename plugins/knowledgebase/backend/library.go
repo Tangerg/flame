@@ -6,11 +6,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	"github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/backend/rpc"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	"github.com/google/uuid"
 )
 

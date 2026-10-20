@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"

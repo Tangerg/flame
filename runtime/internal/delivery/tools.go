@@ -12,7 +12,7 @@ const (
 )
 
 func registerTools(registry *Registry) {
-	registry.query(MethodMeta{Name: ToolsList},
+	registry.query(MethodMeta{Name: ToolsList, GoName: "ListTools"},
 		func(service interface {
 			ListTools(context.Context) (*protocol.Page[protocol.ToolSpec], error)
 		}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.ToolSpec], error) {
@@ -20,7 +20,7 @@ func registerTools(registry *Registry) {
 		})
 
 	registry.command(MethodMeta{
-		Name: ToolsInvoke,
+		Name: ToolsInvoke, GoName: "InvokeTool",
 		Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(),
 			protocol.ErrPathOutsideRoot.Error(),

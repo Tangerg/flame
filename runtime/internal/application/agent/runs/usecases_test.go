@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -755,8 +754,8 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	coordinator := newUseCaseCoordinator(executor, control, sessions, effects)
 
-	request := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), "ses_1", "run_new")
-	result, err := coordinator.Start(t.Context(), openingCommand(request, "/work"))
+	command := installedStartCommand("ses_1", "run_new", "Scheduled", "scheduled", "/work")
+	result, err := coordinator.Start(t.Context(), command)
 	if err != nil {
 		t.Fatalf("Start scheduled: %v", err)
 	}
@@ -786,8 +785,7 @@ func TestScheduledSessionExistsOnlyWhenItsRunOpens(t *testing.T) {
 		stageErr: errors.New("executor staging failed"),
 	}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
-	request := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), "ses_scheduled", "run_new")
-	command := openingCommand(request, "/work")
+	command := installedStartCommand("ses_scheduled", "run_new", "Scheduled", "scheduled", "/work")
 
 	if _, err := coordinator.Start(t.Context(), command); !errors.Is(err, control.stageErr) {
 		t.Fatalf("Start under staging failure = %v, want the staging cause", err)
@@ -881,23 +879,13 @@ func (r *relocatingSessions) Get(ctx context.Context, id string) (session.Sessio
 }
 
 func TestManualScheduleStartCarriesRunFactInOpening(t *testing.T) {
-	createdAt := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
-	scheduled, err := schedule.New("sch_manual", schedule.Draft{
-		Instructions: "scheduled work", Cron: "@daily",
-	}, createdAt)
-	if err != nil {
-		t.Fatalf("new Schedule: %v", err)
-	}
-	request, err := scheduled.ManualRun("ses_manual", "run_manual", createdAt.Add(time.Second), testsupport.ScheduleInvocation())
-	if err != nil {
-		t.Fatalf("manual run request: %v", err)
-	}
+	command := installedStartCommand("ses_manual", "run_manual", "", "scheduled work", "/work")
 	executor := &fakeExecutor{}
 	effects := &fakeEffects{}
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_manual", ExecutorID: "turn_1"}}
 	coordinator := newUseCaseCoordinator(executor, control, new(fakeRunSessions), effects)
 
-	result, err := coordinator.Start(t.Context(), openingCommand(request, "/work"))
+	result, err := coordinator.Start(t.Context(), command)
 	if err != nil {
 		t.Fatalf("Start manual schedule: %v", err)
 	}
@@ -905,7 +893,7 @@ func TestManualScheduleStartCarriesRunFactInOpening(t *testing.T) {
 	opening := effects.opening()
 	_, initialized := opening.InitialSession()
 	launched, present := opening.Actor()
-	if !initialized || !present || launched != *openingCommand(request, "/work").Actor {
+	if !initialized || !present || launched != *command.Actor {
 		t.Fatalf("manual automation opening = %+v", opening)
 	}
 

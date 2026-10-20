@@ -18,7 +18,7 @@ func wireSessionErr(err error) error {
 		return protocol.ErrSessionNotFound
 	}
 	if errors.Is(err, session.ErrTitleRequired) {
-		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), "title must not be empty")
+		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), "title must not be empty")
 	}
 	// A Session carries a workspace, so any workspace failure can surface here.
 	// wireWorkspaceError owns that whole vocabulary and returns anything outside
@@ -27,13 +27,13 @@ func wireSessionErr(err error) error {
 		return wired
 	}
 	if errors.Is(err, session.ErrRevisionConflict) {
-		return NewFailure(errors.Join(protocol.ErrRevisionConflict, err), "the session changed after it was read")
+		return protocol.NewFailure(errors.Join(protocol.ErrRevisionConflict, err), "the session changed after it was read")
 	}
 	if modelchoice.IsInvalid(err) {
-		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	if errors.Is(err, modelchoice.ErrUnsupported) {
-		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return err
 }
@@ -51,14 +51,14 @@ func (s *Handler) ListSessions(ctx context.Context, q protocol.ListSessionsReque
 	if q.Workspace != nil {
 		value, workspaceErr := session.NewWorkspace(q.Workspace.Path)
 		if workspaceErr != nil {
-			return nil, NewFailure(errors.Join(protocol.ErrInvalidParams, workspaceErr), fmt.Sprintf("sessions: catalog workspace: %v", workspaceErr))
+			return nil, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, workspaceErr), fmt.Sprintf("sessions: catalog workspace: %v", workspaceErr))
 		}
 		workspace = &value
 	}
 	if q.Search != "" || q.Workspace != nil {
 		filter, err = session.NewCatalogFilter(q.Search, workspace)
 		if err != nil {
-			return nil, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+			return nil, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		}
 	}
 	page, err := s.sessions.ListViewPage(ctx, filter, q.Cursor, limit)
@@ -169,7 +169,7 @@ func (s *Handler) DeleteSession(ctx context.Context, id string) error {
 	// User-created forks remain independent conversations.
 	if err := s.sessions.DeleteSession(ctx, id); err != nil {
 		if errors.Is(err, sessions.ErrSessionBusy) {
-			return NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q or its subtask tree has a run in flight", id))
+			return protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q or its subtask tree has a run in flight", id))
 		}
 		return wireSessionErr(err)
 	}
@@ -198,7 +198,7 @@ func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRe
 	})
 	if err != nil {
 		if errors.Is(err, sessions.ErrSessionBusy) {
-			return nil, NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q has a run in flight", in.SessionID))
+			return nil, protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q has a run in flight", in.SessionID))
 		}
 		return nil, wireSessionErr(err)
 	}

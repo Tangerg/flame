@@ -13,5 +13,5 @@
     "types": ["node", "react", "react-dom"],
     "lib": ["DOM", "ESNext"]
   },
-  "include": ["*/src"]
+  "include": ["*/component"]
 }

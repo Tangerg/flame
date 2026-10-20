@@ -7,10 +7,12 @@ import (
 	"sync/atomic"
 	"testing"
 
+	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -64,12 +66,12 @@ func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingCont
 		t.Fatal(err)
 	}
 	defer release()
-	caller, err := NewPluginCallbackCaller(ref)
+	caller, err := runtimeclient.NewPluginCallbackCaller(ref)
 	if err != nil {
 		t.Fatal(err)
 	}
 	bound := bindTypedStream(t, caller)
-	stream := bound.Stream(t.Context(), map[string]string{}, PluginCallOptions{IdempotencyKey: "original"})
+	stream := bound.Stream(t.Context(), map[string]string{}, protocol.PluginCallOptions{IdempotencyKey: "original"})
 	if target.calls.Load() != 0 {
 		t.Fatal("lazy callback performed I/O before consumption")
 	}
@@ -92,15 +94,15 @@ func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingCont
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, err := range bound.Stream(invoked, map[string]string{}, PluginCallOptions{IdempotencyKey: "original"}) {
-		if err == nil || errors.Is(err, ErrAcknowledgementUnknown) {
+	for _, err := range bound.Stream(invoked, map[string]string{}, protocol.PluginCallOptions{IdempotencyKey: "original"}) {
+		if err == nil || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
 			t.Fatalf("missing calling-owner context was treated as dispatched: %v", err)
 		}
 	}
-	retained := bound.Stream(t.Context(), map[string]string{}, PluginCallOptions{IdempotencyKey: "original"})
+	retained := bound.Stream(t.Context(), map[string]string{}, protocol.PluginCallOptions{IdempotencyKey: "original"})
 	release()
 	for _, err := range retained {
-		if !errors.Is(err, pluginsdk.ErrStaleCall) || errors.Is(err, ErrAcknowledgementUnknown) {
+		if !errors.Is(err, pluginsdk.ErrStaleCall) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
 			t.Fatalf("retired original reference=%v", err)
 		}
 	}

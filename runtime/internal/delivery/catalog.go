@@ -4,7 +4,7 @@ package delivery
 // never hand-written; CI reruns this and fails on a worktree diff, which is the
 // only mechanism that notices when the code and the published contract disagree.
 //
-//go:generate go run github.com/Tangerg/flame/runtime/cmd/contractgen -out ../../contract -validators ../../protocol -ts ../../contract/typescript
+//go:generate go run github.com/Tangerg/flame/runtime/cmd/contractgen -out ../../contract -validators ../../protocol -ts ../../../packages/runtime-client/typescript -go-local ../.. -go-client ../../../packages/runtime-client/go
 
 // contract is the runtime's method surface. It is built once, at package init,
 // from method expressions — so it exists without a Runtime and a build-time tool

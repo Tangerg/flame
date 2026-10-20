@@ -9,9 +9,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/identity"
+
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	skillspec "github.com/Tangerg/scope/skills"
 )
 
@@ -24,16 +26,12 @@ func ValidName(name string) bool {
 	return len(name) <= 64 && namePattern.MatchString(name) && !strings.Contains(name, "--") && !strings.Contains(name, "..")
 }
 
-const ContributionIDPattern = `^[a-z][a-z0-9._-]{0,63}$`
-
 const (
 	MaxServers     = 64
 	MaxInputs      = 64
 	MaxThemes      = 32
 	MaxDiagnostics = 1024
 )
-
-var idPattern = regexp.MustCompile(ContributionIDPattern)
 
 // Server is a package-declared MCP server in the MCP registry's transport
 // vocabulary. Command and Dir keep the package-relative spelling; the package
@@ -291,7 +289,7 @@ func (b *Builder) AdmitInput(input Input) error {
 		return refuse(DiagnosticComponentLimit, "input capacity")
 	}
 	release := b.release()
-	if _, found := release.input(input.ID); found || !idPattern.MatchString(input.ID) {
+	if _, found := release.input(input.ID); found || !identity.ValidDeclarationID(input.ID) {
 		return refuse(DiagnosticInvalidDeclaration, "input identity %q", input.ID)
 	}
 	server, found := release.server(input.Server)
@@ -315,7 +313,7 @@ func (b *Builder) AdmitTheme(theme Theme) error {
 		return refuse(DiagnosticComponentLimit, "theme capacity")
 	}
 	duplicate := slices.ContainsFunc(b.declaration.Themes, func(existing Theme) bool { return existing.ID == theme.ID })
-	if duplicate || !idPattern.MatchString(theme.ID) {
+	if duplicate || !identity.ValidDeclarationID(theme.ID) {
 		return refuse(DiagnosticInvalidDeclaration, "theme identity %q", theme.ID)
 	}
 	if theme.Title == "" || len(theme.Title) > 128 {

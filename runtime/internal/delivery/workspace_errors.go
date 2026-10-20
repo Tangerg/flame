@@ -39,13 +39,13 @@ func wireWorkspaceError(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, workspaceapp.ErrPromptSourceTooLarge):
-		return NewFailure(errors.Join(protocol.ErrPromptSourceTooLarge, err), "AGENTS.md instructions exceed the supported document or complete guidance budget; shorten the source documents before retrying")
+		return protocol.NewFailure(errors.Join(protocol.ErrPromptSourceTooLarge, err), "AGENTS.md instructions exceed the supported document or complete guidance budget; shorten the source documents before retrying")
 	case errors.Is(err, workspacepaths.ErrCWDUnavailable):
-		return NewFailure(errors.Join(protocol.ErrWorkspaceUnavailable, err), err.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrWorkspaceUnavailable, err), err.Error())
 	case errors.Is(err, workspaceapp.ErrPathOutsideRoot):
 		return protocol.ErrPathOutsideRoot
 	case errors.Is(err, workspaceapp.ErrUnsupportedFile):
-		return NewFailure(errors.Join(protocol.ErrUnsupportedMime, err), err.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrUnsupportedMime, err), err.Error())
 	case errors.Is(err, tool.ErrInvalidArguments),
 		errors.Is(err, workspaceapp.ErrPathRequired),
 		errors.Is(err, workspaceapp.ErrWatchLimit),
@@ -63,7 +63,7 @@ func wireWorkspaceError(err error) error {
 		errors.Is(err, workspaceapp.ErrPageCursor),
 		errors.Is(err, workspaceapp.ErrVCSResultTooLarge),
 		errors.Is(err, workspaceapp.ErrVCSBaseUnknown):
-		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, workspaceapp.ErrVCSUnavailable):
 		return protocol.ErrVcsUnavailable
 	default:

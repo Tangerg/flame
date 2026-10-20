@@ -40,7 +40,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 		t.Fatalf("build Runtime fixture: %v\n%s", err, output)
 	}
 	packages := filepath.Join(distribution, "plugins")
-	build = exec.CommandContext(t.Context(), "node", filepath.Join(module, "../plugins/build.mjs"), "--os", goruntime.GOOS, "--arch", goruntime.GOARCH, "--output", packages)
+	build = exec.CommandContext(t.Context(), "node", filepath.Join(module, "../plugins/scripts/build-packages.mjs"), "--os", goruntime.GOOS, "--arch", goruntime.GOARCH, "--output", packages)
 	build.Dir = module
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build real backends: %v\n%s", err, output)

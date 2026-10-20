@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sync"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -15,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
 

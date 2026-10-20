@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
 	"github.com/Tangerg/flame/runtime/dependency"
-	"github.com/Tangerg/flame/runtime/plugin/toolfailure"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 

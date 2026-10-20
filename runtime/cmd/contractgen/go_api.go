@@ -14,14 +14,15 @@ const runtimeModulePath = "github.com/Tangerg/flame/runtime"
 
 var publicPackagePaths = []string{
 	runtimeModulePath,
+	"github.com/Tangerg/flame/packages/runtime-client/go",
 	runtimeModulePath + "/capability",
 	runtimeModulePath + "/idempotency",
 	runtimeModulePath + "/jsoninput",
-	runtimeModulePath + "/localruntime",
+	"github.com/Tangerg/flame/packages/local-runtime",
 	runtimeModulePath + "/model",
 	runtimeModulePath + "/model/catalog",
-	runtimeModulePath + "/plugin",
-	runtimeModulePath + "/plugin/sqlite",
+	"github.com/Tangerg/flame/packages/plugin-sdk",
+	"github.com/Tangerg/flame/packages/plugin-sdk/sqlite",
 	runtimeModulePath + "/point",
 	runtimeModulePath + "/protocol",
 	runtimeModulePath + "/storage/sqlite",

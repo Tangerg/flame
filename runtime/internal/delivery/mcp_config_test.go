@@ -3,9 +3,10 @@ package delivery
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"math"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 func decodeForTest[Parameters any](request *transport.Request) (Parameters, *transport.Error) {

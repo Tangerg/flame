@@ -3,9 +3,10 @@ package plugin
 import (
 	"encoding/json/jsontext"
 	"errors"
-	"github.com/Tangerg/flame/runtime/capability"
 	"reflect"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/capability"
 )
 
 func TestContributionsHaveIndependentIDsAndCanShareOneBackend(t *testing.T) {

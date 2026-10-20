@@ -299,7 +299,7 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 	}
 	cfg.ChatResolver = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
-	source, err := filepath.Abs("../../../plugins/usage")
+	source, err := filepath.Abs(filepath.Join(firstPartyPackages, "usage"))
 	if err != nil {
 		t.Fatal(err)
 	}

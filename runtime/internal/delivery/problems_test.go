@@ -24,7 +24,7 @@ func TestOperationProblemsSeparateTypeDetailAndCause(t *testing.T) {
 		{"mcp", wireMCPError(mcpapp.ErrUnknownServer), protocol.ErrMCPServerNotFound, mcpapp.ErrUnknownServer},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			failure := ProjectError(tc.err)
+			failure := projectError(tc.err)
 			problem := failure.Problem()
 			if problem.Type != tc.kind.Error() || strings.HasPrefix(problem.Detail, problem.Type) {
 				t.Fatalf("machine type leaked into human detail: %+v", problem)
@@ -38,7 +38,7 @@ func TestOperationProblemsSeparateTypeDetailAndCause(t *testing.T) {
 
 func TestExplicitFailuresPreserveStructuredDetails(t *testing.T) {
 	constraint := &protocol.ConstraintError{Shape: "RunInput", Fields: []protocol.FieldError{{Field: "input[0].text", Detail: "must not be empty"}}}
-	failure := ProjectError(NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), "invalid run input"))
+	failure := projectError(protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), "invalid run input"))
 	problem := failure.Problem()
 	if problem.Type != protocol.ErrInvalidParams.Error() || len(problem.Errors) != 1 || problem.Errors[0] != constraint.Fields[0] || !errors.Is(failure, constraint) {
 		t.Fatalf("lost field error or cause: %+v", problem)
@@ -49,14 +49,14 @@ func TestExplicitFailuresPreserveStructuredDetails(t *testing.T) {
 		t.Fatal("projected failure retained mutable field details")
 	}
 	gap := NewCapabilityGapError(protocol.CapabilityRequirement{Type: protocol.RequirementFeature, Name: "skills"})
-	capability := ProjectError(NewFailure(gap, "declare the skills capability")).Problem()
+	capability := projectError(protocol.NewFailure(gap, "declare the skills capability")).Problem()
 	if capability.Type != protocol.ErrCapabilityNotNeg.Error() || len(capability.RequiredCapabilities) != 1 {
 		t.Fatalf("lost capability detail: %+v", capability)
 	}
 }
 
 func TestProjectErrorRejectsMalformedExplicitFailure(t *testing.T) {
-	failure := ProjectError(NewFailure(protocol.ErrSessionHasActiveRun, "missing active run"))
+	failure := projectError(protocol.NewFailure(protocol.ErrSessionHasActiveRun, "missing active run"))
 	if !errors.Is(failure, protocol.ErrInternalError) {
 		t.Fatalf("invalid structured failure escaped projection: %+v", failure.Problem())
 	}
@@ -66,7 +66,7 @@ func TestProjectErrorRejectsMalformedExplicitFailure(t *testing.T) {
 // open with the problem type the client already reads.
 func TestPluginRefusalDetailIsTheOwnersCause(t *testing.T) {
 	cause := errors.Join(plugin.ErrInUse, errors.New("release is in use"))
-	got := ProjectError(wirePluginError(cause)).Problem()
+	got := projectError(wirePluginError(cause)).Problem()
 	if got.Type != protocol.ErrPluginInUse.Error() || got.Detail != cause.Error() {
 		t.Fatalf("problem = %+v, want type plugin_in_use with detail %q", got, cause.Error())
 	}

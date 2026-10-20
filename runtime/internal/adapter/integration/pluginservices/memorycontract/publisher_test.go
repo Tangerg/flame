@@ -11,7 +11,7 @@ import (
 )
 
 func TestPublishedCallerPolicyHasOneSource(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "..", "..", "plugins", "memory", "io.github.tangerg.flame", "contracts", "caller-policy.generated.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "..", "..", "plugins", "memory", "package", "io.github.tangerg.flame", "contracts", "caller-policy.generated.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

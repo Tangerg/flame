@@ -22,7 +22,7 @@ const (
 func registerSessions(registry *Registry) {
 	registerSessionTrajectory(registry)
 	registerExportTrajectory(registry)
-	registry.query(MethodMeta{Name: SessionsList},
+	registry.query(MethodMeta{Name: SessionsList, GoName: "ListSessions"},
 		func(service interface {
 			ListSessions(context.Context, protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error)
 		}, ctx context.Context, request protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
@@ -30,7 +30,7 @@ func registerSessions(registry *Registry) {
 		})
 
 	registry.query(MethodMeta{
-		Name:   SessionsGet,
+		Name: SessionsGet, GoName: "GetSession",
 		Errors: []string{protocol.ErrSessionNotFound.Error()},
 	}, func(service interface {
 		GetSession(context.Context, string) (*protocol.Session, error)
@@ -39,7 +39,7 @@ func registerSessions(registry *Registry) {
 	})
 
 	registry.query(MethodMeta{
-		Name:         SessionsSnapshot,
+		Name: SessionsSnapshot, GoName: "GetSessionSnapshot",
 		Errors:       []string{protocol.ErrSessionNotFound.Error()},
 		Materializes: []Name{ItemsList, RunsList, InterruptsList, PlanGet, GoalsGet},
 		CapabilityRules: []CapabilityRule{{
@@ -53,7 +53,7 @@ func registerSessions(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name:   SessionsCreate,
+		Name: SessionsCreate, GoName: "CreateSession",
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
 	}, func(service interface {
 		CreateSession(context.Context, protocol.CreateSessionRequest) (*protocol.Session, error)
@@ -65,7 +65,7 @@ func registerSessions(registry *Registry) {
 	// conditional rule: the rest of sessions.update stays available when relocate
 	// is off, instead of the whole method disappearing.
 	registry.command(MethodMeta{
-		Name: SessionsUpdate,
+		Name: SessionsUpdate, GoName: "UpdateSession",
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(),
 			protocol.ErrRevisionConflict.Error(),
@@ -91,7 +91,7 @@ func registerSessions(registry *Registry) {
 	})
 
 	registry.commandAck(MethodMeta{
-		Name:   SessionsDelete,
+		Name: SessionsDelete, GoName: "DeleteSession",
 		Errors: []string{protocol.ErrSessionNotFound.Error()},
 	}, func(service interface {
 		DeleteSession(context.Context, string) error
@@ -100,7 +100,7 @@ func registerSessions(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name: SessionsFork,
+		Name: SessionsFork, GoName: "ForkSession",
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(),
 			protocol.ErrRunNotFound.Error(),
@@ -116,7 +116,7 @@ func registerSessions(registry *Registry) {
 	// Two rules rather than one because the contract states the
 	// requirement per value, and a generated schema reads them as two if/then.
 	registry.command(MethodMeta{
-		Name: SessionsRollback,
+		Name: SessionsRollback, GoName: "RollbackSession",
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(),
 			protocol.ErrRunNotFound.Error(),
@@ -141,7 +141,7 @@ func registerSessions(registry *Registry) {
 	})
 
 	registry.query(MethodMeta{
-		Name:            SessionsExport,
+		Name: SessionsExport, GoName: "ExportSession",
 		Errors:          []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureSessionExport),
 	}, func(service interface {
@@ -151,7 +151,7 @@ func registerSessions(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name:            SessionsImport,
+		Name: SessionsImport, GoName: "ImportSession",
 		CapabilityRules: requires(protocol.FeatureSessionExport),
 	}, func(service interface {
 		ImportSession(context.Context, protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error)

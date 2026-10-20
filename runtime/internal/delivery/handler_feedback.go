@@ -21,7 +21,7 @@ func (s *Handler) CreateFeedback(ctx context.Context, in protocol.FeedbackReques
 		Text:      in.Text,
 	})
 	if errors.Is(err, feedbackdomain.ErrInvalid) {
-		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return err
 }

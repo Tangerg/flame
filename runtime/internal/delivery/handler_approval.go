@@ -29,7 +29,7 @@ func (s *Handler) GetApprovalMode(ctx context.Context) (*protocol.ApprovalModeRe
 func (s *Handler) SetApprovalMode(ctx context.Context, in protocol.SetApprovalModeRequest) (*protocol.ApprovalModeResult, error) {
 	mode, ok := approvalModeFromWire(in.Mode)
 	if !ok {
-		return nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown approval mode %q", in.Mode))
+		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown approval mode %q", in.Mode))
 	}
 	if err := s.approvals.SetDefaultMode(ctx, mode); err != nil {
 		return nil, err
@@ -195,15 +195,15 @@ func approvalModeFromWire(m protocol.ApprovalMode) (approval.Mode, bool) {
 func (s *Handler) SetApprovalRule(ctx context.Context, in protocol.SetApprovalRuleRequest) error {
 	ref, err := toolRefFromWire(in.Tool)
 	if err != nil {
-		return NewFailure(protocol.ErrInvalidParams, err.Error())
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error())
 	}
 	scope, decision := approval.Scope(in.Scope), approval.Decision(in.Decision)
 	if !scope.Valid() || !decision.Valid() {
-		return NewFailure(protocol.ErrInvalidParams, "invalid approval rule")
+		return protocol.NewFailure(protocol.ErrInvalidParams, "invalid approval rule")
 	}
 	err = s.approvals.SetRule(ctx, approvals.RuleChange{Tool: ref, Scope: scope, SessionID: in.SessionID, Subject: approval.Subject{Type: approval.SubjectType(in.Subject.Type), Value: in.Subject.Value}, Decision: decision})
 	if errors.Is(err, approval.ErrInvalidRule) {
-		return InvalidParameters(err)
+		return protocol.InvalidParameters(err)
 	}
 	return wireSessionErr(err)
 }

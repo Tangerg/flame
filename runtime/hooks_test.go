@@ -39,7 +39,7 @@ func TestRuntimeHookTrustAndRevocationSurviveRestart(t *testing.T) {
 		t.Helper()
 		result, err := current.ListHooks(t.Context(), protocol.ListHooksRequest{
 			Workspace: protocol.WorkspaceRef{Path: config.DefaultWorkspacePath},
-		}, CallOptions{})
+		}, protocol.CallOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -63,7 +63,7 @@ func TestRuntimeHookTrustAndRevocationSurviveRestart(t *testing.T) {
 	} {
 		if err := current.SetHookTrust(t.Context(), protocol.SetHookTrustRequest{
 			ProjectRoot: root, Trusted: change.trusted,
-		}, CommandOptions{IdempotencyKey: change.key}); err != nil {
+		}, protocol.CommandOptions{IdempotencyKey: change.key}); err != nil {
 			t.Fatal(err)
 		}
 		inspect(change.trusted)

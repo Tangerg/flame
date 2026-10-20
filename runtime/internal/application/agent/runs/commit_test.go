@@ -236,7 +236,7 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 		RunID: "run_scheduled", SessionID: "session_scheduled", SegmentID: "segment_scheduled",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	actor := openingCommand(testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), root.SessionID, root.RunID), "/work").Actor
+	actor := installedStartCommand(root.SessionID, root.RunID, "Scheduled", "scheduled", "/work").Actor
 	if _, err := NewAdmissionOpeningCommit(testCommitID("run_commit_actor_existing"), root, nil, nil, actor, nil); err != nil {
 		t.Fatalf("installed actor may start in an existing Session: %v", err)
 	}

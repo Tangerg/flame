@@ -57,7 +57,7 @@ func (s *Handler) OpenPluginResources(ctx context.Context, in protocol.OpenPlugi
 	}
 	component, err := plugin.ParseContributionID(in.ComponentID)
 	if err != nil {
-		return nil, nil, InvalidParameters(err)
+		return nil, nil, protocol.InvalidParameters(err)
 	}
 	value, err := s.plugins.Component(ctx, id, digest, component)
 	if err != nil {
@@ -81,7 +81,7 @@ func (s *Handler) ReadPluginResource(ctx context.Context, in protocol.ReadPlugin
 	}
 	component, err := plugin.ParseContributionID(in.ComponentID)
 	if err != nil {
-		return nil, InvalidParameters(err)
+		return nil, protocol.InvalidParameters(err)
 	}
 	body, err := s.plugins.Resource(ctx, id, digest, component, in.Path)
 	if err != nil {

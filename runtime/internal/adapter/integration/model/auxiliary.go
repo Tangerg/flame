@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -13,7 +14,6 @@ import (
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	modelcatalog "github.com/Tangerg/flame/runtime/model/catalog"
 	modeltext "github.com/Tangerg/flame/runtime/model/text"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/google/uuid"

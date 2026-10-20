@@ -24,7 +24,7 @@ import (
 // aggregate validation is deliberately performed by sessions.RestorePortableSession.
 func invalidArtifact(path, format string, args ...any) error {
 	detail := fmt.Sprintf(format, args...)
-	return NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("%s: %s", path, detail))
+	return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("%s: %s", path, detail))
 }
 
 // portableArtifactFromWire performs only protocol decoding and enum mapping.

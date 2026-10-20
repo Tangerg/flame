@@ -36,7 +36,7 @@ func mcpServerInputFromCandidate(in protocol.MCPServerCandidate) (mcpapp.ServerI
 func parseMCPServerName(raw string) (mcpserver.ServerName, error) {
 	name, err := mcpserver.ParseServerName(raw)
 	if err != nil {
-		return mcpserver.ServerName{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return mcpserver.ServerName{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return name, nil
 }
@@ -47,19 +47,19 @@ func mcpServerIDFromWire(in protocol.MCPServerID) (mcpserver.ID, error) {
 	switch in.Origin.Type {
 	case protocol.MCPOriginUser:
 		if in.Origin.InstallationID != "" {
-			return mcpserver.ID{}, NewFailure(protocol.ErrInvalidParams, "user MCP origin carries no installation")
+			return mcpserver.ID{}, protocol.NewFailure(protocol.ErrInvalidParams, "user MCP origin carries no installation")
 		}
 		origin = mcpserver.UserOrigin()
 	case protocol.MCPOriginInstallation:
 		installation, err := resourceid.ParseInstallation(in.Origin.InstallationID)
 		if err != nil {
-			return mcpserver.ID{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+			return mcpserver.ID{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		}
 		if origin, err = mcpserver.InstallationOrigin(installation); err != nil {
-			return mcpserver.ID{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+			return mcpserver.ID{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		}
 	default:
-		return mcpserver.ID{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP origin %q", in.Origin.Type))
+		return mcpserver.ID{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP origin %q", in.Origin.Type))
 	}
 	name, err := parseMCPServerName(in.Name)
 	if err != nil {
@@ -67,7 +67,7 @@ func mcpServerIDFromWire(in protocol.MCPServerID) (mcpserver.ID, error) {
 	}
 	id, err := mcpserver.NewID(origin, name)
 	if err != nil {
-		return mcpserver.ID{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return mcpserver.ID{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return id, nil
 }
@@ -100,25 +100,25 @@ func mcpHandshakeTimeoutFromWire(in protocol.MCPHandshakeTimeout) (mcpserver.Han
 		return mcpserver.HandshakeTimeout{}, nil
 	case protocol.MCPHandshakeBounded:
 		if in.Seconds == nil {
-			return mcpserver.HandshakeTimeout{}, NewFailure(protocol.ErrInvalidParams, "bounded MCP handshake timeout requires seconds")
+			return mcpserver.HandshakeTimeout{}, protocol.NewFailure(protocol.ErrInvalidParams, "bounded MCP handshake timeout requires seconds")
 		}
 		if int64(*in.Seconds) > protocol.MaximumDurationSeconds {
-			return mcpserver.HandshakeTimeout{}, NewFailure(protocol.ErrInvalidParams, "MCP handshake timeout exceeds time.Duration")
+			return mcpserver.HandshakeTimeout{}, protocol.NewFailure(protocol.ErrInvalidParams, "MCP handshake timeout exceeds time.Duration")
 		}
 		timeout, err := mcpserver.NewHandshakeTimeout(time.Duration(*in.Seconds) * time.Second)
 		if err != nil {
-			return mcpserver.HandshakeTimeout{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+			return mcpserver.HandshakeTimeout{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		}
 		return timeout, nil
 	default:
-		return mcpserver.HandshakeTimeout{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP handshake timeout %q", in.Type))
+		return mcpserver.HandshakeTimeout{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP handshake timeout %q", in.Type))
 	}
 }
 
 func mcpConnectionInputFromWire(in protocol.MCPConnectionInput) (mcpapp.ConnectionInput, error) {
 	transport, ok := mcpTransportFromWire(in.Type)
 	if !ok {
-		return mcpapp.ConnectionInput{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP transport %q", in.Type))
+		return mcpapp.ConnectionInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP transport %q", in.Type))
 	}
 	var authorization *mcpapp.AuthorizationChange
 	if in.Authorization != nil {
@@ -129,7 +129,7 @@ func mcpConnectionInputFromWire(in protocol.MCPConnectionInput) (mcpapp.Connecti
 		case protocol.MCPSecretClear:
 			change.Kind = mcpapp.SecretClear
 		default:
-			return mcpapp.ConnectionInput{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP authorization change %q", in.Authorization.Type))
+			return mcpapp.ConnectionInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP authorization change %q", in.Authorization.Type))
 		}
 		authorization = &change
 	}
@@ -142,7 +142,7 @@ func mcpConnectionInputFromWire(in protocol.MCPConnectionInput) (mcpapp.Connecti
 		case protocol.MCPSecretClear:
 			change.Kind = mcpapp.SecretClear
 		default:
-			return mcpapp.ConnectionInput{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP headers change %q", in.Headers.Type))
+			return mcpapp.ConnectionInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP headers change %q", in.Headers.Type))
 		}
 		headers = &change
 	}
@@ -155,7 +155,7 @@ func mcpConnectionInputFromWire(in protocol.MCPConnectionInput) (mcpapp.Connecti
 		case protocol.MCPSecretClear:
 			change.Kind = mcpapp.SecretClear
 		default:
-			return mcpapp.ConnectionInput{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP environment change %q", in.Env.Type))
+			return mcpapp.ConnectionInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP environment change %q", in.Env.Type))
 		}
 		environment = &change
 	}

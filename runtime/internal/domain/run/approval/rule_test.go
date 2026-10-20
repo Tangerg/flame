@@ -2,8 +2,9 @@ package approval_test
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"

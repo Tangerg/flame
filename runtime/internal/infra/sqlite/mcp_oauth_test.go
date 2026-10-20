@@ -3,9 +3,10 @@ package sqlite_test
 import (
 	"bytes"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"

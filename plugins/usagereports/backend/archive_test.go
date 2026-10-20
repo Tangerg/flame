@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	"github.com/Tangerg/flame/plugins/usagereports/backend/domain"
 	"github.com/Tangerg/flame/plugins/usagereports/backend/rpc"
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

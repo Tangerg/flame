@@ -3,9 +3,10 @@ package approvals_test
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"sync"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"

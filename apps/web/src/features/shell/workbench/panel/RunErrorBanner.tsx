@@ -1,0 +1,151 @@
+import { iconGlyph } from "@/ui/icons/index";
+import * as stylex from "@stylexjs/stylex";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { Icon } from "@/ui/index";
+import { IconButton, vocab } from "@flame/ui";
+import { BannerAction } from "@/features/shell/workbench/panel/BannerAction";
+import { flattenText } from "@/features/agent/public/messageContent";
+import { getActiveConversationMessages } from "@/features/agent/public/conversation";
+import { agentTextInput } from "@/features/agent/public/input";
+import { useCanSendToAgent, useChatSend } from "@/features/agent/public/input";
+import { dismissActiveSessionProblem } from "@/features/agent/public/run";
+import { useActiveSessionProblem } from "@/features/agent/public/run";
+import { useT } from "@/lib/i18n/index";
+import { disclosureExitTransition, disclosureTransition } from "@/lib/motion";
+import { describeActiveRunRefusal, describeErrorType } from "@/lib/rpcErrors";
+import { openDiagnosticsView } from "@/features/workspace/public/deeplinks";
+import { showWorkspaceDock } from "@/features/workspace/public/navigation";
+import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
+import { type AgentProblem } from "@/features/agent/public/sessionView";
+import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
+import { color, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+const reb = stylex.create({
+  plain: { fontWeight: weight.regular },
+  sans: { fontFamily: "var(--font-sans)" },
+  glyph: { marginTop: space.s0_5, color: color.negative },
+});
+
+function findLastUserText(): string {
+  const last = getActiveConversationMessages().findLast(
+    (m) => m.role === "user" && flattenText(m.blocks).trim() !== "",
+  );
+  return last ? flattenText(last.blocks).trim() : "";
+}
+
+interface RetryCountdown {
+  problem: AgentProblem | null;
+  retryAfter: number;
+  remaining: number;
+}
+
+export function RunErrorBanner() {
+  const t = useT();
+  const error = useActiveSessionProblem();
+  const send = useChatSend();
+  const hasSendAction = useCanSendToAgent();
+  const runtimeAvailable = useRuntimeCommandsAvailable();
+  const canSend = hasSendAction && runtimeAvailable;
+
+  const retryAfter = error?.retryAfterSeconds ?? 0;
+  const [countdown, setCountdown] = useState<RetryCountdown>({
+    problem: null,
+    retryAfter: 0,
+    remaining: 0,
+  });
+  const retryIn =
+    countdown.problem === error && countdown.retryAfter === retryAfter
+      ? countdown.remaining
+      : retryAfter;
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    const started = performance.now();
+    const id = setInterval(() => {
+      const rem = Math.max(0, Math.ceil(retryAfter - (performance.now() - started) / 1000));
+      setCountdown({ problem: error, retryAfter, remaining: rem });
+      if (rem <= 0) clearInterval(id);
+    }, 250);
+    return () => clearInterval(id);
+  }, [error, retryAfter]);
+
+  const retryText = error ? findLastUserText() : "";
+
+  const onRetry = () => {
+    if (retryIn > 0 || !canSend || !retryText) return;
+    if (!send(agentTextInput(retryText))) return;
+    dismissActiveSessionProblem();
+  };
+
+  const canRetry =
+    canSend &&
+    Boolean(retryText) &&
+    error?.recovery !== "stop" &&
+    error?.recovery !== "reauthenticate";
+
+  return (
+    <AnimatePresence initial={false}>
+      {error && (
+        <motion.div
+          role="alert"
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6, transition: disclosureExitTransition }}
+          transition={disclosureTransition}
+          className={stylex.props(sh.banner, sh.bannerCard, reb.sans, vocab.ink).className}
+        >
+          <Icon name="alert" size="sm" className={stylex.props(reb.glyph).className} />
+          <div {...stylex.props(vocab.min)}>
+            <div {...stylex.props(sh.bannerHead)}>
+              <span {...stylex.props(vocab.negative, vocab.strong, typeStep.uiMd)}>
+                {t("runError.title")}
+              </span>
+              {error.code && (
+                <span {...stylex.props(vocab.faint, sh.selectable, typeStep.uiXs, face.mono)}>
+                  {error.code}
+                </span>
+              )}
+            </div>
+            <div {...stylex.props(sh.bannerBody, typeStep.uiMd)}>
+              {describeActiveRunRefusal(error) ??
+                error.message ??
+                describeErrorType(error.code) ??
+                t("runError.unknown")}
+            </div>
+            <div {...stylex.props(sh.bannerActions)}>
+              {canRetry && (
+                <BannerAction
+                  icon="loop"
+                  label={
+                    retryIn > 0
+                      ? t("runError.action.retryIn", { seconds: retryIn })
+                      : t("common.retry")
+                  }
+                  onClick={onRetry}
+                  disabled={retryIn > 0}
+                  primary
+                />
+              )}
+              <BannerAction
+                icon="history"
+                label={t("runError.action.context")}
+                onClick={showWorkspaceDock}
+              />
+              <BannerAction
+                icon="activity"
+                label={t("runError.action.diagnostics")}
+                onClick={openDiagnosticsView}
+              />
+            </div>
+          </div>
+          <IconButton
+            icon={iconGlyph("x")}
+            size="xs"
+            quiet
+            aria-label={t("runError.action.dismiss")}
+            onClick={dismissActiveSessionProblem}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}

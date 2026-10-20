@@ -1,8 +1,10 @@
 package modelref
 
-import modelchoice "github.com/Tangerg/flame/runtime/model"
+import (
+	"testing"
 
-import "testing"
+	modelchoice "github.com/Tangerg/flame/runtime/model"
+)
 
 func TestRoleOwnsProviderModelOnly(t *testing.T) {
 	role, err := NewRole("openai", "gpt-5")

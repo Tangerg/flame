@@ -31,7 +31,7 @@ type Options struct {
 type Result struct {
 	Value   any
 	Events  iter.Seq2[any, error]
-	Failure *Failure
+	Failure *protocol.Failure
 }
 
 // Endpoint executes the one Runtime operation catalog independently of any
@@ -103,7 +103,7 @@ func (e *Endpoint) AwaitShutdown(ctx context.Context) error {
 func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, options Options) Result {
 	ctx, release, admitted := e.invocations.Attach(ctx)
 	if !admitted {
-		return failed(ProjectError(context.Canceled))
+		return failed(projectError(context.Canceled))
 	}
 	defer func() {
 		if release != nil {
@@ -112,35 +112,35 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	}()
 	method, ok := contract.lookup(name)
 	if !ok {
-		return failed(NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", name)))
+		return failed(protocol.NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", name)))
 	}
 	if err := validateOptions(method.Meta, options); err != nil {
 		return failed(err)
 	}
 	if options.IdempotencyKey != "" && options.IdempotencyNamespace != "" &&
 		options.IdempotencyNamespace != e.idempotencyNamespace.String() {
-		return failed(NewFailure(
+		return failed(protocol.NewFailure(
 			protocol.ErrIdempotencyStoreMismatch,
 			"idempotency namespace does not identify this Runtime store",
 		))
 	}
 	if reflect.TypeOf(parameters) != method.Meta.Params {
-		return failed(NewFailure(
+		return failed(protocol.NewFailure(
 			protocol.ErrInvalidParams,
 			fmt.Sprintf("%s parameters have type %T, want %s", name, parameters, method.Meta.Params),
 		))
 	}
 	if err := protocol.ValidateWireTree(parameters); err != nil {
-		return failed(InvalidParameters(err))
+		return failed(protocol.InvalidParameters(err))
 	}
 	if err := ctx.Err(); err != nil {
-		return failed(ProjectError(err))
+		return failed(projectError(err))
 	}
 	if method.prepare != nil {
 		var err error
 		method, err = method.prepare(e.target, ctx, parameters)
 		if err != nil {
-			return failed(ProjectError(err))
+			return failed(projectError(err))
 		}
 		if failure := validateOptions(method.Meta, options); failure != nil {
 			return failed(failure)
@@ -156,7 +156,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	if method.Meta.Idempotency == IdempotencyOwnerRun {
 		fingerprint, err := runCommandFingerprint(method.Meta.Name, parameters, options.RequestMeta.ClientCapabilities)
 		if err != nil {
-			return failed(ProjectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
+			return failed(projectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
 		}
 		ctx = withCommandIdentity(ctx, commandIdentity{key: options.IdempotencyKey, fingerprint: fingerprint})
 	}
@@ -174,7 +174,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 		// The durable Run acceptance remains the only command outcome authority.
 		releaseKey, err := e.idempotency.inFlight.Acquire(ctx, options.IdempotencyKey)
 		if err != nil {
-			return failed(ProjectError(err))
+			return failed(projectError(err))
 		}
 		defer releaseKey()
 		result = execute()
@@ -194,7 +194,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 func (e *Endpoint) execute(ctx context.Context, method *Method, parameters any) Result {
 	raw := method.invoke(e.target, ctx, parameters)
 	if raw.err != nil {
-		return failed(ProjectError(raw.err))
+		return failed(projectError(raw.err))
 	}
 	if err := method.Meta.ValidateResult(raw.value); err != nil {
 		return failed(runtimeProduced("an invalid response", err))
@@ -209,7 +209,7 @@ func validateEvents(ctx context.Context, eventType reflect.Type, events iter.Seq
 	return func(yield func(any, error) bool) {
 		for event, err := range events {
 			if err != nil {
-				yield(nil, ProjectError(err))
+				yield(nil, projectError(err))
 				return
 			}
 			if actual := reflect.TypeOf(event); actual != eventType {
@@ -250,49 +250,49 @@ func allowsEvent(ctx context.Context, event any) bool {
 	return true
 }
 
-func validateOptions(method MethodMeta, options Options) *Failure {
+func validateOptions(method MethodMeta, options Options) *protocol.Failure {
 	if err := protocol.ValidateWireTree(options.RequestMeta); err != nil {
-		return InvalidParameters(err)
+		return protocol.InvalidParameters(err)
 	}
 	version := options.RequestMeta.ProtocolVersion
 	if version != "" && version != protocol.ProtocolVersion {
-		return NewFailure(
+		return protocol.NewFailure(
 			protocol.ErrInvalidProtocolVersion,
 			fmt.Sprintf("protocolVersion %q is unsupported; expected %q", version, protocol.ProtocolVersion),
 		)
 	}
 	if options.IdempotencyKey != "" && !method.Idempotency.Replays() {
-		return NewFailure(protocol.ErrInvalidParams, "this operation does not accept an idempotency key")
+		return protocol.NewFailure(protocol.ErrInvalidParams, "this operation does not accept an idempotency key")
 	}
 	if method.Idempotency == IdempotencyOwnerRun && options.IdempotencyKey == "" {
-		return NewFailure(protocol.ErrInvalidParams, "a Run command requires an idempotency key retained by its caller")
+		return protocol.NewFailure(protocol.ErrInvalidParams, "a Run command requires an idempotency key retained by its caller")
 	}
 	if len(options.IdempotencyKey) > maxIdempotencyKeyBytes {
-		return NewFailure(protocol.ErrInvalidParams, "idempotency key must not exceed 255 bytes")
+		return protocol.NewFailure(protocol.ErrInvalidParams, "idempotency key must not exceed 255 bytes")
 	}
 	if options.IdempotencyNamespace != "" && options.IdempotencyKey == "" {
-		return NewFailure(protocol.ErrInvalidParams, "an idempotency namespace requires an idempotency key")
+		return protocol.NewFailure(protocol.ErrInvalidParams, "an idempotency namespace requires an idempotency key")
 	}
 	if options.IdempotencyNamespace != "" {
 		if _, err := runtimeidentity.ParseIdempotencyNamespace(options.IdempotencyNamespace); err != nil {
-			return NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("idempotency namespace: %v", err))
+			return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("idempotency namespace: %v", err))
 		}
 	}
 	if options.AfterEventID != "" {
 		if method.ReplayCursor != ReplayCursorRun {
-			return NewFailure(protocol.ErrInvalidParams, "this operation does not accept a run replay cursor")
+			return protocol.NewFailure(protocol.ErrInvalidParams, "this operation does not accept a run replay cursor")
 		}
 		if method.Operation == OperationCommand && options.IdempotencyKey == "" {
-			return NewFailure(protocol.ErrInvalidParams, "a run command replay cursor requires an idempotency key")
+			return protocol.NewFailure(protocol.ErrInvalidParams, "a run command replay cursor requires an idempotency key")
 		}
 		if err := runtimeidentity.ValidateEventIdentity(options.AfterEventID); err != nil {
-			return NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("run replay cursor: %v", err))
+			return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("run replay cursor: %v", err))
 		}
 	}
 	return nil
 }
 
-func failed(failure *Failure) Result { return Result{Failure: failure} }
+func failed(failure *protocol.Failure) Result { return Result{Failure: failure} }
 
 // commandIdentity is the request's idempotency key and fingerprint. It reaches an
 // owner-run-stream handler through the context because the handler owns the

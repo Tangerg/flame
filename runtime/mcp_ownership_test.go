@@ -27,7 +27,7 @@ func TestRuntimeStartupDoesNotCreateMCPServersFromEnvironment(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = runtime.Close() })
-	servers, err := runtime.ListMCPServers(t.Context(), CallOptions{})
+	servers, err := runtime.ListMCPServers(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 			},
 		},
 		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-	}, CommandOptions{IdempotencyKey: "create-managed-server"})
+	}, protocol.CommandOptions{IdempotencyKey: "create-managed-server"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
-	servers, err := reopened.ListMCPServers(t.Context(), CallOptions{})
+	servers, err := reopened.ListMCPServers(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,12 +93,12 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 		stored.Connection.AuthorizationMasked != created.Connection.AuthorizationMasked {
 		t.Fatalf("restart changed resource configuration: got %+v, want %+v", stored, created)
 	}
-	if err := reopened.DeleteMCPServer(t.Context(), protocol.MCPServerRequest{Server: created.ID}, CommandOptions{
+	if err := reopened.DeleteMCPServer(t.Context(), protocol.MCPServerRequest{Server: created.ID}, protocol.CommandOptions{
 		IdempotencyKey: "delete-managed-server",
 	}); err != nil {
 		t.Fatal(err)
 	}
-	servers, err = reopened.ListMCPServers(t.Context(), CallOptions{})
+	servers, err = reopened.ListMCPServers(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = afterDeletion.Close() })
-	servers, err = afterDeletion.ListMCPServers(t.Context(), CallOptions{})
+	servers, err = afterDeletion.ListMCPServers(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

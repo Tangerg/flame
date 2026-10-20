@@ -1,0 +1,33 @@
+{
+  "name": "@flame/component-sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./build": "./build.mjs"
+  },
+  "files": [
+    "src",
+    "build.mjs",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "@flame/ui": "*",
+    "@flame/runtime-client": "*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "^7.0.2",
+    "rolldown": "^1.2.13",
+    "oxlint": "^1.87.0",
+    "prettier": "^3.9.10"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint && npm run format:check",
+    "lint": "oxlint src build.mjs --deny-warnings",
+    "format:check": "prettier --check src build.mjs package.json tsconfig.json"
+  }
+}

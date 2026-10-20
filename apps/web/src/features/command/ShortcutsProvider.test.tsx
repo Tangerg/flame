@@ -1,0 +1,86 @@
+import { render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { definePlugin } from "@/extensions/definePlugin";
+import { useShortcutOverrides } from "@/features/command/public/shortcutOverrides";
+import { COMMAND, SHORTCUT } from "@/features/command/public/extensionPoints";
+import { loadPluginsForTest } from "@/test/kernel";
+import { ShortcutsProvider } from "@/features/command/ShortcutsProvider";
+const press = (init: Partial<KeyboardEventInit> = {}) =>
+  window.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "k", code: "KeyK", altKey: true, ...init }),
+  );
+
+describe("shortcuts provider", () => {
+  it("binds a command's combo without anything else listing the command", async () => {
+    const run = vi.fn();
+    await loadPluginsForTest(
+      definePlugin({
+        name: "test.command.combo",
+        setup: (ctx) => {
+          ctx.contribute(COMMAND, { id: "test.act", label: "Act", combo: "Alt+K", run });
+        },
+      }),
+    );
+    render(<ShortcutsProvider />);
+
+    press();
+
+    expect(run).toHaveBeenCalledOnce();
+  });
+
+  it("lets an explicit shortcut take a key a command already carries", async () => {
+    const command = vi.fn();
+    const shortcut = vi.fn();
+    await loadPluginsForTest(
+      definePlugin({
+        name: "test.command.contested",
+        setup: (ctx) => {
+          ctx.contribute(COMMAND, {
+            id: "test.act",
+            label: "Act",
+            combo: "Alt+K",
+            run: command,
+          });
+          ctx.contribute(SHORTCUT, {
+            key: "Alt+K",
+            description: "shortcut.test",
+            allowInInputs: true,
+            handler: shortcut,
+          });
+        },
+      }),
+    );
+    render(<ShortcutsProvider />);
+
+    press();
+
+    expect(shortcut).toHaveBeenCalledOnce();
+    expect(command).not.toHaveBeenCalled();
+  });
+
+  it("follows a user's rebinding and does not run anything while one is being recorded", async () => {
+    const run = vi.fn();
+    useShortcutOverrides.setState({ overrides: { "test.rebound": "alt+j" }, recording: false });
+    await loadPluginsForTest(
+      definePlugin({
+        name: "test.command.rebound",
+        setup: (ctx) => {
+          ctx.contribute(COMMAND, { id: "test.rebound", label: "Act", combo: "Alt+K", run });
+        },
+      }),
+    );
+    const view = render(<ShortcutsProvider />);
+
+    press();
+    expect(run).not.toHaveBeenCalled();
+    press({ key: "j", code: "KeyJ" });
+    expect(run).toHaveBeenCalledOnce();
+
+    useShortcutOverrides.setState({ recording: true });
+    press({ key: "j", code: "KeyJ" });
+    expect(run).toHaveBeenCalledOnce();
+
+    useShortcutOverrides.setState({ overrides: {}, recording: false });
+    view.unmount();
+  });
+});

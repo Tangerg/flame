@@ -11,7 +11,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/contractcatalog"
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
-	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -95,7 +94,7 @@ func (t *tsEmitter) problemCodes() {
 	t.line("// A failed request's problem.")
 	t.line("export const PROBLEM_RECOVERY = {")
 	for _, name := range slices.Sorted(maps.Keys(codes)) {
-		recovery, declared := delivery.RecoveryFor(name)
+		recovery, declared := protocol.RecoveryFor(name)
 		if !declared {
 			panic("contractgen: problem type " + name + " declares no recovery action")
 		}

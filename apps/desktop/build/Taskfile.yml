@@ -1,0 +1,45 @@
+# Tasks shared by every platform target. The supported build surface is npm plus the
+# desktop host; alternate package-manager, server, container, and CSS-vendoring branches
+# have no product owner here.
+#
+# The hand-written bridge in ../web/src/platform/desktopHost.ts validates values
+# with Zod. Keep that single implementation instead of generated binding copies.
+version: "3"
+
+tasks:
+  build:frontend:
+    summary: Stage the Web product built by the root workspace
+    cmds:
+      - make -C ../.. stage-web
+
+  dev:frontend:
+    dir: ../web
+    cmds:
+      - npm run dev -- --port {{.VITE_PORT}} --strictPort
+    env:
+      WAILS_VITE_PORT: "{{.VITE_PORT}}"
+
+  generate:icons:
+    summary: Generates the macOS `.icns` and its icon-composer assets from build/appicon.png
+    run: once
+    dir: build
+    sources:
+      - "appicon.png"
+    generates:
+      - "darwin/icons.icns"
+    cmds:
+      # The generator has no way to be asked for only the Mac assets — it always writes a
+      # Windows .ico as well — so that byproduct is aimed at the ignored build output
+      # rather than at a build/windows tree this project does not keep.
+      - mkdir -p bin
+      - wails3 generate icons -input appicon.png -macfilename darwin/icons.icns -macassetdir darwin -windowsfilename bin/icon.ico
+
+  update:build-assets:
+    summary: Regenerates the bundle metadata from build/config.yml
+    platforms: [darwin]
+    dir: build
+    cmds:
+      - wails3 update build-assets -name "{{.APP_NAME}}" -binaryname "{{.APP_NAME}}" -config config.yml -dir .
+      # Wails owns the base metadata; application packaging owns the deployment floor.
+      - /usr/libexec/PlistBuddy -c 'Delete :LSMinimumSystemVersion' darwin/Info.plist
+      - /usr/libexec/PlistBuddy -c 'Delete :LSMinimumSystemVersion' darwin/Info.dev.plist

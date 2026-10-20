@@ -130,7 +130,7 @@ func TestListModelsProjectsDiscoveryFailures(t *testing.T) {
 			if page != nil || !errors.Is(err, protocol.ErrProviderError) {
 				t.Fatalf("ListModels = (%v, %v), want provider failure", page, err)
 			}
-			problem := ProjectError(err).Problem()
+			problem := projectError(err).Problem()
 			if strings.Contains(problem.Detail, "secret-token") {
 				t.Fatalf("exposed upstream details: %+v", problem)
 			}

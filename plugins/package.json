@@ -1,21 +1,22 @@
 {
-  "name": "@flame/portable-views",
+  "name": "@flame/plugins",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node build-components.mjs",
+    "build": "node scripts/build-components.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint */src/*.tsx build-*.mjs --deny-warnings",
-    "format:check": "prettier --check */src/*.tsx build-*.mjs package.json tsconfig.json",
-    "check:resources": "node build-components.mjs --check",
-    "test": "node --test build-release.test.mjs",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run check:resources"
+    "lint": "oxlint */component scripts --deny-warnings",
+    "format:check": "prettier --check */component scripts package.json tsconfig.json",
+    "check:resources": "node scripts/build-components.mjs --check",
+    "test": "node --test scripts/build-release.test.mjs",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run check:resources",
+    "generate": "npm run build"
   },
   "dependencies": {
-    "@flame/icons": "file:../icons",
-    "@flame/plugin-sdk": "file:../plugin-sdk",
-    "@flame/runtime-contract": "file:../runtime/contract/typescript",
-    "@flame/ui": "file:../ui",
+    "@flame/icons": "*",
+    "@flame/component-sdk": "*",
+    "@flame/runtime-client": "*",
+    "@flame/ui": "*",
     "marked": "18.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"

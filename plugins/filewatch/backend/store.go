@@ -7,8 +7,8 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 

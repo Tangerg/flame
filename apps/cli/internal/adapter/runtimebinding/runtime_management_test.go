@@ -1,0 +1,511 @@
+package runtimebinding
+
+import (
+	"context"
+	"errors"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
+)
+
+type usageBindingStub struct {
+	session func(context.Context, protocol.SessionUsageRequest, protocol.CallOptions) (*protocol.SessionUsage, error)
+	summary func(context.Context, protocol.UsageSummaryRequest, protocol.CallOptions) (*protocol.UsageSummary, error)
+}
+
+func (u usageBindingStub) GetSessionUsage(ctx context.Context, request protocol.SessionUsageRequest, options protocol.CallOptions) (*protocol.SessionUsage, error) {
+	return u.session(ctx, request, options)
+}
+
+func (u usageBindingStub) GetUsageSummary(ctx context.Context, request protocol.UsageSummaryRequest, options protocol.CallOptions) (*protocol.UsageSummary, error) {
+	return u.summary(ctx, request, options)
+}
+
+func TestUsageAdapterProjectsSessionAndSummaryReports(t *testing.T) {
+	cost := 0.25
+	stub := usageBindingStub{
+		session: func(_ context.Context, request protocol.SessionUsageRequest, options protocol.CallOptions) (*protocol.SessionUsage, error) {
+			if request.SessionID != "ses_1" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
+				t.Fatalf("session usage request = %+v, options = %+v", request, options)
+			}
+			return &protocol.SessionUsage{
+				RecordedUsage: protocol.RecordedUsage{Total: protocol.ModelUsage{InputTokens: 12, CostUSD: new(cost)}, Coverage: protocol.UsageCoverage{Calls: 1, ReportedCalls: 1, PricedCalls: 1, CompletedCalls: 1}},
+				ByModel: []protocol.UsageBucket{
+					{Key: "z/model", RecordedUsage: protocol.RecordedUsage{Total: protocol.ModelUsage{OutputTokens: 2}}},
+					{Key: "a/model", RecordedUsage: protocol.RecordedUsage{Total: protocol.ModelUsage{InputTokens: 3}}},
+				},
+			}, nil
+		},
+		summary: func(_ context.Context, request protocol.UsageSummaryRequest, _ protocol.CallOptions) (*protocol.UsageSummary, error) {
+			if request.SinceDays == nil || *request.SinceDays != 30 {
+				t.Fatalf("summary request = %+v", request)
+			}
+			return &protocol.UsageSummary{
+				RecordedUsage: protocol.RecordedUsage{Total: protocol.ModelUsage{InputTokens: 20}}, Sessions: 2, Runs: 4,
+				ByProvider: []protocol.UsageBucket{{Key: "deepseek", RecordedUsage: protocol.RecordedUsage{Coverage: protocol.UsageCoverage{Calls: 4}}}},
+			}, nil
+		},
+	}
+	runtime := &Connection{usage: stub, meta: requestMeta("test")}
+	session, err := runtime.SessionUsage(t.Context(), "ses_1")
+	if err != nil || len(session.ByModel) != 2 || session.ByModel[0].Key != "z/model" || session.Total.CostUSD == nil {
+		t.Fatalf("SessionUsage = (%+v, %v)", session, err)
+	}
+	cost = 9
+	if *session.Total.CostUSD != 0.25 {
+		t.Fatal("session usage projection aliases runtime cost storage")
+	}
+	summary, err := runtime.Summary(t.Context(), recentUsagePeriod(t, 30))
+	if err != nil || summary.Runs != 4 || len(summary.ByProvider) != 1 {
+		t.Fatalf("Summary = (%+v, %v)", summary, err)
+	}
+}
+
+func TestUsageAdapterKeepsAllTimeAbsentOnTheWire(t *testing.T) {
+	t.Parallel()
+	runtime := &Connection{usage: usageBindingStub{
+		summary: func(_ context.Context, request protocol.UsageSummaryRequest, _ protocol.CallOptions) (*protocol.UsageSummary, error) {
+			if request.SinceDays != nil {
+				t.Fatalf("all-time summary sent sinceDays = %d", *request.SinceDays)
+			}
+			return &protocol.UsageSummary{}, nil
+		},
+	}, meta: requestMeta("test")}
+
+	report, err := runtime.Summary(t.Context(), conversation.AllTimeUsage())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if days, recent, err := report.Period.Days(); err != nil || recent || days != 0 {
+		t.Fatalf("summary period = (%d, %t, %v), want all-time", days, recent, err)
+	}
+}
+
+func TestUsageAdapterRejectsUnknownPeriodBeforeCallingRuntime(t *testing.T) {
+	t.Parallel()
+	called := false
+	runtime := &Connection{usage: usageBindingStub{
+		summary: func(context.Context, protocol.UsageSummaryRequest, protocol.CallOptions) (*protocol.UsageSummary, error) {
+			called = true
+			return &protocol.UsageSummary{}, nil
+		},
+	}, meta: requestMeta("test")}
+
+	if _, err := runtime.Summary(t.Context(), conversation.UsageSummaryPeriod{}); err == nil {
+		t.Fatal("Summary accepted an unknown period")
+	}
+	if called {
+		t.Fatal("Summary called the runtime binding before rejecting an unknown period")
+	}
+}
+
+func TestSessionUsageRejectsInvalidIdentityBeforeCallingRuntime(t *testing.T) {
+	t.Parallel()
+	called := false
+	runtime := &Connection{usage: usageBindingStub{
+		session: func(context.Context, protocol.SessionUsageRequest, protocol.CallOptions) (*protocol.SessionUsage, error) {
+			called = true
+			return &protocol.SessionUsage{}, nil
+		},
+	}, meta: requestMeta("test")}
+
+	if _, err := runtime.SessionUsage(t.Context(), " ses_1"); err == nil || !strings.Contains(err.Error(), "sessionId") {
+		t.Fatalf("SessionUsage error = %v, want sessionId field", err)
+	}
+	if called {
+		t.Fatal("SessionUsage called Runtime with an invalid session identity")
+	}
+}
+
+func recentUsagePeriod(t *testing.T, days int) conversation.UsageSummaryPeriod {
+	t.Helper()
+	period, err := conversation.RecentUsageDays(days)
+	if err != nil {
+		t.Fatalf("conversation.RecentUsageDays(%d): %v", days, err)
+	}
+	return period
+}
+
+type modelConfigBindingStub struct {
+	utility       protocol.UtilityRole
+	embedding     protocol.EmbeddingRole
+	providers     []protocol.Provider
+	utilityReply  *protocol.UtilityRole
+	providerReply *protocol.Provider
+	utilitySet    func(protocol.UtilityRole, protocol.CommandOptions)
+	embeddingSet  func(protocol.EmbeddingRole, protocol.CommandOptions)
+	updated       func(protocol.UpdateProviderRequest, protocol.CommandOptions)
+}
+
+func (m *modelConfigBindingStub) GetUtilityRole(context.Context, protocol.CallOptions) (*protocol.UtilityRole, error) {
+	return &m.utility, nil
+}
+
+func (m *modelConfigBindingStub) SetUtilityRole(_ context.Context, request protocol.UtilityRole, options protocol.CommandOptions) (*protocol.UtilityRole, error) {
+	m.utilitySet(request, options)
+	if m.utilityReply != nil {
+		return m.utilityReply, nil
+	}
+	m.utility = request
+	return &m.utility, nil
+}
+
+func (m *modelConfigBindingStub) GetEmbeddingRole(context.Context, protocol.CallOptions) (*protocol.EmbeddingRole, error) {
+	return &m.embedding, nil
+}
+
+func (m *modelConfigBindingStub) SetEmbeddingRole(_ context.Context, request protocol.EmbeddingRole, options protocol.CommandOptions) (*protocol.EmbeddingRole, error) {
+	m.embeddingSet(request, options)
+	m.embedding = request
+	return &m.embedding, nil
+}
+
+func (m *modelConfigBindingStub) ListProviders(context.Context, protocol.CallOptions) (*protocol.Page[protocol.Provider], error) {
+	return protocol.NewPage(m.providers), nil
+}
+
+func (m *modelConfigBindingStub) UpdateProvider(_ context.Context, request protocol.UpdateProviderRequest, options protocol.CommandOptions) (*protocol.Provider, error) {
+	m.updated(request, options)
+	if m.providerReply != nil {
+		return m.providerReply, nil
+	}
+	return &m.providers[0], nil
+}
+
+func TestProviderUpdateRejectsIdentityDrift(t *testing.T) {
+	t.Parallel()
+	stub := &modelConfigBindingStub{
+		providerReply: &protocol.Provider{ID: "other"},
+		updated:       func(protocol.UpdateProviderRequest, protocol.CommandOptions) {},
+	}
+	runtime := &Connection{modelConfig: stub, meta: requestMeta("test")}
+	change := models.ValueChange{Kind: protocol.ProviderConfigClear}
+	_, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "deepseek", APIKey: &change})
+	requireRuntimeContractViolation(t, err)
+}
+
+func TestModelConfigurationRejectsPartialRoleProjection(t *testing.T) {
+	t.Parallel()
+	runtime := &Connection{modelConfig: &modelConfigBindingStub{
+		utility:   protocol.UtilityRole{Provider: "deepseek"},
+		embedding: protocol.EmbeddingRole{},
+	}, meta: requestMeta("test")}
+
+	_, err := runtime.Roles(t.Context())
+	requireRuntimeContractViolation(t, err)
+}
+
+func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
+	t.Parallel()
+	clear := models.ValueChange{Kind: protocol.ProviderConfigClear}
+	result := protocol.Provider{
+		ID: "deepseek", Credential: &protocol.ProviderCredential{Masked: "en****ey", Source: protocol.ProviderKeySourceEnv},
+		Configured: true, CredentialRequirement: protocol.ProviderAPIKeyRequired,
+	}
+	stub := &modelConfigBindingStub{
+		providerReply: &result,
+		updated:       func(protocol.UpdateProviderRequest, protocol.CommandOptions) {},
+	}
+	runtime := &Connection{modelConfig: stub, meta: requestMeta("test")}
+	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
+		Provider: "deepseek", BaseURL: &clear, APIKey: &clear,
+	}); err != nil {
+		t.Fatalf("UpdateProvider clear with environment fallback: %v", err)
+	}
+}
+
+func TestProjectProviderPreservesConfiguredOptionalCredentialState(t *testing.T) {
+	provider, err := projectProvider(protocol.Provider{
+		ID: "test-endpoint", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyOptional,
+		EmbeddingCapable: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !provider.Configured() {
+		t.Fatal("optional credential provider lost its configured state")
+	}
+	if _, present := provider.Credential(); present {
+		t.Fatal("optional credential provider invented a credential")
+	}
+}
+
+func (*modelConfigBindingStub) TestProvider(_ context.Context, request protocol.TestProviderRequest, _ protocol.CallOptions) (*protocol.ProviderTestResult, error) {
+	if request.Provider == "deepseek" {
+		return &protocol.ProviderTestResult{Outcome: protocol.ProviderTestTimedOut}, nil
+	}
+	return &protocol.ProviderTestResult{Outcome: "provider_test_failed"}, nil
+}
+
+func TestModelConfigurationAdapterPreservesRoleAndSecretMutationSemantics(t *testing.T) {
+	stub := &modelConfigBindingStub{
+		utility: protocol.UtilityRole{Provider: "deepseek", Model: "chat"},
+		providers: []protocol.Provider{{
+			ID: "deepseek", Credential: &protocol.ProviderCredential{Masked: "sk****42", Source: protocol.ProviderKeySourceStored},
+			Configured: true, CredentialRequirement: protocol.ProviderAPIKeyRequired,
+			EmbeddingCapable: true,
+		}},
+	}
+	assertCommand := func(options protocol.CommandOptions) {
+		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
+			t.Fatalf("command options = %+v", options)
+		}
+	}
+	stub.utilitySet = func(request protocol.UtilityRole, options protocol.CommandOptions) {
+		assertCommand(options)
+		if request.Provider != "openai" || request.Model != "utility" {
+			t.Fatalf("utility role request = %+v", request)
+		}
+	}
+	stub.embeddingSet = func(request protocol.EmbeddingRole, options protocol.CommandOptions) {
+		assertCommand(options)
+		if request != (protocol.EmbeddingRole{}) {
+			t.Fatalf("embedding role request = %+v", request)
+		}
+	}
+	stub.updated = func(request protocol.UpdateProviderRequest, options protocol.CommandOptions) {
+		assertCommand(options)
+		if request.APIKey == nil || request.APIKey.Type != protocol.ProviderConfigSet || request.APIKey.Value == nil || *request.APIKey.Value != "secret" {
+			t.Fatalf("provider update request = %+v", request)
+		}
+		if request.BaseURL == nil || request.BaseURL.Type != protocol.ProviderConfigClear || request.BaseURL.Value != nil {
+			t.Fatalf("provider endpoint update = %+v", request.BaseURL)
+		}
+	}
+	runtime := &Connection{modelConfig: stub, meta: requestMeta("test")}
+	roles, err := runtime.Roles(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	utilityLabel, labelErr := roles.Utility.Label()
+	if labelErr != nil || utilityLabel != "deepseek/chat" || roles.Embedding.Configured() {
+		t.Fatalf("Roles = (%+v, %v)", roles, err)
+	}
+	utilityRole, roleErr := models.NewConfiguredRole(models.UtilityRole, "openai", "utility")
+	if roleErr != nil {
+		t.Fatal(roleErr)
+	}
+	if _, setRoleErr := runtime.SetRole(t.Context(), utilityRole); setRoleErr != nil {
+		t.Fatal(setRoleErr)
+	}
+	if _, setRoleErr := runtime.SetRole(t.Context(), models.DisabledEmbeddingRole()); setRoleErr != nil {
+		t.Fatal(setRoleErr)
+	}
+	providers, err := runtime.Providers(t.Context())
+	if err != nil || len(providers) != 1 || !providers[0].Configured() {
+		t.Fatalf("Providers = (%+v, %v)", providers, err)
+	}
+	secret := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "secret"}
+	clear := models.ValueChange{Kind: protocol.ProviderConfigClear}
+	if _, updateProviderErr := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "deepseek", BaseURL: &clear, APIKey: &secret}); updateProviderErr != nil {
+		t.Fatal(updateProviderErr)
+	}
+	tested, err := runtime.TestProvider(t.Context(), "deepseek")
+	if err != nil || tested != protocol.ProviderTestTimedOut {
+		t.Fatalf("TestProvider = (%+v, %v)", tested, err)
+	}
+	if outcome, err := runtime.TestProvider(t.Context(), "openai"); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
+		t.Fatalf("TestProvider accepted an outcome outside the closed set: (%q, %v)", outcome, err)
+	}
+	if _, err := runtime.TestProvider(t.Context(), " deepseek"); err == nil {
+		t.Fatal("TestProvider normalized a provider identity")
+	}
+}
+
+type goalBindingStub struct {
+	t            *testing.T
+	current      *protocol.Goal
+	startResult  *protocol.Goal
+	updateResult *protocol.Goal
+	stopResult   *protocol.Goal
+	resumeResult *protocol.Goal
+	last         string
+	getCalls     int
+}
+
+func (g *goalBindingStub) UpdateGoal(_ context.Context, request protocol.UpdateGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
+	if request.SessionID != "ses_1" || request.Objective == "" || options.IdempotencyKey == "" {
+		g.t.Fatalf("update goal request = %+v, options = %+v", request, options)
+	}
+	g.last = "update"
+	if g.updateResult != nil {
+		return ownedGoalResult(g.updateResult), nil
+	}
+	updated := *g.current
+	updated.Objective = request.Objective
+	g.current = &updated
+	return ownedGoalResult(g.current), nil
+}
+
+func (g *goalBindingStub) ClearGoal(_ context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error {
+	if request.SessionID == "" || options.IdempotencyKey == "" {
+		g.t.Fatalf("clear goal request = %+v, options = %+v", request, options)
+	}
+	g.last = "clear"
+	g.current = nil
+	return nil
+}
+
+func (g *goalBindingStub) GetGoal(context.Context, protocol.GoalRequest, protocol.CallOptions) (*protocol.Goal, error) {
+	g.getCalls++
+	return ownedGoalResult(g.current), nil
+}
+
+func (g *goalBindingStub) StartGoal(_ context.Context, request protocol.StartGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
+	if request.SessionID != "ses_1" || request.Objective != "finish" || options.IdempotencyKey == "" {
+		g.t.Fatalf("start goal request = %+v, options = %+v", request, options)
+	}
+	g.last = "start"
+	if g.startResult != nil {
+		return ownedGoalResult(g.startResult), nil
+	}
+	g.current = activeProtocolGoal()
+	g.current.Provider, g.current.Model = request.Provider, request.Model
+	g.current.ReasoningEffort = request.ReasoningEffort
+	return ownedGoalResult(g.current), nil
+}
+
+func (g *goalBindingStub) StopGoal(context.Context, protocol.GoalRequest, protocol.CommandOptions) (*protocol.Goal, error) {
+	g.last = "stop"
+	if g.stopResult != nil {
+		return ownedGoalResult(g.stopResult), nil
+	}
+	stopped := *g.current
+	stopped.Status = protocol.GoalPaused
+	stopped.Reason = &protocol.GoalReason{Code: protocol.GoalReasonStoppedByUser}
+	g.current = &stopped
+	return ownedGoalResult(g.current), nil
+}
+
+func (g *goalBindingStub) ResumeGoal(context.Context, protocol.GoalRequest, protocol.CommandOptions) (*protocol.Goal, error) {
+	g.last = "resume"
+	if g.resumeResult != nil {
+		return ownedGoalResult(g.resumeResult), nil
+	}
+	resumed := *g.current
+	resumed.Status = protocol.GoalActive
+	resumed.Reason = nil
+	g.current = &resumed
+	return ownedGoalResult(g.current), nil
+}
+
+func activeProtocolGoal() *protocol.Goal {
+
+	return &protocol.Goal{
+		SessionID: "ses_1", Objective: "finish", Status: protocol.GoalActive,
+		Provider: "openai", Model: "gpt-5.6-sol",
+		CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(2, 0),
+	}
+}
+
+func TestGoalAdapterProjectsTheCompleteLifecycle(t *testing.T) {
+	stub := &goalBindingStub{t: t}
+	runtime := &Connection{goals: stub, meta: requestMeta("test")}
+	if _, exists, err := runtime.GetGoal(t.Context(), "ses_1"); err != nil || exists {
+		t.Fatalf("empty GetGoal = (%t, %v)", exists, err)
+	}
+	started, err := runtime.StartGoal(t.Context(), protocol.StartGoalRequest{
+		SessionID: "ses_1", Objective: "finish",
+		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
+	})
+	if err != nil || started.Status != protocol.GoalActive || started.ReasoningEffort != "xhigh" || stub.last != "start" {
+		t.Fatalf("StartGoal = (%+v, %v), last %q", started, err, stub.last)
+	}
+	updated, err := runtime.UpdateGoal(t.Context(), protocol.UpdateGoalRequest{SessionID: "ses_1", Objective: "ship"})
+	if err != nil || updated.Objective != "ship" || stub.last != "update" {
+		t.Fatalf("UpdateGoal = (%+v, %v), last %q", updated, err, stub.last)
+	}
+	stopped, err := runtime.StopGoal(t.Context(), "ses_1")
+	if err != nil || stopped.Status != protocol.GoalPaused || stopped.Reason == nil || stub.last != "stop" {
+		t.Fatalf("StopGoal = (%+v, %v), last %q", stopped, err, stub.last)
+	}
+	resumed, err := runtime.ResumeGoal(t.Context(), "ses_1")
+	if err != nil || resumed.Status != protocol.GoalActive || stub.last != "resume" {
+		t.Fatalf("ResumeGoal = (%+v, %v), last %q", resumed, err, stub.last)
+	}
+	completing := *stub.current
+	completing.Status = protocol.GoalCompleting
+	stub.current = &completing
+	observed, exists, err := runtime.GetGoal(t.Context(), "ses_1")
+	if err != nil || !exists || observed.Status != protocol.GoalCompleting || observed.Reason != nil {
+		t.Fatalf("completing GetGoal = (%+v, %t, %v)", observed, exists, err)
+	}
+	if err := runtime.ClearGoal(t.Context(), "ses_1"); err != nil || stub.last != "clear" {
+		t.Fatalf("ClearGoal = %v, last %q", err, stub.last)
+	}
+}
+
+func TestGoalAdapterAcceptsRuntimeResolvedInheritedSelection(t *testing.T) {
+	t.Parallel()
+	resolved := activeProtocolGoal()
+	resolved.Provider = "deepseek"
+	resolved.Model = "deepseek-chat"
+	stub := &goalBindingStub{t: t, startResult: resolved}
+	runtime := &Connection{goals: stub, meta: requestMeta("test")}
+
+	started, err := runtime.StartGoal(t.Context(), protocol.StartGoalRequest{
+		SessionID: "ses_1", Objective: "finish",
+	})
+	if err != nil {
+		t.Fatalf("StartGoal with inherited selection: %v", err)
+	}
+	if started.Provider != "deepseek" || started.Model != "deepseek-chat" {
+		t.Fatalf("resolved selection = %s/%s", started.Provider, started.Model)
+	}
+}
+
+func TestGoalAdapterRejectsAResponseForAnotherSession(t *testing.T) {
+	t.Parallel()
+	stub := &goalBindingStub{t: t, current: activeProtocolGoal()}
+	runtime := &Connection{goals: stub, meta: requestMeta("test")}
+
+	_, _, err := runtime.GetGoal(t.Context(), "ses_other")
+	requireRuntimeContractViolation(t, err)
+}
+
+func TestGoalAdapterRejectsInvalidSessionIdentityBeforeCallingRuntime(t *testing.T) {
+	tests := []struct {
+		name   string
+		invoke func(*Connection) error
+	}{
+		{name: "get", invoke: func(runtime *Connection) error {
+			_, _, err := runtime.GetGoal(t.Context(), " ses_1 ")
+			return err
+		}},
+		{name: "clear", invoke: func(runtime *Connection) error {
+			return runtime.ClearGoal(t.Context(), " ses_1 ")
+		}},
+		{name: "stop", invoke: func(runtime *Connection) error {
+			_, err := runtime.StopGoal(t.Context(), " ses_1 ")
+			return err
+		}},
+		{name: "resume", invoke: func(runtime *Connection) error {
+			_, err := runtime.ResumeGoal(t.Context(), " ses_1 ")
+			return err
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			stub := &goalBindingStub{t: t, current: activeProtocolGoal()}
+			runtime := &Connection{goals: stub, meta: requestMeta("test")}
+			if err := test.invoke(runtime); err == nil {
+				t.Fatal("invalid session identity was accepted")
+			}
+			if stub.last != "" || stub.getCalls != 0 {
+				t.Fatalf("invalid session identity reached Runtime: last=%q getCalls=%d", stub.last, stub.getCalls)
+			}
+		})
+	}
+}
+
+func ownedGoalResult(value *protocol.Goal) *protocol.Goal {
+	if value == nil {
+		return nil
+	}
+	owned := cloneGoal(*value)
+	return &owned
+}

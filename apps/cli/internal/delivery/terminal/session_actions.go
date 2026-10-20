@@ -1,0 +1,326 @@
+package terminal
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/components/headless"
+	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/core/keymap"
+	"github.com/Tangerg/oolong/core/layout"
+)
+
+type sessionImport struct {
+	path     string
+	artifact session.Document
+}
+
+func (a *app) prepareSessionImport(path string) error {
+	if a.transfers == nil {
+		return errors.New("this runtime composition has no session transfer service")
+	}
+	if err := a.requireRuntimeFeature(protocol.FeatureSessionExport); err != nil {
+		return err
+	}
+	workspace := authoringDirectory(a.localDirectory, a.session.current.Workspace.Path)
+	a.message("reading session artifact")
+	started := a.runOperation(sessionOutputOperation, false,
+		func(context.Context) (sessionImport, error) {
+			artifact, err := a.artifacts.Load(workspace, path)
+			return sessionImport{path: path, artifact: artifact}, err
+		},
+		func(prepared sessionImport, err error) {
+			if err != nil {
+				a.message("import session failed: " + err.Error())
+				return
+			}
+			a.confirmAction(
+				"Import session",
+				"Import "+prepared.path+"? An existing session with the artifact ID will be replaced.",
+				"Import and replace",
+				func() { a.importSession(prepared.artifact) },
+			)
+		},
+	)
+	if !started {
+		return errors.New("another session output operation is already running")
+	}
+	return nil
+}
+
+func (a *app) importSession(artifact session.Document) {
+	a.runSessionChange("importing session",
+		func(ctx context.Context) (conversation.SessionSnapshot, error) {
+			imported, err := a.transfers.ImportSession(ctx, session.ImportRequest{Artifact: artifact})
+			if err != nil {
+				return conversation.SessionSnapshot{}, err
+			}
+			return a.readSessionAfterMutation(ctx, imported.ID)
+		},
+		func(snapshot conversation.SessionSnapshot) error {
+			if err := a.installSnapshot(snapshot); err != nil {
+				return err
+			}
+			a.message("imported session · " + displayTitle(snapshot.Session))
+			return nil
+		},
+	)
+}
+
+func (a *app) prepareSessionRollback(argument string) error {
+	request, err := parseRollbackArgument(a.session.current.ID, argument)
+	if err != nil {
+		return err
+	}
+	if request.RestoresFiles() {
+		if err := a.requireRuntimeFeature(protocol.FeatureCheckpoints); err != nil {
+			return err
+		}
+	}
+	a.message("previewing rollback")
+	started := a.runOperation(sessionOutputOperation, false,
+		func(ctx context.Context) (rollbackPreview, error) {
+			snapshot, err := a.runtime.GetSession(ctx, request.SessionID)
+			if err != nil {
+				return rollbackPreview{}, err
+			}
+			return previewRollback(snapshot, request)
+		},
+		func(preview rollbackPreview, err error) {
+			if err != nil {
+				a.message("preview rollback failed: " + err.Error())
+				return
+			}
+			a.confirmAction(
+				"Rollback session",
+				preview.Description()+" This cannot be undone.",
+				"Rollback permanently",
+				func() { a.rollbackSession(preview) },
+			)
+		},
+	)
+	if !started {
+		return errors.New("another session output operation is already running")
+	}
+	return nil
+}
+
+type rollbackPreview struct {
+	request    conversation.RollbackSession
+	settlement session.RollbackPreview
+}
+
+func previewRollback(snapshot conversation.SessionSnapshot, request conversation.RollbackSession) (rollbackPreview, error) {
+	settlement, err := session.PreviewRollback(snapshot, request)
+	return rollbackPreview{request: request, settlement: settlement}, err
+}
+
+func (r rollbackPreview) ValidateCommit(snapshot conversation.SessionSnapshot) error {
+	return r.settlement.ValidateCommit(snapshot)
+}
+
+// ValidateApplied proves a history rollback committed when its command result
+// was lost behind a post-commit cleanup error. Files-only rollback has no
+// observable session projection change and therefore cannot use this proof.
+func (r rollbackPreview) ValidateApplied(snapshot conversation.SessionSnapshot) error {
+	return r.settlement.ValidateApplied(snapshot)
+}
+
+func (r rollbackPreview) Description() string {
+	boundary := "the empty-session boundary"
+	if r.request.ToRunID != "" {
+		boundary = shortIdentity(r.request.ToRunID)
+	}
+	if r.request.FilesOnly() {
+		return fmt.Sprintf("Restore checkpointed files to %s while keeping chat history? Ignored and oversized files are not archived; conflicting unarchived content blocks restore.", boundary)
+	}
+	if r.request.RestoresFiles() {
+		return fmt.Sprintf("Restore checkpointed files to %s, then remove %d later runs? Ignored and oversized files are not archived; conflicting unarchived content blocks restore. Partial failures retain recovery intent.", boundary, r.settlement.DroppedCount())
+	}
+	return fmt.Sprintf("Restore %s to %s and remove %d later runs?", r.request.Scope, boundary, r.settlement.DroppedCount())
+}
+
+type rollbackSettlement struct {
+	result session.RollbackResult
+	err    error
+}
+
+func (a *app) rollbackSession(preview rollbackPreview) {
+	a.runSessionChange("rolling back session",
+		func(ctx context.Context) (rollbackSettlement, error) {
+			result, err := session.Rollback(
+				ctx, a.runtime, a.workbench, preview.settlement,
+				a.replayPolicy, runtimeRecoveryBackoff,
+			)
+			if result.Pending.CommandID == "" {
+				return rollbackSettlement{}, err
+			}
+			return rollbackSettlement{result: result, err: err}, nil
+		},
+		func(settlement rollbackSettlement) error {
+			return a.applyRollbackSettlement(settlement)
+		},
+	)
+}
+
+func (a *app) applyRollbackSettlement(settlement rollbackSettlement) error {
+	result := settlement.result
+	switch result.Outcome {
+	case mutation.Rejected:
+		if err := session.RejectRollback(a.workbench, result); err != nil {
+			a.message("rollback session failed; local intent cleanup failed: " + errors.Join(settlement.err, err).Error())
+			return nil
+		}
+		a.message("rollback session failed: " + settlement.err.Error())
+		return nil
+	case mutation.Unknown:
+		a.message("rollback outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + settlement.err.Error())
+		return nil
+	case mutation.Confirmed:
+	default:
+		return errors.New("rollback settlement returned an invalid outcome")
+	}
+
+	confirmationErr := session.ConfirmRollback(a.workbench, result)
+	installation, err := a.prepareSessionInstallation(result.Snapshot)
+	if err != nil {
+		return errors.Join(confirmationErr, err)
+	}
+	installation.apply(a)
+	recovery := installation.rollbackRecovery
+	if confirmationErr != nil {
+		current, _, draftErr := a.currentDraft()
+		if draftErr != nil {
+			return errors.Join(confirmationErr, draftErr)
+		}
+		recovered, merged := workbench.MergeSessionRollbackDraft(current, result.Pending)
+		recovery = &workbench.SessionRollbackRecovery{
+			Draft: recovered, DroppedCount: len(result.Pending.BeforeRunIDs) - len(result.Pending.AfterRunIDs),
+			OpeningImages: result.Pending.OpeningImages, Merged: merged,
+		}
+		if persistErr := a.recoverDraft(recovered); persistErr != nil {
+			label := fmt.Sprintf("rolled back %d runs; restored text was not saved: %v", recovery.DroppedCount, persistErr)
+			label = appendRollbackWarnings(label, recovery.OpeningImages, settlement.err, confirmationErr)
+			a.message(label)
+			return nil
+		}
+	}
+	if recovery == nil {
+		return errors.New("confirmed rollback did not produce local recovery state")
+	}
+	label := fmt.Sprintf("rolled back session · %d runs removed", recovery.DroppedCount)
+	if recovery.Merged {
+		label += "; restored opening text before the newer draft"
+	}
+	label = appendRollbackWarnings(label, recovery.OpeningImages, settlement.err, confirmationErr)
+	a.message(label)
+	return nil
+}
+
+func appendRollbackWarnings(label string, images int, cleanupErr, journalErr error) string {
+	if images > 0 {
+		label += fmt.Sprintf("; %d inline images must be reattached", images)
+	}
+	if cleanupErr != nil {
+		label += "; runtime cleanup warning: " + cleanupErr.Error()
+	}
+	if journalErr != nil {
+		label += "; local recovery journal warning: " + journalErr.Error()
+	}
+	return label
+}
+
+func rollbackRecoveryNotice(recovery workbench.SessionRollbackRecovery) string {
+	label := fmt.Sprintf("recovered rollback input · %d runs removed", recovery.DroppedCount)
+	if recovery.Merged {
+		label += "; restored opening text before the newer draft"
+	}
+	if recovery.OpeningImages > 0 {
+		label += fmt.Sprintf("; %d inline images must be reattached", recovery.OpeningImages)
+	}
+	return label
+}
+
+func parseRollbackArgument(sessionID, argument string) (conversation.RollbackSession, error) {
+	fields := strings.Fields(argument)
+	if len(fields) == 0 || len(fields) > 2 {
+		return conversation.RollbackSession{}, errors.New("usage: /rollback <run-id|all> [history|files|both]")
+	}
+	boundary := fields[0]
+	if strings.EqualFold(boundary, "all") {
+		boundary = ""
+	}
+	scope := protocol.RestoreHistory
+	if len(fields) == 2 {
+		scope = protocol.RestoreType(strings.ToLower(fields[1]))
+	}
+	request := conversation.RollbackSession{SessionID: sessionID, ToRunID: boundary, Scope: scope}
+	if err := request.Validate(); err != nil {
+		return conversation.RollbackSession{}, err
+	}
+	return request, nil
+}
+
+func (a *app) confirmAction(title, question, action string, confirm func()) {
+	a.confirmActionWithContent(title, question, action, "", confirm)
+}
+
+func (a *app) confirmActionWithContent(title, question, action, content string, confirm func()) {
+	a.dismissConfirmation()
+	generation := a.session.context
+	confirmed := false
+	choice := headless.NewSelect(headless.SelectConfig[bool]{Same: headless.Equal[bool], Label: question, Value: headless.Bind(&confirmed), Rows: 2})
+	choice.SetOptions([]headless.Option[bool]{
+		{Label: "Cancel", Value: false},
+		{Label: action, Value: true},
+	})
+	form := headless.NewForm(choice)
+	form.Keys = headless.DefaultFormKeys()
+	var dialog *kit.Dialog
+	dismiss := func() {
+		if a.dialogs.confirmationDialog == dialog {
+			dialog.Controller().Dismiss()
+			a.dialogs.confirmationDialog = nil
+		}
+	}
+	form.Done = func() {
+		current := a.dialogs.confirmationDialog == dialog
+		dismiss()
+		if current && confirmed && a.session.context.current(generation) {
+			confirm()
+		}
+	}
+	form.GaveUp = dismiss
+	formBody := kit.NewForm(kit.FormConfig{
+		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
+		Hints: []keymap.Action{headless.Submit, headless.Cancel},
+	})
+	var body headless.Widget = formBody
+	placement := layout.Placement{Width: 78, Height: 9}
+	if content != "" {
+		viewport := headless.NewViewport(headless.Static{Of: kit.NewParagraph(content, a.transcript.theme.Text)})
+		viewport.Scroll().Wheel(a.loop.Environment().Wheel())
+		body = &confirmationContentPane{viewport: viewport, form: formBody}
+		placement = layout.Placement{Width: 96, Height: 26}
+	}
+	dialog = kit.NewDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Title: title, Body: body, Where: placement,
+	})
+	a.dialogs.confirmationDialog = dialog
+	dialog.Controller().Show()
+}
+
+func (a *app) dismissConfirmation() {
+	if a.dialogs.confirmationDialog != nil {
+		a.dialogs.confirmationDialog.Controller().Dismiss()
+		a.dialogs.confirmationDialog = nil
+	}
+}

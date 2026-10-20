@@ -7,8 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
+	transportmeta "github.com/Tangerg/flame/runtime/internal/delivery/transport"
+
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 type blockingCancelRuntime struct {
@@ -41,7 +43,7 @@ func canceledRootResponse(runID string) *protocol.CancelRunResponse {
 func TestReplayClaimSerializesConcurrentMutation(t *testing.T) {
 	runtime := &blockingCancelRuntime{started: make(chan struct{}), release: make(chan struct{})}
 	router := newTestRouter(t, runtime)
-	ctx := transport.WithIdempotencyKey(context.Background(), "cancel-once")
+	ctx := transportmeta.WithIdempotencyKey(context.Background(), "cancel-once")
 	params, err := json.Marshal(protocol.CancelRunRequest{RunID: "run_1"})
 	if err != nil {
 		t.Fatalf("marshal request params: %v", err)

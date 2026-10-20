@@ -7,7 +7,7 @@ are backend-only packages.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
 
-The Flame namespace in root plugin.json references one local declaration file.
+Each source plugin uses `backend/`, `component/` and `package/` for the capabilities it actually has. The Flame namespace in `package/plugin.json` references one local declaration file.
 That strict declaration names each independent contribution ID, its contract file,
 server and export. Composition belongs to the consumer contract. Multiple
 contributions may share one backend; selection never equates their IDs with the
@@ -45,7 +45,7 @@ existing owners without loading a graphical component.
 Build target-specific packages from the repository's local `go.work`:
 
 ```sh
-node plugins/build.mjs --os darwin --arch arm64 --output /absolute/new/packages
+node plugins/scripts/build-packages.mjs --os darwin --arch arm64 --output /absolute/new/packages
 ```
 
 The output directory must not exist. Supported targets are Darwin, Linux and
@@ -98,29 +98,27 @@ mechanisms have one public implementation consumed by both modules.
 Export one complete plugin outside the checkout:
 
 ```sh
-node plugins/build-author-kit.mjs --plugin guardrails --output /absolute/new/author --offline
+node plugins/scripts/build-author-kit.mjs --plugin guardrails --module-path example.com/author/guardrails --output /absolute/new/author --offline
 ```
 
-The author directory contains that plugin's complete source, its own Go module,
-contracts, declaration and build tools. Go dependencies are vendored. Included
-Runtime/localruntime SDK source archives have content-derived development versions;
-they are current-source artifacts, not versions published to a Go registry.
-The exporter never substitutes a released Scope module. UI-backed projects also
-contain packed public SDK/UI/icons/Runtime TS packages and an independent npm lockfile.
-The default plugin is `usage`; select any first-party directory with `--plugin`.
-Omit `--offline` only when declared registry dependencies are missing locally.
+The author owns its explicit module namespace and regenerates its schemas. Go
+production and tool dependencies are vendored from immutable standard root/nested
+module artifacts; SDK source and manifests are never rewritten or trimmed.
+[Consumer distribution](../docs/reference/consumers.md) explains frozen candidate
+versions, verified local materials and isolated offline execution. UI-backed
+projects consume packed SDK/UI/icons packages and their own npm lock. JS
+independent installation is separate from the Go offline guarantee.
 
 In the independent author directory:
 
 ```sh
-GOWORK=off GOPROXY=off go test ./...
-GOWORK=off go generate ./...
+GOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go test ./...
+GOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go generate ./...
 # UI-backed plugins additionally run npm ci --ignore-scripts, npm run typecheck and npm run build.
-node build.mjs --os darwin --arch arm64 --output /absolute/new/packages --archives /absolute/new/releases
+node build.mjs --source "$PWD" --os darwin --arch arm64 --output /absolute/new/packages --archives /absolute/new/releases
 ```
 
-The same builder handles the repository catalog, `--plugin <directory>` or an
-exported single-package project. Install the resulting ZIP through the ordinary
+The collection coordinator calls the same explicit source/output builder used by an exported author project. Install the resulting ZIP through the ordinary
 Runtime `plugins.install` operation or CLI with its absolute Runtime-host path:
 
 ```sh

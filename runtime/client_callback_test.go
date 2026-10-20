@@ -11,10 +11,12 @@ import (
 	"testing"
 	"time"
 
+	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -51,24 +53,24 @@ func TestCoreCallbackBackendProcess(t *testing.T) {
 	backend, err := pluginsdk.NewBackend(server)
 	if err == nil {
 		err = pluginsdk.RegisterServer(backend, "test.backend/core", nil, func(ctx context.Context, _ *sdk.ServerSession, input coreCallbackInput) (string, error) {
-			client, err := ConnectCallback(ctx, input.Host)
+			client, err := runtimeclient.ConnectCallback(ctx, input.Host)
 			if err != nil {
 				return "", err
 			}
 			defer client.Close()
-			acceptance, err := client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: "original", Operation: protocol.RunCommandStart}, CallOptions{})
+			acceptance, err := client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: "original", Operation: protocol.RunCommandStart}, protocol.CallOptions{})
 			if err != nil || acceptance.Type != protocol.RunAcceptanceNotRecorded {
 				return "", fmt.Errorf("original acceptance: %w", err)
 			}
-			_, err = client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: "original", Operation: protocol.RunCommandStart}, CallOptions{RequestMeta: protocol.RequestMeta{ProtocolVersion: "1900-01-01"}})
+			_, err = client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: "original", Operation: protocol.RunCommandStart}, protocol.CallOptions{RequestMeta: protocol.RequestMeta{ProtocolVersion: "1900-01-01"}})
 			if !errors.Is(err, protocol.ErrInvalidProtocolVersion) {
 				return "", fmt.Errorf("core protocol fence: %w", err)
 			}
-			_, _, err = client.StartRun(ctx, protocol.StartRunRequest{SessionID: "ses_absent", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "go"}}}, RunCommandOptions{IdempotencyKey: "original", IdempotencyNamespace: testsupport.IdempotencyNamespace})
-			if !errors.Is(err, protocol.ErrSessionNotFound) || errors.Is(err, ErrAcknowledgementUnknown) {
+			_, _, err = client.StartRun(ctx, protocol.StartRunRequest{SessionID: "ses_absent", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "go"}}}, protocol.RunCommandOptions{IdempotencyKey: "original", IdempotencyNamespace: testsupport.IdempotencyNamespace})
+			if !errors.Is(err, protocol.ErrSessionNotFound) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
 				return "", fmt.Errorf("typed core refusal: %w", err)
 			}
-			_, _, err = client.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}}, SubscriptionOptions{})
+			_, _, err = client.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}}, protocol.SubscriptionOptions{})
 			return "canonical core query, refusal and stream", err
 		})
 	}
@@ -148,13 +150,13 @@ func TestCoreCallbacksUseCanonicalDeliveryThroughARealBackend(t *testing.T) {
 	default:
 		t.Fatal("callback retirement returned before the stream source joined")
 	}
-	stale, err := ConnectCallback(ctx, ref)
+	stale, err := runtimeclient.ConnectCallback(ctx, ref)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer stale.Close()
-	_, _, err = stale.StartRun(ctx, protocol.StartRunRequest{SessionID: "ses_absent", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "go"}}}, RunCommandOptions{})
-	if !errors.Is(err, pluginsdk.ErrStaleCall) || errors.Is(err, ErrAcknowledgementUnknown) {
+	_, _, err = stale.StartRun(ctx, protocol.StartRunRequest{SessionID: "ses_absent", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "go"}}}, protocol.RunCommandOptions{})
+	if !errors.Is(err, pluginsdk.ErrStaleCall) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
 		t.Fatalf("stale callback command = %v", err)
 	}
 	bounded, releaseBounded, err := callbacks.OpenRPC(owner, session, pluginsdk.CallbackLimits{MaxRequestBytes: 16, MaxResponseBytes: 4096})
@@ -162,14 +164,14 @@ func TestCoreCallbacksUseCanonicalDeliveryThroughARealBackend(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer releaseBounded()
-	limited, err := ConnectCallback(ctx, bounded)
+	limited, err := runtimeclient.ConnectCallback(ctx, bounded)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer limited.Close()
-	_, _, err = limited.StartRun(ctx, protocol.StartRunRequest{SessionID: "ses_absent", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "go"}}}, RunCommandOptions{})
-	problem, known := errors.AsType[*TransportError](err)
-	if !known || problem.StatusCode != http.StatusRequestEntityTooLarge || errors.Is(err, ErrAcknowledgementUnknown) {
+	_, _, err = limited.StartRun(ctx, protocol.StartRunRequest{SessionID: "ses_absent", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "go"}}}, protocol.RunCommandOptions{})
+	problem, known := errors.AsType[*runtimeclient.TransportError](err)
+	if !known || problem.StatusCode != http.StatusRequestEntityTooLarge || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
 		t.Fatalf("callback request capacity lost its canonical refusal: %v", err)
 	}
 }

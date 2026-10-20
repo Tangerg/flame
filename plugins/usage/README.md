@@ -34,7 +34,7 @@ every retained attempt is priced. Grouping by provider, served model, admission 
 day, calling origin or Session/Run association reconciles with the same sources.
 Deleted or never recorded calls cannot be reconstructed from an empty report.
 
-The repository's `plugins/build-author-kit.mjs` exports this complete feature with
+The repository's `plugins/scripts/build-author-kit.mjs` exports this complete feature with
 packed public dependencies and a standalone locked toolchain. It typechecks and
 builds outside the checkout and requires byte-identical release resources without
 loading the UI. Its built release uses ordinary installation from any origin;

@@ -7,7 +7,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/identity"
+
+	"github.com/Tangerg/flame/runtime/fingerprint"
 )
 
 const ComponentScopePattern = `^(installation|workspace|session|client|file|toolResult)$`
@@ -78,7 +80,7 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 		return refuse(DiagnosticInvalidDeclaration, "unsupported component placement")
 	}
 
-	if value.Material != "" && !idPattern.MatchString(value.Material) {
+	if value.Material != "" && !identity.ValidDeclarationID(value.Material) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component material %q", value.Material)
 	}
 	if slices.ContainsFunc(b.declaration.Components, func(current ClientComponent) bool { return current.ID == value.ID }) {

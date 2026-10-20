@@ -38,7 +38,7 @@ func TestDiffComponentUsesCanonicalWorkspaceReadsAndWithdrawalPreservesFiles(t *
 	write("added.txt", "<script> must remain text\nsecond\n")
 	write("binary.dat", "\x00\x01\x02")
 	r := poMCPOpen(t, cfg)
-	source, err := filepath.Abs("../../../plugins/diff")
+	source, err := filepath.Abs(filepath.Join(firstPartyPackages, "diff"))
 	if err != nil {
 		t.Fatal(err)
 	}

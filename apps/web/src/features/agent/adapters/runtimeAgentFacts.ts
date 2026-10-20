@@ -1,0 +1,372 @@
+import {
+  type CancelRunResponse,
+  type ContentBlock,
+  type Interrupt,
+  type Item,
+  type ItemDelta,
+  type PendingInterruptSet,
+  type ProblemData,
+  type Question,
+  type RunEvent,
+  type RunMetrics,
+  type RunOutcome,
+  type RunProgress,
+  type RunRef,
+  type ToolInvocation,
+  type Usage,
+} from "@flame/runtime-client";
+import {
+  PROBLEM_RECOVERY,
+  RUN_PROBLEM_RECOVERY,
+  type RecoveryAction,
+} from "@flame/runtime-client/wire";
+import {
+  type AgentCancelResult,
+  type AgentEventEnvelope,
+  type AgentInterrupt,
+  type AgentItem,
+  type AgentItemDelta,
+  type AgentMessagePart,
+  type AgentPendingInterruptSet,
+  type AgentQuestion,
+  type AgentRunFact,
+  type AgentToolInvocation,
+} from "@/features/agent/public/events";
+import {
+  type AgentProblem,
+  type AgentRunMetrics,
+  type AgentRunOutcome,
+  type AgentRunProgress,
+  type RunUsage,
+} from "@/features/agent/public/sessionView";
+import { runtimePlanUpdate } from "@/features/agent/adapters/runtimePlan";
+function runtimeUsage(usage: Usage): RunUsage {
+  return {
+    inputTokens: usage.inputTokens ?? 0,
+    outputTokens: usage.outputTokens ?? 0,
+    cacheReadTokens: usage.cacheReadTokens ?? 0,
+    ...(usage.costUsd !== undefined ? { costUsd: usage.costUsd } : {}),
+  };
+}
+
+function runtimeRunMetrics(metrics: RunMetrics): AgentRunMetrics {
+  return {
+    steps: metrics.steps,
+    activeDurationMillis: metrics.activeDurationMillis,
+    ...(metrics.usage ? { usage: runtimeUsage(metrics.usage) } : {}),
+  };
+}
+
+export function requestProblem(problem: ProblemData): AgentProblem {
+  return runtimeProblem(problem, PROBLEM_RECOVERY);
+}
+
+function runProblem(problem: ProblemData): AgentProblem {
+  return runtimeProblem(problem, RUN_PROBLEM_RECOVERY);
+}
+
+function runtimeProblem(
+  problem: ProblemData,
+  recoveries: Partial<Record<ProblemData["type"], RecoveryAction>>,
+): AgentProblem {
+  const recovery = recoveries[problem.type];
+  return {
+    code: problem.type,
+    ...(recovery ? { recovery } : {}),
+    ...(problem.detail ? { message: problem.detail } : {}),
+    ...("retryAfterSeconds" in problem && problem.retryAfterSeconds !== undefined
+      ? { retryAfterSeconds: problem.retryAfterSeconds }
+      : {}),
+    ...(problem.type === "session_has_active_run" ? { activeRun: { ...problem.activeRun } } : {}),
+  };
+}
+
+function runtimeRunOutcome(outcome: RunOutcome): AgentRunOutcome {
+  const evidence = outcome.unresolvedEffects?.length
+    ? { unresolvedEffects: outcome.unresolvedEffects.map((effect) => ({ ...effect })) }
+    : {};
+  switch (outcome.type) {
+    case "completed":
+      return { type: "completed", ...evidence };
+    case "timedOut":
+    case "failed":
+    case "lost":
+      return { type: outcome.type, error: runProblem(outcome.error), ...evidence };
+    case "canceled":
+      return {
+        type: outcome.type,
+        ...evidence,
+        ...(outcome.detail !== undefined ? { detail: outcome.detail } : {}),
+      };
+  }
+}
+
+function assertRunFacts(run: RunRef): void {
+  if (!run.status) throw new Error(`agent.adapter.run.statusMissing:run=${run.id}`);
+  if (!run.createdAt) throw new Error(`agent.adapter.run.createdAtMissing:run=${run.id}`);
+
+  const child = run.spawnedByItemId !== undefined;
+  if (child && (!run.parentRunId || !run.rootRunId)) {
+    throw new Error(
+      `agent.adapter.run.childLineageMissing:run=${run.id};parentRun=${run.parentRunId ?? "missing"};rootRun=${run.rootRunId ?? "missing"}`,
+    );
+  }
+  if (!child && (run.parentRunId || run.rootRunId)) {
+    throw new Error(
+      `agent.adapter.run.rootLineagePresent:run=${run.id};parentRun=${run.parentRunId ?? "missing"};rootRun=${run.rootRunId ?? "missing"}`,
+    );
+  }
+  if (run.status === "running" && !run.activeSegmentId) {
+    throw new Error(`agent.adapter.run.activeSegmentMissing:run=${run.id}`);
+  }
+  if (run.status !== "running" && run.activeSegmentId) {
+    throw new Error(
+      `agent.adapter.run.unexpectedActiveSegment:run=${run.id};status=${run.status};segment=${run.activeSegmentId}`,
+    );
+  }
+  if (run.status === "finished" && (!run.outcome || !run.finishedAt)) {
+    throw new Error(
+      `agent.adapter.run.terminalFactsMissing:run=${run.id};outcome=${run.outcome?.type ?? "missing"};finishedAt=${run.finishedAt ?? "missing"}`,
+    );
+  }
+  if (run.status !== "finished" && (run.outcome || run.finishedAt)) {
+    throw new Error(
+      `agent.adapter.run.unexpectedTerminalFacts:run=${run.id};status=${run.status};outcome=${run.outcome?.type ?? "missing"};finishedAt=${run.finishedAt ?? "missing"}`,
+    );
+  }
+  if ((run.provider === undefined) !== (run.model === undefined)) {
+    throw new Error(
+      `agent.adapter.run.modelSelectionIncomplete:run=${run.id};provider=${run.provider ?? "missing"};model=${run.model ?? "missing"}`,
+    );
+  }
+  if (run.reasoningEffort !== undefined && run.provider === undefined) {
+    throw new Error(`agent.adapter.run.reasoningWithoutModel:run=${run.id}`);
+  }
+}
+
+export function runtimeRunFact(run: RunRef): AgentRunFact {
+  assertRunFacts(run);
+  const child = run.spawnedByItemId !== undefined;
+
+  return {
+    id: run.id,
+    sessionId: run.sessionId,
+    parentRunId: child ? run.parentRunId! : null,
+    rootRunId: child ? run.rootRunId! : run.id,
+    spawnedByItemId: run.spawnedByItemId ?? null,
+    status: run.status,
+    activeSegmentId: run.activeSegmentId ?? null,
+    outcome: run.outcome ? runtimeRunOutcome(run.outcome) : null,
+    ...(run.provider !== undefined && run.model !== undefined
+      ? {
+          modelSelection: {
+            provider: run.provider,
+            model: run.model,
+            ...(run.reasoningEffort !== undefined ? { reasoningEffort: run.reasoningEffort } : {}),
+          },
+        }
+      : {}),
+    metrics: runtimeRunMetrics(run.metrics),
+    ...(run.contextTokens !== undefined && run.contextTokens > 0
+      ? { contextTokens: run.contextTokens }
+      : {}),
+    createdAt: run.createdAt,
+    finishedAt: run.finishedAt ?? null,
+  };
+}
+
+function runtimeContent(block: ContentBlock): AgentMessagePart {
+  return block.type === "text"
+    ? { type: "text", text: block.text }
+    : { type: "image", data: block.data, mime: block.mime };
+}
+
+function runtimeQuestion(question: Question): AgentQuestion {
+  return {
+    fields: question.fields.map((field) =>
+      field.type === "text"
+        ? { type: "text", prompt: field.prompt, ...(field.header ? { header: field.header } : {}) }
+        : {
+            type: "choice",
+            prompt: field.prompt,
+            options: field.options.map((option) => ({ ...option })),
+            ...(field.header ? { header: field.header } : {}),
+            ...(field.allowCustom !== undefined ? { allowCustom: field.allowCustom } : {}),
+            ...(field.multiple !== undefined ? { multiple: field.multiple } : {}),
+          },
+    ),
+    ...(question.answers ? { answers: question.answers.map((answer) => [...answer]) } : {}),
+  };
+}
+
+function runtimeTool(tool: ToolInvocation): AgentToolInvocation {
+  return {
+    name: tool.name,
+    arguments: { ...tool.arguments },
+    ...(tool.argumentsText !== undefined ? { argumentsText: tool.argumentsText } : {}),
+    ...(tool.result !== undefined ? { result: tool.result } : {}),
+  };
+}
+
+export function runtimeItem(item: Item): AgentItem {
+  switch (item.type) {
+    case "userMessage":
+      return {
+        type: "userMessage",
+        id: item.id,
+        runId: item.runId,
+        status: item.status,
+        createdAt: item.createdAt,
+        content: item.content.map(runtimeContent),
+      };
+    case "agentMessage":
+      return {
+        type: "agentMessage",
+        id: item.id,
+        runId: item.runId,
+        status: item.status,
+        createdAt: item.createdAt,
+        ...(item.phase ? { phase: item.phase } : {}),
+        ...(item.content ? { content: item.content.map(runtimeContent) } : {}),
+      };
+    case "reasoning":
+      return {
+        type: item.type,
+        id: item.id,
+        runId: item.runId,
+        status: item.status,
+        createdAt: item.createdAt,
+        ...(item.text !== undefined ? { text: item.text } : {}),
+        ...(item.redacted !== undefined ? { redacted: item.redacted } : {}),
+      };
+    case "compaction":
+      return {
+        type: item.type,
+        id: item.id,
+        runId: item.runId,
+        status: item.status,
+        createdAt: item.createdAt,
+        summary: item.summary,
+        ...(item.droppedMessages !== undefined ? { droppedMessages: item.droppedMessages } : {}),
+      };
+    case "question":
+      return {
+        type: item.type,
+        id: item.id,
+        runId: item.runId,
+        status: item.status,
+        createdAt: item.createdAt,
+        question: runtimeQuestion(item.question),
+      };
+    case "toolCall":
+      return {
+        type: item.type,
+        id: item.id,
+        runId: item.runId,
+        status: item.status,
+        startedAt: item.startedAt,
+        ...(item.finishedAt !== undefined ? { finishedAt: item.finishedAt } : {}),
+        ...(item.durationMillis !== undefined ? { durationMillis: item.durationMillis } : {}),
+        ...(item.safetyClass !== undefined ? { safetyClass: item.safetyClass } : {}),
+        ...(item.approvalDecision !== undefined ? { approvalDecision: item.approvalDecision } : {}),
+        ...(item.error ? { error: runProblem(item.error) } : {}),
+        tool: runtimeTool(item.tool),
+      };
+  }
+}
+
+function runtimeItemDelta(delta: ItemDelta): AgentItemDelta {
+  return { ...delta };
+}
+
+function runtimeInterrupt(interrupt: Interrupt): AgentInterrupt {
+  switch (interrupt.type) {
+    case "approval":
+      return {
+        type: "approval",
+        itemId: interrupt.itemId,
+        runId: interrupt.runId,
+        payload: {
+          ...(interrupt.payload.reason !== undefined ? { reason: interrupt.payload.reason } : {}),
+          ...(interrupt.payload.rememberable !== undefined
+            ? { rememberable: interrupt.payload.rememberable }
+            : {}),
+          tool: runtimeTool(interrupt.payload.tool),
+        },
+      };
+    case "question":
+      return {
+        ...interrupt,
+        payload: { question: runtimeQuestion(interrupt.payload.question) },
+      };
+  }
+}
+
+export function runtimePendingInterruptSet(set: PendingInterruptSet): AgentPendingInterruptSet {
+  return { ...set, interrupts: set.interrupts.map(runtimeInterrupt) };
+}
+
+function runtimeProgress(progress: RunProgress): AgentRunProgress {
+  return {
+    ...(progress.step !== undefined ? { step: progress.step } : {}),
+    ...(progress.activity !== undefined ? { activity: progress.activity } : {}),
+    ...(progress.usage ? { usage: runtimeUsage(progress.usage) } : {}),
+    ...(progress.contextTokens !== undefined ? { contextTokens: progress.contextTokens } : {}),
+  };
+}
+
+function runtimeFinishedInterrupts(run: RunRef, interrupts: Interrupt[]): AgentInterrupt[] {
+  if (interrupts.length > 0 && run.status !== "waiting") {
+    throw new Error(
+      `agent.adapter.segment.interruptsWithoutWaiting:run=${run.id};status=${run.status}`,
+    );
+  }
+  for (const interrupt of interrupts) {
+    if (interrupt.runId !== run.id) {
+      throw new Error(
+        `agent.adapter.segment.foreignInterrupt:run=${run.id};interruptRun=${interrupt.runId};item=${interrupt.itemId}`,
+      );
+    }
+  }
+  return interrupts.map(runtimeInterrupt);
+}
+
+export function runtimeAgentEvent(envelope: RunEvent): AgentEventEnvelope {
+  const event = envelope.event;
+  const mapped = (() => {
+    switch (event.type) {
+      case "segment.started":
+        return { type: event.type, run: runtimeRunFact(event.run) } as const;
+      case "segment.progress":
+        return { type: event.type, progress: runtimeProgress(event.progress) } as const;
+      case "segment.finished":
+        return {
+          type: event.type,
+          run: runtimeRunFact(event.run),
+          interrupts: runtimeFinishedInterrupts(event.run, event.interrupts ?? []),
+        } as const;
+      case "item.started":
+      case "item.completed":
+        return { type: event.type, item: runtimeItem(event.item) } as const;
+      case "item.delta":
+        return {
+          type: event.type,
+          itemId: event.itemId,
+          delta: runtimeItemDelta(event.delta),
+        } as const;
+      case "plan.updated":
+        return { type: event.type, plan: runtimePlanUpdate(event.plan) } as const;
+    }
+  })();
+  return { ...envelope, event: mapped };
+}
+
+export function runtimeCancelResult(response: CancelRunResponse): AgentCancelResult {
+  return response.type === "root"
+    ? { type: "root", run: runtimeRunFact(response.run) }
+    : {
+        type: "child",
+        run: runtimeRunFact(response.run),
+        rootRun: runtimeRunFact(response.rootRun),
+      };
+}

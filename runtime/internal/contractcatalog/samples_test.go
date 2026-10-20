@@ -12,7 +12,7 @@ import (
 // samplesDir holds the runtime-owned canonical wire samples beside the published
 // TypeScript binding. Client modules own how they consume or vendor both; protocol
 // verification never reaches into a client's source tree.
-const samplesDir = "../../contract/typescript/samples"
+const samplesDir = "../../contract/samples"
 
 // TestWireGoldenRoundTrip checks that every canonical
 // sample must unmarshal into the authoritative Go type and re-marshal to a SEMANTICALLY

@@ -1,8 +1,9 @@
 package pluginpackage
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 func TestSessionActionComponentAndRetiredActionAdmission(t *testing.T) {

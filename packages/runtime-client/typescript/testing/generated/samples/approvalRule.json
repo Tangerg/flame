@@ -1,0 +1,13 @@
+{
+  "id": "rule_01",
+  "scope": "project",
+  "tool": {
+    "type": "builtIn",
+    "name": "shell"
+  },
+  "subject": { "type": "glob", "value": "npm run *" },
+  "dir": "/Users/alex/proj",
+  "decision": "allow",
+  "modelName": "shell",
+  "stale": false
+}

@@ -4,17 +4,18 @@ import (
 	"context"
 	"errors"
 
+	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/plugins/schedules/backend/transport"
-	flameruntime "github.com/Tangerg/flame/runtime"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type runHost struct{ client *flameruntime.Client }
+type runHost struct{ client *runtimeclient.Client }
 
 func connectRunHost(ctx context.Context, ref pluginsdk.CallbackRef) (transport.RunHost, func() error, error) {
-	client, err := flameruntime.ConnectCallback(ctx, ref)
+	client, err := runtimeclient.ConnectCallback(ctx, ref)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -22,7 +23,7 @@ func connectRunHost(ctx context.Context, ref pluginsdk.CallbackRef) (transport.R
 }
 
 func (h runHost) Namespace(ctx context.Context) (string, error) {
-	discovery, err := h.client.Discover(ctx, flameruntime.CallOptions{})
+	discovery, err := h.client.Discover(ctx, protocol.CallOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -42,7 +43,7 @@ func (h runHost) Admit(ctx context.Context, request schedule.RunRequest) error {
 	if err != nil {
 		return err
 	}
-	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: namespace, Key: key, Operation: protocol.RunCommandStart, Request: &start}, flameruntime.CallOptions{})
+	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: namespace, Key: key, Operation: protocol.RunCommandStart, Request: &start}, protocol.CallOptions{})
 	if err != nil {
 		return err
 	}
@@ -54,18 +55,18 @@ func (h runHost) Admit(ctx context.Context, request schedule.RunRequest) error {
 		return nil
 	case protocol.RunAcceptanceNotRecorded:
 	default:
-		return flameruntime.ErrInvalidResponse
+		return protocol.ErrInvalidResponse
 	}
-	ack, _, err := h.client.StartRun(ctx, start, flameruntime.RunCommandOptions{IdempotencyKey: key})
+	ack, _, err := h.client.StartRun(ctx, start, protocol.RunCommandOptions{IdempotencyKey: key})
 	if err != nil {
 		return err
 	}
 	if ack.RunID != request.RunID() {
-		return flameruntime.ErrInvalidResponse
+		return protocol.ErrInvalidResponse
 	}
 	return nil
 }
 
 func (h runHost) Notify(ctx context.Context, contribution string) error {
-	return h.client.NotifyPluginChange(ctx, protocol.PluginChangeNotice{Contribution: contribution}, flameruntime.CommandOptions{})
+	return h.client.NotifyPluginChange(ctx, protocol.PluginChangeNotice{Contribution: contribution}, protocol.CommandOptions{})
 }

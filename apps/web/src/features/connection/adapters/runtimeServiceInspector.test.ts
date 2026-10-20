@@ -1,0 +1,292 @@
+import { describe, expect, it, vi } from "vitest";
+import {
+  HTTP_ENDPOINTS,
+  PROTOCOL_VERSION,
+  type DiscoverResponse,
+  type FlameClient,
+  type SidecarClient,
+} from "@flame/runtime-client";
+import { runtimeServiceInspector } from "@/features/connection/adapters/runtimeServiceInspector";
+let activeClientProvider: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+
+const getRuntimeClient = () => activeClientProvider();
+
+let runtimeSidecar: () => SidecarClient = () => {
+  throw new Error("Runtime test sidecar is not configured");
+};
+
+const getRuntimeSidecar = () => runtimeSidecar();
+
+const discovery: DiscoverResponse = {
+  protocolVersion: PROTOCOL_VERSION,
+  serverInfo: {
+    instanceId: "runtime_1",
+    name: "flame",
+    version: "1.2.3",
+    defaultWorkspace: { path: "/workspace" },
+    home: "/home",
+  },
+  capabilities: {
+    runEvents: [],
+    runtimeTopics: ["files.changed"],
+    features: {},
+    streamingMethods: ["runtime.subscribe"],
+    limits: {
+      idempotency: { namespace: "idp_test", retentionSeconds: 86_400 },
+      runReplay: { scope: "runtimeInstanceRootSegment", maxEvents: 2048, maxBytes: 16_777_216 },
+      mcpAuthorizationAttempts: { retentionSeconds: 600 },
+      runtimeSubscription: {
+        maxTopics: 32,
+        maxWatches: 32,
+        maxPaths: 256,
+        maxDirectoryEntries: 10000,
+        maxFileBytes: 1048576,
+      },
+    },
+  },
+};
+
+function runtimeClient(discover = vi.fn().mockResolvedValue(discovery)): FlameClient {
+  return { runtime: { discover } } as unknown as FlameClient;
+}
+
+function sidecar(overrides: Partial<SidecarClient> = {}): SidecarClient {
+  return {
+    info: vi.fn().mockResolvedValue({
+      protocolVersion: PROTOCOL_VERSION,
+      server: { name: "flame", version: "1.2.3", instanceId: "runtime_1" },
+      transport: "http",
+      endpoints: {
+        rpc: HTTP_ENDPOINTS.rpc.path,
+        info: HTTP_ENDPOINTS.info.path,
+        liveness: HTTP_ENDPOINTS.liveness.path,
+        readiness: HTTP_ENDPOINTS.readiness.path,
+      },
+    }),
+    liveness: vi.fn().mockResolvedValue({ status: "ok", instanceId: "runtime_1" }),
+    readiness: vi.fn().mockResolvedValue({
+      status: "degraded",
+      instanceId: "runtime_1",
+      checks: { database: "ok", git: "degraded" },
+    }),
+    ...overrides,
+  };
+}
+
+describe("runtime service inspector", () => {
+  it("resolves the active endpoint clients for each inspection", async () => {
+    const previousSidecar = sidecar();
+    const previousRuntime = runtimeClient();
+    let activeSidecar = previousSidecar;
+    let activeRuntime = previousRuntime;
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => activeSidecar,
+      client: () => activeRuntime,
+    });
+    const inspector = runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar);
+    const signal = new AbortController().signal;
+    await inspector.inspect(signal);
+
+    activeSidecar = sidecar();
+    activeRuntime = runtimeClient();
+    await inspector.inspect(signal);
+
+    expect(previousSidecar.info).toHaveBeenCalledTimes(1);
+    expect(previousRuntime.runtime.discover).toHaveBeenCalledTimes(1);
+    expect(activeSidecar.info).toHaveBeenCalledTimes(1);
+    expect(activeRuntime.runtime.discover).toHaveBeenCalledTimes(1);
+  });
+
+  it("consumes all sidecars and removes their HTTP representation", async () => {
+    const client = sidecar();
+    const runtime = runtimeClient();
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtime,
+    });
+    const signal = new AbortController().signal;
+
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(signal),
+    ).resolves.toEqual({
+      processGeneration: "runtime_1",
+      service: {
+        server: { name: "flame", version: "1.2.3" },
+        protocolVersion: PROTOCOL_VERSION,
+        health: "degraded",
+        checks: { database: "ready", git: "degraded" },
+      },
+      capabilities: discovery.capabilities,
+    });
+    const infoSignal = vi.mocked(client.info).mock.calls[0]?.[0];
+    expect(infoSignal).toBeInstanceOf(AbortSignal);
+    expect(infoSignal?.aborted).toBe(false);
+    expect(client.liveness).toHaveBeenCalledWith(infoSignal);
+    expect(client.readiness).toHaveBeenCalledWith(infoSignal);
+    expect(runtime.runtime.discover).toHaveBeenCalledWith(infoSignal);
+  });
+
+  it("refuses a server whose advertised binding disagrees with the compiled contract", async () => {
+    const client = sidecar({
+      info: vi.fn().mockResolvedValue({
+        protocolVersion: PROTOCOL_VERSION,
+        server: { name: "flame", version: "1.2.3", instanceId: "runtime_1" },
+        transport: "http",
+        endpoints: {
+          rpc: "/v3/rpc",
+          info: HTTP_ENDPOINTS.info.path,
+          liveness: HTTP_ENDPOINTS.liveness.path,
+          readiness: HTTP_ENDPOINTS.readiness.path,
+        },
+      }),
+    });
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtimeClient(),
+    });
+
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow("incompatible rpc endpoint");
+  });
+
+  it("refuses a split observation from different HTTP and RPC server identities", async () => {
+    const client = sidecar();
+    const mismatched = {
+      ...discovery,
+      serverInfo: { ...discovery.serverInfo, version: "9.9.9" },
+    };
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtimeClient(vi.fn().mockResolvedValue(mismatched)),
+    });
+
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow("different servers");
+  });
+
+  it("refuses one inspection stitched across Runtime process generations", async () => {
+    const client = sidecar({
+      info: vi.fn().mockResolvedValue({
+        protocolVersion: PROTOCOL_VERSION,
+        server: { name: "flame", version: "1.2.3", instanceId: "runtime_retired" },
+        transport: "http",
+        endpoints: {
+          rpc: HTTP_ENDPOINTS.rpc.path,
+          info: HTTP_ENDPOINTS.info.path,
+          liveness: HTTP_ENDPOINTS.liveness.path,
+          readiness: HTTP_ENDPOINTS.readiness.path,
+        },
+      }),
+      liveness: vi.fn().mockResolvedValue({ status: "ok", instanceId: "runtime_retired" }),
+      readiness: vi.fn().mockResolvedValue({
+        status: "ok",
+        instanceId: "runtime_successor",
+      }),
+    });
+    const successor = {
+      ...discovery,
+      serverInfo: { ...discovery.serverInfo, instanceId: "runtime_successor" },
+    } satisfies DiscoverResponse;
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtimeClient(vi.fn().mockResolvedValue(successor)),
+    });
+
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow("different Runtime process generations");
+  });
+
+  it("cancels sibling sidecars when one member of the inspection fails", async () => {
+    let infoSignal: AbortSignal | undefined;
+    const client = sidecar({
+      info: vi.fn<SidecarClient["info"]>((signal) => {
+        infoSignal = signal;
+        return new Promise((_resolve, reject) => {
+          signal?.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError")),
+          );
+        });
+      }),
+      readiness: vi.fn().mockRejectedValue(new Error("readiness failed")),
+    });
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtimeClient(),
+    });
+
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow("readiness failed");
+    expect(infoSignal?.aborted).toBe(true);
+  });
+
+  it("cancels sidecars when protocol discovery fails", async () => {
+    let liveSignal: AbortSignal | undefined;
+    const client = sidecar({
+      liveness: vi.fn<SidecarClient["liveness"]>((signal) => {
+        liveSignal = signal;
+        return new Promise((_resolve, reject) => {
+          signal?.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError")),
+          );
+        });
+      }),
+    });
+    const discover = vi.fn().mockRejectedValue(new Error("protocol mismatch"));
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtimeClient(discover),
+    });
+
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow("protocol mismatch");
+    expect(liveSignal?.aborted).toBe(true);
+  });
+
+  it("owns sibling rejections when discovery throws before returning a promise", async () => {
+    const canceled = vi.fn();
+    const pending = (signal?: AbortSignal) =>
+      new Promise<never>((_resolve, reject) => {
+        signal?.addEventListener("abort", () => {
+          canceled();
+          reject(new DOMException("inspection retired", "AbortError"));
+        });
+      });
+    const client = sidecar({
+      info: vi.fn(pending),
+      liveness: vi.fn(pending),
+      readiness: vi.fn(pending),
+    });
+    const failure = new Error("discovery client closed synchronously");
+    const discover = vi.fn(() => {
+      throw failure;
+    });
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtimeClient(discover),
+    });
+
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toBe(failure);
+    expect(canceled).toHaveBeenCalledTimes(3);
+  });
+});

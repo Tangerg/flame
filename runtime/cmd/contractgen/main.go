@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"io/fs"
+	"github.com/Tangerg/flame/runtime/contract/samples"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
@@ -41,6 +43,8 @@ func main() {
 	goOutput := flag.String("go-out", "", "feature Go projection output file")
 	goPackage := flag.String("go-package", "", "feature Go projection package")
 	goPrefix := flag.String("go-prefix", "", "feature Go projection exported prefix")
+	localBinding := flag.String("go-local", "", "local typed Go binding output directory")
+	remoteBinding := flag.String("go-client", "", "remote typed Go client output directory")
 	flag.Parse()
 
 	var err error
@@ -51,7 +55,10 @@ func main() {
 			err = runFeature(*feature, *out, *ts, featureGoOutput{Path: *goOutput, Package: *goPackage, Prefix: *goPrefix})
 		}
 	} else {
-		err = run(*out, *validators, *ts)
+		err = writeGoBindings(*localBinding, *remoteBinding)
+		if err == nil {
+			err = run(*out, *validators, *ts)
+		}
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "contractgen:", err)
@@ -109,6 +116,11 @@ func run(dir, validatorDir, tsDir string) error {
 	if tsDir == "" {
 		return nil
 	}
+	generated := filepath.Join(tsDir, "src", "generated")
+	testing := filepath.Join(tsDir, "testing", "generated")
+	for _, directory := range []string{generated, filepath.Join(testing, "samples")} {
+		if err := os.MkdirAll(directory, 0o755); err != nil { return err }
+	}
 	// What a TypeScript client needs to hold the protocol: the shapes, the checks that say an
 	// arriving frame really is one of them, the method surface that carries them, and
 	// which hand-written fixture proves which shape.
@@ -118,10 +130,19 @@ func run(dir, validatorDir, tsDir string) error {
 		{tsMethodsFileName, newWireMethods(registry, walked)},
 		{tsSamplesFileName, newWireSamples()},
 	} {
-		path = filepath.Join(tsDir, artifact.name)
+		directory := generated
+		if artifact.name == tsSamplesFileName { directory = testing }
+		path = filepath.Join(directory, artifact.name)
 		if err := os.WriteFile(path, []byte(artifact.content), 0o644); err != nil {
 			return fmt.Errorf("write %s: %w", path, err)
 		}
+	}
+	files, err := fs.Glob(samples.Files, "*.json")
+	if err != nil { return err }
+	for _, name := range files {
+		encoded, err := samples.Files.ReadFile(name)
+		if err != nil { return err }
+		if err := os.WriteFile(filepath.Join(testing,"samples",name),encoded,0o644); err != nil { return err }
 	}
 	return nil
 }

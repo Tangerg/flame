@@ -13,14 +13,14 @@ const (
 
 func registerUsage(registry *Registry) {
 	registry.query(MethodMeta{
-		Name: UsageSession, Errors: []string{protocol.ErrSessionNotFound.Error()},
+		Name: UsageSession, GoName: "GetSessionUsage", Errors: []string{protocol.ErrSessionNotFound.Error()},
 	}, func(service interface {
 		SessionUsage(context.Context, string) (*protocol.SessionUsage, error)
 	}, ctx context.Context, request protocol.SessionUsageRequest) (*protocol.SessionUsage, error) {
 		return service.SessionUsage(ctx, request.SessionID)
 	})
 
-	registry.query(MethodMeta{Name: UsageSummary},
+	registry.query(MethodMeta{Name: UsageSummary, GoName: "GetUsageSummary"},
 		func(service interface {
 			UsageSummary(context.Context, protocol.UsageSummaryRequest) (*protocol.UsageSummary, error)
 		}, ctx context.Context, request protocol.UsageSummaryRequest) (*protocol.UsageSummary, error) {

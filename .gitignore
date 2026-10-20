@@ -9,12 +9,11 @@ coverage/
 playwright-report/
 test-results/
 
-desktop/.cache/
-desktop/.task/
-desktop/build/bin/
 runtime/cmd/contractgen/contractgen
 /runtime/flame
-/runtime/build/
-/cli/build/
 /examples/plugins/reviews/package/bin/
 */**/config.yaml
+/out/
+/apps/desktop/assets/web/
+/apps/desktop/.cache/
+/apps/desktop/.task/

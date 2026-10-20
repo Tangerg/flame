@@ -1,0 +1,965 @@
+package runtimebinding
+
+import (
+	"context"
+	json "encoding/json/v2"
+	"errors"
+	"maps"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
+	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
+	workspaceapi "github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/protocol"
+)
+
+func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
+	configureIntegrationRuntime(t)
+	runtime := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
+	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			if cause == context.DeadlineExceeded {
+				cancel()
+				ctx, cancel = context.WithDeadline(t.Context(), time.Time{})
+			}
+			cancel()
+			models, err := runtime.ListModels(ctx)
+			if models != nil || !errors.Is(err, cause) {
+				t.Errorf("ListModels = (%+v, %v), want caller %v", models, err, cause)
+			}
+			created, err := runtime.CreateSession(ctx, conversation.CreateSession{Title: "canceled session"})
+			if created.ID != "" || !errors.Is(err, cause) || !mutation.AcknowledgementUncertain(err) {
+				t.Errorf("CreateSession = (%+v, %v), want an unconfirmed canceled command", created, err)
+			}
+		})
+	}
+}
+
+func TestRuntimeConnectionResourceFailures(t *testing.T) {
+	configureIntegrationRuntime(t)
+	runtime := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
+	activateManagedPlugins(t, runtime, "schedules")
+
+	t.Run("installed schedule", func(t *testing.T) {
+		request, err := runtime.PrepareRunNow(t.Context(), "sch_missing")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = runtime.CallPlugin(t.Context(), request, mutation.NewCommandID())
+		var refusal *capability.Refusal
+		if !errors.As(err, &refusal) || refusal.Code != "not_found" {
+			t.Fatalf("missing installed schedule: %v", err)
+		}
+	})
+	for _, tc := range []struct {
+		name string
+		kind error
+		call func() error
+	}{
+		{"session", protocol.ErrSessionNotFound, func() error {
+			_, err := runtime.GetSession(t.Context(), "missing-session")
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.call()
+			if !errors.Is(err, tc.kind) {
+				t.Fatalf("resource failure = %v, want %v", err, tc.kind)
+			}
+			problem, ok := errors.AsType[protocol.ProblemError](err)
+			if !ok || problem.Problem().Type != tc.kind.Error() {
+				t.Fatalf("lost structured resource failure: %v", err)
+			}
+			if strings.Count(err.Error(), tc.kind.Error()) != 1 {
+				t.Fatalf("error category rendered more than once: %v", err)
+			}
+		})
+	}
+}
+
+func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
+	configureIntegrationRuntime(t)
+	workspace := runtimefixture.TempDirectory(t)
+	if err := os.WriteFile(filepath.Join(workspace, "main.go"), []byte("package main\n\nvar answer = 42\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(workspace, "empty"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runtime := openIntegrationRuntime(t, workspace)
+	activateManagedPlugins(t, runtime, "memory", "schedules")
+	created := requireSessionCatalog(t, runtime, workspace)
+	requireWorkspaceInspection(t, runtime, workspace)
+	forked := requireSessionMutation(t, runtime, created, runtimefixture.TempDirectory(t))
+	requireSessionPortability(t, runtime, forked.ID)
+	requireRuntimeCatalogs(t, runtime, created.ID, created.Workspace.Path)
+	requireProviderMutationLifecycle(t, runtime)
+	requireGoalMutationLifecycle(t, runtime, created.ID)
+	requireContextManagement(t, runtime, created.Workspace.Path)
+	requireAuxiliaryCapabilities(t, runtime, created.ID, created.Workspace.Path)
+	requireExternalAuthoredInvalidations(t, runtime, created.Workspace.Path)
+	requireSessionDeletion(t, runtime, created.ID, forked.ID)
+	requireClosedRuntime(t, runtime)
+}
+
+func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID string) {
+	t.Helper()
+	start := protocol.StartGoalRequest{
+		SessionID: sessionID, Objective: "verify embedded goal lifecycle",
+		Provider: "missing", Model: "missing",
+	}
+	started, err := runtime.StartGoal(t.Context(), start)
+	if err != nil {
+		t.Fatalf("StartGoal: %v", err)
+	}
+	if started.Status != protocol.GoalActive || started.Objective != start.Objective {
+		t.Fatalf("started goal: %+v", started)
+	}
+	update := protocol.UpdateGoalRequest{SessionID: sessionID, Objective: "verify revised embedded goal lifecycle"}
+	updated, err := runtime.UpdateGoal(t.Context(), update)
+	if err != nil {
+		t.Fatalf("UpdateGoal: %v", err)
+	}
+	if updated.Objective != update.Objective {
+		t.Fatalf("updated goal: %+v", updated)
+	}
+	stopped, err := runtime.StopGoal(t.Context(), sessionID)
+	if err != nil {
+		t.Fatalf("StopGoal: %v", err)
+	}
+	if stopped.Status == protocol.GoalActive {
+		t.Fatalf("stopped goal remained active: %+v", stopped)
+	}
+	resumed, err := runtime.ResumeGoal(t.Context(), sessionID)
+	if err != nil {
+		t.Fatalf("ResumeGoal: %v", err)
+	}
+	if resumed.Status != protocol.GoalActive {
+		t.Fatalf("resumed goal = %+v", resumed)
+	}
+	if _, err := runtime.StopGoal(t.Context(), sessionID); err != nil {
+		t.Fatalf("final StopGoal: %v", err)
+	}
+	if err := runtime.ClearGoal(t.Context(), sessionID); err != nil {
+		t.Fatalf("ClearGoal: %v", err)
+	}
+	if _, exists, err := runtime.GetGoal(t.Context(), sessionID); err != nil || exists {
+		t.Fatalf("goal after clear = (exists=%t, err=%v)", exists, err)
+	}
+}
+
+func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, workspace string) {
+	t.Helper()
+	for _, topic := range []protocol.RuntimeTopic{protocol.TopicHooksChanged, protocol.TopicSkillsChanged} {
+		if !runtime.Supports(topic) {
+			t.Fatalf("embedded runtime did not advertise %s", topic)
+		}
+	}
+
+	partitions, err := (changefeed.SubscriptionLimits{MaxTopics: 2, MaxWatches: 1}).Partition(changefeed.Subscription{
+		Topics: []protocol.RuntimeTopic{
+			protocol.TopicFilesChanged,
+			protocol.TopicHooksChanged,
+			protocol.TopicSkillsChanged,
+		},
+		Watches: []changefeed.Watch{{ID: "authored-resources", Workspace: workspace}},
+	})
+	if err != nil {
+		t.Fatalf("partition authored resources: %v", err)
+	}
+	streamContext, cancelStream := context.WithCancel(t.Context())
+	events := make(chan changefeed.Event, 8)
+	streamErrors := make(chan error, len(partitions))
+	var stopped []<-chan struct{}
+	defer func() {
+		cancelStream()
+		for _, streamStopped := range stopped {
+			select {
+			case <-streamStopped:
+			case <-time.After(3 * time.Second):
+				t.Error("authored-resource subscription did not stop")
+			}
+		}
+	}()
+	for _, partition := range partitions {
+		stream, err := runtime.Subscribe(streamContext, partition)
+		if err != nil {
+			t.Fatalf("subscribe to authored resources: %v", err)
+		}
+		streamStopped := make(chan struct{})
+		stopped = append(stopped, streamStopped)
+		go func() {
+			defer close(streamStopped)
+			for event, streamErr := range stream {
+				if streamErr != nil {
+					streamErrors <- streamErr
+					return
+				}
+				select {
+				case events <- event:
+				case <-streamContext.Done():
+					return
+				}
+			}
+		}()
+	}
+
+	hooksDirectory := filepath.Join(workspace, ".flame")
+	if mkdirAllErr := os.MkdirAll(hooksDirectory, 0o700); mkdirAllErr != nil {
+		t.Fatalf("create external hooks directory: %v", mkdirAllErr)
+	}
+	if writeFileErr := os.WriteFile(
+		filepath.Join(hooksDirectory, "hooks.json"),
+		[]byte(`{"hooks":[{"event":"SessionStart","inject":"external context"}]}`),
+		0o600,
+	); writeFileErr != nil {
+		t.Fatalf("write external hooks: %v", writeFileErr)
+	}
+	awaitRuntimeInvalidation(t, events, streamErrors, protocol.TopicHooksChanged)
+	catalog, err := runtime.Hooks().Catalog(t.Context(), workspace)
+	if err != nil || len(catalog.Hooks) != 1 || catalog.Hooks[0].Inject != "external context" {
+		t.Fatalf("hooks after external invalidation = (%+v, %v)", catalog, err)
+	}
+
+	skillDirectory := filepath.Join(workspace, ".flame", "skills", "external-observed")
+	if err := os.MkdirAll(skillDirectory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDirectory, "SKILL.md"), []byte("---\nname: external-observed\ndescription: External skill observation\n---\n# Observe edits\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	awaitRuntimeInvalidation(t, events, streamErrors, protocol.TopicSkillsChanged)
+	discovered, err := runtime.Discover(t.Context(), workspace)
+	if err != nil || !slices.ContainsFunc(discovered.Skills, func(skill protocol.Skill) bool {
+		return skill.Name == "external-observed" && skill.Description == "External skill observation"
+	}) {
+		t.Fatalf("skills after external invalidation = (%+v, %v)", discovered, err)
+	}
+	detail, err := runtime.InspectSkill(t.Context(), workspace, "external-observed")
+	if err != nil || detail.Scope != protocol.SkillScopeProject || detail.Instructions != "# Observe edits\n" {
+		t.Fatalf("skill detail after edit = (%+v, %v)", detail, err)
+	}
+}
+
+func awaitRuntimeInvalidation(
+	t *testing.T,
+	events <-chan changefeed.Event,
+	streamErrors <-chan error,
+	topic protocol.RuntimeTopic,
+) {
+	t.Helper()
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
+	for {
+		select {
+		case event := <-events:
+			if event.Type == protocol.RuntimeEventType(topic) {
+				return
+			}
+		case err := <-streamErrors:
+			t.Fatalf("wait for %s: %v", topic, err)
+		case <-timer.C:
+			t.Fatalf("no %s invalidation after external edit", topic)
+		}
+	}
+}
+
+func requireAuxiliaryCapabilities(t *testing.T, runtime *Connection, sessionID, workspace string) {
+	t.Helper()
+	diagnosticTools := runtime.DiagnosticTools()
+	authoringContext := runtime.AuthoringContext()
+	hooks := runtime.Hooks()
+	feedbackService := runtime.Feedback()
+	if diagnosticTools == nil || authoringContext == nil || hooks == nil || feedbackService == nil {
+		t.Fatal("stable auxiliary adapters were not constructed")
+	}
+	tools, err := diagnosticTools.Tools(t.Context())
+	if err != nil || len(tools) == 0 {
+		t.Fatalf("DiagnosticTools = (%+v, %v)", tools, err)
+	}
+	if documents, err := authoringContext.Documents(t.Context(), workspace); err != nil {
+		t.Fatalf("Agent documents = (%+v, %v)", documents, err)
+	}
+	if catalog, err := hooks.Catalog(t.Context(), workspace); err != nil {
+		t.Fatalf("Hooks = (%+v, %v)", catalog, err)
+	}
+	if err := feedbackService.Record(t.Context(), protocol.FeedbackRequest{
+		SessionID: sessionID, Rating: protocol.FeedbackPositive, Text: "embedded integration",
+	}); err != nil {
+		t.Fatalf("Create feedback: %v", err)
+	}
+}
+
+func requireContextManagement(t *testing.T, runtime *Connection, workspace string) {
+	t.Helper()
+	agentMemory := runtime.AgentMemory()
+	if agentMemory == nil {
+		t.Fatal("context adapters were not advertised")
+	}
+	userTarget, err := conversation.NewMemoryTarget(memory.ScopeUser, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addition, err := agentMemory.PrepareAdd(t.Context(), memory.AddV1Input{Scope: string(userTarget.Scope), Content: "integration preference"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	addedReply, err := agentMemory.CallPlugin(t.Context(), addition, mutation.NewCommandID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	addedResult, err := agentMemory.DecodeAdd(addedReply)
+	added := memoryProjection(memory.UpdateV1Output(addedResult.Item))
+	if err != nil {
+		t.Fatalf("Add agent memory: %v", err)
+	}
+	items, err := agentMemory.Items(t.Context(), userTarget)
+	if err != nil || len(items) != 1 || items[0].ID != added.ID {
+		t.Fatalf("Items agent memory = (%+v, %v)", items, err)
+	}
+	pinned := true
+	update, err := agentMemory.PrepareUpdate(t.Context(), memory.UpdateV1Input{ID: added.ID, Pinned: &pinned})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reply, err := agentMemory.CallPlugin(t.Context(), update, mutation.NewCommandID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := agentMemory.DecodeUpdate(added.ID, reply)
+	if err != nil || !updated.Pinned {
+		t.Fatalf("Update agent memory = (%+v, %v)", updated, err)
+	}
+	deletion, err := agentMemory.PrepareDelete(t.Context(), added.ID)
+	if err != nil {
+		t.Fatalf("Prepare agent memory deletion: %v", err)
+	}
+	if _, deleteErr := agentMemory.CallPlugin(t.Context(), deletion, mutation.NewCommandID()); deleteErr != nil {
+		t.Fatalf("Delete agent memory: %v", deleteErr)
+	}
+}
+
+func requireSessionPortability(t *testing.T, runtime *Connection, sessionID string) {
+	t.Helper()
+	markdown, err := runtime.ExportSession(t.Context(), session.ExportRequest{
+		SessionID: sessionID, Format: protocol.ExportFormatMarkdown,
+	})
+	if err != nil || len(markdown.Bytes()) == 0 || markdown.Importable() {
+		t.Fatalf("Markdown ExportSession = (%q, %v)", markdown.Bytes(), err)
+	}
+	artifact, err := runtime.ExportSession(t.Context(), session.ExportRequest{
+		SessionID: sessionID, Format: protocol.ExportFormatJSON,
+	})
+	if err != nil || !artifact.Importable() {
+		t.Fatalf("JSON ExportSession = (%q, %v)", artifact.Bytes(), err)
+	}
+	imported, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: artifact})
+	if err != nil || imported.ID != sessionID {
+		t.Fatalf("ImportSession = (%+v, %v)", imported, err)
+	}
+	rolledBack, err := runtime.RollbackSession(t.Context(), conversation.RollbackSession{
+		SessionID: sessionID, Scope: protocol.RestoreHistory,
+	})
+	if err != nil || rolledBack.Session.ID != sessionID || len(rolledBack.Dropped) != 0 {
+		t.Fatalf("RollbackSession = (%+v, %v)", rolledBack, err)
+	}
+}
+
+func requireWorkspaceInspection(t *testing.T, runtime *Connection, path string) {
+	t.Helper()
+	if !runtime.Supports(protocol.TopicFilesChanged) {
+		t.Fatal("embedded runtime did not advertise files.changed")
+	}
+	canonical, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := runtime.Resolve(t.Context(), workspaceapi.ResolveRequest{Path: path})
+	if err != nil || resolved.Path != canonical || !resolved.IsAvailable() {
+		t.Fatalf("Resolve = (%+v, %v)", resolved, err)
+	}
+	path = resolved.Path
+	known, err := runtime.List(t.Context())
+	if err != nil || len(known) == 0 || known[0].LastActive == nil {
+		t.Fatalf("List = (%+v, %v)", known, err)
+	}
+	lastActive := *known[0].LastActive
+	*known[0].LastActive = time.Time{}
+	known, err = runtime.List(t.Context())
+	if err != nil || len(known) == 0 || known[0].LastActive == nil || !known[0].LastActive.Equal(lastActive) {
+		t.Fatalf("caller mutation changed Runtime workspace activity: (%+v, %v)", known, err)
+	}
+	files, err := runtime.Files(t.Context(), workspaceapi.FilesRequest{Workspace: path})
+	if err != nil || len(files.Entries) != 2 || files.Entries[0].Path != "empty" ||
+		files.Entries[0].Type != protocol.FileEntryDir || files.Entries[1].Path != "main.go" || files.Entries[1].SizeBytes == nil {
+		t.Fatalf("Files = (%+v, %v)", files, err)
+	}
+	size := *files.Entries[1].SizeBytes
+	*files.Entries[1].SizeBytes = 0
+	files, err = runtime.Files(t.Context(), workspaceapi.FilesRequest{Workspace: path})
+	if err != nil || len(files.Entries) != 2 || files.Entries[1].SizeBytes == nil || *files.Entries[1].SizeBytes != size {
+		t.Fatalf("caller mutation changed Runtime file size: (%+v, %v)", files, err)
+	}
+	headLimit, err := workspaceapi.NewHeadLineLimit(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	head, err := runtime.Head(t.Context(), workspaceapi.HeadRequest{Workspace: path, Path: "main.go", LineLimit: headLimit})
+	if err != nil || len(head.Lines) != 2 || head.Lines[0].Text != "package main" {
+		t.Fatalf("Head = (%+v, %v)", head, err)
+	}
+	head.Lines[0].Text = "caller mutation"
+	head, err = runtime.Head(t.Context(), workspaceapi.HeadRequest{Workspace: path, Path: "main.go", LineLimit: headLimit})
+	if err != nil || len(head.Lines) != 2 || head.Lines[0].Text != "package main" {
+		t.Fatalf("caller mutation changed Runtime file preview: (%+v, %v)", head, err)
+	}
+	searchLimit, err := workspaceapi.NewSearchResultLimit(20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := runtime.Search(t.Context(), workspaceapi.SearchRequest{Workspace: path, Query: "answer", Limit: searchLimit})
+	if err != nil || found.Total != 1 || len(found.Matches) != 1 {
+		t.Fatalf("Search = (%+v, %v)", found, err)
+	}
+	matchText := found.Matches[0].Text
+	found.Matches[0].Text = "caller mutation"
+	found, err = runtime.Search(t.Context(), workspaceapi.SearchRequest{Workspace: path, Query: "answer", Limit: searchLimit})
+	if err != nil || len(found.Matches) != 1 || found.Matches[0].Text != matchText {
+		t.Fatalf("caller mutation changed Runtime search results: (%+v, %v)", found, err)
+	}
+	content, err := runtime.Read(t.Context(), workspaceapi.ReadRequest{
+		Workspace: path, Path: "main.go", Range: workspaceapi.WholeFileReadRange(),
+		ByteLimit: workspaceapi.DefaultReadByteLimit(),
+	})
+	if err != nil || content.TotalLines != 4 || content.Content == "" {
+		t.Fatalf("Read = (%+v, %v)", content, err)
+	}
+}
+
+func configureIntegrationRuntime(t *testing.T) {
+	t.Helper()
+	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+	t.Setenv("DEEPSEEK_API_KEY", "integration-env-key")
+	t.Setenv("FLAME_A2A_AGENTS", "")
+	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
+}
+
+func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
+	t.Helper()
+	setBaseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "https://provider.integration.test"}
+	setAPIKey := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "integration-stored-key"}
+	configured, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
+		Provider: "deepseek", BaseURL: &setBaseURL, APIKey: &setAPIKey,
+	})
+	if err != nil {
+		t.Fatalf("configure provider: %v", err)
+	}
+	configuredBaseURL, hasConfiguredBaseURL := configured.BaseURL()
+	configuredCredential, hasConfiguredCredential := configured.Credential()
+	if !hasConfiguredBaseURL || configuredBaseURL != setBaseURL.Value || !hasConfiguredCredential || !configuredCredential.Stored() {
+		t.Fatalf("configured provider = %+v", configured)
+	}
+
+	clear := models.ValueChange{Kind: protocol.ProviderConfigClear}
+	fallback, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
+		Provider: "deepseek", BaseURL: &clear, APIKey: &clear,
+	})
+	if err != nil {
+		t.Fatalf("clear provider: %v", err)
+	}
+	_, hasFallbackBaseURL := fallback.BaseURL()
+	fallbackCredential, hasFallbackCredential := fallback.Credential()
+	if hasFallbackBaseURL || !hasFallbackCredential || !fallbackCredential.FromEnvironment() {
+		t.Fatalf("provider environment fallback = %+v", fallback)
+	}
+}
+
+func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
+	t.Helper()
+	productRoot := runtimefixture.TempDirectory(t)
+	owner := NewOwner(Config{
+		ProductRoot: productRoot, DefaultWorkspacePath: workspace,
+		UserHomePath: runtimefixture.TempDirectory(t), ConfigDirectories: []string{runtimefixture.TempDirectory(t)}, ClientVersion: "test",
+	})
+	runtime, err := owner.Connection(t.Context(), "")
+	if err != nil {
+		t.Fatalf("open Runtime: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := owner.Close(); err != nil {
+			t.Errorf("close Runtime: %v", err)
+		}
+		if err := filepath.WalkDir(productRoot, func(path string, entry os.DirEntry, err error) error {
+			if err == nil && entry.IsDir() {
+				return os.Chmod(path, 0700)
+			}
+			return err
+		}); err != nil {
+			t.Errorf("restore fixture directory permissions: %v", err)
+		}
+	})
+	return runtime
+}
+
+func requireSessionCatalog(t *testing.T, runtime *Connection, workspace string) conversation.Session {
+	t.Helper()
+	created, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Title: "adapter session", Workspace: workspace})
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	page, err := runtime.ListSessions(t.Context(), conversation.SessionQuery{
+		PageSize: catalogPageSize(t, 10), Search: "ADAPTER", Workspace: created.Workspace.Path,
+	})
+	if err != nil {
+		t.Fatalf("ListSessions: %v", err)
+	}
+	if len(page.Items) != 1 || page.Items[0].ID != created.ID {
+		t.Fatalf("filtered sessions = %+v, want %s", page.Items, created.ID)
+	}
+
+	snapshot, err := runtime.GetSession(t.Context(), created.ID)
+	if err != nil {
+		t.Fatalf("GetSession: %v", err)
+	}
+	if validateErr := snapshot.Validate(); validateErr != nil {
+		t.Fatalf("snapshot: %v", validateErr)
+	}
+	if snapshot.Session.ID != created.ID || len(snapshot.Runs) != 0 || len(snapshot.Transcript) != 0 {
+		t.Fatalf("snapshot = %+v", snapshot)
+	}
+	runs, err := runtime.ListRuns(t.Context(), conversation.RunQuery{
+		SessionID: created.ID, IncludeDescendants: true, PageSize: conversation.DefaultPageSize(),
+	})
+	if err != nil || len(runs.Items) != 0 {
+		t.Fatalf("ListRuns = (%+v, %v)", runs, err)
+	}
+	if _, err := runtime.GetRun(t.Context(), "run_missing"); !errors.Is(err, conversation.ErrRunNotFound) {
+		t.Fatalf("GetRun missing = %v, want ErrRunNotFound", err)
+	}
+	return created
+}
+
+func requireSessionMutation(t *testing.T, runtime *Connection, created conversation.Session, workspace string) conversation.Session {
+	t.Helper()
+	title, favorite := "renamed adapter session", true
+	model := conversation.ModelRef{Provider: created.Provider, Model: "integration-model"}
+	updated, err := runtime.UpdateSession(t.Context(), conversation.UpdateSession{
+		SessionID: created.ID, Title: &title, Workspace: &workspace, Model: &model,
+		Favorite: &favorite, ExpectedRevision: created.Revision,
+	})
+	if err != nil {
+		t.Fatalf("UpdateSession: %v", err)
+	}
+	canonicalWorkspace, canonicalErr := filepath.EvalSymlinks(workspace)
+	if canonicalErr != nil {
+		t.Fatal(canonicalErr)
+	}
+	if updated.Title != title || updated.Workspace.Path != canonicalWorkspace || updated.Provider != model.Provider || updated.Model != model.Model ||
+		!updated.Favorite || updated.Revision <= created.Revision {
+		t.Fatalf("updated = %+v", updated)
+	}
+	forked, err := runtime.ForkSession(t.Context(), conversation.ForkSession{SessionID: created.ID, Title: "forked adapter session"})
+	if err != nil {
+		t.Fatalf("ForkSession: %v", err)
+	}
+	if forked.ID == created.ID || forked.Title != "forked adapter session" {
+		t.Fatalf("forked = %+v", forked)
+	}
+	return forked
+}
+
+func requireRuntimeCatalogs(t *testing.T, runtime *Connection, sessionID, workspace string) {
+	t.Helper()
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "discovery unavailable", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(endpoint.Close)
+	apiKey := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "test-key"}
+	baseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: endpoint.URL}
+	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "openai-compatible", BaseURL: &baseURL, APIKey: &apiKey}); err != nil {
+		t.Fatal(err)
+	}
+	models, err := runtime.ListModels(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "openai-compatible:") {
+		t.Fatalf("ListModels discovery failure = %v, want openai-compatible failure", err)
+	}
+	if len(models) == 0 {
+		t.Fatal("ListModels returned no provider-qualified models")
+	}
+	wantModels, err := json.Marshal(models)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index := range models {
+		model := &models[index]
+		model.DisplayName = "caller reuse"
+		if model.TokenLimits != nil && model.TokenLimits.ContextWindow != nil {
+			*model.TokenLimits.ContextWindow = 1
+		}
+		if model.Capabilities != nil && len(model.Capabilities.ReasoningLevels) > 0 {
+			model.Capabilities.ReasoningLevels[0] = "caller reuse"
+		}
+		if model.Pricing != nil {
+			model.Pricing.InputUSDPerMillionTokens = 99
+		}
+	}
+	refreshedModels, err := runtime.ListModels(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "openai-compatible:") {
+		t.Fatalf("repeated model discovery failure = %v, want openai-compatible failure", err)
+	}
+	gotModels, err := json.Marshal(refreshedModels)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(gotModels) != string(wantModels) {
+		t.Fatal("caller reuse changed the next Runtime model catalog")
+	}
+	providers, err := runtime.Providers(t.Context())
+	if err != nil || len(providers) == 0 {
+		t.Fatalf("Providers = (%+v, %v)", providers, err)
+	}
+	roles, err := runtime.Roles(t.Context())
+	if err != nil {
+		t.Fatalf("Roles = (%+v, %v)", roles, err)
+	}
+	sessionUsage, err := runtime.SessionUsage(t.Context(), sessionID)
+	if err != nil || sessionUsage.SessionID != sessionID {
+		t.Fatalf("SessionUsage = (%+v, %v)", sessionUsage, err)
+	}
+	usagePeriod, err := conversation.RecentUsageDays(30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	usageSummary, err := runtime.Summary(t.Context(), usagePeriod)
+	if err != nil {
+		t.Fatalf("Summary = (%+v, %v)", usageSummary, err)
+	}
+	days, recent, periodErr := usageSummary.Period.Days()
+	if periodErr != nil || !recent || days != 30 {
+		t.Fatalf("Summary period = (%d, %t, %v)", days, recent, periodErr)
+	}
+	if current, exists, getGoalErr := runtime.GetGoal(t.Context(), sessionID); getGoalErr != nil || exists {
+		t.Fatalf("GetGoal without a goal = (%+v, %t, %v)", current, exists, getGoalErr)
+	}
+	if discovered, discoverErr := runtime.Discover(t.Context(), workspace); discoverErr != nil {
+		t.Fatalf("Discover skills = (%+v, %v)", discovered, discoverErr)
+	}
+	if managed, managedErr := runtime.Managed(t.Context()); managedErr != nil {
+		t.Fatalf("Managed skills = (%+v, %v)", managed, managedErr)
+	}
+	if proposals, proposalsErr := runtime.Proposals(t.Context(), workspace); proposalsErr != nil {
+		t.Fatalf("Skill proposals = (%+v, %v)", proposals, proposalsErr)
+	}
+	if servers, serversErr := runtime.Servers(t.Context()); serversErr != nil {
+		t.Fatalf("MCP servers = (%+v, %v)", servers, serversErr)
+	}
+	if tools, toolsErr := runtime.Tools(t.Context(), nil); toolsErr != nil {
+		t.Fatalf("MCP tools = (%+v, %v)", tools, toolsErr)
+	}
+	requireMCPMutationLifecycle(t, runtime)
+	requireScheduleLifecycle(t, runtime, workspace)
+	if rules, listApprovalRulesErr := runtime.ListApprovalRules(t.Context(), sessionID); listApprovalRulesErr != nil || len(rules) != 0 {
+		t.Fatalf("ListApprovalRules = (%+v, %v)", rules, listApprovalRulesErr)
+	}
+
+	applied, err := runtime.SetApprovalMode(t.Context(), protocol.ApprovalModeSafe)
+	if err != nil || applied.Mode != protocol.ApprovalModeSafe || len(applied.Modes) == 0 {
+		t.Fatalf("SetApprovalMode = (%q, %v)", applied, err)
+	}
+	mode, err := runtime.GetApprovalMode(t.Context())
+	if err != nil || mode.Mode != protocol.ApprovalModeSafe {
+		t.Fatalf("GetApprovalMode = (%q, %v)", mode, err)
+	}
+}
+
+func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
+	t.Helper()
+	timeout, err := mcp.NewHandshakeTimeout(5)
+	if err != nil {
+		t.Fatalf("NewHandshakeTimeout: %v", err)
+	}
+	authorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretSet, Value: "Bearer integration-secret"}
+	headers := mcp.HeadersChange{Kind: protocol.MCPSecretSet, Value: map[string]string{"X-Key": "integration-secret"}}
+	candidate := mcp.Candidate{
+		Name: "integration-docs", Enabled: false, Description: "Integration MCP",
+		Connection: mcp.ConnectionInput{
+			Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools",
+			Authorization: &authorization, Headers: &headers,
+		},
+		HandshakeTimeout: timeout,
+	}
+	created, err := runtime.CreateServer(t.Context(), candidate)
+	if err != nil {
+		t.Fatalf("Create MCP server: %v", err)
+	}
+	if created.ID != mcp.UserServer(candidate.Name) || created.Status.Type != protocol.MCPServerDisabled {
+		t.Fatalf("created MCP server = %+v", created)
+	}
+	requireIntegrationMCPServer(t, created, candidate.Description, 5, true, "X-Key")
+	maskedHeader := created.Connection.HeadersMasked["X-Key"]
+	created.Connection.HeadersMasked["X-Key"] = "caller-reused-header"
+	*created.HandshakeTimeout.Seconds = 1
+	servers, err := runtime.Servers(t.Context())
+	if err != nil {
+		t.Fatalf("list MCP servers after result reuse: %v", err)
+	}
+	index := slices.IndexFunc(servers, func(server protocol.MCPServer) bool { return server.ID == mcp.UserServer(candidate.Name) })
+	if index < 0 {
+		t.Fatal("created MCP server disappeared after result reuse")
+	}
+	requireIntegrationMCPServer(t, servers[index], candidate.Description, 5, true, "X-Key")
+	if servers[index].Connection.HeadersMasked["X-Key"] != maskedHeader {
+		t.Fatalf("caller reuse changed the Runtime MCP server: %+v", servers[index])
+	}
+	for _, test := range []struct {
+		name   string
+		invoke func() error
+		want   error
+	}{
+		{
+			name: "duplicate server", want: protocol.ErrMCPServerAlreadyExists,
+			invoke: func() error {
+				_, err := runtime.CreateServer(t.Context(), candidate)
+				return err
+			},
+		},
+		{
+			name: "disabled server", want: protocol.ErrMCPServerDisabled,
+			invoke: func() error { return runtime.ReconnectServer(t.Context(), mcp.UserServer(candidate.Name)) },
+		},
+		{
+			name: "missing server", want: protocol.ErrMCPServerNotFound,
+			invoke: func() error { return runtime.DeleteServer(t.Context(), mcp.UserServer("missing-mcp-server")) },
+		},
+		{
+			name: "missing authorization", want: protocol.ErrMCPAuthorizationAttemptNotFound,
+			invoke: func() error {
+				_, err := runtime.GetAuthorization(t.Context(), mcp.AuthorizationReference{
+					ID: adapterMCPAuthorizationAttemptID, Server: mcp.UserServer(candidate.Name),
+				})
+				return err
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.invoke()
+			if !errors.Is(err, test.want) {
+				t.Fatalf("MCP error = %v, want %v", err, test.want)
+			}
+			problem, ok := errors.AsType[protocol.ProblemError](err)
+			if !ok {
+				t.Fatalf("MCP error lost its Runtime problem: %v", err)
+			}
+			data := problem.Problem()
+			if data.Type != test.want.Error() || err.Error() != failure.String(&data) {
+				t.Fatalf("MCP error = %q, want one projection of %+v", err, data)
+			}
+		})
+	}
+	delete(candidate.Connection.Headers.Value, "X-Key")
+	candidate.Connection.Headers.Value["X-Reused"] = "caller-reused-header"
+	servers, err = runtime.Servers(t.Context())
+	if err != nil || index >= len(servers) {
+		t.Fatalf("list MCP servers after input reuse: (%+v, %v)", servers, err)
+	}
+	requireIntegrationMCPServer(t, servers[index], candidate.Description, 5, true, "X-Key")
+	clearAuthorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretClear}
+	clearHeaders := mcp.HeadersChange{Kind: protocol.MCPSecretClear}
+	description := "Updated integration MCP"
+	updatedTimeout, err := mcp.NewHandshakeTimeout(10)
+	if err != nil {
+		t.Fatalf("NewHandshakeTimeout: %v", err)
+	}
+	update := mcp.ServerUpdate{
+		Server: mcp.UserServer(candidate.Name), Description: &description, HandshakeTimeout: &updatedTimeout,
+		Connection: &mcp.ConnectionInput{
+			Transport: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
+			Authorization: &clearAuthorization, Headers: &clearHeaders,
+		},
+	}
+	updated, err := runtime.UpdateServer(t.Context(), update)
+	if err != nil {
+		t.Fatalf("Update MCP server: %v", err)
+	}
+	requireIntegrationMCPServer(t, updated, description, 10, false)
+	description = "caller-reused-description"
+	*update.HandshakeTimeout = mcp.HandshakeTimeout{}
+	servers, err = runtime.Servers(t.Context())
+	if err != nil || index >= len(servers) {
+		t.Fatalf("list MCP servers after update reuse: (%+v, %v)", servers, err)
+	}
+	stored := servers[index]
+	if stored.Description != updated.Description || stored.HandshakeTimeout.Type != updated.HandshakeTimeout.Type ||
+		stored.HandshakeTimeout.Seconds == nil || *stored.HandshakeTimeout.Seconds != *updated.HandshakeTimeout.Seconds {
+		t.Fatalf("caller update reuse changed the Runtime MCP server: %+v", stored)
+	}
+	if err := runtime.DeleteServer(t.Context(), mcp.UserServer(candidate.Name)); err != nil {
+		t.Fatalf("Delete MCP server: %v", err)
+	}
+}
+
+func requireIntegrationMCPServer(
+	t *testing.T, server protocol.MCPServer, description string, timeoutSeconds int, authorized bool, headers ...string,
+) {
+	t.Helper()
+	if server.Description != description || server.HandshakeTimeout.Seconds == nil ||
+		*server.HandshakeTimeout.Seconds != timeoutSeconds ||
+		(server.Connection.AuthorizationMasked != "") != authorized ||
+		!slices.Equal(slices.Sorted(maps.Keys(server.Connection.HeadersMasked)), headers) {
+		t.Fatalf("MCP server = %+v", server)
+	}
+}
+
+func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace string) {
+	t.Helper()
+	create := schedule.CreateV1Input{
+		Title: "Adapter schedule", Instructions: "review the workspace",
+		CWD: workspace, Enabled: true, Cron: "0 9 * * 1-5",
+	}
+	creation, err := runtime.PrepareCreate(t.Context(), create)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reply, err := runtime.CallPlugin(t.Context(), creation, mutation.NewCommandID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := runtime.DecodeCreate(reply)
+	if err != nil {
+		t.Fatalf("Create schedule: %v", err)
+	}
+	create.CWD = "/caller-reused-create"
+	if created.CWD != workspace || created.NextRunAt.IsZero() {
+		t.Fatalf("created schedule is incomplete: %+v", created)
+	}
+	created.CWD = "/caller-reused-workspace"
+	created.NextRunAt = time.Time{}
+	listed, err := runtime.Schedules(t.Context())
+	if err != nil || len(listed) != 1 || listed[0].ID != created.ID ||
+		listed[0].CWD != workspace ||
+		listed[0].NextRunAt.IsZero() {
+		t.Fatalf("Schedules = (%+v, %v)", listed, err)
+	}
+	listed[0].CWD = "/caller-reused-list"
+	title, instructions, cron, enabled := "Updated schedule", "review again", "0 15 * * 1-5", false
+	update := schedule.UpdateV1Input{
+		ID: created.ID, ExpectedRevision: created.Revision,
+		Title: &title, Instructions: &instructions, Cron: &cron, Enabled: &enabled,
+		CWD: new(workspace),
+	}
+	updateRequest, err := runtime.PrepareUpdate(t.Context(), update)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updateReply, err := runtime.CallPlugin(t.Context(), updateRequest, mutation.NewCommandID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := runtime.DecodeUpdate(created.ID, updateReply)
+	if err != nil || !updated.NextRunAt.IsZero() || updated.Revision <= created.Revision ||
+		updated.Title != title || updated.Instructions != instructions || updated.Cron != cron ||
+		updated.CWD != workspace {
+		t.Fatalf("Update schedule = (%+v, %v)", updated, err)
+	}
+	title, instructions, cron, enabled = "reused", "reused", "0 * * * *", true
+	*update.CWD = "/caller-reused-update"
+	listed, err = runtime.Schedules(t.Context())
+	if err != nil || len(listed) != 1 || listed[0].ID != updated.ID || !listed[0].NextRunAt.IsZero() ||
+		listed[0].Title != "Updated schedule" || listed[0].Instructions != "review again" ||
+		listed[0].Cron != "0 15 * * 1-5" || listed[0].CWD != workspace {
+		t.Fatalf("Schedules after request reuse = (%+v, %v)", listed, err)
+	}
+	deletion, err := runtime.PrepareDelete(t.Context(), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.CallPlugin(t.Context(), deletion, mutation.NewCommandID()); err != nil {
+		t.Fatalf("Delete schedule: %v", err)
+	}
+}
+
+func requireSessionDeletion(t *testing.T, runtime *Connection, sessionIDs ...string) {
+	t.Helper()
+	for _, sessionID := range sessionIDs {
+		if err := runtime.DeleteSession(t.Context(), conversation.DeleteSession{SessionID: sessionID}); err != nil {
+			t.Fatalf("DeleteSession %s: %v", sessionID, err)
+		}
+	}
+	_, err := runtime.GetSession(t.Context(), sessionIDs[0])
+	if !errors.Is(err, conversation.ErrSessionNotFound) {
+		t.Fatalf("GetSession after delete = %v, want ErrSessionNotFound", err)
+	}
+	problem, ok := errors.AsType[protocol.ProblemError](err)
+	if !ok || problem.Problem().Type != protocol.ErrSessionNotFound.Error() {
+		t.Fatalf("structured GetSession error = %T %v", err, err)
+	}
+}
+
+func requireClosedRuntime(t *testing.T, runtime *Connection) {
+	t.Helper()
+	if err := runtime.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if _, err := runtime.ListModels(t.Context()); !errors.Is(err, conversation.ErrDisconnected) {
+		t.Fatalf("ListModels after Close = %v, want ErrDisconnected", err)
+	}
+}
+
+func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
+	configureIntegrationRuntime(t)
+
+	owner := NewOwner(Config{
+		ProductRoot: runtimefixture.TempDirectory(t), DefaultWorkspacePath: runtimefixture.TempDirectory(t),
+		UserHomePath: runtimefixture.TempDirectory(t), ConfigDirectories: []string{runtimefixture.TempDirectory(t)}, ClientVersion: "test",
+	})
+	first, err := owner.Connection(t.Context(), "")
+	if err != nil {
+		t.Fatalf("first Runtime: %v", err)
+	}
+	second, err := owner.Connection(t.Context(), "")
+	if err != nil {
+		t.Fatalf("second Runtime: %v", err)
+	}
+	if first != second {
+		t.Fatal("owner opened more than one connection")
+	}
+	firstProfile := first.Profile()
+	secondProfile := second.Profile()
+	firstDiscovery := firstProfile.Discovery()
+	firstDiscovery.Capabilities.RuntimeTopics[0] = "mutated"
+	if secondProfile.Discovery().Capabilities.RuntimeTopics[0] == "mutated" {
+		t.Fatal("owner leaked mutable profile state")
+	}
+	if first.AgentMemory() == nil ||
+		first.DiagnosticTools() == nil || first.AuthoringContext() == nil ||
+		first.Hooks() == nil || first.Feedback() == nil {
+		t.Fatal("connection adapters were not composed")
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatalf("repeated Close: %v", err)
+	}
+	if _, err := owner.Connection(t.Context(), ""); !errors.Is(err, conversation.ErrDisconnected) {
+		t.Fatalf("Connection after Close = %v, want ErrDisconnected", err)
+	}
+}

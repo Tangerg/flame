@@ -5,9 +5,9 @@ import (
 	"sync"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/plugins/memory/backend/sqlite"
 	"github.com/Tangerg/flame/plugins/memory/backend/transport"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/flame/runtime/storage/directories"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )

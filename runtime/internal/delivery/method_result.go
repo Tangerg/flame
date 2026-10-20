@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Tangerg/flame/runtime/internal/contractshape"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -50,7 +49,7 @@ func (m MethodMeta) DecodeResult(encoded jsontext.Value) (any, error) {
 		return reflect.Zero(m.Result).Interface(), nil
 	}
 	target := reflect.New(m.resultType())
-	if err := contractshape.DecodeValue(encoded, target.Interface(), "result"); err != nil {
+	if err := protocol.DecodeResponse(encoded, target.Interface()); err != nil {
 		return nil, err
 	}
 	value := target.Elem().Interface()

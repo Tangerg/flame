@@ -11,8 +11,8 @@ import (
 
 	"github.com/Tangerg/go-sdk/jsonrpc"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 func testID(value string) transport.ID {

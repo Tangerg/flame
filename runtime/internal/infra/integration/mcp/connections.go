@@ -10,9 +10,9 @@ import (
 	"strings"
 	"sync"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 

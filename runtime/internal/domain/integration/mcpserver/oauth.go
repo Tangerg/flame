@@ -5,7 +5,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/fingerprint"
 )
 
 var ErrOAuthSessionSuperseded = errors.New("mcp: oauth session superseded")

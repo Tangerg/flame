@@ -14,7 +14,7 @@ type endpointObservationUseCases interface {
 
 func (s *Handler) ListModelEndpoints(ctx context.Context, in protocol.ListModelEndpointsRequest) (*protocol.Page[protocol.ModelEndpointInvocation], error) {
 	if s.modelEndpoints == nil {
-		return nil, NewFailure(protocol.ErrCapabilityNotNeg, "model endpoint observations are unavailable")
+		return nil, protocol.NewFailure(protocol.ErrCapabilityNotNeg, "model endpoint observations are unavailable")
 	}
 	limit, err := requestedPageLimit(in.Limit)
 	if err != nil {

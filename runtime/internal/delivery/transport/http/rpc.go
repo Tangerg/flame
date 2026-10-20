@@ -9,13 +9,15 @@ import (
 	"net/http"
 	"strings"
 
+	transportmeta "github.com/Tangerg/flame/runtime/internal/delivery/transport"
+
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 type rpcHandler struct{ router *dispatch.Router }
@@ -89,9 +91,9 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// the ctx so runs.subscribe replays a run's retained replay window from that
 	// point rather than re-sending it whole. Harmless for
 	// non-streaming methods (they don't read it).
-	ctx := transport.WithLastEventID(r.Context(), r.Header.Get(headerLastEventID))
-	ctx = transport.WithIdempotencyKey(ctx, r.Header.Get(headerIdempotencyKey))
-	ctx = transport.WithIdempotencyNamespace(ctx, r.Header.Get(headerIdempotencyNamespace))
+	ctx := transportmeta.WithLastEventID(r.Context(), r.Header.Get(headerLastEventID))
+	ctx = transportmeta.WithIdempotencyKey(ctx, r.Header.Get(headerIdempotencyKey))
+	ctx = transportmeta.WithIdempotencyNamespace(ctx, r.Header.Get(headerIdempotencyNamespace))
 	result := s.router.Dispatch(ctx, message)
 
 	// Surface the request method for the X-Method header.
@@ -227,4 +229,15 @@ func isJSONMediaType(ct string) bool {
 		return false
 	}
 	return mt == "application/json"
+}
+
+// RefusalProblems projects only the closed pre-dispatch refusal pairs for clients.
+func RefusalProblems() map[string]int {
+	values := make(map[string]int)
+	for _, kind := range problemKinds {
+		if kind.refusal {
+			values[kind.problemType()] = kind.status
+		}
+	}
+	return values
 }

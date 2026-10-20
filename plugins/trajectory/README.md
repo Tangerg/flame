@@ -21,7 +21,7 @@ closing observation does not retract an accepted Core command. Its durable recei
 remains owned by the canonical Session delivery operation. The former closed action
 operation/declaration, special Core/CLI wrapper and private Host form are removed.
 
-Rebuild with `node plugins/build-components.mjs`; use `--check` for exact ESM
+Rebuild with `node plugins/scripts/build-components.mjs`; use `--check` for exact ESM
 reproduction. Reinstall/select changed package bytes. React, SDK and UI come from
 actual shared Host modules; code replacement can require a window reload. No guest
 or historical script installation path exists.

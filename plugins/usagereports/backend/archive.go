@@ -5,12 +5,13 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	"github.com/Tangerg/flame/plugins/usagereports/backend/domain"
 	"github.com/Tangerg/flame/plugins/usagereports/backend/rpc"
-	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
-	pluginstorage "github.com/Tangerg/flame/runtime/plugin/sqlite"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -21,12 +22,12 @@ func coreAccounting(ctx context.Context, days int) (summary *protocol.UsageSumma
 	if err != nil {
 		return nil, err
 	}
-	client, err := flameruntime.ConnectCallback(ctx, ref)
+	client, err := runtimeclient.ConnectCallback(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, client.Close()) }()
-	return client.GetUsageSummary(ctx, protocol.UsageSummaryRequest{SinceDays: new(days)}, flameruntime.CallOptions{})
+	return client.GetUsageSummary(ctx, protocol.UsageSummaryRequest{SinceDays: new(days)}, protocol.CallOptions{})
 }
 
 type archive struct {

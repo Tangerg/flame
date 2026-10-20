@@ -13,13 +13,13 @@ import (
 
 	"github.com/Tangerg/flame/runtime/storage/directories"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	modelcatalog "github.com/Tangerg/flame/runtime/model/catalog"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"

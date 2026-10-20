@@ -6,12 +6,12 @@ import (
 	"iter"
 	"time"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"

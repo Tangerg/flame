@@ -69,11 +69,11 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 func wireRunResumeErr(err error) error {
 	switch {
 	case errors.Is(err, runs.ErrCommandKeyConflict):
-		return NewFailure(errors.Join(protocol.ErrIdempotencyConflict, err), "idempotency key is already bound to another operation")
+		return protocol.NewFailure(errors.Join(protocol.ErrIdempotencyConflict, err), "idempotency key is already bound to another operation")
 	case errors.Is(err, runs.ErrInterruptNotOpen):
 		return protocol.ErrInterruptNotOpen
 	case errors.Is(err, runs.ErrInvalidInterruptResponse):
-		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrSessionBusy):
 		return protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrRunNotFound):
@@ -103,7 +103,7 @@ func decodeResumeResponses(responses []protocol.InterruptResponse) ([]runs.Resum
 
 func decodeResumeResponse(wire protocol.InterruptResponse) (runs.ResumeResponse, error) {
 	if wire.ItemID == "" {
-		return runs.ResumeResponse{}, NewFailure(protocol.ErrInvalidParams, "interrupt response itemId is required")
+		return runs.ResumeResponse{}, protocol.NewFailure(protocol.ErrInvalidParams, "interrupt response itemId is required")
 	}
 	response := runs.ResumeResponse{ItemID: wire.ItemID}
 	switch wire.Response.Type {
@@ -122,14 +122,14 @@ func decodeResumeResponse(wire protocol.InterruptResponse) (runs.ResumeResponse,
 		response.Kind = interrupt.Question
 		response.Question = question
 	default:
-		return runs.ResumeResponse{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown interrupt response type %q", wire.Response.Type))
+		return runs.ResumeResponse{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown interrupt response type %q", wire.Response.Type))
 	}
 	return response, nil
 }
 
 func decodeApprovalResponse(wire protocol.InterruptResponseValue) (*runs.ApprovalResponse, error) {
 	if wire.Answers != nil {
-		return nil, NewFailure(protocol.ErrInvalidParams, "approval response contains fields for another response type")
+		return nil, protocol.NewFailure(protocol.ErrInvalidParams, "approval response contains fields for another response type")
 	}
 	// remember{scope} persists this decision as a rule at the chosen scope.
 	// Empty means the one-shot decision is not remembered.
@@ -137,7 +137,7 @@ func decodeApprovalResponse(wire protocol.InterruptResponseValue) (*runs.Approva
 	if wire.Remember != nil {
 		scope, ok := rememberScopeFromWire(wire.Remember.Scope)
 		if !ok {
-			return nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("remember scope must be %q | %q | %q", protocol.RememberSession, protocol.RememberProject, protocol.RememberGlobal))
+			return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("remember scope must be %q | %q | %q", protocol.RememberSession, protocol.RememberProject, protocol.RememberGlobal))
 		}
 		approval.RememberScope = scope
 	}
@@ -154,14 +154,14 @@ func decodeApprovalResponse(wire protocol.InterruptResponseValue) (*runs.Approva
 	case protocol.ApprovalDeny:
 		approval.Approved = false
 	default:
-		return nil, NewFailure(protocol.ErrInvalidParams, "approval decision must be \"approve\" | \"deny\"")
+		return nil, protocol.NewFailure(protocol.ErrInvalidParams, "approval decision must be \"approve\" | \"deny\"")
 	}
 	return approval, nil
 }
 
 func decodeQuestionResponse(wire protocol.InterruptResponseValue) (*runs.QuestionResponse, error) {
 	if wire.Decision != "" || wire.Remember != nil || wire.EditedArgs != nil || wire.Reason != "" {
-		return nil, NewFailure(protocol.ErrInvalidParams, "answer response contains fields for another response type")
+		return nil, protocol.NewFailure(protocol.ErrInvalidParams, "answer response contains fields for another response type")
 	}
 	// The ordered answer list is the complete question resolution. The
 	// application later validates it against the stored question's field schema.
@@ -190,5 +190,5 @@ func questionAnswerParamsError(
 		Shape:  "ResumeRunRequest",
 		Fields: []protocol.FieldError{{Field: field, Detail: answerError.Detail}},
 	}
-	return NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), constraint.Error())
+	return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), constraint.Error())
 }

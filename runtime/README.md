@@ -25,7 +25,7 @@ bindings and transitive dependencies before starting a Run. The original Tool
 retains schema, approval and mutation authority: transformed arguments are
 admitted before approval, executed unchanged and retained as canonical history.
 Approval recovery consumes the saved final proposal without rerunning contributors.
-See [`plugin/README.md`](plugin/README.md#tool-proposal-transformation) for authoring.
+See [`plugin/README.md`](../packages/plugin-sdk/README.md#tool-proposal-transformation) for authoring.
 
 The private checkpoint now requires `tool_proposals`. Preserve earlier directories
 and finish old waiting work with its original binary; no compatibility reader or
@@ -124,8 +124,7 @@ contracts, typed consumers and component bytes together.
 
 ## First-party initialization
 
-`make build` produces `build/flame` and its complete companion `build/plugins`
-distribution; `make run` starts that executable. The embedded Go binding uses the
+Root `make build-runtime` produces `out/runtime/<platform>/flame-runtime` and its companion `plugins/` distribution. Run that executable in the foreground. The embedded Go binding uses the
 same layout: its host executable must ship a sibling `plugins` directory.
 `localruntime` owns this layout, with no working-directory or checkout fallback.
 
@@ -144,13 +143,13 @@ migration. Use a fresh data directory when upgrading.
 
 ## Public surfaces
 
-- `runtime.Runtime` is the concrete in-process binding; `runtime.Client` attaches
+- `runtime.Runtime` is the concrete in-process binding; `runtimeclient.Client` from `packages/runtime-client/go` attaches
   over HTTP/SSE. Both enter one Delivery Endpoint for validation, capabilities,
   command identity, invocation lifetime, Application calls and error/event projection.
 - `protocol` owns binding-neutral requests, responses, events and validation.
   [`contract/API_REFERENCE.md`](contract/API_REFERENCE.md) and the generated
   manifest, OpenRPC and schema are projections of the operation catalog.
-- [`plugin`](plugin/README.md) owns public typed backend methods, streams,
+- [`plugin`](../packages/plugin-sdk/README.md) owns public typed backend methods, streams,
   receipts and captured host collaborators. [`capability`](capability/contract.go)
   owns callable metadata; [`point`](point/contract.go) owns typed value points.
 - `localruntime` owns the executable/companion-package layout and credential handoff.
@@ -184,7 +183,7 @@ chunk/vector index and private import receipts. Typed operations and MCP search
 share retrieval; context v2 supplies original user input separately from host
 trailers. Embedding v2 returns the actual vector space with its vectors. See
 [`Knowledge base`](../plugins/knowledgebase/README.md) and the public
-[`SDK contracts`](plugin/README.md) for use and coordinated rebuild requirements.
+[`SDK contracts`](../packages/plugin-sdk/README.md) for use and coordinated rebuild requirements.
 
 ## Selection, composition and host callbacks
 
@@ -203,7 +202,7 @@ media, byte/output and token admission see that final request. Authored conversa
 and retry identity remain original. Transparent observers receive one unchanged
 call-bound `next` and preserve canonical response/chunk evidence. Tool proposals
 may transform arguments while execution retains Tool identity, schema and approval.
-See the [public authoring contracts](plugin/README.md).
+See the [public authoring contracts](../packages/plugin-sdk/README.md).
 
 `plugin.Callbacks` owns one lifecycle-bound loopback link. Bootstrap publishes
 canonical RPC once before backends can receive its reference. Nested operations
@@ -221,7 +220,7 @@ point resolution does not invent another composition or business-state owner.
 ## Components and resources
 
 Packages publish ordinary prebuilt ESM exports using the public
-[`@flame/plugin-sdk`](../plugin-sdk/README.md) and shared UI modules. Components
+[`@flame/component-sdk`](../packages/component-sdk/README.md) and shared UI modules. Components
 may be content-only or bind a same-release callable contribution. Workspace,
 Session, action, file and Tool-result placements use one component/resource path.
 The first-party catalog and independent Reviews author use this same entrance.
@@ -238,7 +237,7 @@ File renderers receive a frozen accepted file read. Tool-result renderers receiv
 settled historical projections and no invocation authority. Current renderers may
 inspect historical results without evaluating historical producer code. Loading,
 withdrawal and ambiguity retain generic inspection and existing source access.
-See [Desktop's component lifecycle](../desktop/README.md#installed-component-rendering).
+See [Desktop's component lifecycle](../apps/desktop/README.md#installed-component-rendering).
 
 ## Run commands and strict request identity
 
@@ -707,9 +706,9 @@ opened. Trajectory owns its naming form and calls canonical `sessions.update`, u
 existing Session revisions, durable command identity and recovery. The Core operation
 continues independently of optional component availability after acceptance.
 
-The [first-party trajectory package](../plugins/trajectory/plugin.json) exercises a theme,
+The [first-party trajectory package](../plugins/trajectory/package/plugin.json) exercises a theme,
 a Skill, an ordinary Session trajectory component and the current Session rename action. The public page API requires no code
-execution in Runtime. Desktop's [component lifecycle](../desktop/README.md#installed-component-rendering)
+execution in Runtime. Desktop's [component lifecycle](../apps/desktop/README.md#installed-component-rendering)
 owns rendering qualification; an unavailable renderer does not change installation state.
 Package limits are 128 MiB total copied bytes, 4096 entries, 256 Skills and
 128 installations. Skill documents and resources obey the existing 1 MiB Skill limits.
@@ -763,7 +762,7 @@ defer rt.Close()
 
 session, err := rt.CreateSession(ctx, protocol.CreateSessionRequest{
 	Workspace: &protocol.WorkspaceRef{Path: workspace},
-}, runtime.CommandOptions{IdempotencyKey: requestID + ":session"})
+}, protocol.CommandOptions{IdempotencyKey: requestID + ":session"})
 if err != nil {
 	return err
 }
@@ -806,7 +805,7 @@ replacing a completed use case's result.
 ## Attach without owning the Runtime
 
 ```go
-client, err := runtime.Connect(ctx, runtime.RemoteConfig{
+client, err := runtimeclient.Connect(ctx, runtimeclient.RemoteConfig{
 	Endpoint: "http://127.0.0.1:17171",
 	Token:    token,
 })
@@ -824,7 +823,7 @@ Operation methods require a non-nil binding returned by `Open` or `Connect`. The
 
 ## Serve the browser application
 
-The standalone Runtime can publish the built `desktop/frontend/dist` directory on its own HTTP origin. Set `server.webDirectory` or `FLAME_SERVER_WEBDIRECTORY` to that directory's absolute path. Startup rejects a missing distribution instead of presenting a partially configured browser endpoint.
+The standalone Runtime can publish the built `apps/web/dist` directory on its own HTTP origin. Set `server.webDirectory` or `FLAME_SERVER_WEBDIRECTORY` to that directory's absolute path. Startup rejects a missing distribution instead of presenting a partially configured browser endpoint.
 
 Static assets and application navigation are public. All Runtime calls still use the generated `/v2/rpc` endpoint and its existing bearer gate; static routing never replaces protocol or health routes. The asset server confines reads to the distribution, rejects hidden files and directory listings, and keeps application HTML revalidated on reload. No token is embedded in HTML or placed in a URL.
 
@@ -861,7 +860,7 @@ Application checks use the root `go.work`; Runtime and its clients resolve local
 sources together. The [development workflow](../DEVELOPMENT.md#verification) owns
 verification requirements. The default suite is offline. Module rules live in
 [Module instructions](#module-instructions) below; current boundaries live in
-[`doc/ARCHITECTURE.md`](doc/ARCHITECTURE.md).
+[`doc/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 The source map follows responsibility within each ring: Run execution and input
 translation live in `internal/adapter/run`, model translation in
@@ -888,24 +887,20 @@ binary can reject them after source-only changes, including directory moves.
 Finish or cancel waiting executions before replacing their owning build. This
 does not require a migration of completed history or alter the public protocol.
 
-`make run` builds and runs the development server in the foreground. Use Ctrl-C
-and wait for it to return before starting a replacement. For a fresh database,
-run `FLAME_HOME="$(mktemp -d)" make run`; the new product root is isolated and is
-retained after shutdown. `FLAME_HOME` is exported consistently to the server.
-The former `start`, `stop`, `restart`, `status`, `logs`, `reset-db`, and `fresh`
-targets are removed. Runtime processes can share a data directory, so a pidfile
-or port owner cannot authorize deleting its database. `make clean` removes only
-the compiled binary; data cleanup remains an explicit offline operation.
+Run the built `flame-runtime` server in the foreground. Use Ctrl-C and wait for
+shutdown before replacing it. For isolated data, supply a new absolute
+`FLAME_HOME` to that process. Building does not remove or convert existing data.
+Data cleanup remains an explicit offline operation.
 
 ## Module instructions
 
 Flame Runtime is the product backend and sole owner of durable agent semantics. It exposes one in-process Go binding and one Runtime Protocol for CLI, Desktop, and other hosts.
 
-Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), and the ordered Runtime baseline in [`doc/README.md`](doc/README.md) before changing this module.
+Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), and the ordered Runtime baseline in [`doc/README.md`](docs/README.md) before changing this module.
 
 - Runtime is a product backend, not another Agent Framework. Scope owns Process, strategy, tree, provider, and effect execution contracts; Runtime adapts them to Flame product semantics.
 - The module root owns the public in-process `Runtime` lifecycle and typed operation methods. `protocol` owns public request, response, event, error, version, and validation values. Do not define synonymous public models or a forwarding binding package.
-- [`plugin`](plugin/README.md) owns the public typed backend MCP wire binding, immutable Go-owned method contracts and logical Tool metadata translation. Memory, Schedules and independent Reviews use this same package. Private business mutation and receipt ownership stay with each backend; the binding never turns an unrecognized failure into a definite business refusal.
+- [`plugin`](../packages/plugin-sdk/README.md) owns the public typed backend MCP wire binding, immutable Go-owned method contracts and logical Tool metadata translation. Memory, Schedules and independent Reviews use this same package. Private business mutation and receipt ownership stay with each backend; the binding never turns an unrecognized failure into a definite business refusal.
 - The Go binding and HTTP/JSON-RPC binding must enter the same delivery endpoint before capability admission, idempotency, invocation lifetime, Application use cases, and event or error projection.
 - Domain packages own behavior-rich aggregates, value objects, invariants, and pure transitions. Aggregates validate construction, hide mutation, and expose legal domain operations; protocol, storage, configuration, provider, and projection values remain strict data. Application packages own cohesive use-case families and cross-aggregate ordering. Neither depends on protocol, storage, provider SDKs, or delivery types.
 - Keep a Domain or Application package only when it protects a real aggregate vocabulary, invariant, or workflow lifecycle. Merge helper, identity, reference, and one-concept packages into their proven owner; do not replace them with one god package.
@@ -1324,7 +1319,7 @@ Provider and MCP probes return a closed `outcome` without server-authored prose.
 ## SQLite transaction lifetime
 
 `runtime/storage/sqlite` is the public schema/transaction owner used by Runtime
-and plugin authors. `runtime/plugin/sqlite` owns reusable private command admission
+and plugin authors. `packages/plugin-sdk/sqlite` owns reusable private command admission
 and atomic receipts. Their former private implementations and entrances are
 removed; Core stores and both bundled backends use the same public mechanisms.
 Host business tables remain in Runtime, and private business tables stay with their
@@ -1335,7 +1330,7 @@ accidentally enter the first owner's write-set. Nested work for one database joi
 its transaction; an independent transaction for that same active database is
 refused before connection acquisition. Separate owners do not become a distributed
 transaction. See [SQLite ownership](storage/sqlite/README.md) and
-[private receipt ownership](plugin/sqlite/README.md).
+[private receipt ownership](../packages/plugin-sdk/sqlite/README.md).
 
 The SQLite transaction boundary owns connection admission, commit and joined
 rollback. Connection acquisition and statements retain the caller's context;
@@ -1655,7 +1650,6 @@ compaction input or the transcript. Compaction budgets count it. Restoring a wai
 rebuilds the same deferred set, which the deployment configuration digest already binds,
 so the catalog is the same projection after restore or compaction. A layer with no
 deferred tools has neither `search_tools` nor the catalog message.
-
 
 ## Physical model evidence and accounting
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 )
 
 func main() {

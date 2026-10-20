@@ -3,6 +3,8 @@ package dispatch
 import (
 	"reflect"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/runtime/identity"
 	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
@@ -16,7 +18,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/flame/runtime/resourceid"
 )
@@ -988,16 +989,16 @@ func registerTrajectoryValues(s *Shapes) {
 
 func registerPluginValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginClientComponent](), Constraints: []FieldConstraint{
-		{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
-		{Field: "contribution", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
-		{Field: "material", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
+		{Field: "id", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
+		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
+		{Field: "material", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		{Field: "scope", Kind: ConstraintPattern, Value: plugin.ComponentScopePattern},
 	}})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.OpenPluginResourcesRequest](), Constraints: []FieldConstraint{{Field: "componentId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.OpenPluginResourcesRequest](), Constraints: []FieldConstraint{{Field: "componentId", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}}})
 	for _, shape := range []reflect.Type{typeOf[protocol.PluginPoint](), typeOf[protocol.PluginPointValue](), typeOf[protocol.ResolvePluginPointRequest]()} {
 		constraints := []FieldConstraint{{Field: "contract", Kind: ConstraintNonEmpty}}
 		if shape != typeOf[protocol.ResolvePluginPointRequest]() {
-			constraints = append(constraints, FieldConstraint{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern})
+			constraints = append(constraints, FieldConstraint{Field: "id", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern})
 		}
 		if shape == typeOf[protocol.PluginPointValue]() {
 			constraints = append(constraints, FieldConstraint{Field: "value", Kind: ConstraintNonEmpty})
@@ -1010,7 +1011,7 @@ func registerPluginValues(s *Shapes) {
 	for _, shape := range []reflect.Type{typeOf[protocol.PluginPointReference](), typeOf[protocol.PluginPointBinding]()} {
 		constraints := []FieldConstraint{
 			{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
-			{Field: "contribution", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
+			{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		}
 		if shape == typeOf[protocol.PluginPointBinding]() {
 			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: fingerprint.DigestPattern()}, FieldConstraint{Field: "value", Kind: ConstraintNonEmpty})
@@ -1021,16 +1022,16 @@ func registerPluginValues(s *Shapes) {
 		constraints := []FieldConstraint{
 			{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
 			{Field: "digest", Kind: ConstraintPattern, Value: fingerprint.DigestPattern()},
-			{Field: "contribution", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
+			{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		}
 		if shape == typeOf[protocol.PluginOperationBinding]() {
 			constraints = append(constraints, FieldConstraint{Field: "contract", Kind: ConstraintNonEmpty})
 		}
 		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
 	}
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginChangeNotice](), Constraints: []FieldConstraint{{Field: "contribution", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginChangeNotice](), Constraints: []FieldConstraint{{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}}})
 	for _, shape := range []reflect.Type{typeOf[protocol.PluginRequirement](), typeOf[protocol.PluginCollaborator]()} {
-		constraints := []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}
+		constraints := []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}}
 		if shape == typeOf[protocol.PluginRequirement]() {
 			constraints = append(constraints, FieldConstraint{Field: "contract", Kind: ConstraintNonEmpty})
 		}
@@ -1041,7 +1042,7 @@ func registerPluginValues(s *Shapes) {
 		{Field: "input", Kind: ConstraintNonEmpty},
 		{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
 		{Field: "digest", Kind: ConstraintPattern, Value: fingerprint.DigestPattern()},
-		{Field: "contribution", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
+		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		{Field: "method", Kind: ConstraintNonEmpty},
 		{Field: "method", Kind: ConstraintMaxLength, Limit: 256},
 		{Field: "method", Kind: ConstraintIdentity},
@@ -1067,7 +1068,7 @@ func registerPluginValues(s *Shapes) {
 		{When: []delivery.FieldCondition{{Field: "kind", Operator: delivery.OperatorEquals, Value: string(protocol.PluginStreamResult)}}, Required: []string{"value"}, Forbidden: []string{"failure"}},
 		{When: []delivery.FieldCondition{{Field: "kind", Operator: delivery.OperatorEquals, Value: string(protocol.PluginStreamFailure)}}, Required: []string{"failure"}, Forbidden: []string{"value"}},
 	}})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginContribution](), Constraints: append(mcpServerName("server"), FieldConstraint{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, FieldConstraint{Field: "export", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, FieldConstraint{Field: "contract", Kind: ConstraintNonEmpty})})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginContribution](), Constraints: append(mcpServerName("server"), FieldConstraint{Field: "id", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}, FieldConstraint{Field: "export", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}, FieldConstraint{Field: "contract", Kind: ConstraintNonEmpty})})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginRendererSelector](), Constraints: []FieldConstraint{{Field: "name", Kind: ConstraintNonEmpty}, {Field: "name", Kind: ConstraintMaxLength, Limit: plugin.MaxRendererSelectorNameBytes}}})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.PluginThemeColors](),
@@ -1091,7 +1092,7 @@ func registerPluginValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginInput](), Constraints: mcpServerName("server")})
 	for _, shape := range []reflect.Type{typeOf[protocol.SelectPluginProviderRequest](), typeOf[protocol.PluginProviderSelection]()} {
 		constraints := []FieldConstraint{
-			FieldConstraint{Field: "contribution", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
+			FieldConstraint{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 			FieldConstraint{Field: "role", Kind: ConstraintNonEmpty},
 			FieldConstraint{Field: "role", Kind: ConstraintMaxLength, Limit: 256},
 			FieldConstraint{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
@@ -1100,7 +1101,7 @@ func registerPluginValues(s *Shapes) {
 	}
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginCompositionMember](), Constraints: []FieldConstraint{
 		{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
-		{Field: "contribution", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern},
+		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 	}})
 	for _, shape := range []reflect.Type{typeOf[protocol.PluginComposition](), typeOf[protocol.SetPluginCompositionRequest](), typeOf[protocol.ResolvePluginCompositionRequest]()} {
 		constraints := []FieldConstraint{{Field: "contract", Kind: ConstraintNonEmpty}}

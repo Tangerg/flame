@@ -13,7 +13,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
+	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 // heartbeatInterval is how often an idle streaming response emits an SSE

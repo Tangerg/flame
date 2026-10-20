@@ -1,0 +1,420 @@
+// Package attachment turns local files into the runtime-neutral attachment
+// values accepted by the agent domain. It is a filesystem adapter: callers
+// depend on its small Resolver surface, while runtime implementations receive
+// only prompt.Attachment values and never learn how the CLI found them.
+package attachment
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
+	"mime"
+	"net/http"
+	"os"
+	"path/filepath"
+	"slices"
+	"strconv"
+	"strings"
+
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/fileinput"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/fuzzy"
+)
+
+const (
+	completionResultLimit = 50
+	maxVisitedEntries     = 100_000
+)
+
+var (
+	ErrNotRegular      = errors.New("attachment is not a regular file")
+	ErrTooLarge        = errors.New("attachment is too large")
+	ErrUnsupportedType = errors.New("attachment must be text or an image")
+)
+
+// Resolver resolves explicit paths and searches the workspace for completion.
+// Root is absolute but need not exist until a filesystem operation is requested,
+// which keeps session construction side-effect free and easy to test.
+type Resolver struct {
+	root     string
+	maxBytes int64
+}
+
+// PathMatch is one workspace-relative file completion.
+type PathMatch struct {
+	Path    string
+	Detail  string
+	Matched []int
+	score   int
+}
+
+func New(root string) (*Resolver, error) {
+	root = strings.TrimSpace(root)
+	if root == "" {
+		return nil, errors.New("attachment: workspace is required")
+	}
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return nil, fmt.Errorf("attachment: resolve workspace: %w", err)
+	}
+	abs = filepath.Clean(abs)
+	if canonical, evalErr := filepath.EvalSymlinks(abs); evalErr == nil {
+		abs = canonical
+	} else if !errors.Is(evalErr, os.ErrNotExist) {
+		return nil, fmt.Errorf("attachment: resolve workspace symlinks: %w", evalErr)
+	}
+	return &Resolver{root: abs, maxBytes: prompt.MaxAttachmentBytes}, nil
+}
+
+// Resolve validates and classifies one explicit path. Symlinks are resolved so
+// identity and duplicate detection refer to the same underlying file.
+func (r *Resolver) Resolve(ctx context.Context, input string) (prompt.Attachment, error) {
+	if err := context.Cause(ctx); err != nil {
+		return prompt.Attachment{}, err
+	}
+	canonical, info, header, err := r.inspect(input)
+	if err != nil {
+		return prompt.Attachment{}, err
+	}
+	return r.project(canonical, info, header)
+}
+
+func (r *Resolver) inspect(input string) (string, fs.FileInfo, []byte, error) {
+	path, err := r.absolute(input)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	canonical, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("attachment: resolve %q: %w", input, err)
+	}
+	file, info, err := fileinput.Open(canonical, r.maxBytes)
+	if err != nil {
+		return "", nil, nil, attachmentOpenError(input, r.maxBytes, err)
+	}
+	defer func() { _ = file.Close() }()
+	header, err := readAttachmentHeader(file, input)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	if err := fileinput.VerifyPathVersion(file, info, canonical); err != nil {
+		if errors.Is(err, fileinput.ErrChanged) {
+			return "", nil, nil, fmt.Errorf("attachment: %q changed while it was being inspected", input)
+		}
+		return "", nil, nil, fmt.Errorf("attachment: verify %q after inspection: %w", input, err)
+	}
+	canonical, err = filepath.Abs(canonical)
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("attachment: canonical path: %w", err)
+	}
+	return canonical, info, header, nil
+}
+
+func attachmentOpenError(input string, maximumBytes int64, err error) error {
+	switch {
+	case errors.Is(err, fileinput.ErrChanged):
+		return fmt.Errorf("attachment: %q changed while it was being opened", input)
+	case errors.Is(err, fileinput.ErrNotRegular):
+		return fmt.Errorf("%w: %s", ErrNotRegular, input)
+	case errors.Is(err, fileinput.ErrTooLarge):
+		var limit fileinput.SizeLimitError
+		if errors.As(err, &limit) {
+			return fmt.Errorf(
+				"%w: %s is %s (limit %s)",
+				ErrTooLarge, input, formatByteSize(limit.Size), formatByteSize(maximumBytes),
+			)
+		}
+		return fmt.Errorf("%w: %s exceeds %s", ErrTooLarge, input, formatByteSize(maximumBytes))
+	default:
+		return fmt.Errorf("attachment: open %q: %w", input, err)
+	}
+}
+
+func readAttachmentHeader(file io.Reader, input string) ([]byte, error) {
+	header := make([]byte, 512)
+	n, err := io.ReadFull(file, header)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return nil, fmt.Errorf("attachment: inspect content of %q: %w", input, err)
+	}
+	return header[:n], nil
+}
+
+func (r *Resolver) project(canonical string, info fs.FileInfo, header []byte) (prompt.Attachment, error) {
+	mimeType := classifyMIME(canonical, header)
+	kind, supported := attachmentKind(mimeType)
+	if !supported {
+		return prompt.Attachment{}, fmt.Errorf("%w: %s (%s)", ErrUnsupportedType, canonical, mimeType)
+	}
+	name := filepath.Base(canonical)
+	if relative, ok := r.relative(canonical); ok {
+		name = relative
+	}
+	digest := (attachmentIdentity{
+		canonicalPath: canonical,
+		size:          info.Size(),
+		modifiedAt:    info.ModTime().UnixNano(),
+	}).digest()
+	return prompt.Attachment{
+		ID: "att_" + hex.EncodeToString(digest[:8]), Kind: kind, Name: filepath.ToSlash(name),
+		Path: canonical, MimeType: mimeType, Size: info.Size(),
+	}, nil
+}
+
+type attachmentIdentity struct {
+	canonicalPath string
+	size          int64
+	modifiedAt    int64
+}
+
+func (i attachmentIdentity) digest() [sha256.Size]byte {
+	digest := sha256.New()
+	for _, field := range []string{
+		i.canonicalPath,
+		strconv.FormatInt(i.size, 10),
+		strconv.FormatInt(i.modifiedAt, 10),
+	} {
+		_, _ = digest.Write(binary.AppendUvarint(nil, uint64(len(field))))
+		_, _ = io.WriteString(digest, field)
+	}
+	var value [sha256.Size]byte
+	copy(value[:], digest.Sum(nil))
+	return value
+}
+
+func attachmentKind(mimeType string) (protocol.ContentBlockType, bool) {
+	switch {
+	case strings.HasPrefix(mimeType, "image/"):
+		return protocol.ContentBlockImage, true
+	case isTextMIME(mimeType):
+		return protocol.ContentBlockText, true
+	default:
+		return "", false
+	}
+}
+
+// Complete searches regular files below Root and returns fuzzy-ranked relative
+// paths. It does not follow directory symlinks, skips dependency/VCS internals,
+// and obeys cancellation during the walk.
+func (r *Resolver) Complete(ctx context.Context, query string) ([]PathMatch, error) {
+	search := completionSearch{
+		ctx: ctx, root: r.root, maxBytes: r.maxBytes,
+		query: filepath.ToSlash(strings.TrimSpace(query)), maxVisited: maxVisitedEntries,
+		matches: make([]PathMatch, 0, completionResultLimit),
+	}
+	err := search.walk()
+	if err != nil {
+		return nil, fmt.Errorf("attachment: search workspace: %w", err)
+	}
+	slices.SortStableFunc(search.matches, func(a, b PathMatch) int {
+		if a.score != b.score {
+			return b.score - a.score
+		}
+		if len(a.Path) != len(b.Path) {
+			return len(a.Path) - len(b.Path)
+		}
+		return strings.Compare(a.Path, b.Path)
+	})
+	return slices.Clone(search.matches[:min(len(search.matches), completionResultLimit)]), nil
+}
+
+type completionSearch struct {
+	ctx        context.Context
+	root       string
+	query      string
+	maxBytes   int64
+	maxVisited int
+	visited    int
+	matches    []PathMatch
+}
+
+func (c *completionSearch) walk() (err error) {
+	root, err := os.OpenRoot(c.root)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, root.Close()) }()
+	if c.maxVisited <= 0 {
+		return nil
+	}
+	c.visited = 1 // The workspace root is itself one visited entry.
+	pendingDirectories := []string{"."}
+	for len(pendingDirectories) > 0 && c.visited < c.maxVisited {
+		if cause := context.Cause(c.ctx); cause != nil {
+			return cause
+		}
+		directory := pendingDirectories[0]
+		pendingDirectories[0] = ""
+		pendingDirectories = pendingDirectories[1:]
+		entries, readErr := readCompletionDirectory(root, directory, c.maxVisited-c.visited)
+		if readErr != nil {
+			if directory == "." {
+				return readErr
+			}
+			continue
+		}
+		for _, entry := range entries {
+			if cause := context.Cause(c.ctx); cause != nil {
+				return cause
+			}
+			c.visited++
+			candidate := filepath.Join(directory, entry.Name())
+			if entry.IsDir() {
+				if !ignoredDirectory(entry.Name()) {
+					pendingDirectories = append(pendingDirectories, candidate)
+				}
+				continue
+			}
+			c.visitFile(candidate, entry)
+		}
+	}
+	return nil
+}
+
+func readCompletionDirectory(root *os.Root, name string, maximumEntries int) (_ []os.DirEntry, err error) {
+	if maximumEntries <= 0 {
+		return nil, nil
+	}
+	directory, _, err := fileinput.OpenDirectoryAt(root, name)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { err = errors.Join(err, directory.Close()) }()
+	entries, err := directory.ReadDir(maximumEntries + 1)
+	if errors.Is(err, io.EOF) {
+		err = nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(entries) > maximumEntries {
+		entries = entries[:maximumEntries]
+	}
+	slices.SortFunc(entries, func(left, right os.DirEntry) int {
+		return strings.Compare(left.Name(), right.Name())
+	})
+	return entries, nil
+}
+
+func (c *completionSearch) visitFile(relative string, entry os.DirEntry) {
+	if entry.Type()&os.ModeSymlink != 0 {
+		return
+	}
+	info, ok := completionFileInfo(entry, c.maxBytes)
+	if !ok {
+		return
+	}
+	relative = filepath.ToSlash(relative)
+	// Oolong owns how well a name answers a query, and its offsets are what the
+	// completion widget highlights, so producing them anywhere else would leave
+	// the ranking and the highlight free to disagree.
+	match, matched := fuzzy.Score(c.query, relative)
+	if matched {
+		c.matches = append(c.matches, PathMatch{
+			Path: relative, Detail: formatByteSize(info.Size()),
+			Matched: match.At, score: match.Score,
+		})
+	}
+}
+
+// completionFileInfo makes completion's best-effort policy explicit: a file
+// that vanishes, becomes unreadable, is not regular, or exceeds the resolver's
+// limit is simply not a candidate.
+func completionFileInfo(entry fs.DirEntry, maxBytes int64) (fs.FileInfo, bool) {
+	info, err := entry.Info()
+	if err != nil || !info.Mode().IsRegular() || info.Size() > maxBytes {
+		return nil, false
+	}
+	return info, true
+}
+
+func (r *Resolver) absolute(input string) (string, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "", errors.New("attachment: path is empty")
+	}
+	if input == "~" || strings.HasPrefix(input, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("attachment: resolve home directory: %w", err)
+		}
+		if input == "~" {
+			input = home
+		} else {
+			input = filepath.Join(home, strings.TrimPrefix(input, "~/"))
+		}
+	}
+	if !filepath.IsAbs(input) {
+		input = filepath.Join(r.root, input)
+	}
+	return filepath.Clean(input), nil
+}
+
+func (r *Resolver) relative(path string) (string, bool) {
+	relative, err := filepath.Rel(r.root, path)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return relative, true
+}
+
+func classifyMIME(path string, header []byte) string {
+	if known := knownMIME[strings.ToLower(filepath.Ext(path))]; known != "" {
+		return known
+	}
+	byExtension := mime.TypeByExtension(strings.ToLower(filepath.Ext(path)))
+	if byExtension != "" {
+		if base, _, err := mime.ParseMediaType(byExtension); err == nil {
+			return base
+		}
+	}
+	detected := http.DetectContentType(header)
+	if base, _, err := mime.ParseMediaType(detected); err == nil {
+		return base
+	}
+	return detected
+}
+
+var knownMIME = map[string]string{
+	".go": "text/x-go", ".md": "text/markdown", ".txt": "text/plain",
+	".json": "application/json", ".yaml": "application/yaml", ".yml": "application/yaml",
+	".toml": "application/toml", ".xml": "application/xml", ".csv": "text/csv",
+	".js": "text/javascript", ".jsx": "text/jsx", ".ts": "text/typescript", ".tsx": "text/tsx",
+	".py": "text/x-python", ".rs": "text/x-rust", ".sh": "text/x-shellscript",
+	".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+	".webp": "image/webp", ".svg": "image/svg+xml",
+}
+
+func isTextMIME(value string) bool {
+	return strings.HasPrefix(value, "text/") || strings.Contains(value, "json") ||
+		strings.Contains(value, "xml") || strings.Contains(value, "yaml") ||
+		strings.Contains(value, "javascript")
+}
+
+func ignoredDirectory(name string) bool {
+	switch name {
+	case ".git", ".hg", ".svn", ".cache", "node_modules", "vendor":
+		return true
+	default:
+		return false
+	}
+}
+
+func formatByteSize(value int64) string {
+	const unit = 1024
+	if value < unit {
+		return strconv.FormatInt(value, 10) + " B"
+	}
+	divisor, suffix := int64(unit), "KiB"
+	if value >= unit*unit*unit {
+		divisor, suffix = unit*unit*unit, "GiB"
+	} else if value >= unit*unit {
+		divisor, suffix = unit*unit, "MiB"
+	}
+	return strconv.FormatFloat(float64(value)/float64(divisor), 'f', 1, 64) + " " + suffix
+}

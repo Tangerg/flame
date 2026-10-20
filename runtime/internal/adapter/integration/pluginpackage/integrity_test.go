@@ -11,8 +11,8 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
 func verificationOf(t *testing.T, r *Releases, digest fingerprint.Digest) (uint64, bool) {

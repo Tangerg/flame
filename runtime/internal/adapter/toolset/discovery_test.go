@@ -5,9 +5,10 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"

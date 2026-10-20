@@ -14,7 +14,7 @@ func registerItems(registry *Registry) {
 	// Asking a run scope for its subtree needs features.subagents; the scope itself
 	// does not, since a root run is a run.
 	registry.query(MethodMeta{
-		Name: ItemsList,
+		Name: ItemsList, GoName: "ListItems",
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(),
 			protocol.ErrRunNotFound.Error(),

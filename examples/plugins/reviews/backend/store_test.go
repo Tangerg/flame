@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
 )
 
 func openTestStore(t *testing.T, directory string) *Store {

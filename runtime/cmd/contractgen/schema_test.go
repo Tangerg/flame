@@ -1,9 +1,10 @@
 package main
 
 import (
+	"testing"
+
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"testing"
 )
 
 func TestWireGraphPreservesEmbeddedPaginationOwner(t *testing.T) {

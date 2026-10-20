@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/localruntime"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
@@ -37,13 +37,13 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = rt.Close() })
-	ses, err := rt.CreateSession(t.Context(), protocol.CreateSessionRequest{}, CommandOptions{})
+	ses, err := rt.CreateSession(t.Context(), protocol.CreateSessionRequest{}, protocol.CommandOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := rt.CreateFeedback(t.Context(), protocol.FeedbackRequest{
 		SessionID: ses.ID, Rating: protocol.FeedbackNegative, Text: "  misses the requested behavior  ",
-	}, CommandOptions{}); err != nil {
+	}, protocol.CommandOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := rt.Close(); err != nil {
@@ -136,10 +136,10 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := protocol.ExportTrajectoryRequest{SessionID: ses.ID}
-	if response, err := rt.ExportTrajectory(t.Context(), request, CallOptions{}); !errors.Is(err, protocol.ErrCapabilityNotNeg) || response != nil {
+	if response, err := rt.ExportTrajectory(t.Context(), request, protocol.CallOptions{}); !errors.Is(err, protocol.ErrCapabilityNotNeg) || response != nil {
 		t.Fatalf("child evidence without capability = %v, %v", response, err)
 	}
-	options := CallOptions{RequestMeta: protocol.RequestMeta{ClientCapabilities: &protocol.ClientCapabilities{
+	options := protocol.CallOptions{RequestMeta: protocol.RequestMeta{ClientCapabilities: &protocol.ClientCapabilities{
 		Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
 	}}}
 	page, err := rt.ListSessionTrajectory(t.Context(), protocol.ListSessionTrajectoryRequest{SessionID: ses.ID}, options)

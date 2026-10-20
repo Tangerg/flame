@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"os"
 	"os/exec"
 	"strconv"
@@ -14,6 +13,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"

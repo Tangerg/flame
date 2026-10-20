@@ -155,7 +155,7 @@ so the form remains readable in short viewports.
 
 The resource is ordinary prebuilt ESM from `src/component.tsx`, using shared React,
 public SDK and UI provider context. Build `icons` and `ui`, install plugin dependencies,
-and use `node plugins/build-components.mjs` (or `--check` for exact reproduction).
+and use `node plugins/scripts/build-components.mjs` (or `--check` for exact reproduction).
 The former HTML guest/channel and separate static control build are removed.
 
 The ordinary Memory component consumes the generated CAPABILITY_JSON and typed

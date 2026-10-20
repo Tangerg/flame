@@ -6,8 +6,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/flame/runtime/resourceid"

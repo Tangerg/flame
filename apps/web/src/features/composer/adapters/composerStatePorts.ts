@@ -1,0 +1,115 @@
+import { disposeOnHmr } from "@/lib/hmr";
+import { type AgentSessions } from "@/features/agent/public/services";
+import { type RuntimeServerScope } from "@/features/connection/public/services";
+import { configureComposerStatePort } from "@/features/composer/application/ports/state";
+import {
+  activateComposerStorage,
+  useComposerStore,
+} from "@/features/composer/adapters/composerStore";
+import { joinDraftParts } from "@/features/composer/domain/draft";
+let stopSessionSync: (() => void) | null = null;
+
+export function installComposerStatePorts(
+  sessions: AgentSessions,
+  endpoint: () => string,
+  scope: RuntimeServerScope,
+): () => void {
+  activateComposerStorage(endpoint());
+  let focusTarget: { element: HTMLTextAreaElement | null } | null = null;
+  const focus = (selectionEnd?: number) => {
+    const element = focusTarget?.element;
+    if (!element) return;
+    element.focus();
+    if (selectionEnd !== undefined) element.setSelectionRange(selectionEnd, selectionEnd);
+  };
+  const disposePort = configureComposerStatePort({
+    focus,
+    captureFocus: () => {
+      const origin = document.activeElement;
+      const target = focusTarget;
+      return () => {
+        if (document.activeElement === origin && focusTarget === target) focus();
+      };
+    },
+    registerFocusTarget: (element) => {
+      const target = { element };
+      focusTarget = target;
+      return () => {
+        if (focusTarget === target) focusTarget = null;
+      };
+    },
+    useText: () => useComposerStore((state) => state.composer.draft.value),
+    useSetText: () => useComposerStore((state) => state.setValue),
+    captureSubmission: () => useComposerStore.getState().captureSubmission(),
+    replaceDraft: (input) => {
+      const store = useComposerStore.getState();
+      store.clear();
+      store.setValue(input.text);
+      if (input.images?.length) store.addImages(input.images);
+      focus(input.text.length);
+    },
+    appendText: (text) => {
+      const store = useComposerStore.getState();
+      const value = joinDraftParts([store.composer.draft.value.trimEnd(), text]);
+      store.setValue(value);
+      focus(value.length);
+    },
+    useImages: () => useComposerStore((state) => state.composer.draft.images),
+    usePastes: () => useComposerStore((state) => state.composer.draft.pastes),
+    useAddImageFiles: () => useComposerStore((state) => state.addImageFiles),
+    useRemoveImage: () => useComposerStore((state) => state.removeImage),
+    useAddPaste: () => useComposerStore((state) => state.addPaste),
+    useRemovePaste: () => useComposerStore((state) => state.removePaste),
+    useEditPaste: () => useComposerStore((state) => state.editPaste),
+    useRestorePaste: () => useComposerStore((state) => state.restorePaste),
+    recallPreviousHistory: () => useComposerStore.getState().historyPrev(),
+    recallNextHistory: () => useComposerStore.getState().historyNext(),
+    getModelPreference: () => {
+      return useComposerStore.getState().modelPreference;
+    },
+    useModelPreference: () => useComposerStore((state) => state.modelPreference),
+    useSetModelPreference: () => useComposerStore((state) => state.setModel),
+  });
+  const disposeSessionSync = installComposerSessionSync(sessions, endpoint, scope);
+  return () => {
+    focusTarget = null;
+    disposeSessionSync();
+    disposePort();
+  };
+}
+
+function installComposerSessionSync(
+  sessions: AgentSessions,
+  endpoint: () => string,
+  scope: RuntimeServerScope,
+): () => void {
+  stopSessionSync?.();
+  const sync = ({ activeSessionId }: ReturnType<AgentSessions["getLifecycleSnapshot"]>) => {
+    activateComposerStorage(endpoint());
+    const composer = useComposerStore.getState();
+    composer.loadSession(activeSessionId);
+  };
+  const stopLifecycle = sessions.subscribeLifecycle(sync);
+  const stopDeletion = sessions.subscribeDeleted((sessionId) => {
+    activateComposerStorage(endpoint());
+    useComposerStore.getState().discardSession(sessionId);
+  });
+  const stopScope = scope.subscribeReplacement(() => sync(sessions.getLifecycleSnapshot()));
+  const stop = () => {
+    stopLifecycle();
+    stopDeletion();
+    stopScope();
+  };
+  stopSessionSync = stop;
+
+  sync(sessions.getLifecycleSnapshot());
+  return () => {
+    stop();
+    if (stopSessionSync === stop) stopSessionSync = null;
+  };
+}
+
+disposeOnHmr(() => {
+  stopSessionSync?.();
+  stopSessionSync = null;
+});

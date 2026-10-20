@@ -1,0 +1,45 @@
+import { z } from "zod";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import { rehydrateOrDefault } from "@/lib/persistedStore";
+import { type Paired } from "@/lib/persistedStore";
+export interface RecentModel {
+  provider: string;
+  id: string;
+}
+
+const KEEP = 8;
+
+const STORAGE_KEY = "flame.composer.recent-models";
+
+const persistSchema = z.object({
+  recent: z.array(z.object({ provider: z.string(), id: z.string() })).max(KEEP),
+});
+
+const _paired: Paired<RecentModelsState, z.infer<typeof persistSchema>> = true;
+
+void _paired;
+
+interface RecentModelsState {
+  recent: RecentModel[];
+  remember: (model: RecentModel) => void;
+}
+
+export const useRecentModelsStore = create<RecentModelsState>()(
+  persist(
+    (set, get) => ({
+      recent: [],
+      remember(model) {
+        const without = get().recent.filter(
+          (entry) => entry.provider !== model.provider || entry.id !== model.id,
+        );
+        set({ recent: [model, ...without].slice(0, KEEP) });
+      },
+    }),
+    {
+      name: STORAGE_KEY,
+      storage: createJSONStorage(() => localStorage),
+      merge: rehydrateOrDefault(STORAGE_KEY, persistSchema),
+    },
+  ),
+);

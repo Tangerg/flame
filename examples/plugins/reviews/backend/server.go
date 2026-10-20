@@ -5,11 +5,12 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	flameruntime "github.com/Tangerg/flame/runtime"
-	"github.com/Tangerg/flame/runtime/capability"
 	"io"
 
-	pluginsdk "github.com/Tangerg/flame/runtime/plugin"
+	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+	"github.com/Tangerg/flame/runtime/capability"
+
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
@@ -45,7 +46,7 @@ func NewServer(store *Store) (*sdk.Server, error) {
 		if err != nil {
 			return Analysis{}, err
 		}
-		client, err := flameruntime.ConnectCallback(ctx, ref)
+		client, err := runtimeclient.ConnectCallback(ctx, ref)
 		if err != nil {
 			return Analysis{}, err
 		}

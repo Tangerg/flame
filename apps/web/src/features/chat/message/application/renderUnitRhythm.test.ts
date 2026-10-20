@@ -1,0 +1,47 @@
+import { describe, expect, it } from "vitest";
+import { type MessageRenderUnit } from "@/features/agent/public/messagePresentation";
+import { type ContentBlock } from "@/features/agent/public/contentBlock";
+import { unitSeam, unitVoice } from "@/features/chat/message/application/renderUnitRhythm";
+const block = (kind: ContentBlock["kind"]): MessageRenderUnit => ({
+  kind: "block",
+  block: { kind, status: "complete" } as ContentBlock,
+  index: 0,
+  superseded: false,
+});
+
+describe("unitVoice", () => {
+  it("reads a fold, a tool group and anything else the turn DID as process", () => {
+    expect(unitVoice({ kind: "wave", units: [] })).toBe("process");
+    expect(unitVoice({ kind: "toolGroup", tools: [], superseded: false })).toBe("process");
+    for (const kind of ["tool", "reasoning", "compaction"] as const) {
+      expect(unitVoice(block(kind))).toBe("process");
+    }
+  });
+
+  it("reads text as prose and everything asking for the reader as a panel", () => {
+    expect(unitVoice(block("text"))).toBe("prose");
+    for (const kind of ["approval", "question", "image"] as const) {
+      expect(unitVoice(block(kind))).toBe("panel");
+    }
+  });
+
+  it("spaces a compaction notice like the activity rows it renders as", () => {
+    expect(unitSeam(block("tool"), block("compaction"))).toBe("tight");
+    expect(unitSeam(block("compaction"), block("tool"))).toBe("tight");
+  });
+});
+
+describe("unitSeam", () => {
+  it("gives the first unit no seam — the turn's own gap already placed it", () => {
+    expect(unitSeam(undefined, block("text"))).toBeUndefined();
+  });
+
+  it("keeps consecutive process rows tight and opens up at a change of voice", () => {
+    expect(unitSeam(block("tool"), block("reasoning"))).toBe("tight");
+    expect(unitSeam(block("tool"), block("text"))).toBe("wide");
+  });
+
+  it("is symmetric across the prose seam", () => {
+    expect(unitSeam(block("text"), block("tool"))).toBe(unitSeam(block("tool"), block("text")));
+  });
+});

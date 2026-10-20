@@ -201,7 +201,8 @@ type CapabilityRule struct {
 // features it needs. Registration is the single place this is stated.
 type MethodMeta struct {
 	// Name is the binding-neutral operation name, dotted <domain>.<verb>.
-	Name Name
+	Name   Name
+	GoName string
 
 	// Kind is filled in by the registration factory.
 	Kind MethodKind
@@ -275,7 +276,7 @@ func (m MethodMeta) Features() []string {
 	return out
 }
 
-// ProblemTypes returns the effective method-level failures in declaration order.
+// protocol.ProblemTypes returns the effective method-level failures in declaration order.
 // Static capability refusals are derived from CapabilityRules; state-dependent
 // refusals remain explicit in Errors because no request-shape rule can state when
 // they apply.
@@ -377,7 +378,7 @@ func (m MethodMeta) validateIdentity() error {
 
 func (m MethodMeta) validateProblems() error {
 	for index, problem := range m.Errors {
-		if !IsMethodProblemType(problem) {
+		if !protocol.IsMethodProblemType(problem) {
 			return fmt.Errorf("%s: %q is not a declarable problem type", m.Name, problem)
 		}
 		if slices.Contains(m.Errors[:index], problem) {

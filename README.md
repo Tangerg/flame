@@ -1,80 +1,63 @@
 # Flame
 
-<p align="center">
-  <img src="brand/flame-mark.png" alt="Flame — a round orange flame with two curious eyes" width="144" />
-</p>
+<p align="center"><img src="assets/brand/flame-mark.png" alt="Flame" width="144" /></p>
 
-Flame is an agent product with a Go Runtime, a Cobra/Oolong CLI, and a shared Web/Wails application.
-
-Runtime owns durable product semantics and exposes the same behavior through an in-process Go binding and the Runtime Protocol. Clients own interaction and presentation; Scope supplies the agent framework and provider libraries.
-
-## Brand identity
-
-Flame's identity is a small, rounded orange flame with two curious eyes. The primary
-logo, 3D companion and plush character share the same warm, approachable personality.
-
-<p align="center">
-  <img src="brand/flame-companion.png" alt="Flame 3D companion" width="200" />
-  <img src="brand/flame-plush.png" alt="Flame plush character" width="200" />
-</p>
-
-**Flame Orange: `#FB6E30` · RGB `251, 110, 48`.**
-See the [brand guide and downloadable assets](brand/README.md), also available in
-the application under **Settings → Brand identity**.
+Flame is an agent product with a Go Runtime, a terminal CLI, and one React application for Browser and Wails. Runtime owns durable Session, Run, Goal, Plan, execution, recovery and provider semantics. Clients own interaction and presentation. Scope supplies the agent framework and provider libraries.
 
 ## Repository
 
-| Path | Responsibility |
-| --- | --- |
-| `runtime/` | Domain model, use cases, execution adapters, persistence, protocol, and local/remote Go bindings |
-| `runtime/contract/typescript/` | Generated contract and the shared TypeScript HTTP client |
-| `runtime/localruntime/` | Strict local Runtime credential handoff |
-| `cli/` | Command routing, one-shot output, terminal interaction, and CLI-local authoring state |
-| `desktop/` | Shared browser/desktop presentation and the Wails host |
-| `icons/` | Original icon drawings, SVG exports, React components, and the design reference |
-
-Each module's own `README.md` carries its boundaries and module instructions.
-
-## Documents
-
-Read [`AGENTS.md`](AGENTS.md) before changing the repository. Each document below has one job, so a reader
-knows where to look and a writer knows where to add.
-
-| Document | Holds |
-| --- | --- |
-| [`AGENTS.md`](AGENTS.md) | Engineering conventions that apply to every change |
-| [`PROJECT_RULES.md`](PROJECT_RULES.md) | Rules that apply only to this repository |
-| [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md) | Why Flame is shaped the way it is |
-| [`REFACTORING.md`](REFACTORING.md) | How to make a structural change and prove it |
-| [`DEVELOPMENT.md`](DEVELOPMENT.md) | Active scope, workflow, and verification commands |
-| [`runtime/doc/ARCHITECTURE.md`](runtime/doc/ARCHITECTURE.md) | Current Runtime boundaries |
-| [`cli/ARCHITECTURE.md`](cli/ARCHITECTURE.md) | CLI authoring, Workbench, delivery, and binding boundaries |
-| [`desktop/frontend/ARCHITECTURE.md`](desktop/frontend/ARCHITECTURE.md) | Graphical feature owners, plugin composition, and connection lifetimes |
-| [`docs/`](docs/) | Comparisons against reference runtimes, and the Scope adoption record |
+| Path                                  | Owner                                                                     |
+| ------------------------------------- | ------------------------------------------------------------------------- |
+| `runtime/`                            | Semantic core, protocol, server, local Go binding and contract generators |
+| `apps/cli/`                           | Scriptable `flame` command and interactive terminal                       |
+| `apps/web/`                           | Shared Browser/Wails product UI                                           |
+| `apps/desktop/`                       | Native Wails host and macOS packaging                                     |
+| `packages/runtime-client/go/`         | Remote Go HTTP/SSE client                                                 |
+| `packages/runtime-client/typescript/` | `@flame/runtime-client`, generated wire projection and client             |
+| `packages/plugin-sdk/`                | Go backend authoring API                                                  |
+| `packages/component-sdk/`             | `@flame/component-sdk`, installed React component authoring API           |
+| `packages/local-runtime/`             | Process roots, token handoff and companion-distribution lookup            |
+| `packages/ui/`, `packages/icons/`     | Shared controls/tokens and authored optical icon masters                  |
+| `plugins/`                            | First-party backend/component/package sources and plugin build tools      |
+| `examples/plugins/`                   | Independent authoring and component-composition consumers                 |
+| `assets/brand/`                       | Original brand artwork and guide                                          |
+| `tooling/`, `tests/integration/`      | Workspace coordination and public product integration                     |
 
 ## Development
 
-The root `go.work` contains the Runtime, local Runtime handoff, CLI, and Desktop Go modules. The repository currently targets Go 1.27.
+Read [AGENTS.md](AGENTS.md) and [PROJECT_RULES.md](PROJECT_RULES.md). [DEVELOPMENT.md](DEVELOPMENT.md) owns the toolchain and command workflow. From this directory:
 
 ```sh
-go test ./runtime/... ./runtime/localruntime/... ./cli/...
-go vet ./runtime/... ./runtime/localruntime/... ./cli/...
-go build ./runtime/... ./runtime/localruntime/... ./cli/...
+make setup
+make generate
+make check
+make check-native
+make check-author
 ```
 
-Graphical-client commands and Wails build instructions live under [`desktop/`](desktop/README.md).
+Use `make dev-web` or `make dev-desktop` for the same Web product. `make build-runtime`, `make build-cli` and `make package-desktop` create deliveries under `out/`. Keep each executable with its companion `plugins/` directory. Browser output is `apps/web/dist`; native embed staging is generated in `apps/desktop/assets/web`.
 
-## Share a Runtime
+The root Go module contains Runtime, CLI, backend SDKs and first-party plugins. `go.work` additionally includes Desktop, local-runtime and the independent Reviews backend. Root npm workspaces use one lock and one install. No former module/package names or source-layout aliases are provided.
 
-Start one standalone Runtime with its own provider configuration and data directory. Every attached client names its base URL, such as `http://127.0.0.1:17171`; the shared clients append the generated `/v2/rpc` path. Runtime owns execution, credentials for providers, and filesystem paths. A remote client's environment does not reconfigure the running Runtime.
+## Connect to a Runtime
+
+CLI without an endpoint opens an embedded Runtime. Explicit remote connections use the base URL and `FLAME_RUNTIME_TOKEN`; a failed remote connection remains an error.
 
 ```sh
-go run ./cli --runtime-url http://127.0.0.1:17171
-go run ./cli --runtime-url http://127.0.0.1:17171 run --workspace /server/project "Review this project"
+./out/cli/darwin-arm64/flame --runtime-url http://127.0.0.1:17171
+./out/cli/darwin-arm64/flame --runtime-url http://127.0.0.1:17171 run --workspace /server/project "Review this project"
 ```
 
-Supply the existing Runtime bearer token through `FLAME_RUNTIME_TOKEN` for CLI or the connection dialog for Web. The token never belongs in the URL. A CLI with no configured endpoint owns an embedded Runtime. An explicit remote connection failure never starts a local substitute.
+Runtime appends and serves its generated `/v2/rpc` route. Provider configuration and filesystem paths belong to the Runtime host. Closing a client releases its transport and views; explicit cancellation is a Runtime command. Only the host that opened a Runtime owns shutdown.
 
-Closing an attached view releases that client's transport and projections. Explicit cancellation remains a Runtime command; one-shot CLI interruption cancels the Run it is driving. Only the process or host that opened a Runtime owns its shutdown. Multiple processes using the same database are not substitutes for attaching to the same live Runtime.
+To serve Web from that Runtime origin, build Web and set `server.webDirectory` (or `FLAME_SERVER_WEBDIRECTORY`) to the absolute `apps/web/dist` path. Static assets are public; RPC retains its token gate.
 
-To serve the graphical application from the Runtime's origin, build `desktop/frontend`, then set `server.webDirectory` (or `FLAME_SERVER_WEBDIRECTORY`) to the absolute path of its `dist` directory. Static assets are public; `/v2/rpc` retains its token gate. Browser clients choose paths on the Runtime host instead of treating a local file picker as a remote workspace.
+## Documentation
+
+- [Workspace ownership and dependency direction](docs/architecture/workspace.md)
+- [Public consumers and source-distribution rules](docs/reference/consumers.md)
+- [Runtime architecture](runtime/docs/ARCHITECTURE.md)
+- [CLI architecture](apps/cli/ARCHITECTURE.md)
+- [Web architecture](apps/web/ARCHITECTURE.md)
+- [Design rationale](DESIGN_PHILOSOPHY.md) and [structural-change method](REFACTORING.md)
+- [Brand guide](assets/brand/README.md)

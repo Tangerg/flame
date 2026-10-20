@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	flametransport "github.com/Tangerg/flame/runtime/internal/delivery/transport"
+	transportmeta "github.com/Tangerg/flame/runtime/internal/delivery/transport"
+
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -110,7 +111,7 @@ func TestStreamableRunStart(t *testing.T) {
 // SubscribeRun records the reconnect cursor so the test below can assert the
 // transport plumbed the Last-Event-Id header onto the dispatch ctx.
 func (f *fakeRuntime) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
-	f.gotLastEventID = flametransport.LastEventIDFrom(ctx)
+	f.gotLastEventID = transportmeta.LastEventIDFrom(ctx)
 	return &protocol.SubscribeRunResponse{RunID: in.RunID, SegmentID: in.SegmentID},
 		seq2[protocol.RunEvent](), nil
 }

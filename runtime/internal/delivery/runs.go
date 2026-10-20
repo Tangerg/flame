@@ -21,12 +21,12 @@ const (
 )
 
 func registerRuns(registry *Registry) {
-	registry.query(MethodMeta{Name: ModelInvocationsEndpoints, Errors: []string{protocol.ErrCapabilityNotNeg.Error()}}, func(service interface {
+	registry.query(MethodMeta{Name: ModelInvocationsEndpoints, GoName: "ListModelEndpoints", Errors: []string{protocol.ErrCapabilityNotNeg.Error()}}, func(service interface {
 		ListModelEndpoints(context.Context, protocol.ListModelEndpointsRequest) (*protocol.Page[protocol.ModelEndpointInvocation], error)
 	}, ctx context.Context, request protocol.ListModelEndpointsRequest) (*protocol.Page[protocol.ModelEndpointInvocation], error) {
 		return service.ListModelEndpoints(ctx, request)
 	})
-	registry.query(MethodMeta{Name: ModelInvocationsList, Errors: []string{protocol.ErrRunNotFound.Error(), protocol.ErrCapabilityNotNeg.Error()}}, func(service interface {
+	registry.query(MethodMeta{Name: ModelInvocationsList, GoName: "ListModelInvocations", Errors: []string{protocol.ErrRunNotFound.Error(), protocol.ErrCapabilityNotNeg.Error()}}, func(service interface {
 		ListModelInvocations(context.Context, protocol.ListModelInvocationsRequest) (*protocol.Page[protocol.ModelInvocation], error)
 	}, ctx context.Context, request protocol.ListModelInvocationsRequest) (*protocol.Page[protocol.ModelInvocation], error) {
 		return service.ListModelInvocations(ctx, request)
@@ -38,7 +38,7 @@ func registerRuns(registry *Registry) {
 	// retry to the opened stream — a cached ack alone would give the client a runId
 	// with no stream behind it.
 	registry.runStreamOwnerCommand(MethodMeta{
-		Name: RunsStart,
+		Name: RunsStart, GoName: "StartRun",
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(),
 			protocol.ErrSessionBusy.Error(),
@@ -56,7 +56,7 @@ func registerRuns(registry *Registry) {
 	})
 
 	registry.runStreamOwnerCommand(MethodMeta{
-		Name: RunsResume,
+		Name: RunsResume, GoName: "ResumeRun",
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
 			protocol.ErrInterruptNotOpen.Error(),
@@ -78,7 +78,7 @@ func registerRuns(registry *Registry) {
 	// different — rootRunId, interrupt.list, items.list, runs.get, or a cursorless
 	// reattach — and one collapsed run_not_found would send it nowhere.
 	registry.runSubscription(MethodMeta{
-		Name: RunsSubscribe,
+		Name: RunsSubscribe, GoName: "SubscribeRun",
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
 			protocol.ErrRunNotRoot.Error(),
@@ -97,7 +97,7 @@ func registerRuns(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name: RunsCancel,
+		Name: RunsCancel, GoName: "CancelRun",
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
 			protocol.ErrRunFinished.Error(),
@@ -117,7 +117,7 @@ func registerRuns(registry *Registry) {
 	// asks the user again rather than delivering an instruction to work they never
 	// saw.
 	registry.command(MethodMeta{
-		Name:        RunsSteer,
+		Name: RunsSteer, GoName: "SteerRun",
 		Idempotency: IdempotencyOwnerRun,
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
@@ -136,7 +136,7 @@ func registerRuns(registry *Registry) {
 	// runs.get answers "what is this run" for a runId a client already holds — from
 	// an event, a page, or a link — without it having to know the session first.
 	registry.query(MethodMeta{
-		Name: RunsGet,
+		Name: RunsGet, GoName: "GetRun",
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
 			protocol.ErrCapabilityNotNeg.Error(),
@@ -148,7 +148,7 @@ func registerRuns(registry *Registry) {
 		return service.GetRun(ctx, request)
 	})
 
-	registry.query(MethodMeta{Name: RunsGetAcceptance}, func(service interface {
+	registry.query(MethodMeta{Name: RunsGetAcceptance, GoName: "GetRunAcceptance"}, func(service interface {
 		GetRunAcceptance(context.Context, protocol.GetRunAcceptanceRequest) (*protocol.RunAcceptance, error)
 	}, ctx context.Context, request protocol.GetRunAcceptanceRequest,
 	) (*protocol.RunAcceptance, error) {
@@ -161,7 +161,7 @@ func registerRuns(registry *Registry) {
 	// absent field behave alike — while an explicit true is refused rather than
 	// read as false, which would hand back a page that looks complete and is not.
 	registry.query(MethodMeta{
-		Name: RunsList,
+		Name: RunsList, GoName: "ListRuns",
 		CapabilityRules: []CapabilityRule{{
 			When:     []FieldCondition{{Field: "includeDescendants", Operator: OperatorPresent}},
 			Requires: []string{protocol.FeatureSubagents},
