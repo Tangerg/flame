@@ -1,6 +1,6 @@
 import { type ReactElement } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AGENT_SESSIONS_KEY } from "@/features/agent/public/session";
 import { drainBrowserTasks } from "@/test/browserTasks";
@@ -60,22 +60,22 @@ afterEach(async () => {
 });
 
 describe("going to a session", () => {
-  it("opens the session a row is clicked on, and closes", () => {
+  it("opens the session a row is clicked on, and closes", async () => {
     wrap(open());
 
     fireEvent.click(screen.getByText("Fix the retry loop"));
 
-    expect(selectAgentSession).toHaveBeenCalledWith("ses_a");
     expect(useSessionSearchStore.getState().open).toBe(false);
+    await waitFor(() => expect(selectAgentSession).toHaveBeenCalledWith("ses_a"));
   });
 
-  it("opens the highlighted session on Enter, after the arrows move it", () => {
+  it("opens the highlighted session on Enter, after the arrows move it", async () => {
     wrap(open());
 
     fireEvent.keyDown(field(), { key: "ArrowDown" });
     fireEvent.keyDown(field(), { key: "Enter" });
 
-    expect(selectAgentSession).toHaveBeenCalledWith("ses_a");
+    await waitFor(() => expect(selectAgentSession).toHaveBeenCalledWith("ses_a"));
   });
 
   it("marks exactly one row, and moves it with the query", () => {
