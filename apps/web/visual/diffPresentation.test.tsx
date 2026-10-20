@@ -253,6 +253,77 @@ it("does not take focus from a later outside choice when a read completes", asyn
   expect(document.activeElement).toBe(outside);
 });
 
+it("keeps a pending Refresh focused and inert through completion, failure and retry", async () => {
+  const pending = [
+    Promise.withResolvers<Diff>(),
+    Promise.withResolvers<Diff>(),
+    Promise.withResolvers<Diff>(),
+  ];
+  const read = vi.fn<(signal?: AbortSignal) => Promise<Diff>>().mockResolvedValueOnce(REVIEW_DIFF);
+  for (const deferred of pending) read.mockImplementationOnce(() => deferred.promise);
+  const { get } = mountDiff(ACTIVE_DIFF_FILE, read);
+  await loaded();
+  const refresh = screen.getByRole<HTMLButtonElement>("button", { name: "Refresh" });
+
+  async function startHeldRead(call: number) {
+    refresh.focus();
+    fireEvent.click(refresh);
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(call));
+    const signal = get.mock.calls[call - 1]![1]!;
+    expect(screen.getByText("Reading uncommitted changes…")).toBeTruthy();
+    expect(document.activeElement).toBe(refresh);
+    refresh.blur();
+    refresh.focus();
+    expect(document.activeElement).toBe(refresh);
+    expect(refresh.matches(":disabled")).toBe(false);
+    expect(refresh.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(refresh);
+    fireEvent.keyDown(refresh, { key: "Enter" });
+    fireEvent.keyDown(refresh, { key: " " });
+    fireEvent.keyUp(refresh, { key: " " });
+    expect(get).toHaveBeenCalledTimes(call);
+    expect(signal.aborted).toBe(false);
+  }
+
+  await startHeldRead(2);
+  await act(async () => pending[0]!.resolve(REVIEW_DIFF));
+  await loaded();
+  expect(refresh.getAttribute("aria-disabled")).not.toBe("true");
+  expect(document.activeElement).toBe(refresh);
+  expect(screen.getByRole("heading", { name: "DockResizer.tsx" })).toBeTruthy();
+
+  await startHeldRead(3);
+  await act(async () => pending[1]!.reject(new Error("Git is busy")));
+  await screen.findByRole("alert");
+  expect(document.activeElement).toBe(refresh);
+
+  await startHeldRead(4);
+  await act(async () => pending[2]!.resolve(REVIEW_DIFF));
+  await loaded();
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(document.activeElement).toBe(refresh);
+});
+
+it("leaves a later outside focus choice when a pending refresh drops the selected file", async () => {
+  const held = Promise.withResolvers<Diff>();
+  const read = vi
+    .fn<(signal?: AbortSignal) => Promise<Diff>>()
+    .mockResolvedValueOnce(REVIEW_DIFF)
+    .mockImplementationOnce(() => held.promise);
+  const { get } = mountDiff(ACTIVE_DIFF_FILE, read);
+  await loaded();
+  const refresh = screen.getByRole<HTMLElement>("button", { name: "Refresh" });
+  refresh.focus();
+  fireEvent.click(refresh);
+  await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+  const outside = screen.getByRole<HTMLElement>("button", { name: "Outside action" });
+  outside.focus();
+  await act(async () => held.resolve({ ...REVIEW_DIFF, files: [REVIEW_DIFF.files![1]!] }));
+  await screen.findByText(/The requested file is not included in this read/);
+  expect(screen.queryByRole("table")).toBeNull();
+  expect(document.activeElement).toBe(outside);
+});
+
 it("dismisses a layout popup before consuming a file-list return", async () => {
   const { outsideEscape } = mountDiff();
   await loaded();
