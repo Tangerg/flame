@@ -98,13 +98,31 @@ const exists = async (path) => {
 };
 await mkdir(output);
 try {
-  await cp(source, output, {
-    recursive: true,
-    filter: (path) =>
-      !["node_modules", "vendor", "bin", "build", ".git"].includes(
-        path.split(/[\\/]/).at(-1),
-      ),
-  });
+  // Materialize the plugin source from the frozen commit, not the live working
+  // tree, so an ignored or untracked file cannot enter the author project.
+  const tarball = join(output, ".source.tar");
+  run(
+    "git",
+    [
+      "archive",
+      "--format=tar",
+      `--output=${tarball}`,
+      revision,
+      "--",
+      `plugins/${plugin}`,
+    ],
+    root,
+    process.env,
+    true,
+  );
+  run(
+    "tar",
+    ["-xf", tarball, "-C", output, "--strip-components=2"],
+    root,
+    process.env,
+    true,
+  );
+  await rm(tarball);
   await cp(new URL("./build.mjs", import.meta.url), join(output, "build.mjs"));
   const backend = await exists(join(output, "backend"));
   const tools = new Set(["github.com/Tangerg/flame/plugins/scripts/archive"]);
@@ -148,6 +166,14 @@ try {
       "packages/runtime-client/typescript",
       "packages/component-sdk",
     ]) {
+      const packageDirectory = join(root, directory);
+      // Build the publishable product from the frozen source, so a stale dist in
+      // the working tree is never packed into the author project.
+      const manifest = JSON.parse(
+        await readFile(join(packageDirectory, "package.json"), "utf8"),
+      );
+      if (manifest.scripts?.build)
+        run("npm", ["run", "build"], packageDirectory, process.env, true);
       const [packed] = JSON.parse(
         run(
           "npm",
@@ -158,7 +184,7 @@ try {
             "--pack-destination",
             npmArtifacts,
           ],
-          join(root, directory),
+          packageDirectory,
           process.env,
           true,
         ),
