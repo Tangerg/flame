@@ -2175,6 +2175,37 @@ Hooks scope and source provenance are now implemented and qualified above. Prese
 
 These remaining items are review candidates, not defects or required rewrites. The narrow/full-pane host gap is now implemented and natively qualified above. The current request resumes continuous work. Separate reproduced defects from design judgments and unverified hypotheses before each batch. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 
+A repo-wide quality pass (recorded in commits, not duplicated here) cleared the
+remaining non-visual bad smells across the web UI, `packages/ui` and the plugin
+components: dead exports and a whole dead MCP server-reconnect chain, three
+one-fact owners re-centred (composer sendable-content, usagereports period labels,
+the inspection return-dock rule), and two logic fixes (per-asset brand-download
+spinner; the diff panel degrades an unknown comparison mode instead of throwing).
+A reference-alignment review confirmed the conversation reading model already
+matches ChatGPT/Codex structurally — reading axis, wide-content breakout, reasoning
+height cap and "Thought for X" collapse, tool-group summarization, meaningful-result
+promotion, and the opacity-ladder hierarchy.
+
+The genuinely open items are now design and native-acceptance decisions, not
+defects; each needs a Wails look and an explicit choice before implementing:
+
+- **Wide-content breakout geometry.** Tune `--wide-column-max` (56rem), confirm the
+  left-anchored growth reads well across the 640–1151px band, and judge the 1152px
+  breakout↔navigation-rail transition. Implemented; native acceptance pending.
+- **Standalone ToolCard open-state.** Today a persistent manual toggle keeps a
+  promoted write/exec result visible (a coherent "meaningful results stay" design);
+  ChatGPT and the internal `ToolGroup` instead auto-collapse on completion. Decide
+  whether standalone cards should adopt the status-driven default with a pin.
+- **Reasoning while streaming.** Today a quiet one-line glimpse; the reference shows
+  the full capped auto-following panel inline. Decide which.
+- **Reasoning dimness.** Body is `fgMuted` (≈64%, the generic muted step); the
+  reference runs reasoning dimmer (≈30–40%), which needs a new token and a
+  readability call.
+- **Panel-header / two-level return.** The Dock view-header variants and the
+  Dock-return (`←`) vs in-view back (`‹`/`list`) affordances could unify into one
+  identity+actions+return contract or breadcrumb; this is a focus-and-visual
+  redesign, not a cleanup.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
