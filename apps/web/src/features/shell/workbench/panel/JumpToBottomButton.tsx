@@ -8,7 +8,7 @@ const styles = stylex.create({
   float: {
     position: "absolute",
     left: "50%",
-    bottom: "calc(100% + 0.5rem)",
+    bottom: "calc(100% + var(--transcript-jump-gap))",
     translate: "-50% 0",
     zIndex: 3,
     pointerEvents: "none",

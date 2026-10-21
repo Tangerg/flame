@@ -48,16 +48,25 @@ const styles = stylex.create({
   scroller: {
     paddingInline: "var(--reading-gutter-wide)",
     paddingBlock: space.s3,
+    scrollPaddingBlockEnd:
+      "calc(var(--control-height-md) + var(--transcript-jump-gap) + var(--layout-control-gap))",
   },
   group: { marginBottom: space.s4 },
   title: { marginBottom: space.s2 },
-  reader: { position: "relative", display: "flex", flexDirection: "column", minHeight: 0, flex: 1 },
+  reader: {
+    position: "relative",
+    display: "flex",
+    flexDirection: "column",
+    minHeight: 0,
+    flex: 1,
+    "--transcript-jump-gap": space.s4,
+  },
   transcript: { minWidth: 0, paddingBottom: space.s12 },
   evidence: { marginBottom: space.s6 },
   jump: {
     position: "absolute",
     left: "50%",
-    bottom: space.s4,
+    bottom: "var(--transcript-jump-gap)",
     translate: "-50% 0",
     zIndex: 3,
     pointerEvents: "none",

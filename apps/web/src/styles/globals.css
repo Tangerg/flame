@@ -1043,7 +1043,13 @@ html.theme-dark {
     transparent var(--transcript-bottom-edge)
   );
   scroll-padding-top: var(--transcript-fade);
-  scroll-padding-bottom: calc(var(--composer-overlay, 0px) + var(--transcript-fade));
+  scroll-padding-bottom: calc(
+    var(--composer-overlay, 0px) +
+      max(
+        var(--transcript-fade),
+        var(--control-height-md) + var(--transcript-jump-gap) + var(--layout-control-gap)
+      )
+  );
 }
 
 .agent-composer-glass {
