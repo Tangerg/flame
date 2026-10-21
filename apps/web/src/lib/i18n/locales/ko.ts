@@ -1010,9 +1010,6 @@ export const ko: Record<string, string> = {
   "tool.group.run": "실행 {{count}}",
   "tool.group.fetch": "통신 {{count}}",
 
-  "tool.askUser.answerPrefix": "답변 · ",
-  "tool.askUser.waiting": "답변을 기다리고 있습니다…",
-
   "duration.seconds": "{{sec}}초",
   "duration.minutes": "{{min}}분 {{sec}}초",
   "duration.hours": "{{hr}}시간 {{min}}분",

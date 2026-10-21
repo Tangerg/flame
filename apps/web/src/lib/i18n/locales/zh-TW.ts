@@ -971,9 +971,6 @@ export const zhTW: Record<string, string> = {
   "tool.group.run": "執行 {{count}}",
   "tool.group.fetch": "連網 {{count}}",
 
-  "tool.askUser.answerPrefix": "回答 · ",
-  "tool.askUser.waiting": "等待你的回答…",
-
   "duration.seconds": "{{sec}} 秒",
   "duration.minutes": "{{min}} 分 {{sec}} 秒",
   "duration.hours": "{{hr}} 小時 {{min}} 分",

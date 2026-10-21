@@ -1078,9 +1078,6 @@ export const es: Record<string, string> = {
   "tool.group.run": "{{count}} ejecución",
   "tool.group.fetch": "{{count}} consulta web",
 
-  "tool.askUser.answerPrefix": "respuesta · ",
-  "tool.askUser.waiting": "Esperando tu respuesta…",
-
   "duration.seconds": "{{sec}} s",
   "duration.minutes": "{{min}} min {{sec}} s",
   "duration.hours": "{{hr}} h {{min}} min",

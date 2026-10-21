@@ -1067,9 +1067,6 @@ export const de: Record<string, string> = {
   "tool.group.run": "{{count}} ausgeführt",
   "tool.group.fetch": "{{count}} abgerufen",
 
-  "tool.askUser.answerPrefix": "Antwort · ",
-  "tool.askUser.waiting": "Warte auf deine Antwort…",
-
   "duration.seconds": "{{sec}} s",
   "duration.minutes": "{{min}} min {{sec}} s",
   "duration.hours": "{{hr}} Std. {{min}} min",

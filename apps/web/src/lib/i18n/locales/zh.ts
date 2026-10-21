@@ -967,9 +967,6 @@ export const zh: Record<string, string> = {
   "tool.group.run": "执行 {{count}}",
   "tool.group.fetch": "联网 {{count}}",
 
-  "tool.askUser.answerPrefix": "回答 · ",
-  "tool.askUser.waiting": "等待你的回答…",
-
   "duration.seconds": "{{sec}} 秒",
   "duration.minutes": "{{min}} 分 {{sec}} 秒",
   "duration.hours": "{{hr}} 小时 {{min}} 分",

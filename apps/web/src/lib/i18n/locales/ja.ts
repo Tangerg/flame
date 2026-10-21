@@ -1026,9 +1026,6 @@ export const ja: Record<string, string> = {
   "tool.group.run": "実行 {{count}}",
   "tool.group.fetch": "通信 {{count}}",
 
-  "tool.askUser.answerPrefix": "回答 · ",
-  "tool.askUser.waiting": "回答を待っています…",
-
   "duration.seconds": "{{sec}}秒",
   "duration.minutes": "{{min}}分{{sec}}秒",
   "duration.hours": "{{hr}}時間{{min}}分",
