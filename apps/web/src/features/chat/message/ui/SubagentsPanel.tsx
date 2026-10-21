@@ -66,14 +66,6 @@ const styles = stylex.create({
   },
   transcript: { minWidth: 0, paddingBottom: space.s12 },
   evidence: { marginBottom: space.s6 },
-  jump: {
-    position: "absolute",
-    left: "50%",
-    bottom: "var(--transcript-jump-gap)",
-    translate: "-50% 0",
-    zIndex: 3,
-    pointerEvents: "none",
-  },
   summary: { display: "grid", gap: space.s0_5, minWidth: 0, flex: 1 },
   name: {
     display: "-webkit-box",
@@ -320,15 +312,14 @@ function SubagentTranscript({
           </AnimatePresence>
         </div>
       </ScrollArea>
-      <div {...stylex.props(styles.jump)}>
-        <AgentJumpToBottom
-          visible={!isAtBottom}
-          onClick={() => {
-            contentRef.current?.focus({ preventScroll: true });
-            void scrollToBottom();
-          }}
-        />
-      </div>
+      <AgentJumpToBottom
+        visible={!isAtBottom}
+        onClick={() => {
+          contentRef.current?.focus({ preventScroll: true });
+          void scrollToBottom();
+        }}
+        placement="inside-reader"
+      />
     </div>
   );
 }
