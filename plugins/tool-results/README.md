@@ -46,6 +46,11 @@ using the shared record typography. An absent or repeated web title shows its UR
 once. The host Tool disclosure owns identity, status and failure details.
 Missing snippets add no body row; recorded empty snippets and source lines retain
 their blank line.
+An empty recorded hit or result array states that no results were returned, before,
+during and after Find; only a local filter that hides recorded rows offers the Close
+find recovery, and clearing or closing it restores every row. An empty applied-change
+receipt states that no changes were recorded instead of an empty table; it implies
+neither failure nor a write.
 Known literal answers, instructions and source results are classified by Tool
 identity before inspecting normalized result shapes. JSON-looking text stays
 complete rather than being mistaken for a different Tool's result envelope.

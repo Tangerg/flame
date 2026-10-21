@@ -258,6 +258,110 @@ it("distinguishes an empty skill list from a result where no summary fit", () =>
   }
 });
 
+it.each([
+  { name: "glob", result: JSON.stringify({ hits: [] }), label: "matches" },
+  { name: "web_search", result: JSON.stringify({ results: [] }), label: "results" },
+])(
+  "states that $name returned nothing before, during and after Find",
+  async ({ name, result, label }) => {
+    const writeText = vi.fn(async () => {});
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    try {
+      render(<RecordedResult context={capturedContext(name, result)} />);
+      const reader = screen.getByRole("region", { name: "Result" });
+      const expectReturnedNothing = () => {
+        expect(reader.textContent).toBe("No results were returned.");
+        expect(reader.textContent).not.toContain("Close find");
+      };
+      expect(
+        screen.getByText(label, { exact: true }).closest("[data-slot='code-caption']"),
+      ).toBeTruthy();
+      expectReturnedNothing();
+
+      fireEvent.click(screen.getByRole("button", { name: "Find" }));
+      const field = screen.getByRole("searchbox", { name: "Filter result" });
+      expectReturnedNothing();
+      fireEvent.change(field, { target: { value: "anything" } });
+      expectReturnedNothing();
+      fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+      expect(document.activeElement).toBe(field);
+      expectReturnedNothing();
+      fireEvent.change(field, { target: { value: "anything" } });
+      fireEvent.click(screen.getByRole("button", { name: "Close find" }));
+      expect(screen.queryByRole("searchbox", { name: "Filter result" })).toBeNull();
+      expect(document.activeElement).toBe(reader);
+      expectReturnedNothing();
+      fireEvent.click(screen.getByRole("button", { name: "Copy result" }));
+      await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(result));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  },
+);
+
+it("recovers every recorded hit after a filter that matched none is cleared or closed", () => {
+  const hits = [
+    { path: "src/a.go", lineNumber: 3, snippet: "alpha" },
+    { path: "src/b.go", lineNumber: 9, snippet: "beta" },
+  ];
+  render(<RecordedResult context={capturedContext("grep", JSON.stringify({ hits }))} />);
+  const reader = screen.getByRole("region", { name: "Result" });
+  const expectAllHits = () => {
+    expect(within(reader).getByText("alpha", { exact: true })).toBeTruthy();
+    expect(within(reader).getByText("beta", { exact: true })).toBeTruthy();
+    expect(reader.textContent).not.toContain("No matching rows");
+    expect(reader.textContent).not.toContain("No results were returned.");
+  };
+  expectAllHits();
+
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  const field = screen.getByRole("searchbox", { name: "Filter result" });
+  fireEvent.change(field, { target: { value: "no such hit" } });
+  expect(reader.textContent).toBe("No matching rows. Close find to see the whole result.");
+  fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+  expectAllHits();
+
+  fireEvent.change(field, { target: { value: "no such hit" } });
+  expect(reader.textContent).toBe("No matching rows. Close find to see the whole result.");
+  fireEvent.click(screen.getByRole("button", { name: "Close find" }));
+  expectAllHits();
+});
+
+it("keeps a recorded blank source line as a numbered row rather than an empty result", () => {
+  for (const name of ["read", "search_tools"]) {
+    const rendered = render(<RecordedResult context={capturedContext(name, "")} />);
+    const reader = screen.getByRole("region", { name: "Result" });
+    expect(Array.from(reader.querySelectorAll("pre"), (line) => line.textContent)).toEqual([" "]);
+    expect(within(reader).getByText("Line", { exact: true }).parentElement?.textContent).toBe(
+      "Line 1",
+    );
+    expect(reader.textContent).not.toContain("No results were returned.");
+    rendered.unmount();
+  }
+});
+
+it("states an empty applied-change receipt instead of an empty table", () => {
+  const empty = render(
+    <RecordedResult context={capturedContext("apply_patch", JSON.stringify({ changes: [] }))} />,
+  );
+  expect(screen.getByText("No changes were recorded.", { exact: true })).toBeTruthy();
+  expect(screen.queryByRole("table")).toBeNull();
+  expect(screen.queryAllByRole("button")).toHaveLength(0);
+  empty.unmount();
+
+  const changes = [
+    { path: "src/new.ts", status: "added" },
+    { path: "src/moved.ts", status: "moved", from: "src/old.ts" },
+  ];
+  render(<RecordedResult context={capturedContext("apply_patch", JSON.stringify({ changes }))} />);
+  const table = screen.getByRole("table", { name: "Applied changes" });
+  expect(within(table).getAllByRole("row")).toHaveLength(2);
+  expect(within(table).getByText("Created", { exact: true })).toBeTruthy();
+  expect(within(table).getByText("src/new.ts", { exact: true })).toBeTruthy();
+  expect(within(table).getByText("From src/old.ts", { exact: true })).toBeTruthy();
+  expect(screen.queryByText("No changes were recorded.")).toBeNull();
+});
+
 it("preserves the complete literal result for malformed or unknown skills XML", () => {
   const sources = [
     "<available_skills>\n<skill><name>Incomplete</name><description>Keep every byte.</skill>\n</available_skills>",
