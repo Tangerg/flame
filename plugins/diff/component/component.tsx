@@ -42,7 +42,7 @@ const COMPARISONS = [
   { value: "base", label: "Branch changes" },
 ];
 const comparisonName = (mode: DiffMode) =>
-  COMPARISONS.find((comparison) => comparison.value === mode)!.label;
+  COMPARISONS.find((comparison) => comparison.value === mode)?.label ?? mode;
 
 type Read = {
   loading: boolean;
