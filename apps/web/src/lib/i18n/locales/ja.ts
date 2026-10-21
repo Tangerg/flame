@@ -693,6 +693,8 @@ export const ja: Record<string, string> = {
   "hooks.trust.aria": "このプロジェクトのフックを信頼する",
   "hooks.matcher": "ツールマッチャー",
   "hooks.kind.inject": "inject",
+  "hooks.scope.global": "グローバル",
+  "hooks.scope.project": "プロジェクト",
   "hooks.inactive": "無効",
   "hooks.inactive.hint": "このプロジェクトを信頼するとフックが有効になります。",
   "hooks.empty": "フックが設定されていません",

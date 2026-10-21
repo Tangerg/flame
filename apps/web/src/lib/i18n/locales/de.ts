@@ -721,6 +721,8 @@ export const de: Record<string, string> = {
   "hooks.trust.aria": "Hooks dieses Projekts vertrauen",
   "hooks.matcher": "Tool-Matcher",
   "hooks.kind.inject": "inject",
+  "hooks.scope.global": "Global",
+  "hooks.scope.project": "Projekt",
   "hooks.inactive": "inaktiv",
   "hooks.inactive.hint": "Vertraue diesem Projekt, um seine Hooks zu aktivieren.",
   "hooks.empty": "Keine Hooks konfiguriert",

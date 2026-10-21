@@ -61,6 +61,9 @@ function HookRow({ h }: { h: HookReadModel }) {
         <div {...stylex.props(hp.copy)}>
           <div {...stylex.props(hp.identity)}>
             <Tag>{h.event}</Tag>
+            <span {...stylex.props(hp.scope, typeStep.uiXs)}>
+              {h.scope === "global" ? t("hooks.scope.global") : t("hooks.scope.project")}
+            </span>
             {!h.active ? (
               <Badge tone="warning" title={t("hooks.inactive.hint")}>
                 {t("hooks.inactive")}
@@ -77,16 +80,14 @@ function HookRow({ h }: { h: HookReadModel }) {
               {h.matcher}
             </span>
           )}
-          <span
-            {...stylex.props(hp.code, face.mono, typeStep.uiMd)}
-            title={h.command || h.inject || h.source}
-          >
+          <span {...stylex.props(hp.code, face.mono, typeStep.uiMd)} title={h.command || h.inject}>
             {h.command ? (
               h.command
             ) : (
               <span {...stylex.props(vocab.muted, hp.injected)}>{h.inject}</span>
             )}
           </span>
+          <span {...stylex.props(hp.code, vocab.faint, typeStep.uiXs, face.mono)}>{h.source}</span>
         </div>
       </div>
     </ListRow>

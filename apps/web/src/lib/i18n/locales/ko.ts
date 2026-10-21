@@ -690,6 +690,8 @@ export const ko: Record<string, string> = {
   "hooks.trust.aria": "이 프로젝트의 훅을 신뢰",
   "hooks.matcher": "도구 매처",
   "hooks.kind.inject": "inject",
+  "hooks.scope.global": "전역",
+  "hooks.scope.project": "프로젝트",
   "hooks.inactive": "비활성",
   "hooks.inactive.hint": "이 프로젝트를 신뢰하면 훅이 켜집니다.",
   "hooks.empty": "설정된 훅이 없습니다",

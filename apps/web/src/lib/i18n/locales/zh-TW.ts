@@ -684,6 +684,8 @@ export const zhTW: Record<string, string> = {
   "hooks.trust.aria": "信任此專案的 hooks",
   "hooks.matcher": "工具比對器",
   "hooks.kind.inject": "注入",
+  "hooks.scope.global": "全域",
+  "hooks.scope.project": "專案",
   "hooks.inactive": "未啟用",
   "hooks.inactive.hint": "信任此專案以啟用其 hooks。",
   "hooks.empty": "尚未設定任何 hook",
