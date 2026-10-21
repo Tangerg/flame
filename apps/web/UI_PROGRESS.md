@@ -1219,30 +1219,32 @@ empties; native Wails acceptance of the new error tones is pending.
 
 ## Wide-content breakout in the reading band
 
-Code and wide media now exceed the prose measure in the window-width band where
-the per-turn navigation rail is hidden, so dense content gets room without
-colliding with the rail. The breakout lives only in `markdown.css`, gated to
-`@container conversation (min-width: 640px) and (max-width: 1151.98px)`: below
-640px (narrow Dock) and in the rail's `>=1152px` band it is inert, so those
-presentations are unchanged. Width is
-`max(100%, min(var(--wide-column-max), 100cqi - 2 * var(--reading-gutter-wide)))`
-— never narrower than the current column (no regression), never wider than the
-pane minus its gutters (no horizontal scrollbar by construction, as 40px of
-gutter exceeds the reserved scrollbar width) — centered with negative inline
-margins. `--wide-column-max` (56rem) is the single tunable owner.
+Code, wide media, Mermaid diagrams and tables now extend past the prose measure in
+the window-width band where the per-turn navigation rail is hidden, so dense
+content gets room without colliding with the rail. The breakout lives only in
+`markdown.css`, gated to `@container conversation (min-width: 640px) and
+(max-width: 1151.98px)`: below 640px (narrow Dock) and in the rail's `>=1152px`
+band it is inert, so those presentations are unchanged.
 
-Scope: all full-width blocks — wide media and Mermaid (matched by
-`data-wide-markdown-block`, now also set on the Mermaid frame) and code
-(`.md .shiki-block`). Tables keep their fit-content column-width behavior, since
-centering a variable-width breakout without a scrollbar is not expressible in CSS
-here; that is a follow-up. The bounded table, code selection/copy, text-selection
-boundaries and lightbox escapes are width-independent and untouched. Verification: lint, every CSS check
-(variables/dead-tokens/styles/shorthand/classes/design-system) and the markdown
-render suite (12 files / 118 tests) pass. NATIVE ACCEPTANCE PENDING AND REQUIRED:
-the `--wide-column-max` value, the look across the band, the 1152px
-rail/breakout transition, and that the `.md .shiki-block` rule wins over the
-StyleX frame all need real Wails verification and tuning; this environment cannot
-judge the geometry.
+Wide blocks are left-anchored — their left edge stays on the prose's left edge and
+they grow rightward — matching the conversation's left-aligned prose (`65ch` with
+`margin-inline-end: auto`) rather than centering against it. Width is
+`max(100%, min(var(--wide-column-max), 100cqi - max(0px, (100cqi - var(--reading-column-max)) / 2) - 2 * var(--reading-gutter-wide)))`:
+never narrower than the column (no regression), and bounded so the right edge keeps
+two gutters of clearance from the pane — no horizontal scrollbar by construction
+across the whole band, including the narrow end where the column already fills the
+pane. `--wide-column-max` (56rem) is the single tunable owner.
+
+Scope: full-width blocks (media and Mermaid via `data-wide-markdown-block`, code via
+`.md .shiki-block`) take the width directly; `.md .md-table-container` takes it as a
+`max-width`, so a narrow table stays fit-content and only a wide one grows. The
+bounded table height, code/text selection and lightbox escapes are width-independent
+and untouched. Verification: lint, every CSS check
+(variables/dead-tokens/styles/shorthand/classes) and the markdown render suite (12
+files / 118 tests) pass. NATIVE ACCEPTANCE PENDING AND REQUIRED: the
+`--wide-column-max` value, the look across the band, the 1152px rail transition, and
+that the `.md`-scoped rules win over the StyleX/base frames all need real Wails
+verification and tuning; this environment cannot judge the geometry.
 
 ## Tool argument copy outcomes
 

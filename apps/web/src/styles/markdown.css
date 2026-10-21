@@ -18,14 +18,21 @@
 }
 @container conversation (min-width: 640px) and (max-width: 1151.98px) {
   .md [data-wide-markdown-block="true"],
-  .md .shiki-block {
+  .md .shiki-block,
+  .md .md-table-container {
     --md-wide-width: max(
       100%,
-      min(var(--wide-column-max), 100cqi - 2 * var(--reading-gutter-wide))
+      min(
+        var(--wide-column-max),
+        100cqi - max(0px, (100cqi - var(--reading-column-max)) / 2) - 2 * var(--reading-gutter-wide)
+      )
     );
-    width: var(--md-wide-width);
     max-width: var(--md-wide-width);
-    margin-inline: calc((100% - var(--md-wide-width)) / 2);
+  }
+  .md [data-wide-markdown-block="true"],
+  .md .shiki-block {
+    width: var(--md-wide-width);
+    margin-inline: 0;
   }
 }
 .md .katex-display {
