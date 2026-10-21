@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { useId } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { DiffStat } from "@flame/ui";
 import { AgentActivityDisclosure } from "@/ui/agent/index";
@@ -38,7 +39,8 @@ const tc = stylex.create({
 export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
   const t = useT();
   const model = toolCardModel(t, tool);
-  const actions = useToolRowActions(tool);
+  const summaryId = useId();
+  const actions = useToolRowActions(tool, summaryId);
 
   return (
     <>
@@ -46,6 +48,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
         data-tool={tool.name}
         icon={toolCallIconFor(tool)}
         shell="line"
+        summaryId={summaryId}
         contentInset="rows"
         label={<ToolText value={model.intent.label} styles={tc.full} />}
         detail={model.detail ? <ToolText value={model.detail} styles={tc.full} /> : undefined}

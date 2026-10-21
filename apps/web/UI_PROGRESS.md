@@ -1045,6 +1045,45 @@ their abbreviated, unparseable patch inputs, matching the Runtime presenter.
 The existing contract test exposed the omission. No frontend patch grammar,
 inferred count or permissive result fallback was introduced.
 
+## Tool row action context
+
+Single and grouped Tool row actions now reference their existing visible summary.
+Extension actions and the workspace opener keep their concise localized names
+and Tooltips; their descriptions identify the corresponding act, object and any
+status already present in that summary. Expanded results, arguments and error
+bodies remain separate reading content rather than button descriptions.
+
+`ToolCard` and `ToolGroupMember` each supply a React `useId` to their summary
+and `useToolRowActions`. `AgentActivityDisclosure` accepts an optional `summaryId`
+and retains its unconditional generated default for other callers. The same
+summary ID names its existing detail region, and a non-disclosable/denied record
+still has a static summary. Runtime IDs remain keys and command targets. The
+repair adds no duplicate record text and preserves business state, grouping,
+layout and navigation owners.
+
+Read-only ZCode `ToolSummaryRow.tsx` keeps kind, object and status together and
+accepts an explicit action label; it supports contextual identity rather than
+this particular IDREF technique. ChatGPT's actual `tool-activity-disclosure`
+module separates summary from inert/hidden expanded content. Flame's established
+remembered-rule action association supplies the local IconButton/Tooltip
+composition. better-accessibility's relationship guidance and better-writing's
+concise action names apply without duplicating the visible record.
+
+| Severity | Location                                  | Before                                                                  | After                                                 | Why                                                          |
+| -------- | ----------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
+| MEDIUM   | `features/chat/tools/ui/ToolRowParts.tsx` | Same-named actions had no programmatic association with their Tool row. | Each action is described by its own existing summary. | Users must identify which captured record an action targets. |
+
+Verification for this surface (2026-10-21):
+
+- Existing Tool/disclosure baseline passed **4 files / 16 tests**. Bounded edit-only Claude Code CLI supplied seven scoped files in **181.77 seconds**, without denials or subagents. Primary reviewed the actual diff, used the real Copy arguments translation in fixtures, and required an expanded result to exist before asserting it is excluded from the grouped description. Focused typecheck and **4 files / 20 tests** pass. Four new cases and the strengthened denied-record case fail on the frozen original; the other **15** cases pass, and all four candidate sources were restored byte-for-byte. Role/description queries cover distinct rows, whitespace-bearing Runtime IDs, stable-key reorder, changed summary, original Tool/opener targets, denied static summaries, region naming and an open real Tooltip.
+- Initial native fixture items omitted Runtime-supplied tool categories, so they had no intended object/action controls and are excluded. A private data-only capture supplies four completed read-only Tool calls with their actual `read`/`unknown` categories and surrounding messages. All **8 Items** pass the current SDK wire validator with zero violations. The production presenter remains the category owner; no frontend inference, fixture policy or validator was changed.
+- Actual Wails EN/light/14 px/Flame Orange passed grouped Tool → current file → Back to conversation, restoring the exact source opener focus. Returning to the retained trajectory tab preserves query `read`. Confirmed keyboard Copy arguments on grouped and single records pastes their distinct parameters into the private Composer, preserving literal CJK and double spaces. Expanded single output, short Tooltip, native Left-half/200% action focus, body wheel, Escape/Actual Size and retained query pass. One pointer expansion left focus in Composer, so its subsequent Add-menu activation is excluded; the controlled reverse-Tab route observed the Copy action before Return.
+- CUA exposes the unchanged short action names but does not print their computed descriptions. Component regressions qualify the association and open-Tooltip composition; native acceptance qualifies focus, clipboard and navigation flows. VoiceOver speech, OS IME, other-platform GUIs, live Tool execution, real Runtime writes, browser visual suites and performance benchmarks are not qualified by these captures.
+- Final actual Wails ZH/dark/18 px/custom-blue acceptance establishes the original draft and trajectory query `read`. Reverse Tab reaches the single current-file opener; Return opens its current file, and Back → Tab reaches the original Copy arguments action with a concise Chinese Tooltip. Native Left-half retains the visible blue focus outline, summary and original draft. Escape, selection of the retained trajectory tab and body wheel preserve the query. Native typing then produces exactly `工具动作草稿 保留 继续` with Composer focus.
+- Complete Web validation passes **386 files / 3,053 tests** and all subsequent checks in **199.81 seconds** under Node 22.22.1. `make check-native` passes Desktop test/vet/build and the supported Wails build in **24.70 seconds**; final private native build passes in **5.14 seconds**. All **10** reviewed source/contract/fixture hashes and both private capture/build inputs remain stable through acceptance. The arm64 binary reports minimum macOS 13.0 / SDK 26.5. Recurring non-failing loopback diagnostics and the duplicate `-lobjc` warning remain separate. Independent unchanged shared UI, CLI, Runtime and SDK suites were not rerun; no protocol, persisted-data or installed-resource migration is needed.
+- Latest main `de6eb07a1` retains the model-contract generator consolidation and plugin-document alignment across **13 disjoint paths**. The owned diff and all reviewed hashes survive a fast-forward unchanged. Native checks pass again in **18.16 seconds**, followed by a private build in **2.51 seconds**. A new actual Wails ZH/dark18/custom-blue host retains query `read`, reaches Copy arguments through reverse Tab with its concise Tooltip, and returns to the exact editable draft `集成草稿 保留 继续`. Complete Web validation was not repeated after these Go-generator/directive/docs-only updates; their implementation and standalone generator behavior are outside this UI qualification.
+- Cleanup completed: all five native processes and the bounded CLI process exited. The exact app was unregistered; its bundle, disposable homes/data, captures, overlays, SDK-validation bundle, prompt/report, scripts, logs and pointer were removed. Ten newly created worktree output/cache paths and the unique bundle's Caches/WebKit paths were removed under preexistence, tracked-content, UID, birth-time and non-symlink guards. Pre-existing shared UI Vite/compiler/package caches, installed dependencies and read-only references remain. The primary checkout's former independent working/index changes became the retained upstream commits above.
+
 ## Connection token draft intent
 
 Connection settings now distinguishes a token already set for the current

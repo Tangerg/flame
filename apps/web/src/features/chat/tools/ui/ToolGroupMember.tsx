@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { useId } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { Icon } from "@/ui/index";
 import { Pressable } from "@/ui/index";
@@ -57,12 +58,14 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
   const model = toolCardModel(t, tool);
   const headline = headlineToolMetaItem(model.metaItems);
 
-  const actions = useToolRowActions(tool);
+  const summaryId = useId();
+  const actions = useToolRowActions(tool, summaryId);
 
   return (
     <div>
       <div {...stylex.props(gm.line, reveal.host)}>
         <Pressable
+          id={summaryId}
           data-tool={tool.name}
           type="button"
           aria-expanded={expanded}

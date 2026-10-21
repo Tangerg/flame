@@ -47,6 +47,48 @@ describe("AgentActivityDisclosure", () => {
     expect(screen.getByText("Search result")).toBeTruthy();
   });
 
+  it("lets a caller describe its actions by the summary it already shows", () => {
+    const actions = (
+      <button type="button" aria-describedby="caller-summary">
+        Copy
+      </button>
+    );
+    const { rerender } = render(
+      <AgentActivityDisclosure
+        icon="search"
+        shell="line"
+        label="Search source"
+        summaryId="caller-summary"
+        actions={actions}
+        open
+        onToggle={() => {}}
+      >
+        <p>Search result</p>
+      </AgentActivityDisclosure>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Search source" });
+    expect(screen.getByRole("region", { name: "Search source" }).id).toBe(
+      trigger.getAttribute("aria-controls"),
+    );
+    screen.getByRole("button", { name: "Copy", description: "Search source" });
+
+    rerender(
+      <AgentActivityDisclosure
+        icon="search"
+        shell="line"
+        label="Denied search"
+        summaryId="caller-summary"
+        actions={actions}
+        open={false}
+        onToggle={() => {}}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /Denied search/ })).toBeNull();
+    screen.getByRole("button", { name: "Copy", description: "Denied search" });
+  });
+
   it("keeps row actions outside the disclosure trigger", () => {
     const onToggle = vi.fn();
     const onAction = vi.fn();

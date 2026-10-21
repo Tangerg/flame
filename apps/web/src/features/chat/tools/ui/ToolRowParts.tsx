@@ -63,7 +63,7 @@ export function ToolFailureLine({ model }: { model: ToolCardModel }) {
   );
 }
 
-export function useToolRowActions(tool: ToolCall) {
+export function useToolRowActions(tool: ToolCall, summaryId: string) {
   const t = useT();
   const actions = toolCardActions(tool, useExtensionPoint(TOOL_ACTION));
   const opener = toolCardViewOpener(tool, useExtensionPoint(TOOL_VIEW_OPENER));
@@ -75,6 +75,7 @@ export function useToolRowActions(tool: ToolCall) {
       size="xs"
       quiet
       aria-label={t(action.title)}
+      aria-describedby={summaryId}
       onClick={(event) => {
         event.stopPropagation();
         void Promise.resolve(action.run(tool)).catch((err) => {
@@ -96,6 +97,7 @@ export function useToolRowActions(tool: ToolCall) {
         size="xs"
         quiet
         aria-label={t(opener.label(tool))}
+        aria-describedby={summaryId}
         onClick={(event) => {
           event.stopPropagation();
           void Promise.resolve(opener.open(tool, event.currentTarget)).catch((err) => {

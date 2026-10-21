@@ -146,6 +146,7 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     toggleLabel?: string;
     tone?: ActivityTone;
     shell: ActivityShell;
+    summaryId?: string;
     children?: ReactNode;
     contentInset?: "rows";
     contentClassName?: string;
@@ -165,6 +166,7 @@ export function AgentActivityDisclosure({
   toggleLabel,
   tone = "neutral",
   shell,
+  summaryId,
   children,
   className,
   contentInset,
@@ -172,7 +174,8 @@ export function AgentActivityDisclosure({
   ...props
 }: AgentActivityDisclosureProps) {
   const line = shell === "line";
-  const triggerId = useId();
+  const ownSummaryId = useId();
+  const triggerId = summaryId ?? ownSummaryId;
   const panelId = useId();
   const framed = shell !== "line" && icon !== undefined;
   const disclosed = useDisclosedContent(open);
