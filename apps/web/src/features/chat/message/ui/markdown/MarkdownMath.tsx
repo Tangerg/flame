@@ -4,14 +4,15 @@ import { useScrollReach } from "@/ui/atoms/use-scroll-reach";
 export function MarkdownMath({ children, ...props }: ComponentPropsWithoutRef<"span">) {
   const t = useT();
   const scroll = useScrollReach();
+  const reachable = scroll.tabIndex === 0;
   return (
     <span
       {...props}
       {...scroll}
       dir="ltr"
-      role="region"
-      aria-label={t("message.math.expression")}
-      data-focus-inset=""
+      role={reachable ? "region" : undefined}
+      aria-label={reachable ? t("message.math.expression") : undefined}
+      data-focus-inset={reachable ? "" : undefined}
     >
       {children}
     </span>
