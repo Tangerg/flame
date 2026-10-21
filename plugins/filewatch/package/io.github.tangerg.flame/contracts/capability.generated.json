@@ -45,6 +45,7 @@
                 "type": "string"
               },
               "workspace": {
+                "maxLength": 4096,
                 "minLength": 1,
                 "type": "string"
               }
@@ -140,6 +141,7 @@
                 "type": "string"
               },
               "workspace": {
+                "maxLength": 4096,
                 "minLength": 1,
                 "type": "string"
               }
@@ -340,6 +342,7 @@
                 "type": "string"
               },
               "workspace": {
+                "maxLength": 4096,
                 "minLength": 1,
                 "type": "string"
               }
@@ -552,6 +555,7 @@
                 "type": "string"
               },
               "workspace": {
+                "maxLength": 4096,
                 "minLength": 1,
                 "type": "string"
               }

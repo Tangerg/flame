@@ -5,6 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/exactint"
 	"github.com/Tangerg/flame/runtime/model"
+	"github.com/invopop/jsonschema"
 )
 
 var (
@@ -12,6 +13,10 @@ var (
 	ErrRevisionConflict = errors.New("model router: policy revision changed")
 	ErrRevisionLimit    = errors.New("model router: policy revision exhausted")
 )
+
+// MaxRules bounds a routing policy; it owns the limit for both the generated
+// schema and the Restore guard so the two cannot disagree.
+const MaxRules = 3
 
 type Rule struct {
 	Use       model.Use              `json:"use"`
@@ -21,7 +26,13 @@ type Rule struct {
 
 type Snapshot struct {
 	Revision int64  `json:"revision" jsonschema:"minimum=1"`
-	Rules    []Rule `json:"rules" jsonschema:"maxItems=3"`
+	Rules    []Rule `json:"rules"`
+}
+
+func (Snapshot) JSONSchemaExtend(schema *jsonschema.Schema) {
+	if rules, ok := schema.Properties.Get("rules"); ok {
+		rules.MaxItems = new(uint64(MaxRules))
+	}
 }
 
 type Policy struct {
@@ -32,7 +43,7 @@ type Policy struct {
 func NewPolicy() Policy { return Policy{revision: 1, rules: []Rule{}} }
 
 func Restore(snapshot Snapshot) (Policy, error) {
-	if snapshot.Revision < 1 || snapshot.Revision > exactint.Maximum || snapshot.Rules == nil || len(snapshot.Rules) > 3 {
+	if snapshot.Revision < 1 || snapshot.Revision > exactint.Maximum || snapshot.Rules == nil || len(snapshot.Rules) > MaxRules {
 		return Policy{}, ErrInvalidPolicy
 	}
 	seen := make(map[model.Use]bool, len(snapshot.Rules))

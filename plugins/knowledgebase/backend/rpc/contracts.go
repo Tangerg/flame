@@ -5,10 +5,14 @@ package rpc
 
 import (
 	"errors"
+	"strconv"
+
+	"github.com/invopop/jsonschema"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	"github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/runtime/exactjson"
 	"github.com/Tangerg/flame/runtime/idempotency"
 )
 
@@ -18,13 +22,28 @@ type ImportInput struct {
 }
 
 type DocumentInput struct {
-	ID               string `json:"id" jsonschema:"minLength=1,maxLength=128"`
+	ID               string `json:"id" jsonschema:"minLength=1"`
 	ExpectedRevision int64  `json:"expectedRevision" jsonschema:"minimum=1"`
 }
 
+func (DocumentInput) JSONSchemaExtend(schema *jsonschema.Schema) {
+	if id, ok := schema.Properties.Get("id"); ok {
+		id.MaxLength = new(uint64(domain.MaxIDRunes))
+	}
+}
+
 type SearchInput struct {
-	Query string `json:"query" jsonschema:"minLength=1,maxLength=4096"`
-	Limit int    `json:"limit" jsonschema:"minimum=1,maximum=8"`
+	Query string `json:"query" jsonschema:"minLength=1"`
+	Limit int    `json:"limit" jsonschema:"minimum=1"`
+}
+
+func (SearchInput) JSONSchemaExtend(schema *jsonschema.Schema) {
+	if query, ok := schema.Properties.Get("query"); ok {
+		query.MaxLength = new(uint64(domain.MaxQueryRunes))
+	}
+	if limit, ok := schema.Properties.Get("limit"); ok {
+		limit.Maximum = exactjson.Number(strconv.Itoa(domain.MaxResults))
+	}
 }
 
 type Contracts struct {

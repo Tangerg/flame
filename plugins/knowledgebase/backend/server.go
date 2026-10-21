@@ -95,7 +95,7 @@ func (l *library) contribute(ctx context.Context, input pluginsdk.ModelContextRe
 	}
 	query := input.UserMessage.Text()
 	runes := []rune(query)
-	query = string(runes[max(0, len(runes)-4096):])
+	query = string(runes[max(0, len(runes)-domain.MaxQueryRunes):])
 	matches, err := l.search(ctx, rpc.SearchInput{Query: query, Limit: 4})
 	if err != nil {
 		return pluginsdk.ModelContextResult{}, err

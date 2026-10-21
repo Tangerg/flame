@@ -85,7 +85,7 @@ func (l *library) list(ctx context.Context) ([]domain.Header, error) {
 }
 
 func (l *library) search(ctx context.Context, input rpc.SearchInput) ([]domain.Match, error) {
-	if strings.TrimSpace(input.Query) == "" || utf8.RuneCountInString(input.Query) > 4096 || input.Limit < 1 || input.Limit > domain.MaxResults {
+	if strings.TrimSpace(input.Query) == "" || utf8.RuneCountInString(input.Query) > domain.MaxQueryRunes || input.Limit < 1 || input.Limit > domain.MaxResults {
 		return nil, errors.New("knowledge base: a bounded query and result limit are required")
 	}
 	documents, err := l.store.documents(ctx)

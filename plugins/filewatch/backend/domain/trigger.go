@@ -9,9 +9,18 @@ import (
 
 	"github.com/Tangerg/flame/runtime/exactint"
 	"github.com/Tangerg/flame/runtime/model"
+	"github.com/invopop/jsonschema"
 )
 
-const MaxPaths = 32
+// Each limit owns its value for both the generated schema and the NewTrigger
+// guard. boundedText measures bytes; the projected maxLength measures
+// characters, a pre-existing distinction kept deliberately here.
+const (
+	MaxPaths              = 32
+	MaxTitleLength        = 200
+	MaxWorkspaceLength    = 4096
+	MaxInstructionsLength = 16384
+)
 
 var (
 	ErrInvalid  = errors.New("filewatch: invalid trigger")
@@ -21,20 +30,33 @@ var (
 )
 
 type Draft struct {
-	Title           string   `json:"title" jsonschema:"minLength=1,maxLength=200"`
+	Title           string   `json:"title" jsonschema:"minLength=1"`
 	Workspace       string   `json:"workspace" jsonschema:"minLength=1"`
-	Paths           []string `json:"paths" jsonschema:"minItems=1,maxItems=32,uniqueItems=true"`
-	Instructions    string   `json:"instructions" jsonschema:"minLength=1,maxLength=16384"`
+	Paths           []string `json:"paths" jsonschema:"minItems=1,uniqueItems=true"`
+	Instructions    string   `json:"instructions" jsonschema:"minLength=1"`
 	Provider        string   `json:"provider" jsonschema:"minLength=1"`
 	Model           string   `json:"model" jsonschema:"minLength=1"`
 	ReasoningEffort string   `json:"reasoningEffort,omitempty"`
 }
 
+func (Draft) JSONSchemaExtend(schema *jsonschema.Schema) {
+	for field, maximum := range map[string]uint64{
+		"title": MaxTitleLength, "workspace": MaxWorkspaceLength, "instructions": MaxInstructionsLength,
+	} {
+		if property, ok := schema.Properties.Get(field); ok {
+			property.MaxLength = new(maximum)
+		}
+	}
+	if paths, ok := schema.Properties.Get("paths"); ok {
+		paths.MaxItems = new(uint64(MaxPaths))
+	}
+}
+
 type Trigger struct{ draft Draft }
 
 func NewTrigger(draft Draft) (Trigger, error) {
-	if !boundedText(draft.Title, 200) || !boundedText(draft.Instructions, 16384) ||
-		!boundedText(draft.Workspace, 4096) || !filepath.IsAbs(draft.Workspace) || filepath.Clean(draft.Workspace) != draft.Workspace ||
+	if !boundedText(draft.Title, MaxTitleLength) || !boundedText(draft.Instructions, MaxInstructionsLength) ||
+		!boundedText(draft.Workspace, MaxWorkspaceLength) || !filepath.IsAbs(draft.Workspace) || filepath.Clean(draft.Workspace) != draft.Workspace ||
 		len(draft.Paths) == 0 || len(draft.Paths) > MaxPaths {
 		return Trigger{}, ErrInvalid
 	}

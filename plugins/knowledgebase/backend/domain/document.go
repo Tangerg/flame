@@ -9,11 +9,16 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/exactint"
+	"github.com/invopop/jsonschema"
 )
 
 const (
 	MaxDocuments    = 32
 	MaxContentRunes = 16384
+	MaxIDRunes      = 128
+	MaxTitleRunes   = 256
+	MaxSourceRunes  = 2048
+	MaxQueryRunes   = 4096
 	ChunkRunes      = 1024
 	MaxResults      = 8
 )
@@ -29,10 +34,20 @@ var (
 )
 
 type Content struct {
-	ID     string `json:"id" jsonschema:"minLength=1,maxLength=128"`
-	Title  string `json:"title" jsonschema:"minLength=1,maxLength=256"`
-	Source string `json:"source" jsonschema:"minLength=1,maxLength=2048"`
-	Text   string `json:"text" jsonschema:"minLength=1,maxLength=16384"`
+	ID     string `json:"id" jsonschema:"minLength=1"`
+	Title  string `json:"title" jsonschema:"minLength=1"`
+	Source string `json:"source" jsonschema:"minLength=1"`
+	Text   string `json:"text" jsonschema:"minLength=1"`
+}
+
+func (Content) JSONSchemaExtend(schema *jsonschema.Schema) {
+	for field, maximum := range map[string]uint64{
+		"id": MaxIDRunes, "title": MaxTitleRunes, "source": MaxSourceRunes, "text": MaxContentRunes,
+	} {
+		if property, ok := schema.Properties.Get(field); ok {
+			property.MaxLength = new(maximum)
+		}
+	}
 }
 
 type Header struct {
@@ -61,7 +76,7 @@ func NewDraft(content Content) (Draft, error) {
 		value   string
 		maximum int
 	}{
-		{content.ID, 128}, {content.Title, 256}, {content.Source, 2048}, {content.Text, MaxContentRunes},
+		{content.ID, MaxIDRunes}, {content.Title, MaxTitleRunes}, {content.Source, MaxSourceRunes}, {content.Text, MaxContentRunes},
 	} {
 		if !utf8.ValidString(field.value) || strings.TrimSpace(field.value) == "" || utf8.RuneCountInString(field.value) > field.maximum {
 			return Draft{}, ErrInvalidDocument
