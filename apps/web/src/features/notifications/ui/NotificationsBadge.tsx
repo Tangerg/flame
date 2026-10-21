@@ -21,7 +21,7 @@ const dotTone: Record<NotificationLevel, "err" | "waiting" | "idle"> = {
 
 const styles = stylex.create({
   panel: {
-    width: "min(360px, calc(100vw - 16px))",
+    width: `min(360px, calc(100dvw - ${space.s4}))`,
     maxHeight: "min(480px, var(--available-height))",
     display: "flex",
     flexDirection: "column",

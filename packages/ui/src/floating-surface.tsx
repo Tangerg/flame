@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, layout, motion, radius, surface } from "./tokens.stylex";
+import { color, layout, motion, radius, space, surface } from "./tokens.stylex";
 
-const MODAL_TOP_INSET = "calc(var(--spacing) * 24)";
+const MODAL_TOP_INSET = space.s24;
 
 const styles = stylex.create({
   face: {
@@ -85,7 +85,7 @@ const styles = stylex.create({
   modalTop: {
     insetInline: 0,
     top: MODAL_TOP_INSET,
-    maxHeight: `calc(100dvh - ${MODAL_TOP_INSET} - var(--layout-compact-gutter))`,
+    maxHeight: `calc(100dvh - ${MODAL_TOP_INSET} - ${layout.compactGutter})`,
     marginInline: "auto",
   },
 });
