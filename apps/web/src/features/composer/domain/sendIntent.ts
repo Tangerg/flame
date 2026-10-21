@@ -12,6 +12,18 @@ export interface ComposerSendIntent {
   historyText: string | null;
 }
 
+export function hasSendableContent({
+  value,
+  images,
+  pastes,
+}: {
+  value: string;
+  images: readonly unknown[];
+  pastes: ReadonlyArray<{ text: string }>;
+}): boolean {
+  return Boolean(value.trim() || images.length > 0 || pastes.length > 0);
+}
+
 export function createComposerSendIntent({
   value,
   images,
@@ -23,7 +35,7 @@ export function createComposerSendIntent({
 }): ComposerSendIntent {
   const text = value.trim();
   const body = joinDraftParts([text, ...pastes.map((paste) => paste.text)]);
-  const shouldSend = Boolean(text || images.length > 0 || pastes.length > 0);
+  const shouldSend = hasSendableContent({ value, images, pastes });
   return {
     text,
     body,

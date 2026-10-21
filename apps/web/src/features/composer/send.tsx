@@ -9,6 +9,7 @@ import { useComposerImages, useComposerPastes } from "@/features/composer/public
 import { captureComposerSubmission, useComposerText } from "@/features/composer/public/draft";
 import { captureComposerFocus } from "@/features/composer/public/focus";
 import { composerActionLayout } from "@/features/composer/application/composerActionLayout";
+import { hasSendableContent } from "@/features/composer/domain/sendIntent";
 import { submitComposer } from "@/features/composer/application/submitComposer";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { useCanSendToAgent, useChatSend } from "@/features/agent/public/input";
@@ -27,7 +28,7 @@ function SendButton() {
   const activeSessionId = useActiveSessionId();
   const canSend = runtimeAvailable && agentCanSend;
 
-  const hasInput = Boolean(value.trim()) || images.length > 0 || pastes.length > 0;
+  const hasInput = hasSendableContent({ value, images, pastes });
   const layout = composerActionLayout({ running, hasInput });
   const submit = () =>
     submitComposer({

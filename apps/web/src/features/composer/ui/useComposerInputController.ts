@@ -16,6 +16,7 @@ import {
 } from "@/features/composer/application/fileMentions";
 import { handleSuggestionKey } from "@/features/composer/application/suggestions";
 import { useSlashSuggestions } from "@/features/composer/application/slashSuggestions";
+import { hasSendableContent } from "@/features/composer/domain/sendIntent";
 import { useIsCurrentRootRunning } from "@/features/agent/public/run";
 import { COMPOSER_KEY_BINDING } from "@/features/composer/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
@@ -91,7 +92,7 @@ export function useComposerInputController({
   const knownPaths = useKnownWorkspacePaths(cwd, value.includes("@"));
   const running = useIsCurrentRootRunning();
   const placeholder = running ? t("composer.placeholder.steer") : t("composer.placeholder");
-  const steering = running && (value.trim() !== "" || images.length > 0 || pastes.length > 0);
+  const steering = running && hasSendableContent({ value, images, pastes });
   const submit = useCallback(
     () =>
       submitComposer({
