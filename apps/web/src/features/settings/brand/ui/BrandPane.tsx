@@ -98,15 +98,15 @@ const rgb = `${r}, ${g}, ${b}`;
 export function BrandPane({ saveImage }: { saveImage: (source: string) => Promise<boolean> }) {
   const t = useT();
   const { copied, copy } = useCopyFeedback(hex);
-  const [saving, setSaving] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   async function copyColor() {
     if (!(await copy())) notifyError(t("settings.brand.copyFailed"));
   }
 
-  async function downloadAsset(source: string) {
-    if (saving) return;
-    setSaving(true);
+  async function downloadAsset(id: string, source: string) {
+    if (savingId) return;
+    setSavingId(id);
     try {
       const response = await fetch(source);
       if (!response.ok) throw new Error(`brand image request failed: ${response.status}`);
@@ -124,7 +124,7 @@ export function BrandPane({ saveImage }: { saveImage: (source: string) => Promis
     } catch {
       notifyError(t("settings.brand.downloadFailed"));
     } finally {
-      setSaving(false);
+      setSavingId(null);
     }
   }
 
@@ -149,8 +149,8 @@ export function BrandPane({ saveImage }: { saveImage: (source: string) => Promis
                 <Button
                   variant="soft"
                   size="sm"
-                  pending={saving}
-                  onClick={() => void downloadAsset(asset.source)}
+                  pending={savingId === asset.id}
+                  onClick={() => void downloadAsset(asset.id, asset.source)}
                   aria-label={t("settings.brand.download", { name: t(asset.name) })}
                   styles={styles.download}
                 >
