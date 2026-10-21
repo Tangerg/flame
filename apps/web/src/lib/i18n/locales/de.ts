@@ -600,6 +600,9 @@ export const de: Record<string, string> = {
   "tools.family.goals": "Ziele",
 
   "toolAction.copyArguments": "Argumente kopieren",
+  "toolAction.argumentsCopied": "Argumente kopiert",
+  "toolAction.copyFailed":
+    "Argumente konnten nicht kopiert werden. Erweitere das Tool und kopiere sie aus {{section}}.",
   "approval.fallbackText": "Diese Aktion genehmigen?",
 
   "shortcuts.sub":

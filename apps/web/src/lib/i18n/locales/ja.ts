@@ -576,6 +576,9 @@ export const ja: Record<string, string> = {
   "tools.family.goals": "ゴール",
 
   "toolAction.copyArguments": "引数をコピー",
+  "toolAction.argumentsCopied": "引数をコピーしました",
+  "toolAction.copyFailed":
+    "引数をコピーできませんでした。ツールを展開し、「{{section}}」からコピーしてください。",
   "approval.fallbackText": "この操作を承認しますか？",
 
   "shortcuts.sub":

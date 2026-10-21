@@ -1,14 +1,22 @@
 import { defaultToolIconContributions } from "@/features/agent/public/toolIcon";
-import { copyText } from "@flame/ui";
 import { definePlugin } from "@/extensions/definePlugin";
 import { TOOL_ACTION, TOOL_ICON } from "@/features/chat/public/tools/types";
 import { copyToolArgsAction } from "@/features/chat/tools/application/toolActions";
+import { writeToClipboard } from "@/lib/clipboard";
+import { t } from "@/lib/i18n/index";
 export const toolActions = definePlugin({
   name: "flame.builtin.tool-actions",
   setup(ctx) {
     ctx.contribute(
       TOOL_ACTION,
-      copyToolArgsAction({ title: "toolAction.copyArguments", copyText }),
+      copyToolArgsAction({
+        title: "toolAction.copyArguments",
+        copyText: (text) =>
+          writeToClipboard(text, {
+            successLabel: t("toolAction.argumentsCopied"),
+            failureLabel: t("toolAction.copyFailed", { section: t("toolInspector.arguments") }),
+          }),
+      }),
     );
   },
 });

@@ -32,9 +32,10 @@ export async function copyRichText({ plainText, htmlText }: RichClipboardText): 
 
 export async function writeToClipboard(
   text: string,
-  options?: { successLabel?: string },
+  options?: { successLabel?: string; failureLabel?: string },
 ): Promise<boolean> {
   const ok = await copyText(text);
   if (ok && options?.successLabel) toast.success(options.successLabel);
+  if (!ok && options?.failureLabel) toast.error(options.failureLabel);
   return ok;
 }

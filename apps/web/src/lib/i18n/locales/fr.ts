@@ -611,6 +611,9 @@ export const fr: Record<string, string> = {
   "tools.family.goals": "Objectifs",
 
   "toolAction.copyArguments": "Copier les paramètres",
+  "toolAction.argumentsCopied": "Paramètres copiés",
+  "toolAction.copyFailed":
+    "Impossible de copier les paramètres. Développez l’outil et copiez-les depuis {{section}}.",
   "approval.fallbackText": "Approuver cette action ?",
 
   "shortcuts.sub":

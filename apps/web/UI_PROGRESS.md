@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Remembered-rule Forget actions now reference their own visible record as a programmatic description. Focused regressions cover same-name records, reordering, original command identity and open Tooltip composition; actual Wails qualifies the existing keyboard, pointer, scroll, query and draft-return paths in both themes and 14/18 px text. VoiceOver speech remains untested. Complete Web/native checks pass; exact results and cleanup are below. Hooks scope/source identity is integrated at `11c93897a`. Continuous UI work proceeds from remaining observed task paths.
+Updated: 2026-10-21. Tool argument copying now reports accepted and refused writes through the existing acknowledgement surface, with localized manual-copy recovery. Actual Wails qualifies keyboard recovery, pointer retry, retained query/draft, both themes, 14/18 px text and narrow/200% reading. Complete Web/native checks pass; exact results and cleanup are below. Tool row context is integrated at `bb031df79`. Continuous UI work proceeds from remaining observed task paths.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1044,6 +1044,47 @@ patch receipts in `visual/agentSessionSnapshots.ts` now retain zero values for
 their abbreviated, unparseable patch inputs, matching the Runtime presenter.
 The existing contract test exposed the omission. No frontend patch grammar,
 inferred count or permissive result fallback was introduced.
+
+## Tool argument copy outcomes
+
+The built-in Copy arguments action now acknowledges an accepted clipboard write
+and gives localized recovery guidance when the Clipboard API refuses it. The
+notice names the existing Arguments section as the manual-copy route. Notices
+contain neither captured material nor system error text; the row's concise name,
+Tooltip, summary description and focus retain their owners.
+
+Shared `copyText` owns the accepted-write boolean; `lib/clipboard.writeToClipboard`
+projects it as an opt-in transient acknowledgement and returns it unchanged.
+Its new optional `failureLabel` reports only a requested failure; existing
+callers retain their prior behavior. `tools/toolMeta` supplies both
+labels through that helper and resolves translations when the action runs.
+The existing application action transfers the exact argument string. Shared
+clipboard primitives, extension action contracts, command lifecycle, Runtime,
+reader selection and Toaster presentation remain unchanged. Both new keys are
+complete across eight locales and reuse the current section-name translation.
+
+Flame's existing BrandPane checks the same copy result and names a manual-copy
+recovery. Read-only ZCode `SnippetCopyButton` handles both absent Clipboard API
+and rejected writes through its error callback. These inform truthful outcomes;
+Flame keeps its existing acknowledgement owner and adds no copy state, timer,
+automatic retry, hidden-textarea fallback or new interaction container.
+better-writing's result/recovery guidance and better-accessibility's status and
+focus guidance apply to this bounded local action.
+
+| Severity | Location                          | Before                                                     | After                                                        | Why                                                                      |
+| -------- | --------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| MEDIUM   | `features/chat/tools/toolMeta.ts` | The injected low-level callback discarded the copy result. | Accepted and refused writes have distinct localized notices. | Users must know whether to paste or recover through the existing reader. |
+
+Verification for this surface (2026-10-21):
+
+- Original clipboard/application baseline passed **2 files / 4 tests**. Bounded edit-only Claude Code CLI supplied twelve scoped files in **134.04 seconds**, without denials or subagents. Primary corrected an invalid test status, used a contract-shaped unknown Tool, restored the previous locale and aligned French/Spanish parameter nouns. Focused typecheck, **3 files / 11 tests** and **1,083 keys across 8 locales** pass. The five denied/absent/composed-outcome regressions fail on the frozen original while six unchanged-behavior cases pass; both candidate sources were restored byte-for-byte. Tests install the real plugin contribution, retain exact whitespace/CJK, use the actual boolean-returning primitive, cover opt-in silence and resolve the locale after installation.
+- A private entry wrapper rejects only the first `Clipboard.writeText` with a controlled NotAllowedError; later writes delegate to the actual original API. Its **8 Items** pass the current SDK validator with zero violations. Actual Wails original EN/light14/Orange first copy produced no failure notice. A second copy pasted the exact parameters but produced no success notice. This is controlled API-boundary fault injection; no real OS-denial, permission change, live Tool execution or Runtime write is claimed.
+- Actual Wails EN/light/14 px/Flame Orange candidate shows the recovery notice after the refused write while keeping the original Copy action focused. Keyboard expansion reaches Arguments and its named reader; native Select All/Copy then pastes the exact single-record parameters, CJK and double spaces into the retained draft. A confirmed keyboard retry succeeds through the real original API and shows Arguments copied. Native Left-half/200% pointer copy shows a readable acknowledgement and action focus. Actual Size/body wheel retain the draft, Tool content and trajectory query `read`.
+- The final actual Wails arm64 build targets macOS 13.0. ZH/dark/18 px/custom blue in a native Left-half window shows the complete failure guidance after keyboard activation, then `参数已复制` after a mouse retry through the original API. The Copy action keeps focus. Body wheel and continued Composer editing retain query `read` and exact draft `复制反馈草稿 保留 继续`.
+- Complete Web check passes **387 files / 3,060 tests** plus type, locale, format, lint and repository guards (**184.37 seconds**); `make check-native` passes (**25.66 seconds**), followed serially by the final private build (**5.26 seconds**). All **17 reviewed source paths** and **3 private acceptance inputs** retain their recorded hashes. Existing loopback connection and duplicate-linker warnings remain non-failing. Separate unchanged shared UI, CLI, Runtime and SDK suites were not rerun; no protocol or persisted-data migration is required.
+- Cleanup confirms all three native processes and the bounded CLI have exited. The exact private app was unregistered; its bundle, isolated homes, logs, overlay, captures, pointer, ten newly generated output/cache paths and its two unique Library caches were removed. Dependencies, pre-existing caches, reference resources and user work remain outside that cleanup.
+- An erroneous formatter invocation used pnpm instead of the installed repository tool. All six moved original dependencies and eight npm bin links were restored; its lock, local installation metadata and newly created cache entries were removed. The retained dependency versions and source hashes are unchanged; the installed Prettier check passes after recovery.
+- One first pointer activation after resizing only revealed/scrolled the action and is excluded; the next observed invocation produced its notice. A later pointer-origin reverse-Tab sequence repeated Copy rather than closing details; no close or focus-return guarantee is claimed from that sequence. The existing bare-WebKit reverse-traversal qualification remains unchanged. Native OS-denial, VoiceOver speech, OS IME, other-platform GUIs, browser visual suites and performance benchmarks are not newly qualified.
 
 ## Tool row action context
 

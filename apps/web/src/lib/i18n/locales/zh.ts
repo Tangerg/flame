@@ -697,6 +697,8 @@ export const zh: Record<string, string> = {
   "tools.family.goals": "目标",
 
   "toolAction.copyArguments": "复制参数",
+  "toolAction.argumentsCopied": "参数已复制",
+  "toolAction.copyFailed": "无法复制参数。请展开工具，从“{{section}}”中复制。",
   "approval.fallbackText": "批准此操作？",
 
   "shortcuts.sub":

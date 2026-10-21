@@ -575,6 +575,8 @@ export const ko: Record<string, string> = {
   "tools.family.goals": "목표",
 
   "toolAction.copyArguments": "인수 복사",
+  "toolAction.argumentsCopied": "인수를 복사했습니다",
+  "toolAction.copyFailed": "인수를 복사하지 못했습니다. 도구를 펼친 뒤 {{section}}에서 복사하세요.",
   "approval.fallbackText": "이 작업을 승인하시겠습니까?",
 
   "shortcuts.sub":

@@ -610,6 +610,9 @@ export const es: Record<string, string> = {
   "tools.family.goals": "Objetivos",
 
   "toolAction.copyArguments": "Copiar parámetros",
+  "toolAction.argumentsCopied": "Parámetros copiados",
+  "toolAction.copyFailed":
+    "No se pudieron copiar los parámetros. Expande la herramienta y cópialos desde {{section}}.",
   "approval.fallbackText": "¿Aprobar esta acción?",
 
   "shortcuts.sub":
