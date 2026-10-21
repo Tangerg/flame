@@ -39,7 +39,7 @@ runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
 "github.com/Tangerg/flame/runtime/idempotency"
 "github.com/Tangerg/flame/packages/local-runtime"
 modelchoice "github.com/Tangerg/flame/runtime/model"
-modelcatalog "github.com/Tangerg/flame/runtime/model/catalog"
+"github.com/Tangerg/flame/runtime/model/catalog"
 pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
 sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
@@ -56,7 +56,7 @@ var _ runtimeclient.PluginStreamer = (*runtimeclient.PluginCallbackCaller)(nil)
 var _ *flameruntime.Runtime
 var _ = localruntime.ReadToken
 var _ = modelchoice.NewWithReasoningEffort
-var _ = (modelcatalog.Selections{}).AdmitSelection
+var _ = (catalog.Selections{}).AdmitSelection
 var _ protocol.RunEvent
 var _ = protocol.DecodeRequest
 var _ = pluginsdk.CallTextEmbedding

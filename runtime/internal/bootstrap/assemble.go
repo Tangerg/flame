@@ -27,7 +27,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
-	modelcatalog "github.com/Tangerg/flame/runtime/model/catalog"
+	"github.com/Tangerg/flame/runtime/model/catalog"
 	"github.com/Tangerg/flame/runtime/sandbox"
 )
 
@@ -144,7 +144,7 @@ func buildAssemblyCore(
 		TransientState:        execution.transientSessions,
 		ExecutionReleaser:     execution.executor,
 		Paths:                 workspaceadapter.Resolver{},
-		Models:                modelcatalog.Selections{},
+		Models:                catalog.Selections{},
 		DefaultModelSelection: execution.models.defaultSelection,
 		Checkpoints:           workspaceServices.checkpoints,
 		Admissions:            admissionGate,
@@ -226,7 +226,7 @@ func buildAssemblyCore(
 		Releases:                           execution.executor,
 		RootCancellation:                   execution.executor,
 		Conversation:                       execution.conversation.messages,
-		Models:                             modelcatalog.Selections{},
+		Models:                             catalog.Selections{},
 		ModelSelector:                      execution.tools.callComposition,
 		Continuation:                       execution.executor,
 		ApprovalRules:                      policy.approvals,

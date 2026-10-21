@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	modelcatalog "github.com/Tangerg/flame/runtime/model/catalog"
+	"github.com/Tangerg/flame/runtime/model/catalog"
 	modeltext "github.com/Tangerg/flame/runtime/model/text"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -202,7 +202,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		countable.Messages = append(cloneChatMessages(fixedContext), cloneChatMessages(candidate)...)
 		countable.Messages = append(countable.Messages, cloneChatMessages(tail)...)
 		if err := i.session.selectedChat.AdmitInput(countable); err != nil {
-			if !errors.Is(err, modelcatalog.ErrUnsupportedInputModality) {
+			if !errors.Is(err, catalog.ErrUnsupportedInputModality) {
 				return nil, err
 			}
 			input.Counter = nil

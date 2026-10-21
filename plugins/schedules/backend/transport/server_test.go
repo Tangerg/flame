@@ -20,7 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
-	modelcatalog "github.com/Tangerg/flame/runtime/model/catalog"
+	"github.com/Tangerg/flame/runtime/model/catalog"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -33,7 +33,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	}
 	defer db.Close()
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-proof"}, nil)
-	registered, err := RegisterServer(server, db, scheduledb.NewScheduleStore(db), directories.Resolver{}, modelcatalog.Selections{}, func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error) {
+	registered, err := RegisterServer(server, db, scheduledb.NewScheduleStore(db), directories.Resolver{}, catalog.Selections{}, func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error) {
 		return nil, nil, errors.New("unexpected Run connection")
 	})
 	if err != nil {
@@ -194,7 +194,7 @@ func TestBackgroundSetupChecksRuntimeAndJoinsItsConnection(t *testing.T) {
 			}
 			server := sdk.NewServer(&sdk.Implementation{Name: "background-owner"}, nil)
 			var opened, closed atomic.Int32
-			registered, err := RegisterServer(server, db, scheduledb.NewScheduleStore(db), directories.Resolver{}, modelcatalog.Selections{}, func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error) {
+			registered, err := RegisterServer(server, db, scheduledb.NewScheduleStore(db), directories.Resolver{}, catalog.Selections{}, func(context.Context, pluginsdk.CallbackRef) (RunHost, func() error, error) {
 				opened.Add(1)
 				return &observedRunHost{db: db, namespace: "attached"}, func() error { closed.Add(1); return nil }, nil
 			})

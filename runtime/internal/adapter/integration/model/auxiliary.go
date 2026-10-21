@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
-	modelcatalog "github.com/Tangerg/flame/runtime/model/catalog"
+	"github.com/Tangerg/flame/runtime/model/catalog"
 	modeltext "github.com/Tangerg/flame/runtime/model/text"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -273,7 +273,7 @@ func (m SelectedChat) AdmitInput(request *chat.Request) error {
 	if err := m.selection.ValidateExact(); err != nil {
 		return err
 	}
-	if err := (modelcatalog.Selections{}).AdmitInput(m.selection, request.Messages); err != nil {
+	if err := (catalog.Selections{}).AdmitInput(m.selection, request.Messages); err != nil {
 		return err
 	}
 	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
