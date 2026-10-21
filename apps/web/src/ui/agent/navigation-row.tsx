@@ -50,7 +50,7 @@ const rowStyles = stylex.create({
     alignItems: "flex-start",
     paddingBlock: space.s2,
   },
-  nested: { paddingLeft: "calc(0.5rem + var(--icon-md) + var(--density-row-gap))" },
+  nested: { paddingLeft: "var(--nested-row-indent)" },
   actioned: {
     paddingRight: {
       default: "calc(var(--spacing) * (2 + 6 * var(--reveal, 1)))",

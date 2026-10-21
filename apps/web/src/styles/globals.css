@@ -279,6 +279,7 @@
   --density-navigation-gutter: 12px;
   --density-navigation-section-gap: 18px;
   --density-navigation-group-gap: 10px;
+  --nested-row-indent: calc(var(--spacing) * 2 + var(--icon-md) + var(--density-row-gap));
   --reading-gutter: 12px;
   --reading-gutter-wide: 20px;
   --composer-editor-top: 12px;

@@ -9,7 +9,7 @@ import { type WorkSession } from "@/features/navigation/public/workIndex";
 import { space } from "@flame/ui/tokens.stylex";
 const sl = stylex.create({
   more: { paddingInline: space.s2, paddingBlock: space.s1 },
-  moreNested: { paddingLeft: "calc(0.5rem + var(--icon-sm) + var(--density-row-gap))" },
+  moreNested: { paddingLeft: "var(--nested-row-indent)" },
 });
 
 const VISIBLE_CAP = 5;
