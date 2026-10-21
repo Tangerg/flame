@@ -31,6 +31,7 @@ import { DelegatedRunLink } from "@/features/chat/message/ui/DelegatedRunLink";
 import { type BlockCtx } from "@/features/chat/message/ui/BlockRenderer";
 import { useStreamRevealStore } from "@/features/chat/public/message/streamReveal";
 import { MessageTurn } from "@/features/chat/message/ui/MessageTurn";
+import { readingColumn as rc } from "./readingColumn";
 import { UnresolvedRunEffects } from "@/features/chat/message/ui/UnresolvedRunEffects";
 import { SubagentStopButton } from "@/features/chat/message/ui/SubagentStopButton";
 const styles = stylex.create({
@@ -286,7 +287,7 @@ function SubagentTranscript({
           onFocusCapture={(event) =>
             stopFollowOnReadingFocus(event, { scrollRef, state, stopScroll })
           }
-          {...stylex.props(styles.transcript)}
+          {...stylex.props(rc.box, styles.transcript)}
         >
           {(summary.detail || narrative.run.outcome?.unresolvedEffects?.length) && (
             <div {...stylex.props(styles.evidence)}>

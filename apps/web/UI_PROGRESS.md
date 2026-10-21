@@ -1163,6 +1163,36 @@ their abbreviated, unparseable patch inputs, matching the Runtime presenter.
 The existing contract test exposed the omission. No frontend patch grammar,
 inferred count or permissive result fallback was introduced.
 
+## Conversation reading axis ownership
+
+Rendered conversation prose now reads on a single owned measure wherever a
+`MessageTurn` is laid out. The reading axis (`readingColumn.box`/`gutter`) moved
+from `shell/workbench/panel/readingColumn.ts` to its logical home beside the
+renderer at `features/chat/message/ui/readingColumn.ts`, re-exported through
+`features/chat/public/message/rendering`. The composer-overlay clearance and its
+`--composer-overlay` property split into `shell/workbench/panel/composerOverlay.ts`,
+since those belong to the shell that owns the floating composer, not to message
+rendering. Shell consumers (`MessageStream`, `ChatStream`, `FloatingComposer`)
+import the axis through the chat public surface — the same direction by which the
+shell already consumes `MessageTurn`.
+
+The root cause this fixes: the delegated-run (subagent) transcript lives in the
+`chat` context and could not reach the shell-housed measure without a backward
+dependency, so `SubagentsPanel` rendered its transcript with no column cap —
+edge-to-edge in a widened Dock or full pane while the main transcript capped.
+`SubagentsPanel` now wraps its transcript content in `readingColumn.box`, so a
+delegated run caps and centers on the same axis as the primary conversation. The
+narrow Dock is unchanged because its content already sits below the cap; the
+existing scroller gutter is retained. Reference basis: ChatGPT/Codex drive the
+whole reading column from one measure variable (real-UI CSS), and ZCode centers a
+capped reading column in detail panes.
+
+Verification: `typecheck`, `check:layers`/`contexts`/`published-boundaries`/`circular`,
+`lint` and `knip` pass; the full web unit suite is green (388 files / 3069 tests).
+Native Wails interaction acceptance for the widened-Dock and full-pane subagent
+reading is pending and not claimed here. Next reading work is controlled
+wide-content breakout (code/tables/media exceeding the prose measure).
+
 ## Tool argument copy outcomes
 
 The built-in Copy arguments action now acknowledges an accepted clipboard write

@@ -13,10 +13,8 @@ import { useStreamRevealStore } from "@/features/chat/public/message/streamRevea
 import { ChatErrorBoundary } from "@/features/shell/workbench/panel/ChatErrorBoundary";
 import { ComposerSurface } from "@/features/shell/workbench/panel/ComposerSurface";
 import { ComposerStack, FloatingComposer } from "@/features/shell/workbench/panel/FloatingComposer";
-import {
-  COMPOSER_OVERLAY_PROPERTY,
-  readingColumn as rc,
-} from "@/features/shell/workbench/panel/readingColumn";
+import { readingColumn as rc } from "@/features/chat/public/message/rendering";
+import { COMPOSER_OVERLAY_PROPERTY } from "@/features/shell/workbench/panel/composerOverlay";
 import { CwdMissingBanner } from "@/features/shell/workbench/panel/CwdMissingBanner";
 import { MessageStream } from "@/features/shell/workbench/panel/MessageStream";
 import { RunErrorBanner } from "@/features/shell/workbench/panel/RunErrorBanner";

@@ -11,7 +11,7 @@ import { SystemMessage } from "@/ui/index";
 import { vocab } from "@flame/ui";
 import { JumpToBottomButton } from "@/features/shell/workbench/panel/JumpToBottomButton";
 import { space } from "@flame/ui/tokens.stylex";
-import { readingColumn as rc } from "@/features/shell/workbench/panel/readingColumn";
+import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 const fc = stylex.create({
   notice: { flexShrink: 0, marginBottom: space.s2 },
   tray: {

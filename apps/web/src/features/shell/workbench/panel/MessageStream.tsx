@@ -12,7 +12,8 @@ import { useT } from "@/lib/i18n/index";
 import { Divider } from "@/ui/index";
 import { useContentVisible } from "@/ui/index";
 import { stopFollowOnReadingFocus } from "@/ui/agent/readingFollow";
-import { readingColumn as rc } from "@/features/shell/workbench/panel/readingColumn";
+import { readingColumn as rc } from "@/features/chat/public/message/rendering";
+import { composerOverlay } from "@/features/shell/workbench/panel/composerOverlay";
 import { useCurrentRootMaterial, type CurrentRootMaterial } from "@/features/agent/public/run";
 import { MessageTurn } from "@/features/chat/public/message/rendering";
 import { RootRunOutcome } from "@/features/chat/public/message/rendering";
@@ -187,7 +188,7 @@ export function MessageStream({ rows, ctx, sessionId }: Props) {
             );
           })}
         </AnimatePresence>
-        <div aria-hidden {...stylex.props(rc.clearance)} />
+        <div aria-hidden {...stylex.props(composerOverlay.clearance)} />
       </TranscriptContent>
       <ControlsRelay />
     </StickToBottom>
