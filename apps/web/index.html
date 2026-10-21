@@ -28,8 +28,8 @@
         var root = document.documentElement;
         root.dataset.visualStyle = state?.visualStyle || "flame";
         root.classList.add("theme-" + scheme);
-        root.style.backgroundColor = scheme === "light" ? "#f7f4f3" : "#110e0d";
-        if (paint) root.style.backgroundColor = paint.background;
+        root.style.backgroundColor = scheme === "light" ? "#f5f5f5" : "#0f0f0f";
+        if (paint && id !== "light" && id !== "dark") root.style.backgroundColor = paint.background;
       })();
     </script>
     <script src="/focus-modality.js"></script>

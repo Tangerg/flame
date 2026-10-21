@@ -1,7 +1,7 @@
 import { type Scheme } from "@/lib/appearance";
 import { type ColorThemeSpec } from "@/features/theme/public/types";
 import { edgeOnCanvas, focusOnCanvas } from "@/features/theme/kit/legibility";
-import { mixOklab, toOklch } from "@/features/theme/kit/oklab";
+import { mixOklab } from "@/features/theme/kit/oklab";
 import { hueScale, neutralScale, solidInk, step, type Scale } from "@/features/theme/kit/scale";
 import { SCHEME_ICON, inkTracksLadder } from "@/features/theme/kit/tokens";
 interface ThemePalette {
@@ -58,14 +58,7 @@ export function paletteThemeContribution(
   const seed = palette.accent ?? preferredAccent;
   const separation = 0.6 + 1.6 * (Math.min(100, Math.max(0, contrast)) / 100);
   const planes = PLANE_STEP[scheme];
-  const neutral = neutralScale(
-    background,
-    foreground,
-    scheme,
-    palette.background === undefined ? toOklch(seed).h : null,
-    separation,
-    planes.sunken,
-  );
+  const neutral = neutralScale(background, foreground, scheme, separation, planes.sunken);
   const canvas = step(neutral, 1);
   const textPlanes = [step(neutral, planes.sunken), elevatedPlane(scheme, neutral)];
   const scale = (color: string) => hueScale(color, scheme, canvas, textPlanes);

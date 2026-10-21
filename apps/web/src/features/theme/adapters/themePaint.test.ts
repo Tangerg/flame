@@ -36,6 +36,22 @@ it("uses the rendered projection for first paint without admitting a runtime the
 });
 
 it.each([
+  ["light", "#f7f4f3", "#f5f5f5"],
+  ["dark", "#110e0d", "#0f0f0f"],
+] as const)(
+  "opens built-in %s on its neutral canvas despite an old tinted paint",
+  (theme, old, canvas) => {
+    rememberThemePaint(theme, theme, old);
+    localStorage.setItem("flame.appearance", JSON.stringify({ state: { theme } }));
+
+    Function(html.match(/<script>([\s\S]*?)<\/script>/)![1]!)();
+
+    expect(document.documentElement.className).toBe(`theme-${theme}`);
+    expect(document.documentElement.style.backgroundColor).toBe(canvas);
+  },
+);
+
+it.each([
   [false, "theme-light"],
   [true, "theme-dark"],
 ])(

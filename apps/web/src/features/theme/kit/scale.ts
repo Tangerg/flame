@@ -32,11 +32,6 @@ const NEUTRAL_INK: Record<Scheme, readonly number[]> = {
   dark: [0, 4, 8.5, 12, 15.5, 20, 27, 39, 46.5, 52.5, 70, 100],
 };
 
-const NEUTRAL_TINT: Record<Scheme, readonly number[]> = {
-  light: [0.003, 0.004, 0.005, 0.006, 0.007, 0.009, 0.011, 0.015, 0.016, 0.015, 0.014, 0.01],
-  dark: [0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.012, 0.016, 0.015, 0.015, 0.01, 0.004],
-};
-
 export function solidFill(seed: string): string {
   const onWhite = contrastRatio(seed, "#ffffff");
   if (onWhite >= WCAG_AA_TEXT) return seed;
@@ -97,21 +92,16 @@ export function neutralScale(
   background: string,
   foreground: string,
   scheme: Scheme,
-  tintHue: number | null,
   separation: number,
   textPlaneStep: number,
 ): Scale {
-  const at = (i: number, share: number) => {
-    const mixed = mixOklab(foreground, background, Math.min(100, share));
-    if (tintHue === null) return mixed;
-    return fromOklch({ l: toOklch(mixed).l, c: NEUTRAL_TINT[scheme][i]!, h: tintHue });
-  };
-  const steps = NEUTRAL_INK[scheme].map((ink, i) => at(i, i > 0 && i < 8 ? ink * separation : ink));
+  const at = (share: number) => mixOklab(foreground, background, Math.min(100, share));
+  const steps = NEUTRAL_INK[scheme].map((ink, i) => at(i > 0 && i < 8 ? ink * separation : ink));
   const plane = steps[textPlaneStep - 1]!;
   for (const i of [9, 10]) {
     for (let share = NEUTRAL_INK[scheme][i]!; contrastRatio(steps[i]!, plane) < WCAG_AA_TEXT;) {
       share += 1;
-      steps[i] = at(i, share);
+      steps[i] = at(share);
       if (share >= 100) break;
     }
   }

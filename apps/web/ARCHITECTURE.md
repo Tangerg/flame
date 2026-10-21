@@ -494,8 +494,11 @@ Runtime sources and selection remain inside Agent adapters. Application and publ
 views expose neutral input, interruption and session/run facts. Pending opening
 views contain the original key, receipt and renderable request. Only the adapter
 of that generation retains the SDK retry handle; `retryOpening(key)` resolves that
-original handle without creating a second settlement path. Compiler checks trace
-exported types through aliases, containers and inferred method results.
+original handle without creating a second settlement path. Generated closed string
+enums such as `ChangeStatus` are shared vocabulary and may appear in public views;
+Runtime-client records, command handles and anything mixing them stay inside adapters.
+Compiler checks trace exported types through aliases, containers and inferred
+method results.
 
 Settings pages compose theme, i18n, notification and chat controls through their
 real public modules. Features independently contribute panes to Settings. Guards

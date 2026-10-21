@@ -10,7 +10,12 @@ function fixture(publicSource, inspect) {
   try {
     const files = {
       "tsconfig.json": JSON.stringify({
-        compilerOptions: { module: "ESNext", moduleResolution: "Bundler", types: [] },
+        compilerOptions: {
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          strict: true,
+          types: [],
+        },
         include: ["src"],
       }),
       "node_modules/@flame/runtime-client/package.json": JSON.stringify({
@@ -19,7 +24,12 @@ function fixture(publicSource, inspect) {
         exports: "./index.ts",
       }),
       "node_modules/@flame/runtime-client/index.ts":
-        "export interface Opening { runId: string; retry(): Opening }",
+        'export * from "./generated/wire.generated"; export interface Opening { runId: string; retry(): Opening }',
+      "node_modules/@flame/runtime-client/generated/wire.generated.ts": [
+        'export type ChangeStatus = "added" | "deleted" | "modified" | "moved";',
+        'export type SafetyClass = "safe" | "write" | "exec" | "network";',
+        "export interface RecordedChange { status: ChangeStatus; safetyClass: SafetyClass }",
+      ].join("\n"),
       "src/features/agent/adapters/driver.ts":
         'import { type Opening } from "@flame/runtime-client"; export interface Driver { start(): Opening }',
       "src/features/agent/application/opening.ts":
@@ -50,6 +60,36 @@ test("accepts a neutral projection while its adapter retains the wire handle", (
   fixture('export interface View { key: string; receipt: "unknown" | "notRecorded" }', (root) => {
     assert.deepEqual(inspectAgentWireTypes(root), []);
   });
+});
+
+test("accepts generated closed string enums in a neutral projection", () => {
+  fixture(
+    [
+      'import { type ChangeStatus, type SafetyClass } from "@flame/runtime-client";',
+      "export interface ChangeView { path: string; status: ChangeStatus; safetyClass?: SafetyClass }",
+    ].join("\n"),
+    (root) => {
+      assert.deepEqual(inspectAgentWireTypes(root), []);
+    },
+  );
+});
+
+test("rejects a wire record even when it contains only enum values", () => {
+  fixture(
+    'import { type RecordedChange } from "@flame/runtime-client"; export interface ChangeView { change: RecordedChange }',
+    (root) => {
+      assert.match(inspectAgentWireTypes(root).join("\n"), /ChangeView exposes.*wire\.generated/);
+    },
+  );
+});
+
+test("rejects a union mixing an enum with a wire handle", () => {
+  fixture(
+    'import { type ChangeStatus, type Opening } from "@flame/runtime-client"; export interface MixedView { value: ChangeStatus | Opening }',
+    (root) => {
+      assert.match(inspectAgentWireTypes(root).join("\n"), /MixedView exposes.*runtime-client/);
+    },
+  );
 });
 
 test("rejects a deferred conditional branch containing an adapter result", () => {

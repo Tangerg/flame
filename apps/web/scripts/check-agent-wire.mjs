@@ -21,6 +21,14 @@ export function inspectAgentWireTypes(root = process.cwd()) {
       if (!type || seen.has(type.id)) return undefined;
       if (memo.has(type.id)) return memo.get(type.id);
       seen.add(type.id);
+      // A closed string enum is shared vocabulary: its values carry no wire record
+      // or operation handle, so a neutral projection may name generated statuses.
+      // Mixed unions and objects built only from such values still fall through.
+      if (
+        type.isStringLiteralType() ||
+        (type.isUnionType() && type.getTypes().every((member) => member.isStringLiteralType()))
+      )
+        return undefined;
       const sources = [type.getSymbol(), type.getAliasSymbol()]
         .flatMap(declarations)
         .map((node) => node.getSourceFile().fileName);
