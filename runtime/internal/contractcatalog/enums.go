@@ -22,6 +22,7 @@ import (
 var wireEnums = map[reflect.Type][]string{
 	reflect.TypeFor[protocol.PluginRendererSelectorType]():        {string(protocol.PluginRendererToolName), string(protocol.PluginRendererResultShape), string(protocol.PluginRendererFileExtension)},
 	reflect.TypeFor[protocol.ToolAttemptState]():                  {string(protocol.ToolAttemptStarted), string(protocol.ToolAttemptCompleted), string(protocol.ToolAttemptIncomplete)},
+	reflect.TypeFor[protocol.ToolCategory]():                      {string(protocol.ToolCategoryShell), string(protocol.ToolCategoryEdit), string(protocol.ToolCategoryRead), string(protocol.ToolCategorySearch), string(protocol.ToolCategoryWeb), string(protocol.ToolCategoryTask), string(protocol.ToolCategoryUnknown)},
 	reflect.TypeFor[protocol.TrajectoryEntryType]():               {string(protocol.TrajectoryEntryRun), string(protocol.TrajectoryEntryModel), string(protocol.TrajectoryEntryEndpoint), string(protocol.TrajectoryEntryItem)},
 	reflect.TypeFor[protocol.ModelInvocationState]():              {string(protocol.ModelInvocationStarted), string(protocol.ModelInvocationCompleted), string(protocol.ModelInvocationFailed), string(protocol.ModelInvocationUnknown)},
 	reflect.TypeFor[protocol.ModelEndpointKind]():                 {string(protocol.ModelEndpointChat), string(protocol.ModelEndpointEmbedding)},

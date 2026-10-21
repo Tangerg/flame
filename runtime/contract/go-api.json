@@ -1250,11 +1250,20 @@
           "name": "CommandsSchema",
           "type": "untyped string",
           "value": "\"CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, business_input_json TEXT NOT NULL CHECK(json_valid(business_input_json)), reply TEXT CHECK(reply IS NULL OR json_valid(reply)))\""
+        },
+        {
+          "name": "RuntimeTargetSchema",
+          "type": "untyped string",
+          "value": "\"CREATE TABLE IF NOT EXISTS runtime_target (id INTEGER PRIMARY KEY CHECK(id=1), namespace TEXT NOT NULL)\""
         }
       ],
       "variables": [
         {
           "name": "ErrCommandUnconfirmed",
+          "type": "error"
+        },
+        {
+          "name": "ErrRuntimeTargetConflict",
           "type": "error"
         }
       ],
@@ -1262,6 +1271,14 @@
         {
           "name": "AdmitCommand",
           "signature": "func(ctx context.Context, db *sql.DB, method string, id string, input jsoninput.Input, validateNew func(context.Context) error) (*PreparedCommand, []byte, error)"
+        },
+        {
+          "name": "BindRuntimeTarget",
+          "signature": "func(ctx context.Context, db *sql.DB, namespace string) error"
+        },
+        {
+          "name": "CheckRuntimeTarget",
+          "signature": "func(ctx context.Context, db *sql.DB, namespace string) error"
         },
         {
           "name": "Command",
@@ -4883,6 +4900,41 @@
           "name": "ToolAttemptStarted",
           "type": "ToolAttemptState",
           "value": "\"started\""
+        },
+        {
+          "name": "ToolCategoryEdit",
+          "type": "ToolCategory",
+          "value": "\"edit\""
+        },
+        {
+          "name": "ToolCategoryRead",
+          "type": "ToolCategory",
+          "value": "\"read\""
+        },
+        {
+          "name": "ToolCategorySearch",
+          "type": "ToolCategory",
+          "value": "\"search\""
+        },
+        {
+          "name": "ToolCategoryShell",
+          "type": "ToolCategory",
+          "value": "\"shell\""
+        },
+        {
+          "name": "ToolCategoryTask",
+          "type": "ToolCategory",
+          "value": "\"task\""
+        },
+        {
+          "name": "ToolCategoryUnknown",
+          "type": "ToolCategory",
+          "value": "\"unknown\""
+        },
+        {
+          "name": "ToolCategoryWeb",
+          "type": "ToolCategory",
+          "value": "\"web\""
         },
         {
           "name": "ToolRefA2A",
@@ -12808,6 +12860,11 @@
           "underlying": "string"
         },
         {
+          "name": "ToolCategory",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "ToolInvocation",
           "kind": "struct",
           "fields": [
@@ -12820,6 +12877,11 @@
               "name": "Name",
               "type": "string",
               "tag": "json:\"name\""
+            },
+            {
+              "name": "Category",
+              "type": "ToolCategory",
+              "tag": "json:\"category,omitempty\""
             },
             {
               "name": "Arguments",

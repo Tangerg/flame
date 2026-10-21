@@ -21,7 +21,7 @@ func TestProjectToolPreservesStructuredDetails(t *testing.T) {
 	finished := started.Add(2 * time.Second)
 	tool, err := projectTool(toolProjection{
 		invocation: &protocol.ToolInvocation{
-			Name: "shell", Arguments: map[string]any{"command": "go test ./..."},
+			Name: "shell", Category: protocol.ToolCategoryShell, Arguments: map[string]any{"command": "go test ./..."},
 			Result: map[string]any{"output": "ok", "exitCode": jsonv1.Number("0")},
 		}, status: protocol.ItemStatusCompleted, safety: protocol.SafetyClassExec,
 		startedAt: started, finishedAt: finished, durationMillis: &duration,
@@ -103,29 +103,6 @@ func TestProjectToolRetainsDisplayAfterSourceReuse(t *testing.T) {
 		!bytes.Contains(tool.ResultJSON, []byte(`"recordId":9007199254740993`)) ||
 		bytes.Contains(tool.ResultJSON, []byte("reused")) {
 		t.Fatalf("tool changed with reused source: %+v", tool)
-	}
-}
-
-func TestToolKindUsesOnlyCurrentRuntimeVocabulary(t *testing.T) {
-	tests := []struct {
-		name     string
-		expected conversation.ToolKind
-	}{
-		{name: "shell", expected: conversation.ToolShell},
-		{name: "apply_patch", expected: conversation.ToolEdit},
-		{name: "read", expected: conversation.ToolRead},
-		{name: "grep", expected: conversation.ToolSearch},
-		{name: "web_search", expected: conversation.ToolWeb},
-		{name: "delegate_task", expected: conversation.ToolTask},
-		{name: "write_file", expected: conversation.ToolUnknown},
-		{name: "edit_file", expected: conversation.ToolUnknown},
-		{name: "read_file", expected: conversation.ToolUnknown},
-		{name: "mcp_custom_tool", expected: conversation.ToolUnknown},
-	}
-	for _, test := range tests {
-		if actual := kindForTool(test.name); actual != test.expected {
-			t.Errorf("kindForTool(%q) = %q, want %q", test.name, actual, test.expected)
-		}
 	}
 }
 

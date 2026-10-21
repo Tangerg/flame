@@ -367,6 +367,7 @@ export type WireTypeName =
   | "TestProviderRequest"
   | "ToolAttempt"
   | "ToolAttemptState"
+  | "ToolCategory"
   | "ToolInvocation"
   | "ToolRef"
   | "ToolRefType"
@@ -4163,9 +4164,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   ToolAttemptState: enumOf(["started", "completed", "incomplete"]),
+  ToolCategory: enumOf(["shell", "edit", "read", "search", "web", "task", "unknown"]),
   ToolInvocation: object({
     arguments: record(anything()),
     argumentsText: text(),
+    category: ref(() => CHECKS.ToolCategory),
     name: allOf([text(), pattern("\\S")]),
     result: anything(),
   }, ["arguments", "name"]),

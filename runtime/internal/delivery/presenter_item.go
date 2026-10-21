@@ -153,13 +153,37 @@ func presentQuestion(question transcript.Question) protocol.Question {
 	return protocol.Question{Fields: fields, Answers: transcript.CloneAnswers(question.Answers)}
 }
 
-func presentTool(tool transcript.ToolInvocation) protocol.ToolInvocation {
+func presentTool(invocation transcript.ToolInvocation) protocol.ToolInvocation {
 	var result any
-	if tool.Result != nil {
-		result = tool.Result.Any()
+	if invocation.Result != nil {
+		result = invocation.Result.Any()
 	}
 	return protocol.ToolInvocation{
-		Name: tool.Name, ArgumentsText: tool.ArgumentsText, Arguments: tool.Arguments.Map(), Result: result,
+		Name: invocation.Name, Category: presentToolCategory(invocation.Name),
+		ArgumentsText: invocation.ArgumentsText, Arguments: invocation.Arguments.Map(), Result: result,
+	}
+}
+
+// presentToolCategory owns the one tool-to-category mapping every client renders
+// from, replacing the copies the CLI and Web each kept. Built-in identities are
+// grouped; plugin and MCP tools stay unknown.
+func presentToolCategory(name string) protocol.ToolCategory {
+	switch tool.BuiltInName(name) {
+	case tool.Shell, tool.ReadShellOutput, tool.StopShell:
+		return protocol.ToolCategoryShell
+	case tool.ApplyPatch, tool.Edit:
+		return protocol.ToolCategoryEdit
+	case tool.Read, tool.ReadSkillResource, tool.ReadToolResult:
+		return protocol.ToolCategoryRead
+	case tool.Glob, tool.Grep, tool.SearchTools, tool.LSP:
+		return protocol.ToolCategorySearch
+	case tool.WebSearch, tool.WebFetch, tool.HTTPRequest:
+		return protocol.ToolCategoryWeb
+	case tool.AskUser, tool.DelegateTask, tool.CreateGoal, tool.GetGoal, tool.ReportGoalOutcome,
+		tool.LoadSkill, tool.ListSkills, tool.ProposeSkill, tool.EnterPlanMode, tool.ExitPlanMode, tool.SetPlan:
+		return protocol.ToolCategoryTask
+	default:
+		return protocol.ToolCategoryUnknown
 	}
 }
 

@@ -11882,6 +11882,18 @@
         "incomplete"
       ]
     },
+    "ToolCategory": {
+      "type": "string",
+      "enum": [
+        "shell",
+        "edit",
+        "read",
+        "search",
+        "web",
+        "task",
+        "unknown"
+      ]
+    },
     "ToolInvocation": {
       "type": "object",
       "properties": {
@@ -11891,6 +11903,9 @@
         },
         "argumentsText": {
           "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/ToolCategory"
         },
         "name": {
           "type": "string",

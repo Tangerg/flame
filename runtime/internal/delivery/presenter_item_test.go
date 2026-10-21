@@ -6,9 +6,36 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func TestPresentToolCategoryGroupsBuiltInTools(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		want protocol.ToolCategory
+	}{
+		{string(tool.Shell), protocol.ToolCategoryShell},
+		{string(tool.StopShell), protocol.ToolCategoryShell},
+		{string(tool.ApplyPatch), protocol.ToolCategoryEdit},
+		{string(tool.Edit), protocol.ToolCategoryEdit},
+		{string(tool.Read), protocol.ToolCategoryRead},
+		{string(tool.Grep), protocol.ToolCategorySearch},
+		{string(tool.LSP), protocol.ToolCategorySearch},
+		{string(tool.WebSearch), protocol.ToolCategoryWeb},
+		{string(tool.WebFetch), protocol.ToolCategoryWeb},
+		{string(tool.DelegateTask), protocol.ToolCategoryTask},
+		{string(tool.SetPlan), protocol.ToolCategoryTask},
+		{"search_memory", protocol.ToolCategoryUnknown},
+		{"mcp_custom", protocol.ToolCategoryUnknown},
+	} {
+		if got := presentToolCategory(test.name); got != test.want {
+			t.Errorf("presentToolCategory(%q) = %q, want %q", test.name, got, test.want)
+		}
+	}
+}
 
 func TestPresentToolCallTiming(t *testing.T) {
 	startedAt := time.Date(2026, 8, 4, 10, 0, 0, 0, time.UTC)

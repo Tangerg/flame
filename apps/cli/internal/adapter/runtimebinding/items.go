@@ -178,7 +178,7 @@ func projectTool(projection toolProjection) (conversation.ToolCall, error) {
 		return conversation.ToolCall{}, fmt.Errorf("encode tool arguments: %w", err)
 	}
 	tool := conversation.ToolCall{
-		Kind: kindForTool(value.Name), Name: value.Name, Summary: toolSummary(value.Name, value.Arguments),
+		Kind: toolKind(value.Category), Name: value.Name, Summary: toolSummary(value.Name, value.Arguments),
 		Safety:    projection.safety,
 		StartedAt: projection.startedAt, FinishedAt: projection.finishedAt,
 		Command: toolText(value.Arguments, "command"),
@@ -227,62 +227,14 @@ func projectTool(projection toolProjection) (conversation.ToolCall, error) {
 
 const toolSummaryRuneLimit = 120
 
-// builtInToolName is the CLI adapter's anti-corruption vocabulary for Runtime
-// tool presentation. It is not a live catalog: unknown and MCP-provided names
-// intentionally remain generic.
-type builtInToolName string
-
-const (
-	builtInApplyPatch        builtInToolName = "apply_patch"
-	builtInAskUser           builtInToolName = "ask_user"
-	builtInCreateGoal        builtInToolName = "create_goal"
-	builtInCreateSchedule    builtInToolName = "create_schedule"
-	builtInDeleteSchedule    builtInToolName = "delete_schedule"
-	builtInDelegateTask      builtInToolName = "delegate_task"
-	builtInEnterPlanMode     builtInToolName = "enter_plan_mode"
-	builtInExitPlanMode      builtInToolName = "exit_plan_mode"
-	builtInGetGoal           builtInToolName = "get_goal"
-	builtInGlob              builtInToolName = "glob"
-	builtInGrep              builtInToolName = "grep"
-	builtInHTTPRequest       builtInToolName = "http_request"
-	builtInListSchedules     builtInToolName = "list_schedules"
-	builtInListSkills        builtInToolName = "list_skills"
-	builtInLoadSkill         builtInToolName = "load_skill"
-	builtInLSP               builtInToolName = "lsp"
-	builtInProposeSkill      builtInToolName = "propose_skill"
-	builtInRead              builtInToolName = "read"
-	builtInReadShellOutput   builtInToolName = "read_shell_output"
-	builtInReadSkillResource builtInToolName = "read_skill_resource"
-	builtInReadToolResult    builtInToolName = "read_tool_result"
-	builtInReportGoalOutcome builtInToolName = "report_goal_outcome"
-	builtInSearchMemory      builtInToolName = "search_memory"
-	builtInSearchTools       builtInToolName = "search_tools"
-	builtInSetPlan           builtInToolName = "set_plan"
-	builtInShell             builtInToolName = "shell"
-	builtInStopShell         builtInToolName = "stop_shell"
-	builtInWebFetch          builtInToolName = "web_fetch"
-	builtInWebSearch         builtInToolName = "web_search"
-)
-
-func kindForTool(name string) conversation.ToolKind {
-	switch builtInToolName(name) {
-	case builtInShell, builtInReadShellOutput, builtInStopShell:
-		return conversation.ToolShell
-	case builtInApplyPatch:
-		return conversation.ToolEdit
-	case builtInRead, builtInReadSkillResource, builtInReadToolResult:
-		return conversation.ToolRead
-	case builtInGlob, builtInGrep, builtInSearchMemory, builtInSearchTools, builtInLSP:
-		return conversation.ToolSearch
-	case builtInWebSearch, builtInWebFetch, builtInHTTPRequest:
-		return conversation.ToolWeb
-	case builtInAskUser, builtInDelegateTask, builtInCreateGoal, builtInGetGoal, builtInReportGoalOutcome,
-		builtInCreateSchedule, builtInListSchedules, builtInDeleteSchedule, builtInLoadSkill, builtInListSkills,
-		builtInProposeSkill, builtInEnterPlanMode, builtInExitPlanMode, builtInSetPlan:
-		return conversation.ToolTask
-	default:
+// toolKind projects the Runtime-owned tool category onto the CLI vocabulary. An
+// absent category — an older or non-built-in wire shape — presents as unknown
+// rather than an invalid kind.
+func toolKind(category protocol.ToolCategory) conversation.ToolKind {
+	if category == "" {
 		return conversation.ToolUnknown
 	}
+	return conversation.ToolKind(category)
 }
 
 func truncateRunes(value string, limit int) string {

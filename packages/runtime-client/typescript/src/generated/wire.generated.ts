@@ -2048,9 +2048,12 @@ export interface ToolAttempt {
 
 export type ToolAttemptState = "started" | "completed" | "incomplete";
 
+export type ToolCategory = "shell" | "edit" | "read" | "search" | "web" | "task" | "unknown";
+
 export interface ToolInvocation {
   arguments: Record<string, unknown>;
   argumentsText?: string;
+  category?: ToolCategory;
   name: string;
   result?: unknown;
 }
@@ -2304,6 +2307,7 @@ export const WIRE_ENUMS = {
   StreamEventType: ["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"],
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
   ToolAttemptState: ["started", "completed", "incomplete"],
+  ToolCategory: ["shell", "edit", "read", "search", "web", "task", "unknown"],
   ToolRefType: ["builtIn", "mcp", "a2a"],
   TrajectoryEntryType: ["run", "model", "endpoint", "item"],
   TransportKind: ["http"],

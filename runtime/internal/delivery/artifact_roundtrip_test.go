@@ -239,7 +239,12 @@ func encodeArtifact(t *testing.T, artifact protocol.SessionArtifact) string {
 // It is a closed list, and a field that becomes reachable has to leave it: "the
 // fixture quietly stopped exercising this" and "this cannot be exercised" have to
 // look different, or the coverage check decays into a list of excuses.
-var unreachableArtifactFields = map[string]string{}
+var unreachableArtifactFields = map[string]string{
+	// Category is a presentation grouping the live presenter derives from Name.
+	// The artifact persists Name and re-derives it on presentation, so it is
+	// never stored and cannot be round-tripped.
+	"ToolInvocation.Category": "derived from Name by the presenter; not persisted",
+}
 
 // assertArtifactFixtureIsComplete reports any field of the artifact document the
 // fixture left at its zero value, and any entry in the exception list that turned

@@ -2289,6 +2289,7 @@ func (s SessionArtifact) ValidateWire() error {
 func (t ToolInvocation) ValidateWire() error {
 	return collectWireViolations("ToolInvocation",
 		requiredTextPattern("name", t.Name, "\\S"),
+		closedEnum("category", string(t.Category), []string{"shell", "edit", "read", "search", "web", "task", "unknown"}, true),
 	)
 }
 
