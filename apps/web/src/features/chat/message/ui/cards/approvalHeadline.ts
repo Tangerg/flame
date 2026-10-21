@@ -1,4 +1,4 @@
-import { type ToolCategory } from "@flame/runtime-client/wire";
+import { type ToolCategory } from "@/features/agent/public/sessionView";
 export function approvalHeadline(
   t: (key: string, params?: Record<string, string | number>) => string,
   toolName: string | undefined,

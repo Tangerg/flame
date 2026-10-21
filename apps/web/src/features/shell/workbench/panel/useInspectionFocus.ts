@@ -47,6 +47,7 @@ export function useInspectionFocus({
   const dockRef = useRef<HTMLElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
   const mainViewRef = useRef<HTMLDivElement>(null);
+  const presentationRef = fullPaneViewId ? mainViewRef : dockVisible ? dockRef : conversationRef;
   const previousPresentation = useRef({
     sessionId,
     fullPaneViewId: null as string | null,
@@ -168,7 +169,7 @@ export function useInspectionFocus({
       returningRef.current
     )
       return;
-    const target = (fullPaneViewId ? mainViewRef : dockVisible ? dockRef : conversationRef).current;
+    const target = presentationRef.current;
     if (!target) return;
     const doc = target.ownerDocument;
     const active = doc.activeElement;
@@ -191,7 +192,7 @@ export function useInspectionFocus({
     ) {
       target.focus({ preventScroll: true });
     }
-  }, [sessionId, fullPaneViewId, dockVisible]);
+  }, [sessionId, fullPaneViewId, dockVisible, presentationRef]);
 
   const returnToSource = () => {
     if (!inspection) return;
@@ -240,6 +241,7 @@ export function useInspectionFocus({
     dockRef,
     conversationRef,
     mainViewRef,
+    presentationRef,
     returnToSource,
     onMaterialKeyDown,
     requestComposerFocus,

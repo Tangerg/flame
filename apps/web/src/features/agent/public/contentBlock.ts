@@ -1,4 +1,4 @@
-import { type ToolCategory } from "@flame/runtime-client/wire";
+import { type ToolCategory } from "@/features/agent/public/sessionView";
 
 export type BlockStatus = "running" | "complete" | "incomplete";
 
