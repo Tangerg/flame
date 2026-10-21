@@ -22,7 +22,10 @@ const styles = stylex.create({
     },
   },
   motion: {
-    transitionProperty: "opacity, scale, translate",
+    transitionProperty: {
+      default: "opacity, scale, translate",
+      ':is([data-instant="dismiss"])': "none",
+    },
     transitionTimingFunction: "var(--ease-out)",
     transitionDuration: {
       default: motion.fast,

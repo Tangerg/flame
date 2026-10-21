@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Bounded dialog continuity is integrated at `a00411dcc`. Main and delegated transcript readers now reserve focus clearance above their floating Jump to bottom controls. Actual Wails acceptance covers result search, keyboard reentry, Escape, bottom navigation and continued drafting at native half-window/200%, plus a 320 px Dock. Full Web/native checks pass; latest `main` through `c7192bf45` is included and its affected frontend contracts are rechecked. The Runtime receipt fixture migration, exact check sequence and native coverage limits are recorded below. Owned acceptance resources are cleaned. Continuous UI work proceeds from the remaining task paths.
+Updated: 2026-10-21. Transcript focus clearance is integrated at `56ba28da6`. Shared floating motion now honors Base UI's immediate-dismissal signal so consecutive Escape/Tab keeps the next-control focus path. Actual Wails A/B and final scenes cover model-role selection, retained queries/drafts, native half-window/200%, shared Memory menus and file Popovers in both themes and 14/18 px text. Full shared UI, Web and native checks pass on current main; exact results and limits are below. Owned acceptance resources are cleaned. Continuous UI work proceeds from remaining observed task paths.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1045,6 +1045,33 @@ their abbreviated, unparseable patch inputs, matching the Runtime presenter.
 The existing contract test exposed the omission. No frontend patch grammar,
 inferred count or permissive result fallback was introduced.
 
+## Immediate popup dismissal and keyboard continuity
+
+Base UI marks an Escape dismissal with `data-instant="dismiss"`. The shared
+floating motion now honors that existing signal with `transition-property: none`.
+Previously it still ran the host's short exit transition, whose default base is
+80 ms. While the retiring portal and focus guards remained mounted, consecutive
+native Escape/Tab could leave focus on the document; the following Tab restarted
+at Settings Close. Both pointer and pure keyboard menu entry reproduced this.
+Stepped dismissal and forward navigation were already correct.
+
+`packages/ui/src/floating-surface.tsx` owns this presentation rule for product and
+portable floating surfaces. Base UI still owns open state, focus guards, portal
+retirement and final focus. The rule adds no focus callback, delay, handler,
+observer or state. Ordinary transitions, other instant reasons, motion tokens,
+scrims, layout and explicit caller policies retain their owners. Provider/model
+choice, pending feedback and accepted identity remain application/Runtime facts.
+
+The installed Base UI popup attribute contract identifies this as a requested
+instant transition, rather than a model-role-specific exception. HeroUI's local
+single-selection example keeps checked identity with its selection owner;
+better-accessibility's focus-order guidance and better-ui's immediate routine
+feedback support completing dismissal before the next keyboard step.
+
+| Severity | Location                                  | Before                                               | After                                                                                                   | Why                                                                                                      |
+| -------- | ----------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| MEDIUM   | `packages/ui/src/floating-surface.tsx:25` | Immediate Escape/Tab could restart page focus order. | The existing dismissal signal ends transitions; native forward focus reaches the adjacent role control. | Focus-order continuity (2.4.3) and an immediate dismissal that carries no additional visual information. |
+
 ## Native workspace zoom and Dock geometry
 
 macOS View commands retain the default menu roles, shortcuts, 5% steps and
@@ -1092,6 +1119,16 @@ reachable controls and width semantics. Existing type, color and surface owners
 remain the visual basis.
 
 ## Verification checkpoint
+
+For immediate popup dismissal and keyboard continuity (2026-10-21):
+
+- Original actual Wails on `56ba28da6` reproduced the earlier settings observation without requiring a model change: pointer open → consecutive native Escape/Tab focused HTML, and the next Tab reached Settings Close. Pure keyboard entry reproduced the same loss. Stepped Escape → observation → Tab correctly reached Embedding model. The focused baseline passed **2 files / 7 tests**, so those simulated component checks did not expose native exit timing. The shared floating rule ignored Base UI's existing `data-instant="dismiss"` contract while retaining an 80 ms default exit. No model-role-specific state or focus defect was inferred.
+- Bounded edit-only Claude Code CLI completed the one-file candidate in **3 turns / 20.06 seconds**, without subagents or permission denials. Primary reviewed the diff and built CSS, including the compiled dismissal selector. Only that state disables transitions; the normal property list, timing tokens and other instant reasons remain unchanged. The native A/B provides the regression evidence; no source-string or simulated geometry/timer assertion was added to mirror the CSS change.
+- Serial shared UI checks passed **4 files / 74 tests**, build/type/lint/format and the independently packed consumer in **12.42 seconds**. Plugins check passed all **11** resources in **1.69 seconds**. Complete Web qualification on CI Node **22.22.1** passed **385 files / 3,040 tests** and every subsequent type/lint/format, architecture/boundary/style/locale/resource, production-bundle and module-linkage gate in **226.55 seconds**. `make check-native` passed Desktop test/vet/build and the supported Wails build in **30.21 seconds**; the final private light build passed in **6.55 seconds**. The binary is arm64, minimum macOS **13.0**, SDK **26.5**. All **six** reviewed source hashes stayed unchanged through qualification. Existing non-failing loopback, fixture chunk-size and duplicate `-lobjc` diagnostics remain unclassified and separate; no gate, assertion or deadline changed.
+- Candidate English/dark/**18 px**/custom-blue Wails qualified both pointer and pure keyboard menu entry followed by uninterrupted Escape/Tab, each reaching Embedding model with a visible ring. The complete task then retained an unsent mixed-language Composer draft through the production Settings shortcut. `model` filtering, accepted Runtime-default selection, checked-state reopening and keyboard reselection of the complete long provider/model identity worked through the original mutation owner. At native Window → Move & Resize → Left and **200%**, explicit keyboard reentry revealed the complete trigger/menu and Escape/Tab reached the next role. Escape followed by a pointer move to Search preserved that later focus; native wheel scrolling moved the body while the query stayed fixed. Actual Size and Close returned to the workspace with the original draft still editable. This does not claim zoom automatically reveals an already-focused offscreen anchor or that a continuation was appended at the draft's end.
+- Final Chinese-host/light/**14 px**/Flame Orange Wails qualified shared Memory ActionMenu → immediate Escape/Tab → Collapse right workspace, with `Runtime`, the active pinned record and its identity retained. Keyboard reopen → Dock shortcut collapse focused Conversation; reveal kept the query and closed menu. The actual Files tab then opened the existing eight-line reader: Go to line `4` → immediate Escape/Tab focused Copy path; reopening retained `4`, and Return highlighted line four and restored Go to line. Returning to Memory kept the original query, and the original Composer draft remained editable as `即时菜单返回草稿 保留 继续`. No Memory action was selected in this controlled route.
+- Acceptance uses production components and their original owners in actual Wails over isolated canonical memory providers. The private transport adds one long captured model and admits only in-memory role responses; no live Provider configuration, credential or backend is changed. An unclassified refused Memory decision was already present on the first observation, followed by a user-change guard; that uncontrolled sequence is excluded. It was absent before the refreshed controlled route. Other guarded actions were likewise excluded. No draft was sent. VoiceOver, native OS IME, rendered contrast, other-platform GUIs, browser visual suites, browser motion-panel inspection, performance benchmarks and unrelated standalone Runtime/CLI suites were not run. Scoped accessibility/UI review: **Approve** for the inspected native task paths, with these limits.
+- Cleanup completed: all **three** owned native processes, the bounded CLI and build/check runners exited. The exact bundle was unregistered; its root, fresh homes, overlays, captured inputs, original comparison source, CLI prompt/report, screenshots and logs were removed. **10** new untracked worktree output/cache paths and **2** bundle-specific Caches/WebKit paths passed preexistence, UID, birth-time, symlink and tracked-path guards before removal. HTTP storage, preferences and saved state were absent. Pre-existing UI Vite caches, installed dependencies, global compiler/package caches, read-only references, user data and unrelated work remain intact.
 
 For transcript focus beside floating navigation (2026-10-21):
 
@@ -1730,7 +1767,7 @@ Bounded dialogs now retain their independent task scope through backing-material
 4. **Extend native constraint coverage as content changes.** Normal/narrow native windows, 320 px Dock, default/large text, long directories and both themes were reviewed for file/Diff and selected-subagent paths. Apply comparable checks to the next changed surfaces rather than rerunning broad visual suites or claiming every page is covered.
 5. **Continue across other pages.** Memory authoring, command feedback and local cancellation are completed at Actual Size, with verification above. Its draft deliberately permits independent approval/unpin work in the catalog; preserve that model rather than applying Schedules' modal choice to every form. Other settings, installed views and dialogs still need task-specific inspection of location, scope, current-object actions and return paths. Retain the approved brand and Composer contracts.
 
-The settings-width investigation is implemented and natively qualified above. Preserve root-relative retreat conditions and the model roles' existing `SettingsGroup` containment; do not restart the former missing-container hypothesis or the locked-Mac setup. This qualification does not cover every container query in the application. The immediate batched menu-dismissal focus observation remains separate from the layout repair; reproduce its actual timing and original source before selecting a focus change.
+The settings-width investigation is implemented and natively qualified above. Preserve root-relative retreat conditions and the model roles' existing `SettingsGroup` containment; do not restart the former missing-container hypothesis or the locked-Mac setup. This qualification does not cover every container query in the application. Consecutive menu dismissal is now separately qualified by the immediate-popup repair above. Preserve primitive-owned focus and the shared dismissal signal rather than adding a model-specific focus policy.
 
 The captured-image toolbar repair is implemented and natively qualified above. Preserve the existing image identity, gallery, fit/zoom/pan and ordinary source-return owners. Fullscreen close-transition completion remains unqualified: the visible plain native control passed, while the pinned production fixture's native/WebKit visibility contradicted its captured screen even after confirmed manual activation. Isolate that native occlusion discrepancy before attributing close behavior to a component. Do not repeat activation requests or add focus retries, animation timeouts or native preference workarounds from this evidence. The previously recorded hidden-zoom scrolling limit is separate.
 
