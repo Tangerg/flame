@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type ComponentProps, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { PopoverPrimitive } from "@/ui/primitives/index";
-import { FLOATING_LAYER, FLOATING_OPTIONS, FLOATING_PANEL } from "@flame/ui/floating-surface";
+import { FLOATING_LAYER, FLOATING_PANEL } from "@flame/ui/floating-surface";
 import { useHiddenPopupRelease, useHiddenRootRetirement } from "@flame/ui";
 type PositionerProps = ComponentProps<typeof PopoverPrimitive.Positioner>;
 
@@ -11,7 +11,6 @@ type PopupProps = ComponentProps<typeof PopoverPrimitive.Popup>;
 interface PopoverContentBaseProps {
   children: ReactNode;
   className?: string;
-  surface?: "panel" | "options";
   side?: PositionerProps["side"];
   align?: PositionerProps["align"];
   sideOffset?: PositionerProps["sideOffset"];
@@ -24,7 +23,6 @@ type PopoverContentProps = PopoverContentBaseProps &
 function PopoverContent({
   children,
   className,
-  surface = "panel",
   side,
   align,
   sideOffset,
@@ -33,7 +31,7 @@ function PopoverContent({
   ...popupProps
 }: PopoverContentProps) {
   const { visible, portalRef } = useHiddenPopupRelease();
-  const panel = stylex.props(surface === "options" ? FLOATING_OPTIONS : FLOATING_PANEL);
+  const panel = stylex.props(FLOATING_PANEL);
   return (
     <PopoverPrimitive.Portal ref={portalRef}>
       <PopoverPrimitive.Positioner

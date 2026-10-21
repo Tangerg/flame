@@ -6,7 +6,7 @@ import { cn } from "@/lib/classNames";
 import { space, surface } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { ContextMenuPrimitive, MenuPrimitive } from "@/ui/primitives/index";
-import { FLOATING_LAYER, FLOATING_OPTIONS } from "@flame/ui/floating-surface";
+import { FLOATING_LAYER, FLOATING_PANEL } from "@flame/ui/floating-surface";
 import { floatingRow, floatingRowStyles, type RowLayout } from "@/ui/atoms/option-row";
 const menuStyles = stylex.create({
   rows: { display: "grid", alignContent: "start", rowGap: "2px" },
@@ -28,7 +28,7 @@ const menuStyles = stylex.create({
   label: { minWidth: 0, whiteSpace: "normal", overflowWrap: "anywhere" },
 });
 
-const MENU_CONTENT = [FLOATING_OPTIONS, MENU_SURFACE.content, menuStyles.rows, menuStyles.content];
+const MENU_CONTENT = [FLOATING_PANEL, MENU_SURFACE.content, menuStyles.rows, menuStyles.content];
 
 const menuItem = (layout: RowLayout = "grid") => [menuStyles.item, floatingRow(layout, "sm")];
 

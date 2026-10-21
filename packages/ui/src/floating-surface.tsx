@@ -93,7 +93,6 @@ const styles = stylex.create({
 export const FLOATING_LAYER = [styles.layer];
 
 export const FLOATING_PANEL = [styles.face, styles.motion, styles.panel];
-export const FLOATING_OPTIONS = [styles.face, styles.motion, styles.panel];
 export const FLOATING_TIP = [styles.face, styles.motion, styles.tip];
 
 export const MODAL_SCRIM = [styles.scrim];

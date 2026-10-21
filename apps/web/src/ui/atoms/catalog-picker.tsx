@@ -372,7 +372,6 @@ export function CatalogPicker({
       <CatalogTrigger trigger={trigger} label={label} className={className} />
 
       <Popover.Content
-        surface="options"
         aria-label={label}
         finalFocus={() => selection.current === null}
         align={align}
@@ -451,7 +450,6 @@ export function RailCatalogPicker({
       <CatalogTrigger trigger={trigger} label={label} className={className} />
 
       <Popover.Content
-        surface="options"
         aria-label={label}
         align={align}
         side={side}

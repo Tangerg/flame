@@ -4,7 +4,7 @@ import { SelectPrimitive } from "./primitives/index";
 import { FIELD_SIZE, FIELD_SURFACE, MENU_SURFACE } from "./control-surface";
 import { Button } from "./button";
 import { Icon } from "./font-scale";
-import { FLOATING_LAYER, FLOATING_OPTIONS } from "./floating-surface";
+import { FLOATING_LAYER, FLOATING_PANEL } from "./floating-surface";
 import {
   useHiddenPopupRelease,
   useHiddenRootRetirement,
@@ -101,7 +101,7 @@ export function Select({
           <SelectPrimitive.Popup
             finalFocus={visible ? undefined : false}
             {...stylex.props(
-              FLOATING_OPTIONS,
+              FLOATING_PANEL,
               MENU_SURFACE.content,
               styles.popup,
               type.uiMd,

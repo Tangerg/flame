@@ -4,7 +4,7 @@ import { Ellipsis } from "@flame/icons/react";
 import { MENU_SURFACE } from "./control-surface";
 import { Button } from "./button";
 import { Icon } from "./font-scale";
-import { FLOATING_LAYER, FLOATING_OPTIONS } from "./floating-surface";
+import { FLOATING_LAYER, FLOATING_PANEL } from "./floating-surface";
 import { MenuPrimitive } from "./primitives/menu";
 import {
   useHiddenPopupRelease,
@@ -76,7 +76,7 @@ export function ActionMenu({
             aria-label={label}
             finalFocus={visible ? undefined : false}
             {...stylex.props(
-              FLOATING_OPTIONS,
+              FLOATING_PANEL,
               MENU_SURFACE.content,
               styles.popup,
             )}
