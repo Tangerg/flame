@@ -673,6 +673,104 @@ describe("Dock collapse focus handoff", () => {
     expect(document.activeElement).toBe(conversation);
     expect(screen.getByLabelText("Composer draft")).toBe(draft);
   });
+
+  async function settleCleanup() {
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    await settle();
+  }
+
+  async function openPanelPicker() {
+    fireEvent.click(screen.getByRole("button", { name: t("dock.action.browse") }));
+    const search = await screen.findByRole("combobox", { name: "Find a panel…" });
+    await vi.waitFor(() => expect(document.activeElement).toBe(search));
+    return search;
+  }
+
+  it("retires an open panel picker on collapse and reveals the Dock without it", async () => {
+    const { dock, child, draft } = retainedDock();
+    const search = await openPanelPicker();
+
+    act(() => toggleWorkspaceDock());
+    await settleCleanup();
+
+    expect(search.isConnected).toBe(false);
+    const conversation = screen.getByRole("region", { name: "Conversation" });
+    expect(document.activeElement).toBe(conversation);
+    fireEvent.keyDown(conversation, { key: "Escape" });
+    expect(document.activeElement).toBe(conversation);
+
+    act(() => toggleWorkspaceDock());
+    await settleCleanup();
+
+    expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull();
+    expectRetainedDock(dock, child, draft);
+    expect(document.activeElement).toBe(conversation);
+  });
+
+  it("retires an open tab menu on collapse and hands focus to the conversation", async () => {
+    const { dock, child, draft } = retainedDock();
+    const tab = screen.getByRole("tab", { name: "Subagents" });
+    act(() => tab.focus());
+    fireEvent.contextMenu(tab);
+    const menu = await screen.findByRole("menu");
+    await vi.waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
+
+    act(() => toggleWorkspaceDock());
+    await settleCleanup();
+
+    expect(menu.isConnected).toBe(false);
+    expect(screen.queryByRole("menu")).toBeNull();
+    const conversation = screen.getByRole("region", { name: "Conversation" });
+    expect(document.activeElement).toBe(conversation);
+    fireEvent.keyDown(conversation, { key: "Escape" });
+    expect(document.activeElement).toBe(conversation);
+
+    act(() => toggleWorkspaceDock());
+    await settleCleanup();
+
+    expect(screen.queryByRole("menu")).toBeNull();
+    expectRetainedDock(dock, child, draft);
+  });
+
+  it("preserves later outside focus while an open panel picker retires on collapse", async () => {
+    retainedDock();
+    const later = screen.getByRole("button", { name: "Later control" });
+    const search = await openPanelPicker();
+
+    act(() => {
+      toggleWorkspaceDock();
+      later.focus();
+    });
+    await settleCleanup();
+
+    expect(search.isConnected).toBe(false);
+    expect(document.activeElement).toBe(later);
+  });
+
+  it("retires an open panel picker when the row narrows below the Dock", async () => {
+    const resize = observeRowWidth(1200);
+    const { child, draft } = retainedDock();
+    const search = await openPanelPicker();
+
+    await resize(700);
+    await settleCleanup();
+
+    expect(search.isConnected).toBe(false);
+    expect(navigator().get().view).toBeNull();
+    expect(windowHeader()).toBeNull();
+    const conversation = screen.getByRole("region", { name: "Conversation" });
+    expect(document.activeElement).toBe(conversation);
+
+    await resize(1200);
+    await settleCleanup();
+    expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(child);
+    expect(document.activeElement).toBe(conversation);
+    expect(screen.getByLabelText("Composer draft")).toBe(draft);
+    expect(draft.selectionEnd).toBe(5);
+  });
 });
 
 it("retains a main-only source while inspecting a file and restores the same source on return", () => {
