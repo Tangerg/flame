@@ -1246,6 +1246,13 @@ files / 118 tests) pass. NATIVE ACCEPTANCE PENDING AND REQUIRED: the
 that the `.md`-scoped rules win over the StyleX/base frames all need real Wails
 verification and tuning; this environment cannot judge the geometry.
 
+The delegated-run (subagent) transcript now establishes the same `conversation`
+container on its reader, so its wide content breaks out on the identical rule in a
+wide pane and stays inert in the narrow Dock. This closes the gap where only the
+main transcript, not a full-pane subagent view, widened its code and tables. The
+container mirrors the conversation pane's own; the subagent reader already owned
+its relative position and gutters, so nothing else changes.
+
 ## Tool argument copy outcomes
 
 The built-in Copy arguments action now acknowledges an accepted clipboard write

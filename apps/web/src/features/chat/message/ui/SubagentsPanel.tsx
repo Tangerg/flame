@@ -60,6 +60,8 @@ const styles = stylex.create({
     flexDirection: "column",
     minHeight: 0,
     flex: 1,
+    containerType: "inline-size",
+    containerName: "conversation",
     "--transcript-jump-gap": space.s4,
   },
   transcript: { minWidth: 0, paddingBottom: space.s12 },
