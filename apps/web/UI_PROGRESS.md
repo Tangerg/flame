@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Tool argument copying now reports accepted and refused writes through the existing acknowledgement surface, with localized manual-copy recovery. Actual Wails qualifies keyboard recovery, pointer retry, retained query/draft, both themes, 14/18 px text and narrow/200% reading. Complete Web/native checks pass; exact results and cleanup are below. Tool row context is integrated at `bb031df79`. Continuous UI work proceeds from remaining observed task paths.
+Updated: 2026-10-21. Trajectory Run filters now keep the explicit selection through page changes and refreshes, including empty matches. Actual Wails qualifies source and generated-resource paths, long Run IDs, both themes, 14/18 px text, native half-screen and 200% full-pane reading. Plugin/Web/native checks pass; exact results and cleanup are below. Tool copy outcomes are integrated at `4f1725e94`. Continuous UI work proceeds from remaining observed task paths.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -825,6 +825,34 @@ filter/Composer focus choices do not move it. The existing Panel owns revealing
 that focused body below its measured sticky controls; no local scroll mechanism,
 timer, competing page state or shared primitive change was needed. Filtering and
 same-page refresh preserve surviving record disclosure instances.
+
+The Run selection now remains the one authoritative filter through page changes
+and refreshes. A selected Run absent from the accepted page stays in the option
+collection and produces an empty match; it no longer temporarily substitutes
+All Runs. Only the currently selected missing value is retained, without a cache
+of past Runs or another state transition. The empty-string Session only identity
+keeps the same rule. Explicit All Runs remains an explicit choice. Empty-match
+guidance names All Runs alongside the existing text/type recovery controls.
+
+Read-only ZCode `EnabledStatusFilterSelect.tsx` supplies one controlled value to
+its filter; `automationStatusFilter.ts` places an intentional reset at its actual
+tab transition. Flame's cursor navigation changes the accepted page within the
+same reading task, so no second filter policy belongs in that projection.
+better-writing's truthful scope and recoverable-empty guidance applies here;
+existing shared Select, Panel, focus and semantic surface owners are unchanged.
+
+| Severity | Location                                     | Before                                                                          | After                                                                                                 | Why                                                                   |
+| -------- | -------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| HIGH     | `plugins/trajectory/component/component.tsx` | A page without the selected Run silently showed All Runs and unrelated records. | The selected Run remains visible and filters the accepted page; guidance names the explicit recovery. | Accepted material must not independently widen a user-selected scope. |
+
+Verification for the Run filter follow-up (2026-10-21):
+
+- Original focused baseline passes **2 files / 18 tests**. Edit-only bounded Claude Code CLI supplied the component and regressions in **230.64 seconds**, without denials or subagents. Primary reviewed the actual two-path diff, maintained the README and regenerated the published ESM. Plugin/Web typechecks and **2 files / 23 tests** pass. The frozen original fails **4** new absent-selection cases while **19** pass, including the explicit All Runs contract; candidate source is restored byte-for-byte. Coverage includes accepted-page absence/return, unique current options, explicit widening, refresh removal/empty pages, failed reads and Session only.
+- A private data-only transport supplies two canonical-shaped pages containing four captured records; the current SDK page validator reports zero violations. Actual original Wails EN/light/14 px/Flame Orange changes selected `run_root` to All Runs on Older and exposes `item_nested_delegate` with Run ID `run_child`. The candidate retains `run_root`, displays **0 of 2**, preserves it across Refresh and keyboard Newer, and keeps the current missing value in the menu. Explicit All Runs reveals the child detail and remains selected after return. Native wheel and continued Composer editing retain query `delegate_task` and exact draft `分页范围草稿 保留 继续`.
+- An initial private-build import newline was escaped incorrectly and failed before launching; only the disposable harness was corrected. No product repair or passing native evidence is attributed to that failed build. Controlled page reads do not qualify a live Runtime, chronological cursor generation or installed-package upgrade.
+- The final Wails host loads the regenerated published Trajectory ESM through the existing fixture composition. Its separate final capture extends the root identity to a long exact string; both pages still pass the SDK validator. ZH host/dark/18 px/custom blue in a native Left-half window keeps that complete wrapping identity on the empty older page. At **200%**, the host's existing full-width entry retains the same page, text query and selection. The menu shows its complete checked identity alongside All Runs/current-page options; explicit All Runs and Newer work at that zoom. Close/Actual Size return to the Dock and Conversation with query `delegate_task` and exact continued draft `长标识分页草稿 保留 继续`. A mistaken Observation type menu traversal is excluded; consecutive menu-return timing, VoiceOver, OS IME and other-platform GUIs are not newly qualified.
+- Plugin check passes type, lint, formatting, release test and exact resource reproduction (**1.80 seconds**). Complete Web check passes **387 files / 3,065 tests** and every subsequent repository gate (**182.38 seconds**). `make check-native` passes Desktop test/vet/build and Wails (**19.04 seconds**); final private artifact build passes (**5.23 seconds**). The final arm64 binary targets macOS 13.0. All **7 reviewed source/resource/contract paths** and **3 final private inputs** retain their hashes. Recurring non-failing loopback/linker warnings remain separate. No browser visual suite, benchmark or independent unchanged shared UI/CLI/Runtime/SDK suite was run.
+- Cleanup confirms three native processes and the bounded CLI have exited. The exact app was unregistered; its bundle, isolated homes, overlays, captures, scripts/logs/pointer, ten new output/cache paths and two unique Library caches were removed. Dependencies, pre-existing caches, user data and references remain. No protocol or persisted-data migration is required. Existing Runtime installations must rebuild/reinstall and select the updated package digest to use these bytes; no live installation was changed by this isolated acceptance. Writing review: Approve for the changed scope/recovery guidance.
 
 Read-only reference work inspected ZCode's actual `ModelTrajectoryTimeline.tsx`,
 `ModelTrajectoryPane.tsx` and `ToolSummaryRow.tsx` for identity, explicit refresh

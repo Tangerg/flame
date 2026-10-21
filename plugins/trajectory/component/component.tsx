@@ -414,7 +414,7 @@ export function TrajectoryReport({
               }
               sub={
                 rows.length
-                  ? "Clear the filter or select All observations."
+                  ? "Clear the filter or select All observations and All Runs."
                   : "Refresh after a Run records observations."
               }
             />
@@ -536,14 +536,13 @@ export function Trajectory({ context }: { context: ComponentContext }) {
   const rows = accepted?.page.data ?? [];
   const runOptions = [
     { value: "all", label: "All Runs" },
-    ...Array.from(new Set(rows.map(runId))).map((id) => ({
+    ...Array.from(
+      new Set([...rows.map(runId), ...(run === "all" ? [] : [run])]),
+    ).map((id) => ({
       value: id,
       label: id || "Session only",
     })),
   ];
-  const selectedRun = runOptions.some((option) => option.value === run)
-    ? run
-    : "all";
 
   return (
     <Panel
@@ -608,7 +607,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
             size="lg"
             id="run"
             label="Run filter"
-            value={selectedRun}
+            value={run}
             onValueChange={setRun}
             options={runOptions}
           />
@@ -630,7 +629,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
           <TrajectoryReport
             page={accepted.page}
             kind={kind}
-            run={selectedRun}
+            run={run}
             search={search}
           />
           {(accepted.cursors.length > 1 ||

@@ -46,6 +46,9 @@ updates the summary only after acceptance and moves reading focus there while
 the initiating action still owns it. Failed reads retain the accepted page and
 leave their action available for retry; later focus choices remain authoritative.
 Filters and counts apply to that page, without implying a total page count.
+An explicit Run filter survives page changes and refreshes, including pages
+without that Run. Its current selection stays available in the control; an
+empty match does not silently widen the scope to All Runs.
 
 Run summaries retain their full accepted Run ID alongside provider/model, state
 and time. Summary metadata groups identities, timestamps and approval decisions

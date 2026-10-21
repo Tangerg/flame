@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type ComponentContext } from "@flame/component-sdk";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
@@ -10,7 +10,8 @@ import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
 import { REVIEW_DIFF } from "./diffSnapshot";
 import { visualTrajectory } from "./trajectorySnapshot";
 
-const RUN_ID = RUNTIME_AGENT_SESSION_SNAPSHOTS.idle.runs[0]!.id;
+const ROOT_RUN = RUNTIME_AGENT_SESSION_SNAPSHOTS.idle.runs[0]!;
+const RUN_ID = ROOT_RUN.id;
 const ENTRIES = visualTrajectory(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle);
 const PAGES = [
   { data: ENTRIES.slice(0, 2), nextCursor: "trajectory-page-2" },
@@ -18,6 +19,50 @@ const PAGES = [
   { data: ENTRIES.slice(4) },
 ] as const satisfies readonly Page<TrajectoryEntry>[];
 const [FIRST, SECOND, LAST] = PAGES;
+
+const CHILD_RUN_ID = "run_child";
+const CHILD: Page<TrajectoryEntry> = {
+  data: [
+    {
+      type: "run",
+      occurredAt: "2026-07-31T08:00:07.000Z",
+      run: { ...ROOT_RUN, id: CHILD_RUN_ID, parentRunId: RUN_ID, rootRunId: RUN_ID },
+    },
+    {
+      type: "model",
+      occurredAt: "2026-07-31T08:00:08.000Z",
+      model: {
+        callId: "call_visual_child",
+        runId: CHILD_RUN_ID,
+        segmentId: "segment_visual_child",
+        state: "completed",
+        startedAt: "2026-07-31T08:00:08.000Z",
+        settledAt: "2026-07-31T08:00:09.000Z",
+      },
+    },
+  ],
+  nextCursor: "trajectory-page-3",
+};
+const SESSION_ENDPOINT: TrajectoryEntry = {
+  type: "endpoint",
+  occurredAt: "2026-07-31T08:00:03.000Z",
+  endpoint: {
+    id: "endpoint_visual_title",
+    sessionId: VISUAL_SESSION_ID,
+    caller: {
+      id: "invocation_visual_title",
+      origin: "automatic",
+      target: { scope: "session", reference: VISUAL_SESSION_ID },
+    },
+    kind: "chat",
+    provider: ROOT_RUN.provider,
+    model: ROOT_RUN.model,
+    request: "{}",
+    state: "completed",
+    startedAt: "2026-07-31T08:00:03.000Z",
+    settledAt: "2026-07-31T08:00:04.000Z",
+  },
+};
 
 type TrajectoryRead = ReturnType<FlameClient["sessions"]["trajectory"]>;
 
@@ -90,6 +135,19 @@ const summary = () => screen.getByText(/recorded observations? loaded on page \d
 const refresh = () => screen.getByRole<HTMLButtonElement>("button", { name: "Refresh" });
 const newer = () => screen.getByRole<HTMLButtonElement>("button", { name: "Newer records" });
 const older = () => screen.getByRole<HTMLButtonElement>("button", { name: "Older records" });
+const runFilter = () => screen.getByRole("combobox", { name: "Run filter" });
+
+async function chooseRun(label: string) {
+  fireEvent.click(runFilter());
+  const option = await screen.findByRole("option", { name: label });
+  const offered = within(option.closest<HTMLElement>('[role="listbox"]')!)
+    .getAllByRole("option")
+    .map((choice) => choice.textContent);
+  fireEvent.pointerDown(option, { pointerType: "mouse" });
+  fireEvent.click(option);
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  return offered;
+}
 
 async function activate(
   control: HTMLButtonElement,
@@ -308,4 +366,120 @@ it("aborts a pending read on unmount and ignores its late result", async () => {
   await act(async () => toSecond.resolve(SECOND));
   expect(screen.queryByText(/recorded observations? loaded on page/)).toBeNull();
   expect(error).not.toHaveBeenCalled();
+});
+
+it("keeps an explicit Run selection on an accepted page without its records", async () => {
+  const { trajectory, hold } = await mountTrajectory();
+  await chooseRun(RUN_ID);
+  const selected = records();
+  expect(selected).not.toHaveLength(0);
+
+  const toChild = hold();
+  await activate(older(), trajectory, 2);
+  await act(async () => toChild.resolve(CHILD));
+  expect(summary().textContent).toBe("2 recorded observations loaded on page 2.");
+  expect(runFilter().textContent).toBe(RUN_ID);
+  expect(records()).toEqual([]);
+  expect(screen.getByText("0 of 2 records on this page")).toBeTruthy();
+  expect(screen.getByText("No records on this page match this filter.")).toBeTruthy();
+  expect(
+    screen.getByText("Clear the filter or select All observations and All Runs."),
+  ).toBeTruthy();
+  expect(await chooseRun(RUN_ID)).toEqual(["All Runs", CHILD_RUN_ID, RUN_ID]);
+  expect(runFilter().textContent).toBe(RUN_ID);
+  expect(records()).toEqual([]);
+
+  const back = hold();
+  await activate(newer(), trajectory, 3);
+  expect(query(trajectory, 3)).toMatchObject({ cursor: undefined });
+  await act(async () => back.resolve(FIRST));
+  expect(summary().textContent).toBe("2 recorded observations loaded on page 1.");
+  expect(runFilter().textContent).toBe(RUN_ID);
+  expect(records()).toEqual(selected);
+});
+
+it("lets an explicit All Runs choice stand when the older Run returns", async () => {
+  const { trajectory, hold } = await mountTrajectory();
+  await chooseRun(RUN_ID);
+  const toChild = hold();
+  await activate(older(), trajectory, 2);
+  await act(async () => toChild.resolve(CHILD));
+  await chooseRun("All Runs");
+  expect(runFilter().textContent).toBe("All Runs");
+  expect(records()).toEqual(["run:run_child", "model:call_visual_child"]);
+
+  const back = hold();
+  await activate(newer(), trajectory, 3);
+  await act(async () =>
+    back.resolve({ data: [...FIRST.data, ...CHILD.data], nextCursor: FIRST.nextCursor }),
+  );
+  expect(summary().textContent).toBe("4 recorded observations loaded on page 1.");
+  expect(runFilter().textContent).toBe("All Runs");
+  expect(records()).toHaveLength(4);
+  expect(await chooseRun("All Runs")).toEqual(["All Runs", RUN_ID, CHILD_RUN_ID]);
+});
+
+it.each<[string, TrajectoryEntry[], string, string[]]>([
+  [
+    "another Run's records",
+    CHILD.data,
+    "No records on this page match this filter.",
+    [CHILD_RUN_ID],
+  ],
+  ["no records", [], "No recorded trajectory observations.", []],
+])("keeps the selected Run through a refresh that returns %s", async (_, data, empty, others) => {
+  const { trajectory, hold } = await mountTrajectory();
+  await chooseRun(RUN_ID);
+  const selected = records();
+
+  const reread = hold();
+  await activate(refresh(), trajectory, 2);
+  expect(runFilter().textContent).toBe(RUN_ID);
+  expect(records()).toEqual(selected);
+  await act(async () => reread.resolve({ data }));
+  await waitFor(() => expect(screen.queryByText("Reading recorded observations…")).toBeNull());
+  expect(summary().textContent).toBe(`${data.length} recorded observations loaded on page 1.`);
+  expect(runFilter().textContent).toBe(RUN_ID);
+  expect(records()).toEqual([]);
+  expect(screen.getByText(empty)).toBeTruthy();
+  expect(await chooseRun(RUN_ID)).toEqual(["All Runs", ...others, RUN_ID]);
+
+  const failed = hold();
+  await activate(refresh(), trajectory, 3);
+  expect(query(trajectory, 3)).toEqual(query(trajectory, 2));
+  await act(async () => failed.reject(new Error("owner offline")));
+  expect(screen.getByRole("alert").textContent).toBe(
+    "The requested page could not be read: owner offline",
+  );
+  expect(summary().textContent).toBe(
+    `${data.length} recorded observations loaded on page 1. Showing the last accepted page.`,
+  );
+  expect(runFilter().textContent).toBe(RUN_ID);
+  expect(records()).toEqual([]);
+  expect(document.activeElement).toBe(refresh());
+});
+
+it("keeps the Session only selection while its records are absent", async () => {
+  const { trajectory, hold } = await mountTrajectory();
+  const withSession = { data: [SESSION_ENDPOINT, ...FIRST.data] };
+  const toSession = hold();
+  await activate(refresh(), trajectory, 2);
+  await act(async () => toSession.resolve(withSession));
+  await chooseRun("Session only");
+  expect(records()).toEqual(["endpoint:endpoint_visual_title"]);
+
+  const withoutSession = hold();
+  await activate(refresh(), trajectory, 3);
+  await act(async () => withoutSession.resolve(FIRST));
+  expect(summary().textContent).toBe("2 recorded observations loaded on page 1.");
+  expect(runFilter().textContent).toBe("Session only");
+  expect(records()).toEqual([]);
+  expect(await chooseRun("Session only")).toEqual(["All Runs", RUN_ID, "Session only"]);
+
+  const returned = hold();
+  await activate(refresh(), trajectory, 4);
+  await act(async () => returned.resolve(withSession));
+  expect(summary().textContent).toBe("3 recorded observations loaded on page 1.");
+  expect(runFilter().textContent).toBe("Session only");
+  expect(records()).toEqual(["endpoint:endpoint_visual_title"]);
 });
