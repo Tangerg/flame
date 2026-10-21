@@ -1042,3 +1042,80 @@ describe("material inspection without room for the Dock", () => {
     expect(search.value).toBe("Files");
   });
 });
+
+describe("preview history lifetime", () => {
+  it("preserves later outside focus while retiring a conversation preview", async () => {
+    openWorkspaceView("file");
+    render(
+      <>
+        <button>Later navigation</button>
+        <ChatPanel onSend={() => true} />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    const later = screen.getByRole("button", { name: "Later navigation" });
+    const trigger = screen.getByRole("button", { name: "Expand table" });
+    act(() => trigger.focus());
+    fireEvent.click(trigger);
+    await settle();
+
+    act(() => {
+      navigator().back();
+      later.focus();
+    });
+    await settle();
+
+    expect(navigator().get().view).toBe("file");
+    expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
+    expect(document.activeElement).toBe(later);
+  });
+
+  it("retires a retained main task preview when history presents another material", async () => {
+    openWorkspaceViewInDock("subagents");
+    openWorkspaceView("file");
+    openWorkspaceView("subagents");
+    render(<ChatPanel onSend={() => true} />);
+    const source = screen.getByRole("button", { name: "Evidence 0" });
+    const trigger = screen.getByRole("button", { name: "Expand table" });
+    act(() => trigger.focus());
+    fireEvent.click(trigger);
+    await settle();
+
+    act(() => navigator().back());
+    await settle();
+
+    expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
+    act(() => navigator().forward());
+    await settle();
+    expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Evidence 0" })).toBe(source);
+    expect(screen.getByRole("button", { name: "Expand table" })).toBe(trigger);
+    fireEvent.click(trigger);
+    expect(screen.getByRole("dialog", { name: "Table preview" })).toBeTruthy();
+  });
+
+  it("retires a table preview when history hides its conversation", async () => {
+    openWorkspaceView("file");
+    render(<ChatPanel onSend={() => true} />);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    const draft = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
+    const trigger = screen.getByRole("button", { name: "Expand table" });
+    act(() => trigger.focus());
+    fireEvent.click(trigger);
+    await settle();
+    expect(screen.getByRole("dialog", { name: "Table preview" })).toBeTruthy();
+    act(() => navigator().back());
+    await settle();
+    expect(navigator().get().view).toBe("file");
+    expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
+    act(() => navigator().forward());
+    await settle();
+    expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
+    expect(screen.getByLabelText("Composer draft")).toBe(draft);
+    expect(draft.value).toBe("Keep this draft — 保留");
+    fireEvent.click(trigger);
+    expect(screen.getByRole("dialog", { name: "Table preview" })).toBeTruthy();
+  });
+});

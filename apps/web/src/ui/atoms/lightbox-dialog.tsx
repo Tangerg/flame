@@ -1,5 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import {
+  useEffectEvent,
+  useLayoutEffect,
   useRef,
   type ComponentProps,
   type KeyboardEventHandler,
@@ -7,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "@/lib/classNames";
+import { useContentVisible } from "@/ui/content-visibility";
 import { iconGlyph } from "@/ui/icons/index";
 import { layout, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { DialogPrimitive } from "@flame/ui/primitives";
@@ -112,15 +115,27 @@ export function LightboxDialog(props: LightboxDialogProps) {
   const panel = stylex.props(modalPanel(), styles[kind], extra);
   const popupRef = useRef<HTMLDivElement>(null);
   const documentRef = useRef<HTMLDivElement>(null);
+  const visible = useContentVisible();
+  const retired = open && !visible;
+  const retire = useEffectEvent(() => {
+    const popup = popupRef.current;
+    const active = popup?.ownerDocument.activeElement;
+    // Release owned portal focus before the host delivers its new presentation.
+    if (active instanceof HTMLElement && popup?.contains(active)) active.blur();
+    onOpenChange(false);
+  });
+  useLayoutEffect(() => {
+    if (retired) retire();
+  }, [retired]);
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+    <DialogPrimitive.Root open={open && visible} onOpenChange={onOpenChange}>
       <DialogPrimitive.Trigger render={trigger} />
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop {...stylex.props(MODAL_SCRIM, styles.dismiss)} />
         <DialogPrimitive.Popup
           ref={popupRef}
           initialFocus={kind === "document" ? documentRef : popupRef}
-          finalFocus={finalFocus}
+          finalFocus={visible ? finalFocus : false}
           tabIndex={-1}
           aria-describedby={undefined}
           onKeyDown={onKeyDown}
