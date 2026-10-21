@@ -18,9 +18,28 @@ const styles = stylex.create({
   waiting: { backgroundColor: color.warning },
   ok: { backgroundColor: color.success },
   err: { backgroundColor: color.negative },
+  ring: {
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
+    borderColor: color.accentText,
+    animation: motion.pulseDot,
+  },
 });
 
-export function StatusDot({ tone = "idle", className }: { tone?: DotTone; className?: string }) {
-  const styled = stylex.props(styles.base, corner.pill, styles[tone]);
-  return <span aria-hidden="true" {...styled} className={cn(styled.className, className)} />;
+export function StatusDot({
+  tone = "idle",
+  ring = false,
+  label,
+  className,
+}: {
+  tone?: DotTone;
+  ring?: boolean;
+  label?: string;
+  className?: string;
+}) {
+  const styled = stylex.props(styles.base, corner.pill, ring ? styles.ring : styles[tone]);
+  const a11y = label
+    ? { role: "img" as const, "aria-label": label, title: label }
+    : { "aria-hidden": "true" as const };
+  return <span {...a11y} {...styled} className={cn(styled.className, className)} />;
 }

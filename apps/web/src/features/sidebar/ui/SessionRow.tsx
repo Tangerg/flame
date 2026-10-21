@@ -10,24 +10,17 @@ import { AgentRow, AgentRowEditor } from "@/ui/agent/index";
 import { ConfirmDialog } from "@/ui/index";
 import { ContextMenu, DropdownMenu } from "@/ui/index";
 import { Icon } from "@/ui/index";
+import { StatusDot } from "@/ui/atoms/status-dot";
 import { IconButton, isImeKey, TextField, vocab } from "@flame/ui";
 import { type IconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { type WorkSession } from "@/features/navigation/public/workIndex";
-import { color, corner, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const sr = stylex.create({
   host: { position: "relative", userSelect: "none" },
   trailing: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1_5 },
   favorite: { color: color.accentText },
-  mark: { height: space.s1_5, width: space.s1_5, flexShrink: 0 },
-  markRunning: {
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    borderColor: color.accentText,
-    animation: "var(--animate-pulse-dot)",
-  },
-  markWaiting: { backgroundColor: color.warning },
   stamp: { lineHeight: 1, color: color.fgFaint, fontVariantNumeric: "tabular-nums" },
 });
 
@@ -238,13 +231,10 @@ export function SessionRow({
                 <Icon name="star" size="xs" className={stylex.props(sr.favorite).className} />
               )}
               {session.attention !== "none" ? (
-                <span
-                  {...stylex.props(
-                    sr.mark,
-                    corner.pill,
-                    session.attention === "running" ? sr.markRunning : sr.markWaiting,
-                  )}
-                  title={accessibleStatus}
+                <StatusDot
+                  tone={session.attention === "running" ? "running" : "waiting"}
+                  ring={session.attention === "running"}
+                  label={accessibleStatus}
                 />
               ) : (
                 showTime && <span {...stylex.props(sr.stamp, typeStep.uiXs)}>{when}</span>
