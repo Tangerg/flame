@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { motion, space } from "@flame/ui/tokens.stylex";
+import { motion, radius, space } from "@flame/ui/tokens.stylex";
 import { type ComponentPropsWithoutRef, type ReactNode, type Ref } from "react";
 import { cn } from "@/lib/classNames";
 const styles = stylex.create({
@@ -8,7 +8,7 @@ const styles = stylex.create({
     containerType: "inline-size",
     containerName: "composer",
     overflow: "hidden",
-    borderRadius: "var(--shape-composer)",
+    borderRadius: radius.composer,
     transitionProperty: "box-shadow",
     transitionDuration: motion.med,
     transitionTimingFunction: motion.easeState,

@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { radius } from "@flame/ui/tokens.stylex";
 import { type ComponentPropsWithoutRef } from "react";
 import { cn } from "@/lib/classNames";
 const styles = stylex.create({
@@ -6,8 +7,8 @@ const styles = stylex.create({
     position: "relative",
     minWidth: 0,
     overflow: "clip",
-    borderTopLeftRadius: "var(--shape-composer)",
-    borderTopRightRadius: "var(--shape-composer)",
+    borderTopLeftRadius: radius.composer,
+    borderTopRightRadius: radius.composer,
   },
 });
 

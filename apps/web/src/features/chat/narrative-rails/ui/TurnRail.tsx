@@ -12,7 +12,15 @@ import {
   scrollToTurn,
   useTranscriptMap,
 } from "@/features/chat/narrative-rails/adapters/transcriptAnchors";
-import { color, corner, motion, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
+import {
+  color,
+  corner,
+  motion,
+  radius,
+  space,
+  surface,
+  type as typeStep,
+} from "@flame/ui/tokens.stylex";
 import { chatStyles as ct } from "@/ui/agent/chatStyles";
 const tr = stylex.create({
   tickBar: {
@@ -36,7 +44,7 @@ const tr = stylex.create({
   },
   card: {
     width: "276px",
-    borderRadius: "var(--floating-panel-radius)",
+    borderRadius: radius.floatingPanel,
     backgroundColor: surface.card,
     padding: 0,
   },
