@@ -48,18 +48,26 @@
     "AppliedChange": {
       "type": "object",
       "properties": {
+        "added": {
+          "type": "integer"
+        },
         "from": {
           "type": "string"
         },
         "path": {
           "type": "string"
         },
+        "removed": {
+          "type": "integer"
+        },
         "status": {
           "$ref": "#/$defs/ChangeStatus"
         }
       },
       "required": [
+        "added",
         "path",
+        "removed",
         "status"
       ]
     },

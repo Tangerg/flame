@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/scope/tools/content"
 )
 
@@ -193,8 +194,8 @@ func presentSearch(_ tool.Arguments, result tool.Result) (tool.Result, string) {
 	return presentSearchResult(result), ""
 }
 
-func presentApplyPatch(_ tool.Arguments, result tool.Result) (tool.Result, string) {
-	return presentApplyPatchResult(result), ""
+func presentApplyPatch(arguments tool.Arguments, result tool.Result) (tool.Result, string) {
+	return presentApplyPatchResult(arguments, result), ""
 }
 
 func commandResultContract() resultProjectionContract {
@@ -338,11 +339,15 @@ func changeStatusValues() []string {
 }
 
 // AppliedChange is one path mutation applied by apply_patch. From is present
-// only when Status is moved.
+// only when Status is moved. Added and Removed count the patch's line changes
+// for this file; they are always carried (0 for a pure rename or binary file)
+// so consumers render a diffstat without re-parsing the patch.
 type AppliedChange struct {
-	Path   string       `json:"path"`
-	Status ChangeStatus `json:"status"`
-	From   string       `json:"from,omitempty"`
+	Path    string       `json:"path"`
+	Status  ChangeStatus `json:"status"`
+	From    string       `json:"from,omitempty"`
+	Added   int          `json:"added"`
+	Removed int          `json:"removed"`
 }
 
 type patchExecutionResult struct {
@@ -354,7 +359,7 @@ type patchExecutionResult struct {
 	} `json:"files"`
 }
 
-func presentApplyPatchResult(result tool.Result) tool.Result {
+func presentApplyPatchResult(arguments tool.Arguments, result tool.Result) tool.Result {
 	if _, ok := decodeResult[PatchResult](result, "changes"); ok {
 		return result
 	}
@@ -362,6 +367,10 @@ func presentApplyPatchResult(result tool.Result) tool.Result {
 	if !ok || len(decoded.Files) == 0 {
 		return result
 	}
+	// The executor reports the paths it actually touched; the patch argument
+	// carries the line counts the executor does not. Joining by path keeps the
+	// applied set authoritative while projecting a diffstat for each file.
+	counts := patchLineCounts(arguments)
 	changes := make([]AppliedChange, 0, len(decoded.Files))
 	for _, file := range decoded.Files {
 		status := changeModified
@@ -373,11 +382,38 @@ func presentApplyPatchResult(result tool.Result) tool.Result {
 		case file.Deleted:
 			status = changeDeleted
 		}
+		count := counts[file.Path]
 		changes = append(changes, AppliedChange{
 			Path: file.Path, Status: status, From: file.MovedFrom,
+			Added: count.added, Removed: count.removed,
 		})
 	}
 	return projectResult(result, PatchResult{Changes: changes})
+}
+
+type patchLineCount struct{ added, removed int }
+
+// patchLineCounts projects the per-file added/removed line counts of the patch
+// argument, keyed by the file path the patch names. A missing or unparseable
+// argument yields no counts rather than a guess.
+func patchLineCounts(arguments tool.Arguments) map[string]patchLineCount {
+	args, ok := decodeArguments[applyPatchArguments](arguments, "patch")
+	if !ok || args.Patch == "" {
+		return nil
+	}
+	files, err := git.SummarizePatch([]byte(args.Patch))
+	if err != nil {
+		return nil
+	}
+	counts := make(map[string]patchLineCount, len(files))
+	for _, file := range files {
+		counts[file.Path] = patchLineCount{added: file.Added, removed: file.Removed}
+	}
+	return counts
+}
+
+type applyPatchArguments struct {
+	Patch string `json:"patch"`
 }
 
 func decodeResult[T any](result tool.Result, knownFields ...string) (T, bool) {

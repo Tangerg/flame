@@ -101,34 +101,24 @@ describe("toolFields — runtime wire shapes", () => {
     expect(toolFields(tool("glob", {}, { hits: [{ path: "x" }] })).hits).toBe(1);
   });
 
-  it("apply_patch: does not fabricate line counts nothing stated", () => {
-    const f = toolFields(
-      tool("apply_patch", { patch: "…" }, { changes: [{ path: "a.go", status: "modified" }] }),
-    );
-    expect(f.added).toBeUndefined();
-    expect(f.removed).toBeUndefined();
-    const g = toolFields(tool("apply_patch", { patch: "…" }, { files: [] }));
-    expect(g.added).toBeUndefined();
-    expect(g.removed).toBeUndefined();
+  it("apply_patch: shows no diffstat when the receipt names no change", () => {
+    const empty = toolFields(tool("apply_patch", { patch: "…" }, { files: [] }));
+    expect(empty.added).toBeUndefined();
+    expect(empty.removed).toBeUndefined();
+    expect(empty.changes).toBeUndefined();
+    const absent = toolFields(tool("apply_patch", { patch: "…" }));
+    expect(absent.added).toBeUndefined();
+    expect(absent.changes).toBeUndefined();
   });
 
-  it("apply_patch: reads the change out of the patch it was given", () => {
+  it("apply_patch: projects the runtime's change receipt, counts and all", () => {
     const f = toolFields(
       tool(
         "apply_patch",
+        { patch: "…" },
         {
-          patch: [
-            "diff --git a/src/a.ts b/src/a.ts",
-            "--- a/src/a.ts",
-            "+++ b/src/a.ts",
-            "@@ -1,2 +1,3 @@",
-            " keep",
-            "-gone",
-            "+one",
-            "+two",
-          ].join("\n"),
+          changes: [{ path: "src/a.ts", status: "modified", added: 2, removed: 1 }],
         },
-        undefined,
       ),
     );
 
@@ -138,23 +128,28 @@ describe("toolFields — runtime wire shapes", () => {
   });
 
   it("apply_patch: carries the authoritative call-scoped change receipt", () => {
+    // The argument is a non-git envelope the client cannot parse; it reads the
+    // runtime's receipt instead, so the diffstat and file count still hold.
     const f = toolFields(
       tool(
         "apply_patch",
         { patch: "*** Begin Patch\n…" },
         {
           changes: [
-            { path: "src/new.ts", status: "added" },
-            { path: "src/current.ts", status: "moved", from: "src/old.ts" },
+            { path: "src/new.ts", status: "added", added: 4, removed: 0 },
+            { path: "src/current.ts", status: "moved", from: "src/old.ts", added: 1, removed: 1 },
           ],
         },
       ),
     );
 
+    expect(f.added).toBe(5);
+    expect(f.removed).toBe(1);
+    expect(f.files).toBe(2);
     expect(JSON.parse(f.result ?? "null")).toEqual({
       changes: [
-        { path: "src/new.ts", status: "added" },
-        { path: "src/current.ts", status: "moved", from: "src/old.ts" },
+        { path: "src/new.ts", status: "added", added: 4, removed: 0 },
+        { path: "src/current.ts", status: "moved", from: "src/old.ts", added: 1, removed: 1 },
       ],
     });
   });

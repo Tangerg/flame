@@ -1,11 +1,4 @@
 import { type RecordedFileChange } from "@flame/component-sdk";
-type ChangeStatus = RecordedFileChange["status"];
-
-interface AppliedChange {
-  from?: string;
-  path: string;
-  status: ChangeStatus;
-}
 
 export interface CommandResult {
   exitCode?: number;
@@ -13,7 +6,7 @@ export interface CommandResult {
 }
 
 export interface PatchResult {
-  changes: AppliedChange[];
+  changes: RecordedFileChange[];
 }
 
 interface SearchHit {

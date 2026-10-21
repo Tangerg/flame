@@ -224,8 +224,10 @@ export interface AgentDoc {
 export type AgentDocScope = "cwd" | "projectRoot" | "home";
 
 export interface AppliedChange {
+  added: number;
   from?: string;
   path: string;
+  removed: number;
   status: ChangeStatus;
 }
 

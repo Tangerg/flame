@@ -408,10 +408,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["path", "scope"]),
   AgentDocScope: enumOf(["cwd", "projectRoot", "home"]),
   AppliedChange: object({
+    added: integer(),
     from: text(),
     path: text(),
+    removed: integer(),
     status: ref(() => CHECKS.ChangeStatus),
-  }, ["path", "status"]),
+  }, ["added", "path", "removed", "status"]),
   ApprovalDecision: enumOf(["approve", "deny"]),
   ApprovalGate: enumOf(["pass", "prompt", "deny"]),
   ApprovalMode: enumOf(["safe", "balanced", "yolo"]),

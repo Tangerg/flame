@@ -17,7 +17,6 @@ import {
   type QuestionItem,
 } from "@/features/agent/public/contentBlock";
 import { type ToolCall, type ToolCallStatus } from "@/features/agent/public/sessionView";
-import { parseUnifiedDiff } from "@/features/agent/domain/unifiedDiff";
 export function itemStartedAt(item: AgentItem): string {
   return item.type === "toolCall" ? item.startedAt : item.createdAt;
 }
@@ -88,11 +87,6 @@ function asNumber(v: unknown): number | undefined {
 
 function asArrayLength(v: unknown): number | undefined {
   return Array.isArray(v) ? v.length : undefined;
-}
-
-function editChanges(result: unknown): unknown[] {
-  const changes = patchToolResult(result)?.changes;
-  return Array.isArray(changes) ? changes : [];
 }
 
 function firstLine(v: unknown): string | undefined {
@@ -168,7 +162,7 @@ function rawLabelSource(tool: AgentToolInvocation): { text: string; path: boolea
     case "edit": {
       const path = asString(a.path);
       if (path) return { text: path, path: true };
-      const single = asString(asRecord(editChanges(tool.result)[0])?.path);
+      const single = patchToolResult(tool.result)?.changes?.[0]?.path;
       return single === undefined ? { text: tool.name, path: false } : { text: single, path: true };
     }
     case "search":
@@ -220,16 +214,16 @@ function categoryFields(
       };
     }
     case "edit": {
-      const proposed = parseUnifiedDiff(asString(tool.arguments?.patch) ?? "");
-      const changes = editChanges(tool.result);
-      const files = changes.length || proposed.length;
+      // The runtime projects the per-file change receipt, counts and all; the
+      // client renders it without re-parsing the patch.
+      const changes = patchToolResult(tool.result)?.changes ?? [];
       return {
-        ...(files > 1 ? { files } : {}),
-        ...(proposed.length > 0
+        ...(changes.length > 1 ? { files: changes.length } : {}),
+        ...(changes.length > 0
           ? {
-              changes: proposed,
-              added: proposed.reduce((sum, file) => sum + file.added, 0),
-              removed: proposed.reduce((sum, file) => sum + file.removed, 0),
+              changes,
+              added: changes.reduce((sum, file) => sum + file.added, 0),
+              removed: changes.reduce((sum, file) => sum + file.removed, 0),
             }
           : {}),
         ...rawResult(tool.result),

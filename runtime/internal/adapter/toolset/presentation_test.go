@@ -65,15 +65,34 @@ func TestPresenterCommandResult(t *testing.T) {
 }
 
 func TestPresenterApplyPatchResult(t *testing.T) {
-	presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, tool.ApplyPatch), tool.Arguments{},
+	patch := strings.Join([]string{
+		"diff --git a/new.go b/new.go",
+		"new file mode 100644",
+		"--- /dev/null",
+		"+++ b/new.go",
+		"@@ -0,0 +1,2 @@",
+		"+package main",
+		"+// added",
+		"diff --git a/old.go b/next.go",
+		"rename from old.go",
+		"rename to next.go",
+		"--- a/old.go",
+		"+++ b/next.go",
+		"@@ -1,1 +1,1 @@",
+		"-was",
+		"+now",
+		"",
+	}, "\n")
+	presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, tool.ApplyPatch),
+		mustToolArguments(t, map[string]any{"patch": patch}),
 		mustToolResult(t, map[string]any{"files": []any{
 			map[string]any{"path": "new.go", "created": true},
 			map[string]any{"path": "next.go", "moved_from": "old.go"},
 		}}),
 	)
 	want := map[string]any{"changes": []any{
-		map[string]any{"path": "new.go", "status": "added"},
-		map[string]any{"path": "next.go", "status": "moved", "from": "old.go"},
+		map[string]any{"path": "new.go", "status": "added", "added": jsonv1.Number("2"), "removed": jsonv1.Number("0")},
+		map[string]any{"path": "next.go", "status": "moved", "from": "old.go", "added": jsonv1.Number("1"), "removed": jsonv1.Number("1")},
 	}}
 	if got := presented.Any(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("presented patch = %#v, want %#v", got, want)
@@ -155,6 +174,15 @@ func mustToolResult(t *testing.T, value any) tool.Result {
 		t.Fatal(err)
 	}
 	return result
+}
+
+func mustToolArguments(t *testing.T, value map[string]any) tool.Arguments {
+	t.Helper()
+	arguments, err := tool.ArgumentsFromMap(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return arguments
 }
 
 func TestHistoricalWebReferencesKeepReadContractsWithoutExecutableMetadata(t *testing.T) {

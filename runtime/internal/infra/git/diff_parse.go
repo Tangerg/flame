@@ -3,9 +3,30 @@ package git
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
+
+// SummarizePatch parses a git-compatible unified diff into per-file summaries
+// (path, status, previous path, and added/removed line counts) without
+// retaining rows or applying a materialization budget. It owns the one patch
+// grammar every client reads from, so a tool projection can report what a
+// model-authored patch proposes without each consumer re-implementing the
+// parser. The input is a bounded tool-call argument, so no row budget applies.
+func SummarizePatch(patch []byte) ([]DiffFile, error) {
+	parser := unifiedDiffParser{maxFiles: math.MaxInt, maxRows: math.MaxInt}
+	for encoded := range bytes.SplitSeq(patch, []byte{'\n'}) {
+		if _, err := parser.consume(string(encoded)); err != nil {
+			return nil, err
+		}
+	}
+	parser.flush()
+	for i := range parser.files {
+		parser.files[i].Rows = nil
+	}
+	return parser.files, nil
+}
 
 // parseUnifiedDiff parses a byte-bounded `git diff` patch into whole-file
 // DiffFiles. It stops before entering a file that cannot fit the file or row
