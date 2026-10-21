@@ -7,7 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
 const (

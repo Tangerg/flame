@@ -11,7 +11,7 @@ import (
 
 	skillspec "github.com/Tangerg/scope/skills"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 )

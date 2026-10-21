@@ -15,7 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/dependency"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/optional"
 	"github.com/Tangerg/flame/runtime/resourceid"
 )

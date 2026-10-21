@@ -21,7 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/flame/runtime/pagination"
 )

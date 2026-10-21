@@ -17,7 +17,7 @@ import (
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 

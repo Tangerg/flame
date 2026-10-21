@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
 type fakeSkillProposals struct {

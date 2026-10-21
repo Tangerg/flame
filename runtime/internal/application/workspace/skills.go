@@ -12,7 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
 var ErrSkillUnavailable = errors.New("workspace: skill is unavailable")

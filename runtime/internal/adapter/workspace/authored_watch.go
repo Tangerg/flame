@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileobservation"
 )
 

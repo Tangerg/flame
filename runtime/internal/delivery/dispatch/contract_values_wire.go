@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/flame/runtime/resourceid"
 )

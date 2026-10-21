@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/scope/skills"
 )

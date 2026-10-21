@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 	"github.com/Tangerg/flame/runtime/protocol"
 )

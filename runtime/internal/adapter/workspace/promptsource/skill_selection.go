@@ -8,7 +8,7 @@ import (
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	sdk "github.com/Tangerg/scope/skills"
 )
 

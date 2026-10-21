@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 

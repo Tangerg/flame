@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	sdk "github.com/Tangerg/scope/skills"
 )
