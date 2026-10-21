@@ -1,5 +1,14 @@
 import * as stylex from "@stylexjs/stylex";
-import { Activity, Fragment, useCallback, useRef, useState, type ReactNode } from "react";
+import {
+  Activity,
+  Fragment,
+  useCallback,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { PanelHost } from "@flame/ui/panel";
 import { IconButton } from "@flame/ui";
 import { iconGlyph } from "@/ui/icons/index";
@@ -19,7 +28,6 @@ import {
   closeWorkspaceDockView,
   closeWorkspaceView,
   collapseWorkspaceDock,
-  openWorkspaceView,
   openWorkspaceViewInDock,
   reorderWorkspaceDockView,
   selectWorkspaceDockView,
@@ -46,8 +54,13 @@ import { useT } from "@/lib/i18n/index";
 import { canPresentDock, defaultDockWidth, dockWidthFromRatio } from "@/lib/shellGeometry";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { useInspectionFocus } from "@/features/shell/workbench/panel/useInspectionFocus";
+export interface ChatPanelHandle {
+  focusComposer(): void;
+}
+
 interface Props {
   onSend: (input: AgentInput) => boolean;
+  ref?: Ref<ChatPanelHandle>;
 }
 
 function SessionOwnedWorkspaceState({
@@ -173,7 +186,7 @@ function DockHeader({
   );
 }
 
-export function ChatPanel({ onSend }: Props) {
+export function ChatPanel({ onSend, ref }: Props) {
   const activeMainView = useActiveWorkspaceViewId();
   const dock = useWorkspaceDock();
   const catalog = useContextDockCatalog();
@@ -204,17 +217,24 @@ export function ChatPanel({ onSend }: Props) {
       ? dock.activeViewId
       : null);
   const inspectedFullPane = fullPaneViewId !== null && inspection?.viewId === fullPaneViewId;
-  const { dockRef, conversationRef, mainViewRef, returnToSource, onMaterialKeyDown } =
-    useInspectionFocus({
-      sessionId: activeSessionId,
-      inspection,
-      mainViewId: activeMainView,
-      fullPaneViewId,
-      dockViewId: dock.activeViewId,
-      dockViewIds: ownedDockViewIds,
-      dockAvailable,
-      dockVisible,
-    });
+  const {
+    dockRef,
+    conversationRef,
+    mainViewRef,
+    returnToSource,
+    onMaterialKeyDown,
+    requestComposerFocus,
+  } = useInspectionFocus({
+    sessionId: activeSessionId,
+    inspection,
+    mainViewId: activeMainView,
+    fullPaneViewId,
+    dockViewId: dock.activeViewId,
+    dockViewIds: ownedDockViewIds,
+    dockAvailable,
+    dockVisible,
+  });
+  useImperativeHandle(ref, () => ({ focusComposer: requestComposerFocus }));
 
   const dockRowRef = useCallback((row: HTMLDivElement | null) => {
     if (!row) return;
@@ -280,7 +300,6 @@ export function ChatPanel({ onSend }: Props) {
     };
   });
   const openViewIds = new Set(ownedDockViewIds);
-  const fullWidthViewId = dock.activeViewId ?? ownedDockViewIds[0] ?? "file";
   const presentedMain = fullPaneViewId !== null;
   const mountedViewIds = new Set(ownedDockViewIds);
   if (activeMainView !== null) mountedViewIds.add(activeMainView);
@@ -405,7 +424,7 @@ export function ChatPanel({ onSend }: Props) {
             open={dockVisible}
             onToggle={
               !dockAvailable
-                ? () => openWorkspaceView(fullWidthViewId)
+                ? () => showWorkspaceDock("main")
                 : dockOpen
                   ? collapseWorkspaceDock
                   : showWorkspaceDock

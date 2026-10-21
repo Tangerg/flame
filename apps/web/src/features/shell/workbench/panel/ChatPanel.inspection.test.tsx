@@ -7,7 +7,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
-import { useState } from "react";
+import { createRef, useEffect, useRef, useState } from "react";
 import { SearchField } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type WorkspaceViewSpec } from "@/features/workspace/public/views";
@@ -25,8 +25,15 @@ import {
   useWorkspaceSubagentRunId,
 } from "@/features/workspace/public/navigation";
 import { useDockWidth } from "@/features/workspace/public/sidebarDrawer";
-import { ChatPanel } from "@/features/shell/workbench/panel/ChatPanel";
+import { ChatPanel, type ChatPanelHandle } from "@/features/shell/workbench/panel/ChatPanel";
+import { registerComposerFocusTarget } from "@/features/composer/public/focus";
 const TABLE = "| File | Note |\n|---|---|\n| app/ui/resizer.ts:6 | README.md:4 |";
+
+function DraftInput() {
+  const input = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => registerComposerFocusTarget(input.current), []);
+  return <textarea ref={input} aria-label="Composer draft" defaultValue="Keep this draft — 保留" />;
+}
 
 function AnswerTurn({ text }: { text: string }) {
   return (
@@ -95,6 +102,7 @@ vi.mock("@/features/shell/workbench/panel/ChatStream", async () => {
           Inspect task
         </button>
         <button>Other control</button>
+        <DraftInput />
       </>
     ),
   };
@@ -228,6 +236,178 @@ it("preserves outside focus when a main view is presented", () => {
   act(() => outside.focus());
   act(() => openWorkspaceView("file"));
   expect(document.activeElement).toBe(outside);
+});
+
+describe("explicit Composer focus", () => {
+  beforeEach(() => {
+    model.views.push({
+      id: "settings",
+      title: "Settings",
+      component: () => <button>Settings controls</button>,
+    });
+  });
+
+  function mount() {
+    const panel = createRef<ChatPanelHandle>();
+    const view = render(
+      <>
+        <button>Later control</button>
+        <ChatPanel ref={panel} onSend={() => true} />
+      </>,
+    );
+    const draft = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
+    return { panel, view, draft };
+  }
+
+  function settings() {
+    openWorkspaceViewInDock("file");
+    openWorkspaceView("settings");
+    const result = mount();
+    act(() => screen.getByRole("button", { name: "Settings controls" }).focus());
+    return result;
+  }
+
+  it("reveals the existing draft and preserves the wide Dock and one-step history", () => {
+    const { panel, draft } = settings();
+    const previous = navigator().get();
+    draft.setSelectionRange(5, 5);
+
+    act(() => panel.current!.focusComposer());
+
+    expect(screen.getByRole("region", { name: "Conversation" })).toBeTruthy();
+    expect(screen.getByRole("complementary", { name: "Files" })).toBeTruthy();
+    expect(document.activeElement).toBe(draft);
+    expect(draft.value).toBe("Keep this draft — 保留");
+    expect(draft.selectionEnd).toBe(5);
+    expect(navigator().get()).toMatchObject({ view: null, dock: "file" });
+    act(() => navigator().back());
+    expect(navigator().get()).toEqual(previous);
+    expect(screen.getByRole("region", { name: "Settings" })).toBeTruthy();
+  });
+
+  it("focuses a visible draft without navigating or hiding the Dock", () => {
+    openWorkspaceViewInDock("file");
+    const { panel, draft } = mount();
+    const previous = navigator().get();
+    act(() => screen.getByRole("button", { name: "Other control" }).focus());
+
+    act(() => panel.current!.focusComposer());
+
+    expect(document.activeElement).toBe(draft);
+    expect(navigator().get()).toBe(previous);
+    expect(screen.getByRole("complementary", { name: "Files" })).toBeTruthy();
+  });
+
+  it("reveals the conversation from a narrow inspection and retains its source and material", () => {
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
+    const { panel, draft } = mount();
+    const origin = screen.getByRole("button", { name: "src/main.ts:4" });
+    act(() => origin.focus());
+    fireEvent.click(origin);
+    const controls = screen.getByRole("button", { name: "File controls" });
+    const previous = navigator().get();
+    act(() => controls.focus());
+
+    act(() => panel.current!.focusComposer());
+
+    expect(navigator().get()).toMatchObject({ view: null, dock: null });
+    expect(screen.getByRole("region", { name: "Conversation" })).toBeTruthy();
+    expect(document.activeElement).toBe(draft);
+    expect(controls.isConnected).toBe(true);
+    act(() => navigator().back());
+    expect(navigator().get()).toEqual(previous);
+    expect(screen.getByRole("button", { name: "File controls" })).toBe(controls);
+    expect(screen.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
+    expect(draft.value).toBe("Keep this draft — 保留");
+  });
+
+  it("manually reopens the inspected material after focusing a narrow conversation", () => {
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
+    openWorkspaceViewInDock("subagents");
+    const { panel, draft } = mount();
+    const origin = screen.getByRole("button", { name: "src/main.ts:4" });
+    act(() => origin.focus());
+    fireEvent.click(origin);
+    const controls = screen.getByRole("button", { name: "File controls" });
+
+    act(() => panel.current!.focusComposer());
+    expect(document.activeElement).toBe(draft);
+    fireEvent.click(screen.getByRole("button", { name: /Open material full width/ }));
+
+    expect(screen.getByRole("button", { name: "File controls" })).toBe(controls);
+    expect(screen.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
+    expect(draft.value).toBe("Keep this draft — 保留");
+  });
+
+  it.each(["control", "conversation"])("keeps later focus on a %s", (target) => {
+    const { panel } = settings();
+    const later =
+      target === "control"
+        ? screen.getByRole("button", { name: "Later control" })
+        : screen.getByLabelText("Conversation");
+
+    act(() => {
+      panel.current!.focusComposer();
+      later.focus();
+    });
+
+    expect(navigator().get().view).toBeNull();
+    expect(document.activeElement).toBe(later);
+  });
+
+  it("retires the request when the Session changes before delivery", () => {
+    const { panel, view, draft } = settings();
+
+    act(() => {
+      panel.current!.focusComposer();
+      model.sessionId = "ses_second";
+      view.rerender(
+        <>
+          <button>Later control</button>
+          <ChatPanel ref={panel} onSend={() => true} />
+        </>,
+      );
+    });
+
+    expect(screen.getByLabelText("Composer draft")).toBe(draft);
+    expect(document.activeElement).not.toBe(draft);
+  });
+
+  it.each(["file", "settings"])(
+    "retires navigation superseded by %s without a later ghost focus",
+    (viewId) => {
+      const { panel, draft } = settings();
+
+      act(() => {
+        panel.current!.focusComposer();
+        openWorkspaceView(viewId);
+      });
+
+      expect(navigator().get().view).toBe(viewId);
+      const close = within(windowHeader()!).getByRole("button", { name: "Close" });
+      act(() => close.focus());
+      fireEvent.click(close);
+      expect(document.activeElement).not.toBe(draft);
+      expect(document.activeElement).toBe(screen.getByRole("complementary", { name: "Files" }));
+    },
+  );
+
+  it("keeps an open modal's focus and underlying presentation", () => {
+    const { panel } = settings();
+    render(
+      <div role="dialog" aria-label="Editing task">
+        <button>Modal control</button>
+      </div>,
+    );
+    const control = screen.getByRole("button", { name: "Modal control" });
+    act(() => control.focus());
+    const previous = navigator().get();
+
+    act(() => panel.current!.focusComposer());
+
+    expect(document.activeElement).toBe(control);
+    expect(navigator().get()).toBe(previous);
+  });
 });
 
 describe("main presentation focus handoff", () => {

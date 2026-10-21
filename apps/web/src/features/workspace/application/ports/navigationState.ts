@@ -15,7 +15,9 @@ export interface WorkspaceInspection {
   readonly previous: WorkspaceInspection | null;
 }
 
-export type WorkspaceSourcePresentation = "dock" | "main";
+export type WorkspaceViewPresentation = "dock" | "main";
+
+export type WorkspaceChatPresentation = "preserve-dock" | "hide-dock";
 
 export interface WorkspaceViewMemory {
   expandedDirs: readonly string[];
@@ -54,7 +56,7 @@ interface WorkspaceNavigationPort {
   useInspection(): WorkspaceInspection | null;
   returnFromInspection(
     inspection: WorkspaceInspection,
-    presentation?: WorkspaceSourcePresentation,
+    presentation?: WorkspaceViewPresentation,
   ): boolean;
   useFileFocus(): WorkspaceFileFocusSnapshot;
   useSubagentRunId(): string | null;
@@ -69,7 +71,7 @@ interface WorkspaceNavigationPort {
   useSidebarWidth(): WorkspaceColumnWidth;
   useDockWidth(): WorkspaceOptionalColumnWidth;
   toggleSidebar(): void;
-  selectChat(): void;
+  selectChat(presentation?: WorkspaceChatPresentation): void;
   openView(id: string): void;
   openViewInDock(id: string, origin?: HTMLElement): void;
   selectDockView(id: string): void;
@@ -78,7 +80,7 @@ interface WorkspaceNavigationPort {
   closeAllDockViews(): void;
   reorderDockView(id: string, toIndex: number): void;
   collapseDock(): void;
-  showDock(defaultViewId: string): void;
+  showDock(defaultViewId: string, presentation?: WorkspaceViewPresentation): void;
   closeView(id: string): void;
   activeViewId(): string | null;
   dock(): WorkspaceDockSnapshot;

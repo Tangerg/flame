@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Continuous work is active in the isolated worktree. A full-pane view now receives focus from the retained workspace content it hides, including the panel catalog; later outside focus and visible child focus retain priority. Search handoff, model catalog recovery, Dock focus, Schedules read/empty recovery, Trajectory page scope/navigation and previous repairs remain integrated. Final frontend checks pass 385 files / 2,953 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
+Updated: 2026-10-21. Continuous work is active in the isolated worktree. Global Focus composer now reveals the retained conversation and original editable draft in one navigation step; manual full-width reopening restores the same material and query through the existing Dock owner. Full-pane entry, search handoff, model catalog recovery, Dock focus and previous repairs remain integrated. Final frontend checks pass 385 files / 2,969 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -328,7 +328,7 @@ otherwise it could override the restored source with the index command.
 
 `WorkspaceWindowHeader` receives one close-or-return exit. A matching full-pane inspection uses the same translated source label and handler as the Dock; unrelated main views keep Close. Open in context dock is available only when it fits. `useInspectionFocus` consumes the actual presented id as well as the explicit route: entry and return settle in a visible region, and a Dock container losing its focus role hands its own focus to the full pane. Later controls, local Escape and IME retain priority. No retry, frame loop or duplicate focus state was introduced.
 
-Ordinary full-pane entry also transfers focus that still belongs to the Conversation or Dock content hidden by that presentation. The same host fact covers retained view wrappers and the Activity-hidden panel catalog without inspecting their different hiding mechanisms. Focus already inside the visible destination, outside this workspace, or in a child that remains visible while moving back into the Dock is preserved. Unchanged presentations do not replay entry. Existing inspection returns and ordinary Close keep their distinct navigation policies; this does not make the global Composer focus command reveal a hidden conversation.
+Ordinary full-pane entry also transfers focus that still belongs to the Conversation or Dock content hidden by that presentation. The same host fact covers retained view wrappers and the Activity-hidden panel catalog without inspecting their different hiding mechanisms. Focus already inside the visible destination, outside this workspace, or in a child that remains visible while moving back into the Dock is preserved. Unchanged presentations do not replay entry. Existing inspection returns and ordinary Close keep their distinct navigation policies. Explicit global Composer focus has its own presentation intent, described below.
 
 Workspace navigation remains the sole inspection-chain owner. `inspectFrom` recognizes the explicit main source or active Dock source before retaining the previous record. The existing return command accepts an optional `dock`/`main` source presentation intent; only an explicit return to a still-open ordinary Dock source can advance that route. A previous inspection projects itself without that route change. Full-pane Files selection without an origin only changes its existing viewer. No Runtime, SDK, persisted-data or protocol migration is required.
 
@@ -587,6 +587,47 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+## Global Composer focus and retained material
+
+The existing `composer.focus` command belongs to the installed workbench. Its ID,
+localized label, Mod-L binding and stored shortcut-override identity are unchanged.
+The plugin installation owns one React ref to `ChatPanel`'s small imperative
+handle; no global handler registry was added. The obsolete single-export panel
+index has no consumers and is removed. Other default commands retain their owner.
+
+`useInspectionFocus` handles the explicit request before its generic presentation
+focus. A visible Composer receives ordinary local input focus without navigation.
+For a hidden conversation, one ref-owned request captures the Session, active
+element, inspection and expected Dock location. An immutable token ensures a
+commit even when later navigation coalesces back to the old route. Delivery is
+one-shot and requires a visible conversation, unchanged scope and still-unclaimed
+focus. A later control/region, replacement Session or superseding navigation
+retires the request; unmounting retains no deferred callback. An active dialog
+keeps its task boundary. No timeout, retry, forced flush or region fallback was
+added.
+
+Workspace `selectChat` accepts an explicit preserve-Dock or hide-Dock intent in
+one existing navigation operation. A narrow inspection can therefore reveal the
+conversation without the inspection immediately projecting full width again.
+The view and optional Dock change form one history entry; stored tabs, queries,
+file targets and inspection ancestry remain with their existing owners. Ordinary
+selection, Close and notification callers keep the default preserve policy.
+
+Manual full-width reopening also goes through the existing Workspace `showDock`
+owner. Its main presentation uses the active location or the existing
+`dockTabToShow` memory policy, with the catalog for an empty Dock. The host no
+longer guesses the first tab or a default Files view. This completes explicit
+inspection → focus/continue drafting → reopen the same material, as well as
+history Back. The established low-level Composer focus, captured acceptance
+return, draft and submit ports remain unchanged; asynchronous acceptance does not
+gain this explicit navigation behavior. No Runtime or stored schema changed.
+
+The read-only ZCode pane-focus references above inform the visible-owner policy.
+Flame's actual navigation/history, registered input target and retained-view
+lifetimes supply the implementation contracts. Existing Base UI modal semantics
+and better-series focus/layout guidance preserve bounded tasks, source returns,
+typography, semantic colors and the approved visual system.
 
 ## Search selection and task handoff
 
@@ -923,9 +964,21 @@ remain the visual basis.
 
 ## Verification checkpoint
 
+For global Composer focus and retained material (2026-10-21):
+
+- Actual baseline Wails used the production `app.main` workbench contribution, registered default commands and command menu over the existing captured Session adapter. An unsent draft → Keyboard shortcuts → Mod-L stayed in Settings instead of revealing the conversation. Focused baseline passed **6 files / 102 tests**. This established an explicit command/presentation contract, separate from conditional asynchronous draft-acceptance focus.
+- The edit-only Claude Code CLI reached its 240-second bound after nine partial files and supplied no completed report. Primary completed the ref-owned host request, one-step navigation, retirement tests and review. An initial hidden-region accessible-name query was corrected to the existing label; the Session-change regression keeps the same mounted host and input. Frozen original navigation with final tests failed **2 and passed 66**. Initial focused checks passed **6 files / 114 tests**, including visible no-navigation focus, wide Dock retention, narrow inspection/history, exact draft/caret, later control/Conversation focus, same-host Session replacement, superseding/coalesced navigation and modal boundaries. Existing Session, submission and store assertions remain intact.
+- The first full check passed all tests but Knip found the now-unused single-export panel index. Source/dynamic-entrypoint searches confirmed no consumer; primary removed it without an exclusion. Corrected full checks passed **385 files / 2,965 tests** and all gates. Native acceptance then exposed a separate continuity failure: after narrow Diff → Focus composer, manual Open material full width chose the first Files tab instead of the remembered Diff. A new integration regression failed **1 and passed 43** before repair. Primary moved this selection back to the existing `showDock`/`dockTabToShow` owner and added active-catalog/remembered/empty cases. Final focused checks passed **6 files / 118 tests**.
+- Reopen-inclusive full tests passed **385 files / 2,969 tests**, but the boundary guard rejected two names for the same `dock | main` presentation vocabulary. Primary unified them as `WorkspaceViewPresentation` and migrated all consumers; no guard was weakened. Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **385 files / 2,969 tests** and every subsequent type/lint/format, boundary/contract/style/token/locale/resource, production-bundle and module-linkage gate. Eleven portable ESM resources remain unchanged. Final `make check-native` passed Desktop tests/vet/build and the supported Wails build; the binary is arm64 Mach-O, minimum macOS 13.0, SDK 26.5. All eleven accepted source/test states, including the deleted index, remained unchanged during final native acceptance. Existing non-failing loopback diagnostics, fixture chunk-size and duplicate `-lobjc` warnings remain separate.
+- Actual final Wails English/light/14 px/Flame Orange qualified draft → direct Keyboard shortcuts → Settings region → Mod-L → the same editable draft and all three Dock tabs. Continued typing survived a visible Mod-L and one-step history Back to Settings. The observed command-menu Focus composer row → Enter also revealed that input. The actual MCP JSON import field retained its unsent JSON and focus under Mod-L; Escape returned to Import from JSON, and only the subsequent explicit Mod-L revealed the complete original draft. No import was submitted.
+- English/dark/18 px/custom blue qualified native Window → Move & Resize → Left and keyboard resizing to a **320 px Dock**. The conversation's actual Review 2 changed files action opened its sourced Diff; a `Dock` query survived **200%**, Focus composer, continued drafting and one-step history Back. A second Focus composer → real pointer Open material full width reopened **Workspace diff**, the exact query and Back to conversation. Native wheel scrolling moved the material body while the source return remained visible. Restoring Actual Size and continued typing retained the draft. This qualifies reading and object/query continuity, not an exact-pixel hidden-scroll guarantee.
+- Chinese/light/14 px/Orange at **200%** qualified direct Keyboard shortcuts, the observed localized Focus composer menu row and Enter into the complete Chinese draft. The actual changed-files source → `Dock` query → Mod-L → pointer full-width reopen retained the same Diff, query and localized source return; another Mod-L allowed continued editing. Native zoom was reset before quitting each zoomed scene.
+- The disposable composition installs the existing production font adapter, commands and actual `app.main` contribution; its default-Session adapter delegates to the fixture's existing captured Session owner. Canonical memory responses and production Composer, navigation and retained readers are used without injected shortcuts, focus gates or counters. These scenes do not certify live Runtime subscriptions, provider/Run execution or a second Session. No draft, Run, MCP import or business command was submitted. Later focus, Session replacement, navigation coalescence and IME guards are deterministic regressions, not native latency or OS composition injection. VoiceOver, measured contrast, other-platform GUIs, browser/visual suites, performance benchmarks and unrelated standalone root/CLI/SDK suites were not run. No Runtime, protocol, stored schema, theme, package, installed resource or dependency changed. The private presentation type and in-repository consumers migrated together; shortcut override identity is unchanged.
+- Cleanup completed: owned CLI/check/build/native processes exited, the app was unregistered, and its bundle, isolated data, overlays, temporary sources/configuration, prompts/results and logs were removed. Newly created bundle-specific library paths passed preexistence/UID/birth-time guards. Worktree-generated fixtures, Vite state, staging, icons/UI bundles and native outputs were removed after tracked-path checks. Installed dependencies, global compiler/package caches, reference artwork, user data and unrelated processes were retained.
+
 For full-pane entry from retained workspace content (2026-10-21):
 
-- Actual baseline Wails entered Keyboard shortcuts through the production command menu from an unsent Composer draft. Settings appeared, but focus fell to the HTML document and the first Tab reached Close. Traced host code and component reproduction showed that its body-only fallback treated an input still reported inside the newly hidden retained pane as valid outside focus. Direct Mod-L while Settings was open also made no navigation change; that separate contract remains outside this repair.
+- Actual baseline Wails entered Keyboard shortcuts through the production command menu from an unsent Composer draft. Settings appeared, but focus fell to the HTML document and the first Tab reached Close. Traced host code and component reproduction showed that its body-only fallback treated an input still reported inside the newly hidden retained pane as valid outside focus. Direct Mod-L while Settings was open also made no navigation change at that checkpoint; the separate explicit command is now qualified above.
 - Focused baseline passed **5 files / 74 tests**. Bounded edit-only Claude Code CLI completed the two-file candidate and three tests without tool denials; primary ran verification. Its attribute-only hidden check passed **5 files / 77 tests** but failed the added Activity-hidden catalog case (**1 failed / 33 passed** in the integration file). Primary used the existing full-pane presentation fact instead and added catalog query retention and unchanged-presentation coverage. Frozen original hook with final tests failed the three affected entry cases and passed 31; final focused checks passed **5 files / 79 tests**. Existing outside-focus, nested inspection, source return, Session ownership, draft/submission and command assertions remain intact. Visible child focus survives main-to-Dock movement.
 - Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **385 files / 2,953 tests** and every subsequent type/lint/format, boundary/contract/style/token/locale/resource, production-bundle and module-linkage gate. Eleven portable ESM resources remain unchanged. `make check-native` passed Desktop tests/vet/build and the supported Wails build; the final binary is arm64 Mach-O, minimum macOS 13.0, SDK 26.5. Both accepted source/test hashes stayed unchanged during final native acceptance. Existing non-failing loopback diagnostics and duplicate `-lobjc` warnings remain separate.
 - Actual final Wails English/light/14 px/Flame Orange entered Settings through the command menu and direct Keyboard shortcuts binding. Settings received its named region focus; the next Tab entered Search settings. Query/Return opened Appearance, independent wheel scrolling and local Escape retained the search task, and ordinary pointer Close returned to the surviving Dock. Visible Composer focus and continued mixed-language drafting then retained the complete original draft. A Files return path also entered Settings with region focus.
@@ -1337,12 +1390,13 @@ These checks cover selected contracts and native scenarios. Consult the current 
 Continuous work is explicitly resumed. The candidates below require current
 source and native evidence before selecting each next batch.
 
-Full-pane entry from retained content is implemented and natively qualified above.
-Keep presentation and focus under the host's existing owners. The separate global
-`composer.focus` command still focuses only its registered input: actual baseline
-Mod-L in Settings did not reveal the hidden conversation. Trace its callers and
-choose a deliberate return/navigation contract before changing that behavior;
-ordinary Close and inspection Back must retain their separate meanings.
+Full-pane entry and explicit global Composer focus are implemented and natively
+qualified above. Keep presentation and focus under the host's existing owners.
+The explicit command reveals the retained input with one navigation operation;
+conditional asynchronous acceptance keeps its separate low-level focus contract.
+Manual reopening uses the existing Dock selection owner. Preserve these meanings,
+ordinary Close and inspection Back while continuing with other complete task
+paths; do not repeat the resolved reveal or first-tab selection defects.
 
 Search selection handoff is implemented and natively qualified above. Preserve
 the shared modal completion owner, single callback delivery and ordinary source

@@ -10,7 +10,6 @@ import {
 } from "@/features/workspace/public/navigation";
 import { COMMAND } from "@/features/command/public/extensionPoints";
 import { definePlugin } from "@/extensions/definePlugin";
-import { focusComposer } from "@/features/composer/public/focus";
 import { navigator } from "@/lib/navigation";
 import { createNewSession } from "@/features/navigation/public/workIndex";
 type CommandRun = CommandSpec["run"];
@@ -21,7 +20,6 @@ export interface DefaultCommandRuns {
   toggleTheme: CommandRun;
   newChat: CommandRun;
   closeFocused: CommandRun;
-  focusComposer: CommandRun;
   historyBack: CommandRun;
   historyForward: CommandRun;
   previousSession: CommandRun;
@@ -59,12 +57,6 @@ export function defaultStaticCommands(runs: DefaultCommandRuns): CommandSpec[] {
       label: "command.closeFocused",
       combo: "Mod+W",
       run: runs.closeFocused,
-    },
-    {
-      id: "composer.focus",
-      label: "command.focusComposer",
-      combo: "Mod+L",
-      run: runs.focusComposer,
     },
     {
       id: "history.back",
@@ -108,7 +100,6 @@ export const defaultCommands = definePlugin({
       toggleTheme: toggleThemeScheme,
       newChat: createNewSession,
       closeFocused: closeFocusedSurface,
-      focusComposer: () => focusComposer(),
       historyBack: () => navigator().back(),
       historyForward: () => navigator().forward(),
       previousSession: () => stepActiveAgentSession(-1),

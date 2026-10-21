@@ -2,6 +2,7 @@ import { lookupExtensionPoint } from "@/extensions/selectors/extensions";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import {
   workspaceNavigation,
+  type WorkspaceChatPresentation,
   type WorkspaceColumnWidth,
   type WorkspaceDrawer,
   type WorkspaceOptionalColumnWidth,
@@ -9,7 +10,7 @@ import {
   type WorkspaceFileFocusSnapshot,
   type WorkspaceFileViewer,
   type WorkspaceInspection,
-  type WorkspaceSourcePresentation,
+  type WorkspaceViewPresentation,
   type WorkspaceViewMemory,
 } from "@/features/workspace/application/ports/navigationState";
 export const WORKSPACE_DOCK_CATALOG = "catalog";
@@ -30,7 +31,7 @@ export function useWorkspaceInspection(): WorkspaceInspection | null {
 
 export function returnFromWorkspaceInspection(
   inspection: WorkspaceInspection,
-  presentation?: WorkspaceSourcePresentation,
+  presentation?: WorkspaceViewPresentation,
 ): boolean {
   return workspaceNavigation().returnFromInspection(inspection, presentation);
 }
@@ -79,8 +80,8 @@ export function toggleWorkspaceSidebar(): void {
   workspaceNavigation().toggleSidebar();
 }
 
-export function selectWorkspaceChat(): void {
-  workspaceNavigation().selectChat();
+export function selectWorkspaceChat(presentation?: WorkspaceChatPresentation): void {
+  workspaceNavigation().selectChat(presentation);
 }
 
 export function openWorkspaceView(id: string): void {
@@ -123,8 +124,8 @@ export function collapseWorkspaceDock(): void {
   workspaceNavigation().collapseDock();
 }
 
-export function showWorkspaceDock(): void {
-  workspaceNavigation().showDock(WORKSPACE_DOCK_CATALOG);
+export function showWorkspaceDock(presentation?: WorkspaceViewPresentation): void {
+  workspaceNavigation().showDock(WORKSPACE_DOCK_CATALOG, presentation);
 }
 
 export function toggleWorkspaceDock(): void {

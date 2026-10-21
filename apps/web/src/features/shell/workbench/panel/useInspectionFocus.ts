@@ -1,7 +1,9 @@
-import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { isImeKey } from "@flame/ui";
+import { focusComposer as focusComposerTarget } from "@/features/composer/public/focus";
 import {
   returnFromWorkspaceInspection,
+  selectWorkspaceChat,
   useWorkspaceSubagentRunId,
   WORKSPACE_DOCK_CATALOG,
 } from "@/features/workspace/public/navigation";
@@ -10,6 +12,14 @@ interface ReturnFocus {
   inspection: WorkspaceInspection;
   activeElement: Element | null;
   sessionId: string;
+}
+
+interface ComposerRequest {
+  readonly completion: symbol;
+  readonly sessionId: string;
+  readonly origin: Element | null;
+  readonly inspection: WorkspaceInspection | null;
+  readonly dockViewId: string | null;
 }
 
 export function useInspectionFocus({
@@ -38,6 +48,31 @@ export function useInspectionFocus({
   const conversationRef = useRef<HTMLDivElement>(null);
   const mainViewRef = useRef<HTMLDivElement>(null);
   const previousPresentation = useRef({ sessionId, fullPaneViewId: null as string | null });
+  const composerRequest = useRef<ComposerRequest | null>(null);
+  const [composerRender, setComposerRender] = useState<symbol | null>(null);
+
+  // Deliver before generic presentation focus. The token also retires requests
+  // when a later navigation coalesces back to the original hidden view.
+  useLayoutEffect(() => {
+    const request = composerRequest.current;
+    if (!request) return;
+    const revealed = fullPaneViewId === null;
+    if (!revealed && composerRender !== request.completion) return;
+    composerRequest.current = null;
+    const conversation = conversationRef.current;
+    if (
+      !revealed ||
+      !conversation ||
+      request.sessionId !== sessionId ||
+      request.inspection !== inspection ||
+      request.dockViewId !== dockViewId
+    )
+      return;
+    const doc = conversation.ownerDocument;
+    if (doc.activeElement === request.origin || doc.activeElement === doc.body) {
+      focusComposerTarget();
+    }
+  }, [composerRender, sessionId, inspection, fullPaneViewId, dockViewId]);
 
   useLayoutEffect(() => {
     if (!inspection) {
@@ -152,6 +187,28 @@ export function useInspectionFocus({
     const presentation = dockAvailable || inspection.previous ? "dock" : "main";
     if (!returnFromWorkspaceInspection(inspection, presentation)) returningRef.current = null;
   };
+  const requestComposerFocus = () => {
+    const conversation = conversationRef.current;
+    if (!conversation) return;
+    const doc = conversation.ownerDocument;
+    if (doc.activeElement?.closest('[role="dialog"], [role="alertdialog"]')) return;
+    if (fullPaneViewId === null) {
+      composerRequest.current = null;
+      focusComposerTarget();
+      return;
+    }
+    const hideDock = !dockAvailable && inspection !== null && inspection.viewId === dockViewId;
+    const request: ComposerRequest = {
+      completion: Symbol(),
+      sessionId,
+      origin: doc.activeElement,
+      inspection,
+      dockViewId: hideDock ? null : dockViewId,
+    };
+    composerRequest.current = request;
+    selectWorkspaceChat(hideDock ? "hide-dock" : "preserve-dock");
+    setComposerRender(request.completion);
+  };
   const onMaterialKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (
       !inspection ||
@@ -166,5 +223,12 @@ export function useInspectionFocus({
     returnToSource();
   };
 
-  return { dockRef, conversationRef, mainViewRef, returnToSource, onMaterialKeyDown };
+  return {
+    dockRef,
+    conversationRef,
+    mainViewRef,
+    returnToSource,
+    onMaterialKeyDown,
+    requestComposerFocus,
+  };
 }
