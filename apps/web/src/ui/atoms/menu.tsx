@@ -8,6 +8,7 @@ import { Icon, type IconName } from "@/ui/icons/index";
 import { ContextMenuPrimitive, MenuPrimitive } from "@/ui/primitives/index";
 import { FLOATING_LAYER, FLOATING_OPTIONS } from "@flame/ui/floating-surface";
 import { floatingRow, floatingRowStyles, type RowLayout } from "@/ui/atoms/option-row";
+import { useHiddenPopupRelease, useHiddenRootRetirement } from "@/ui/atoms/popup-visibility";
 const menuStyles = stylex.create({
   rows: { display: "grid", alignContent: "start", rowGap: "2px" },
   item: { position: "relative" },
@@ -75,11 +76,13 @@ function DropdownContent({
   align,
   sideOffset,
   alignOffset,
+  finalFocus,
   ...popupProps
 }: DropdownContentProps) {
+  const { visible, portalRef } = useHiddenPopupRelease();
   const content = stylex.props(MENU_CONTENT);
   return (
-    <MenuPrimitive.Portal>
+    <MenuPrimitive.Portal ref={portalRef}>
       <MenuPrimitive.Positioner
         side={side}
         align={align}
@@ -89,6 +92,7 @@ function DropdownContent({
       >
         <MenuPrimitive.Popup
           {...popupProps}
+          finalFocus={visible ? finalFocus : false}
           data-chrome-focus=""
           {...content}
           className={cn(content.className, className)}
@@ -107,11 +111,13 @@ function ContextContent({
   align,
   sideOffset,
   alignOffset,
+  finalFocus,
   ...popupProps
 }: ContextContentProps) {
+  const { visible, portalRef } = useHiddenPopupRelease();
   const content = stylex.props(MENU_CONTENT);
   return (
-    <ContextMenuPrimitive.Portal>
+    <ContextMenuPrimitive.Portal ref={portalRef}>
       <ContextMenuPrimitive.Positioner
         side={side}
         align={align}
@@ -121,6 +127,7 @@ function ContextContent({
       >
         <ContextMenuPrimitive.Popup
           {...popupProps}
+          finalFocus={visible ? finalFocus : false}
           data-chrome-focus=""
           {...content}
           className={cn(content.className, className)}
@@ -262,8 +269,13 @@ function ContextIconItem({
   );
 }
 
+function DropdownRoot<Payload = unknown>(props: MenuPrimitive.Root.Props<Payload>) {
+  const retirement = useHiddenRootRetirement(props);
+  return <MenuPrimitive.Root {...props} {...retirement} />;
+}
+
 export const DropdownMenu = {
-  Root: MenuPrimitive.Root,
+  Root: DropdownRoot,
   Trigger: MenuPrimitive.Trigger,
   Content: DropdownContent,
   Item: DropdownItem,
@@ -301,8 +313,13 @@ function ContextTrigger({
   );
 }
 
+function ContextRoot(props: ContextMenuPrimitive.Root.Props) {
+  const retirement = useHiddenRootRetirement(props);
+  return <ContextMenuPrimitive.Root {...props} {...retirement} />;
+}
+
 export const ContextMenu = {
-  Root: ContextMenuPrimitive.Root,
+  Root: ContextRoot,
   Trigger: ContextTrigger,
   Content: ContextContent,
   Item: ContextItem,

@@ -29,6 +29,7 @@ import { t } from "@/lib/i18n/index";
 import { useDockWidth } from "@/features/workspace/public/sidebarDrawer";
 import { ChatPanel, type ChatPanelHandle } from "@/features/shell/workbench/panel/ChatPanel";
 import { registerComposerFocusTarget } from "@/features/composer/public/focus";
+import { ContextMenu, Popover } from "@/ui/index";
 const TABLE = "| File | Note |\n|---|---|\n| app/ui/resizer.ts:6 | README.md:4 |";
 
 function DraftInput() {
@@ -770,6 +771,96 @@ describe("Dock collapse focus handoff", () => {
     expect(document.activeElement).toBe(conversation);
     expect(screen.getByLabelText("Composer draft")).toBe(draft);
     expect(draft.selectionEnd).toBe(5);
+  });
+
+  describe("material popups", () => {
+    type MaterialPopup = "popover" | "context-menu";
+
+    function MaterialOptions({ popup }: { popup: MaterialPopup }) {
+      return popup === "popover" ? (
+        <Popover.Root>
+          <Popover.Trigger>Material options</Popover.Trigger>
+          <Popover.Content aria-label="Material panel">
+            <input aria-label="Material line" />
+          </Popover.Content>
+        </Popover.Root>
+      ) : (
+        <ContextMenu.Root>
+          <ContextMenu.Trigger render={<button>Material options</button>} />
+          <ContextMenu.Content>
+            <ContextMenu.IconItem icon="copy" onSelect={() => {}}>
+              Copy path
+            </ContextMenu.IconItem>
+          </ContextMenu.Content>
+        </ContextMenu.Root>
+      );
+    }
+
+    function retainedPopupDock(popup: MaterialPopup) {
+      model.views[1] = {
+        ...model.views[1]!,
+        component: () => (
+          <>
+            <ChildReader />
+            <MaterialOptions popup={popup} />
+          </>
+        ),
+      };
+      return retainedDock();
+    }
+
+    async function openMaterialPopup(popup: MaterialPopup) {
+      const trigger = screen.getByRole("button", { name: "Material options" });
+      act(() => trigger.focus());
+      if (popup === "popover") fireEvent.click(trigger);
+      else fireEvent.contextMenu(trigger);
+      const opened = await screen.findByRole(popup === "popover" ? "dialog" : "menu");
+      await vi.waitFor(() => expect(opened.contains(document.activeElement)).toBe(true));
+      return opened;
+    }
+
+    it.each(["popover", "context-menu"] as const)(
+      "retires a material %s on collapse and reveals the Dock without it",
+      async (popup) => {
+        const { dock, child, draft } = retainedPopupDock(popup);
+        const opened = await openMaterialPopup(popup);
+
+        act(() => toggleWorkspaceDock());
+        await settleCleanup();
+
+        expect(opened.isConnected).toBe(false);
+        const conversation = screen.getByRole("region", { name: "Conversation" });
+        expect(document.activeElement).toBe(conversation);
+
+        act(() => toggleWorkspaceDock());
+        await settleCleanup();
+
+        expect(screen.queryByRole(popup === "popover" ? "dialog" : "menu")).toBeNull();
+        expectRetainedDock(dock, child, draft);
+        expect(document.activeElement).toBe(conversation);
+      },
+    );
+
+    it("retires a material popover when the row narrows below the Dock", async () => {
+      const resize = observeRowWidth(1200);
+      const { dock, child, draft } = retainedPopupDock("popover");
+      const opened = await openMaterialPopup("popover");
+
+      await resize(700);
+      await settleCleanup();
+
+      expect(opened.isConnected).toBe(false);
+      expect(windowHeader()).toBeNull();
+      const conversation = screen.getByRole("region", { name: "Conversation" });
+      expect(document.activeElement).toBe(conversation);
+
+      await resize(1200);
+      await settleCleanup();
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expectRetainedDock(dock, child, draft);
+      expect(document.activeElement).toBe(conversation);
+    });
   });
 });
 
