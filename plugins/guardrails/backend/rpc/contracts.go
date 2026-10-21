@@ -1,7 +1,7 @@
 package rpc
 
 //go:generate sh -c "go run github.com/Tangerg/flame/plugins/guardrails/backend/cmd/contracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
-//go:generate sh -c "go run github.com/Tangerg/flame/runtime/cmd/modelinputcontracts > ../../package/io.github.tangerg.flame/contracts/input.generated.json"
+//go:generate sh -c "go run github.com/Tangerg/flame/runtime/cmd/modelcontracts input > ../../package/io.github.tangerg.flame/contracts/input.generated.json"
 
 import (
 	"errors"
