@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { clsx as cn } from "clsx";
-import { color, corner, motion, space, surface } from "./tokens.stylex";
+import { color, corner, space, surface } from "./tokens.stylex";
 import { SliderPrimitive } from "./primitives/slider";
 
 const styles = stylex.create({
@@ -36,8 +36,6 @@ const styles = stylex.create({
     borderColor: surface.controlEdge,
     backgroundColor: color.onAccent,
     boxShadow: "var(--shadow-control)",
-    transitionProperty: "translate, scale",
-    transitionTimingFunction: motion.easeState,
   },
 });
 

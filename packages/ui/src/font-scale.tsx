@@ -1,4 +1,4 @@
-import { createContext, useContext, useSyncExternalStore } from "react";
+import { createContext, useContext } from "react";
 import type { ComponentType, ReactNode } from "react";
 import type { IconProps } from "@flame/icons/react";
 import { normalizeUiFontSize, UI_FONT_SIZE_DEFAULT_PX } from "./typography";
@@ -45,25 +45,6 @@ export function Icon({
 
 export function useFontSize(): number {
   return useContext(FontScale);
-}
-
-function subscribe(callback: () => void) {
-  window.addEventListener("flame.ui.theme", callback);
-  return () => window.removeEventListener("flame.ui.theme", callback);
-}
-
-function projectedFontSize() {
-  return normalizeUiFontSize(
-    Number(document.documentElement.dataset.flameUiFontSize),
-  );
-}
-
-export function useProjectedFontSize(): number {
-  return useSyncExternalStore(
-    subscribe,
-    projectedFontSize,
-    () => UI_FONT_SIZE_DEFAULT_PX,
-  );
 }
 
 export function iconScaleCssVariables(
