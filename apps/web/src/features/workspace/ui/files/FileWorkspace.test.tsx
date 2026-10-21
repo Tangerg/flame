@@ -1,5 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -12,6 +20,7 @@ import {
   openWorkspaceFile,
   rememberWorkspaceView,
 } from "@/features/workspace/application/navigation";
+import { useWorkspaceFileViewer } from "@/features/workspace/public/navigation";
 import { useContextDockStore } from "@/features/workspace/adapters/contextDockStore";
 import { installWorkspaceErrorClassifier } from "@/features/workspace/adapters/runtimeWorkspaceErrorClassifier";
 import {
@@ -26,6 +35,7 @@ import {
 import { FileWorkspace } from "@/features/workspace/ui/files/FileWorkspace";
 import { FileTree } from "@/features/workspace/ui/files/FileTree";
 import { RpcError } from "@flame/runtime-client";
+import { ContentVisibility } from "@/ui/index";
 const selection = vi.hoisted(() => ({
   current: { status: "ready" } as
     { status: "ready"; cwd?: string } | { status: "resolving"; sessionId: string },
@@ -430,5 +440,87 @@ describe("workspace file tree keyboard model", () => {
     expect((await screen.findByRole("treeitem", { name: "main.go" })).tabIndex).toBe(0);
     expect(screen.getByRole("treeitem", { name: "src" }).tabIndex).toBe(-1);
     expect(document.activeElement).toBe(control);
+  });
+});
+
+describe("retained file workspace popups", () => {
+  function mountRetained() {
+    const workspace = (visible: boolean) => (
+      <QueryClientProvider client={client}>
+        <div hidden={!visible}>
+          <ContentVisibility visible={visible}>
+            <FileWorkspace />
+          </ContentVisibility>
+        </div>
+      </QueryClientProvider>
+    );
+    const view = render(workspace(true));
+    return {
+      hide: () => view.rerender(workspace(false)),
+      reveal: () => view.rerender(workspace(true)),
+    };
+  }
+
+  it("retires Go to line when hidden and keeps its draft for an explicit reopen", async () => {
+    readFile.mockResolvedValue({
+      content: "one\ntwo\nthree\nfour\nfive",
+      startLine: 1,
+      totalLines: 5,
+    });
+    const viewer = renderHook(useWorkspaceFileViewer);
+    act(() => openWorkspaceFile("src/main.go"));
+    const host = mountRetained();
+    await screen.findByText("four");
+    const opened = viewer.result.current;
+    const goToLine = screen.getByRole("button", { name: "Go to line" });
+    fireEvent.click(goToLine);
+    const dialog = await screen.findByRole("dialog");
+    await vi.waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Go to line" }), {
+      target: { value: "4" },
+    });
+
+    host.hide();
+    await vi.waitFor(() => expect(dialog.isConnected).toBe(false));
+    host.reveal();
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText("four")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Back to files" })).toBeTruthy();
+    expect(viewer.result.current).toBe(opened);
+
+    fireEvent.click(goToLine);
+    const reopened = await screen.findByRole("dialog");
+    const draft = within(reopened).getByRole<HTMLInputElement>("textbox", { name: "Go to line" });
+    expect(draft.value).toBe("4");
+    act(() => draft.focus());
+    fireEvent.keyDown(draft, { key: "Enter" });
+
+    expect(viewer.result.current).toEqual({ path: "src/main.go", line: 4 });
+    await vi.waitFor(() => expect(reopened.isConnected).toBe(false));
+  });
+
+  it("retires a file row's context menu when hidden and keeps the tree state", async () => {
+    useContextDockStore.setState({
+      memory: { expandedDirs: ["src"], lastFilePath: "src/main.go" },
+    });
+    const host = mountRetained();
+    const row = await screen.findByRole("treeitem", { name: "main.go" });
+    act(() => row.focus());
+    fireEvent.contextMenu(row);
+    const menu = await screen.findByRole("menu");
+    await vi.waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
+
+    host.hide();
+    await vi.waitFor(() => expect(menu.isConnected).toBe(false));
+    host.reveal();
+
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(row);
+    expect(row.tabIndex).toBe(0);
+    expect(row.getAttribute("aria-current")).toBe("true");
+    expect(screen.getByRole("treeitem", { name: "src" }).getAttribute("aria-expanded")).toBe(
+      "true",
+    );
   });
 });

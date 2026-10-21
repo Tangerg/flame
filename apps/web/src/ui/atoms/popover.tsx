@@ -3,6 +3,7 @@ import { type ComponentProps, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { PopoverPrimitive } from "@/ui/primitives/index";
 import { FLOATING_LAYER, FLOATING_OPTIONS, FLOATING_PANEL } from "@flame/ui/floating-surface";
+import { useHiddenPopupRelease, useHiddenRootRetirement } from "@/ui/atoms/popup-visibility";
 type PositionerProps = ComponentProps<typeof PopoverPrimitive.Positioner>;
 
 type PopupProps = ComponentProps<typeof PopoverPrimitive.Popup>;
@@ -28,11 +29,13 @@ function PopoverContent({
   align,
   sideOffset,
   alignOffset,
+  finalFocus,
   ...popupProps
 }: PopoverContentProps) {
+  const { visible, portalRef } = useHiddenPopupRelease();
   const panel = stylex.props(surface === "options" ? FLOATING_OPTIONS : FLOATING_PANEL);
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal ref={portalRef}>
       <PopoverPrimitive.Positioner
         side={side}
         align={align}
@@ -42,6 +45,7 @@ function PopoverContent({
       >
         <PopoverPrimitive.Popup
           {...popupProps}
+          finalFocus={visible ? finalFocus : false}
           {...panel}
           className={cn(panel.className, className)}
         >
@@ -80,10 +84,11 @@ function AnchoredPanel({
   className,
   ...aria
 }: AnchoredPanelProps) {
+  const { portalRef } = useHiddenPopupRelease();
   const panel = stylex.props(FLOATING_PANEL, styles.matchAnchor);
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <PopoverPrimitive.Portal>
+    <PopoverRoot open={open} onOpenChange={onOpenChange}>
+      <PopoverPrimitive.Portal ref={portalRef}>
         <PopoverPrimitive.Positioner
           anchor={anchor}
           side="top"
@@ -102,12 +107,17 @@ function AnchoredPanel({
           </PopoverPrimitive.Popup>
         </PopoverPrimitive.Positioner>
       </PopoverPrimitive.Portal>
-    </PopoverPrimitive.Root>
+    </PopoverRoot>
   );
 }
 
+function PopoverRoot<Payload = unknown>(props: PopoverPrimitive.Root.Props<Payload>) {
+  const retirement = useHiddenRootRetirement(props);
+  return <PopoverPrimitive.Root {...props} {...retirement} />;
+}
+
 export const Popover = {
-  Root: PopoverPrimitive.Root,
+  Root: PopoverRoot,
   Trigger: PopoverPrimitive.Trigger,
   Content: PopoverContent,
   Anchored: AnchoredPanel,
