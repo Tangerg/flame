@@ -11,7 +11,7 @@ import (
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
-const manualSchema = `CREATE TABLE IF NOT EXISTS manual_firings (run_id TEXT PRIMARY KEY, captured_request_json TEXT NOT NULL CHECK(json_valid(captured_request_json)), state TEXT NOT NULL CHECK(state IN ('pending','accepted')))`
+var manualSchema = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS manual_firings (run_id TEXT PRIMARY KEY, captured_request_json TEXT NOT NULL CHECK(json_valid(captured_request_json)), state TEXT NOT NULL CHECK(state IN ('%s','%s')))`, scheduleFiringPending.databaseValue(), scheduleFiringAccepted.databaseValue())
 
 func (s *ScheduleStore) QueueManual(ctx context.Context, request schedule.RunRequest) error {
 	if err := request.Validate(); err != nil {
@@ -24,14 +24,14 @@ func (s *ScheduleStore) QueueManual(ctx context.Context, request schedule.RunReq
 	if err != nil {
 		return err
 	}
-	_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO manual_firings(run_id,captured_request_json,state) VALUES(?,?,'pending')`, request.RunID(), string(encoded))
+	_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO manual_firings(run_id,captured_request_json,state) VALUES(?,?,?)`, request.RunID(), string(encoded), scheduleFiringPending.databaseValue())
 	return err
 }
 func (s *ScheduleStore) PendingManual(ctx context.Context, afterID string, limit int) ([]schedule.RunRequest, error) {
 	if limit <= 0 || limit > schedule.MaximumDispatchBatch {
 		return nil, errors.New("schedule: invalid manual dispatch limit")
 	}
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT run_id,captured_request_json FROM manual_firings WHERE state='pending' AND run_id>? ORDER BY run_id LIMIT ?`, afterID, limit)
+	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT run_id,captured_request_json FROM manual_firings WHERE state=? AND run_id>? ORDER BY run_id LIMIT ?`, scheduleFiringPending.databaseValue(), afterID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -89,19 +89,19 @@ func (s *ScheduleStore) AcceptRun(ctx context.Context, id string) error {
 		if err != nil {
 			return err
 		}
-		switch state {
-		case "accepted":
+		firingState, err := restoreScheduleFiringState(state)
+		if err != nil {
+			return err
+		}
+		if firingState == scheduleFiringAccepted {
 			return nil
-		case "pending":
-		default:
-			return errors.New("schedule: invalid manual dispatch state")
 		}
 		record, _ := request.ManualRecord()
 
 		if _, err := s.recordAcceptedRun(ctx, record.ScheduleID(), record.RanAt()); err != nil {
 			return err
 		}
-		_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `UPDATE manual_firings SET state='accepted' WHERE run_id=?`, id)
+		_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `UPDATE manual_firings SET state=? WHERE run_id=?`, scheduleFiringAccepted.databaseValue(), id)
 		return err
 	})
 }
