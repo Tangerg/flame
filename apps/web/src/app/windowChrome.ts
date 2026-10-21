@@ -18,8 +18,8 @@ export async function applyWindowChrome(host: Pick<ClientHost, "windowChrome">):
     GUTTER_PROPERTY,
     hidden ? "0px" : `${chrome.controlsInlineEnd + CONTROL_GAP_PX}px`,
   );
-  root.style.setProperty(CENTRE_PROPERTY, hidden ? "" : `${chrome.controlsCentreY}px`);
   if (hidden) root.style.removeProperty(CENTRE_PROPERTY);
+  else root.style.setProperty(CENTRE_PROPERTY, `${chrome.controlsCentreY}px`);
 }
 
 export function watchWindowChrome(host: Pick<ClientHost, "windowChrome">): () => void {
