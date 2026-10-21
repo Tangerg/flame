@@ -120,6 +120,7 @@ export function PluginsPane() {
                       <TextButton
                         tone="negative"
                         onClick={() => toggle(name)}
+                        aria-expanded={open}
                         title={open ? t("plugins.errorDetail.hide") : t("plugins.errorDetail.show")}
                         {...stylex.props(vocab.afterLine)}
                       >

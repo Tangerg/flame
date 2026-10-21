@@ -44,6 +44,7 @@ export function ProjectRow({
       onClick={() => onToggle()}
       title={project.id}
       aria-expanded={open}
+      aria-label={project.cwdMissing ? `${project.name} — ${t("project.row.missing")}` : undefined}
       trailing={
         <span {...stylex.props(pr.trailing)}>
           {!open && waiting > 0 && (
@@ -71,12 +72,7 @@ export function ProjectRow({
       <span {...stylex.props(pr.line)}>
         <span {...stylex.props(vocab.truncate)}>{project.name}</span>
         {project.cwdMissing && (
-          <Icon
-            name="alert"
-            size="xs"
-            className={stylex.props(pr.warn).className}
-            aria-label={t("project.row.missing")}
-          />
+          <Icon name="alert" size="xs" className={stylex.props(pr.warn).className} />
         )}
       </span>
     </AgentRow>
