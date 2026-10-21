@@ -2229,6 +2229,13 @@ defects; each needs a Wails look and an explicit choice before implementing:
   redesign, not a cleanup. The two return buttons also duplicate their markup and
   disagree on `data-chrome-focus` (window header sets it, dock header does not); a
   shared `ReturnButton` would fix both once the ring convention is chosen.
+- **Shared scroll-restore primitive for plugin components.** The diff, usagereports
+  and skills plugin components carry a byte-identical `scrollPositions` helper (and
+  `ScrollPosition` type) plus the same master/detail focus-and-scroll-restore dance.
+  Plugins may import only `@flame/ui` + the wire client, so the authoritative owner
+  would be a `@flame/ui` scroll-restore hook — a deliberate primitive extraction, not
+  just moving the 11-line helper behind a name, so this is a refactoring signal rather
+  than a quick dedup.
 - **Settings-list primitive consistency.** The loaded-plugins list (`PluginsPane`)
   hand-rolls its record rows and a manual expand/collapse where its sibling
   `PackageManager.PackageRow` composes `ListRow` + `RecordHeading` + `Disclosure`;
