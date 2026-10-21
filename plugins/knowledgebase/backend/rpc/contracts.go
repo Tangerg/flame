@@ -10,15 +10,15 @@ import (
 	"github.com/invopop/jsonschema"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
+	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/exactjson"
 	"github.com/Tangerg/flame/runtime/idempotency"
 )
 
 type ImportInput struct {
-	Content          domain.Content `json:"content"`
-	ExpectedRevision int64          `json:"expectedRevision" jsonschema:"minimum=0"`
+	Content          knowledge.Content `json:"content"`
+	ExpectedRevision int64             `json:"expectedRevision" jsonschema:"minimum=0"`
 }
 
 type DocumentInput struct {
@@ -28,7 +28,7 @@ type DocumentInput struct {
 
 func (DocumentInput) JSONSchemaExtend(schema *jsonschema.Schema) {
 	if id, ok := schema.Properties.Get("id"); ok {
-		id.MaxLength = new(uint64(domain.MaxIDRunes))
+		id.MaxLength = new(uint64(knowledge.MaxIDRunes))
 	}
 }
 
@@ -39,25 +39,25 @@ type SearchInput struct {
 
 func (SearchInput) JSONSchemaExtend(schema *jsonschema.Schema) {
 	if query, ok := schema.Properties.Get("query"); ok {
-		query.MaxLength = new(uint64(domain.MaxQueryRunes))
+		query.MaxLength = new(uint64(knowledge.MaxQueryRunes))
 	}
 	if limit, ok := schema.Properties.Get("limit"); ok {
-		limit.Maximum = exactjson.Number(strconv.Itoa(domain.MaxResults))
+		limit.Maximum = exactjson.Number(strconv.Itoa(knowledge.MaxResults))
 	}
 }
 
 type Contracts struct {
 	Capability *capability.Contract
-	Import     *pluginsdk.Method[ImportInput, domain.Header]
+	Import     *pluginsdk.Method[ImportInput, knowledge.Header]
 	Delete     *pluginsdk.Method[DocumentInput, bool]
-	List       *pluginsdk.Method[struct{}, []domain.Header]
-	Search     *pluginsdk.Method[SearchInput, []domain.Match]
+	List       *pluginsdk.Method[struct{}, []knowledge.Header]
+	Search     *pluginsdk.Method[SearchInput, []knowledge.Match]
 }
 
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Import, err = pluginsdk.NewMethod[ImportInput, domain.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/import.v1", Kind: capability.Mutation, Target: "installation", Description: "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document."})
+	c.Import, err = pluginsdk.NewMethod[ImportInput, knowledge.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/import.v1", Kind: capability.Mutation, Target: "installation", Description: "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document."})
 	if err != nil {
 		return Contracts{}, err
 	}
@@ -65,11 +65,11 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.List, err = pluginsdk.NewMethod[struct{}, []domain.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/list.v1", Kind: capability.Query, Target: "installation", Description: "List indexed user documents and their revisions."})
+	c.List, err = pluginsdk.NewMethod[struct{}, []knowledge.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/list.v1", Kind: capability.Query, Target: "installation", Description: "List indexed user documents and their revisions."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Search, err = pluginsdk.NewMethod[SearchInput, []domain.Match](pluginsdk.MethodConfig{Name: "flame.knowledgebase/search.v1", Kind: capability.Query, Target: "installation", Description: "Retrieve cited chunks from indexed user documents through the configured embedding role."})
+	c.Search, err = pluginsdk.NewMethod[SearchInput, []knowledge.Match](pluginsdk.MethodConfig{Name: "flame.knowledgebase/search.v1", Kind: capability.Query, Target: "installation", Description: "Retrieve cited chunks from indexed user documents through the configured embedding role."})
 	if err != nil {
 		return Contracts{}, err
 	}
@@ -82,10 +82,10 @@ func Classify(err error) string {
 		cause error
 		code  string
 	}{
-		{domain.ErrInvalidDocument, "invalid_document"}, {domain.ErrRevisionConflict, "revision_conflict"},
-		{domain.ErrCapacity, "capacity"}, {domain.ErrNotFound, "not_found"},
-		{domain.ErrRetired, "retired_document"},
-		{domain.ErrInvalidIndex, "invalid_index"}, {domain.ErrEmbeddingSpace, "embedding_space_changed"},
+		{knowledge.ErrInvalidDocument, "invalid_document"}, {knowledge.ErrRevisionConflict, "revision_conflict"},
+		{knowledge.ErrCapacity, "capacity"}, {knowledge.ErrNotFound, "not_found"},
+		{knowledge.ErrRetired, "retired_document"},
+		{knowledge.ErrInvalidIndex, "invalid_index"}, {knowledge.ErrEmbeddingSpace, "embedding_space_changed"},
 		{idempotency.ErrKeyConflict, "command_conflict"},
 	} {
 		if errors.Is(err, failure.cause) {

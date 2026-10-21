@@ -8,11 +8,11 @@ import (
 	"errors"
 	"io"
 
-	"github.com/Tangerg/flame/plugins/guardrails/backend/domain"
+	guardrail "github.com/Tangerg/flame/plugins/guardrails/backend/domain"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func inspectRequest(ctx context.Context, policy domain.Policy, request *chat.Request) error {
+func inspectRequest(ctx context.Context, policy guardrail.Policy, request *chat.Request) error {
 	encoded, err := json.Marshal(request)
 	if err != nil {
 		return err

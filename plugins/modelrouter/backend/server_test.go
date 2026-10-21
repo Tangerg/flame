@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
+	routing "github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/model"
@@ -21,7 +21,7 @@ func TestPolicyCommandsAndSelectionShareTheDurableOwnerAcrossReopen(t *testing.T
 		t.Fatal(err)
 	}
 	selected, _ := model.NewWithReasoningEffort("openai", "small", "low")
-	input := rpc.ReplaceInput{ExpectedRevision: 1, Rules: []domain.Rule{{Use: model.Utility, Selection: selected}}}
+	input := rpc.ReplaceInput{ExpectedRevision: 1, Rules: []routing.Rule{{Use: model.Utility, Selection: selected}}}
 	for _, reopened := range []bool{false, true} {
 		func() {
 			store, err := openStore(t.Context(), path)

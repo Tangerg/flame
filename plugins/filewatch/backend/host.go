@@ -8,7 +8,7 @@ import (
 	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -30,7 +30,7 @@ func (h *runHost) Namespace(ctx context.Context) (string, error) {
 	return discovery.Capabilities.Limits.Idempotency.Namespace, nil
 }
 
-func (h *runHost) Watch(ctx context.Context, generation string, trigger domain.Trigger) (iter.Seq2[protocol.RuntimeEvent, error], error) {
+func (h *runHost) Watch(ctx context.Context, generation string, trigger filewatch.Trigger) (iter.Seq2[protocol.RuntimeEvent, error], error) {
 	draft := trigger.Draft()
 	workspace, err := h.client.ResolveWorkspace(ctx, protocol.ResolveWorkspaceRequest{Ref: &protocol.WorkspaceRef{Path: draft.Workspace}}, protocol.CallOptions{})
 	if err != nil {
@@ -46,7 +46,7 @@ func (h *runHost) Watch(ctx context.Context, generation string, trigger domain.T
 	return events, err
 }
 
-func (h *runHost) Admit(ctx context.Context, namespace string, observation domain.Observation) error {
+func (h *runHost) Admit(ctx context.Context, namespace string, observation filewatch.Observation) error {
 	capture := observation.Capture()
 	input, err := observation.Input()
 	if err != nil {

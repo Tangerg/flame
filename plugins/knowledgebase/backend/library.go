@@ -8,7 +8,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
+	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/backend/rpc"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/google/uuid"
@@ -39,7 +39,7 @@ func newLibrary(store *store, resolve resolveEmbedding) (*library, error) {
 	return &library{store: store, resolve: resolve}, nil
 }
 
-func (l *library) importDocument(ctx context.Context, method, id string, input rpc.ImportInput, admitted jsoninput.Input) (domain.Header, error) {
+func (l *library) importDocument(ctx context.Context, method, id string, input rpc.ImportInput, admitted jsoninput.Input) (knowledge.Header, error) {
 	var embed embed
 	prepared, original, err := pluginstorage.AdmitCommand(ctx, l.store.db, method, id, admitted, func(ctx context.Context) error {
 		var err error
@@ -47,45 +47,45 @@ func (l *library) importDocument(ctx context.Context, method, id string, input r
 		return err
 	})
 	if err != nil {
-		return domain.Header{}, err
+		return knowledge.Header{}, err
 	}
 	if prepared == nil {
-		return pluginsdk.DecodeReply[domain.Header](original)
+		return pluginsdk.DecodeReply[knowledge.Header](original)
 	}
 	if !prepared.NewlyAdmitted() {
-		return domain.Header{}, pluginstorage.ErrCommandUnconfirmed
+		return knowledge.Header{}, pluginstorage.ErrCommandUnconfirmed
 	}
-	draft, err := domain.NewDraft(input.Content)
+	draft, err := knowledge.NewDraft(input.Content)
 	if err != nil {
-		return l.store.completeImport(ctx, prepared, func(context.Context) (domain.Header, error) { return domain.Header{}, err })
+		return l.store.completeImport(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
 	}
 	result, err := embed(ctx, draft.Texts())
 	if err != nil {
-		return l.store.completeImport(ctx, prepared, func(context.Context) (domain.Header, error) { return domain.Header{}, err })
+		return l.store.completeImport(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
 	}
 	indexed, err := draft.Index(result.Space, result.Vectors)
 	if err != nil {
-		return l.store.completeImport(ctx, prepared, func(context.Context) (domain.Header, error) { return domain.Header{}, err })
+		return l.store.completeImport(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
 	}
-	return l.store.completeImport(ctx, prepared, func(ctx context.Context) (domain.Header, error) {
+	return l.store.completeImport(ctx, prepared, func(ctx context.Context) (knowledge.Header, error) {
 		return l.store.replace(ctx, input.Content.ID, input.ExpectedRevision, indexed)
 	})
 }
 
-func (l *library) list(ctx context.Context) ([]domain.Header, error) {
+func (l *library) list(ctx context.Context) ([]knowledge.Header, error) {
 	documents, err := l.store.documents(ctx)
 	if err != nil {
 		return nil, err
 	}
-	headers := make([]domain.Header, len(documents))
+	headers := make([]knowledge.Header, len(documents))
 	for i, document := range documents {
 		headers[i] = document.Header()
 	}
 	return headers, nil
 }
 
-func (l *library) search(ctx context.Context, input rpc.SearchInput) ([]domain.Match, error) {
-	if strings.TrimSpace(input.Query) == "" || utf8.RuneCountInString(input.Query) > domain.MaxQueryRunes || input.Limit < 1 || input.Limit > domain.MaxResults {
+func (l *library) search(ctx context.Context, input rpc.SearchInput) ([]knowledge.Match, error) {
+	if strings.TrimSpace(input.Query) == "" || utf8.RuneCountInString(input.Query) > knowledge.MaxQueryRunes || input.Limit < 1 || input.Limit > knowledge.MaxResults {
 		return nil, errors.New("knowledge base: a bounded query and result limit are required")
 	}
 	documents, err := l.store.documents(ctx)
@@ -93,7 +93,7 @@ func (l *library) search(ctx context.Context, input rpc.SearchInput) ([]domain.M
 		return nil, err
 	}
 	if len(documents) == 0 {
-		return []domain.Match{}, nil
+		return []knowledge.Match{}, nil
 	}
 	embed, err := l.resolve(ctx)
 	if err != nil {
@@ -104,9 +104,9 @@ func (l *library) search(ctx context.Context, input rpc.SearchInput) ([]domain.M
 		return nil, err
 	}
 	if len(result.Vectors) != 1 {
-		return nil, domain.ErrInvalidIndex
+		return nil, knowledge.ErrInvalidIndex
 	}
-	matches := make([]domain.Match, 0)
+	matches := make([]knowledge.Match, 0)
 	for _, document := range documents {
 		found, err := document.Search(result.Space, result.Vectors[0])
 		if err != nil {
@@ -114,7 +114,7 @@ func (l *library) search(ctx context.Context, input rpc.SearchInput) ([]domain.M
 		}
 		matches = append(matches, found...)
 	}
-	return domain.Rank(matches, input.Limit), nil
+	return knowledge.Rank(matches, input.Limit), nil
 }
 
 func classify(err error) string {

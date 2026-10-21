@@ -8,7 +8,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/plugins/filewatch/backend/rpc"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -29,24 +29,24 @@ func newServer(store *store) (*sdk.Server, *pluginsdk.Backend, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, store.db),
-		pluginstorage.RegisterCommand(backend, store.db, contracts.Configure, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ConfigureInput) (domain.Snapshot, error) {
+		pluginstorage.RegisterCommand(backend, store.db, contracts.Configure, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ConfigureInput) (filewatch.Snapshot, error) {
 			return store.configure(ctx, input.ExpectedRevision, input.Trigger)
 		}),
-		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (domain.Snapshot, error) {
+		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (filewatch.Snapshot, error) {
 			configuration, err := store.configuration(ctx)
 			return configuration.Snapshot(), err
 		}),
-		contracts.Events.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) ([]domain.Header, error) {
+		contracts.Events.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) ([]filewatch.Header, error) {
 			return store.headers(ctx)
 		}),
-		contracts.Event.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.EventInput]) (domain.Event, error) {
+		contracts.Event.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.EventInput]) (filewatch.Event, error) {
 			return store.event(ctx, command.Input.ID)
 		}),
-		contracts.Status.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, pluginsdk.Command[struct{}]) (domain.Status, error) {
+		contracts.Status.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, pluginsdk.Command[struct{}]) (filewatch.Status, error) {
 			activation.Lock()
 			defer activation.Unlock()
 			if activation.worker == nil {
-				return domain.Status{Phase: domain.Inactive}, nil
+				return filewatch.Status{Phase: filewatch.Inactive}, nil
 			}
 			return activation.worker.snapshot(), nil
 		}),

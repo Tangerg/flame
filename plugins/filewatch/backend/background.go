@@ -12,7 +12,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -20,8 +20,8 @@ import (
 )
 
 type host interface {
-	Watch(context.Context, string, domain.Trigger) (iter.Seq2[protocol.RuntimeEvent, error], error)
-	Admit(context.Context, string, domain.Observation) error
+	Watch(context.Context, string, filewatch.Trigger) (iter.Seq2[protocol.RuntimeEvent, error], error)
+	Admit(context.Context, string, filewatch.Observation) error
 	Notify(context.Context, string) error
 }
 
@@ -36,7 +36,7 @@ type observationStream struct {
 	done    <-chan struct{}
 }
 
-func openStream(ctx context.Context, source host, generation string, trigger domain.Trigger) (*observationStream, error) {
+func openStream(ctx context.Context, source host, generation string, trigger filewatch.Trigger) (*observationStream, error) {
 	lifetime, cancel := context.WithCancel(ctx)
 	events, err := source.Watch(lifetime, generation, trigger)
 	if err != nil {
@@ -83,7 +83,7 @@ type background struct {
 	mu              sync.Mutex
 	started, closed bool
 	closeErr        error
-	status          domain.Status
+	status          filewatch.Status
 	store           *store
 	host            host
 	namespace       string
@@ -94,7 +94,7 @@ type background struct {
 
 func newBackground(ctx context.Context, store *store, host host, namespace string, target capability.Target, contribution string, closeHost func() error) *background {
 	lifetime, cancel := context.WithCancel(ctx)
-	return &background{ctx: lifetime, cancel: cancel, done: make(chan struct{}), closeDone: make(chan struct{}), store: store, host: host, namespace: namespace, target: target, contribution: contribution, closeHost: closeHost, status: domain.Status{Phase: domain.Inactive}}
+	return &background{ctx: lifetime, cancel: cancel, done: make(chan struct{}), closeDone: make(chan struct{}), store: store, host: host, namespace: namespace, target: target, contribution: contribution, closeHost: closeHost, status: filewatch.Status{Phase: filewatch.Inactive}}
 }
 
 func (b *background) Start() error {
@@ -133,13 +133,13 @@ func (b *background) Close() error {
 	return b.closeErr
 }
 
-func (b *background) snapshot() domain.Status {
+func (b *background) snapshot() filewatch.Status {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.status
 }
 
-func (b *background) observationStatus(revision int64, phase domain.Phase, err error) {
+func (b *background) observationStatus(revision int64, phase filewatch.Phase, err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.status.Revision, b.status.Phase, b.status.Error = revision, phase, ""
@@ -163,17 +163,17 @@ func (b *background) invocation() capability.Invocation {
 
 func (b *background) run() {
 	defer close(b.done)
-	defer b.observationStatus(0, domain.Inactive, nil)
+	defer b.observationStatus(0, filewatch.Inactive, nil)
 	var stream *observationStream
 	defer func() { stream.close() }()
 	var notices <-chan observationNotice
-	var current domain.Configuration
+	var current filewatch.Configuration
 	var generation string
-	var cursor domain.Cursor
+	var cursor filewatch.Cursor
 	stop := func(err error) {
 		stream.close()
 		stream, notices = nil, nil
-		b.observationStatus(current.Revision(), domain.Failed, err)
+		b.observationStatus(current.Revision(), filewatch.Failed, err)
 	}
 	refresh := func() {
 		configuration, err := b.store.configuration(b.ctx)
@@ -189,11 +189,11 @@ func (b *background) run() {
 		current = configuration
 		trigger, enabled := current.Trigger()
 		if !enabled {
-			b.observationStatus(current.Revision(), domain.Disabled, nil)
+			b.observationStatus(current.Revision(), filewatch.Disabled, nil)
 			return
 		}
 		generation = uuid.NewString()
-		cursor, err = domain.NewCursor(generation)
+		cursor, err = filewatch.NewCursor(generation)
 		if err != nil {
 			stop(err)
 			return
@@ -207,7 +207,7 @@ func (b *background) run() {
 			return
 		}
 		notices = stream.notices
-		b.observationStatus(current.Revision(), domain.Watching, nil)
+		b.observationStatus(current.Revision(), filewatch.Watching, nil)
 	}
 	refresh()
 	b.reconcile()
@@ -243,7 +243,7 @@ func (b *background) run() {
 				continue
 			}
 			if err := b.store.capture(b.ctx, observation); err != nil {
-				if errors.Is(err, domain.ErrRevision) {
+				if errors.Is(err, filewatch.ErrRevision) {
 					refresh()
 				} else {
 					stop(err)
@@ -256,29 +256,29 @@ func (b *background) run() {
 	}
 }
 
-func (b *background) captureNotice(configuration domain.Configuration, generation string, event protocol.RuntimeEvent, gap bool) (domain.Observation, bool, error) {
+func (b *background) captureNotice(configuration filewatch.Configuration, generation string, event protocol.RuntimeEvent, gap bool) (filewatch.Observation, bool, error) {
 	trigger, enabled := configuration.Trigger()
 	if !enabled {
-		return domain.Observation{}, false, domain.ErrInvalid
+		return filewatch.Observation{}, false, filewatch.ErrInvalid
 	}
 	draft := trigger.Draft()
-	kind, paths := domain.Changed, event.Paths
+	kind, paths := filewatch.Changed, event.Paths
 	switch {
 	case gap:
-		kind, paths = domain.Resync, draft.Paths
+		kind, paths = filewatch.Resync, draft.Paths
 	case event.Type == protocol.RuntimeResync:
 		if !slices.Contains(event.Topics, protocol.TopicFilesChanged) || (len(event.WatchIDs) > 0 && !slices.Contains(event.WatchIDs, generation)) {
-			return domain.Observation{}, false, nil
+			return filewatch.Observation{}, false, nil
 		}
-		kind, paths = domain.Resync, draft.Paths
+		kind, paths = filewatch.Resync, draft.Paths
 	case event.Type == protocol.RuntimeFilesChanged && event.WatchID == generation:
 		if event.Workspace == nil || event.Workspace.Path != draft.Workspace {
-			return domain.Observation{}, false, errors.New("filewatch: observation workspace differs from configured source")
+			return filewatch.Observation{}, false, errors.New("filewatch: observation workspace differs from configured source")
 		}
 	default:
-		return domain.Observation{}, false, nil
+		return filewatch.Observation{}, false, nil
 	}
-	observation, err := domain.NewObservation(domain.Capture{Generation: generation, Sequence: event.Sequence, Revision: configuration.Revision(), Kind: kind, Paths: paths, ObservedAt: time.Now(), Trigger: draft,
+	observation, err := filewatch.NewObservation(filewatch.Capture{Generation: generation, Sequence: event.Sequence, Revision: configuration.Revision(), Kind: kind, Paths: paths, ObservedAt: time.Now(), Trigger: draft,
 		SessionID: identity.SessionPrefix + uuid.NewString(), RunID: identity.RunPrefix + uuid.NewString(), Invocation: b.invocation()})
 	return observation, true, err
 }
@@ -294,7 +294,7 @@ func (b *background) reconcile() {
 		if b.ctx.Err() != nil {
 			return
 		}
-		observation, err := domain.NewObservation(event.Capture)
+		observation, err := filewatch.NewObservation(event.Capture)
 		if err == nil && event.Capture.Invocation.Target != b.target {
 			err = errors.New("filewatch: capture belongs to another installation")
 		}

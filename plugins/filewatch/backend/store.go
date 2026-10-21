@@ -8,7 +8,7 @@ import (
 	"errors"
 
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
@@ -22,7 +22,7 @@ var errStored = errors.New("filewatch: invalid private data")
 type store struct{ db *sql.DB }
 
 func openStore(ctx context.Context, path string) (*store, error) {
-	initial, err := json.Marshal(domain.Initial().Snapshot())
+	initial, err := json.Marshal(filewatch.Initial().Snapshot())
 	if err != nil {
 		return nil, err
 	}
@@ -45,40 +45,40 @@ func openStore(ctx context.Context, path string) (*store, error) {
 	return s, nil
 }
 
-func (s *store) configuration(ctx context.Context) (domain.Configuration, error) {
+func (s *store) configuration(ctx context.Context) (filewatch.Configuration, error) {
 	var raw string
 	if err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM configuration WHERE id=1`).Scan(&raw); err != nil {
-		return domain.Configuration{}, err
+		return filewatch.Configuration{}, err
 	}
-	var snapshot domain.Snapshot
+	var snapshot filewatch.Snapshot
 	if err := json.Unmarshal([]byte(raw), &snapshot, json.RejectUnknownMembers(true)); err != nil {
-		return domain.Configuration{}, errors.Join(errStored, err)
+		return filewatch.Configuration{}, errors.Join(errStored, err)
 	}
-	value, err := domain.Restore(snapshot)
+	value, err := filewatch.Restore(snapshot)
 	if err != nil {
-		return domain.Configuration{}, errors.Join(errStored, err)
+		return filewatch.Configuration{}, errors.Join(errStored, err)
 	}
 	return value, nil
 }
 
-func (s *store) configure(ctx context.Context, expected int64, draft *domain.Draft) (domain.Snapshot, error) {
+func (s *store) configure(ctx context.Context, expected int64, draft *filewatch.Draft) (filewatch.Snapshot, error) {
 	current, err := s.configuration(ctx)
 	if err != nil {
-		return domain.Snapshot{}, err
+		return filewatch.Snapshot{}, err
 	}
 	next, err := current.Replace(expected, draft)
 	if err != nil {
-		return domain.Snapshot{}, err
+		return filewatch.Snapshot{}, err
 	}
 	encoded, err := json.Marshal(next.Snapshot())
 	if err != nil {
-		return domain.Snapshot{}, err
+		return filewatch.Snapshot{}, err
 	}
 	_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `UPDATE configuration SET snapshot=? WHERE id=1`, string(encoded))
 	return next.Snapshot(), err
 }
 
-func (s *store) capture(ctx context.Context, observation domain.Observation) error {
+func (s *store) capture(ctx context.Context, observation filewatch.Observation) error {
 	capture := observation.Capture()
 	encoded, err := json.Marshal(capture, json.Deterministic(true))
 	if err != nil {
@@ -102,7 +102,7 @@ func (s *store) capture(ctx context.Context, observation domain.Observation) err
 			return err
 		}
 		if current.Revision() != capture.Revision {
-			return domain.ErrRevision
+			return filewatch.ErrRevision
 		}
 		definition, err := json.Marshal(current.Snapshot().Trigger, json.Deterministic(true))
 		if err != nil {
@@ -120,7 +120,7 @@ func (s *store) capture(ctx context.Context, observation domain.Observation) err
 			return err
 		}
 		if pending >= maxPending {
-			return domain.ErrCapacity
+			return filewatch.ErrCapacity
 		}
 		// Only confirmed historical observations may leave the bounded read archive.
 		if _, err := connection.ExecContext(ctx, `DELETE FROM events WHERE rowid IN (SELECT rowid FROM events WHERE accepted=1 ORDER BY rowid LIMIT (SELECT max(0,count(*)-?) FROM events))`, maxEvents-1); err != nil {
@@ -131,33 +131,33 @@ func (s *store) capture(ctx context.Context, observation domain.Observation) err
 	})
 }
 
-func (s *store) pending(ctx context.Context) ([]domain.Event, error) {
-	result := make([]domain.Event, 0)
-	err := s.visitEvents(ctx, true, func(event domain.Event) { result = append(result, event) })
+func (s *store) pending(ctx context.Context) ([]filewatch.Event, error) {
+	result := make([]filewatch.Event, 0)
+	err := s.visitEvents(ctx, true, func(event filewatch.Event) { result = append(result, event) })
 	return result, err
 }
 
-func (s *store) headers(ctx context.Context) ([]domain.Header, error) {
-	result := make([]domain.Header, 0)
-	err := s.visitEvents(ctx, false, func(event domain.Event) { result = append(result, event.Header()) })
+func (s *store) headers(ctx context.Context) ([]filewatch.Header, error) {
+	result := make([]filewatch.Header, 0)
+	err := s.visitEvents(ctx, false, func(event filewatch.Event) { result = append(result, event.Header()) })
 	return result, err
 }
 
-func (s *store) event(ctx context.Context, id string) (domain.Event, error) {
+func (s *store) event(ctx context.Context, id string) (filewatch.Event, error) {
 	var generation, raw string
 	var sequence uint64
 	var accepted int
 	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT generation,sequence,capture,accepted FROM events WHERE id=?`, id).Scan(&generation, &sequence, &raw, &accepted)
 	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Event{}, domain.ErrNotFound
+		return filewatch.Event{}, filewatch.ErrNotFound
 	}
 	if err != nil {
-		return domain.Event{}, err
+		return filewatch.Event{}, err
 	}
 	return decodeEvent(id, generation, sequence, raw, accepted)
 }
 
-func (s *store) visitEvents(ctx context.Context, pendingOnly bool, visit func(domain.Event)) error {
+func (s *store) visitEvents(ctx context.Context, pendingOnly bool, visit func(filewatch.Event)) error {
 	query, limit := `SELECT id,generation,sequence,capture,accepted FROM events ORDER BY rowid DESC LIMIT ?`, maxEvents
 	if pendingOnly {
 		query, limit = `SELECT id,generation,sequence,capture,accepted FROM events WHERE accepted=0 ORDER BY rowid LIMIT ?`, maxPending
@@ -191,16 +191,16 @@ func (s *store) visitEvents(ctx context.Context, pendingOnly bool, visit func(do
 	return nil
 }
 
-func decodeEvent(id, generation string, sequence uint64, raw string, accepted int) (domain.Event, error) {
-	var capture domain.Capture
+func decodeEvent(id, generation string, sequence uint64, raw string, accepted int) (filewatch.Event, error) {
+	var capture filewatch.Capture
 	if err := json.Unmarshal([]byte(raw), &capture, json.RejectUnknownMembers(true)); err != nil {
-		return domain.Event{}, errors.Join(errStored, err)
+		return filewatch.Event{}, errors.Join(errStored, err)
 	}
-	observation, err := domain.NewObservation(capture)
+	observation, err := filewatch.NewObservation(capture)
 	if err != nil || id != capture.Invocation.ID || generation != capture.Generation || sequence != capture.Sequence || (accepted != 0 && accepted != 1) {
-		return domain.Event{}, errors.Join(errStored, err)
+		return filewatch.Event{}, errors.Join(errStored, err)
 	}
-	return domain.Event{Capture: observation.Capture(), Accepted: accepted == 1}, nil
+	return filewatch.Event{Capture: observation.Capture(), Accepted: accepted == 1}, nil
 }
 
 func (s *store) acceptRun(ctx context.Context, id string) error {

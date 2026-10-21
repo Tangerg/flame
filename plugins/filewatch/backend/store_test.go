@@ -10,25 +10,25 @@ import (
 	"time"
 
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/plugins/filewatch/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/google/uuid"
 )
 
-func fixtureDraft() domain.Draft {
-	return domain.Draft{Title: "Original trigger", Workspace: "/workspace", Paths: []string{"input.txt"}, Instructions: "Original instructions.", Provider: "openai", Model: "private-model"}
+func fixtureDraft() filewatch.Draft {
+	return filewatch.Draft{Title: "Original trigger", Workspace: "/workspace", Paths: []string{"input.txt"}, Instructions: "Original instructions.", Provider: "openai", Model: "private-model"}
 }
 
-func configureFixture(t *testing.T, s *store, revision int64, draft *domain.Draft) domain.Snapshot {
+func configureFixture(t *testing.T, s *store, revision int64, draft *filewatch.Draft) filewatch.Snapshot {
 	t.Helper()
 	input := rpc.ConfigureInput{ExpectedRevision: revision, Trigger: draft}
 	admitted, err := jsoninput.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	value, err := pluginstorage.Command(t.Context(), s.db, "configure", uuid.NewString(), input, admitted, classify, func(ctx context.Context, input rpc.ConfigureInput) (domain.Snapshot, error) {
+	value, err := pluginstorage.Command(t.Context(), s.db, "configure", uuid.NewString(), input, admitted, classify, func(ctx context.Context, input rpc.ConfigureInput) (filewatch.Snapshot, error) {
 		return s.configure(ctx, input.ExpectedRevision, input.Trigger)
 	})
 	if err != nil {
@@ -37,9 +37,9 @@ func configureFixture(t *testing.T, s *store, revision int64, draft *domain.Draf
 	return value
 }
 
-func captureFixture(t *testing.T, sequence uint64, generation string) domain.Observation {
+func captureFixture(t *testing.T, sequence uint64, generation string) filewatch.Observation {
 	t.Helper()
-	value, err := domain.NewObservation(domain.Capture{Generation: generation, Sequence: sequence, Revision: 2, Kind: domain.Changed, Paths: []string{"input.txt"}, ObservedAt: time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC), Trigger: fixtureDraft(), SessionID: "ses_" + uuid.NewString(), RunID: "run_" + uuid.NewString(), Invocation: capability.Invocation{ID: uuid.NewString(), Origin: capability.Automatic, Target: capability.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}})
+	value, err := filewatch.NewObservation(filewatch.Capture{Generation: generation, Sequence: sequence, Revision: 2, Kind: filewatch.Changed, Paths: []string{"input.txt"}, ObservedAt: time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC), Trigger: fixtureDraft(), SessionID: "ses_" + uuid.NewString(), RunID: "run_" + uuid.NewString(), Invocation: capability.Invocation{ID: uuid.NewString(), Origin: capability.Automatic, Target: capability.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,8 +94,8 @@ func TestCaptureSurvivesDefinitionChangesAndReceiptReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invoke := func() (domain.Snapshot, error) {
-		return pluginstorage.Command(t.Context(), s.db, "configure", "original-command", input, admitted, classify, func(ctx context.Context, input rpc.ConfigureInput) (domain.Snapshot, error) {
+	invoke := func() (filewatch.Snapshot, error) {
+		return pluginstorage.Command(t.Context(), s.db, "configure", "original-command", input, admitted, classify, func(ctx context.Context, input rpc.ConfigureInput) (filewatch.Snapshot, error) {
 			return s.configure(ctx, input.ExpectedRevision, input.Trigger)
 		})
 	}
@@ -124,7 +124,7 @@ func TestPendingCapacityNeverEvictsUnconfirmedIntents(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := s.capture(t.Context(), captureFixture(t, maxPending+1, generation)); !errors.Is(err, domain.ErrCapacity) {
+	if err := s.capture(t.Context(), captureFixture(t, maxPending+1, generation)); !errors.Is(err, filewatch.ErrCapacity) {
 		t.Fatalf("pending overflow was not explicit: %v", err)
 	}
 	pending, err := s.pending(t.Context())

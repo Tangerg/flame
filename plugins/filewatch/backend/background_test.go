@@ -12,7 +12,7 @@ import (
 	"time"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -27,11 +27,11 @@ type fixtureHost struct {
 	mu                 sync.Mutex
 	admitErr, watchErr error
 	watches            chan watchedFixture
-	attempts           chan domain.Capture
+	attempts           chan filewatch.Capture
 	joined             atomic.Int32
 }
 
-func (h *fixtureHost) Watch(ctx context.Context, generation string, _ domain.Trigger) (iter.Seq2[protocol.RuntimeEvent, error], error) {
+func (h *fixtureHost) Watch(ctx context.Context, generation string, _ filewatch.Trigger) (iter.Seq2[protocol.RuntimeEvent, error], error) {
 	h.mu.Lock()
 	err := h.watchErr
 	h.mu.Unlock()
@@ -55,7 +55,7 @@ func (h *fixtureHost) Watch(ctx context.Context, generation string, _ domain.Tri
 	}, nil
 }
 
-func (h *fixtureHost) Admit(ctx context.Context, _ string, observation domain.Observation) error {
+func (h *fixtureHost) Admit(ctx context.Context, _ string, observation filewatch.Observation) error {
 	capture := observation.Capture()
 	invocation, err := pluginsdk.InvocationFromContext(ctx)
 	if err != nil || invocation != capture.Invocation {
@@ -102,7 +102,7 @@ func TestBackgroundRetainsOriginalIntentAcrossLostReplyDisableAndRestart(t *test
 	}
 	draft := fixtureDraft()
 	configureFixture(t, s, 1, &draft)
-	host := &fixtureHost{store: s, admitErr: errors.New("fixture: acknowledgement lost"), watches: make(chan watchedFixture, 4), attempts: make(chan domain.Capture, 8)}
+	host := &fixtureHost{store: s, admitErr: errors.New("fixture: acknowledgement lost"), watches: make(chan watchedFixture, 4), attempts: make(chan filewatch.Capture, 8)}
 	target := capability.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}
 	worker := newBackground(t.Context(), s, host, "original-runtime", target, "filewatch-operations", func() error { return nil })
 	select {
@@ -165,7 +165,7 @@ func TestBackgroundRetainsOriginalIntentAcrossLostReplyDisableAndRestart(t *test
 		case <-time.After(10 * time.Millisecond):
 		}
 	}
-	if worker.snapshot().Phase != domain.Disabled {
+	if worker.snapshot().Phase != filewatch.Disabled {
 		t.Fatal("disabled trigger resumed filesystem observation")
 	}
 }
@@ -178,7 +178,7 @@ func TestSourceFailureRequiresRearmAndNeverBecomesANoopWatch(t *testing.T) {
 	defer s.db.Close()
 	draft := fixtureDraft()
 	configureFixture(t, s, 1, &draft)
-	host := &fixtureHost{store: s, watchErr: errors.New("fixture: source unavailable"), watches: make(chan watchedFixture, 4), attempts: make(chan domain.Capture, 4)}
+	host := &fixtureHost{store: s, watchErr: errors.New("fixture: source unavailable"), watches: make(chan watchedFixture, 4), attempts: make(chan filewatch.Capture, 4)}
 	worker := newBackground(t.Context(), s, host, "runtime", capability.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}, "filewatch-operations", func() error { return nil })
 	if err := worker.Start(); err != nil {
 		t.Fatal(err)
@@ -190,7 +190,7 @@ func TestSourceFailureRequiresRearmAndNeverBecomesANoopWatch(t *testing.T) {
 		t.Fatal("failed source was blindly retried")
 	case <-time.After(1200 * time.Millisecond):
 	}
-	if status := worker.snapshot(); status.Phase != domain.Failed || status.Error == "" {
+	if status := worker.snapshot(); status.Phase != filewatch.Failed || status.Error == "" {
 		t.Fatalf("source failure became active success: %+v", status)
 	}
 	configureFixture(t, s, 2, &draft)
@@ -199,7 +199,7 @@ func TestSourceFailureRequiresRearmAndNeverBecomesANoopWatch(t *testing.T) {
 
 func TestResyncAndGapsCaptureUncertaintyInsteadOfInventingFileWrites(t *testing.T) {
 	draft := fixtureDraft()
-	configuration, err := domain.Initial().Replace(1, &draft)
+	configuration, err := filewatch.Initial().Replace(1, &draft)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestResyncAndGapsCaptureUncertaintyInsteadOfInventingFileWrites(t *testing.
 			event.WatchID = "unrelated"
 		}
 		observation, relevant, err := worker.captureNotice(configuration, generation, event, gap)
-		if err != nil || !relevant || observation.Capture().Kind != domain.Resync || !reflect.DeepEqual(observation.Capture().Paths, draft.Paths) {
+		if err != nil || !relevant || observation.Capture().Kind != filewatch.Resync || !reflect.DeepEqual(observation.Capture().Paths, draft.Paths) {
 			t.Fatalf("coverage uncertainty became a concrete write: %+v %v", observation, err)
 		}
 	}

@@ -9,7 +9,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
+	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/backend/rpc"
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -44,7 +44,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := rpc.ImportInput{Content: domain.Content{ID: "guide", Title: "Guide", Source: "docs/guide.md", Text: "A source-owned document."}}
+	input := rpc.ImportInput{Content: knowledge.Content{ID: "guide", Title: "Guide", Source: "docs/guide.md", Text: "A source-owned document."}}
 	admitted, err := jsoninput.Encode(input)
 	if err != nil {
 		t.Fatal(err)
@@ -77,7 +77,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changed, changedJSON); !errors.Is(err, idempotency.ErrKeyConflict) {
 		t.Fatalf("changed intent = %v", err)
 	}
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", input, admitted); !errors.Is(err, domain.ErrRevisionConflict) {
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", input, admitted); !errors.Is(err, knowledge.ErrRevisionConflict) {
 		t.Fatalf("stale import = %v", err)
 	}
 	staleCalls := calls.Load()

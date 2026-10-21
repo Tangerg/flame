@@ -7,7 +7,7 @@ import (
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/guardrails/backend/domain"
+	guardrail "github.com/Tangerg/flame/plugins/guardrails/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
 )
@@ -19,18 +19,18 @@ type ReplaceInput struct {
 
 type Contracts struct {
 	Capability *capability.Contract
-	Get        *pluginsdk.Method[struct{}, domain.Summary]
-	Replace    *pluginsdk.Method[ReplaceInput, domain.Summary]
+	Get        *pluginsdk.Method[struct{}, guardrail.Summary]
+	Replace    *pluginsdk.Method[ReplaceInput, guardrail.Summary]
 }
 
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Get, err = pluginsdk.NewMethod[struct{}, domain.Summary](pluginsdk.MethodConfig{Name: "flame.guardrails/get-policy.v1", Kind: capability.Query, Target: "installation", Description: "Inspect the private policy revision and protected phrase count without returning protected values."})
+	c.Get, err = pluginsdk.NewMethod[struct{}, guardrail.Summary](pluginsdk.MethodConfig{Name: "flame.guardrails/get-policy.v1", Kind: capability.Query, Target: "installation", Description: "Inspect the private policy revision and protected phrase count without returning protected values."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Replace, err = pluginsdk.NewMethod[ReplaceInput, domain.Summary](pluginsdk.MethodConfig{Name: "flame.guardrails/replace-policy.v1", Kind: capability.Mutation, Target: "installation", Description: "Replace exact, case-sensitive protected phrases at the inspected revision. Matching model-visible string fields refuse provider dispatch."})
+	c.Replace, err = pluginsdk.NewMethod[ReplaceInput, guardrail.Summary](pluginsdk.MethodConfig{Name: "flame.guardrails/replace-policy.v1", Kind: capability.Mutation, Target: "installation", Description: "Replace exact, case-sensitive protected phrases at the inspected revision. Matching model-visible string fields refuse provider dispatch."})
 	if err != nil {
 		return Contracts{}, err
 	}
@@ -40,13 +40,13 @@ func NewContracts() (Contracts, error) {
 
 func Classify(err error) string {
 	switch {
-	case errors.Is(err, domain.ErrInvalidPolicy):
+	case errors.Is(err, guardrail.ErrInvalidPolicy):
 		return "invalid_policy"
-	case errors.Is(err, domain.ErrRevisionConflict):
+	case errors.Is(err, guardrail.ErrRevisionConflict):
 		return "revision_conflict"
-	case errors.Is(err, domain.ErrRevisionLimit):
+	case errors.Is(err, guardrail.ErrRevisionLimit):
 		return "revision_limit"
-	case errors.Is(err, domain.ErrProtectedContent):
+	case errors.Is(err, guardrail.ErrProtectedContent):
 		return "protected_content"
 	case errors.Is(err, idempotency.ErrKeyConflict):
 		return "command_conflict"

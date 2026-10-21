@@ -1,4 +1,4 @@
-package domain
+package filewatch
 
 import (
 	json "encoding/json/v2"

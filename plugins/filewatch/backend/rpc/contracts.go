@@ -6,14 +6,14 @@ import (
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
 )
 
 type ConfigureInput struct {
-	ExpectedRevision int64         `json:"expectedRevision" jsonschema:"minimum=1"`
-	Trigger          *domain.Draft `json:"trigger,omitzero"`
+	ExpectedRevision int64            `json:"expectedRevision" jsonschema:"minimum=1"`
+	Trigger          *filewatch.Draft `json:"trigger,omitzero"`
 }
 
 type EventInput struct {
@@ -22,33 +22,33 @@ type EventInput struct {
 
 type Contracts struct {
 	Capability *capability.Contract
-	Get        *pluginsdk.Method[struct{}, domain.Snapshot]
-	Configure  *pluginsdk.Method[ConfigureInput, domain.Snapshot]
-	Status     *pluginsdk.Method[struct{}, domain.Status]
-	Events     *pluginsdk.Method[struct{}, []domain.Header]
-	Event      *pluginsdk.Method[EventInput, domain.Event]
+	Get        *pluginsdk.Method[struct{}, filewatch.Snapshot]
+	Configure  *pluginsdk.Method[ConfigureInput, filewatch.Snapshot]
+	Status     *pluginsdk.Method[struct{}, filewatch.Status]
+	Events     *pluginsdk.Method[struct{}, []filewatch.Header]
+	Event      *pluginsdk.Method[EventInput, filewatch.Event]
 }
 
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Get, err = pluginsdk.NewMethod[struct{}, domain.Snapshot](pluginsdk.MethodConfig{Name: "flame.filewatch/get.v1", Kind: capability.Query, Target: "installation", Description: "Read this installation's single persistent file trigger and configuration revision."})
+	c.Get, err = pluginsdk.NewMethod[struct{}, filewatch.Snapshot](pluginsdk.MethodConfig{Name: "flame.filewatch/get.v1", Kind: capability.Query, Target: "installation", Description: "Read this installation's single persistent file trigger and configuration revision."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Configure, err = pluginsdk.NewMethod[ConfigureInput, domain.Snapshot](pluginsdk.MethodConfig{Name: "flame.filewatch/configure.v1", Kind: capability.Mutation, Target: "installation", Description: "Replace or rearm the trigger at its current revision; omitting trigger disables observation. Configuration acceptance does not claim a live watch. Captured work remains immutable."})
+	c.Configure, err = pluginsdk.NewMethod[ConfigureInput, filewatch.Snapshot](pluginsdk.MethodConfig{Name: "flame.filewatch/configure.v1", Kind: capability.Mutation, Target: "installation", Description: "Replace or rearm the trigger at its current revision; omitting trigger disables observation. Configuration acceptance does not claim a live watch. Captured work remains immutable."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Status, err = pluginsdk.NewMethod[struct{}, domain.Status](pluginsdk.MethodConfig{Name: "flame.filewatch/status.v1", Kind: capability.Query, Target: "installation", Description: "Inspect the actual background observation revision and failures. A failed watch requires explicit configuration rearm; accepted dispatch intents continue reconciliation."})
+	c.Status, err = pluginsdk.NewMethod[struct{}, filewatch.Status](pluginsdk.MethodConfig{Name: "flame.filewatch/status.v1", Kind: capability.Query, Target: "installation", Description: "Inspect the actual background observation revision and failures. A failed watch requires explicit configuration rearm; accepted dispatch intents continue reconciliation."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Events, err = pluginsdk.NewMethod[struct{}, []domain.Header](pluginsdk.MethodConfig{Name: "flame.filewatch/events.v1", Kind: capability.Query, Target: "installation", Description: "Read at most 256 retained observation headers, newest first. Accepted means core confirmed the captured Run opening, not that execution completed. Pending intents are never pruned."})
+	c.Events, err = pluginsdk.NewMethod[struct{}, []filewatch.Header](pluginsdk.MethodConfig{Name: "flame.filewatch/events.v1", Kind: capability.Query, Target: "installation", Description: "Read at most 256 retained observation headers, newest first. Accepted means core confirmed the captured Run opening, not that execution completed. Pending intents are never pruned."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Event, err = pluginsdk.NewMethod[EventInput, domain.Event](pluginsdk.MethodConfig{Name: "flame.filewatch/event.v1", Kind: capability.Query, Target: "installation", Description: "Read one retained observation and its complete original dispatch capture."})
+	c.Event, err = pluginsdk.NewMethod[EventInput, filewatch.Event](pluginsdk.MethodConfig{Name: "flame.filewatch/event.v1", Kind: capability.Query, Target: "installation", Description: "Read one retained observation and its complete original dispatch capture."})
 	if err != nil {
 		return Contracts{}, err
 	}
@@ -58,11 +58,11 @@ func NewContracts() (Contracts, error) {
 
 func Classify(err error) string {
 	switch {
-	case errors.Is(err, domain.ErrInvalid):
+	case errors.Is(err, filewatch.ErrInvalid):
 		return "invalid_trigger"
-	case errors.Is(err, domain.ErrRevision):
+	case errors.Is(err, filewatch.ErrRevision):
 		return "revision_conflict"
-	case errors.Is(err, domain.ErrNotFound):
+	case errors.Is(err, filewatch.ErrNotFound):
 		return "observation_not_found"
 	case errors.Is(err, idempotency.ErrKeyConflict):
 		return "command_conflict"

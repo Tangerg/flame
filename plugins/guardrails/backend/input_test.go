@@ -6,13 +6,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/plugins/guardrails/backend/domain"
+	guardrail "github.com/Tangerg/flame/plugins/guardrails/backend/domain"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestInspectionCoversComposedTextToolContractsAndOptionsWithJSONEscaping(t *testing.T) {
 	phrase := "patient@example.test"
-	policy, err := domain.NewPolicy().Replace(1, []string{phrase, "private-\"quoted\""})
+	policy, err := guardrail.NewPolicy().Replace(1, []string{phrase, "private-\"quoted\""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestInspectionCoversComposedTextToolContractsAndOptionsWithJSONEscaping(t *
 			if err := request.Validate(); err != nil {
 				t.Fatal(err)
 			}
-			if err := inspectRequest(t.Context(), policy, request); !errors.Is(err, domain.ErrProtectedContent) {
+			if err := inspectRequest(t.Context(), policy, request); !errors.Is(err, guardrail.ErrProtectedContent) {
 				t.Fatalf("protected field passed: %v", err)
 			}
 		})

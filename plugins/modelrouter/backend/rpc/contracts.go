@@ -7,30 +7,30 @@ import (
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
+	routing "github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
 )
 
 type ReplaceInput struct {
-	ExpectedRevision int64         `json:"expectedRevision" jsonschema:"minimum=1"`
-	Rules            []domain.Rule `json:"rules" jsonschema:"maxItems=3"`
+	ExpectedRevision int64          `json:"expectedRevision" jsonschema:"minimum=1"`
+	Rules            []routing.Rule `json:"rules" jsonschema:"maxItems=3"`
 }
 
 type Contracts struct {
 	Capability *capability.Contract
-	Get        *pluginsdk.Method[struct{}, domain.Snapshot]
-	Replace    *pluginsdk.Method[ReplaceInput, domain.Snapshot]
+	Get        *pluginsdk.Method[struct{}, routing.Snapshot]
+	Replace    *pluginsdk.Method[ReplaceInput, routing.Snapshot]
 }
 
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Get, err = pluginsdk.NewMethod[struct{}, domain.Snapshot](pluginsdk.MethodConfig{Name: "flame.model-router/get-policy.v1", Kind: capability.Query, Target: "installation", Description: "Inspect the private routing policy and revision before editing."})
+	c.Get, err = pluginsdk.NewMethod[struct{}, routing.Snapshot](pluginsdk.MethodConfig{Name: "flame.model-router/get-policy.v1", Kind: capability.Query, Target: "installation", Description: "Inspect the private routing policy and revision before editing."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Replace, err = pluginsdk.NewMethod[ReplaceInput, domain.Snapshot](pluginsdk.MethodConfig{Name: "flame.model-router/replace-policy.v1", Kind: capability.Mutation, Target: "installation", Description: "Replace the routing policy at the inspected revision. Each use has at most one exact target and an optional caller-envelope ceiling."})
+	c.Replace, err = pluginsdk.NewMethod[ReplaceInput, routing.Snapshot](pluginsdk.MethodConfig{Name: "flame.model-router/replace-policy.v1", Kind: capability.Mutation, Target: "installation", Description: "Replace the routing policy at the inspected revision. Each use has at most one exact target and an optional caller-envelope ceiling."})
 	if err != nil {
 		return Contracts{}, err
 	}
@@ -40,11 +40,11 @@ func NewContracts() (Contracts, error) {
 
 func Classify(err error) string {
 	switch {
-	case errors.Is(err, domain.ErrInvalidPolicy):
+	case errors.Is(err, routing.ErrInvalidPolicy):
 		return "invalid_policy"
-	case errors.Is(err, domain.ErrRevisionConflict):
+	case errors.Is(err, routing.ErrRevisionConflict):
 		return "revision_conflict"
-	case errors.Is(err, domain.ErrRevisionLimit):
+	case errors.Is(err, routing.ErrRevisionLimit):
 		return "revision_limit"
 	case errors.Is(err, idempotency.ErrKeyConflict):
 		return "command_conflict"
