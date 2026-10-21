@@ -132,16 +132,7 @@ const qc = stylex.create({
     color: color.fgMuted,
   },
   freeField: { height: space.s5, padding: 0, lineHeight: leading.body },
-  footer: {
-    display: "flex",
-    flexShrink: 0,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: space.s2,
-    paddingInline: space.s4,
-    paddingTop: space.s2,
-    paddingBottom: space.s3,
-  },
+  footerShrink: { flexShrink: 0 },
 });
 
 interface Props {
@@ -479,7 +470,7 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
           )}
         </div>
       </div>
-      <div {...stylex.props(qc.footer)}>
+      <div {...stylex.props(ms.cardActions, qc.footerShrink)}>
         <Button
           variant={actionSkips ? "outline" : "primary"}
           size="sm"
