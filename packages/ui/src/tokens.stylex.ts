@@ -111,7 +111,6 @@ export const space = stylex.defineVars({
   s8: "calc(var(--spacing) * 8)",
   s9: "calc(var(--spacing) * 9)",
   s10: "calc(var(--spacing) * 10)",
-  s11: "calc(var(--spacing) * 11)",
   s12: "calc(var(--spacing) * 12)",
   s14: "calc(var(--spacing) * 14)",
   s16: "calc(var(--spacing) * 16)",
@@ -140,7 +139,7 @@ export const corner = stylex.create({
 export const type = stylex.create({
   ui2xs: {
     fontSize: "var(--fs-ui-2xs)",
-    letterSpacing: "var(--text-ui-2xs--letter-spacing)",
+    letterSpacing: "var(--tracking-ui)",
   },
   uiXs: { fontSize: "var(--fs-ui-xs)", letterSpacing: "var(--tracking-ui)" },
   uiSm: { fontSize: "var(--fs-ui-sm)", letterSpacing: "var(--tracking-ui)" },
@@ -162,7 +161,7 @@ export const type = stylex.create({
   },
   code: {
     fontSize: "var(--fs-code)",
-    letterSpacing: "var(--text-code--letter-spacing)",
+    letterSpacing: "var(--tracking-ui)",
   },
   prose: { fontSize: "var(--fs-prose)", letterSpacing: "var(--tracking-ui)" },
 });
