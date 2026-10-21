@@ -1,5 +1,8 @@
 import { useShellLayoutStore } from "@/features/workspace/adapters/shellLayoutStore";
-import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/application/navigation";
+import {
+  resolveInspectionReturnDock,
+  WORKSPACE_DOCK_CATALOG,
+} from "@/features/workspace/application/navigation";
 import {
   activateContextDockStorage,
   useContextDockStore,
@@ -68,13 +71,7 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
       const state = useContextDockStore.getState();
       if (state.inspection !== inspection) return false;
       useContextDockStore.setState({ inspection: inspection.previous });
-      const returnDockId =
-        !inspection.returnViewId &&
-        inspection.returnDockId &&
-        (inspection.returnDockId === WORKSPACE_DOCK_CATALOG ||
-          state.dockViewIds.includes(inspection.returnDockId))
-          ? inspection.returnDockId
-          : null;
+      const returnDockId = resolveInspectionReturnDock(inspection, state.dockViewIds);
       if (inspection.returnViewId === "file" || inspection.returnDockId === "file") {
         state.setFileViewer(inspection.returnFileViewer);
       }

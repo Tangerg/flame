@@ -2,10 +2,10 @@ import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { isImeKey } from "@flame/ui";
 import { focusComposer as focusComposerTarget } from "@/features/composer/public/focus";
 import {
+  resolveInspectionReturnDock,
   returnFromWorkspaceInspection,
   selectWorkspaceChat,
   useWorkspaceSubagentRunId,
-  WORKSPACE_DOCK_CATALOG,
 } from "@/features/workspace/public/navigation";
 import { type WorkspaceInspection } from "@/features/workspace/public/navigation";
 interface ReturnFocus {
@@ -112,13 +112,7 @@ export function useInspectionFocus({
       returningRef.current = null;
       return;
     }
-    const returnDockId =
-      !request.returnViewId &&
-      request.returnDockId &&
-      (request.returnDockId === WORKSPACE_DOCK_CATALOG ||
-        dockViewIds.includes(request.returnDockId))
-        ? request.returnDockId
-        : null;
+    const returnDockId = resolveInspectionReturnDock(request, dockViewIds);
     const presentedViewId = fullPaneViewId ?? (dockVisible ? dockViewId : null);
     if (
       request.returnViewId

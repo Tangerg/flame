@@ -17,6 +17,18 @@ export const WORKSPACE_DOCK_CATALOG = "catalog";
 
 export const WORKSPACE_SETTINGS_VIEW = "settings";
 
+export function resolveInspectionReturnDock(
+  inspection: Pick<WorkspaceInspection, "returnViewId" | "returnDockId">,
+  dockViewIds: readonly string[],
+): string | null {
+  return !inspection.returnViewId &&
+    inspection.returnDockId &&
+    (inspection.returnDockId === WORKSPACE_DOCK_CATALOG ||
+      dockViewIds.includes(inspection.returnDockId))
+    ? inspection.returnDockId
+    : null;
+}
+
 export function useActiveWorkspaceViewId(): string | null {
   return workspaceNavigation().useActiveViewId();
 }
