@@ -69,6 +69,36 @@ export async function buildShared(repository = root) {
     if (p.name === "@flame/icons" || p.name === "@flame/ui")
       run("npm", ["run", "build"], p.directory);
 }
+async function declarationFiles(directory) {
+  const found = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (entry.name === "node_modules") continue;
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) found.push(...(await declarationFiles(path)));
+    else if (entry.name === "declaration.json") found.push(path);
+  }
+  return found;
+}
+
+// The backend protocol version has one owner, capability.Protocol. Stamp it
+// into every first-party package declaration so a bump needs no hand-edited
+// manifest; checkGenerated then enforces the projection stays current.
+async function stampDeclarations(repository) {
+  const method = await readFile(
+    join(repository, "runtime/capability/method.go"),
+    "utf8",
+  );
+  const owner = method.match(/\bconst Protocol = "([^"]+)"/);
+  if (!owner) throw new Error("capability.Protocol not found in method.go");
+  const protocol = JSON.stringify(owner[1]);
+  for (const base of ["plugins", "examples/plugins"])
+    for (const file of await declarationFiles(join(repository, base))) {
+      const text = await readFile(file, "utf8");
+      const stamped = text.replace(/("protocol":\s*)"[^"]*"/, `$1${protocol}`);
+      if (stamped !== text) await writeFile(file, stamped);
+    }
+}
+
 export async function generate(repository = root) {
   await buildShared(repository);
   run("go", ["generate", "./plugins/..."], repository);
@@ -100,6 +130,7 @@ export async function generate(repository = root) {
   }
   for (const p of ordered(await workspaces(repository)))
     if (p.scripts?.generate) run("npm", ["run", "generate"], p.directory);
+  await stampDeclarations(repository);
 }
 export async function moduleArtifacts({
   repository = root,
