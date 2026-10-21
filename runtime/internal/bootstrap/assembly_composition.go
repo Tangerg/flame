@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"

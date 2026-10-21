@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"

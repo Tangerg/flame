@@ -16,7 +16,7 @@ import (
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"

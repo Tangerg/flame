@@ -10,7 +10,7 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"

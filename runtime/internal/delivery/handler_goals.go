@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	modelchoice "github.com/Tangerg/flame/runtime/model"

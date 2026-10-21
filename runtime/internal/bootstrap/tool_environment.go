@@ -22,7 +22,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )

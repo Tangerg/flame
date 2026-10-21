@@ -12,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	appownership "github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/flame/runtime/storage/advisorylock"

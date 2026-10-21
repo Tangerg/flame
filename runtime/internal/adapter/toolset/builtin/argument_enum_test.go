@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/goals"
 )
 
 // TestArgumentEnumsMatchTheirVocabulary compares the two spellings of a closed
