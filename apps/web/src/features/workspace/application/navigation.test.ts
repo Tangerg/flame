@@ -20,6 +20,7 @@ import {
   collapseWorkspaceDock,
   openWorkspaceView,
   openWorkspaceViewInDock,
+  selectWorkspaceChat,
   selectWorkspaceDockView,
   showWorkspaceDock,
   toggleWorkspaceDock,
@@ -82,6 +83,29 @@ describe("workspace navigation port", () => {
     expect(useContextDockStore.getState().dockViewIds).toEqual(["skills"]);
   });
 
+  it("preserves the existing Dock when selecting the conversation by default", () => {
+    openWorkspaceViewInDock("skills");
+    openWorkspaceView("settings");
+
+    selectWorkspaceChat();
+
+    expect(navigator().get()).toMatchObject({ view: null, dock: "skills" });
+    expect(useContextDockStore.getState().dockViewIds).toEqual(["skills"]);
+  });
+
+  it("reveals the conversation alone in one history step while retaining its Dock tabs", () => {
+    openWorkspaceViewInDock("skills");
+    openWorkspaceView("settings");
+    const previous = navigator().get();
+
+    selectWorkspaceChat("hide-dock");
+
+    expect(navigator().get()).toMatchObject({ view: null, dock: null });
+    expect(useContextDockStore.getState().dockViewIds).toEqual(["skills"]);
+    navigator().back();
+    expect(navigator().get()).toEqual(previous);
+  });
+
   it("collapse and show are a lossless round trip", () => {
     openWorkspaceViewInDock("diff");
     collapseWorkspaceDock();
@@ -91,6 +115,39 @@ describe("workspace navigation port", () => {
       dockViewIds: ["diff"],
       lastViewId: "diff",
     });
+  });
+
+  it("opens the remembered Dock material full width after collapse", () => {
+    openWorkspaceViewInDock("skills");
+    openWorkspaceViewInDock("diff");
+    collapseWorkspaceDock();
+
+    showWorkspaceDock("main");
+
+    expect(navigator().get()).toMatchObject({ view: "diff", dock: null });
+    expect(useContextDockStore.getState().dockViewIds).toEqual(["skills", "diff"]);
+  });
+
+  it("keeps the actively selected catalog when opening it full width", () => {
+    openWorkspaceViewInDock("skills");
+    openWorkspaceViewInDock(WORKSPACE_DOCK_CATALOG);
+
+    showWorkspaceDock("main");
+
+    expect(navigator().get()).toMatchObject({
+      view: WORKSPACE_DOCK_CATALOG,
+      dock: WORKSPACE_DOCK_CATALOG,
+    });
+    expect(useContextDockStore.getState().dockViewIds).toEqual(["skills"]);
+  });
+
+  it("offers the catalog when an empty collapsed Dock opens full width", () => {
+    collapseWorkspaceDock();
+
+    showWorkspaceDock("main");
+
+    expect(navigator().get()).toMatchObject({ view: WORKSPACE_DOCK_CATALOG, dock: null });
+    expect(useContextDockStore.getState().dockViewIds).toEqual([]);
   });
 
   it("showing an empty dock offers the catalogue rather than choosing a panel", () => {

@@ -5,9 +5,12 @@ import {
   useContextDockStore,
 } from "@/features/workspace/adapters/contextDockStore";
 import { navigator } from "@/lib/navigation";
-import { configureWorkspaceNavigationPort } from "@/features/workspace/application/ports/navigationState";
-function selectChat(): void {
-  navigator().go({ view: null });
+import {
+  configureWorkspaceNavigationPort,
+  type WorkspaceChatPresentation,
+} from "@/features/workspace/application/ports/navigationState";
+function selectChat(presentation: WorkspaceChatPresentation = "preserve-dock"): void {
+  navigator().go(presentation === "hide-dock" ? { view: null, dock: null } : { view: null });
 }
 
 function dockSnapshot() {
@@ -149,9 +152,12 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
     },
     reorderDockView: (id, toIndex) => useContextDockStore.getState().reorderDockTab(id, toIndex),
     collapseDock: () => navigator().go({ dock: null }),
-    showDock: (defaultViewId) => {
-      const target = useContextDockStore.getState().dockTabToShow(defaultViewId);
-      showDockView(target, "alone");
+    showDock: (defaultViewId, presentation = "dock") => {
+      const target =
+        (presentation === "main" ? navigator().get().dock : null) ??
+        useContextDockStore.getState().dockTabToShow(defaultViewId);
+      if (presentation === "main") navigator().go({ view: target });
+      else showDockView(target, "alone");
     },
     closeView: (id) => {
       if (navigator().get().view === id) selectChat();

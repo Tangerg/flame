@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_ACCENT } from "@/features/theme/kit/appearance";
 import { DEFAULT_ACCENTS } from "@/features/theme/defaultAccents";
 import { defaultMessageRoles } from "@/features/chat/defaultRoles";
-import { defaultStaticCommands } from "@/features/command/defaultCommands";
+import { defaultCommands, defaultStaticCommands } from "@/features/command/defaultCommands";
+import { COMMAND } from "@/features/command/public/extensionPoints";
+import { lookupExtensionPoint } from "@/extensions/selectors/extensions";
+import { workbenchChat } from "@/features/shell/workbench/index";
+import { loadPluginsForTest } from "@/test/kernel";
 describe("DEFAULT_ACCENTS", () => {
   it("keeps accent ids stable and ordered for the appearance picker", () => {
     expect(DEFAULT_ACCENTS.map((accent) => accent.id)).toEqual([
@@ -61,7 +65,6 @@ describe("defaultStaticCommands", () => {
       toggleTheme: run,
       newChat: run,
       closeFocused: run,
-      focusComposer: run,
       historyBack: run,
       historyForward: run,
       previousSession: run,
@@ -74,7 +77,6 @@ describe("defaultStaticCommands", () => {
       "settings.toggle-theme",
       "chat.new",
       "workspace.close-focused",
-      "composer.focus",
       "history.back",
       "history.forward",
       "session.previous",
@@ -86,7 +88,6 @@ describe("defaultStaticCommands", () => {
       "Mod+Shift+L",
       "Mod+N",
       "Mod+W",
-      "Mod+L",
       "Mod+[",
       "Mod+]",
       "Mod+Shift+[",
@@ -98,11 +99,20 @@ describe("defaultStaticCommands", () => {
       "command.toggleTheme",
       "command.newChat",
       "command.closeFocused",
-      "command.focusComposer",
       "command.historyBack",
       "command.historyForward",
       "command.previousSession",
       "command.nextSession",
     ]);
+  });
+
+  it("leaves the global Composer focus command to the installed workbench conversation", async () => {
+    await loadPluginsForTest(defaultCommands, workbenchChat);
+
+    expect(
+      lookupExtensionPoint(COMMAND)
+        .filter((command) => command.id === "composer.focus")
+        .map(({ id, label, combo }) => ({ id, label, combo })),
+    ).toEqual([{ id: "composer.focus", label: "command.focusComposer", combo: "Mod+L" }]);
   });
 });
