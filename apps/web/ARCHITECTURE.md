@@ -16,6 +16,7 @@ current ownership and dependency structure.
 | Location                                    | Responsibility                                                                                                                            |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/main.tsx`, `src/App.tsx`               | Construct the client environment, mount React, and supply the selected plugins                                                            |
+| `src/router.tsx`, `src/pages/`              | TanStack route wiring and the page shells it mounts                                                                                       |
 | `src/app/`                                  | Composition, product plugin selection, renderer startup and shutdown, protocol client identity                                            |
 | `src/platform/`                             | Browser/Wails bootstrap and actual native capabilities                                                                                    |
 | `src/extensions/host/`                      | React integration with the plugin Host, installation readiness, disposal, slots, shortcuts, error boundaries                              |

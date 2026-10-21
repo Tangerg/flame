@@ -21,6 +21,7 @@ Flame is an agent product with a Go Runtime, a terminal CLI, and one React appli
 | `plugins/`                            | First-party backend/component/package sources and plugin build tools      |
 | `examples/plugins/`                   | Independent authoring and component-composition consumers                 |
 | `assets/brand/`                       | Original brand artwork and guide                                          |
+| `design/branding/`                    | Brand mark exploration history; shipped artwork lives in `assets/brand/`  |
 | `tooling/`, `tests/integration/`      | Workspace coordination and public product integration                     |
 
 ## Development
