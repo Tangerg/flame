@@ -1,7 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, leading, radius, space, surface } from "@flame/ui/tokens.stylex";
 export const shellStyles = stylex.create({
-  pane: { display: "flex", minHeight: 0, flex: 1, flexDirection: "column" },
   paneAnchored: {
     position: "relative",
     display: "flex",
@@ -19,7 +18,6 @@ export const shellStyles = stylex.create({
   },
   overlay: { position: "absolute", inset: 0, display: "flex", flexDirection: "column" },
   anchor: { position: "relative", minHeight: 0, flex: 1 },
-  balance: { textWrap: "balance" },
 
   spacer: { minWidth: space.s4, flex: 1 },
   banner: { marginBlock: space.s2_5 },
