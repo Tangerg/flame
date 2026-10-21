@@ -166,11 +166,17 @@ export function useInspectionFocus({
     if (!target) return;
     const doc = target.ownerDocument;
     const active = doc.activeElement;
-    // Full-pane presentation hides other owned content before WebKit settles focus.
+    // A presentation change hides owned content before WebKit settles focus:
+    // entering a full pane hides the conversation and Dock, and leaving one for
+    // a narrow conversation keeps the retained view inside the hidden Dock.
+    const hiddenPanes =
+      fullPaneViewId !== null
+        ? [conversationRef.current, dockRef.current]
+        : dockVisible
+          ? []
+          : [dockRef.current];
     const hiddenOrigin =
-      fullPaneViewId !== null &&
-      !target.contains(active) &&
-      [conversationRef.current, dockRef.current].some((pane) => pane?.contains(active));
+      !target.contains(active) && hiddenPanes.some((pane) => pane?.contains(active));
     if (
       active === doc.body ||
       (previous.fullPaneViewId === null && active === dockRef.current) ||

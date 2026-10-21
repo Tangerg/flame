@@ -419,6 +419,67 @@ describe("main presentation focus handoff", () => {
     });
   });
 
+  function materialHistory(width: number) {
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(width);
+    openWorkspaceViewInDock("file");
+    openWorkspaceView("file");
+    render(
+      <>
+        <button>Later navigation focus</button>
+        <ChatPanel onSend={() => true} />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    const draft = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
+    act(() => draft.focus());
+    draft.setSelectionRange(4, 4);
+    act(() => navigator().back());
+    const material = screen.getByRole("region", { name: "Files" });
+    expect(document.activeElement).toBe(material);
+    return { draft, material, control: screen.getByRole("button", { name: "File controls" }) };
+  }
+
+  it.each(["region", "child"])(
+    "hands hidden retained material %s focus to the narrow conversation on history forward",
+    (origin) => {
+      const { draft, material, control } = materialHistory(700);
+      if (origin === "child") act(() => control.focus());
+
+      act(() => navigator().forward());
+
+      expect(navigator().get().view).toBeNull();
+      expect(material.isConnected).toBe(true);
+      expect(control.isConnected).toBe(true);
+      expect(document.activeElement).toBe(screen.getByRole("region", { name: "Conversation" }));
+      expect(screen.getByLabelText("Composer draft")).toBe(draft);
+      expect(draft.value).toBe("Keep this draft — 保留");
+      expect(draft.selectionEnd).toBe(4);
+    },
+  );
+
+  it("keeps the same material control focused when history returns it to a visible Dock", () => {
+    const { control } = materialHistory(1200);
+    act(() => control.focus());
+
+    act(() => navigator().forward());
+
+    expect(screen.getByRole("complementary", { name: "Files" }).contains(control)).toBe(true);
+    expect(document.activeElement).toBe(control);
+  });
+
+  it("preserves later outside focus when history hides a narrow material", () => {
+    materialHistory(700);
+    const later = screen.getByRole("button", { name: "Later navigation focus" });
+
+    act(() => {
+      navigator().forward();
+      later.focus();
+    });
+
+    expect(screen.getByRole("region", { name: "Conversation" })).toBeTruthy();
+    expect(document.activeElement).toBe(later);
+  });
+
   it("enters a main view when focus belonged to the conversation it hides", () => {
     render(<ChatPanel onSend={() => true} />);
     const control = screen.getByRole("button", { name: "Other control" });
