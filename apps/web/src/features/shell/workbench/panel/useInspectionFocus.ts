@@ -47,7 +47,11 @@ export function useInspectionFocus({
   const dockRef = useRef<HTMLElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
   const mainViewRef = useRef<HTMLDivElement>(null);
-  const previousPresentation = useRef({ sessionId, fullPaneViewId: null as string | null });
+  const previousPresentation = useRef({
+    sessionId,
+    fullPaneViewId: null as string | null,
+    dockVisible,
+  });
   const composerRequest = useRef<ComposerRequest | null>(null);
   const [composerRender, setComposerRender] = useState<symbol | null>(null);
 
@@ -156,9 +160,11 @@ export function useInspectionFocus({
 
   useLayoutEffect(() => {
     const previous = previousPresentation.current;
-    previousPresentation.current = { sessionId, fullPaneViewId };
+    previousPresentation.current = { sessionId, fullPaneViewId, dockVisible };
     if (
-      (previous.sessionId === sessionId && previous.fullPaneViewId === fullPaneViewId) ||
+      (previous.sessionId === sessionId &&
+        previous.fullPaneViewId === fullPaneViewId &&
+        (dockVisible || !previous.dockVisible)) ||
       returningRef.current
     )
       return;
@@ -168,7 +174,8 @@ export function useInspectionFocus({
     const active = doc.activeElement;
     // A presentation change hides owned content before WebKit settles focus:
     // entering a full pane hides the conversation and Dock, and leaving one for
-    // a narrow conversation keeps the retained view inside the hidden Dock.
+    // a narrow conversation keeps the retained view inside the hidden Dock, and
+    // collapsing the Dock hides it in place. Revealing a Dock hides nothing.
     const hiddenPanes =
       fullPaneViewId !== null
         ? [conversationRef.current, dockRef.current]
