@@ -375,7 +375,7 @@ export function ChatPanel({ onSend, ref }: Props) {
             data-focus-inset=""
             onKeyDown={activeMainView === null || inspectedFullPane ? onMaterialKeyDown : undefined}
           >
-            {!presentedMain && hasDockOwner && (
+            {!presentedMain && dockVisible && (
               <DockHeader
                 tabs={dockTabs}
                 groups={catalog}
