@@ -18,7 +18,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/capture"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 	"github.com/Tangerg/scope/tools/fs"
 )

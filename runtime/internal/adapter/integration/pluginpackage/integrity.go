@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/fileinput"
 )
 
 // maxVerifiedBytes bounds the heap the integrity cache retains; it is the

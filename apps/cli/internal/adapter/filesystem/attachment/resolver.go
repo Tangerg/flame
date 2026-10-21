@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/fuzzy"

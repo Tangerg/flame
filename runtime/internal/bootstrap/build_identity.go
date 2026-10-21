@@ -9,7 +9,7 @@ import (
 	"os"
 
 	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/fileinput"
 )
 
 // ExecutableBuildID returns the content identity of the running executable.

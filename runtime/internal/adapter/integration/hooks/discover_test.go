@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/fileinput"
 )
 
 func writeHooks(t *testing.T, dir, body string) {

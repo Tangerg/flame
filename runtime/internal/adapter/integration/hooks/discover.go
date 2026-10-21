@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/exactjson"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
 

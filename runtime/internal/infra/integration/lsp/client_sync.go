@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/fileinput"
 )
 
 const maxDocumentBytes int64 = 8 << 20

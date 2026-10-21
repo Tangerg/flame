@@ -1,6 +1,12 @@
 // Package fileinput opens verified filesystem inputs without blocking on
-// special nodes. It owns source identity, kind, and file-size admission;
-// callers retain content validation and translation into application errors.
+// special nodes. It is the single public boundary shared by Runtime and the
+// CLI: it owns source identity, kind, and file-size admission, while callers
+// retain content validation and translation into their own error vocabulary.
+//
+// An open admits a path only when the opened descriptor still identifies the
+// exact unchanged file observed before the open (SameVersion, not merely the
+// same inode), so an in-place rewrite between stat and open is rejected here
+// rather than deferred to the post-read VerifyPathVersion guard.
 package fileinput
 
 import (
@@ -15,6 +21,19 @@ var (
 	ErrTooLarge     = errors.New("file input: source exceeds its byte limit")
 	ErrChanged      = errors.New("file input: source changed")
 )
+
+// SizeLimitError carries the observed size and configured bound while
+// retaining ErrTooLarge identity for consumer-specific presentation.
+type SizeLimitError struct {
+	Size  int64
+	Limit int64
+}
+
+func (s SizeLimitError) Error() string {
+	return fmt.Sprintf("file input: source uses %d bytes; limit is %d", s.Size, s.Limit)
+}
+
+func (s SizeLimitError) Unwrap() error { return ErrTooLarge }
 
 // Open returns one read-only file only when the path still names the same
 // bounded regular file observed before opening it. A zero limit is unbounded.
@@ -97,7 +116,7 @@ func openExpected(
 	if err != nil {
 		return nil, nil, err
 	}
-	if !os.SameFile(source, opened) {
+	if !SameVersion(source, opened) {
 		return nil, nil, ErrChanged
 	}
 	if err := validate(opened, maximumBytes); err != nil {
@@ -114,7 +133,7 @@ func validate(info os.FileInfo, maximumBytes int64) error {
 		return fmt.Errorf("%w: mode %s", ErrNotRegular, info.Mode().Type())
 	}
 	if maximumBytes > 0 && info.Size() > maximumBytes {
-		return fmt.Errorf("%w: source uses %d bytes; limit is %d", ErrTooLarge, info.Size(), maximumBytes)
+		return SizeLimitError{Size: info.Size(), Limit: maximumBytes}
 	}
 	return nil
 }

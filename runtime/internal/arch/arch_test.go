@@ -1894,7 +1894,7 @@ func layerOf(rel string) string {
 		return ringProtocol
 	case "internal/contractcatalog":
 		return ringGenerator
-	case "plugin", "plugin/sqlite", "plugin/toolfailure", "storage/sqlite", "storage/advisorylock", "model/catalog", "model/text", "sandbox", "transport/httpredirect", "transport/httpresponse", "storage/directories":
+	case "plugin", "plugin/sqlite", "plugin/toolfailure", "storage/sqlite", "storage/advisorylock", "model/catalog", "model/text", "sandbox", "fileinput", "transport/httpredirect", "transport/httpresponse", "storage/directories":
 		return ringInfra
 	}
 	switch {

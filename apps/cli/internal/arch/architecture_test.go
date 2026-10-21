@@ -124,6 +124,9 @@ func mayImportRuntime(relative, imported string) bool {
 		return true
 	case runtimePath + "/storage/advisorylock":
 		return strings.HasPrefix(relative, "internal/adapter/filesystem/")
+	case runtimePath + "/fileinput":
+		ring := ringOf(relative)
+		return ring == ringAdapter || ring == ringDelivery
 	case localRuntimePath:
 		return ringOf(relative) == ringComposition
 	default:
@@ -156,6 +159,9 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		{consumer: "internal/application/agent/session/create.go", imported: localRuntimePath},
 		{consumer: "internal/delivery/cmd/sessions.go", imported: localRuntimePath},
 		{consumer: "internal/delivery/cmd/sessions.go", imported: runtimePath},
+		{consumer: "internal/adapter/filesystem/attachment/resolver.go", imported: runtimePath + "/fileinput", allowed: true},
+		{consumer: "internal/delivery/terminal/external_editor.go", imported: runtimePath + "/fileinput", allowed: true},
+		{consumer: "internal/domain/conversation/session.go", imported: runtimePath + "/fileinput"},
 	} {
 		if allowed := mayImportRuntime(test.consumer, test.imported); allowed != test.allowed {
 			t.Errorf("%s importing %s: allowed = %v, want %v", test.consumer, test.imported, allowed, test.allowed)

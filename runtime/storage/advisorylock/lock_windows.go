@@ -10,7 +10,7 @@ import (
 	"runtime"
 
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/fileinput"
 	"golang.org/x/sys/windows"
 )
 

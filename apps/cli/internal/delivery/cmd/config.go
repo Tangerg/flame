@@ -16,7 +16,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd/render"
 )
 
