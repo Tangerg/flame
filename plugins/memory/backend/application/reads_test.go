@@ -1,4 +1,4 @@
-package agentmemory
+package coordination
 
 import (
 	"errors"

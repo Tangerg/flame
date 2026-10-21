@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 
-	agentmemoryapp "github.com/Tangerg/flame/plugins/memory/backend/application"
+	coordination "github.com/Tangerg/flame/plugins/memory/backend/application"
 	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/plugins/memory/backend/sqlite"
 )
@@ -65,7 +65,7 @@ func memoryConsolidationFixture(t *testing.T, replies ...scriptedReply) (*Memory
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	memory := sqlite.NewAgentMemoryStore(db)
-	memoryCuration, err := agentmemoryapp.NewCuration(agentmemoryapp.CurationConfig{Store: memory})
+	memoryCuration, err := coordination.NewCuration(coordination.CurationConfig{Store: memory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestConsolidatorRejectsMissingDependencies(t *testing.T) {
 			return err
 		},
 		"typed-nil memory": func() error {
-			_, err := NewMemoryConsolidator(valid.history, (*agentmemoryapp.Curation)(nil), valid.client, MemoryCurationPolicyValues{})
+			_, err := NewMemoryConsolidator(valid.history, (*coordination.Curation)(nil), valid.client, MemoryCurationPolicyValues{})
 			return err
 		},
 		"completion": func() error {
