@@ -2186,6 +2186,28 @@ matches ChatGPT/Codex structurally — reading axis, wide-content breakout, reas
 height cap and "Thought for X" collapse, tool-group summarization, meaningful-result
 promotion, and the opacity-ladder hierarchy.
 
+A further structural pass (recorded in commits) continued the one-fact/one-owner
+and broken-intent cleanup, grounded in source audits of the type scale, interaction
+states, settings/layout, chat, composer and sidebar surfaces against the ChatGPT/
+Codex references. It regularised the display type tier to an 18/20/24 heading scale
+(dropping the off-grid 17px step and unifying the tier's tracking and leading);
+wired the missing and mismatched state-transition durations so hover washes, the
+choice-list row, the shared chevron and the mermaid toolbar fade instead of
+snapping; upgraded selected rows to the selected-hover ink; and re-centred several
+owners — the settings list-row lead gap, the jump-to-bottom float dock, the
+question-card footer, the nested-row indent (which fixed a real 2px show-more
+misalignment), and the three hand-rolled sidebar status dots (now one StatusDot with
+a ring variant). Composer and rail corner radii now name the radius token, and dead
+letter-spacing vars plus an orphaned spacing rung were pruned. One correctness fix
+landed: the composer now refuses a fresh turn while the root run is waiting, so the
+keyboard Enter path enforces the same predicate the disabled send button already
+showed. One misstep was self-corrected: a density/reading rhythm rewrite to
+calc(var(--spacing)*N) was reverted because those custom properties are owned by the
+TypeScript density ladder (density-scaled) and fixed reading edges that the
+stylesheet only mirrors — a stylesheet-mirror test caught it. A renderHook
+regression for the waiting-turn fix is deferred to the consolidated testing pass
+(the pure admission rule is already covered).
+
 The genuinely open items are now design and native-acceptance decisions, not
 defects; each needs a Wails look and an explicit choice before implementing:
 
