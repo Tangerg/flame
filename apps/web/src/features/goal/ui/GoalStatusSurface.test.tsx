@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { type GoalReadModel } from "@/features/goal/application/goalReadModel";
@@ -42,6 +42,7 @@ vi.mock("@/features/goal/application/goalReadModel", async (importOriginal) => (
 describe("Goal status surface", () => {
   afterEach(async () => {
     cleanup();
+    vi.useRealTimers();
     await drainBrowserTasks();
   });
 
@@ -270,7 +271,7 @@ describe("Goal status surface", () => {
     expect(screen.getByText("Ship beta")).toBeTruthy();
   });
 
-  it("presents only Goal status and objective, without usage counters", () => {
+  it("presents Goal identity and creation age without usage counters", () => {
     render(<GoalStatusSurface />);
 
     expect(screen.getByText("Pursuing goal")).toBeTruthy();
@@ -287,5 +288,103 @@ describe("Goal status surface", () => {
     const glyph = surface?.querySelector('svg[data-icon-name="target"]');
     expect(glyph?.getAttribute("viewBox")).toBe("0 0 16 16");
     expect(glyph?.getAttribute("stroke-width")).toBe("1.25");
+  });
+
+  function controlClock() {
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+    vi.setSystemTime(new Date("2026-10-21T00:00:00Z"));
+    model.goal = { ...model.goal, createdAt: new Date(Date.now() - 18_000).toISOString() };
+  }
+
+  it("reads creation age as time advances without changing the Goal", () => {
+    controlClock();
+    render(<GoalStatusSurface />);
+    expect(screen.getByText("Time since goal creation: 18s")).toBeTruthy();
+
+    act(() => vi.advanceTimersByTime(2_000));
+
+    expect(screen.getByText("Time since goal creation: 20s")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Pursuing goal Ship alpha" })).toBeTruthy();
+    expect(model.stopGoal).not.toHaveBeenCalled();
+    expect(model.resumeGoal).not.toHaveBeenCalled();
+    expect(model.updateGoal).not.toHaveBeenCalled();
+    expect(model.clearGoal).not.toHaveBeenCalled();
+  });
+
+  it("keeps counting creation age after the Runtime pauses the Goal", () => {
+    controlClock();
+    const { rerender } = render(<GoalStatusSurface />);
+    model.goal = { ...model.goal, status: "paused" };
+    rerender(<GoalStatusSurface />);
+
+    act(() => vi.advanceTimersByTime(10_000));
+
+    expect(screen.getByText("Time since goal creation: 28s")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Resume goal" })).toBeTruthy();
+    expect(model.resumeGoal).not.toHaveBeenCalled();
+  });
+
+  it("leaves the current objective draft and focus alone while time advances", async () => {
+    controlClock();
+    const { rerender } = render(<GoalStatusSurface />);
+    const opener = screen.getByRole("button", { name: "Edit goal" });
+    act(() => opener.focus());
+    fireEvent.click(opener);
+    const objective = screen.getByRole("textbox", { name: "Goal" });
+    fireEvent.change(objective, { target: { value: "Keep my exact draft 草稿" } });
+    act(() => objective.focus());
+    model.goal = { ...model.goal, objective: "Accepted update" };
+    rerender(<GoalStatusSurface />);
+
+    act(() => vi.advanceTimersByTime(2_000));
+
+    expect((objective as HTMLTextAreaElement).value).toBe("Keep my exact draft 草稿");
+    expect(document.activeElement).toBe(objective);
+    expect(screen.getByText("Time since goal creation: 20s")).toBeTruthy();
+    fireEvent.keyDown(objective, { key: "Escape" });
+    await vi.waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Edit goal" })).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Edit goal" }));
+    });
+    expect(model.updateGoal).not.toHaveBeenCalled();
+  });
+
+  it("reads a replacement Goal's own creation time and retires the former editor", () => {
+    controlClock();
+    const { rerender } = render(<GoalStatusSurface />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
+    model.goal = {
+      ...model.goal,
+      sessionId: "session-b",
+      objective: "Ship beta",
+      createdAt: new Date(Date.now() - 5_000).toISOString(),
+    };
+
+    rerender(<GoalStatusSurface />);
+
+    expect(screen.getByText("Time since goal creation: 5s")).toBeTruthy();
+    expect(screen.queryByText("Time since goal creation: 18s")).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Edit goal" })).toBeNull();
+    expect(model.updateGoal).not.toHaveBeenCalled();
+  });
+
+  it("omits an unreadable creation time", () => {
+    controlClock();
+    model.goal = { ...model.goal, createdAt: "invalid" };
+    render(<GoalStatusSurface />);
+
+    expect(screen.queryByText(/^Time since goal creation:/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Pursuing goal Ship alpha" })).toBeTruthy();
+  });
+
+  it("clamps a future creation timestamp to zero until the clock reaches it", () => {
+    controlClock();
+    model.goal = { ...model.goal, createdAt: new Date(Date.now() + 2_000).toISOString() };
+    render(<GoalStatusSurface />);
+    expect(screen.getByText("Time since goal creation: 0s")).toBeTruthy();
+
+    act(() => vi.advanceTimersByTime(3_000));
+
+    expect(screen.getByText("Time since goal creation: 1s")).toBeTruthy();
   });
 });

@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { AgentStatusPill } from "@/ui/agent/index";
 import { durationText } from "@/lib/format";
 import { useCurrentRootMaterial } from "@/features/agent/public/run";
-import { useElapsedMillis } from "@/features/shell/workbench/panel/useElapsedMillis";
+import { useElapsedMillis } from "@/lib/useElapsedMillis";
 import { useT } from "@/lib/i18n/index";
 import { vocab } from "@flame/ui";
 export function RunStatusPill() {

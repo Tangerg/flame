@@ -224,6 +224,7 @@ export const es: Record<string, string> = {
   "goal.action.resume": "Reanudar objetivo",
   "goal.action.clear": "Borrar objetivo",
   "goal.action.edit": "Editar objetivo",
+  "goal.elapsed": "Tiempo desde la creación del objetivo: {{duration}}",
   "goal.edit.title": "Editar objetivo",
   "goal.edit.label": "Objetivo",
   "goal.edit.save": "Guardar",

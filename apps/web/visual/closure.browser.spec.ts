@@ -1434,8 +1434,10 @@ test("the plan strip holds one height whatever the plan says", async ({ page }) 
   await expect(strip).toBeVisible();
   expect(await strip.evaluate((node) => getComputedStyle(node).height)).toBe("32px");
 
-  await page.locator('[data-slot="active-plan-pill"]').hover();
-  await expect(page.locator('[role="tooltip"] li')).not.toHaveCount(0);
+  await page.locator('[data-slot="active-plan-pill"]').click();
+  await expect(
+    page.getByRole("dialog", { name: "Plan", exact: true }).locator("li"),
+  ).not.toHaveCount(0);
   expect(await strip.evaluate((node) => getComputedStyle(node).height)).toBe("32px");
 });
 

@@ -77,8 +77,8 @@ for (const theme of ["light", "dark"]) {
     page,
   }) => {
     await open(page, `fixture=agent&state=running&theme=${theme}`);
-    await page.locator('[data-slot="active-plan-pill"]').hover();
-    const steps = page.getByRole("tooltip").locator("li");
+    await page.locator('[data-slot="active-plan-pill"]').click();
+    const steps = page.getByRole("dialog", { name: "Plan", exact: true }).locator("li");
     await expect(steps).toHaveCount(3);
     const labels = await steps.evaluateAll((nodes) =>
       nodes.map((node) => {

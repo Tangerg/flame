@@ -220,6 +220,7 @@ export const ja: Record<string, string> = {
   "goal.action.resume": "ゴールを再開",
   "goal.action.clear": "ゴールをクリア",
   "goal.action.edit": "ゴールを編集",
+  "goal.elapsed": "ゴール作成からの経過時間：{{duration}}",
   "goal.edit.title": "ゴールを編集",
   "goal.edit.label": "ゴール",
   "goal.edit.save": "保存",

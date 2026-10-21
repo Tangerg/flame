@@ -225,6 +225,7 @@ export const zh: Record<string, string> = {
   "goal.action.resume": "恢复目标",
   "goal.action.clear": "清除目标",
   "goal.action.edit": "编辑目标",
+  "goal.elapsed": "目标创建至今：{{duration}}",
   "goal.edit.title": "编辑目标",
   "goal.edit.label": "目标",
   "goal.edit.save": "保存",

@@ -395,17 +395,20 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
-test("the compact Plan pill reveals the production checklist on hover", async ({ page }) => {
+test("the compact Plan pill opens the production checklist for reading", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=running");
   await page.locator("html[data-visual-ready]").waitFor();
 
   const plan = page.getByRole("button", { name: "Step 2 / 3" });
   await expectStableBox(plan);
-  await plan.hover();
+  await plan.focus();
+  await expect(page.getByRole("dialog", { name: "Plan", exact: true })).not.toBeVisible();
+  await page.keyboard.press("Enter");
 
   await expect(page.getByText("Run quality gates", { exact: true })).toBeVisible();
-  const tooltip = page.getByRole("tooltip");
-  await expect(tooltip).toBeVisible();
+  const reader = page.getByRole("dialog", { name: "Plan", exact: true });
+  await expect(reader).toBeVisible();
+  await expect(reader.getByRole("region")).toBeFocused();
 });
 
 for (const [theme, input] of [
@@ -417,9 +420,12 @@ for (const [theme, input] of [
     await page.locator("html[data-visual-ready]").waitFor();
 
     const pill = page.getByRole("button", { name: "Step 2 / 3" });
-    if (input === "keyboard") await pill.focus();
-    else await pill.hover();
-    await expect(page.getByRole("tooltip")).toBeVisible();
+    if (input === "keyboard") {
+      await pill.focus();
+      await page.keyboard.press("Enter");
+    } else await pill.click();
+    const reader = page.getByRole("dialog", { name: "Plan", exact: true });
+    await expect(reader).toBeVisible();
 
     await page.evaluate(async () => {
       const storePath = "/src/features/agent/adapters/agentStore.ts";
@@ -475,9 +481,9 @@ for (const [theme, input] of [
 
     const updated = page.getByRole("button", { name: "Step 3 / 3" });
     await expect(updated).toBeVisible();
-    if (input === "keyboard") await expect(updated).toBeFocused();
-    await expect(page.getByRole("tooltip")).toContainText("Run quality gates after the update");
-    await expect(page.getByRole("tooltip")).toBeVisible();
+    if (input === "keyboard") await expect(reader.getByRole("region")).toBeFocused();
+    await expect(reader).toContainText("Run quality gates after the update");
+    await expect(reader).toBeVisible();
   });
 }
 
@@ -511,10 +517,9 @@ test("the standing goal stays in the composer stack instead of claiming the tran
 
   expect(goalBox).not.toBeNull();
   expect(composerBox).not.toBeNull();
-  expect(Math.abs(composerBox!.x - goalBox!.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(composerBox!.width - goalBox!.width)).toBeLessThanOrEqual(1);
-  expect(composerBox!.y - (goalBox!.y + goalBox!.height)).toBeGreaterThanOrEqual(-1);
-  expect(composerBox!.y - (goalBox!.y + goalBox!.height)).toBeLessThanOrEqual(0);
+  expect(goalBox!.x - composerBox!.x).toBeCloseTo(12, 0);
+  expect(composerBox!.width - goalBox!.width).toBeCloseTo(24, 0);
+  expect(goalBox!.y + goalBox!.height - composerBox!.y).toBeCloseTo(12, 0);
   await expect(goal.locator('svg[data-icon-name="target"]')).toBeVisible();
 });
 
@@ -1549,7 +1554,7 @@ test("a tool with a standing surface is not narrated as well", async ({ page }) 
 
   const plan = page.getByRole("button", { name: "Step 2 / 3" });
   await expectStableBox(plan);
-  await plan.hover();
+  await plan.click();
   await expect(page.getByText("Review visual evidence", { exact: true })).toBeVisible();
 
   const stream = page.locator(".msg-scroll-viewport");
