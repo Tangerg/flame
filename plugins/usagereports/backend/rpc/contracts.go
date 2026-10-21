@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	reporting "github.com/Tangerg/flame/plugins/usagereports/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"

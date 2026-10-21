@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/backend/rpc"
 	"github.com/Tangerg/flame/runtime/model"

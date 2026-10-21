@@ -4,7 +4,7 @@ package rpc
 //go:generate sh -c "go run github.com/Tangerg/flame/plugins/memory/backend/cmd/contracts --caller-json ../../package/io.github.tangerg.flame/contracts/caller-policy.generated.json > /dev/null"
 
 import (
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 )

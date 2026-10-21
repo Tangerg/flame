@@ -7,7 +7,7 @@ import (
 	"iter"
 	"sync/atomic"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/jsoninput"

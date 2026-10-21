@@ -14,7 +14,7 @@ const dependencies = (...targets) =>
     .split("\n");
 for (const target of [
   "./packages/runtime-client/go",
-  "./packages/plugin-sdk/go/...",
+  "./packages/plugin-sdk/...",
 ]) {
   for (const dependency of dependencies(target))
     if (

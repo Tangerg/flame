@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"

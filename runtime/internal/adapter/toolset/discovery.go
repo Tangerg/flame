@@ -19,7 +19,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/plugin-sdk/go/toolfailure"
+	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/optional"
 	"github.com/Tangerg/scope/core/chat"

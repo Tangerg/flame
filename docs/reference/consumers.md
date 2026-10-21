@@ -4,7 +4,7 @@
 | -------------------------- | ------------------------------------------------------------------------------- |
 | Local Go host              | `github.com/Tangerg/flame/runtime`                                              |
 | Remote Go client           | `github.com/Tangerg/flame/packages/runtime-client/go` (package `runtimeclient`) |
-| Go backend author          | `github.com/Tangerg/flame/packages/plugin-sdk/go`                               |
+| Go backend author          | `github.com/Tangerg/flame/packages/plugin-sdk`                                  |
 | Shared wire/options        | `github.com/Tangerg/flame/runtime/protocol`                                     |
 | TypeScript Runtime client  | `@flame/runtime-client`                                                         |
 | Installed React component  | `@flame/component-sdk`                                                          |

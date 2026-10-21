@@ -14,7 +14,7 @@ Flame is an agent product with a Go Runtime, a terminal CLI, and one React appli
 | `apps/desktop/`                       | Native Wails host and macOS packaging                                     |
 | `packages/runtime-client/go/`         | Remote Go HTTP/SSE client                                                 |
 | `packages/runtime-client/typescript/` | `@flame/runtime-client`, generated wire projection and client             |
-| `packages/plugin-sdk/go/`             | Go backend authoring API                                                  |
+| `packages/plugin-sdk/`                | Go backend authoring API                                                  |
 | `packages/component-sdk/`             | `@flame/component-sdk`, installed React component authoring API           |
 | `packages/local-runtime/`             | Process roots, token handoff and companion-distribution lookup            |
 | `packages/ui/`, `packages/icons/`     | Shared controls/tokens and authored optical icon masters                  |

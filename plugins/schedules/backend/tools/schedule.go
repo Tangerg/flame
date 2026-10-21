@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/packages/plugin-sdk/go/toolfailure"
+	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"

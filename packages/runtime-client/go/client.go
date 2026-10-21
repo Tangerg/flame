@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 )
 
 var ErrClosed = errors.New("runtime client: closed")

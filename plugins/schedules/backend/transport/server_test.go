@@ -13,8 +13,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/storage/directories"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
 	"github.com/Tangerg/flame/runtime/capability"

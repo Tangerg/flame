@@ -10,7 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/jsoninput"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
