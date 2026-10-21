@@ -1217,6 +1217,32 @@ Verification: `@flame/ui` rebuilt; its and the web `typecheck`/`lint` pass,
 `EmptyState`/`IconMark` default is unchanged, so this is additive for existing
 empties; native Wails acceptance of the new error tones is pending.
 
+## Wide-content breakout in the reading band
+
+Code and wide media now exceed the prose measure in the window-width band where
+the per-turn navigation rail is hidden, so dense content gets room without
+colliding with the rail. The breakout lives only in `markdown.css`, gated to
+`@container conversation (min-width: 640px) and (max-width: 1151.98px)`: below
+640px (narrow Dock) and in the rail's `>=1152px` band it is inert, so those
+presentations are unchanged. Width is
+`max(100%, min(var(--wide-column-max), 100cqi - 2 * var(--reading-gutter-wide)))`
+— never narrower than the current column (no regression), never wider than the
+pane minus its gutters (no horizontal scrollbar by construction, as 40px of
+gutter exceeds the reserved scrollbar width) — centered with negative inline
+margins. `--wide-column-max` (56rem) is the single tunable owner.
+
+Scope: media wide blocks (`.md-media-wide-block`) and code (`.md .shiki-block`).
+Tables (fit-content centering) and Mermaid (no stable `markdown.css` selector on
+its frame) keep their column-width behavior and are follow-ups. The bounded
+table, code selection/copy, text-selection boundaries and lightbox escapes are
+width-independent and untouched. Verification: lint, every CSS check
+(variables/dead-tokens/styles/shorthand/classes/design-system) and the markdown
+render suite (12 files / 118 tests) pass. NATIVE ACCEPTANCE PENDING AND REQUIRED:
+the `--wide-column-max` value, the look across the band, the 1152px
+rail/breakout transition, and that the `.md .shiki-block` rule wins over the
+StyleX frame all need real Wails verification and tuning; this environment cannot
+judge the geometry.
+
 ## Tool argument copy outcomes
 
 The built-in Copy arguments action now acknowledges an accepted clipboard write

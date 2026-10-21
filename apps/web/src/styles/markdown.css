@@ -16,6 +16,18 @@
   width: 100%;
   max-width: none;
 }
+@container conversation (min-width: 640px) and (max-width: 1151.98px) {
+  .md p.md-media-wide-block,
+  .md .shiki-block {
+    --md-wide-width: max(
+      100%,
+      min(var(--wide-column-max), 100cqi - 2 * var(--reading-gutter-wide))
+    );
+    width: var(--md-wide-width);
+    max-width: var(--md-wide-width);
+    margin-inline: calc((100% - var(--md-wide-width)) / 2);
+  }
+}
 .md .katex-display {
   min-width: 0;
   max-width: 100%;
