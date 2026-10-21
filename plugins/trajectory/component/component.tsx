@@ -722,7 +722,8 @@ export function RenameSession({ context }: { context: ComponentContext }) {
             // oxlint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
             value={title}
-            disabled={busy || Boolean(unknown) || Boolean(saved)}
+            pending={busy}
+            readOnly={Boolean(unknown) || Boolean(saved)}
             onChange={(event) => setTitle(event.target.value)}
           />
         </FormField>
@@ -740,13 +741,18 @@ export function RenameSession({ context }: { context: ComponentContext }) {
             </p>
             <Button
               type="button"
-              disabled={busy}
+              pending={busy}
+              aria-busy={busy || undefined}
               onClick={() => {
                 if (pending.current || context.signal.aborted) return;
                 void observe(unknown.retry());
               }}
             >
-              Reconcile original command
+              {busy ? (
+                <span role="status">Checking original command…</span>
+              ) : (
+                "Reconcile original command"
+              )}
             </Button>
           </>
         )}
@@ -769,11 +775,18 @@ export function RenameSession({ context }: { context: ComponentContext }) {
         <Button
           variant="primary"
           type="submit"
+          pending={busy}
+          focusableWhenDisabled
+          aria-busy={(busy && !unknown) || undefined}
           disabled={
-            busy || Boolean(unknown) || Boolean(saved) || context.signal.aborted
+            Boolean(unknown) || Boolean(saved) || context.signal.aborted
           }
         >
-          Save title
+          {busy && !unknown ? (
+            <span role="status">Saving title…</span>
+          ) : (
+            "Save title"
+          )}
         </Button>
       </FormActions>
     </Form>

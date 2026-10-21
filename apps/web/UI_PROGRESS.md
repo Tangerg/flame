@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Trajectory Run filters now keep the explicit selection through page changes and refreshes, including empty matches. Actual Wails qualifies source and generated-resource paths, long Run IDs, both themes, 14/18 px text, native half-screen and 200% full-pane reading. Plugin/Web/native checks pass; exact results and cleanup are below. Tool copy outcomes are integrated at `4f1725e94`. Continuous UI work proceeds from remaining observed task paths.
+Updated: 2026-10-22. Captured Session naming now retains the submitted title and focus during saving, provides explicit pending feedback, and preserves the existing refusal and original-command recovery paths. Trajectory Run filters are integrated at `0b17cc0dc`; tool copy outcomes at `4f1725e94`. Verification and cleanup for the final naming milestone are recorded below. The user requested a milestone pause after this batch; do not start another batch without an explicit resume.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user explicitly resumed continuous desktop UI work on 2026-10-21. The current checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`, initially based on `8e7a4c977`; the primary checkout has unrelated active Runtime/CLI work. Keep each verified UI batch isolated, integrate its explicit paths into `main`, push, clean owned resources, then inspect the next valuable complete task path. Existing plugin polish remains limited to existing UI; do not add backend-only pages.
+The user resumed continuous desktop UI work on 2026-10-21 and requested a milestone pause on 2026-10-22 after completing the current captured Session naming batch. The UI checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`, initially based on `8e7a4c977`; the primary checkout is `/Users/tangerg/Desktop/flame` on `main`. Finish the verified batch, integrate its explicit paths, push and clean owned resources, then pause. Existing plugin polish remains limited to existing UI; do not add backend-only pages. Further research or implementation requires an explicit resume.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -18,7 +18,7 @@ hidden and frame callbacks stayed paused. Do not repeat that activation request
 or add a component workaround from these inconsistent signals. Those completed
 isolation roots and their new caches are also cleaned; details follow.
 
-The current explicit resume supersedes the earlier milestone pause. Retain native acceptance, relevant gates, explicit-path integration and push to `main`, cleanup and in-place handoff updates for each batch. Native page zoom and the single Dock width projection remain integrated. Open workspace views now retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
+The 2026-10-21 resume superseded an earlier pause; the latest 2026-10-22 stop request now ends this continuation at the naming milestone. Any future resumed batch still requires native acceptance, relevant gates, explicit-path integration and push to `main`, cleanup and in-place handoff updates. Native page zoom and the single Dock width projection remain integrated. Open workspace views now retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
 
 Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The subsequent native focus investigation qualified the existing keyboard resize path and isolated clicked-label reverse navigation to a WebKit behavior also reproduced by a bare HTML button. No host preference or component workaround was added. The precise scenarios and limits are below.
 
@@ -805,6 +805,96 @@ system. Better-writing guidance favors the existing localized action over an
 indefinite loading signal; better-accessibility/layout review retains Base UI's
 keyboard/focus behavior, shared chip sizing, semantic surfaces and Orange/custom
 accent roles. Static Ace references supply no selection or focus evidence.
+
+## Captured Session naming task
+
+The existing Session-row action opens a bounded naming task over the retained
+workspace. `RenameSession` in `plugins/trajectory/component/component.tsx` now
+uses the shared TextField and Button pending contracts rather than native busy
+disablement. The exact submitted title stays read-only and focusable; Save says
+`Saving title…` and original-command reconciliation says
+`Checking original command…`, with status semantics and `aria-busy`. Repeated
+activation remains refused by the existing controls and command admission guard.
+The saved or unknown title remains reviewable and read-only. Definitive refusal
+restores editing without replacing the draft or moving later user-chosen focus.
+
+The existing captured Session ID/revision, exact input, mutation handle/key,
+canonical response, cancellation and lifetime owners are unchanged. This adds
+no command, timer, focus restoration policy or competing submission state. The
+Trajectory reader before this action is byte-identical to the Run-filter
+milestone. The shared UI and host dialog remain unchanged.
+
+Read-only HeroUI `button/loading.tsx` and `button/loading-state.tsx` demonstrate
+explicit pending action text; their demo timer is not copied. Flame's actual
+TextField pending contract and Button regression coverage supply the behavior.
+The better-accessibility and better-writing review keeps the named operation,
+submitted object and recovery visible in the existing modal task, with current
+semantic surfaces, type, Orange/custom accents and host return policy.
+
+Verification for this milestone (2026-10-22):
+
+- Original focused baseline passes **2 files / 9 tests**. The first edit-only
+  Claude Code CLI attempt reaches its turn limit in **175.0 seconds** without
+  edits or tool denials. Primary implements the local control changes; a second
+  bounded test-only attempt supplies the new regression file in **149.9 seconds**
+  without denials. Primary reviews the actual diff and adds pending/unavailable
+  field assertions. No subagents are used.
+- Plugin/Web typechecks and focused checks pass **5 files / 30 tests**. Frozen
+  original source fails **3** cases and passes **27**, then candidate bytes are
+  restored exactly. The public SDK/memory-transport regressions cover exact
+  captured submission, field/action-origin focus, repeat refusal, typed failure,
+  editable retry, canonical response, original-key reconciliation and retirement
+  before a late response. They assert native DOM disablement separately from
+  ARIA unavailable/read-only semantics.
+- Actual original Wails EN/light/14 px/Flame Orange loses field focus to HTML
+  when the held save begins and provides no pending action text. The candidate
+  retains focus and the exact CJK/double-space title, visibly says
+  `Saving title…`, refuses paste and Return/Space repeats, and keeps a later
+  Captured session disclosure focus through the typed refusal. Editing and an
+  explicit retry accept revision 8; Escape returns to the actual source row.
+  An initial More actions traversal only revealed/selected a row and is excluded.
+- Final artifact Wails ZH host/dark/18 px/custom blue uses native Left-half and
+  **200%** zoom. The real long-title Session row opens the generated action;
+  keyboard focus followed by pointer Save retains that action focus while
+  `Saving title…` is visible. Return/Space repeats remain refused. Captured
+  session shows `visual-shell-long` / revision 7 and keeps the user's later
+  focus through refusal. The exact draft `长会话命名  保留 exact` remains editable;
+  appending ` 继续` and explicitly retrying confirms revision 8. Escape from the
+  now-unavailable focused Save closes the task and returns to the original long
+  Session row. Actual Size is restored before quit. The expanded error, identity,
+  Save and Close remain readable after a wheel action; no scroll-offset guarantee
+  is inferred. One interrupted pointer-menu traversal is excluded and the accepted
+  opening uses the actual menu's keyboard path. A no-change AX-diff lookup made
+  no zoom action; the accepted twenty menu increments use fresh full trees.
+- Serial final checks pass: plugin type/lint/format/release/resource gates
+  (**1.91 seconds**), complete Web check (**388 files / 3,069 tests**, all
+  subsequent gates, **191.02 seconds**) and `make check-native`
+  (**22.08 seconds**). All **1,083 keys across eight locales** pass. The final
+  private build loads the regenerated published action ESM and passes in
+  **6.32 seconds**. Its arm64 Mach-O targets macOS 13.0, SDK 26.5. All **11
+  reviewed source/test/resource/contract paths** and **3 private inputs** retain
+  their hashes. Non-failing loopback diagnostics, macOS object-version and
+  duplicate `-lobjc` linker warnings remain separate from the passing checks.
+- Cleanup confirms **three native and two CLI processes** have exited. The exact
+  app is unregistered and its bundle, private homes, overlays, captures,
+  prompts/reports, scripts/logs/pointer, **ten generated output/cache paths** and
+  **two unique Library caches** are removed with preexistence, ownership and
+  birth-time guards. HTTP storage, preferences and saved state are absent.
+  Installed dependencies, pre-existing shared caches, read-only references,
+  user data and unrelated work remain. The clean UI worktree is retained for a
+  possible explicit resume; this naming milestone is the requested stopping point.
+
+These private scenes use the actual Wails/WebKit host and public controls over
+isolated canonical Session responses. A private transport holds the first write
+for 45 seconds and returns the published `session_busy` problem; the explicit
+retry returns a schema-valid Session. This is UI recovery qualification, not a
+live Runtime write, persisted rename or Session-catalog reconciliation. Unknown
+outcome reconciliation retains unit coverage. Existing installations require
+rebuilding/reinstalling and selecting the changed package digest; no admitted
+installation is replaced here. No protocol or persisted-data migration is needed.
+VoiceOver, OS IME, measured contrast, other-platform GUIs, browser/visual suites,
+performance benchmarks and independent unchanged Runtime/CLI/SDK/shared UI
+suites were not run.
 
 ## Trajectory page scope and reading continuity
 

@@ -16,6 +16,12 @@ the original mutation handle/key and offers same-command reconciliation; a new e
 is blocked until settlement. Accepted data is shown only from the canonical response.
 Close and reopen for another edit or a fresh inspected revision.
 
+While saving, the title stays read-only and focusable and the action says
+`Saving title…`. Same-command reconciliation says `Checking original command…`.
+Both refuse repeat activation without removing their control from the tab order.
+A definitive refusal keeps the exact draft editable and respects later focus;
+an unknown outcome keeps the draft read-only until the original command settles.
+
 Disablement withdraws menu registration and ends supported component resources;
 closing observation does not retract an accepted Core command. Its durable receipt
 remains owned by the canonical Session delivery operation. The former closed action
