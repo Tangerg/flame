@@ -21,9 +21,11 @@ import {
   openWorkspaceView,
   openWorkspaceViewInDock,
   showWorkspaceDock,
+  toggleWorkspaceDock,
   useWorkspaceFileViewer,
   useWorkspaceSubagentRunId,
 } from "@/features/workspace/public/navigation";
+import { t } from "@/lib/i18n/index";
 import { useDockWidth } from "@/features/workspace/public/sidebarDrawer";
 import { ChatPanel, type ChatPanelHandle } from "@/features/shell/workbench/panel/ChatPanel";
 import { registerComposerFocusTarget } from "@/features/composer/public/focus";
@@ -544,6 +546,132 @@ describe("main presentation focus handoff", () => {
     view.rerender(<ChatPanel onSend={() => true} />);
 
     expect(document.activeElement).toBe(controls);
+  });
+});
+
+describe("Dock collapse focus handoff", () => {
+  function retainedDock() {
+    openWorkspaceViewInDock("subagents");
+    render(
+      <>
+        <button>Later control</button>
+        <ChatPanel onSend={() => true} />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
+    const draft = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
+    draft.setSelectionRange(5, 5);
+    return {
+      dock: screen.getByRole("complementary", { name: "Subagents" }),
+      child: screen.getByRole("button", { name: "Evidence 1" }),
+      draft,
+    };
+  }
+
+  function expectRetainedDock(dock: HTMLElement, child: HTMLElement, draft: HTMLTextAreaElement) {
+    expect(screen.getByRole("complementary", { name: "Subagents" })).toBe(dock);
+    expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(child);
+    expect(screen.getByLabelText("Composer draft")).toBe(draft);
+    expect(draft.value).toBe("Keep this draft — 保留");
+    expect(draft.selectionEnd).toBe(5);
+  }
+
+  it.each(["region", "child"])(
+    "hands retained Dock %s focus to the conversation on collapse and keeps it on reopen",
+    (origin) => {
+      const { dock, child, draft } = retainedDock();
+      act(() => (origin === "region" ? dock : child).focus());
+
+      act(() => toggleWorkspaceDock());
+
+      const conversation = screen.getByRole("region", { name: "Conversation" });
+      expect(document.activeElement).toBe(conversation);
+      expect(dock.isConnected).toBe(true);
+      expect(child.isConnected).toBe(true);
+
+      act(() => toggleWorkspaceDock());
+
+      expectRetainedDock(dock, child, draft);
+      expect(document.activeElement).toBe(conversation);
+    },
+  );
+
+  it("keeps a focused Composer and its selection through collapse and reopen", () => {
+    const { dock, child, draft } = retainedDock();
+    act(() => draft.focus());
+
+    act(() => toggleWorkspaceDock());
+    expect(document.activeElement).toBe(draft);
+
+    act(() => toggleWorkspaceDock());
+    expect(document.activeElement).toBe(draft);
+    expectRetainedDock(dock, child, draft);
+  });
+
+  it("keeps the visible toggle focused while it collapses and shows the Dock", () => {
+    const { dock, child, draft } = retainedDock();
+    const toggle = screen.getByRole("button", { name: t("dock.action.hide") });
+    act(() => toggle.focus());
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-label")).toBe(t("dock.action.show"));
+    expect(document.activeElement).toBe(toggle);
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-label")).toBe(t("dock.action.hide"));
+    expect(document.activeElement).toBe(toggle);
+    expectRetainedDock(dock, child, draft);
+  });
+
+  it("preserves later outside focus when the Dock collapses", () => {
+    const { child } = retainedDock();
+    const later = screen.getByRole("button", { name: "Later control" });
+    act(() => child.focus());
+
+    act(() => {
+      toggleWorkspaceDock();
+      later.focus();
+    });
+
+    expect(document.activeElement).toBe(later);
+  });
+
+  it("keeps the visible catalog entry focused after closing the last Dock tab settles", async () => {
+    const { child, draft } = retainedDock();
+    const tab = screen.getByRole("tab", { name: "Subagents" });
+    act(() => tab.focus());
+
+    fireEvent.keyDown(tab, { key: "Delete" });
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+
+    expect(child.isConnected).toBe(false);
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: t("dock.action.browse") }),
+    );
+    expect(screen.getByLabelText("Composer draft")).toBe(draft);
+    expect(draft.value).toBe("Keep this draft — 保留");
+    expect(draft.selectionEnd).toBe(5);
+  });
+
+  it("hands Dock focus to the conversation when the row narrows below the Dock", async () => {
+    const resize = observeRowWidth(1200);
+    const { child, draft } = retainedDock();
+    act(() => child.focus());
+
+    await resize(700);
+
+    expect(navigator().get().view).toBeNull();
+    expect(windowHeader()).toBeNull();
+    const conversation = screen.getByRole("region", { name: "Conversation" });
+    expect(document.activeElement).toBe(conversation);
+    expect(child.isConnected).toBe(true);
+
+    await resize(1200);
+    expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(child);
+    expect(document.activeElement).toBe(conversation);
+    expect(screen.getByLabelText("Composer draft")).toBe(draft);
   });
 });
 
