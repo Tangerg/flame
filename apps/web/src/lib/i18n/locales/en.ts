@@ -398,6 +398,8 @@ export const en: Record<string, string> = {
   "hooks.trust.aria": "Trust this project's hooks",
   "hooks.matcher": "Tool matcher",
   "hooks.kind.inject": "inject",
+  "hooks.scope.global": "Global",
+  "hooks.scope.project": "Project",
   "hooks.inactive": "inactive",
   "hooks.inactive.hint": "Trust this project to enable its hooks.",
   "hooks.empty": "No hooks configured",

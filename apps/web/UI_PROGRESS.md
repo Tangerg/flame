@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Transcript focus clearance is integrated at `56ba28da6`. Shared floating motion now honors Base UI's immediate-dismissal signal so consecutive Escape/Tab keeps the next-control focus path. Actual Wails A/B and final scenes cover model-role selection, retained queries/drafts, native half-window/200%, shared Memory menus and file Popovers in both themes and 14/18 px text. Full shared UI, Web and native checks pass on current main; exact results and limits are below. Owned acceptance resources are cleaned. Continuous UI work proceeds from remaining observed task paths.
+Updated: 2026-10-21. Hooks records now identify their localized Global/Project scope and full literal configuration source, including otherwise identical commands and inactive project entries. Actual Wails acceptance covers long paths, native text selection/copy, query and draft continuity, half-window/200%, both themes, custom accents and 14/18 px text. Complete Web and native checks pass, including the latest main's unrelated Go changes; exact scope and limits are below. Owned acceptance resources are cleaned. Immediate popup dismissal remains integrated at `11865b25b`, and continuous UI work proceeds from remaining observed task paths.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1045,6 +1045,42 @@ their abbreviated, unparseable patch inputs, matching the Runtime presenter.
 The existing contract test exposed the omission. No frontend patch grammar,
 inferred count or permissive result fallback was introduced.
 
+## Hooks scope and source identity
+
+The existing read-only Hooks list now identifies each record's Global or Project
+scope and displays its full literal configuration source below the command or
+injected text. Identical event/matcher/command entries remain distinguishable,
+including an inactive project entry. Paths use the existing small mono step,
+quiet foreground and wrapping rule; spaces, CJK and long segments are retained
+without truncation, normalization or an implied local file action.
+
+`HookRow` in `features/hooks/ui/HooksPane.tsx` owns this projection. Runtime
+`ListHooks` already supplies scope, source and active status, and the existing
+query/view model already retains those facts. The repair adds no state, query,
+command, trust policy or authoring surface. All eight locale dictionaries supply
+the two scope nouns; event, matcher, command/inject and inactive presentation
+retain their existing owners.
+
+ZCode's actual `settings/HooksList.tsx` distinguishes installed, plugin and legacy
+owners; it supports explicit scope identity, but does not display these exact
+source paths. Flame's Runtime contract, not that reference, owns provenance.
+better-writing supports direct scope nouns; better-layout/typography support
+literal wrapping metadata, and better-accessibility supports exposing row identity
+as ordinary readable text rather than relying on a decorative icon.
+
+| Severity | Location                             | Before                                                                                    | After                                                               | Why                                                                                |
+| -------- | ------------------------------------ | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| MEDIUM   | `features/hooks/ui/HooksPane.tsx:62` | Scope was only an icon; valid command/inject entries shadowed source in a title fallback. | Each article visibly includes localized scope and its exact source. | Users must distinguish which configuration produced an otherwise identical record. |
+
+Verification for this surface (2026-10-21):
+
+- The existing Hooks baseline passed **4 files / 7 tests**. Bounded Claude Code CLI supplied the render, eight two-key locale additions and two presentation cases in 143.38 seconds, with no permission denials or subagents. Primary review checked the actual diff and contracts. Both new cases fail against the frozen original `HooksPane`; the candidate was restored byte-for-byte. Final focused validation passed **5 files / 9 tests**, typecheck and complete **1,077 keys across 8 locales**. Tests use the real query/view-model and kernel data-provider boundary, preserve duplicate-row association and literal inject whitespace, and do not toggle trust or freeze CSS inventories.
+- Actual Wails baseline over a contract-shaped isolated Hooks response showed the missing range/source in both the screen and AX. Candidate EN/light/14 px/Flame Orange shows the two same-command rows' distinct scope/source and inactive state. The long source includes spaces and CJK. Native triple-click selected its full wrapped path; Cmd+C and Cmd+V into an existing Composer draft retained the exact path. Native half-window/200% reentry, body wheel/Page Down and the fixed `hook` settings query qualify the wrapping and reading path. Actual Size/Close retains the draft and later editing works; no append-at-end caret guarantee is claimed. Guarded actions were excluded and the live app was rebound before the controlled final edit.
+- Final ZH/dark/18 px/custom blue acceptance passed at Actual Size and native half-window. Both localized scope nouns, complete paths, the inactive project and injected text stay associated with their records. Native `钩子` query → Clear → Hooks tab → reader focus is intact; window resizing retains the query. Close returns the original draft, and native Cmd+Right followed by typing produces exactly `钩子来源草稿 保留 继续` with Composer focus. These scenes use current production components on `bcf43bb21`.
+- Complete `npm run check --workspace @flame/web` passed **386 files / 3,042 tests** and every subsequent owner check in 158.17 seconds under CI Node 22.22.1. `make check-native` passed in 38.05 seconds. Latest main updates `d2d8110ca`, `bcf43bb21` and `cefd9b98c` were incorporated without file overlap; they change Go package/public-constant names and a generator target, retaining the same wire-version literal. Native checks passed again in 20.83 and 28.99 seconds. All 13 reviewed source hashes remained stable. The full Web suite and independent shared UI/portable suites were not repeated after these Go-only updates; Web's plugin-resource and module checks passed within its complete check.
+- Cleanup completed: all three owned native processes and the CLI exited, the exact app bundle was unregistered, and its bundle, disposable data, captures, overlays, prompts/reports, logs and pointer were removed. Ten newly created worktree output/cache paths and the unique bundle's Caches/WebKit paths passed preexistence, UID and birth-time guards before removal. Pre-existing shared UI Vite caches, installed dependencies, shared compiler/package caches, read-only references, user data and unrelated main work remain.
+- This uses production components and the Wails host with private data-only `hooks.list` capture. No live hooks, shell command, trust change, provider execution or Run was invoked. VoiceOver, measured pixel contrast, other-platform GUIs, browser/visual suites, performance benchmarks and unrelated root/CLI/SDK suites are not newly qualified. No protocol, persisted data, dependency or installed-resource migration is required.
+
 ## Immediate popup dismissal and keyboard continuity
 
 Base UI marks an Escape dismissal with `data-instant="dismiss"`. The shared
@@ -1772,6 +1808,8 @@ The settings-width investigation is implemented and natively qualified above. Pr
 The captured-image toolbar repair is implemented and natively qualified above. Preserve the existing image identity, gallery, fit/zoom/pan and ordinary source-return owners. Fullscreen close-transition completion remains unqualified: the visible plain native control passed, while the pinned production fixture's native/WebKit visibility contradicted its captured screen even after confirmed manual activation. Isolate that native occlusion discrepancy before attributing close behavior to a component. Do not repeat activation requests or add focus retries, animation timeouts or native preference workarounds from this evidence. The previously recorded hidden-zoom scrolling limit is separate.
 
 Saved-report catalog/reading/return, distinct read states and named removal are now implemented and qualified above. Preserve original command identity, fresh-membership reconciliation and exact number semantics. Existing plugin management now also qualifies catalog priority and named Configure/Stage tasks. Preserve captured identity, strict command payloads and shared focus owners. The user chose existing UI only; do not add backend-only pages or recreate completed Memory, Schedules, report or package-editor flows.
+
+Hooks scope and source provenance are now implemented and qualified above. Preserve the read-only list and Runtime-owned trust/active facts; source display does not authorize new Hook authoring or local-path actions. Continue with other existing task paths from fresh source and native evidence.
 
 These remaining items are review candidates, not defects or required rewrites. The narrow/full-pane host gap is now implemented and natively qualified above. The current request resumes continuous work. Separate reproduced defects from design judgments and unverified hypotheses before each batch. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 

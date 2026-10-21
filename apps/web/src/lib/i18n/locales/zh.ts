@@ -449,6 +449,8 @@ export const zh: Record<string, string> = {
   "hooks.trust.aria": "信任此项目的钩子",
   "hooks.matcher": "工具匹配器",
   "hooks.kind.inject": "注入",
+  "hooks.scope.global": "全局",
+  "hooks.scope.project": "项目",
   "hooks.inactive": "未启用",
   "hooks.inactive.hint": "信任此项目以启用其钩子。",
   "hooks.empty": "未配置钩子",
