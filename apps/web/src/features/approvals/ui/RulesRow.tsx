@@ -2,6 +2,7 @@ import { iconGlyph } from "@/ui/icons/index";
 import { toolSourceLabel } from "@/lib/toolSource";
 import { type ApprovalRuleSummary } from "@/features/agent/public/approvalPolicy";
 import * as stylex from "@stylexjs/stylex";
+import { useId } from "react";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { DataView } from "@/ui/index";
 import { TextButton } from "@/ui/index";
@@ -82,6 +83,7 @@ export function RulesRow() {
     wasRetired: wasGenerationRetired,
     fallback: t("approvals.error.forget"),
   });
+  const descriptionPrefix = useId();
 
   return (
     <SettingRow label={t("approvals.rules")} sub={t("approvals.rules.sub")} align="stacked">
@@ -104,52 +106,56 @@ export function RulesRow() {
                 {t("approvals.clearAll")}
               </TextButton>
             </div>
-            {rows.map((rule) => (
-              <div key={rule.id} {...stylex.props(r.rule)}>
-                <div {...stylex.props(r.copy)}>
-                  <div {...stylex.props(r.identity)}>
-                    <Badge tone={SCOPE_TONE[rule.scope]} face="mono">
-                      {t(`approvals.scope.${rule.scope}`)}
-                    </Badge>
-                    <span
-                      {...stylex.props(
-                        r.verdict,
-                        rule.decision === "deny" ? vocab.negative : r.allow,
-                        typeStep.uiSm,
-                      )}
-                    >
-                      {rule.decision === "deny" ? t("approvals.deny") : t("approvals.allow")}
-                    </span>
-                    <span {...stylex.props(r.tool, typeStep.uiMd, face.mono)}>
-                      {rule.modelName}
-                    </span>
-                    {rule.stale ? <Badge tone="warning">{t("approvals.stale")}</Badge> : null}
+            {rows.map((rule, index) => {
+              const descriptionId = `${descriptionPrefix}-${index}`;
+              return (
+                <div key={rule.id} {...stylex.props(r.rule)}>
+                  <div id={descriptionId} {...stylex.props(r.copy)}>
+                    <div {...stylex.props(r.identity)}>
+                      <Badge tone={SCOPE_TONE[rule.scope]} face="mono">
+                        {t(`approvals.scope.${rule.scope}`)}
+                      </Badge>
+                      <span
+                        {...stylex.props(
+                          r.verdict,
+                          rule.decision === "deny" ? vocab.negative : r.allow,
+                          typeStep.uiSm,
+                        )}
+                      >
+                        {rule.decision === "deny" ? t("approvals.deny") : t("approvals.allow")}
+                      </span>
+                      <span {...stylex.props(r.tool, typeStep.uiMd, face.mono)}>
+                        {rule.modelName}
+                      </span>
+                      {rule.stale ? <Badge tone="warning">{t("approvals.stale")}</Badge> : null}
+                    </div>
+                    <div {...stylex.props(r.details, vocab.muted, typeStep.uiSm, face.mono)}>
+                      <span>
+                        {rule.tool.type === "builtIn"
+                          ? t("approvals.builtIn")
+                          : toolSourceLabel(rule.tool)}
+                      </span>
+                      <span>
+                        {t(`approvals.subject.${rule.subject.type}`)}
+                        {rule.subject.type !== "all" ? `: ${rule.subject.value}` : null}
+                      </span>
+                      {rule.dir ? <span>{rule.dir}</span> : null}
+                    </div>
                   </div>
-                  <div {...stylex.props(r.details, vocab.muted, typeStep.uiSm, face.mono)}>
-                    <span>
-                      {rule.tool.type === "builtIn"
-                        ? t("approvals.builtIn")
-                        : toolSourceLabel(rule.tool)}
-                    </span>
-                    <span>
-                      {t(`approvals.subject.${rule.subject.type}`)}
-                      {rule.subject.type !== "all" ? `: ${rule.subject.value}` : null}
-                    </span>
-                    {rule.dir ? <span>{rule.dir}</span> : null}
-                  </div>
+                  <IconButton
+                    icon={iconGlyph("x")}
+                    size="xs"
+                    quiet
+                    styles={vocab.hold}
+                    aria-label={t("approvals.forget", { tool: rule.modelName })}
+                    aria-describedby={descriptionId}
+                    aria-busy={busy}
+                    pending={busy}
+                    onClick={() => run(() => forgetApprovalRule(rule.id))}
+                  />
                 </div>
-                <IconButton
-                  icon={iconGlyph("x")}
-                  size="xs"
-                  quiet
-                  styles={vocab.hold}
-                  aria-label={t("approvals.forget", { tool: rule.modelName })}
-                  aria-busy={busy}
-                  pending={busy}
-                  onClick={() => run(() => forgetApprovalRule(rule.id))}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </DataView>

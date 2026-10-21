@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Hooks records now identify their localized Global/Project scope and full literal configuration source, including otherwise identical commands and inactive project entries. Actual Wails acceptance covers long paths, native text selection/copy, query and draft continuity, half-window/200%, both themes, custom accents and 14/18 px text. Complete Web and native checks pass, including the latest main's unrelated Go changes; exact scope and limits are below. Owned acceptance resources are cleaned. Immediate popup dismissal remains integrated at `11865b25b`, and continuous UI work proceeds from remaining observed task paths.
+Updated: 2026-10-21. Remembered-rule Forget actions now reference their own visible record as a programmatic description. Focused regressions cover same-name records, reordering, original command identity and open Tooltip composition; actual Wails qualifies the existing keyboard, pointer, scroll, query and draft-return paths in both themes and 14/18 px text. VoiceOver speech remains untested. Complete Web/native checks pass; exact results and cleanup are below. Hooks scope/source identity is integrated at `11c93897a`. Continuous UI work proceeds from remaining observed task paths.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1045,6 +1045,37 @@ their abbreviated, unparseable patch inputs, matching the Runtime presenter.
 The existing contract test exposed the omission. No frontend patch grammar,
 inferred count or permissive result fallback was introduced.
 
+## Remembered rule action context
+
+Each remembered-rule Forget button is now described by its existing visible
+record. Scope, allow/deny decision, tool identity, source, subject, optional
+project directory and stale status remain one rendered fact set. The short
+localized action name and tooltip stay concise. `RulesRow` uses one `useId`
+prefix with render-local row indices for the association; Runtime rule IDs remain
+keys and command targets rather than ARIA IDREF syntax. No command, query, mode,
+policy, busy state, selection or layout owner changes.
+
+The read-only ZCode `ProviderModelReasoningLevelEditor` names a Delete action
+with its exact value. It supports contextual action identity, not this particular
+ARIA technique. better-accessibility's relationship guidance applies locally:
+the current record supplies the action description without another copy string
+or a new interaction container.
+
+| Severity | Location                                 | Before                                                                                 | After                                                    | Why                                                                         |
+| -------- | ---------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------- |
+| MEDIUM   | `features/approvals/ui/RulesRow.tsx:111` | Same-model Forget actions had no programmatic association with their distinct records. | Each action references the corresponding visible record. | The user must identify the scope and subject of the decision being removed. |
+
+Verification for this surface (2026-10-21):
+
+- Existing Approvals baseline passed **3 files / 5 tests**. The first bounded CLI exhausted its 18-turn reading limit without edits; a second bounded call supplied the two-file change in 120.12 seconds with no denials or subagents. Primary review retained literal parameter/source whitespace in description assertions rather than stripping all whitespace. Focused typecheck and **3 files / 7 tests** passed. Both new cases fail on the frozen original while the existing literal all/exact/glob case passes; the candidate was restored byte-for-byte. Accessible-role description queries verify all facts, pairing after catalog reversal, the original rule ID sent to a mocked command and description continuity while the real Tooltip is open.
+- Actual Wails uses a private contract-shaped `approval.listRules` response with four same-model records. The initial setup had a forbidden session directory and a URL instead of an A2A identity; it was rejected by the existing SDK validator and excluded. Corrected private input passes `validateWire("ListApprovalRulesResult")` with zero violations. No validator or production fixture was weakened.
+- EN/light/14 px/Flame Orange acceptance passed the existing native Tab order, all four action focus points and concise Tooltips. Native half-window/200% reentry keeps the `approval` query, visible project action outline, literal arguments and long CJK/spaced directory wrapping. Body wheel reaches the changed-source A2A record; Escape dismisses its tooltip without moving action focus. Actual Size/Close returns the workspace. The first candidate pointer activation did not enter a query and was excluded; the controlled route used fresh observed state.
+- The native CUA tree exposes the unchanged short action names but does not print these computed descriptions. The programmatic relationship and open-tooltip composition are qualified by component regressions; VoiceOver speech is not tested or claimed. No rule, Clear all, mode, trust or Run command was invoked natively; mode remains Balanced. Other-platform GUIs, measured contrast, OS IME, browser/visual suites, performance benchmarks and unrelated root/CLI/SDK suites are not newly qualified.
+- Final actual Wails ZH/dark/18 px/custom-blue acceptance passed native query `审批`, action Tab order, visible project focus/arguments/directory, body wheel and Tooltip Escape → next-action navigation. Close returns the original Composer draft. A guarded edit was excluded; after rebinding the live app, native typing produces exactly `审批规则阅读草稿 保留 继续` with Composer focus. This does not extend the VoiceOver limitation above.
+- Complete `npm run check --workspace @flame/web` passed **386 files / 3,044 tests** and all subsequent checks in 189.43 seconds under Node 22.22.1. `make check-native` passed in 56.48 seconds. Main `bde826dbe` then supplied a Go catalog package-qualifier/caller/test rename across nine disjoint paths. All nine reviewed source hashes stayed stable; the native check passed again in 30.36 seconds and the final private native build in 9.32 seconds. The complete Web and independent shared UI/portable suites were not repeated after the Go-only update. No protocol, persisted-data, locale, dependency or installed-resource migration is required by this UI repair.
+- Final main-first integration retains `76f036114`, the 240-path Go plugin-SDK flattening. Its three generated contracts are structurally identical after substituting only the old/new Go SDK definition-reference prefix. UI, shared UI/icons and TypeScript Runtime-client sources do not change. The first integrated typecheck failed because primary had cleaned the shared outputs and omitted staging; no source workaround was added. After `make stage-web` (5.95 seconds), complete Web validation passed again (**386 files / 3,044 tests**, all remaining gates, 148.20 seconds), followed by native checks in 60.68 seconds and a private native build in 5.43 seconds. Actual new Wails host ZH/dark18/custom-blue query → project action focus/Tooltip → Escape/Tab → Settings Close passed over the exact same SDK-validated capture. All nine reviewed hashes remain stable. The earlier VoiceOver boundary still applies.
+- Cleanup completed: four native processes and both bounded CLI processes exited; the exact bundle was unregistered and its app, disposable homes/data, captures, overlays, prompts/reports, SDK-validator setup, logs and pointer were removed. Eleven newly created worktree output/cache paths and the unique bundle's Caches/WebKit paths passed preexistence, UID and birth-time guards before removal. Pre-existing shared UI Vite caches, installed dependencies, shared compiler/package caches, read-only references and all unrelated user work remain. The primary checkout's plugin-SDK relocation became the retained main commit above. Its integration acceptance root was also cleaned: one additional native process exited, its exact bundle was unregistered, and ten newly created output/cache paths plus its unique Caches/WebKit paths were removed under the same guards. The app, disposable data, captures, overlays, scripts, logs and pointer were removed; no owned acceptance root remains.
+
 ## Hooks scope and source identity
 
 The existing read-only Hooks list now identifies each record's Global or Project
@@ -1808,6 +1839,8 @@ The settings-width investigation is implemented and natively qualified above. Pr
 The captured-image toolbar repair is implemented and natively qualified above. Preserve the existing image identity, gallery, fit/zoom/pan and ordinary source-return owners. Fullscreen close-transition completion remains unqualified: the visible plain native control passed, while the pinned production fixture's native/WebKit visibility contradicted its captured screen even after confirmed manual activation. Isolate that native occlusion discrepancy before attributing close behavior to a component. Do not repeat activation requests or add focus retries, animation timeouts or native preference workarounds from this evidence. The previously recorded hidden-zoom scrolling limit is separate.
 
 Saved-report catalog/reading/return, distinct read states and named removal are now implemented and qualified above. Preserve original command identity, fresh-membership reconciliation and exact number semantics. Existing plugin management now also qualifies catalog priority and named Configure/Stage tasks. Preserve captured identity, strict command payloads and shared focus owners. The user chose existing UI only; do not add backend-only pages or recreate completed Memory, Schedules, report or package-editor flows.
+
+Remembered-rule action descriptions are now implemented and qualified above. Preserve the visible record as the description owner, concise action names and Runtime rule IDs as command targets. VoiceOver speech remains a separate untested boundary.
 
 Hooks scope and source provenance are now implemented and qualified above. Preserve the read-only list and Runtime-owned trust/active facts; source display does not authorize new Hook authoring or local-path actions. Continue with other existing task paths from fresh source and native evidence.
 
