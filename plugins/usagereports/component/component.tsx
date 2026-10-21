@@ -433,10 +433,10 @@ function Archive({ context }: { context: BoundContext }) {
               label="Capture period"
               value={period}
               onValueChange={(value) => setPeriod(value as Period)}
-              options={[
-                { value: "daily", label: "Daily · last 24 hours" },
-                { value: "weekly", label: "Weekly · last 7 days" },
-              ]}
+              options={(Object.keys(periods) as Period[]).map((value) => ({
+                value,
+                label: `${periods[value].label} · ${periods[value].window}`,
+              }))}
             />
             <Button disabled={pending || unknown.length > 0} onClick={save}>
               Save report
@@ -483,8 +483,7 @@ function Archive({ context }: { context: BoundContext }) {
           }
         >
           <Metadata>
-            A capture copies core accounting for the last 24 hours (daily) or
-            the last 7 days (weekly) before it runs, not a calendar day or week.
+            {`A capture copies core accounting for the ${periods.daily.window} (daily) or the ${periods.weekly.window} (weekly) before it runs, not a calendar day or week.`}
           </Metadata>
           {archive.loading && !headers && (
             <Metadata role="status">Reading saved reports…</Metadata>
