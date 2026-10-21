@@ -49,7 +49,6 @@ const cp = stylex.create({
     minWidth: 0,
     flexWrap: "wrap",
     columnGap: space.s2,
-    fontFamily: "var(--font-mono)",
     color: color.warning,
   },
   detail: { marginTop: space.s2, overflowWrap: "break-word", color: color.negative },
@@ -224,7 +223,7 @@ export function ConnectionPane() {
                   size="md"
                   disabled={isDefault}
                   onClick={reset}
-                  className={stylex.props(vocab.hold).className}
+                  styles={vocab.hold}
                 >
                   {t("settings.connection.reset")}
                 </Button>
@@ -258,7 +257,7 @@ export function ConnectionPane() {
               size="md"
               disabled={!dirty}
               onClick={() => void apply()}
-              className={stylex.props(vocab.hold).className}
+              styles={vocab.hold}
             >
               {t("settings.connection.apply")}
             </Button>
@@ -304,7 +303,7 @@ export function ConnectionPane() {
                 {unhealthyChecks.length > 0 ? (
                   <>
                     <dt {...stylex.props(vocab.faint)}>{t("settings.connection.status.checks")}</dt>
-                    <dd {...stylex.props(cp.checks)}>
+                    <dd {...stylex.props(cp.checks, face.mono)}>
                       {unhealthyChecks.map(([name, health]) => (
                         <span key={name}>
                           {name} <span {...stylex.props(vocab.faint)}>{t(STATUS_KEY[health])}</span>
