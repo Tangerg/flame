@@ -2,15 +2,8 @@ import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
 import type { Tone } from "./tone";
-import {
-  color,
-  radius,
-  face,
-  space,
-  surface,
-  type,
-  weight,
-} from "./tokens.stylex";
+import { radius, face, space, type, weight } from "./tokens.stylex";
+import { toneFill } from "./tone-fill";
 
 const styles = stylex.create({
   base: {
@@ -24,24 +17,6 @@ const styles = stylex.create({
     borderRadius: radius.sm,
     fontWeight: weight.medium,
   },
-  neutral: { backgroundColor: surface.surface2, color: color.fgMuted },
-  accent: {
-    backgroundColor: surface.accentBadge,
-    color: color.accentBadgeText,
-  },
-  success: {
-    backgroundColor: surface.successBadge,
-    color: color.successBadgeText,
-  },
-  warning: {
-    backgroundColor: surface.warningBadge,
-    color: color.warningBadgeText,
-  },
-  negative: {
-    backgroundColor: surface.negativeBadge,
-    color: color.negativeBadgeText,
-  },
-  info: { backgroundColor: surface.infoBadge, color: color.infoBadgeText },
   sm: { paddingInline: space.s2, paddingBlock: "1px" },
   md: { paddingInline: space.s2_5, paddingBlock: space.s0_5 },
 });
@@ -67,7 +42,7 @@ export function Badge({
 }: BadgeProps) {
   const styled = stylex.props(
     styles.base,
-    styles[tone],
+    toneFill[tone],
     styles[size],
     SIZE_TYPE[size],
     face[textFace],
