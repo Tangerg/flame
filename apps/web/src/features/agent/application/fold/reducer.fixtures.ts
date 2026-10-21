@@ -11,6 +11,89 @@ import {
 } from "@/features/agent/public/sessionView";
 import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
 import { reduceAgentEvent } from "@/features/agent/application/fold/reducer";
+
+// The runtime presenter stamps a category on every tool it projects; fixtures
+// reproduce that wire so the fold reads the category it will be given.
+const WIRE_TOOL_CATEGORY: Record<string, "shell" | "edit" | "read" | "search" | "web" | "task"> = {
+  shell: "shell",
+  read_shell_output: "shell",
+  stop_shell: "shell",
+  apply_patch: "edit",
+  edit: "edit",
+  read: "read",
+  read_skill_resource: "read",
+  read_tool_result: "read",
+  glob: "search",
+  grep: "search",
+  search_tools: "search",
+  lsp: "search",
+  web_search: "web",
+  web_fetch: "web",
+  http_request: "web",
+  ask_user: "task",
+  delegate_task: "task",
+  create_goal: "task",
+  get_goal: "task",
+  report_goal_outcome: "task",
+  load_skill: "task",
+  list_skills: "task",
+  propose_skill: "task",
+  enter_plan_mode: "task",
+  exit_plan_mode: "task",
+  set_plan: "task",
+};
+
+export function toolCategoryForName(name: string) {
+  return WIRE_TOOL_CATEGORY[name] ?? "unknown";
+}
+
+export function stampDurableToolCategory<I extends { type: string }>(item: I): I {
+  const candidate = item as unknown as {
+    type: string;
+    tool?: { name: string; category?: string };
+  };
+  if (
+    candidate.type !== "toolCall" ||
+    candidate.tool === undefined ||
+    candidate.tool.category !== undefined
+  ) {
+    return item;
+  }
+  return {
+    ...item,
+    tool: { ...candidate.tool, category: toolCategoryForName(candidate.tool.name) },
+  } as I;
+}
+
+function stampToolCategory(event: StreamEvent): StreamEvent {
+  if (
+    (event.type === "item.started" || event.type === "item.completed") &&
+    event.item.type === "toolCall" &&
+    event.item.tool.category === undefined
+  ) {
+    return { ...event, item: stampDurableToolCategory(event.item) };
+  }
+  if (event.type === "segment.finished") {
+    return {
+      ...event,
+      interrupts: event.interrupts.map((interrupt) =>
+        interrupt.type === "approval" && interrupt.payload.tool.category === undefined
+          ? {
+              ...interrupt,
+              payload: {
+                ...interrupt.payload,
+                tool: {
+                  ...interrupt.payload.tool,
+                  category: toolCategoryForName(interrupt.payload.tool.name),
+                },
+              },
+            }
+          : interrupt,
+      ),
+    };
+  }
+  return event;
+}
 export const noMetrics: RunMetrics = {
   steps: 0,
   activeDurationMillis: 0,
@@ -60,6 +143,7 @@ export function testRunEvent(
   runId?: string,
   segmentId?: string,
 ): RunEvent {
+  event = stampToolCategory(event);
   const payloadRunId =
     event.type === "segment.started"
       ? event.run.id

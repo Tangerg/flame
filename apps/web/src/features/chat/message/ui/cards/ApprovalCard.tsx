@@ -3,6 +3,7 @@ import { toolFamilyId } from "@/lib/toolFamilies";
 import { toolIconFor } from "@/features/agent/public/toolIcon";
 import { type ApprovalDecision } from "@/features/agent/public/hitl";
 import { type RememberScope } from "@/features/agent/public/hitl";
+import { type ToolCategory } from "@flame/runtime-client/wire";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { useT } from "@/lib/i18n/index";
 import { Divider } from "@/ui/index";
@@ -27,6 +28,7 @@ interface Props {
   resumeRunId?: string;
   decision?: ApprovalDecision;
   toolName?: string;
+  category?: ToolCategory;
   cmd: string;
   reason: string;
   itemId?: string;
@@ -47,6 +49,7 @@ export function ApprovalCard({
   resumeRunId,
   decision,
   toolName,
+  category,
   cmd,
   reason,
   itemId,
@@ -75,7 +78,7 @@ export function ApprovalCard({
   if (resumeRunId === undefined) return null;
 
   const identity = approvalIdentity(t, toolName);
-  const title = reason.trim() || approvalHeadline(t, toolName);
+  const title = reason.trim() || approvalHeadline(t, toolName, category);
 
   return (
     <Surface

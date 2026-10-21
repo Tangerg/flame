@@ -110,9 +110,9 @@ describe("toolPresentation", () => {
   });
 
   it("counts web search results as results and pattern hits as matches", () => {
-    expect(toolMetaItems(t, tool({ name: "web_search", fn: "web_search", hits: 2 }))).toEqual([
-      { id: "hits", label: "2 results", tone: "muted" },
-    ]);
+    expect(
+      toolMetaItems(t, tool({ name: "web_search", category: "web", fn: "web_search", hits: 2 })),
+    ).toEqual([{ id: "hits", label: "2 results", tone: "muted" }]);
     expect(toolMetaItems(t, tool({ name: "grep", fn: "grep", hits: 2 }))).toEqual([
       { id: "hits", label: "2 matches", tone: "muted" },
     ]);

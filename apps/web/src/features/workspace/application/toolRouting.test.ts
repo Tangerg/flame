@@ -2,6 +2,7 @@ import { contributeForTest } from "@/test/kernel";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import { beforeEach, describe, expect, it } from "vitest";
 import { type ToolCall } from "@/features/agent/public/sessionView";
+import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
 import {
   useContextDockStore,
   WorkspaceFileFocus,
@@ -19,6 +20,7 @@ const toolCall = ({
   fn: "",
   args: "",
   status: "ok",
+  category: toolCategoryForName(over.name),
   ...over,
 });
 

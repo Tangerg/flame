@@ -92,6 +92,7 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
             block.itemId === undefined ? undefined : facts.toolCalls[block.itemId]?.approvalDecision
           }
           toolName={block.toolName}
+          category={block.category}
           cmd={block.command}
           reason={block.reason}
           itemId={block.itemId}

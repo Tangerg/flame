@@ -1,4 +1,5 @@
 import { type CapturedToolResult, type RecordedFileChange } from "@flame/component-sdk";
+import { type ToolCategory } from "@flame/runtime-client/wire";
 type RecoveryAction =
   | "refetch"
   | "coldRecover"
@@ -32,6 +33,7 @@ type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
 // The reducer advances its current read model; components receive frozen captures.
 export type ToolCall = Mutable<Omit<CapturedToolResult, "changes" | "range">> & {
+  category?: ToolCategory;
   changes?: Mutable<RecordedFileChange>[];
   range?: Mutable<NonNullable<CapturedToolResult["range"]>>;
 };

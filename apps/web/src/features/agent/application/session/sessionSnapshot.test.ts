@@ -43,7 +43,7 @@ describe("projectAgentSessionSnapshot", () => {
         runId: ROOT_RUN_ID,
         status: "running",
         startedAt: "2026-07-30T01:00:01.000Z",
-        tool: { name: "shell", arguments: { command: "npm test" } },
+        tool: { name: "shell", category: "shell", arguments: { command: "npm test" } },
       };
       const snapshot: AgentSessionSnapshot = {
         runs: [run],

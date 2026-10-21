@@ -349,6 +349,7 @@ export function writeApproval(
     kind: "approval",
     itemId: item.id,
     toolName: payload.tool.name,
+    ...(payload.tool.category !== undefined ? { category: payload.tool.category } : {}),
     command: commandString(payload.tool),
     reason: payload.reason ?? "",
     args: editableArgs(payload.tool),

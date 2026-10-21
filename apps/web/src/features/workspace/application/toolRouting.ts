@@ -1,12 +1,11 @@
 import { type ToolCall } from "@/features/agent/public/sessionView";
-import { toolCategory } from "@/features/agent/public/viewState";
 import {
   openWorkspaceDiffForFile,
   openWorkspaceFile,
 } from "@/features/workspace/application/navigation";
 function toolDestination(tool: ToolCall): "diff" | "file" | null {
-  const category = toolCategory(tool.name);
-  if (category === "fileEdit") return "diff";
+  const category = tool.category;
+  if (category === "edit") return "diff";
   if (category === "read" && tool.fnKind === "path") return "file";
   return null;
 }

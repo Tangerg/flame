@@ -1,4 +1,5 @@
 import { type ApprovalDecision } from "@/features/agent/domain/hitl";
+import { type ToolCategory } from "@flame/runtime-client/wire";
 import {
   type AgentProblem,
   type AgentRunMetrics,
@@ -40,6 +41,7 @@ export interface AgentQuestion {
 export interface AgentToolInvocation {
   argumentsText?: string;
   name: string;
+  category?: ToolCategory;
   arguments: Record<string, unknown>;
   result?: unknown;
 }

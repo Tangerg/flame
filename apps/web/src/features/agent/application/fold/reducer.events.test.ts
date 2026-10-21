@@ -9,6 +9,7 @@ import {
   foldTestEvent as reduce,
   runFinished,
   runWaiting,
+  stampDurableToolCategory,
   testRunEvent,
 } from "@/features/agent/application/fold/reducer.fixtures";
 import { reduceAgentEvent, reduceDurableItem } from "@/features/agent/application/fold/reducer";
@@ -21,7 +22,7 @@ import {
 import { reconcileMessageIdentity } from "@/features/agent/application/view/viewMutations";
 import { selectAwaitingInterrupts } from "@/features/agent/application/view/awaitingInterrupts";
 function item(partial: Record<string, unknown>): Item {
-  return {
+  return stampDurableToolCategory({
     runId: "run_1",
     status: "running",
     ...(partial.type === "toolCall"
@@ -33,7 +34,7 @@ function item(partial: Record<string, unknown>): Item {
         }
       : { createdAt: "2026-06-03T00:00:00Z" }),
     ...partial,
-  } as Item;
+  } as Item);
 }
 
 const started = (i: Item): StreamEvent => ({ type: "item.started", item: i });

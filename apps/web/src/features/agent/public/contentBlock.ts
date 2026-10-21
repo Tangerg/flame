@@ -1,3 +1,5 @@
+import { type ToolCategory } from "@flame/runtime-client/wire";
+
 export type BlockStatus = "running" | "complete" | "incomplete";
 
 interface QuestionOption {
@@ -32,6 +34,7 @@ interface ContentBlockMap {
   approval: {
     kind: "approval";
     toolName?: string;
+    category?: ToolCategory;
     command: string;
     reason: string;
     itemId?: string;

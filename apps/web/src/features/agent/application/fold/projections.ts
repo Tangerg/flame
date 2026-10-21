@@ -17,7 +17,6 @@ import {
   type QuestionItem,
 } from "@/features/agent/public/contentBlock";
 import { type ToolCall, type ToolCallStatus } from "@/features/agent/public/sessionView";
-import { toolCategory } from "@/features/agent/domain/toolCategory";
 import { parseUnifiedDiff } from "@/features/agent/domain/unifiedDiff";
 export function itemStartedAt(item: AgentItem): string {
   return item.type === "toolCall" ? item.startedAt : item.createdAt;
@@ -160,13 +159,13 @@ function rawLabelSource(tool: AgentToolInvocation): { text: string; path: boolea
   const byName = nameLabel(tool);
   if (byName) return { text: byName, path: false };
   const a = tool.arguments ?? {};
-  switch (toolCategory(tool.name)) {
-    case "command":
+  switch (tool.category) {
+    case "shell":
       return {
         text: asString(a.description) || asString(a.command) || tool.name || "command",
         path: false,
       };
-    case "fileEdit": {
+    case "edit": {
       const path = asString(a.path);
       if (path) return { text: path, path: true };
       const single = asString(asRecord(editChanges(tool.result)[0])?.path);
@@ -174,13 +173,13 @@ function rawLabelSource(tool: AgentToolInvocation): { text: string; path: boolea
     }
     case "search":
       return { text: asString(a.query) || asString(a.pattern) || "search", path: false };
-    case "webSearch":
+    case "web":
       return { text: asString(a.query) || "search", path: false };
     case "read": {
       const path = asString(a.path);
       return path === undefined ? { text: tool.name, path: false } : { text: path, path: true };
     }
-    case "subagent":
+    case "task":
       return {
         text: asString(a.summary) || firstLine(a.instructions) || tool.name,
         path: false,
@@ -209,8 +208,8 @@ function categoryFields(
   tool: AgentToolInvocation,
   result: Record<string, unknown> | undefined,
 ): Partial<ToolCall> {
-  switch (toolCategory(tool.name)) {
-    case "command": {
+  switch (tool.category) {
+    case "shell": {
       const merged = asString(commandToolResult(tool.result)?.output) ?? asString(tool.result);
       return {
         exitCode: asNumber(commandToolResult(tool.result)?.exitCode),
@@ -220,7 +219,7 @@ function categoryFields(
         ...(merged !== undefined ? { result: merged } : {}),
       };
     }
-    case "fileEdit": {
+    case "edit": {
       const proposed = parseUnifiedDiff(asString(tool.arguments?.patch) ?? "");
       const changes = editChanges(tool.result);
       const files = changes.length || proposed.length;
@@ -241,7 +240,7 @@ function categoryFields(
         hits: asArrayLength(searchToolResult(tool.result)?.hits),
         ...rawResult(tool.result),
       };
-    case "webSearch":
+    case "web":
       return {
         hits: asArrayLength(webSearchToolResult(tool.result)?.results),
         ...rawResult(tool.result),
@@ -261,7 +260,7 @@ function categoryFields(
         ...(partial ? { range: { start: start!, end: end! } } : {}),
       };
     }
-    case "subagent":
+    case "task":
       return rawResult(asString(result?.reply) ?? tool.result);
     default:
       return tool.result === undefined
@@ -276,7 +275,7 @@ function categoryFields(
 export function argsText(tool: AgentToolInvocation): string {
   if (tool.argumentsText !== undefined) return tool.argumentsText;
   if (nameLabel(tool) !== undefined) return "";
-  if (toolCategory(tool.name) !== "generic" && toolCategory(tool.name) !== "subagent") return "";
+  if (tool.category !== "unknown" && tool.category !== "task") return "";
   return Object.keys(tool.arguments).length > 0 ? JSON.stringify(tool.arguments, null, 2) : "";
 }
 
@@ -293,8 +292,8 @@ export function commandString(tool: AgentToolInvocation): string {
 }
 
 export function editableArgs(tool: AgentToolInvocation): Record<string, unknown> | undefined {
-  const cat = toolCategory(tool.name);
-  return cat === "generic" || cat === "subagent" ? tool.arguments : undefined;
+  const cat = tool.category;
+  return cat === "unknown" || cat === "task" ? tool.arguments : undefined;
 }
 
 export function projectToolCall(
@@ -305,6 +304,7 @@ export function projectToolCall(
     id: item.id,
     runId: item.runId,
     name: item.tool.name,
+    ...(item.tool.category !== undefined ? { category: item.tool.category } : {}),
     fn: toolLabel(item.tool),
     ...(toolLabelKind(item.tool) === "path" ? { fnKind: "path" as const } : {}),
     args:

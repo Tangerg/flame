@@ -2,7 +2,6 @@ import { type Translate } from "@/lib/i18n/index";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { fmtDuration } from "@/lib/format";
 import { toolVerbId } from "@/lib/toolFamilies";
-import { toolCategory } from "@/features/agent/domain/toolCategory";
 export type ToolDetail = { kind: "path" | "machine" | "prose"; value: string };
 
 export interface ToolIntent {
@@ -53,8 +52,7 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
     items.push({ id: "files", label: t("tool.meta.files", { count: tool.files }), tone: "muted" });
   }
   if (tool.hits != null) {
-    const found =
-      toolCategory(tool.name) === "webSearch" ? "tool.meta.results" : "tool.meta.matches";
+    const found = tool.category === "web" ? "tool.meta.results" : "tool.meta.matches";
     items.push({ id: "hits", label: t(found, { count: tool.hits }), tone: "muted" });
   }
   if (tool.range != null) {

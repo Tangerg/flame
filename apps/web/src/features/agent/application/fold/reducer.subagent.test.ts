@@ -8,6 +8,7 @@ import {
 } from "@/features/agent/public/events";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/features/agent/public/sessionView";
 import { reduceAgentEvent } from "@/features/agent/application/fold/reducer";
+import { stampDurableToolCategory } from "@/features/agent/application/fold/reducer.fixtures";
 import { foldRunSnapshot } from "@/features/agent/application/fold/runSnapshot";
 import { selectAwaitingInterrupts } from "@/features/agent/application/view/awaitingInterrupts";
 const METRICS = {
@@ -90,7 +91,7 @@ function waiting(eventId: string, run: RunRef, interrupts: AgentInterrupt[] = []
 function itemStarted(eventId: string, item: Item, segmentId: string): RunEvent {
   return envelope(eventId, item.runId, segmentId, {
     type: "item.started",
-    item,
+    item: stampDurableToolCategory(item),
   });
 }
 
