@@ -19,7 +19,7 @@ const styles = stylex.create({
     paddingBlock: space.s1_5,
     textAlign: "start",
     transitionProperty: "color, background-color, border-color",
-    transitionDuration: motion.fast,
+    transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
     cursor: {
       default: null,

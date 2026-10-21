@@ -28,6 +28,7 @@ const pp = stylex.create({
   plugin: {
     backgroundColor: { default: null, ":hover": surface.hover },
     transitionProperty: "background-color",
+    transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
   },
   faulted: { backgroundColor: surface.negativeWash },

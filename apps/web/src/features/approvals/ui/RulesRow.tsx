@@ -47,6 +47,7 @@ const r = stylex.create({
     paddingInline: space.s2_5,
     paddingBlock: space.s2,
     transitionProperty: "background-color",
+    transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
   },
   copy: {

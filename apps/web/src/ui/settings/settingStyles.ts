@@ -60,6 +60,7 @@ export const settingStyles = stylex.create({
     paddingInline: space.s3,
     paddingBlock: space.s1_5,
     transitionProperty: "background-color",
+    transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
   },
 });

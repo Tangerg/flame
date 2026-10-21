@@ -35,6 +35,7 @@ const ap = stylex.create({
     paddingBlock: space.s1_5,
     color: { default: color.fgMuted, ":hover": color.fg },
     transitionProperty: "color",
+    transitionDuration: motionToken.color,
     transitionTimingFunction: motionToken.easeState,
   },
   host: {
