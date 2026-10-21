@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Shared portable popup visibility is integrated at `680794e4d`. Bounded dialogs now keep an open editing task and its nested controls usable when the backing material hides, and resolve cancellation against the currently visible workspace. Actual Wails acceptance covers ordinary collapse, deletion cancellation, Chinese/dark/18 px/custom blue, a native narrow window, 200% zoom and history return to a different main material. Shared UI and integrated frontend/native qualification pass; latest `main` is merged, including repairs for its type and test-fixture boundary failures. Earlier Runtime failures, exact check sequencing and coverage limits are recorded below. Owned acceptance resources are cleaned. Continuous UI work proceeds from the remaining task paths.
+Updated: 2026-10-21. Bounded dialog continuity is integrated at `a00411dcc`. Main and delegated transcript readers now reserve focus clearance above their floating Jump to bottom controls. Actual Wails acceptance covers result search, keyboard reentry, Escape, bottom navigation and continued drafting at native half-window/200%, plus a 320 px Dock. Full Web/native checks pass; latest `main` through `7c6cadb4a` is merged and its affected contracts are rechecked. The Runtime receipt fixture migration, exact check sequence and native coverage limits are recorded below. Owned acceptance resources are cleaned. Continuous UI work proceeds from the remaining task paths.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1015,6 +1015,36 @@ Verification for this contract:
 - These scenes use the production components and shared React graph through actual Wails asset/IPC hosting, canonical in-memory reads and bounded synthetic command observations. They qualify UI continuity and the SDK's original-handle mapping, not a live Runtime installation, durable receipt journal or provider restart. No live package selection or Runtime write was performed. No browser visual suite or performance baseline ran. VoiceOver, real OS IME composition and rendered contrast measurements remain outside this qualification.
 - Cleanup completed: all owned native/CLI/check/build processes exited. The app was unregistered; its bundle, fixture/data, overlays, production binary, logs, all four completed CLI reports and the acceptance root were removed. Newly created bundle-specific WebKit/cache paths were removed with preexistence/birth-time guards. No preview server was started. Existing shared outputs/compiler caches, read-only Ace references and unrelated worktrees/processes were retained. The primary agent owned research, boundaries, review and native acceptance; Claude Code CLI supplied the bounded implementation and regression work.
 
+## Transcript controls and floating navigation
+
+The main transcript's focus scroll padding now reserves the Composer overlay
+plus the larger of its existing fade or the floating Jump control, its gap and
+the shared control clearance. The original fade-only allowance could put a
+focused result-search outline behind that button at 200%. This is an observed
+overlap; the focused control was not wholly hidden, so no whole-focus-obscured
+WCAG failure is claimed.
+
+`ChatStream.tsx` owns the main Jump gap through `--transcript-jump-gap`, consumed
+by both `JumpToBottomButton.tsx` and `.msg-scroll-viewport` in `globals.css`.
+`SubagentsPanel.tsx` supplies its existing larger gap on the reader and reserves
+the corresponding space on its own scroller. Both use the shared medium control
+height and control gap. Actual content padding, Composer dimensions, scroll
+height, follow policy and result controls retain their owners; no new state,
+observer, event handler or imperative scrolling compensates for the geometry.
+
+The read-only ZCode `ToolCallBody`/`ExecuteOutput` inspection separates record
+identity and bounded output. The better-layout, better-typography and
+better-accessibility review applies that task distinction here: navigation must
+leave the current reading control visible. Captured result URLs and paths remain
+literal historical output. This change does not add file/navigation commands or
+reinterpret recorded material as current workspace data.
+
+Latest Runtime receipts require explicit `added`/`removed` values. Six captured
+patch receipts in `visual/agentSessionSnapshots.ts` now retain zero values for
+their abbreviated, unparseable patch inputs, matching the Runtime presenter.
+The existing contract test exposed the omission. No frontend patch grammar,
+inferred count or permissive result fallback was introduced.
+
 ## Native workspace zoom and Dock geometry
 
 macOS View commands retain the default menu roles, shortcuts, 5% steps and
@@ -1062,6 +1092,17 @@ reachable controls and width semantics. Existing type, color and surface owners
 remain the visual basis.
 
 ## Verification checkpoint
+
+For transcript focus beside floating navigation (2026-10-21):
+
+- Original actual Wails on `a00411dcc` reproduced the main result-search outline overlapping Jump to bottom after native Window → Move & Resize → Left, fixed **200%**, Chinese host/dark/**18 px**/custom blue. The accepted route used keyboard group/result/Find entry, `checkpoint`, reverse Tab to the prompt actions and forward reentry to the same field. User-change-interrupted zoom and pointer probes were excluded; a separately clipped initial field was not classified as a diagnosed product defect.
+- The bounded edit-only Claude Code CLI ended after **17 turns / 102.29 seconds** with its maximum-turn result, no edits, subagents or permission denials. Primary completed and reviewed the four CSS/host changes. Early type checking and **4 files / 53 tests** passed. Native candidate reentry showed the complete outline above Jump, with query, Clear/Shift-Tab and Escape-to-Result intact. No DOM-layout assertion was added to a simulated geometry environment.
+- The first complete Web check passed **3,039 tests** and failed the captured Runtime-result contract in one file: six patch receipts omitted **12** newly required count fields after upstream `3f792866e`. Primary migrated the literal receipts at their owner; the existing **6** snapshot-contract tests passed. The final complete `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` on CI Node **22.22.1** passed **385 files / 3,040 tests** and every subsequent type/lint/format, boundary/style/locale/resource, production-bundle and module-linkage gate in **262.94 seconds**. Final `make check-native` passed in **25.28 seconds**. No assertion, deadline or check was weakened.
+- User main advanced through the Runtime automation/workspace namespace changes and then plugin scope/placement/domain changes, ending at `7c6cadb4a`. All five accepted source hashes survived integration. After the last two commits, Web type checking, the six affected transcript/result/snapshot/plugin files (**68 tests**), the published-boundary scan and its **7** regressions passed; `make check-native` passed again in **38.95 seconds**. The complete 3,040-test suite was not repeated after those upstream type/plugin-only changes. The final private main-scene build passed in **4.09 seconds**; the native binary is arm64, minimum macOS **13.0**, SDK **26.5**.
+- Final integrated Chinese/dark/18 px/custom-blue Wails repeated native Left/fixed 200% → tool group → web result → Find. Reverse Tab to prompt Copy, five forward Tabs and Clear/Shift-Tab kept `checkpoint` and the complete blue outline above the floating control. Escape focused Result. A non-interrupted native pointer Jump removed the button and focused the transcript. Actual Size and native Composer editing retained exactly `整合后结果阅读草稿 保留 · continued`. The early guarded Jump probe is not relied on for that pointer conclusion.
+- English/light/**14 px**/Flame Orange delegated acceptance used the actual independent reader at native Left/200%. The existing captured web result could be expanded, searched, left through reverse Tab to All subagents and reentered with its query intact. Clear/Shift-Tab preserved the complete outline above Jump. Escape focused Result; Page Down continued transcript reading. A non-interrupted native pointer Jump reached the child bottom. Returning to Conversation and Actual Size retained the mixed-language draft. At an AX-reported **320 px Dock**, result Find/reentry, both original titles/URLs/excerpts and the draft remained readable; collapsing details and editing retained exactly `Result reading return draft · 子代理结果返回草稿 · continued`. This is a 320 px Dock qualification, not a 320 px whole-app viewport claim.
+- Private native composition supplies canonical Runtime category facts to the older optional-category captures and inserts one copy of the existing settled web-search fact into the waiting child. Those are bounded captured inputs before production rendering, with no geometry override, focus counter or production branch. They qualify actual Wails UI over isolated memory providers, not live web requests, provider/Run execution or durable restart. No draft, approval, cancellation, Stop or business command was submitted. VoiceOver, OS IME composition, measured contrast, other-platform GUIs, browser visual suites, performance benchmarks and unrelated root/CLI suites were not run. Existing non-failing loopback, fixture chunk-size and duplicate `-lobjc` diagnostics remain separate.
+- Cleanup completed: all **four** owned native processes, CLI and check/build runners exited. The exact bundle was unregistered, and the private root, bundle, fresh homes, overlays, comparison copies, CLI prompt/report, screenshots and logs were removed. **10** newly created untracked worktree output/cache paths and **2** bundle-specific Caches/WebKit paths passed preexistence, UID, birth-time, symlink and tracked-path guards before removal. HTTP storage, preferences and saved state were absent. Installed dependencies, shared compiler/package caches, read-only references, user data and unrelated work remain intact. Continue another observed material/task navigation path from current main.
 
 For the reported return of main-page accent tint (2026-10-21):
 

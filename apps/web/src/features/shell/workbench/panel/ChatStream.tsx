@@ -29,7 +29,7 @@ import { vocab } from "@flame/ui";
 import { useContentVisible } from "@/ui/index";
 const cst = stylex.create({
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
-  queryable: { containerType: "inline-size" },
+  queryable: { containerType: "inline-size", "--transcript-jump-gap": space.s2 },
   rail: {
     position: "absolute",
     top: 0,

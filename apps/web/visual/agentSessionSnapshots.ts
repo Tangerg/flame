@@ -591,6 +591,8 @@ const SHELL_COMMAND: Item = {
   },
 };
 
+// Abbreviated patch inputs have no parseable line counts; these captured
+// receipts retain the Runtime presenter's explicit zero counts.
 const PATCH_NEW_FILE: Item = {
   type: "toolCall",
   safetyClass: "write",
@@ -603,7 +605,11 @@ const PATCH_NEW_FILE: Item = {
   tool: {
     name: "apply_patch",
     arguments: { patch: "*** Begin Patch\n*** Add File: atomicity.md\n…\n*** End Patch" },
-    result: { changes: [{ path: "runtime/internal/session/atomicity.md", status: "added" }] },
+    result: {
+      changes: [
+        { path: "runtime/internal/session/atomicity.md", status: "added", added: 0, removed: 0 },
+      ],
+    },
   },
 };
 
@@ -637,13 +643,22 @@ const SHELL_PATCH: Item = {
         {
           path: "/Users/visual/scope/apps/web/src/features/chat/tools/application/specialisedPreviewProjections.ts",
           status: "modified",
+          added: 0,
+          removed: 0,
         },
         {
           path: "runtime/internal/session/atomicity_and_idempotency.go",
           status: "moved",
           from: "runtime/internal/session/store_atomicity.go",
+          added: 0,
+          removed: 0,
         },
-        { path: "runtime/internal/session/legacy_store_shim.go", status: "deleted" },
+        {
+          path: "runtime/internal/session/legacy_store_shim.go",
+          status: "deleted",
+          added: 0,
+          removed: 0,
+        },
       ],
     },
   },
@@ -745,7 +760,11 @@ const WAVE_PATCH: Item = {
   tool: {
     name: "apply_patch",
     arguments: { patch: "*** Begin Patch\n…\n*** End Patch" },
-    result: { changes: [{ path: "runtime/internal/session/store.go", status: "modified" }] },
+    result: {
+      changes: [
+        { path: "runtime/internal/session/store.go", status: "modified", added: 0, removed: 0 },
+      ],
+    },
   },
 };
 
@@ -1772,7 +1791,16 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         "item_n_patch",
         "apply_patch",
         { patch: "*** Begin Patch\n*** Add File: useRetryPayment.ts\n…\n*** End Patch" },
-        { changes: [{ path: "src/checkout/hooks/useRetryPayment.ts", status: "added" }] },
+        {
+          changes: [
+            {
+              path: "src/checkout/hooks/useRetryPayment.ts",
+              status: "added",
+              added: 0,
+              removed: 0,
+            },
+          ],
+        },
       ),
       NARRATIVE_ANSWER_1,
       NARRATIVE_TURN_2,
