@@ -2222,8 +2222,24 @@ accessible name — folding it in needs a new "favorited" state string across ei
 locales and the state is already reachable from the row menu, so it is deferred
 rather than guessed.
 
+A cross-feature consistency pass (the orthogonal view to the per-surface audits)
+confirmed empty-state, loading-skeleton, pending-button and master-detail return
+patterns are already centrally owned, and fixed the two divergences it found: the
+provider/model-role/MCP forms rendered the shared useAsyncFeedback error through
+three mutually-inconsistent hand-rolled alerts instead of SystemMessage (now all on
+SystemMessage), and the MCP server-toggle and approval mode-change re-implemented
+the useCommandAction toast-on-failure flow by hand — the server toggle without its
+in-flight guard — while sibling rows in the same features already used the helper
+(now both routed through it).
+
 The genuinely open items are now design and native-acceptance decisions, not
 defects; each needs a Wails look and an explicit choice before implementing:
+
+- **Destructive-confirmation tiering.** Session delete and goal replace route through
+  ConfirmDialog; MCP server delete and API-key clear remove user-configured state
+  without confirmation. This may be a deliberate stakes tier (a server/key is
+  re-addable, a session loses history) or drift — decide whether config removal
+  should confirm, then make the tier explicit so it is not read as inconsistency.
 
 - **Wide-content breakout geometry.** Tune `--wide-column-max` (56rem), confirm the
   left-anchored growth reads well across the 640–1151px band, and judge the 1152px
