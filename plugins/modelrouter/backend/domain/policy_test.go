@@ -2,9 +2,9 @@ package domain
 
 import (
 	"errors"
-	"math"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/exactint"
 	"github.com/Tangerg/flame/runtime/model"
 )
 
@@ -63,11 +63,11 @@ func TestPolicyRefusesAmbiguousRulesInvalidUnitsAndRevisionExhaustion(t *testing
 	if _, err := Restore(Snapshot{Revision: 1}); !errors.Is(err, ErrInvalidPolicy) {
 		t.Fatalf("missing rule list became a pass-through policy: %v", err)
 	}
-	policy, err := Restore(Snapshot{Revision: math.MaxInt64, Rules: []Rule{}})
+	policy, err := Restore(Snapshot{Revision: exactint.Maximum, Rules: []Rule{}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := policy.Replace(math.MaxInt64, nil); !errors.Is(err, ErrRevisionLimit) {
+	if _, err := policy.Replace(exactint.Maximum, nil); !errors.Is(err, ErrRevisionLimit) {
 		t.Fatalf("revision wrapped: %v", err)
 	}
 }

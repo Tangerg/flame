@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/Tangerg/flame/runtime/exactint"
 )
 
 const (
@@ -114,14 +116,14 @@ func Restore(snapshot Snapshot) (Document, error) {
 	if err != nil {
 		return Document{}, err
 	}
-	if snapshot.Revision <= 0 {
+	if snapshot.Revision <= 0 || snapshot.Revision > exactint.Maximum {
 		return Document{}, ErrInvalidDocument
 	}
 	return Document{draft: draft, revision: snapshot.Revision, index: indexed.index}, nil
 }
 
 func (d Document) Replace(expected int64, indexed IndexedDraft) (Document, error) {
-	if expected != d.revision || d.revision == math.MaxInt64 {
+	if expected != d.revision || d.revision == exactint.Maximum {
 		return Document{}, ErrRevisionConflict
 	}
 	if len(indexed.draft.chunks) == 0 || d.revision > 0 && d.draft.content.ID != indexed.draft.content.ID {

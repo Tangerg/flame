@@ -2,10 +2,11 @@ package domain
 
 import (
 	"errors"
-	"math"
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/Tangerg/flame/runtime/exactint"
 )
 
 var (
@@ -33,7 +34,7 @@ type Policy struct {
 func NewPolicy() Policy { return Policy{revision: 1, phrases: []string{}} }
 
 func Restore(snapshot Snapshot) (Policy, error) {
-	if snapshot.Revision < 1 || snapshot.Phrases == nil || len(snapshot.Phrases) > 32 {
+	if snapshot.Revision < 1 || snapshot.Revision > exactint.Maximum || snapshot.Phrases == nil || len(snapshot.Phrases) > 32 {
 		return Policy{}, ErrInvalidPolicy
 	}
 	seen := make(map[string]bool, len(snapshot.Phrases))
@@ -61,7 +62,7 @@ func (p Policy) Replace(expected int64, phrases []string) (Policy, error) {
 	if expected != p.revision {
 		return Policy{}, ErrRevisionConflict
 	}
-	if p.revision == math.MaxInt64 {
+	if p.revision == exactint.Maximum {
 		return Policy{}, ErrRevisionLimit
 	}
 	return Restore(Snapshot{Revision: p.revision + 1, Phrases: phrases})

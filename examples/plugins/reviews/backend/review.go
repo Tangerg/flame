@@ -5,6 +5,7 @@ import (
 	"slices"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/exactint"
 	"github.com/invopop/jsonschema"
 )
 
@@ -13,7 +14,6 @@ type Status string
 const (
 	Open             Status = "open"
 	Resolved         Status = "resolved"
-	MaxRevision      int64  = 1<<53 - 1
 	ExampleReviewID         = "example-review"
 	maxReviewIDBytes        = 128
 )
@@ -38,7 +38,7 @@ type Snapshot struct {
 }
 
 func Restore(snapshot Snapshot) (Review, error) {
-	if snapshot.ID != ExampleReviewID || snapshot.Title == "" || !validStatus(snapshot.Status) || snapshot.Revision < 1 || snapshot.Revision > MaxRevision {
+	if snapshot.ID != ExampleReviewID || snapshot.Title == "" || !validStatus(snapshot.Status) || snapshot.Revision < 1 || snapshot.Revision > exactint.Maximum {
 		return Review{}, errors.New("reviews: invalid review")
 	}
 	return Review{id: snapshot.ID, title: snapshot.Title, status: snapshot.Status, revision: snapshot.Revision}, nil
@@ -55,7 +55,7 @@ func (r Review) Change(expectedRevision int64, status Status) (Review, error) {
 	if expectedRevision != r.revision {
 		return Review{}, ErrConflict
 	}
-	if r.revision == MaxRevision {
+	if r.revision == exactint.Maximum {
 		return Review{}, ErrRevisionExhausted
 	}
 	r.status, r.revision = status, r.revision+1
@@ -80,7 +80,7 @@ func (Update) JSONSchemaExtend(schema *jsonschema.Schema) {
 }
 
 func (u Update) Validate() error {
-	if u.ID == "" || len(u.ID) > maxReviewIDBytes || !utf8.ValidString(u.ID) || u.ExpectedRevision < 1 || u.ExpectedRevision > MaxRevision || !validStatus(u.Status) {
+	if u.ID == "" || len(u.ID) > maxReviewIDBytes || !utf8.ValidString(u.ID) || u.ExpectedRevision < 1 || u.ExpectedRevision > exactint.Maximum || !validStatus(u.Status) {
 		return errors.New("reviews: invalid update")
 	}
 	return nil

@@ -2,8 +2,8 @@ package domain
 
 import (
 	"errors"
-	"math"
 
+	"github.com/Tangerg/flame/runtime/exactint"
 	"github.com/Tangerg/flame/runtime/model"
 )
 
@@ -32,7 +32,7 @@ type Policy struct {
 func NewPolicy() Policy { return Policy{revision: 1, rules: []Rule{}} }
 
 func Restore(snapshot Snapshot) (Policy, error) {
-	if snapshot.Revision < 1 || snapshot.Rules == nil || len(snapshot.Rules) > 3 {
+	if snapshot.Revision < 1 || snapshot.Revision > exactint.Maximum || snapshot.Rules == nil || len(snapshot.Rules) > 3 {
 		return Policy{}, ErrInvalidPolicy
 	}
 	seen := make(map[model.Use]bool, len(snapshot.Rules))
@@ -67,7 +67,7 @@ func (p Policy) Replace(expected int64, rules []Rule) (Policy, error) {
 	if expected != p.revision {
 		return Policy{}, ErrRevisionConflict
 	}
-	if p.revision == math.MaxInt64 {
+	if p.revision == exactint.Maximum {
 		return Policy{}, ErrRevisionLimit
 	}
 	return Restore(Snapshot{Revision: p.revision + 1, Rules: rules})

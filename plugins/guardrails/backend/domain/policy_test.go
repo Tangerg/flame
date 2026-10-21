@@ -2,10 +2,11 @@ package domain
 
 import (
 	"errors"
-	"math"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/exactint"
 )
 
 func TestPolicyOwnsExactMatchingAndDetachedRevisions(t *testing.T) {
@@ -39,11 +40,11 @@ func TestPolicyRefusesMissingDuplicatedOrUnboundedFacts(t *testing.T) {
 			t.Fatalf("invalid policy admitted: %v", err)
 		}
 	}
-	policy, err := Restore(Snapshot{Revision: math.MaxInt64, Phrases: []string{}})
+	policy, err := Restore(Snapshot{Revision: exactint.Maximum, Phrases: []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := policy.Replace(math.MaxInt64, []string{}); !errors.Is(err, ErrRevisionLimit) {
+	if _, err := policy.Replace(exactint.Maximum, []string{}); !errors.Is(err, ErrRevisionLimit) {
 		t.Fatalf("revision wrapped: %v", err)
 	}
 }

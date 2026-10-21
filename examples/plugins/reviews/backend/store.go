@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	"github.com/Tangerg/flame/runtime/exactint"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/scope/core/jsonschema"
 
@@ -60,7 +61,7 @@ func OpenStore(ctx context.Context, directory string) (_ *Store, err error) {
  title TEXT NOT NULL CHECK (length(title) > 0),
  status TEXT NOT NULL CHECK (status IN ('%s', '%s')),
  revision INTEGER NOT NULL CHECK (revision BETWEEN 1 AND %d)
-);`, ExampleReviewID, Open, Resolved, MaxRevision), "invocations": `CREATE TABLE invocations (
+);`, ExampleReviewID, Open, Resolved, int64(exactint.Maximum)), "invocations": `CREATE TABLE invocations (
  id TEXT PRIMARY KEY,
  input_json TEXT NOT NULL CHECK(json_valid(input_json)),
  result BLOB NOT NULL

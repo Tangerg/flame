@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	"github.com/Tangerg/flame/runtime/exactint"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 )
 
@@ -199,7 +200,7 @@ func TestInvalidBusinessInputRetainsItsOriginalReceiptAcrossRestart(t *testing.T
 		{ID: "", ExpectedRevision: 1, Status: Resolved},
 		{ID: ExampleReviewID, Status: Resolved},
 		{ID: ExampleReviewID, ExpectedRevision: -1, Status: Resolved},
-		{ID: ExampleReviewID, ExpectedRevision: MaxRevision + 1, Status: Resolved},
+		{ID: ExampleReviewID, ExpectedRevision: exactint.Maximum + 1, Status: Resolved},
 		{ID: strings.Repeat("界", 43), ExpectedRevision: 1, Status: Resolved},
 	} {
 		t.Run(fmt.Sprintf("%s/%d", invalid.ID, invalid.ExpectedRevision), func(t *testing.T) {
@@ -252,15 +253,15 @@ func TestInvalidBusinessInputRetainsItsOriginalReceiptAcrossRestart(t *testing.T
 
 func TestRevisionExhaustionIsAKnownRefusal(t *testing.T) {
 	store := openTestStore(t, t.TempDir())
-	if _, err := store.db.ExecContext(t.Context(), `UPDATE reviews SET revision = ?`, MaxRevision); err != nil {
+	if _, err := store.db.ExecContext(t.Context(), `UPDATE reviews SET revision = ?`, int64(exactint.Maximum)); err != nil {
 		t.Fatal(err)
 	}
-	result, err := testUpdate(t.Context(), store, "original", Update{ID: ExampleReviewID, ExpectedRevision: MaxRevision, Status: Resolved})
+	result, err := testUpdate(t.Context(), store, "original", Update{ID: ExampleReviewID, ExpectedRevision: exactint.Maximum, Status: Resolved})
 	if err != nil || result.Type != RevisionExhausted {
 		t.Fatalf("exhausted revision = %+v, %v", result, err)
 	}
 	current, err := store.List(t.Context())
-	if err != nil || current[0].Revision != MaxRevision || current[0].Status != Open {
+	if err != nil || current[0].Revision != exactint.Maximum || current[0].Status != Open {
 		t.Fatalf("exhausted update changed review: %+v, %v", current, err)
 	}
 }
