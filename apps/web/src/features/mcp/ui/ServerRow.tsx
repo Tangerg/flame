@@ -2,6 +2,7 @@ import { iconGlyph } from "@/ui/icons/index";
 import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
+import { useCommandAction } from "@/features/command/public/commandAction";
 import { useEffect, useId, useRef, useState } from "react";
 import { StatusDot } from "@/ui/index";
 import { Switch } from "@flame/ui";
@@ -68,14 +69,12 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
     [],
   );
 
-  const onToggle = async (enabled: boolean) => {
-    try {
-      await setEnabled(server.id, enabled);
-    } catch (err) {
-      if (wasGenerationRetired(err)) return;
-      notifyError(failureText(err, t("mcp.error.toggle")), { source: "mcp" });
-    }
-  };
+  const toggleAction = useCommandAction({
+    wasRetired: wasGenerationRetired,
+    fallback: t("mcp.error.toggle"),
+    source: "mcp",
+  });
+  const onToggle = (enabled: boolean) => toggleAction.run(() => setEnabled(server.id, enabled));
 
   const onSignIn = async () => {
     const controller = new AbortController();
@@ -135,7 +134,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
               <>
                 <Switch
                   checked={server.enabled}
-                  onCheckedChange={(value) => void onToggle(value)}
+                  onCheckedChange={(value) => onToggle(value)}
                   ariaLabel={t("mcp.enable.aria", { server: server.id.name })}
                 />
                 <IconButton

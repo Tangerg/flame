@@ -10,8 +10,7 @@ import {
 } from "@/features/agent/public/approvalPolicy";
 import { setApprovalMode } from "@/features/agent/public/approvalPolicy";
 import { type ApprovalMode, type ApprovalModeResult } from "@/features/agent/public/approvalPolicy";
-import { rpcErrorText } from "@/lib/rpcErrors";
-import { notifyError } from "@/features/notifications/public/notifications";
+import { useCommandAction } from "@/features/command/public/commandAction";
 import { useT } from "@/lib/i18n/index";
 import { useId, useState } from "react";
 import { color, leading, motion, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
@@ -29,17 +28,15 @@ export function ModeRow({ approval }: { approval: ApprovalModeResult | undefined
   const labelId = useId();
   const [pending, setPending] = useState<ApprovalMode | null>(null);
   const shown = pending ?? mode;
+  const modeAction = useCommandAction({
+    wasRetired: wasGenerationRetired,
+    fallback: t("approvals.error.mode"),
+  });
 
-  const onChange = async (next: ApprovalMode) => {
+  const onChange = (next: ApprovalMode) => {
     if (pending !== null || next === mode) return;
     setPending(next);
-    try {
-      await setApprovalMode(next);
-    } catch (err) {
-      if (!wasGenerationRetired(err)) notifyError(rpcErrorText(err) ?? t("approvals.error.mode"));
-    } finally {
-      setPending(null);
-    }
+    modeAction.run(() => setApprovalMode(next).finally(() => setPending(null)));
   };
   return (
     <SettingRow
@@ -61,7 +58,7 @@ export function ModeRow({ approval }: { approval: ApprovalModeResult | undefined
           labelledBy={labelId}
           pending={pending !== null}
           onValueChange={([next]) => {
-            if (next !== undefined) void onChange(next as ApprovalMode);
+            if (next !== undefined) onChange(next as ApprovalMode);
           }}
         >
           {approval.modes.map((policy) => (
