@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { color, leading, layout, space, type, weight } from "./tokens.stylex";
 import { Icon, type IconGlyph } from "./font-scale";
 import { IconMark } from "./icon-mark";
+import type { Tone } from "./tone";
 
 export type EmptyStateSize = "compact" | "comfortable";
 
@@ -55,6 +56,7 @@ export function EmptyState({
   action,
   size = "comfortable",
   style,
+  tone,
 }: {
   icon?: IconGlyph;
   title: string;
@@ -62,11 +64,12 @@ export function EmptyState({
   action?: ReactNode;
   size?: EmptyStateSize;
   style?: CSSProperties;
+  tone?: Tone;
 }) {
   return (
     <div {...stylex.props(styles.root, ROOT[size])} style={style}>
       {icon && (
-        <IconMark size={size === "compact" ? "sm" : "lg"}>
+        <IconMark size={size === "compact" ? "sm" : "lg"} tone={tone}>
           <Icon glyph={icon} size={size === "compact" ? "md" : "lg"} />
         </IconMark>
       )}

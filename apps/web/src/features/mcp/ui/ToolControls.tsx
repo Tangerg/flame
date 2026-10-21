@@ -77,7 +77,8 @@ export function ToolControls({ server }: Props) {
       {exposure.error != null && (
         <EmptyState
           icon={iconGlyph("alert")}
-          title={t("mcp.tools.enabled")}
+          tone="negative"
+          title={t("dataView.error.title")}
           sub={t("dataView.error.sub")}
           action={<Button onClick={() => exposure.refetch()}>{t("common.retry")}</Button>}
         />
@@ -85,7 +86,8 @@ export function ToolControls({ server }: Props) {
       {rules.error != null && (
         <EmptyState
           icon={iconGlyph("alert")}
-          title={t("mcp.tools.autoApprove")}
+          tone="negative"
+          title={t("dataView.error.title")}
           sub={t("dataView.error.sub")}
           action={<Button onClick={() => rules.refetch()}>{t("common.retry")}</Button>}
         />

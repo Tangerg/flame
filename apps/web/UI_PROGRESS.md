@@ -1193,6 +1193,30 @@ Native Wails interaction acceptance for the widened-Dock and full-pane subagent
 reading is pending and not claimed here. Next reading work is controlled
 wide-content breakout (code/tables/media exceeding the prose measure).
 
+## Empty, error and unsupported state ownership
+
+The empty/error/unsupported distinction is now owned once. `EmptyState`
+(`packages/ui`) gained a `tone` that colors the icon mark through the existing
+`Tone` vocabulary, so a failure reads as a failure instead of relying on each
+caller to remember an alert glyph. `IconMark` maps the tone to the shared badge
+surfaces; its default stays the accent mark, so existing empties are unchanged.
+`DataView` renders its error branch with `tone="negative"` and its unsupported
+branch with `tone="warning"`, which covers every list screen in one place.
+
+Four sites that bypassed `DataView` and conflated states were corrected:
+`SubagentsPanel`'s unavailable run and `ApprovalsPane`'s load failure were
+rendering an error as a neutral empty — the same icon as "nothing here" and no
+retry — and now use the alert glyph with the negative tone, with Approvals
+offering a retry. `HooksPane` dropped its hand-rolled unsupported branch and
+routes that state through `DataView`'s `unsupported` config, removing the
+duplicate. The two `ToolControls` auxiliary-query failures stopped using a
+section label as the error title and share the one error title and tone.
+
+Verification: `@flame/ui` rebuilt; its and the web `typecheck`/`lint` pass,
+`knip` clean, `@flame/ui` tests (74) and the web suite (3069) green. The shared
+`EmptyState`/`IconMark` default is unchanged, so this is additive for existing
+empties; native Wails acceptance of the new error tones is pending.
+
 ## Tool argument copy outcomes
 
 The built-in Copy arguments action now acknowledges an accepted clipboard write

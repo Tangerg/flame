@@ -54,6 +54,7 @@ export function DataView<T>({
     return (
       <EmptyState
         icon={iconGlyph(unsupported?.icon ?? "alert")}
+        tone="warning"
         title={unsupported?.title ?? t("runtime.unsupported.title")}
         sub={unsupported?.sub ?? t("runtime.unsupported.sub")}
         size={unsupported?.size}
@@ -64,6 +65,7 @@ export function DataView<T>({
     return (
       <EmptyState
         icon={iconGlyph("alert")}
+        tone="negative"
         title={t("dataView.error.title")}
         sub={t("dataView.error.sub")}
         {...error}

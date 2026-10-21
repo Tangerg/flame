@@ -1,12 +1,10 @@
-import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { DataView } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { Switch } from "@flame/ui";
 import { Tag } from "@/ui/index";
-import { Badge, EmptyState, gap, ListRow, RecordGroup, vocab } from "@flame/ui";
-import { isUnsupportedMethod } from "@/lib/rpcErrors";
+import { Badge, gap, ListRow, RecordGroup, vocab } from "@flame/ui";
 import { type HookReadModel } from "@/features/hooks/application/hookConfig";
 import { useHookConfigs } from "@/features/hooks/application/hookConfig";
 import { setHookTrust } from "@/features/hooks/application/hookTrust";
@@ -101,19 +99,9 @@ export function HooksPane() {
     fallback: t("hooks.error.trust"),
   });
   const workspace = useActiveSessionWorkspace();
-  const { data, isLoading, isError, error, refetch } = useHookConfigs(
+  const { data, isLoading, error, refetch } = useHookConfigs(
     workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
   );
-
-  if (isError && isUnsupportedMethod(error)) {
-    return (
-      <EmptyState
-        icon={iconGlyph("lightning")}
-        title={t("hooks.unavailable")}
-        sub={t("hooks.unavailable.sub")}
-      />
-    );
-  }
 
   const projectRoot = data?.projectRoot;
 
@@ -146,6 +134,11 @@ export function HooksPane() {
         failure={error}
         onRetry={refetch}
         skeletonCount={3}
+        unsupported={{
+          icon: "lightning",
+          title: t("hooks.unavailable"),
+          sub: t("hooks.unavailable.sub"),
+        }}
         empty={{ icon: "lightning", title: t("hooks.empty"), sub: t("hooks.empty.sub") }}
       >
         {(rows) => (

@@ -223,7 +223,7 @@ export function SubagentsPanel() {
           />
         ))}
       {!selected && selectedId ? (
-        <EmptyState icon={iconGlyph("bot")} title={t("subagents.unavailable")} />
+        <EmptyState icon={iconGlyph("alert")} tone="negative" title={t("subagents.unavailable")} />
       ) : null}
     </AgentWorkspaceView>
   );

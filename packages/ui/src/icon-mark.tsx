@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
+import type { Tone } from "./tone";
 import { color, radius, space, surface } from "./tokens.stylex";
 
 const styles = stylex.create({
@@ -7,10 +8,23 @@ const styles = stylex.create({
     display: "inline-grid",
     placeItems: "center",
     flexShrink: 0,
-    color: color.accentText,
-    backgroundImage: surface.emphasis,
     borderRadius: radius.lg,
   },
+  accent: { color: color.accentText, backgroundImage: surface.emphasis },
+  neutral: { color: color.fgMuted, backgroundColor: surface.surface2 },
+  success: {
+    color: color.successBadgeText,
+    backgroundColor: surface.successBadge,
+  },
+  warning: {
+    color: color.warningBadgeText,
+    backgroundColor: surface.warningBadge,
+  },
+  negative: {
+    color: color.negativeBadgeText,
+    backgroundColor: surface.negativeBadge,
+  },
+  info: { color: color.infoBadgeText, backgroundColor: surface.infoBadge },
   small: { width: space.s7, height: space.s7 },
   medium: { width: space.s9, height: space.s9 },
   large: { width: space.s10, height: space.s10 },
@@ -21,12 +35,17 @@ const sizes = { sm: styles.small, md: styles.medium, lg: styles.large };
 export function IconMark({
   children,
   size = "md",
+  tone = "accent",
 }: {
   children: ReactNode;
   size?: "sm" | "md" | "lg";
+  tone?: Tone;
 }) {
   return (
-    <span aria-hidden="true" {...stylex.props(styles.face, sizes[size])}>
+    <span
+      aria-hidden="true"
+      {...stylex.props(styles.face, styles[tone], sizes[size])}
+    >
       {children}
     </span>
   );
