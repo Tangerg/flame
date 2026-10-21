@@ -43,9 +43,10 @@ test("packed UI and icons work without the host or a StyleX compiler", async () 
       path.join(dir, "consumer.mjs"),
       `import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Button, DiffStat, FontScaleProvider, IconButton, Segmented, Slider, Switch, TooltipProvider } from '@flame/ui';
+import { Button, ContentVisibility, DiffStat, FontScaleProvider, IconButton, Segmented, Slider, Switch, TooltipProvider, useContentVisible } from '@flame/ui';
 import { Brain } from '@flame/icons/react';
-console.log(renderToStaticMarkup(createElement(FontScaleProvider, {fontSize: 18}, createElement(TooltipProvider, null, createElement(Button, null, 'Review'), createElement(DiffStat, {added: 18, removed: 6}), createElement(IconButton, {icon: Brain, 'aria-label': 'Memory'}), createElement(Segmented, {value: 'list', ariaLabel: 'View mode', options: [{value: 'list', label: 'List'}, {value: 'grid', label: 'Grid'}], onChange() {}}), createElement(Switch, {checked: true, ariaLabel: 'Enable memory', onCheckedChange() {}}), createElement(Slider, {value: 40, ariaLabel: 'Contrast', onValueChange() {}})))));
+function Visibility() { return createElement('output', null, useContentVisible() ? 'content-visible' : 'content-hidden'); }
+console.log(renderToStaticMarkup(createElement(FontScaleProvider, {fontSize: 18}, createElement(TooltipProvider, null, createElement(Button, null, 'Review'), createElement(DiffStat, {added: 18, removed: 6}), createElement(IconButton, {icon: Brain, 'aria-label': 'Memory'}), createElement(Segmented, {value: 'list', ariaLabel: 'View mode', options: [{value: 'list', label: 'List'}, {value: 'grid', label: 'Grid'}], onChange() {}}), createElement(Switch, {checked: true, ariaLabel: 'Enable memory', onCheckedChange() {}}), createElement(Slider, {value: 40, ariaLabel: 'Contrast', onValueChange() {}}), createElement(Visibility), createElement(ContentVisibility, {visible: false}, createElement(ContentVisibility, {visible: true}, createElement(Visibility)))))));
 `,
     );
     const html = execFileSync(process.execPath, ["consumer.mjs"], {
@@ -61,6 +62,7 @@ console.log(renderToStaticMarkup(createElement(FontScaleProvider, {fontSize: 18}
     assert.match(html, /aria-label="Enable memory"/);
     assert.match(html, /aria-label="Contrast"/);
     assert.match(html, /aria-label="Memory"/);
+    assert.match(html, /content-visible.*content-hidden/);
     assert.match(html, /width="20"/);
     assert.match(html, /class="x/);
     const css = await readFile(

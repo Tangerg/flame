@@ -9,11 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "@/lib/classNames";
-import { useContentVisible } from "@/ui/content-visibility";
 import { iconGlyph } from "@/ui/icons/index";
 import { layout, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { DialogPrimitive } from "@flame/ui/primitives";
-import { IconButton, ScrollRegion } from "@flame/ui";
+import { IconButton, ScrollRegion, useContentVisible } from "@flame/ui";
 import { MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
 const styles = stylex.create({
   figure: {

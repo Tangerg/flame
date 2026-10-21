@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { ActivePlan } from "@/features/chat/plan-progress/ui/ActivePlan";
-import { ContentVisibility } from "@/ui/content-visibility";
+import { ContentVisibility } from "@flame/ui";
 const model = vi.hoisted(() => ({
   sessionId: "ses-a",
   generation: 1n,

@@ -1,14 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import { type StyleXStyles } from "@stylexjs/stylex";
 import { type ComponentProps, type ReactNode } from "react";
-import { MENU_SURFACE } from "@flame/ui";
+import { MENU_SURFACE, useHiddenPopupRelease, useHiddenRootRetirement } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { space, surface } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { ContextMenuPrimitive, MenuPrimitive } from "@/ui/primitives/index";
 import { FLOATING_LAYER, FLOATING_OPTIONS } from "@flame/ui/floating-surface";
 import { floatingRow, floatingRowStyles, type RowLayout } from "@/ui/atoms/option-row";
-import { useHiddenPopupRelease, useHiddenRootRetirement } from "@/ui/atoms/popup-visibility";
 const menuStyles = stylex.create({
   rows: { display: "grid", alignContent: "start", rowGap: "2px" },
   item: { position: "relative" },

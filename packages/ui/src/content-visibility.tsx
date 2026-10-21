@@ -9,7 +9,11 @@ export function ContentVisibility({
   children: ReactNode;
 }) {
   const inherited = use(ContentVisibleContext);
-  return <ContentVisibleContext value={inherited && visible}>{children}</ContentVisibleContext>;
+  return (
+    <ContentVisibleContext value={inherited && visible}>
+      {children}
+    </ContentVisibleContext>
+  );
 }
 
 export function useContentVisible(): boolean {

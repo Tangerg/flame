@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type RefObject } from "react";
-import { useContentVisible } from "@/ui/content-visibility";
+import { useContentVisible } from "./content-visibility";
 interface RetirableRootProps<Actions, Details> {
   open?: boolean | undefined;
   defaultOpen?: boolean | undefined;
@@ -10,7 +10,12 @@ interface RetirableRootProps<Actions, Details> {
 export function useHiddenRootRetirement<
   Actions extends { close: () => void },
   Details extends { isCanceled: boolean },
->({ open, defaultOpen = false, onOpenChange, actionsRef }: RetirableRootProps<Actions, Details>) {
+>({
+  open,
+  defaultOpen = false,
+  onOpenChange,
+  actionsRef,
+}: RetirableRootProps<Actions, Details>) {
   const visible = useContentVisible();
   const ownActions = useRef<Actions | null>(null);
   const actions = actionsRef ?? ownActions;

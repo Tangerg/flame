@@ -5,6 +5,10 @@ import { FIELD_SIZE, FIELD_SURFACE, MENU_SURFACE } from "./control-surface";
 import { Button } from "./button";
 import { Icon } from "./font-scale";
 import { FLOATING_LAYER, FLOATING_OPTIONS } from "./floating-surface";
+import {
+  useHiddenPopupRelease,
+  useHiddenRootRetirement,
+} from "./popup-visibility";
 import { space, type } from "./tokens.stylex";
 
 const styles = stylex.create({
@@ -50,6 +54,11 @@ export function Select({
   disabled?: boolean;
   size?: "sm" | "md" | "lg";
 }) {
+  const retirement = useHiddenRootRetirement<
+    SelectPrimitive.Root.Actions,
+    SelectPrimitive.Root.OpenChangeEventDetails
+  >({});
+  const { visible, portalRef } = useHiddenPopupRelease();
   return (
     <SelectPrimitive.Root
       items={options}
@@ -58,6 +67,7 @@ export function Select({
       onValueChange={(next) => {
         if (next !== null) onValueChange(next);
       }}
+      {...retirement}
     >
       <SelectPrimitive.Trigger
         render={
@@ -83,12 +93,13 @@ export function Select({
           <Icon glyph={ChevronDown} size="xs" />
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
-      <SelectPrimitive.Portal>
+      <SelectPrimitive.Portal ref={portalRef}>
         <SelectPrimitive.Positioner
           {...stylex.props(FLOATING_LAYER)}
           sideOffset={4}
         >
           <SelectPrimitive.Popup
+            finalFocus={visible ? undefined : false}
             {...stylex.props(
               FLOATING_OPTIONS,
               MENU_SURFACE.content,

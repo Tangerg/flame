@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { ContentVisibility } from "@/ui/content-visibility";
+import { ContentVisibility } from "@flame/ui";
 import { LightboxDialog } from "@/ui/atoms/lightbox-dialog";
 
 function Harness({
