@@ -29,6 +29,7 @@ const mb = stylex.create({
     display: "flex",
     gap: space.s1,
     transitionProperty: "opacity",
+    transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
   },
   sourceText: { whiteSpace: "pre-wrap" },
