@@ -1,6 +1,6 @@
 # Flame development workflow
 
-Repository rules live in [`AGENTS.md`](AGENTS.md), design rationale in [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md), and the structural method in [`REFACTORING.md`](REFACTORING.md). Module-specific boundaries live in [`cli/ARCHITECTURE.md`](apps/cli/ARCHITECTURE.md), [`runtime/docs/ARCHITECTURE.md`](runtime/docs/ARCHITECTURE.md), and [`apps/web/ARCHITECTURE.md`](apps/web/ARCHITECTURE.md).
+Repository rules live in [`AGENTS.md`](AGENTS.md), design rationale in [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md), and the structural method in [`REFACTORING.md`](REFACTORING.md). Module-specific boundaries live in [`apps/cli/ARCHITECTURE.md`](apps/cli/ARCHITECTURE.md), [`runtime/docs/ARCHITECTURE.md`](runtime/docs/ARCHITECTURE.md), and [`apps/web/ARCHITECTURE.md`](apps/web/ARCHITECTURE.md).
 
 ## Active boundary
 

@@ -1,6 +1,6 @@
 # Go backend binding
 
-The public package `github.com/Tangerg/flame/packages/plugin-sdk` supplies the typed MCP
+The public package `github.com/Tangerg/flame/packages/plugin-sdk/go` supplies the typed MCP
 method binding used by Memory, Schedules and the independent Reviews example.
 It lives in the root module and imports only public contracts and pure mechanisms; its production closure contains no Runtime host/business implementation.
 Use the ordinary MCP SDK server and transport; this package does not create a
@@ -229,7 +229,7 @@ a public wire contract identity, separate from internal build or data-directory
 versions. Only this current protocol is interpreted. Installed admission validates
 the declared contract, complete live exports and exact activation before dispatch.
 
-The [Reviews backend](../../examples/plugins/reviews/backend/server.go) binds Tool
+The [Reviews backend](../../../examples/plugins/reviews/backend/server.go) binds Tool
 and typed method entrances to the same private owner. Its tests prove shared
 receipts, business conflicts, identity conflicts and uncertain storage failures.
 The current repository workspace builds the evolving SDK source. Independent
@@ -366,7 +366,7 @@ owns its trigger rules and durably captured intent, then uses `GetRunAcceptance`
 and `StartRun` with the original request and identities. Connection-local sequences
 need a new generation on reconnect; coalesced notifications and resync cannot be
 represented as an exactly-once filesystem event log. See
-[`File watch`](../../plugins/filewatch/README.md) for an ordinary installed example.
+[`File watch`](../../../plugins/filewatch/README.md) for an ordinary installed example.
 
 ## Captured model calls
 
@@ -761,15 +761,15 @@ keep their formats. The Core wire epoch is unchanged.
 Independent authors can use [`plugin/sqlite`](sqlite/README.md) for original input
 admission, nullable unknown settlement and atomic mutation/receipt handling. The
 same implementation serves the bundled backends. Strict schema admission and
-per-database transaction lifetime live in [`storage/sqlite`](../../runtime/storage/sqlite/README.md).
+per-database transaction lifetime live in [`storage/sqlite`](../../../runtime/storage/sqlite/README.md).
 No private Runtime store or host business schema is part of the author API.
 `runtime/idempotency` exposes stable identity-conflict categories for the same
 receipt mechanism, including changed original method/input under one command key.
 
 ## Model choices
 
-[`model`](../../runtime/model/README.md) owns the immutable provider/model/reasoning choice
-and atomic patch rules shared with Runtime. [`model/catalog`](../../runtime/model/catalog/README.md)
+[`model`](../../../runtime/model/README.md) owns the immutable provider/model/reasoning choice
+and atomic patch rules shared with Runtime. [`model/catalog`](../../../runtime/model/catalog/README.md)
 admits known effort levels and input modalities from the released Scope catalog.
 Authors use these public packages directly; role configuration, endpoint evidence
 and execution budgets retain their respective owners.

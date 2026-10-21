@@ -46,6 +46,6 @@ active is refused rather than waiting on its own single connection. Schema admis
 and Runtime workspace intent durability use this explicit boundary.
 
 Private business command receipts are available through the public
-`github.com/Tangerg/flame/packages/plugin-sdk/sqlite` package. They remain in the
+`github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite` package. They remain in the
 business database and commit with that owner's mutation. This package stores no
 host success ledger, plugin data copy or replay authorization.
