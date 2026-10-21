@@ -24,7 +24,7 @@ import { type ProviderCredentialsDraft } from "@/features/providers/application/
 import { useProviderDraft } from "@/features/providers/application/providerDrafts";
 import { useT } from "@/lib/i18n/index";
 import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
-import { space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { layout, type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
 const pr = stylex.create({
   head: {
@@ -34,7 +34,7 @@ const pr = stylex.create({
       "@container (max-width: 440px)": "24px minmax(0,1fr)",
     },
     alignItems: "center",
-    gap: space.s3,
+    gap: layout.contentGap,
   },
   id: { textTransform: "capitalize" },
   status: {

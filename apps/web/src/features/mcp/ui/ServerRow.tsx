@@ -44,7 +44,7 @@ const sr = stylex.create({
     display: "grid",
     gridTemplateColumns: "auto minmax(0, 1fr)",
     alignItems: "start",
-    gap: layout.controlGap,
+    gap: layout.contentGap,
     minWidth: 0,
   },
   name: { whiteSpace: "pre-wrap" },
