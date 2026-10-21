@@ -313,7 +313,7 @@ func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 		filepath.Join(root, "internal", "domain", "session", "plan"): {
 			"Render": "plan prompt/tool formatting belongs to adapter/toolset/planpresentation",
 		},
-		filepath.Join(root, "internal", "domain", "workspace", "skills"): {
+		filepath.Join(root, "internal", "domain", "skills"): {
 			"ProjectDir": "skill source layout belongs to adapter/workspace/promptsource",
 			"Info":       "discovered-skill client projection belongs to application/workspace",
 		},
