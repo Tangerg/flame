@@ -632,9 +632,6 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   animation-duration: 0s !important;
   animation-iteration-count: 1 !important;
 }
-html[data-flame-ui-theme-paint] * {
-  transition: none !important;
-}
 @media (forced-colors: active) {
   :is(
     [role="dialog"],

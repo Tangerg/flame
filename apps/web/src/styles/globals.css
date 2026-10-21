@@ -305,7 +305,6 @@
   --press-scale: 0.96;
   --control-disabled-opacity: 0.64;
   --glyph-step: 0.8;
-  --state-receded: 0.55;
 
   --dur-color: calc(var(--dur-color-base) * var(--motion-scale));
   --dur-fast: calc(var(--dur-fast-base) * var(--motion-scale));
