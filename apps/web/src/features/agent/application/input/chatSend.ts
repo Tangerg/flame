@@ -31,6 +31,9 @@ export function useChatSend(): (input: AgentInput) => boolean {
           return true;
         }
       }
+      if (!canAcceptChatInput(sessionId, Boolean(send), root?.status ?? "idle")) {
+        return false;
+      }
       return sendFreshTurn({ sessionId, send, input, runOptions });
     },
     [send],
