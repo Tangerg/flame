@@ -54,7 +54,7 @@ func TestCaptureSurvivesDefinitionChangesAndReceiptReplay(t *testing.T) {
 	}
 	draft := fixtureDraft()
 	configureFixture(t, s, 1, &draft)
-	if err := s.bindNamespace(t.Context(), "original-runtime"); err != nil {
+	if err := pluginstorage.BindRuntimeTarget(t.Context(), s.db, "original-runtime"); err != nil {
 		t.Fatal(err)
 	}
 	observation := captureFixture(t, 1, uuid.NewString())
@@ -73,7 +73,7 @@ func TestCaptureSurvivesDefinitionChangesAndReceiptReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.db.Close()
-	if err := s.checkNamespace(t.Context(), "replacement-runtime"); err == nil {
+	if err := pluginstorage.CheckRuntimeTarget(t.Context(), s.db, "replacement-runtime"); err == nil {
 		t.Fatal("retargeted original intent to another Runtime")
 	}
 	pending, err := s.pending(t.Context())

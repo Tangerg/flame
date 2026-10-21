@@ -13,7 +13,7 @@ import (
 func Open(ctx context.Context, path string) (*sql.DB, error) {
 	firstExactInteger := exactint.First().Value()
 	return sqlitebase.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema, manualSchema,
-		`CREATE TABLE IF NOT EXISTS runtime_target (id INTEGER PRIMARY KEY CHECK(id=1), namespace TEXT NOT NULL)`,
+		pluginstorage.RuntimeTargetSchema,
 
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS schedules (
 			id          TEXT    PRIMARY KEY,

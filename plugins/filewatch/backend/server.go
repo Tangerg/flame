@@ -73,7 +73,7 @@ func newServer(store *store) (*sdk.Server, *pluginsdk.Backend, error) {
 			}
 			namespace, err := host.Namespace(ctx)
 			if err == nil {
-				err = store.checkNamespace(ctx, namespace)
+				err = pluginstorage.CheckRuntimeTarget(ctx, store.db, namespace)
 			}
 			if err != nil {
 				return nil, errors.Join(err, host.client.Close())

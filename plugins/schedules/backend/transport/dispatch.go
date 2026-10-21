@@ -30,34 +30,13 @@ func connectRuntime(ctx context.Context, db *sql.DB, connect RunConnector) (RunH
 		return nil, nil, err
 	}
 	namespace, err := host.Namespace(ctx)
-	if err == nil && namespace == "" {
-		err = errors.New("schedules: Runtime store namespace is required")
-	}
 	if err == nil {
-		err = bindRuntime(ctx, db, namespace)
+		err = pluginstorage.BindRuntimeTarget(ctx, db, namespace)
 	}
 	if err != nil {
 		return nil, nil, errors.Join(err, close())
 	}
 	return host, close, nil
-}
-
-func bindRuntime(ctx context.Context, db *sql.DB, namespace string) error {
-	return sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
-		var original string
-		err := sqlitebase.Connection(ctx, db).QueryRowContext(ctx, `SELECT namespace FROM runtime_target WHERE id=1`).Scan(&original)
-		if errors.Is(err, sql.ErrNoRows) {
-			_, err = sqlitebase.Connection(ctx, db).ExecContext(ctx, `INSERT INTO runtime_target(id,namespace) VALUES(1,?)`, namespace)
-			return err
-		}
-		if err != nil {
-			return err
-		}
-		if original != namespace {
-			return errors.New("schedules: captured work belongs to another Runtime store")
-		}
-		return nil
-	})
 }
 
 type dispatchCommit struct {

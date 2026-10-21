@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	"github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
@@ -62,7 +63,7 @@ func TestCapturedRuntimeTargetSurvivesRestartAndRefusesAnotherStore(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := bindRuntime(t.Context(), db, "original"); err != nil {
+	if err := pluginstorage.BindRuntimeTarget(t.Context(), db, "original"); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -73,10 +74,10 @@ func TestCapturedRuntimeTargetSurvivesRestartAndRefusesAnotherStore(t *testing.T
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if err := bindRuntime(t.Context(), db, "original"); err != nil {
+	if err := pluginstorage.BindRuntimeTarget(t.Context(), db, "original"); err != nil {
 		t.Fatal(err)
 	}
-	if err := bindRuntime(t.Context(), db, "another"); err == nil {
+	if err := pluginstorage.BindRuntimeTarget(t.Context(), db, "another"); err == nil {
 		t.Fatal("captured target was replaced")
 	}
 	var original string

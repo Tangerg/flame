@@ -93,7 +93,7 @@ func (b *background) scan(now time.Time) {
 	}
 	namespace, err := b.host.Namespace(ctx)
 	if err == nil {
-		err = bindRuntime(ctx, b.db, namespace)
+		err = pluginstorage.BindRuntimeTarget(ctx, b.db, namespace)
 	}
 	if err != nil {
 		b.report("Runtime binding", err)

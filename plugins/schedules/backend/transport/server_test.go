@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/storage/directories"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
 	"github.com/Tangerg/flame/runtime/capability"
@@ -187,7 +188,7 @@ func TestBackgroundSetupChecksRuntimeAndJoinsItsConnection(t *testing.T) {
 			}
 			defer db.Close()
 			if mismatched {
-				if err := bindRuntime(t.Context(), db, "original"); err != nil {
+				if err := pluginstorage.BindRuntimeTarget(t.Context(), db, "original"); err != nil {
 					t.Fatal(err)
 				}
 			}

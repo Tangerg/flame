@@ -30,7 +30,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 		pluginstorage.CommandsSchema,
 		`CREATE TABLE IF NOT EXISTS configuration (id INTEGER PRIMARY KEY CHECK(id=1), snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`,
 		`INSERT INTO configuration(id,snapshot) VALUES(1,'` + string(initial) + `')`,
-		`CREATE TABLE IF NOT EXISTS runtime_target (id INTEGER PRIMARY KEY CHECK(id=1), namespace TEXT NOT NULL)`,
+		pluginstorage.RuntimeTargetSchema,
 		`CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, generation TEXT NOT NULL, sequence INTEGER NOT NULL CHECK(sequence>0), capture TEXT NOT NULL CHECK(json_valid(capture)), accepted INTEGER NOT NULL CHECK(accepted IN (0,1)), UNIQUE(generation,sequence))`,
 		`CREATE TRIGGER IF NOT EXISTS immutable_capture BEFORE UPDATE OF id,generation,sequence,capture ON events BEGIN SELECT RAISE(ABORT,'observation capture is immutable'); END`,
 		`CREATE TRIGGER IF NOT EXISTS accepted_is_final BEFORE UPDATE OF accepted ON events WHEN OLD.accepted=1 AND NEW.accepted<>1 BEGIN SELECT RAISE(ABORT,'acceptance cannot be withdrawn'); END`,
@@ -76,34 +76,6 @@ func (s *store) configure(ctx context.Context, expected int64, draft *domain.Dra
 	}
 	_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `UPDATE configuration SET snapshot=? WHERE id=1`, string(encoded))
 	return next.Snapshot(), err
-}
-
-func (s *store) checkNamespace(ctx context.Context, namespace string) error {
-	if namespace == "" {
-		return errors.New("filewatch: Runtime store namespace is required")
-	}
-	var original string
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT namespace FROM runtime_target WHERE id=1`).Scan(&original)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	if original != namespace {
-		return errors.New("filewatch: captured work belongs to another Runtime store")
-	}
-	return nil
-}
-
-func (s *store) bindNamespace(ctx context.Context, namespace string) error {
-	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		if err := s.checkNamespace(ctx, namespace); err != nil {
-			return err
-		}
-		_, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO runtime_target(id,namespace) VALUES(1,?) ON CONFLICT(id) DO NOTHING`, namespace)
-		return err
-	})
 }
 
 func (s *store) capture(ctx context.Context, observation domain.Observation) error {

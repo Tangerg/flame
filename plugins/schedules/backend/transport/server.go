@@ -116,7 +116,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 			}
 			namespace, err := host.Namespace(ctx)
 			if err == nil {
-				err = checkRuntime(ctx, db, namespace)
+				err = pluginstorage.CheckRuntimeTarget(ctx, db, namespace)
 			}
 			if err != nil {
 				return nil, errors.Join(err, close())
@@ -172,22 +172,4 @@ func (t toolCommands) Delete(ctx context.Context, id string) error {
 		return rpc.Ack{}, t.coordinator.Delete(ctx, id)
 	})
 	return rpc.DecodeError(err)
-}
-
-func checkRuntime(ctx context.Context, db *sql.DB, namespace string) error {
-	if namespace == "" {
-		return errors.New("schedules: Runtime store namespace is required")
-	}
-	var original string
-	err := db.QueryRowContext(ctx, `SELECT namespace FROM runtime_target WHERE id=1`).Scan(&original)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	if original != namespace {
-		return errors.New("schedules: captured work belongs to another Runtime store")
-	}
-	return nil
 }

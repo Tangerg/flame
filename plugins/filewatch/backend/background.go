@@ -11,6 +11,7 @@ import (
 	"time"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
+	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
 	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/identity"
@@ -105,7 +106,7 @@ func (b *background) Start() error {
 	if b.started {
 		return nil
 	}
-	if err := b.store.bindNamespace(b.ctx, b.namespace); err != nil {
+	if err := pluginstorage.BindRuntimeTarget(b.ctx, b.store.db, b.namespace); err != nil {
 		return err
 	}
 	b.started = true
