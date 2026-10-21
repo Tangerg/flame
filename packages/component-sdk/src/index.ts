@@ -10,6 +10,8 @@ import type { ComponentType, ReactNode } from "react";
 import type { FlameClient, MutationPromise } from "@flame/runtime-client";
 import type {
   CallPluginResponse,
+  ChangeStatus,
+  SafetyClass,
   Session,
   PluginOperationBinding,
   Target,
@@ -43,7 +45,7 @@ export interface CapturedFile {
 
 export interface RecordedFileChange {
   readonly path: string;
-  readonly status: "added" | "deleted" | "modified" | "moved";
+  readonly status: ChangeStatus;
   readonly from?: string;
   readonly added: number;
   readonly removed: number;
@@ -68,7 +70,7 @@ export interface CapturedToolResult {
   readonly command?: string;
   readonly error?: string;
   readonly operation?: string;
-  readonly safetyClass?: "safe" | "write" | "exec" | "network";
+  readonly safetyClass?: SafetyClass;
   readonly range?: Readonly<{ start: number; end: number }>;
   readonly durationMillis?: number;
   readonly approvalDecision?: "approve" | "deny";
