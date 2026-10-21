@@ -7,6 +7,7 @@ import { type WorkspaceViewSpec } from "@/features/workspace/public/views";
 import { Icon, knownIconName } from "@/ui/index";
 import { iconGlyph } from "@/ui/icons/index";
 import { AgentSurfaceHeader } from "@/ui/agent/index";
+import { ReturnButton } from "@/features/shell/workbench/panel/ReturnButton";
 const styles = stylex.create({
   title: { minWidth: 0, flex: 1, fontWeight: weight.medium },
   actions: { display: "flex", alignItems: "center", flexShrink: 0, gap: space.s0_5 },
@@ -31,16 +32,7 @@ export function WorkspaceWindowHeader({
   const icon = knownIconName(view?.icon);
   return (
     <AgentSurfaceHeader corner="window" data-slot="workspace-window-header" onKeyDown={onKeyDown}>
-      {exit.kind === "return" && (
-        <IconButton
-          icon={iconGlyph("arrow-left")}
-          size="sm"
-          quiet
-          aria-label={exit.label}
-          data-chrome-focus=""
-          onClick={exit.onReturn}
-        />
-      )}
+      {exit.kind === "return" && <ReturnButton label={exit.label} onReturn={exit.onReturn} />}
       {icon && (
         <Icon name={icon} size="md" className={stylex.props(vocab.hold, vocab.muted).className} />
       )}

@@ -12,6 +12,7 @@ import {
 import { PanelHost } from "@flame/ui/panel";
 import { IconButton } from "@flame/ui";
 import { iconGlyph } from "@/ui/icons/index";
+import { ReturnButton } from "@/features/shell/workbench/panel/ReturnButton";
 import { type AgentInput } from "@/features/agent/public/input";
 import { CatalogPicker, type CatalogPickerGroup } from "@/ui/index";
 import { ContentVisibility } from "@/ui/index";
@@ -159,15 +160,7 @@ function DockHeader({
   const t = useT();
   return (
     <AgentSurfaceHeader divider={false}>
-      {returnAction && (
-        <IconButton
-          icon={iconGlyph("arrow-left")}
-          size="sm"
-          quiet
-          aria-label={returnAction.label}
-          onClick={returnAction.onReturn}
-        />
-      )}
+      {returnAction && <ReturnButton label={returnAction.label} onReturn={returnAction.onReturn} />}
       <AgentDockTabs
         tabs={tabs}
         ariaLabel={t("dock.tabs.label")}
