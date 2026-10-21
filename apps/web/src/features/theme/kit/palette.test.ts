@@ -20,6 +20,28 @@ const tokensOf = (subject: PaletteTheme, accent = "#0485f7", contrast = 25) =>
 
 const restingInk = (token: string) => token.match(/(#[0-9a-f]{6})\)$/i)?.[1] ?? token;
 
+const NEUTRAL_ROLES = [
+  "color-bg",
+  "color-drawer",
+  "color-surface",
+  "color-elevated",
+  "color-sunken",
+  "color-text",
+  "color-text-bright",
+  "color-text-soft",
+  "color-text-muted",
+  "color-text-faint",
+  "color-control-edge",
+  "color-divider",
+  "color-border",
+  "color-border-strong",
+];
+
+const neutralsOf = (subject: PaletteTheme, accent: string, contrast: number) => {
+  const t = tokensOf(subject, accent, contrast);
+  return Object.fromEntries(NEUTRAL_ROLES.map((name) => [name, t[name]!]));
+};
+
 const ACCENTS = ["#fb6e30", "#0485f7", "#7f52ff", "#21a179", "#e8590c", "#ffe066", "#101828"];
 
 const APPEARANCES: ReadonlyArray<[string, PaletteTheme]> = [
@@ -57,18 +79,43 @@ describe("palette themes", () => {
     expect(declared["color-accent"]).toBe(solidFill("#b4004e"));
   });
 
-  it("tint only the built-in neutrals toward the accent hue", () => {
-    const hue = (color: string) => toOklch(color).h;
-    const blue = tokensOf(theme("light"), "#0485f7")["color-surface"]!;
-    const green = tokensOf(theme("light"), "#21a179")["color-surface"]!;
-    expect(Math.abs(hue(blue) - hue("#0485f7"))).toBeLessThan(15);
-    expect(Math.abs(hue(green) - hue("#21a179"))).toBeLessThan(15);
+  it.each(["light", "dark"] as const)(
+    "derive the built-in %s neutrals from the scheme canvas and ink alone",
+    (scheme) => {
+      const achromatic = (color: string) => {
+        expect(restingInk(color)).toMatch(/^#[0-9a-f]{6}$/i);
+        const [r, g, b] = [1, 3, 5].map((at) => restingInk(color).slice(at, at + 2));
+        return r === g && g === b;
+      };
+      for (const contrast of [0, 25, 100]) {
+        const reference = neutralsOf(theme(scheme), ACCENTS[0]!, contrast);
+        expect(reference["color-bg"]).toBe(SCHEME_BASE[scheme].background);
+        expect(reference["color-text"]).toBe(SCHEME_BASE[scheme].foreground);
+        for (const [name, color] of Object.entries(reference))
+          expect({ name, achromatic: achromatic(color) }).toEqual({ name, achromatic: true });
+        for (const accent of ACCENTS)
+          expect(neutralsOf(theme(scheme), accent, contrast)).toEqual(reference);
+      }
+      expect(tokensOf(theme(scheme), "#fb6e30")["color-accent"]).not.toBe(
+        tokensOf(theme(scheme), "#0485f7")["color-accent"],
+      );
+    },
+  );
 
-    const custom = theme("light", { background: "#fdf6e3", foreground: "#073642" });
-    expect(tokensOf(custom, "#0485f7")["color-surface"]).toBe(
-      tokensOf(custom, "#21a179")["color-surface"],
+  it.each([
+    ...APPEARANCES.slice(2),
+    ["partial canvas", theme("light", { background: "#fdf6e3" })],
+    ["partial ink", theme("dark", { foreground: "#e6e8ee" })],
+    ["declared accent", theme("dark", { accent: "#b4004e" })],
+  ] as const)("keep the %s neutrals independent of the preferred accent", (_label, subject) => {
+    const reference = neutralsOf(subject, ACCENTS[0]!, 25);
+    expect(reference["color-bg"]).toBe(
+      subject.palette.background ?? SCHEME_BASE[subject.scheme].background,
     );
-    expect(tokensOf(theme("light"))["color-text"]).not.toBe(SCHEME_BASE.light.foreground);
+    expect(reference["color-text"]).toBe(
+      subject.palette.foreground ?? SCHEME_BASE[subject.scheme].foreground,
+    );
+    for (const accent of ACCENTS) expect(neutralsOf(subject, accent, 25)).toEqual(reference);
   });
 
   it("order the neutral planes and hairlines the way their roles read", () => {

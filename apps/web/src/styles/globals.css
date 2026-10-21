@@ -119,11 +119,11 @@
   --color-accent-text: #b74300;
   --color-accent-strong: #592108;
 
-  --color-bg: #f7f4f3;
-  --color-surface: #f3efee;
-  --color-elevated: #fefdfd;
-  --color-sunken: #ede9e8;
-  --color-drawer: #f3efee;
+  --color-bg: #f5f5f5;
+  --color-surface: #f0f0f0;
+  --color-elevated: #fdfdfd;
+  --color-sunken: #eaeaea;
+  --color-drawer: #f0f0f0;
   --depth-step: 4%;
   --color-surface-2: color-mix(
     in oklab,
@@ -151,17 +151,17 @@
 
   --shadow-cast: rgb(0 0 0 / 0.2);
 
-  --color-text: #1f1a17;
-  --color-text-bright: #14100e;
-  --color-text-soft: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #403936);
-  --color-text-muted: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #6d635f);
-  --color-text-faint: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #716763);
+  --color-text: #1b1b1b;
+  --color-text-bright: #111111;
+  --color-text-soft: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #3a3a3a);
+  --color-text-muted: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #656565);
+  --color-text-faint: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #696969);
   --color-text-on-accent: #000000;
 
-  --color-border: #e3dedc;
-  --color-border-strong: #d2c9c6;
-  --color-control-edge: #908b89;
-  --color-divider: #e9e4e2;
+  --color-border: #dfdfdf;
+  --color-border-strong: #cbcbcb;
+  --color-control-edge: #8c8c8c;
+  --color-divider: #e5e5e5;
   --color-scrim: #00000022;
   --gauge-track: color-mix(in oklab, currentColor 22%, transparent);
   --scrollbar-thumb: color-mix(in oklab, var(--color-text) 17%, transparent);
@@ -338,7 +338,7 @@
   --shadow-surface-card: 0 2px 4px color-mix(in oklab, var(--shadow-cast) 20%, transparent), 0 1px 2px color-mix(in oklab, var(--shadow-cast) 30%, transparent);
   --shadow-live-glow: 0 0 6px var(--color-accent);
   --shadow-swatch-selected: 0 0 0 1.5px var(--color-text);
-  --color-focus-ring: #e76730;
+  --color-focus-ring: #e76731;
 
   --app-drawer-surface: var(--color-drawer);
   --app-content-surface: var(--color-bg);
@@ -458,42 +458,42 @@ html.theme-dark {
   --tone-accent: #fb6e30;
   --color-focus-ring: #fb6e30;
 
-  --color-bg: #110e0d;
-  --color-surface: #211d1c;
-  --color-elevated: #211d1c;
-  --color-sunken: #282321;
-  --color-drawer: #110e0d;
+  --color-bg: #0f0f0f;
+  --color-surface: #1e1e1e;
+  --color-elevated: #1e1e1e;
+  --color-sunken: #242424;
+  --color-drawer: #0f0f0f;
   --depth-step: 8%;
 
   --shadow-cast: rgb(0 0 0 / 0.55);
   --color-media-edge: rgb(255 255 255 / 0.1);
 
-  --color-text: #f1edec;
-  --color-text-bright: #f4f1f0;
+  --color-text: #eeeeee;
+  --color-text-bright: #f1f1f1;
   --color-text-soft: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #d0cac8
+    #cccccc
   );
   --color-text-muted: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #a9a19e
+    #a3a3a3
   );
   --color-text-faint: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #958985
+    #8c8c8c
   );
   --color-text-on-accent: #000000;
   --color-cta: #fb6e30;
   --color-cta-hover: #ff8452;
   --color-cta-text: #000000;
 
-  --color-border: #2f2a28;
-  --color-border-strong: #48403d;
-  --color-control-edge: #625f5e;
-  --color-divider: #282321;
+  --color-border: #2b2b2b;
+  --color-border-strong: #424242;
+  --color-control-edge: #606060;
+  --color-divider: #242424;
   --color-scrim: #00000022;
 
   --color-negative: #ff928d;

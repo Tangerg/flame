@@ -9,7 +9,9 @@ import { installSystemAppearance } from "@/features/theme/adapters/systemAppeara
 import { toggleThemeScheme } from "@/features/theme/application/themeScheme";
 import { installAppearancePreferencePort } from "@/features/theme/adapters/appearancePreferenceBinding";
 import { type PluginContext } from "@/extensions/definePlugin";
-import { contributeForTest } from "@/test/kernel";
+import { contributeForTest, loadPluginsForTest } from "@/test/kernel";
+import flameDark from "@/features/theme/themes/flame-dark";
+import flameLight from "@/features/theme/themes/flame-light";
 let uninstall: () => void = () => {};
 
 const TEST_MOTION = {
@@ -110,6 +112,41 @@ describe("a theme's own neutrals are what paints", () => {
 
     expect(painted("color-surface")).toBe("#eee8d5");
   });
+
+  it.each([
+    ["light", "#f5f5f5"],
+    ["dark", "#0f0f0f"],
+  ] as const)(
+    "keeps the built-in %s planes still while the accent moves",
+    async (theme, canvas) => {
+      await loadPluginsForTest(flameLight, flameDark);
+      useAppearanceStore.setState({ theme, accent: "#fb6e30" });
+      const planes = [
+        "color-bg",
+        "color-drawer",
+        "color-surface",
+        "color-elevated",
+        "color-sunken",
+        "color-text",
+        "color-divider",
+        "color-border",
+        "color-control-edge",
+      ];
+      const paint = () => planes.map(painted);
+      const declared = paint();
+      expect(painted("color-bg")).toBe(canvas);
+
+      let accent = painted("color-accent");
+      for (const next of ["#0485f7", "#7f52ff", "#21a179"]) {
+        useAppearanceStore.getState().setAccent(next);
+        expect(painted("color-accent")).not.toBe(accent);
+        expect(paint(), "the accent tints its own roles, never the scheme's planes").toEqual(
+          declared,
+        );
+        accent = painted("color-accent");
+      }
+    },
+  );
 });
 
 describe("accent ownership", () => {
