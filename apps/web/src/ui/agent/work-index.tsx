@@ -16,7 +16,7 @@ const styles = stylex.create({
   },
   group: { display: "flex", flexDirection: "column", gap: "var(--density-navigation-group-gap)" },
   item: { minWidth: 0 },
-  header: {
+  footer: {
     display: "flex",
     alignItems: "center",
     gap: "calc(var(--spacing) * 1)",
@@ -50,5 +50,5 @@ export function AgentWorkIndexGroupList({
 }
 
 export function AgentWorkIndexFooter({ children }: { children: ReactNode }) {
-  return <div {...stylex.props(styles.header)}>{children}</div>;
+  return <div {...stylex.props(styles.footer)}>{children}</div>;
 }
