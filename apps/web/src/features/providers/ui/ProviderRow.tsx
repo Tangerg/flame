@@ -3,6 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useId, useRef, useState } from "react";
 import { Icon } from "@/ui/index";
+import { SystemMessage } from "@/ui/index";
 import { ProviderIcon } from "@/ui/index";
 import {
   Badge,
@@ -42,7 +43,6 @@ const pr = stylex.create({
     justifySelf: "start",
   },
   statusMessage: { ":empty": { display: "none" } },
-  reason: { minWidth: 0, overflowWrap: "anywhere", userSelect: "text" },
 });
 
 export function ProviderRow({ p }: { p: ProviderConfiguration }) {
@@ -242,14 +242,9 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
         ) : null}
       </span>
       {feedback.state === "error" && (
-        <p
-          id={feedbackId}
-          role="alert"
-          {...stylex.props(ss.inline, vocab.negative, pr.reason, typeStep.uiMd)}
-        >
-          <Icon name="alert" size="sm" />
+        <SystemMessage id={feedbackId} variant="warning">
           {feedback.reason}
-        </p>
+        </SystemMessage>
       )}
       {dirty && !valid && (
         <p {...stylex.props(ss.hintSpaced, typeStep.uiSm)}>{t("providers.baseUrl.required")}</p>

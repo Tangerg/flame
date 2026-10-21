@@ -3,6 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "@/ui/index";
+import { SystemMessage } from "@/ui/index";
 import { Segmented, Switch } from "@flame/ui";
 import {
   Button,
@@ -378,10 +379,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
         )}
       </span>
       {feedback.state === "error" && (
-        <span role="alert" {...stylex.props(ss.inline, vocab.min, vocab.negative, typeStep.uiMd)}>
-          <Icon name="alert" size="sm" />
-          <span>{feedback.reason}</span>
-        </span>
+        <SystemMessage variant="warning">{feedback.reason}</SystemMessage>
       )}
     </RecordForm>
   );

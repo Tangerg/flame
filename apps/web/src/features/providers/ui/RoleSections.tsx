@@ -5,6 +5,7 @@ import { DropdownMenu } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { ProviderIcon } from "@/ui/index";
 import { SelectTrigger } from "@/ui/index";
+import { SystemMessage } from "@/ui/index";
 import { Button, gap, vocab } from "@flame/ui";
 import {
   type RoleConfigState,
@@ -171,16 +172,10 @@ function RoleSectionShell({
           <p>{description}</p>
           {state.kind === "ready" && note}
           {state.kind === "error" && (
-            <p role="alert" {...stylex.props(vocab.negative)}>
-              {t("providers.role.loadError")}
-            </p>
+            <SystemMessage variant="warning">{t("providers.role.loadError")}</SystemMessage>
           )}
           {state.kind === "ready" && state.stale && <p>{t("providers.role.stale")}</p>}
-          {error && (
-            <p role="alert" {...stylex.props(vocab.negative)}>
-              {error}
-            </p>
-          )}
+          {error && <SystemMessage variant="warning">{error}</SystemMessage>}
         </div>
       }
     >
