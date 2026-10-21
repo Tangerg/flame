@@ -39,7 +39,6 @@ class MCPServerMutationGeneration {
   readonly #lifetime = new AbortController();
   readonly #retiredError = new GenerationRetiredError("mcp_server_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #reconnects = new Map<string, Promise<void>>();
 
   constructor(gateway: MCPServerGateway) {
     this.#gateway = gateway;
@@ -100,23 +99,6 @@ class MCPServerMutationGeneration {
     });
   }
 
-  reconnect(server: MCPServerID): Promise<void> {
-    const key = mcpServerLabel(server);
-    const admitted = this.#reconnects.get(key);
-    if (admitted) return admitted;
-
-    const reconnect = this.#run(server, {
-      execute: () => this.#gateway.reconnect(server),
-      commit: () => undefined,
-    });
-    this.#reconnects.set(key, reconnect);
-    void reconnect.then(
-      () => this.#forgetReconnect(key, reconnect),
-      () => this.#forgetReconnect(key, reconnect),
-    );
-    return reconnect;
-  }
-
   test(input: MCPServerInput): Promise<MCPServerTestOutcome> {
     return this.#cohort.run(() => this.#gateway.test(input));
   }
@@ -143,7 +125,6 @@ class MCPServerMutationGeneration {
     if (this.#cohort.retired) return;
     this.#lifetime.abort(this.#retiredError);
     this.#cohort.retire();
-    this.#reconnects.clear();
   }
 
   #run<T>(server: MCPServerID, mutation: MCPServerMutation<T>): Promise<T> {
@@ -158,10 +139,6 @@ class MCPServerMutationGeneration {
       this.#cohort.assertCurrent();
       return value;
     });
-  }
-
-  #forgetReconnect(key: string, reconnect: Promise<void>): void {
-    if (this.#reconnects.get(key) === reconnect) this.#reconnects.delete(key);
   }
 }
 
@@ -209,10 +186,6 @@ export class MCPServerMutationOwner {
 
   setToolExposure(server: MCPServerID, name: string, disabled: boolean): Promise<void> {
     return this.#generation.setToolExposure(server, name, disabled);
-  }
-
-  reconnect(server: MCPServerID): Promise<void> {
-    return this.#generation.reconnect(server);
   }
 
   authorize(server: MCPServerID, signal?: AbortSignal): Promise<void> {

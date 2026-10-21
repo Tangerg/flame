@@ -45,7 +45,6 @@ function runtimeGateway() {
     delete: unexpected,
     setEnabled: unexpected,
     setToolExposure: unexpected,
-    reconnect: unexpected,
     createAuthorizationAttempt: unexpected,
     getAuthorizationAttempt: unexpected,
     test: unexpected,

@@ -24,10 +24,6 @@ export function setMCPServerEnabled(
   return MCPServerMutationOwner.current().setEnabled(server, enabled);
 }
 
-export function reconnectMCPServer(server: MCPServerID): Promise<void> {
-  return MCPServerMutationOwner.current().reconnect(server);
-}
-
 export function useMCPServerCommands(): MCPServerCommands | null {
   return useSyncExternalStore(
     MCPServerMutationOwner.subscribeMaterialGeneration,

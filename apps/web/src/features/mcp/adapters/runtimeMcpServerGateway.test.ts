@@ -3,7 +3,6 @@ import { type FlameClient } from "@flame/runtime-client";
 import { queryClient } from "@/lib/queryClient";
 import {
   authorizeMCPServer,
-  reconnectMCPServer,
   setMCPServerEnabled,
   setMCPToolExposure,
 } from "@/features/mcp/application/mcpServerConfig";
@@ -238,43 +237,6 @@ describe("runtimeMcpServerGateway", () => {
       message: "mcp_server_mutation_generation_retired",
     });
     expect(getSuccessor).not.toHaveBeenCalled();
-  });
-
-  it("binds reconnect to the exact Runtime client captured by its installation", async () => {
-    const reconnectRetired = vi.fn().mockResolvedValue(undefined);
-    let runtimeClient = () => ({ mcp: { reconnect: reconnectRetired } }) as unknown as FlameClient;
-    uninstall = installMCPServerGateway(() => runtimeClient()).dispose;
-
-    const reconnectSuccessor = vi.fn().mockResolvedValue(undefined);
-    runtimeClient = () => ({ mcp: { reconnect: reconnectSuccessor } }) as unknown as FlameClient;
-
-    await reconnectMCPServer(userMCPServer("cloud"));
-
-    expect(reconnectRetired).toHaveBeenCalledWith(userMCPServer("cloud"));
-    expect(reconnectSuccessor).not.toHaveBeenCalled();
-  });
-
-  it("retires an admitted reconnect when a successor Host takes ownership", async () => {
-    const retired = Promise.withResolvers<void>();
-    const reconnectRetired = vi.fn(() => retired.promise);
-    let runtimeClient = () => ({ mcp: { reconnect: reconnectRetired } }) as unknown as FlameClient;
-    const retiredInstallation = installMCPServerGateway(() => runtimeClient());
-    const reconnect = rejected(reconnectMCPServer(userMCPServer("cloud")));
-    await vi.waitFor(() => expect(reconnectRetired).toHaveBeenCalledOnce());
-
-    const reconnectSuccessor = vi.fn().mockResolvedValue(undefined);
-    runtimeClient = () => ({ mcp: { reconnect: reconnectSuccessor } }) as unknown as FlameClient;
-    const successorInstallation = installMCPServerGateway(() => runtimeClient());
-    uninstall = () => {
-      successorInstallation.dispose();
-      retiredInstallation.dispose();
-    };
-
-    retired.resolve();
-    await expect(reconnect).resolves.toMatchObject({
-      message: "mcp_server_mutation_generation_retired",
-    });
-    expect(reconnectSuccessor).not.toHaveBeenCalled();
   });
 });
 

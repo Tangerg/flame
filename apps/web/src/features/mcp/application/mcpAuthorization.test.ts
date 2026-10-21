@@ -12,7 +12,6 @@ const inertGateway = {
   delete: vi.fn(),
   setEnabled: vi.fn(),
   setToolExposure: vi.fn().mockResolvedValue(undefined),
-  reconnect: vi.fn(),
   test: vi.fn(),
 } as const;
 

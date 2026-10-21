@@ -119,28 +119,6 @@ describe("MCPServerMutationOwner", () => {
     expect(queryClient.getQueryData([MCP_SERVERS_KEY])).toEqual([saved]);
   });
 
-  it("coalesces overlapping reconnect admissions and orders settings behind the same server", async () => {
-    const admitted = Promise.withResolvers<void>();
-    const reconnect = vi.fn(() => admitted.promise);
-    const setEnabled = vi.fn().mockResolvedValue(server({ status: "disabled", enabled: false }));
-    owner = MCPServerMutationOwner.install({
-      reconnect,
-      setEnabled,
-    } as unknown as MCPServerGateway);
-
-    const first = owner.reconnect(userMCPServer("cloud"));
-    const duplicate = owner.reconnect(userMCPServer("cloud"));
-    const settings = owner.setEnabled(userMCPServer("cloud"), false);
-    await vi.waitFor(() => expect(reconnect).toHaveBeenCalledOnce());
-    expect(setEnabled).not.toHaveBeenCalled();
-
-    admitted.resolve();
-    await expect(Promise.all([first, duplicate])).resolves.toEqual([undefined, undefined]);
-    await expect(settings).resolves.toMatchObject({ enabled: false });
-    expect(reconnect).toHaveBeenCalledOnce();
-    expect(setEnabled).toHaveBeenCalledOnce();
-  });
-
   it("retires authorization polling and clears its generation timer", async () => {
     vi.useFakeTimers();
     const getAuthorizationAttempt = vi.fn();
