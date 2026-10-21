@@ -85,7 +85,6 @@ export function TextEditorDialog({
       initialFocus={editorRef}
       finalFocus={finalFocus}
       onSubmit={submit}
-      slot="text-editor-dialog"
       backdropSlot="text-editor-backdrop"
       auxiliaryAction={
         secondaryAction && (

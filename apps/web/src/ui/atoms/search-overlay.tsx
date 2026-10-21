@@ -117,13 +117,9 @@ export function SearchOverlay({
       }}
     >
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop
-          data-slot="search-overlay-backdrop"
-          className={stylex.props(MODAL_SCRIM).className}
-        />
+        <DialogPrimitive.Backdrop className={stylex.props(MODAL_SCRIM).className} />
         <DialogPrimitive.Popup
           ref={popupRef}
-          data-slot="search-overlay"
           aria-label={label}
           finalFocus={() => {
             if (choice.current) return false;

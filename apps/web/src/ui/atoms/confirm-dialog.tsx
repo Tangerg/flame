@@ -29,7 +29,6 @@ export function ConfirmDialog({
       description={body}
       size="sm"
       role={destructive ? "alertdialog" : "dialog"}
-      slot="confirm-dialog"
       backdropSlot="confirm-dialog-backdrop"
       footer={
         <>
