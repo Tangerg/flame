@@ -181,6 +181,7 @@ export function MermaidBlock({ code }: Props) {
         {...stylex.props(reveal.host, artifactFrame.frame, mb.frame)}
         data-markdown-copy="code-block"
         data-markdown-copy-text={fencedCode}
+        data-wide-markdown-block="true"
       >
         <div
           role="img"

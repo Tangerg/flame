@@ -1231,11 +1231,12 @@ pane minus its gutters (no horizontal scrollbar by construction, as 40px of
 gutter exceeds the reserved scrollbar width) — centered with negative inline
 margins. `--wide-column-max` (56rem) is the single tunable owner.
 
-Scope: media wide blocks (`.md-media-wide-block`) and code (`.md .shiki-block`).
-Tables (fit-content centering) and Mermaid (no stable `markdown.css` selector on
-its frame) keep their column-width behavior and are follow-ups. The bounded
-table, code selection/copy, text-selection boundaries and lightbox escapes are
-width-independent and untouched. Verification: lint, every CSS check
+Scope: all full-width blocks — wide media and Mermaid (matched by
+`data-wide-markdown-block`, now also set on the Mermaid frame) and code
+(`.md .shiki-block`). Tables keep their fit-content column-width behavior, since
+centering a variable-width breakout without a scrollbar is not expressible in CSS
+here; that is a follow-up. The bounded table, code selection/copy, text-selection
+boundaries and lightbox escapes are width-independent and untouched. Verification: lint, every CSS check
 (variables/dead-tokens/styles/shorthand/classes/design-system) and the markdown
 render suite (12 files / 118 tests) pass. NATIVE ACCEPTANCE PENDING AND REQUIRED:
 the `--wide-column-max` value, the look across the band, the 1152px
