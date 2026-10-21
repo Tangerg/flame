@@ -2226,7 +2226,16 @@ defects; each needs a Wails look and an explicit choice before implementing:
 - **Panel-header / two-level return.** The Dock view-header variants and the
   Dock-return (`←`) vs in-view back (`‹`/`list`) affordances could unify into one
   identity+actions+return contract or breadcrumb; this is a focus-and-visual
-  redesign, not a cleanup.
+  redesign, not a cleanup. The two return buttons also duplicate their markup and
+  disagree on `data-chrome-focus` (window header sets it, dock header does not); a
+  shared `ReturnButton` would fix both once the ring convention is chosen.
+- **Settings-list primitive consistency.** The loaded-plugins list (`PluginsPane`)
+  hand-rolls its record rows and a manual expand/collapse where its sibling
+  `PackageManager.PackageRow` composes `ListRow` + `RecordHeading` + `Disclosure`;
+  `ProviderRow` similarly hand-rolls its header grid. Adopting the shared primitives
+  would unify them, but the plugin list's compact error-count-as-toggle and the
+  provider row's ≤440px masked-key reflow are deliberate layouts — unifying is a UX
+  decision plus a native look, not a blind swap.
 
 ## Working and maintenance practice
 
