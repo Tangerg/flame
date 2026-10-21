@@ -30,7 +30,12 @@ const styles = stylex.create({
       ':is(:disabled, [aria-disabled="true"], [data-disabled])': "var(--control-disabled-opacity)",
     },
   },
-  rowChosen: { backgroundColor: surface.selected },
+  rowChosen: {
+    backgroundColor: {
+      default: surface.selected,
+      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": surface.selectedHover,
+    },
+  },
   rowOpen: {
     backgroundColor: {
       default: null,

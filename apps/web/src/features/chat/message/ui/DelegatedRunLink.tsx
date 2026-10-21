@@ -27,7 +27,7 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
   },
   currentHint: { opacity: 1 },
-  current: { backgroundColor: { default: surface.selected, ":hover": surface.selected } },
+  current: { backgroundColor: { default: surface.selected, ":hover": surface.selectedHover } },
   link: {
     display: "flex",
     alignItems: "flex-start",
