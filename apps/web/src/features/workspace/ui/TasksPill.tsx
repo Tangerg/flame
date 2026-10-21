@@ -1,7 +1,7 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n/index";
-import { color, radius, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { color, motion, radius, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/index";
 import { Popover } from "@/ui/index";
 import { ProgressBar } from "@/ui/index";
@@ -37,7 +37,7 @@ const p = stylex.create({
   detail: { marginTop: space.s0_5, paddingLeft: GLYPH_COLUMN, color: color.fgMuted },
   error: { color: color.negative },
   meter: { marginTop: space.s1_5, marginLeft: GLYPH_COLUMN },
-  pulse: { animation: "var(--animate-pulse-dot)" },
+  pulse: { animation: motion.pulseDot },
 });
 
 export function TasksPill() {

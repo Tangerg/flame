@@ -10,8 +10,8 @@ const a = stylex.create({
   swatchLine: { position: "relative", display: "inline-flex", alignItems: "center", gap: space.s2 },
   hex: { fontFamily: "var(--font-mono)", textTransform: "uppercase", color: color.fg },
   chip: {
-    height: "calc(var(--spacing) * 4.5)",
-    width: "calc(var(--spacing) * 4.5)",
+    height: space.s4_5,
+    width: space.s4_5,
     borderWidth: "var(--hairline-width)",
     borderStyle: "solid",
     borderColor: surface.field,
