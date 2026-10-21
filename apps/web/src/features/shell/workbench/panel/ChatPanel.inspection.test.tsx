@@ -8,7 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import { createRef, useEffect, useRef, useState } from "react";
-import { ActionMenu, SearchField, Select } from "@flame/ui";
+import { ActionMenu, ModalDialog, SearchField, Select } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type WorkspaceViewSpec } from "@/features/workspace/public/views";
 import { navigator } from "@/lib/navigation";
@@ -1579,6 +1579,120 @@ describe("shared material popup visibility", () => {
       expect(screen.getByLabelText("Composer draft")).toBe(draft);
       expect(draft.value).toBe("Keep this draft — 保留");
       expect(draft.selectionEnd).toBe(5);
+    },
+  );
+});
+
+describe("bounded material tasks", () => {
+  it.each([
+    ["select", "collapse"],
+    ["menu", "collapse"],
+    ["select", "retreat"],
+    ["menu", "retreat"],
+  ] as const)(
+    "keeps a task's %s active through %s and returns to the visible workspace on dismissal",
+    async (kind, transition) => {
+      const resize = observeRowWidth(1200);
+      const change = vi.fn();
+      const command = vi.fn();
+      function MaterialTask() {
+        const [open, setOpen] = useState(false);
+        const [title, setTitle] = useState("Retained bounded draft 保留");
+        const opener = useRef<HTMLButtonElement>(null);
+        return (
+          <>
+            <ChildReader />
+            <button ref={opener} onClick={() => setOpen(true)}>
+              Edit material task
+            </button>
+            <ModalDialog
+              open={open}
+              onOpenChange={setOpen}
+              title="Bounded material task"
+              finalFocus={opener}
+            >
+              <input
+                aria-label="Task draft"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+              />
+              <Select
+                label="Task model"
+                value="default"
+                onValueChange={change}
+                options={[
+                  { value: "default", label: "Runtime default" },
+                  { value: "chosen", label: "Chosen model" },
+                ]}
+              />
+              <ActionMenu
+                label="Task actions"
+                items={[{ label: "Inspect task", onSelect: command }]}
+              />
+            </ModalDialog>
+          </>
+        );
+      }
+      model.views[1] = { ...model.views[1]!, component: MaterialTask };
+      openWorkspaceViewInDock("subagents");
+      render(<ChatPanel onSend={() => true} />);
+      fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
+      const reader = screen.getByRole("button", { name: "Evidence 1" });
+      const composer = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
+      composer.setSelectionRange(5, 5);
+      const opener = screen.getByRole("button", { name: "Edit material task" });
+      fireEvent.click(opener);
+      const dialog = await screen.findByRole("dialog", { name: "Bounded material task" });
+      const field = within(dialog).getByRole<HTMLInputElement>("textbox", { name: "Task draft" });
+      fireEvent.change(field, { target: { value: "Updated bounded draft 保留" } });
+      const trigger = within(dialog).getByRole(kind === "select" ? "combobox" : "button", {
+        name: kind === "select" ? "Task model" : "Task actions",
+      });
+      fireEvent.click(trigger);
+      const popupRole = kind === "select" ? "listbox" : "menu";
+      const popup = await screen.findByRole(popupRole);
+      const item = within(popup).getByRole(kind === "select" ? "option" : "menuitem", {
+        name: kind === "select" ? "Runtime default" : "Inspect task",
+      });
+      act(() => item.focus());
+
+      if (transition === "collapse") act(() => toggleWorkspaceDock());
+      else await resize(700);
+      await settle();
+
+      expect(screen.getByRole("dialog", { name: "Bounded material task" })).toBe(dialog);
+      vi.spyOn(opener, "getClientRects").mockReturnValue([] as unknown as DOMRectList);
+      expect(screen.getByRole(popupRole)).toBe(popup);
+      expect(popup.contains(document.activeElement)).toBe(true);
+      expect(field.value).toBe("Updated bounded draft 保留");
+      expect(change).not.toHaveBeenCalled();
+      expect(command).not.toHaveBeenCalled();
+
+      await act(async () => {
+        fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+      });
+      await vi.waitFor(() => expect(screen.queryByRole(popupRole)).toBeNull());
+      await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+      expect(screen.getByRole("dialog", { name: "Bounded material task" })).toBe(dialog);
+      await act(async () => {
+        fireEvent.keyDown(trigger, { key: "Escape" });
+      });
+      await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      const conversation = screen.getByRole("region", { name: "Conversation" });
+      await vi.waitFor(() =>
+        expect(document.activeElement).toBe(
+          within(conversation).getByRole("button", { name: "src/main.ts:4" }),
+        ),
+      );
+
+      if (transition === "collapse") act(() => toggleWorkspaceDock());
+      else await resize(1200);
+      expect(screen.getByRole("button", { name: "Edit material task" })).toBe(opener);
+      expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(reader);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.getByLabelText("Composer draft")).toBe(composer);
+      expect(composer.value).toBe("Keep this draft — 保留");
+      expect(composer.selectionEnd).toBe(5);
     },
   );
 });

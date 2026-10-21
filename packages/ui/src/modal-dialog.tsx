@@ -1,7 +1,15 @@
 import * as stylex from "@stylexjs/stylex";
 import { DialogPrimitive as Dialog } from "./primitives/dialog";
 import { X } from "@flame/icons/react";
-import type { ComponentProps, FormEventHandler, ReactNode } from "react";
+import {
+  use,
+  useMemo,
+  type ComponentProps,
+  type FormEventHandler,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { ContentVisibilityContext } from "./content-visibility";
 import { IconButton } from "./icon-button";
 import { IconMark } from "./icon-mark";
 import { isImeKey } from "./keyboard";
@@ -109,6 +117,11 @@ export function ModalDialog({
   slot?: string;
   backdropSlot?: string;
 }) {
+  const owner = use(ContentVisibilityContext);
+  const portalVisibility = useMemo(
+    () => ({ visible: open, fallbackFocus: owner.fallbackFocus }),
+    [open, owner.fallbackFocus],
+  );
   return (
     <Dialog.Root
       open={open}
@@ -127,65 +140,106 @@ export function ModalDialog({
       }}
     >
       <Dialog.Portal {...stylex.props(styles.portal)}>
-        <Dialog.Backdrop
-          data-slot={backdropSlot}
-          {...stylex.props(MODAL_SCRIM, styles.backdrop)}
-        />
-        <Dialog.Popup
-          data-slot={slot}
-          role={role}
-          initialFocus={initialFocus}
-          finalFocus={finalFocus}
-          render={onSubmit ? <form onSubmit={onSubmit} /> : undefined}
-          {...stylex.props(
-            modalPanel(),
-            styles.panel,
-            size === "sm" && styles.small,
-            size === "lg" && styles.large,
-            type.uiMd,
-          )}
-        >
-          <header {...stylex.props(styles.header)}>
-            {icon && <IconMark>{icon}</IconMark>}
-            <div {...stylex.props(styles.heading)}>
-              <Dialog.Title {...stylex.props(styles.title, type.displaySm)}>
-                {title}
-              </Dialog.Title>
-            </div>
-            {closeLabel && (
-              <Dialog.Close
-                disabled={!dismissible}
-                render={
-                  <IconButton
-                    icon={X}
-                    size="sm"
-                    quiet
-                    aria-label={closeLabel}
-                  />
-                }
-              />
+        <ContentVisibilityContext value={portalVisibility}>
+          <Dialog.Backdrop
+            data-slot={backdropSlot}
+            {...stylex.props(MODAL_SCRIM, styles.backdrop)}
+          />
+          <Dialog.Popup
+            data-slot={slot}
+            role={role}
+            initialFocus={initialFocus}
+            finalFocus={
+              owner.visible
+                ? finalFocus
+                : (closeType) =>
+                    hiddenOwnerFinalFocus(
+                      finalFocus,
+                      closeType,
+                      owner.fallbackFocus,
+                    )
+            }
+            render={onSubmit ? <form onSubmit={onSubmit} /> : undefined}
+            {...stylex.props(
+              modalPanel(),
+              styles.panel,
+              size === "sm" && styles.small,
+              size === "lg" && styles.large,
+              type.uiMd,
             )}
-          </header>
-          {(description || children) && (
-            <div data-slot="dialog-body" {...stylex.props(styles.body)}>
-              {description && (
-                <Dialog.Description
-                  {...stylex.props(styles.description, type.uiMd)}
-                >
-                  {description}
-                </Dialog.Description>
+          >
+            <header {...stylex.props(styles.header)}>
+              {icon && <IconMark>{icon}</IconMark>}
+              <div {...stylex.props(styles.heading)}>
+                <Dialog.Title {...stylex.props(styles.title, type.displaySm)}>
+                  {title}
+                </Dialog.Title>
+              </div>
+              {closeLabel && (
+                <Dialog.Close
+                  disabled={!dismissible}
+                  render={
+                    <IconButton
+                      icon={X}
+                      size="sm"
+                      quiet
+                      aria-label={closeLabel}
+                    />
+                  }
+                />
               )}
-              {children}
-            </div>
-          )}
-          {footer && (
-            <footer {...stylex.props(styles.footer)}>
-              {auxiliaryAction}
-              <div {...stylex.props(styles.actions)}>{footer}</div>
-            </footer>
-          )}
-        </Dialog.Popup>
+            </header>
+            {(description || children) && (
+              <div data-slot="dialog-body" {...stylex.props(styles.body)}>
+                {description && (
+                  <Dialog.Description
+                    {...stylex.props(styles.description, type.uiMd)}
+                  >
+                    {description}
+                  </Dialog.Description>
+                )}
+                {children}
+              </div>
+            )}
+            {footer && (
+              <footer {...stylex.props(styles.footer)}>
+                {auxiliaryAction}
+                <div {...stylex.props(styles.actions)}>{footer}</div>
+              </footer>
+            )}
+          </Dialog.Popup>
+        </ContentVisibilityContext>
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+type FinalFocus = ComponentProps<typeof Dialog.Popup>["finalFocus"];
+type CloseType = Parameters<
+  Extract<FinalFocus, (...args: never[]) => unknown>
+>[0];
+
+// Base UI's default return target is the opener, which lives in the hidden
+// owner; focusing it would land in content the user cannot see.
+function hiddenOwnerFinalFocus(
+  finalFocus: FinalFocus,
+  closeType: CloseType,
+  fallbackFocus: RefObject<HTMLElement | null> | undefined,
+): HTMLElement | false | undefined {
+  if (finalFocus === false) return false;
+  let target: HTMLElement | null = null;
+  if (typeof finalFocus === "function") {
+    const resolved = finalFocus(closeType);
+    if (resolved === undefined) return undefined;
+    if (resolved === false) return false;
+    if (resolved instanceof HTMLElement) target = resolved;
+  } else if (finalFocus && finalFocus !== true) {
+    target = finalFocus.current;
+  }
+  if (target && isShown(target)) return target;
+  return fallbackFocus?.current ?? false;
+}
+
+function isShown(element: HTMLElement): boolean {
+  return element.isConnected && element.getClientRects().length > 0;
 }

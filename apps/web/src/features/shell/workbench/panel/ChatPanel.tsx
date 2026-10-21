@@ -221,6 +221,7 @@ export function ChatPanel({ onSend, ref }: Props) {
     dockRef,
     conversationRef,
     mainViewRef,
+    presentationRef,
     returnToSource,
     onMaterialKeyDown,
     requestComposerFocus,
@@ -345,7 +346,7 @@ export function ChatPanel({ onSend, ref }: Props) {
           data-focus-inset=""
           {...stylex.props(sh.paneNarrow, conversationPane.container)}
         >
-          <ContentVisibility visible={!presentedMain}>
+          <ContentVisibility visible={!presentedMain} fallbackFocus={presentationRef}>
             <AgentSurfaceHeader corner="window">
               <SessionIdentity
                 sessionId={activeSessionId}
@@ -406,6 +407,7 @@ export function ChatPanel({ onSend, ref }: Props) {
                 >
                   <ContentVisibility
                     visible={viewId === presentedViewId && (presentedMain || dockVisible)}
+                    fallbackFocus={presentationRef}
                   >
                     <PanelHost hosted={!presentedMain}>
                       <WorkspaceViewBody

@@ -3,7 +3,7 @@ import { toolFamilyId } from "@/lib/toolFamilies";
 import { toolIconFor } from "@/features/agent/public/toolIcon";
 import { type ApprovalDecision } from "@/features/agent/public/hitl";
 import { type RememberScope } from "@/features/agent/public/hitl";
-import { type ToolCategory } from "@flame/runtime-client/wire";
+import { type ToolCategory } from "@/features/agent/public/sessionView";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { useT } from "@/lib/i18n/index";
 import { Divider } from "@/ui/index";

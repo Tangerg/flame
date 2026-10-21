@@ -1,5 +1,4 @@
 import { type CapturedToolResult, type RecordedFileChange } from "@flame/component-sdk";
-import { type ToolCategory } from "@flame/runtime-client/wire";
 type RecoveryAction =
   | "refetch"
   | "coldRecover"
@@ -26,6 +25,8 @@ export interface AgentPlan {
 }
 
 export type ToolCallStatus = CapturedToolResult["status"];
+
+export type ToolCategory = "shell" | "edit" | "read" | "search" | "web" | "task" | "unknown";
 
 export type AgentSafetyClass = NonNullable<CapturedToolResult["safetyClass"]>;
 

@@ -8,43 +8,44 @@ import {
   type AgentRunMetrics as RunMetrics,
   type AgentRunOutcome,
   type AgentSessionView,
+  type ToolCategory,
 } from "@/features/agent/public/sessionView";
 import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
 import { reduceAgentEvent } from "@/features/agent/application/fold/reducer";
 
 // The runtime presenter stamps a category on every tool it projects; fixtures
 // reproduce that wire so the fold reads the category it will be given.
-const WIRE_TOOL_CATEGORY: Record<string, "shell" | "edit" | "read" | "search" | "web" | "task"> = {
-  shell: "shell",
-  read_shell_output: "shell",
-  stop_shell: "shell",
-  apply_patch: "edit",
-  edit: "edit",
-  read: "read",
-  read_skill_resource: "read",
-  read_tool_result: "read",
-  glob: "search",
-  grep: "search",
-  search_tools: "search",
-  lsp: "search",
-  web_search: "web",
-  web_fetch: "web",
-  http_request: "web",
-  ask_user: "task",
-  delegate_task: "task",
-  create_goal: "task",
-  get_goal: "task",
-  report_goal_outcome: "task",
-  load_skill: "task",
-  list_skills: "task",
-  propose_skill: "task",
-  enter_plan_mode: "task",
-  exit_plan_mode: "task",
-  set_plan: "task",
-};
+const WIRE_TOOL_CATEGORY = new Map<string, ToolCategory>([
+  ["shell", "shell"],
+  ["read_shell_output", "shell"],
+  ["stop_shell", "shell"],
+  ["apply_patch", "edit"],
+  ["edit", "edit"],
+  ["read", "read"],
+  ["read_skill_resource", "read"],
+  ["read_tool_result", "read"],
+  ["glob", "search"],
+  ["grep", "search"],
+  ["search_tools", "search"],
+  ["lsp", "search"],
+  ["web_search", "web"],
+  ["web_fetch", "web"],
+  ["http_request", "web"],
+  ["ask_user", "task"],
+  ["delegate_task", "task"],
+  ["create_goal", "task"],
+  ["get_goal", "task"],
+  ["report_goal_outcome", "task"],
+  ["load_skill", "task"],
+  ["list_skills", "task"],
+  ["propose_skill", "task"],
+  ["enter_plan_mode", "task"],
+  ["exit_plan_mode", "task"],
+  ["set_plan", "task"],
+]);
 
 export function toolCategoryForName(name: string) {
-  return WIRE_TOOL_CATEGORY[name] ?? "unknown";
+  return WIRE_TOOL_CATEGORY.get(name) ?? "unknown";
 }
 
 export function stampDurableToolCategory<I extends { type: string }>(item: I): I {

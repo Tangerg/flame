@@ -114,7 +114,12 @@ replaces the default ellipsis with a text trigger for named action menus.
 are hidden; nested providers combine, so any hidden ancestor wins. While hidden,
 `Select` and `ActionMenu` close their open popup without choosing or acting, release
 focus only from inside the popup, and skip focus return; the control, its value and
-any focus the user moved elsewhere survive the reveal unchanged.
+any focus the user moved elsewhere survive the reveal unchanged. A host may supply
+`fallbackFocus`, inherited by nested providers. An open `ModalDialog` is a bounded
+task above its owner: its content stays visible while the owner hides, so nested
+popups keep working. Closing it over a hidden owner keeps an explicit `false`, a
+do-nothing callback, or a visible target, and otherwise focuses the host's
+`fallbackFocus` rather than the hidden opener, or nothing without one.
 `Facts` keeps labels with their values in equal, container-responsive columns.
 Column edges remain shared across rows; narrow containers reduce the column count.
 Long identities and paths wrap completely inside each pair, and visual reading

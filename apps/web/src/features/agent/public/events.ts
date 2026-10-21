@@ -1,5 +1,4 @@
 import { type ApprovalDecision } from "@/features/agent/domain/hitl";
-import { type ToolCategory } from "@flame/runtime-client/wire";
 import {
   type AgentProblem,
   type AgentRunMetrics,
@@ -10,6 +9,7 @@ import {
   type AgentSafetyClass,
   type AgentMessagePhase,
   type AgentPlan,
+  type ToolCategory,
 } from "@/features/agent/public/sessionView";
 export type AgentMessagePart =
   { type: "text"; text: string } | { type: "image"; data: string; mime: string };
