@@ -8,7 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import { createRef, useEffect, useRef, useState } from "react";
-import { SearchField } from "@flame/ui";
+import { ActionMenu, SearchField, Select } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type WorkspaceViewSpec } from "@/features/workspace/public/views";
 import { navigator } from "@/lib/navigation";
@@ -1496,4 +1496,89 @@ describe("preview history lifetime", () => {
     fireEvent.click(trigger);
     expect(screen.getByRole("dialog", { name: "Table preview" })).toBeTruthy();
   });
+});
+
+describe("shared material popup visibility", () => {
+  it.each([
+    ["select", "collapse"],
+    ["menu", "collapse"],
+    ["select", "retreat"],
+    ["menu", "retreat"],
+  ] as const)(
+    "retires a shared %s on %s without replacing retained material or its draft",
+    async (kind, transition) => {
+      const resize = observeRowWidth(1200);
+      const select = vi.fn();
+      const command = vi.fn();
+      function SharedMaterial() {
+        const [value, setValue] = useState("working");
+        return (
+          <>
+            <ChildReader />
+            <Select
+              label="Material comparison"
+              value={value}
+              onValueChange={(next) => {
+                select(next);
+                setValue(next);
+              }}
+              options={[
+                { value: "working", label: "Working changes" },
+                { value: "branch", label: "Branch changes" },
+              ]}
+            />
+            <ActionMenu
+              label="Material record actions"
+              items={[{ label: "Inspect record", onSelect: command }]}
+            />
+          </>
+        );
+      }
+      model.views[1] = { ...model.views[1]!, component: SharedMaterial };
+      openWorkspaceViewInDock("subagents");
+      render(<ChatPanel onSend={() => true} />);
+      fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
+      const child = screen.getByRole("button", { name: "Evidence 1" });
+      const draft = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
+      draft.setSelectionRange(5, 5);
+      const trigger = screen.getByRole(kind === "select" ? "combobox" : "button", {
+        name: kind === "select" ? "Material comparison" : "Material record actions",
+      });
+      fireEvent.click(trigger);
+      const popup = await screen.findByRole(kind === "select" ? "listbox" : "menu");
+      const item = within(popup).getByRole(kind === "select" ? "option" : "menuitem", {
+        name: kind === "select" ? "Working changes" : "Inspect record",
+      });
+      act(() => item.focus());
+
+      if (transition === "collapse") act(() => toggleWorkspaceDock());
+      else await resize(700);
+
+      await vi.waitFor(() => {
+        expect(screen.queryByRole(kind === "select" ? "listbox" : "menu")).toBeNull();
+        expect(document.activeElement).toBe(screen.getByRole("region", { name: "Conversation" }));
+      });
+      expect(child.isConnected).toBe(true);
+      expect(select).not.toHaveBeenCalled();
+      expect(command).not.toHaveBeenCalled();
+
+      if (transition === "collapse") act(() => toggleWorkspaceDock());
+      else await resize(1200);
+      await settle();
+
+      expect(screen.queryByRole(kind === "select" ? "listbox" : "menu")).toBeNull();
+      expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(child);
+      expect(
+        screen.getByRole(kind === "select" ? "combobox" : "button", {
+          name: kind === "select" ? "Material comparison" : "Material record actions",
+        }),
+      ).toBe(trigger);
+      expect(screen.getByRole("combobox", { name: "Material comparison" }).textContent).toContain(
+        "Working changes",
+      );
+      expect(screen.getByLabelText("Composer draft")).toBe(draft);
+      expect(draft.value).toBe("Keep this draft — 保留");
+      expect(draft.selectionEnd).toBe(5);
+    },
+  );
 });

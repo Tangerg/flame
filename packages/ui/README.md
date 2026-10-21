@@ -110,6 +110,11 @@ update this local presentation without tracking the current file or scroll posit
 `ActionMenu` owns secondary action presentation, keyboard behavior and focus return; each command
 receives its actual trigger as the opener for an inline editor. `triggerContent`
 replaces the default ellipsis with a text trigger for named action menus.
+`ContentVisibility` lets a host that retains hidden content tell its descendants they
+are hidden; nested providers combine, so any hidden ancestor wins. While hidden,
+`Select` and `ActionMenu` close their open popup without choosing or acting, release
+focus only from inside the popup, and skip focus return; the control, its value and
+any focus the user moved elsewhere survive the reveal unchanged.
 `Facts` keeps labels with their values in equal, container-responsive columns.
 Column edges remain shared across rows; narrow containers reduce the column count.
 Long identities and paths wrap completely inside each pair, and visual reading

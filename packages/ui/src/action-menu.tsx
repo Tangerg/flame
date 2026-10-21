@@ -6,6 +6,10 @@ import { Button } from "./button";
 import { Icon } from "./font-scale";
 import { FLOATING_LAYER, FLOATING_OPTIONS } from "./floating-surface";
 import { MenuPrimitive } from "./primitives/menu";
+import {
+  useHiddenPopupRelease,
+  useHiddenRootRetirement,
+} from "./popup-visibility";
 import { color, type } from "./tokens.stylex";
 
 const styles = stylex.create({
@@ -38,8 +42,13 @@ export function ActionMenu({
   triggerContent?: ReactNode;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
+  const retirement = useHiddenRootRetirement<
+    MenuPrimitive.Root.Actions,
+    MenuPrimitive.Root.ChangeEventDetails
+  >({});
+  const { visible, portalRef } = useHiddenPopupRelease();
   return (
-    <MenuPrimitive.Root>
+    <MenuPrimitive.Root {...retirement}>
       <MenuPrimitive.Trigger
         ref={trigger}
         disabled={disabled}
@@ -57,7 +66,7 @@ export function ActionMenu({
           triggerContent
         )}
       </MenuPrimitive.Trigger>
-      <MenuPrimitive.Portal>
+      <MenuPrimitive.Portal ref={portalRef}>
         <MenuPrimitive.Positioner
           align="end"
           sideOffset={4}
@@ -65,6 +74,7 @@ export function ActionMenu({
         >
           <MenuPrimitive.Popup
             aria-label={label}
+            finalFocus={visible ? undefined : false}
             {...stylex.props(
               FLOATING_OPTIONS,
               MENU_SURFACE.content,

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
-import { ContentVisibility, useContentVisible } from "@/ui/content-visibility";
+import { ContentVisibility, useContentVisible } from "../dist/index.js";
 function Probe() {
   return <output>{useContentVisible() ? "visible" : "hidden"}</output>;
 }

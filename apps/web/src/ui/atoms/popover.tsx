@@ -3,7 +3,7 @@ import { type ComponentProps, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { PopoverPrimitive } from "@/ui/primitives/index";
 import { FLOATING_LAYER, FLOATING_OPTIONS, FLOATING_PANEL } from "@flame/ui/floating-surface";
-import { useHiddenPopupRelease, useHiddenRootRetirement } from "@/ui/atoms/popup-visibility";
+import { useHiddenPopupRelease, useHiddenRootRetirement } from "@flame/ui";
 type PositionerProps = ComponentProps<typeof PopoverPrimitive.Positioner>;
 
 type PopupProps = ComponentProps<typeof PopoverPrimitive.Popup>;
