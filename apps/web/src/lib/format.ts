@@ -22,11 +22,6 @@ export function fmtTokens(n: number): string {
   return `${decimal(n / 1_000_000, 1, true)}M`;
 }
 
-export function fmtCost(usd: number): string {
-  if (usd > 0 && usd < 0.01) return `$${decimal(usd, 4, true)}`;
-  return `$${decimal(usd, 2, true)}`;
-}
-
 export function fmtDuration(ms: number): string {
   if (ms < 1000) return `${decimal(ms, 0)}ms`;
   const seconds = ms / 1000;

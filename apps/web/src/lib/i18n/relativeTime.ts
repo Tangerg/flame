@@ -41,19 +41,6 @@ function parse(input: string | number | Date | undefined | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export function formatDateTime(input: string | number | Date | undefined | null): string {
-  const d = parse(input);
-  if (!d) return "";
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return dateTimeFormat(sameYear ? "md-hm" : "ymd-hm", {
-    ...(sameYear ? {} : { year: "numeric" }),
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(d);
-}
-
 export type ClockPrecision = "minute" | "second";
 
 export function formatClock(

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { t } from "@/lib/i18n/index";
-import { durationText, fmtCost, fmtDuration, fmtTokens } from "@/lib/format";
+import { durationText, fmtDuration, fmtTokens } from "@/lib/format";
 const locale = vi.hoisted(() => ({ current: "en" }));
 
 vi.mock("@/lib/i18n/index", async (importOriginal) => ({
@@ -62,21 +62,12 @@ describe("fmtTokens", () => {
   });
 });
 
-describe("fmtCost", () => {
-  it("shows sub-cent spend rather than rounding it to nothing", () => {
-    expect(fmtCost(0.0042)).toBe("$0.0042");
-    expect(fmtCost(0)).toBe("$0.00");
-    expect(fmtCost(1.5)).toBe("$1.50");
-  });
-});
-
 describe("in a locale that writes decimals with a comma", () => {
   it("follows the locale for the number and leaves the unit alone", () => {
     locale.current = "de";
     try {
       expect(fmtTokens(1234)).toBe("1,2k");
       expect(fmtTokens(1_200_000)).toBe("1,2M");
-      expect(fmtCost(1.5)).toBe("$1,50");
       expect(fmtDuration(412)).toBe("412ms");
       expect(fmtDuration(1412)).toBe("1,4s");
       expect(fmtTokens(999)).toBe("999");

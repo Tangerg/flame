@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { forEachSeed } from "@/test/arbitrary";
-import {
-  bcp47,
-  dayKey,
-  formatClock,
-  formatDateTime,
-  formatDay,
-  formatRelative,
-} from "@/lib/i18n/relativeTime";
+import { bcp47, dayKey, formatClock, formatDay, formatRelative } from "@/lib/i18n/relativeTime";
 const STRINGS = [
   "",
   " ",
@@ -35,7 +28,6 @@ const NUMBERS = [
 ];
 
 const TEXT_FORMATTERS = [
-  ["formatDateTime", formatDateTime],
   ["formatClock", formatClock],
   [
     "formatClock to the second",
