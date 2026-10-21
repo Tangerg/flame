@@ -17,6 +17,7 @@
   max-width: none;
 }
 @container conversation (min-width: 640px) and (max-width: 1151.98px) {
+  .md p.md-media-wide-block,
   .md [data-wide-markdown-block="true"],
   .md .shiki-block,
   .md .md-table-container {
@@ -29,6 +30,7 @@
     );
     max-width: var(--md-wide-width);
   }
+  .md p.md-media-wide-block,
   .md [data-wide-markdown-block="true"],
   .md .shiki-block {
     width: var(--md-wide-width);

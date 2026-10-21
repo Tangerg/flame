@@ -1235,11 +1235,14 @@ two gutters of clearance from the pane — no horizontal scrollbar by constructi
 across the whole band, including the narrow end where the column already fills the
 pane. `--wide-column-max` (56rem) is the single tunable owner.
 
-Scope: full-width blocks (media and Mermaid via `data-wide-markdown-block`, code via
-`.md .shiki-block`) take the width directly; `.md .md-table-container` takes it as a
-`max-width`, so a narrow table stays fit-content and only a wide one grows. The
-bounded table height, code/text selection and lightbox escapes are width-independent
-and untouched. Verification: lint, every CSS check
+Scope: full-width blocks take the width directly — Mermaid via its
+`data-wide-markdown-block` frame, code via `.md .shiki-block`, and media via
+`.md p.md-media-wide-block`, which carries the same specificity as the base
+media-wide rule so the breakout actually wins (the earlier attribute-only selector
+was outranked by that base rule, leaving media unwidened). `.md .md-table-container`
+takes it as a `max-width`, so a narrow table stays fit-content and only a wide one
+grows. The bounded table height, code/text selection and lightbox escapes are
+width-independent and untouched. Verification: lint, every CSS check
 (variables/dead-tokens/styles/shorthand/classes) and the markdown render suite (12
 files / 118 tests) pass. NATIVE ACCEPTANCE PENDING AND REQUIRED: the
 `--wide-column-max` value, the look across the band, the 1152px rail transition, and
