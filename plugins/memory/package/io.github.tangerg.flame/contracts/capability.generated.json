@@ -704,6 +704,10 @@
             "additionalProperties": false,
             "properties": {
               "Decision": {
+                "enum": [
+                  "approve",
+                  "reject"
+                ],
                 "type": "string"
               },
               "ID": {
@@ -721,6 +725,10 @@
         "additionalProperties": false,
         "properties": {
           "Decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
             "type": "string"
           },
           "ID": {

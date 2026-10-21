@@ -176,6 +176,10 @@ const (
 	ReviewReject  ReviewDecision = "reject"
 )
 
+func (ReviewDecision) JSONSchemaEnum() []string {
+	return []string{string(ReviewApprove), string(ReviewReject)}
+}
+
 func (r ReviewDecision) Result() (Status, error) {
 	switch r {
 	case ReviewApprove:
