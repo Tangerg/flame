@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
+	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -125,7 +125,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		}
 		return response
 	}
-	input := rpc.ImportInput{Content: domain.Content{ID: "fruit", Title: "Fruit guide", Source: "docs/fruit.md", Text: "apple guide"}}
+	input := rpc.ImportInput{Content: knowledge.Content{ID: "fruit", Title: "Fruit guide", Source: "docs/fruit.md", Text: "apple guide"}}
 	first := call(contracts.Import.Name(), input, "knowledge-import")
 	if replay := call(contracts.Import.Name(), input, "knowledge-import"); replay.Output != first.Output || embeddings.Load() != 1 {
 		t.Fatalf("import repeated its model exchange: %+v, count=%d", replay, embeddings.Load())

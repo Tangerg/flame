@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
+	routing "github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -29,7 +29,7 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 		t.Fatal(err)
 	}
 	selected, _ := model.New("openai", "gpt-5-mini")
-	replace := func(revision int64, rules []domain.Rule, key string) {
+	replace := func(revision int64, rules []routing.Rule, key string) {
 		t.Helper()
 		input, err := jsoninput.Encode(rpc.ReplaceInput{ExpectedRevision: revision, Rules: rules})
 		if err != nil {
@@ -41,7 +41,7 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 			t.Fatal(result.Failure)
 		}
 	}
-	replace(1, []domain.Rule{{Use: model.Interaction, Selection: selected}}, "route-interaction")
+	replace(1, []routing.Rule{{Use: model.Interaction, Selection: selected}}, "route-interaction")
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Routed work"}, "router-session").(*protocol.Session)
 	input := protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Run with the selected model."}}}
 	start := func() *protocol.StartRunResponse {
@@ -58,7 +58,7 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 		return result.Value.(*protocol.StartRunResponse)
 	}
 	started := start()
-	replace(2, []domain.Rule{}, "clear-routing")
+	replace(2, []routing.Rule{}, "clear-routing")
 	if retried := start(); retried.RunID != started.RunID {
 		t.Fatal("accepted retry reran mutable routing")
 	}

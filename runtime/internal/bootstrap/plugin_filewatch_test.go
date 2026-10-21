@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/plugins/filewatch/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -118,25 +118,25 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 			}
 		}
 	}
-	status := func(phase domain.Phase, revision int64) bool {
-		var value domain.Status
+	status := func(phase filewatch.Phase, revision int64) bool {
+		var value filewatch.Status
 		if err := json.Unmarshal([]byte(call(contracts.Status.Name(), struct{}{}, "")), &value); err != nil {
 			t.Fatal(err)
 		}
-		if value.Phase == domain.Failed {
+		if value.Phase == filewatch.Failed {
 			t.Fatalf("published source failed: %+v", value)
 		}
 		return value.Phase == phase && value.Revision == revision
 	}
-	events := func() []domain.Header {
-		var value []domain.Header
+	events := func() []filewatch.Header {
+		var value []filewatch.Header
 		if err := json.Unmarshal([]byte(call(contracts.Events.Name(), struct{}{}, "")), &value); err != nil {
 			t.Fatal(err)
 		}
 		return value
 	}
-	capture := func(id string) domain.Event {
-		var value domain.Event
+	capture := func(id string) filewatch.Event {
+		var value filewatch.Event
 		if err := json.Unmarshal([]byte(call(contracts.Event.Name(), rpc.EventInput{ID: id}, "")), &value); err != nil {
 			t.Fatal(err)
 		}
@@ -147,9 +147,9 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	if err := os.WriteFile(path, []byte("initial baseline"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	draft := domain.Draft{Title: "Original file trigger", Workspace: workspace.Ref.Path, Paths: []string{"source.txt"}, Instructions: "Inspect the original observed source.", Provider: cfg.Provider, Model: cfg.Model}
+	draft := filewatch.Draft{Title: "Original file trigger", Workspace: workspace.Ref.Path, Paths: []string{"source.txt"}, Instructions: "Inspect the original observed source.", Provider: cfg.Provider, Model: cfg.Model}
 	configured := call(contracts.Configure.Name(), rpc.ConfigureInput{ExpectedRevision: 1, Trigger: &draft}, "configure-source")
-	wait(func() bool { return status(domain.Watching, 2) })
+	wait(func() bool { return status(filewatch.Watching, 2) })
 	if err := os.WriteFile(path, []byte("external source edit"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	case <-time.After(10 * time.Second):
 		t.Fatal("external file edit did not reach canonical Run admission")
 	}
-	var original domain.Capture
+	var original filewatch.Capture
 	wait(func() bool {
 		values := events()
 		if len(values) != 1 {
@@ -171,11 +171,11 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 		original = capture(values[0].ID).Capture
 		return true
 	})
-	if original.RunID != accepted.RunID || original.Invocation.Origin != capability.Automatic || original.Invocation.Target.Reference != installed.ID || original.Kind != domain.Changed {
+	if original.RunID != accepted.RunID || original.Invocation.Origin != capability.Automatic || original.Invocation.Target.Reference != installed.ID || original.Kind != filewatch.Changed {
 		t.Fatalf("capture differs from canonical opening: %+v %+v", original, accepted)
 	}
 	call(contracts.Configure.Name(), rpc.ConfigureInput{ExpectedRevision: 2, Trigger: nil}, "disable-source")
-	wait(func() bool { return status(domain.Disabled, 3) })
+	wait(func() bool { return status(filewatch.Disabled, 3) })
 	wait(func() bool {
 		run := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
 		if run.SessionID != original.SessionID {
@@ -196,14 +196,14 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	if replay := call(contracts.Configure.Name(), rpc.ConfigureInput{ExpectedRevision: 1, Trigger: &draft}, "configure-source"); replay != configured {
 		t.Fatal("configure replay replaced the disabled rule")
 	}
-	wait(func() bool { return status(domain.Disabled, 3) })
-	var disabled domain.Snapshot
+	wait(func() bool { return status(filewatch.Disabled, 3) })
+	var disabled filewatch.Snapshot
 	if err := json.Unmarshal([]byte(call(contracts.Get.Name(), struct{}{}, "")), &disabled); err != nil || disabled.Revision != 3 || disabled.Trigger != nil {
 		t.Fatalf("disabled rule changed after receipt replay: %+v %v", disabled, err)
 	}
 	draft.Instructions = "Inspect the second observed source."
 	call(contracts.Configure.Name(), rpc.ConfigureInput{ExpectedRevision: 3, Trigger: &draft}, "rearm-source")
-	wait(func() bool { return status(domain.Watching, 4) })
+	wait(func() bool { return status(filewatch.Watching, 4) })
 	if err := os.WriteFile(path, []byte("second external source edit"), 0600); err != nil {
 		t.Fatal(err)
 	}
