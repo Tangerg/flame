@@ -88,10 +88,13 @@ dispatch intents over the public Runtime workspace observation stream.
 Other packages contain only their declared content or presentation resources.
 
 Backend implementations live in `<name>/backend` beside their manifests, contracts
-and optional `<name>/src` UI. The `plugins` Go module is separate from Runtime.
-Its business code and unit tests import only public Runtime APIs; host-specific
-integration tests stay with Runtime's host adapters. Shared invariants and native
-mechanisms have one public implementation consumed by both modules.
+and optional `<name>/component` UI. First-party backends share the repository Go
+module with Runtime, so they build and test together against the in-tree Runtime and
+public SDK. Production plugin code imports only public Runtime APIs; `architecture_test.go`
+rejects any `runtime/internal` import, and host-specific integration tests stay with
+Runtime's host adapters. The author exporter repackages each plugin as its own
+independent, separately versioned module for distribution. Shared invariants and
+native mechanisms have one public implementation consumed by every backend.
 
 ## Independent author projects and release packages
 
@@ -164,7 +167,7 @@ npm run build --prefix plugins
 npm run check --prefix plugins
 ```
 
-`build-components.mjs` uses the public SDK to build each `src/component.tsx` as
+`build-components.mjs` uses the public SDK to build each `component/component.tsx` as
 prebuilt ESM into its declared namespace resource. `--check` verifies exact
 reproducibility. The graphical loader supplies the actual shared host modules.
 

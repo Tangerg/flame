@@ -45,6 +45,6 @@ When an accepted read removes a focused catalog row, focus returns to the catalo
 search. Focus already moved to another control, including an open document, is
 preserved.
 
-Build `src/component.tsx` through `../build-components.mjs`; the declared namespace
+Build `component/component.tsx` through `../build-components.mjs`; the declared namespace
 resource is tracked and exact rebuilds are checked. Disablement or uninstall
 withdraws presentation/resources and preserves all canonical Skill business data.

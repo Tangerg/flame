@@ -22,7 +22,7 @@ npm run build --prefix plugins
 npm run check:resources --prefix plugins
 ```
 
-Edit `src/component.tsx` and rebuild the tracked prebuilt ESM. Installation admits
+Edit `component/component.tsx` and rebuild the tracked prebuilt ESM. Installation admits
 exact release resources without evaluating code. Install/enable the package and
 explicitly select an updated release; an evaluated replacement requires window reload.
 

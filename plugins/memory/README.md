@@ -153,7 +153,7 @@ Secondary filters retain a visible active count and clear action while folded.
 Entering an editor folds those controls without changing the selected filters,
 so the form remains readable in short viewports.
 
-The resource is ordinary prebuilt ESM from `src/component.tsx`, using shared React,
+The resource is ordinary prebuilt ESM from `component/component.tsx`, using shared React,
 public SDK and UI provider context. Build `icons` and `ui`, install plugin dependencies,
 and use `node plugins/scripts/build-components.mjs` (or `--check` for exact reproduction).
 The former HTML guest/channel and separate static control build are removed.

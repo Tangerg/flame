@@ -39,5 +39,5 @@ npm run build --prefix plugins
 npm run check:resources --prefix plugins
 ```
 
-Edit `src/component.tsx` and rebuild the tracked ESM. React/JSX/UI are host-provided
+Edit `component/component.tsx` and rebuild the tracked ESM. React/JSX/UI are host-provided
 shared modules. Installation admits exact package bytes without executing code.

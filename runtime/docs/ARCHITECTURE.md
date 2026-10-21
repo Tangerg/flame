@@ -522,10 +522,12 @@ source withdrawal cannot cancel that accepted Run. Pending captures remain priva
 and are redelivered with stable identities after reenable or restart.
 
 Application builds use the repository workspace. First-party backend sources
-live beside their declarations and UI in `plugins/<name>/backend`, in a separate
-Go module that imports public Runtime APIs. The author exporter produces one
-independent plugin module with content-addressed SDK source archives and vendored
-dependencies. Its build runs with GOWORK=off and emits a precompiled installable ZIP.
+live beside their declarations and UI in `plugins/<name>/backend`, in the repository
+Go module alongside Runtime; they import only public Runtime APIs, which the plugins
+`architecture_test.go` enforces by rejecting any `runtime/internal` import. The author
+exporter repackages each plugin as one independent, separately versioned module with
+content-addressed SDK source archives and vendored dependencies. Its build runs with
+GOWORK=off and emits a precompiled installable ZIP.
 Runtime installation never builds source or installs toolchains. The pre-release schema
 policy refuses old stores; this boundary has no compatibility readers or migration
 fallbacks.
