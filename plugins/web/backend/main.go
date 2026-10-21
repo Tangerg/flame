@@ -9,17 +9,17 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/Tangerg/flame/plugins/web/backend/domain"
+	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/flame/runtime/storage/advisorylock"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func configuredKey(name string) (domain.APIKey, error) {
+func configuredKey(name string) (capture.APIKey, error) {
 	value, present := os.LookupEnv(name)
 	if !present {
-		return domain.NewAPIKey(nil)
+		return capture.NewAPIKey(nil)
 	}
-	return domain.NewAPIKey(&value)
+	return capture.NewAPIKey(&value)
 }
 
 func run(ctx context.Context) (err error) {

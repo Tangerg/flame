@@ -14,7 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/plugins/github/backend/domain"
+	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
 	"github.com/Tangerg/flame/plugins/github/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 )
@@ -29,10 +29,10 @@ const (
 type connector struct {
 	cache      *cache
 	http       *http.Client
-	credential domain.Credential
+	credential resource.Credential
 }
 
-func newConnector(cache *cache, transport http.RoundTripper, credential domain.Credential) (*connector, error) {
+func newConnector(cache *cache, transport http.RoundTripper, credential resource.Credential) (*connector, error) {
 	if cache == nil || cache.db == nil || transport == nil {
 		return nil, errors.New("github: cache and HTTP transport are required")
 	}
@@ -140,7 +140,7 @@ type issueWire struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-func (wire issueWire) admit(repository domain.Repository) (rpc.Issue, error) {
+func (wire issueWire) admit(repository resource.Repository) (rpc.Issue, error) {
 	if wire.Number <= 0 || wire.Title == "" || wire.URL == "" || wire.UpdatedAt.IsZero() || wire.State != rpc.Open && wire.State != rpc.Closed {
 		return rpc.Issue{}, errors.New("github: invalid issue representation")
 	}
@@ -155,7 +155,7 @@ func (wire issueWire) admit(repository domain.Repository) (rpc.Issue, error) {
 }
 
 func (c *connector) listIssues(ctx context.Context, input rpc.ListInput) (rpc.IssuePage, error) {
-	repository, err := domain.NewRepository(input.Repository)
+	repository, err := resource.NewRepository(input.Repository)
 	if err != nil {
 		return rpc.IssuePage{}, err
 	}
@@ -222,7 +222,7 @@ func nextPage(header string, current int64) (*int64, error) {
 }
 
 func (c *connector) getIssue(ctx context.Context, input rpc.IssueInput) (rpc.Issue, error) {
-	repository, err := domain.NewRepository(input.Repository)
+	repository, err := resource.NewRepository(input.Repository)
 	if err != nil {
 		return rpc.Issue{}, err
 	}
@@ -239,11 +239,11 @@ func (c *connector) getIssue(ctx context.Context, input rpc.IssueInput) (rpc.Iss
 }
 
 func (c *connector) readFile(ctx context.Context, input rpc.FileInput) (rpc.File, error) {
-	repository, err := domain.NewRepository(input.Repository)
+	repository, err := resource.NewRepository(input.Repository)
 	if err != nil {
 		return rpc.File{}, err
 	}
-	path, err := domain.NewFilePath(input.Path)
+	path, err := resource.NewFilePath(input.Path)
 	if err != nil {
 		return rpc.File{}, err
 	}

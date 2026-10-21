@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/web/backend/domain"
+	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/scope/tools/web"
 )
@@ -20,8 +20,8 @@ type BrowseInput struct {
 type Contracts struct {
 	Capability *capability.Contract
 	Search     *pluginsdk.Method[web.SearchRequest, web.SearchResponse]
-	Fetch      *pluginsdk.Method[web.FetchRequest, domain.Page]
-	Browse     *pluginsdk.Method[BrowseInput, domain.Page]
+	Fetch      *pluginsdk.Method[web.FetchRequest, capture.Page]
+	Browse     *pluginsdk.Method[BrowseInput, capture.Page]
 }
 
 func NewContracts() (Contracts, error) {
@@ -31,11 +31,11 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Fetch, err = pluginsdk.NewMethod[web.FetchRequest, domain.Page](pluginsdk.MethodConfig{Name: "flame.web/fetch.v1", Kind: capability.Query, Target: "installation", Description: "Fetch a URL through configured Jina Reader credentials and capture a private immutable snapshot. Return its first 8192 Unicode codepoints and exact continuation offset."})
+	c.Fetch, err = pluginsdk.NewMethod[web.FetchRequest, capture.Page](pluginsdk.MethodConfig{Name: "flame.web/fetch.v1", Kind: capability.Query, Target: "installation", Description: "Fetch a URL through configured Jina Reader credentials and capture a private immutable snapshot. Return its first 8192 Unicode codepoints and exact continuation offset."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Browse, err = pluginsdk.NewMethod[BrowseInput, domain.Page](pluginsdk.MethodConfig{Name: "flame.web/browse.v1", Kind: capability.Query, Target: "installation", Description: "Read a bounded page of a previously captured snapshot by ID and Unicode codepoint offset. This reads captured material without network I/O; an evicted snapshot is refused."})
+	c.Browse, err = pluginsdk.NewMethod[BrowseInput, capture.Page](pluginsdk.MethodConfig{Name: "flame.web/browse.v1", Kind: capability.Query, Target: "installation", Description: "Read a bounded page of a previously captured snapshot by ID and Unicode codepoint offset. This reads captured material without network I/O; an evicted snapshot is refused."})
 	if err != nil {
 		return Contracts{}, err
 	}
@@ -45,11 +45,11 @@ func NewContracts() (Contracts, error) {
 
 func Classify(err error) string {
 	switch {
-	case errors.Is(err, domain.ErrDocument):
+	case errors.Is(err, capture.ErrDocument):
 		return "invalid_document"
-	case errors.Is(err, domain.ErrRange):
+	case errors.Is(err, capture.ErrRange):
 		return "invalid_page_range"
-	case errors.Is(err, domain.ErrNotFound):
+	case errors.Is(err, capture.ErrNotFound):
 		return "snapshot_not_found"
 	case errors.Is(err, web.ErrUnsupportedFilter), errors.Is(err, web.ErrUnsupportedFormat):
 		return "unsupported_request"

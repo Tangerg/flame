@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Tangerg/flame/plugins/web/backend/domain"
+	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/transport/httpredirect"
 	"github.com/Tangerg/flame/runtime/transport/httpresponse"
@@ -34,7 +34,7 @@ type sourceFailure struct {
 func (e *sourceFailure) Error() string { return "web: " + e.operation + " provider request failed" }
 func (e *sourceFailure) Unwrap() error { return e.cause }
 
-func jinaSource(key domain.APIKey, httpClient *http.Client) (fetchPage, error) {
+func jinaSource(key capture.APIKey, httpClient *http.Client) (fetchPage, error) {
 	if !key.Configured() {
 		return func(context.Context, *web.FetchRequest) (*web.FetchResponse, error) {
 			return nil, &capability.Refusal{Code: "fetch_not_configured", Message: "web: Jina Reader credentials are not configured"}
@@ -53,7 +53,7 @@ func jinaSource(key domain.APIKey, httpClient *http.Client) (fetchPage, error) {
 	}, nil
 }
 
-func tavilySource(key domain.APIKey, httpClient *http.Client) (searchWeb, error) {
+func tavilySource(key capture.APIKey, httpClient *http.Client) (searchWeb, error) {
 	if !key.Configured() {
 		return func(context.Context, *web.SearchRequest) (*web.SearchResponse, error) {
 			return nil, &capability.Refusal{Code: "search_not_configured", Message: "web: Tavily credentials are not configured"}

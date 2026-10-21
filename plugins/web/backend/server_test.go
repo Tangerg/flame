@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/web/backend/domain"
+	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/flame/plugins/web/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -100,7 +100,7 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 	}
 	compare(contracts.Search.Name(), "web_search", web.SearchRequest{Query: "query", MaxResults: 1})
 	fetched := compare(contracts.Fetch.Name(), "web_fetch", web.FetchRequest{URL: "https://example.test"})
-	var page domain.Page
+	var page capture.Page
 	if err := json.Unmarshal(fetched.JSON(), &page); err != nil {
 		t.Fatal(err)
 	}

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/github/backend/domain"
+	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
 	"github.com/Tangerg/flame/plugins/github/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -46,7 +46,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 			t.Errorf("unexpected query path: %s", request.URL.Path)
 			return upstream(404, "", nil), nil
 		}
-	}), domain.Credential{})
+	}), resource.Credential{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/sandbox/backend/domain"
+	sandbox "github.com/Tangerg/flame/plugins/sandbox/backend/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
@@ -50,7 +50,7 @@ func TestNativeExecutionConfinesEffectsAndReplaysTheOriginalOutcomeAfterReopen(t
 		t.Fatal(err)
 	}
 	result, err := runner.execute(t.Context(), contracts.Execute.Name(), "original", input, encoded)
-	if err != nil || result.Status != domain.Completed || result.ExitCode != 7 || result.Stdout.Content != "unset" {
+	if err != nil || result.Status != sandbox.Completed || result.ExitCode != 7 || result.Stdout.Content != "unset" {
 		t.Fatalf("native isolation lost its outcome: %+v %v", result, err)
 	}
 	if content, err := os.ReadFile(outside); err != nil || string(content) != "original" {
@@ -84,13 +84,13 @@ func TestNativeExecutionConfinesEffectsAndReplaysTheOriginalOutcomeAfterReopen(t
 	binaryJSON, _ := jsoninput.Encode(binary)
 	output, err := runner.execute(t.Context(), contracts.Execute.Name(), "binary", binary, binaryJSON)
 	raw, decodeErr := base64.StdEncoding.DecodeString(output.Stdout.Content)
-	if err != nil || decodeErr != nil || output.Stdout.Encoding != domain.Base64 || string(raw) != "\xff" {
+	if err != nil || decodeErr != nil || output.Stdout.Encoding != sandbox.Base64 || string(raw) != "\xff" {
 		t.Fatalf("binary stdout was replaced: %+v %v %v", output, err, decodeErr)
 	}
 	deadline := rpc.ExecuteInput{Script: "sleep 10 & wait", TimeoutMillis: 100}
 	deadlineJSON, _ := jsoninput.Encode(deadline)
 	timed, err := runner.execute(t.Context(), contracts.Execute.Name(), "deadline", deadline, deadlineJSON)
-	if err != nil || timed.Status != domain.TimedOut || timed.DurationMillis > 3000 {
+	if err != nil || timed.Status != sandbox.TimedOut || timed.DurationMillis > 3000 {
 		t.Fatalf("timeout did not terminate the command group: %+v %v", timed, err)
 	}
 }

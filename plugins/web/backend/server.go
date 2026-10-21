@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/web/backend/domain"
+	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/flame/plugins/web/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -74,10 +74,10 @@ func newServer(research *research) (*sdk.Server, error) {
 		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[web.SearchRequest]) (web.SearchResponse, error) {
 			return research.searchWeb(ctx, command.Input)
 		}),
-		contracts.Fetch.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[web.FetchRequest]) (domain.Page, error) {
+		contracts.Fetch.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[web.FetchRequest]) (capture.Page, error) {
 			return research.fetchPage(ctx, command.Input)
 		}),
-		contracts.Browse.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.BrowseInput]) (domain.Page, error) {
+		contracts.Browse.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.BrowseInput]) (capture.Page, error) {
 			return research.browse(ctx, command.Input)
 		}),
 		backend.BindCapability("web", contracts.Capability),

@@ -1,4 +1,4 @@
-package domain
+package resource
 
 import (
 	"crypto/sha256"

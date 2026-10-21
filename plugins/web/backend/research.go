@@ -5,7 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/flame/plugins/web/backend/domain"
+	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/flame/plugins/web/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/scope/tools/web"
@@ -62,38 +62,38 @@ func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (web.
 	return *response, nil
 }
 
-func (r *research) fetchPage(ctx context.Context, input web.FetchRequest) (domain.Page, error) {
+func (r *research) fetchPage(ctx context.Context, input web.FetchRequest) (capture.Page, error) {
 	prepared, err := input.Prepare()
 	if err != nil {
-		return domain.Page{}, errors.Join(&capability.Refusal{Code: "invalid_request", Message: "web: invalid fetch request"}, err)
+		return capture.Page{}, errors.Join(&capability.Refusal{Code: "invalid_request", Message: "web: invalid fetch request"}, err)
 	}
-	if err := domain.ValidateURL(prepared.URL); err != nil {
-		return domain.Page{}, err
+	if err := capture.ValidateURL(prepared.URL); err != nil {
+		return capture.Page{}, err
 	}
 	response, err := r.fetch(ctx, prepared)
 	if err != nil {
-		return domain.Page{}, err
+		return capture.Page{}, err
 	}
 	if err := response.Validate(); err != nil {
-		return domain.Page{}, err
+		return capture.Page{}, err
 	}
 	if response.Format != prepared.Format {
-		return domain.Page{}, errors.New("web: provider replaced the authored content format")
+		return capture.Page{}, errors.New("web: provider replaced the authored content format")
 	}
-	document, err := domain.NewDocument(domain.Content{URL: prepared.URL, Format: domain.Format(response.Format), Text: response.Content})
+	document, err := capture.NewDocument(capture.Content{URL: prepared.URL, Format: capture.Format(response.Format), Text: response.Content})
 	if err != nil {
-		return domain.Page{}, err
+		return capture.Page{}, err
 	}
 	if err := r.store.capture(ctx, document); err != nil {
-		return domain.Page{}, err
+		return capture.Page{}, err
 	}
-	return document.Page(0, domain.MaxPageRunes)
+	return document.Page(0, capture.MaxPageRunes)
 }
 
-func (r *research) browse(ctx context.Context, input rpc.BrowseInput) (domain.Page, error) {
+func (r *research) browse(ctx context.Context, input rpc.BrowseInput) (capture.Page, error) {
 	document, err := r.store.read(ctx, input.SnapshotID)
 	if err != nil {
-		return domain.Page{}, err
+		return capture.Page{}, err
 	}
 	return document.Page(input.Offset, input.Limit)
 }

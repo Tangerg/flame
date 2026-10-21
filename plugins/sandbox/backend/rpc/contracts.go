@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/sandbox/backend/domain"
+	sandbox "github.com/Tangerg/flame/plugins/sandbox/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
 )
@@ -27,14 +27,14 @@ type Limits struct {
 
 type Contracts struct {
 	Capability *capability.Contract
-	Execute    *pluginsdk.Method[ExecuteInput, domain.Result]
+	Execute    *pluginsdk.Method[ExecuteInput, sandbox.Result]
 	Limits     *pluginsdk.Method[struct{}, Limits]
 }
 
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Execute, err = pluginsdk.NewMethod[ExecuteInput, domain.Result](pluginsdk.MethodConfig{Name: "flame.sandbox/execute.v1", Kind: capability.Mutation, Target: "installation", Description: "Execute a bounded /bin/sh script in a new private native sandbox workspace. Writes stay in that workspace, the configured home is hidden, network is denied and child environment is scrubbed. No CPU or memory quota is promised. Replaying the original command returns its saved outcome; unknown work is never re-executed."})
+	c.Execute, err = pluginsdk.NewMethod[ExecuteInput, sandbox.Result](pluginsdk.MethodConfig{Name: "flame.sandbox/execute.v1", Kind: capability.Mutation, Target: "installation", Description: "Execute a bounded /bin/sh script in a new private native sandbox workspace. Writes stay in that workspace, the configured home is hidden, network is denied and child environment is scrubbed. No CPU or memory quota is promised. Replaying the original command returns its saved outcome; unknown work is never re-executed."})
 	if err != nil {
 		return Contracts{}, err
 	}
@@ -48,7 +48,7 @@ func NewContracts() (Contracts, error) {
 
 func Classify(err error) string {
 	switch {
-	case errors.Is(err, domain.ErrInvalidProgram):
+	case errors.Is(err, sandbox.ErrInvalidProgram):
 		return "invalid_program"
 	case errors.Is(err, idempotency.ErrKeyConflict):
 		return "command_conflict"

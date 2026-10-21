@@ -6,7 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/flame/plugins/web/backend/domain"
+	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
@@ -22,27 +22,27 @@ func openStore(ctx context.Context, path string) (*store, error) {
 	return &store{db: db}, nil
 }
 
-func (s *store) read(ctx context.Context, id string) (domain.Document, error) {
+func (s *store) read(ctx context.Context, id string) (capture.Document, error) {
 	var raw string
 	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM snapshots WHERE id=?`, id).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Document{}, domain.ErrNotFound
+		return capture.Document{}, capture.ErrNotFound
 	}
 	if err != nil {
-		return domain.Document{}, err
+		return capture.Document{}, err
 	}
-	var snapshot domain.Snapshot
+	var snapshot capture.Snapshot
 	if err := json.Unmarshal([]byte(raw), &snapshot, json.RejectUnknownMembers(true)); err != nil {
-		return domain.Document{}, errors.Join(errStoredSnapshot, err)
+		return capture.Document{}, errors.Join(errStoredSnapshot, err)
 	}
-	document, err := domain.Restore(snapshot)
+	document, err := capture.Restore(snapshot)
 	if err != nil || snapshot.ID != id {
-		return domain.Document{}, errors.Join(errStoredSnapshot, err)
+		return capture.Document{}, errors.Join(errStoredSnapshot, err)
 	}
 	return document, nil
 }
 
-func (s *store) capture(ctx context.Context, document domain.Document) error {
+func (s *store) capture(ctx context.Context, document capture.Document) error {
 	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		original, err := s.read(ctx, document.Snapshot().ID)
 		if err == nil {
@@ -51,7 +51,7 @@ func (s *store) capture(ctx context.Context, document domain.Document) error {
 			}
 			return nil
 		}
-		if !errors.Is(err, domain.ErrNotFound) {
+		if !errors.Is(err, capture.ErrNotFound) {
 			return err
 		}
 		encoded, err := json.Marshal(document.Snapshot())
@@ -61,7 +61,7 @@ func (s *store) capture(ctx context.Context, document domain.Document) error {
 		if _, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO snapshots(id,snapshot) VALUES(?,?)`, document.Snapshot().ID, string(encoded)); err != nil {
 			return err
 		}
-		_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM snapshots WHERE id IN (SELECT id FROM (SELECT id, row_number() OVER (ORDER BY rowid DESC) AS position, sum(length(CAST(snapshot AS BLOB))) OVER (ORDER BY rowid DESC) AS bytes FROM snapshots) WHERE position>? OR bytes>?)`, domain.MaxDocuments, domain.MaxArchiveBytes)
+		_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM snapshots WHERE id IN (SELECT id FROM (SELECT id, row_number() OVER (ORDER BY rowid DESC) AS position, sum(length(CAST(snapshot AS BLOB))) OVER (ORDER BY rowid DESC) AS bytes FROM snapshots) WHERE position>? OR bytes>?)`, capture.MaxDocuments, capture.MaxArchiveBytes)
 		return err
 	})
 }

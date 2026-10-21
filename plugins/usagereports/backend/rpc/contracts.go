@@ -7,23 +7,23 @@ import (
 	"time"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/usagereports/backend/domain"
+	reporting "github.com/Tangerg/flame/plugins/usagereports/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/idempotency"
 )
 
 type CaptureInput struct {
-	Period domain.Period `json:"period"`
+	Period reporting.Period `json:"period"`
 }
 type ReportInput struct {
 	ID string `json:"id" jsonschema:"minLength=64,maxLength=64"`
 }
 
 type Header struct {
-	ID         string        `json:"id"`
-	Period     domain.Period `json:"period"`
-	ObservedAt time.Time     `json:"observedAt"`
-	Since      *time.Time    `json:"since,omitzero"`
+	ID         string           `json:"id"`
+	Period     reporting.Period `json:"period"`
+	ObservedAt time.Time        `json:"observedAt"`
+	Since      *time.Time       `json:"since,omitzero"`
 }
 
 // The executable binds the public core snapshot type; this contract must not
@@ -66,11 +66,11 @@ func NewContracts[Summary any]() (Contracts[Summary], error) {
 
 func Classify(err error) string {
 	switch {
-	case errors.Is(err, domain.ErrInvalid):
+	case errors.Is(err, reporting.ErrInvalid):
 		return "invalid_report"
-	case errors.Is(err, domain.ErrCapacity):
+	case errors.Is(err, reporting.ErrCapacity):
 		return "archive_capacity"
-	case errors.Is(err, domain.ErrNotFound):
+	case errors.Is(err, reporting.ErrNotFound):
 		return "report_not_found"
 	case errors.Is(err, idempotency.ErrKeyConflict):
 		return "command_conflict"

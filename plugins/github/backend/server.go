@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
-	"github.com/Tangerg/flame/plugins/github/backend/domain"
+	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
 	"github.com/Tangerg/flame/plugins/github/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -14,7 +14,7 @@ import (
 )
 
 func classify(err error) string {
-	if errors.Is(err, domain.ErrResource) {
+	if errors.Is(err, resource.ErrResource) {
 		return "invalid_resource"
 	}
 	return ""

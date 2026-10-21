@@ -1,4 +1,4 @@
-package domain
+package sandbox
 
 import (
 	"encoding/base64"

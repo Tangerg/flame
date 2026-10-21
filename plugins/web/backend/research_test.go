@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/plugins/web/backend/domain"
+	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/flame/plugins/web/backend/rpc"
 	"github.com/Tangerg/scope/tools/web"
 )
@@ -51,13 +51,13 @@ func TestFreshFetchAndOfflineBrowseRetainTheirOwnSnapshotAcrossReopenAndEviction
 	}
 	defer store.db.Close()
 	research.store = store
-	continued, err := research.browse(t.Context(), rpc.BrowseInput{SnapshotID: first.SnapshotID, Offset: *first.NextOffset, Limit: domain.MaxPageRunes})
+	continued, err := research.browse(t.Context(), rpc.BrowseInput{SnapshotID: first.SnapshotID, Offset: *first.NextOffset, Limit: capture.MaxPageRunes})
 	if err != nil || first.Content+continued.Content != strings.Repeat("知识", 5000) || calls != 2 {
 		t.Fatalf("offline snapshot continuation: %+v %v", continued, err)
 	}
 	latestID := ""
-	for index := range domain.MaxDocuments {
-		document, err := domain.NewDocument(domain.Content{URL: fmt.Sprintf("https://example.test/%d", index), Format: domain.Text, Text: "capture"})
+	for index := range capture.MaxDocuments {
+		document, err := capture.NewDocument(capture.Content{URL: fmt.Sprintf("https://example.test/%d", index), Format: capture.Text, Text: "capture"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -66,7 +66,7 @@ func TestFreshFetchAndOfflineBrowseRetainTheirOwnSnapshotAcrossReopenAndEviction
 		}
 		latestID = document.Snapshot().ID
 	}
-	if _, err := research.browse(t.Context(), rpc.BrowseInput{SnapshotID: first.SnapshotID, Limit: 1}); !errors.Is(err, domain.ErrNotFound) || calls != 2 {
+	if _, err := research.browse(t.Context(), rpc.BrowseInput{SnapshotID: first.SnapshotID, Limit: 1}); !errors.Is(err, capture.ErrNotFound) || calls != 2 {
 		t.Fatalf("eviction silently fetched another version: %v calls=%d", err, calls)
 	}
 	if _, err := store.db.ExecContext(t.Context(), `UPDATE snapshots SET snapshot='{"id":"forged"}' WHERE id=?`, latestID); err != nil {

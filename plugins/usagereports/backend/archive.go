@@ -9,7 +9,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/usagereports/backend/domain"
+	reporting "github.com/Tangerg/flame/plugins/usagereports/backend/domain"
 	"github.com/Tangerg/flame/plugins/usagereports/backend/rpc"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -55,20 +55,20 @@ func (a *archive) capture(ctx context.Context, method, id string, input rpc.Capt
 	}
 	days, err := input.Period.Days()
 	if err != nil {
-		return a.store.completeCapture(ctx, prepared, domain.Report{}, err)
+		return a.store.completeCapture(ctx, prepared, reporting.Report{}, err)
 	}
 	summary, err := a.read(ctx, days)
 	if err != nil {
-		return a.store.completeCapture(ctx, prepared, domain.Report{}, err)
+		return a.store.completeCapture(ctx, prepared, reporting.Report{}, err)
 	}
 	if err := admitSummary(summary); err != nil {
-		return a.store.completeCapture(ctx, prepared, domain.Report{}, err)
+		return a.store.completeCapture(ctx, prepared, reporting.Report{}, err)
 	}
 	value, err := jsoninput.Encode(summary)
 	if err != nil {
 		return rpc.Header{}, err
 	}
-	report, err := domain.NewReport(id, input.Period, value)
+	report, err := reporting.NewReport(id, input.Period, value)
 	return a.store.completeCapture(ctx, prepared, report, err)
 }
 
@@ -79,7 +79,7 @@ func admitSummary(summary *protocol.UsageSummary) error {
 	return protocol.ValidateWireTree(summary)
 }
 
-func project(report domain.Report) (rpc.Report[protocol.UsageSummary], error) {
+func project(report reporting.Report) (rpc.Report[protocol.UsageSummary], error) {
 	snapshot := report.Snapshot()
 	var summary protocol.UsageSummary
 	if err := json.Unmarshal(snapshot.Value.JSON(), &summary, json.RejectUnknownMembers(true)); err != nil {

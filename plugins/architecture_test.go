@@ -78,3 +78,40 @@ func TestPluginPolicyBoundaryRejectsConcreteAdapters(t *testing.T) {
 		t.Fatal("policy boundary refused the public immutable model choice")
 	}
 }
+
+// A policy leaf must state the owner it holds, not repeat the ring directory that
+// classifies it. The import path already carries backend/domain or backend/application;
+// a package named after that ring (knowledge.Document vs domain.Document) hides the owner.
+func TestPluginPolicyPackagesAreNamedAfterTheirAggregate(t *testing.T) {
+	err := filepath.WalkDir(".", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			if entry.Name() == "node_modules" || entry.Name() == "vendor" || entry.Name() == "dist" || entry.Name() == "testdata" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		location := "/" + filepath.ToSlash(path)
+		for _, ring := range []string{"domain", "application"} {
+			if !strings.Contains(location, "/backend/"+ring+"/") {
+				continue
+			}
+			file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.PackageClauseOnly)
+			if err != nil {
+				return err
+			}
+			if strings.TrimSuffix(file.Name.Name, "_test") == ring {
+				t.Errorf("%s declares package %q after the %s ring; name it after the aggregate it owns", path, file.Name.Name, ring)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

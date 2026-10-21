@@ -8,7 +8,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/usagereports/backend/domain"
+	reporting "github.com/Tangerg/flame/plugins/usagereports/backend/domain"
 	"github.com/Tangerg/flame/plugins/usagereports/backend/rpc"
 	"github.com/Tangerg/flame/runtime/protocol"
 	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
@@ -27,11 +27,11 @@ func openStore(ctx context.Context, path string) (*store, error) {
 }
 
 func decodeReport(id, raw string) (rpc.Report[protocol.UsageSummary], error) {
-	var snapshot domain.Snapshot
+	var snapshot reporting.Snapshot
 	if err := json.Unmarshal([]byte(raw), &snapshot, json.RejectUnknownMembers(true)); err != nil {
 		return rpc.Report[protocol.UsageSummary]{}, errors.Join(errStoredReport, err)
 	}
-	report, err := domain.Restore(snapshot)
+	report, err := reporting.Restore(snapshot)
 	if err != nil || snapshot.ID != id {
 		return rpc.Report[protocol.UsageSummary]{}, errors.Join(errStoredReport, err)
 	}
@@ -46,7 +46,7 @@ func (s *store) read(ctx context.Context, id string) (rpc.Report[protocol.UsageS
 	var raw string
 	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM reports WHERE id=?`, id).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
-		return rpc.Report[protocol.UsageSummary]{}, domain.ErrNotFound
+		return rpc.Report[protocol.UsageSummary]{}, reporting.ErrNotFound
 	}
 	if err != nil {
 		return rpc.Report[protocol.UsageSummary]{}, err
@@ -55,7 +55,7 @@ func (s *store) read(ctx context.Context, id string) (rpc.Report[protocol.UsageS
 }
 
 func (s *store) list(ctx context.Context) ([]rpc.Header, error) {
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT id,snapshot FROM reports ORDER BY rowid DESC LIMIT ?`, domain.MaxReports+1)
+	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT id,snapshot FROM reports ORDER BY rowid DESC LIMIT ?`, reporting.MaxReports+1)
 	if err != nil {
 		return nil, err
 	}
@@ -75,13 +75,13 @@ func (s *store) list(ctx context.Context) ([]rpc.Header, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	if len(result) > domain.MaxReports {
+	if len(result) > reporting.MaxReports {
 		return nil, errStoredReport
 	}
 	return result, nil
 }
 
-func (s *store) completeCapture(ctx context.Context, prepared *pluginstorage.PreparedCommand, report domain.Report, captureErr error) (rpc.Header, error) {
+func (s *store) completeCapture(ctx context.Context, prepared *pluginstorage.PreparedCommand, report reporting.Report, captureErr error) (rpc.Header, error) {
 	var header rpc.Header
 	outcomeErr := captureErr
 	err := sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
@@ -90,8 +90,8 @@ func (s *store) completeCapture(ctx context.Context, prepared *pluginstorage.Pre
 			if err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT COUNT(*) FROM reports`).Scan(&count); err != nil {
 				return err
 			}
-			if count >= domain.MaxReports {
-				outcomeErr = domain.ErrCapacity
+			if count >= reporting.MaxReports {
+				outcomeErr = reporting.ErrCapacity
 			} else {
 				value, err := project(report)
 				if err != nil {

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/usagereports/backend/domain"
+	reporting "github.com/Tangerg/flame/plugins/usagereports/backend/domain"
 	"github.com/Tangerg/flame/plugins/usagereports/backend/rpc"
 	"github.com/Tangerg/flame/runtime/idempotency"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -52,7 +52,7 @@ func TestCapturedAccountingIsVerbatimAndReceiptReplayNeverReadsOrRecreatesIt(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := rpc.CaptureInput{Period: domain.Daily}
+	input := rpc.CaptureInput{Period: reporting.Daily}
 	admitted, err := jsoninput.Encode(input)
 	if err != nil {
 		t.Fatal(err)
@@ -86,7 +86,7 @@ func TestCapturedAccountingIsVerbatimAndReceiptReplayNeverReadsOrRecreatesIt(t *
 	if err != nil || !reflect.DeepEqual(replayed, header) || calls != 1 {
 		t.Fatalf("replay changed original observation: %+v %v calls=%d", replayed, err, calls)
 	}
-	changed := rpc.CaptureInput{Period: domain.Weekly}
+	changed := rpc.CaptureInput{Period: reporting.Weekly}
 	changedInput, _ := jsoninput.Encode(changed)
 	if _, err := archive.capture(t.Context(), contracts.Capture.Name(), "save", changed, changedInput); !errors.Is(err, idempotency.ErrKeyConflict) {
 		t.Fatalf("command identity changed input: %v", err)
@@ -100,7 +100,7 @@ func TestCapturedAccountingIsVerbatimAndReceiptReplayNeverReadsOrRecreatesIt(t *
 	if _, err := archive.capture(t.Context(), contracts.Capture.Name(), "save", input, admitted); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.read(t.Context(), header.ID); !errors.Is(err, domain.ErrNotFound) || calls != 1 {
+	if _, err := store.read(t.Context(), header.ID); !errors.Is(err, reporting.ErrNotFound) || calls != 1 {
 		t.Fatalf("capture replay recreated removed data: %v calls=%d", err, calls)
 	}
 	newHeader, err := archive.capture(t.Context(), contracts.Capture.Name(), "new-save", input, admitted)
@@ -128,7 +128,7 @@ func TestMissingCaptureSettlementCannotAuthorizeAnotherCoreObservation(t *testin
 		t.Fatal(err)
 	}
 	contracts, _ := rpc.NewContracts[protocol.UsageSummary]()
-	input := rpc.CaptureInput{Period: domain.Daily}
+	input := rpc.CaptureInput{Period: reporting.Daily}
 	admitted, _ := jsoninput.Encode(input)
 	if _, err := archive.capture(t.Context(), contracts.Capture.Name(), "unknown", input, admitted); !errors.Is(err, cause) {
 		t.Fatalf("unexpected read failure disappeared: %v", err)

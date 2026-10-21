@@ -13,7 +13,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/sandbox/backend/domain"
+	sandbox "github.com/Tangerg/flame/plugins/sandbox/backend/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	processsandbox "github.com/Tangerg/flame/runtime/sandbox"
@@ -54,81 +54,81 @@ func newRunner(db *sql.DB, scratch string, home homeRead) (*runner, error) {
 }
 
 func (r *runner) limits() rpc.Limits {
-	return rpc.Limits{Available: processsandbox.Available(), Platform: runtime.GOOS, MaxScriptBytes: domain.MaxScriptBytes, MaxTimeoutMillis: domain.MaxTimeoutMillis, RetainedBytesPerStream: processsandbox.MaxCommandOutputBytes}
+	return rpc.Limits{Available: processsandbox.Available(), Platform: runtime.GOOS, MaxScriptBytes: sandbox.MaxScriptBytes, MaxTimeoutMillis: sandbox.MaxTimeoutMillis, RetainedBytesPerStream: processsandbox.MaxCommandOutputBytes}
 }
 
-func (r *runner) execute(ctx context.Context, method, id string, input rpc.ExecuteInput, original jsoninput.Input) (domain.Result, error) {
+func (r *runner) execute(ctx context.Context, method, id string, input rpc.ExecuteInput, original jsoninput.Input) (sandbox.Result, error) {
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, r.db, method, id, original, nil)
 	if err != nil {
-		return domain.Result{}, err
+		return sandbox.Result{}, err
 	}
 	if prepared == nil {
 		return readOutcome(reply)
 	}
 	if !prepared.NewlyAdmitted() {
-		return domain.Result{}, pluginstorage.ErrCommandUnconfirmed
+		return sandbox.Result{}, pluginstorage.ErrCommandUnconfirmed
 	}
-	program, err := domain.NewProgram(input.Script, input.TimeoutMillis)
+	program, err := sandbox.NewProgram(input.Script, input.TimeoutMillis)
 	if err != nil {
-		return r.complete(ctx, prepared, domain.Result{}, err)
+		return r.complete(ctx, prepared, sandbox.Result{}, err)
 	}
 	result, err := r.run(ctx, program)
 	return r.complete(ctx, prepared, result, err)
 }
 
-func (r *runner) run(ctx context.Context, program domain.Program) (result domain.Result, err error) {
+func (r *runner) run(ctx context.Context, program sandbox.Program) (result sandbox.Result, err error) {
 	if !processsandbox.Available() {
-		return domain.Result{}, processsandbox.ErrUnavailable
+		return sandbox.Result{}, processsandbox.ErrUnavailable
 	}
 	home, err := r.home(ctx)
 	if err != nil {
-		return domain.Result{}, err
+		return sandbox.Result{}, err
 	}
 	workspace, err := processsandbox.New(ctx, processsandbox.Config{BaseDir: r.scratch, UserHome: home}, "")
 	if err != nil {
-		return domain.Result{}, err
+		return sandbox.Result{}, err
 	}
 	defer func() { err = errors.Join(err, workspace.Shutdown()) }()
 	limited, cancel := context.WithTimeout(ctx, program.Timeout())
 	defer cancel()
 	output, err := workspace.Run(limited, toolshell.Input{Cmd: program.Script()})
 	if err != nil {
-		return domain.Result{}, err
+		return sandbox.Result{}, err
 	}
 	if err := ctx.Err(); err != nil {
-		return domain.Result{}, err
+		return sandbox.Result{}, err
 	}
-	status := domain.Completed
+	status := sandbox.Completed
 	if output.CancellationObserved && errors.Is(limited.Err(), context.DeadlineExceeded) {
-		status = domain.TimedOut
+		status = sandbox.TimedOut
 	}
-	return domain.Result{Status: status, ExitCode: output.ExitCode, DurationMillis: output.Duration.Milliseconds(), Stdout: domain.Capture(output.Stdout), Stderr: domain.Capture(output.Stderr)}, nil
+	return sandbox.Result{Status: status, ExitCode: output.ExitCode, DurationMillis: output.Duration.Milliseconds(), Stdout: sandbox.Capture(output.Stdout), Stderr: sandbox.Capture(output.Stderr)}, nil
 }
 
-func (r *runner) complete(ctx context.Context, prepared *pluginstorage.PreparedCommand, result domain.Result, operationErr error) (domain.Result, error) {
+func (r *runner) complete(ctx context.Context, prepared *pluginstorage.PreparedCommand, result sandbox.Result, operationErr error) (sandbox.Result, error) {
 	if operationErr == nil {
 		if err := result.Validate(); err != nil {
-			return domain.Result{}, err
+			return sandbox.Result{}, err
 		}
 	}
 	reply, err := pluginsdk.Reply(result, operationErr, classify)
 	if err != nil {
-		return domain.Result{}, err
+		return sandbox.Result{}, err
 	}
 	encoded, err := json.Marshal(reply)
 	if err != nil {
-		return domain.Result{}, err
+		return sandbox.Result{}, err
 	}
 	if err := prepared.Complete(ctx, encoded); err != nil {
-		return domain.Result{}, err
+		return sandbox.Result{}, err
 	}
 	return readOutcome(encoded)
 }
 
-func readOutcome(encoded []byte) (domain.Result, error) {
-	result, err := pluginsdk.DecodeReply[domain.Result](encoded)
+func readOutcome(encoded []byte) (sandbox.Result, error) {
+	result, err := pluginsdk.DecodeReply[sandbox.Result](encoded)
 	if err != nil {
-		return domain.Result{}, err
+		return sandbox.Result{}, err
 	}
 	return result, result.Validate()
 }

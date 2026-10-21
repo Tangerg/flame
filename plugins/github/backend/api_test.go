@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/plugins/github/backend/domain"
+	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
 	"github.com/Tangerg/flame/plugins/github/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 )
@@ -38,7 +38,7 @@ func TestConditionalReadsRevalidateAuthorizationAndKeepCredentialScopesPrivate(t
 	}
 	t.Cleanup(func() { _ = cache.db.Close() })
 	token := "first-private-fixture-token"
-	credential, err := domain.NewCredential(&token)
+	credential, err := resource.NewCredential(&token)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestConditionalReadsRevalidateAuthorizationAndKeepCredentialScopesPrivate(t
 		t.Fatalf("authorization failure = %v", err)
 	}
 	otherToken := "second-private-fixture-token"
-	other, err := domain.NewCredential(&otherToken)
+	other, err := resource.NewCredential(&otherToken)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestGitHubReadsBoundResponsesAndPreserveExplicitFailures(t *testing.T) {
 					t.Fatal("redirect left the admitted API host")
 				}
 				return upstream(test.status, test.body, test.headers), nil
-			}), domain.Credential{})
+			}), resource.Credential{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -167,7 +167,7 @@ func TestGitHubReadsBoundResponsesAndPreserveExplicitFailures(t *testing.T) {
 			t.Error("file path or ref escaped its parameter boundary")
 		}
 		return upstream(200, string(fileBody), nil), nil
-	}), domain.Credential{})
+	}), resource.Credential{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestGitHubQueryCancellationJoinsItsOriginalRequest(t *testing.T) {
 		close(started)
 		<-request.Context().Done()
 		return nil, request.Context().Err()
-	}), domain.Credential{})
+	}), resource.Credential{})
 	if err != nil {
 		t.Fatal(err)
 	}

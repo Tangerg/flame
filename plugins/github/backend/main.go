@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Tangerg/flame/plugins/github/backend/domain"
+	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
 	"github.com/Tangerg/flame/runtime/storage/advisorylock"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -26,7 +26,7 @@ func run(ctx context.Context) (err error) {
 	if value, present := os.LookupEnv("GITHUB_TOKEN"); present {
 		configured = &value
 	}
-	credential, err := domain.NewCredential(configured)
+	credential, err := resource.NewCredential(configured)
 	if err != nil {
 		return err
 	}

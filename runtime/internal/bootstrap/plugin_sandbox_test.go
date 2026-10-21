@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/plugins/sandbox/backend/domain"
+	sandbox "github.com/Tangerg/flame/plugins/sandbox/backend/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -39,11 +39,11 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 						t.Error(err)
 					}
 					toolResult.Store(string(encoded))
-					var result domain.Result
+					var result sandbox.Result
 					if err := json.Unmarshal(part.ToolResult.Output.Details, &result); err != nil {
 						t.Error(err)
 					}
-					if !part.ToolResult.IsError && result.Status == domain.Completed && result.ExitCode == 0 && result.Stdout.Content == "native-model-result" {
+					if !part.ToolResult.IsError && result.Status == sandbox.Completed && result.ExitCode == 0 && result.Stdout.Content == "native-model-result" {
 						observed.Store(true)
 					}
 					return completedTextResponse("sandbox completed"), nil
@@ -80,7 +80,7 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 	}
 	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "sandbox-operations", Contract: contracts.Capability.Identity().String(), Method: contracts.Execute.Name(), Input: input.String(), Target: capability.Target{Scope: "installation", Reference: installed.ID}}
 	typed := r.must(delivery.PluginsCall, request, "native-typed").(*protocol.CallPluginResponse)
-	var result domain.Result
+	var result sandbox.Result
 	if err := json.Unmarshal([]byte(typed.Output), &result); err != nil || typed.Failure != nil || result.ExitCode != 5 || result.Stdout.Content != "native-typed-result" {
 		t.Fatalf("installed native callback failed: %+v %+v %v", typed, result, err)
 	}

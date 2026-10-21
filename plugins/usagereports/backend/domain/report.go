@@ -1,4 +1,4 @@
-package domain
+package reporting
 
 import (
 	"crypto/sha256"

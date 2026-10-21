@@ -7,7 +7,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk/go"
 	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/go/sqlite"
-	"github.com/Tangerg/flame/plugins/sandbox/backend/domain"
+	sandbox "github.com/Tangerg/flame/plugins/sandbox/backend/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -39,14 +39,14 @@ func newServer(runner *runner) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	execute, err := tool.NewFunc(tool.FuncConfig{Name: executeTool, Description: contracts.Execute.Descriptor().Description}, func(ctx context.Context, input rpc.ExecuteInput) (domain.Result, error) {
+	execute, err := tool.NewFunc(tool.FuncConfig{Name: executeTool, Description: contracts.Execute.Descriptor().Description}, func(ctx context.Context, input rpc.ExecuteInput) (sandbox.Result, error) {
 		id, err := pluginsdk.ToolCommandID(ctx)
 		if err != nil {
-			return domain.Result{}, err
+			return sandbox.Result{}, err
 		}
 		original, err := pluginsdk.RequestInput(ctx)
 		if err != nil {
-			return domain.Result{}, err
+			return sandbox.Result{}, err
 		}
 		result, err := runner.execute(ctx, contracts.Execute.Name(), id, input, original)
 		return result, commandFailure(err)
@@ -59,10 +59,10 @@ func newServer(runner *runner) (*sdk.Server, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, runner.db),
-		contracts.Execute.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ExecuteInput]) (domain.Result, error) {
+		contracts.Execute.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ExecuteInput]) (sandbox.Result, error) {
 			original, err := command.RequestInput()
 			if err != nil {
-				return domain.Result{}, err
+				return sandbox.Result{}, err
 			}
 			return runner.execute(ctx, contracts.Execute.Name(), command.ID, command.Input, original)
 		}),
