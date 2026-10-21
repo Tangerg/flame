@@ -223,6 +223,7 @@ export const fr: Record<string, string> = {
   "goal.action.resume": "Reprendre l’objectif",
   "goal.action.clear": "Effacer l’objectif",
   "goal.action.edit": "Modifier l’objectif",
+  "goal.elapsed": "Temps écoulé depuis la création de l’objectif : {{duration}}",
   "goal.edit.title": "Modifier l’objectif",
   "goal.edit.label": "Objectif",
   "goal.edit.save": "Enregistrer",

@@ -219,6 +219,7 @@ export const ko: Record<string, string> = {
   "goal.action.resume": "목표 재개",
   "goal.action.clear": "목표 지우기",
   "goal.action.edit": "목표 편집",
+  "goal.elapsed": "목표 생성 후 경과 시간: {{duration}}",
   "goal.edit.title": "목표 편집",
   "goal.edit.label": "목표",
   "goal.edit.save": "저장",

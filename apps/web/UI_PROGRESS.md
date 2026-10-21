@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Continuous work is active in the isolated worktree. Recorded Tools now distinguish original empty results from local Find with no matches, and empty change receipts have readable context. Global Composer reveal, owner-backed material reopening, full-pane entry, search handoff and previous repairs remain integrated. Final frontend checks pass 385 files / 2,974 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
+Updated: 2026-10-21. Continuous work is active in the isolated worktree. The Goal rail follows the user's new reference with a strong status title, secondary objective, creation age and compact actions. Long Plans have an explicit keyboard-readable checklist. Latest main was fetched and incorporated without losing its existing translations. Final frontend checks pass 385 files / 2,990 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -76,6 +76,52 @@ The implementation lives under `/Users/tangerg/Desktop/flame/apps/web/src/featur
 CLI slash commands preserve the editor, attachments and cursor when command lookup, availability or arguments are rejected. Contributed commands accept only after their cancellable Session operation starts. Approval normalization retains an allow or deny decision when remembered scope becomes unavailable; unknown choices cannot create an answerable form.
 
 Start each new task with the actual status and relevant diffs. Preserve any newer unrelated edits, avoid bulk formatting or staging, and do not treat the old unfinished-file inventory as current work.
+
+## Goal rail and Plan reading
+
+The user's supplied Codex screenshot supersedes the earlier Goal rail hierarchy.
+`features/goal/ui/GoalStatusSurface.tsx` now gives status the existing semibold
+foreground role and the objective a secondary, single-line truncated role. The
+rail is inset by `space.s3` on both sides and overlaps behind the Composer by the
+same amount. It retains the shared Composer corner, glass and edge roles. The
+trailing group contains creation age, Clear, circular Pause/Resume and the
+existing objective editor with an expand glyph. Both the summary and that last
+action open the same editor; cancellation returns to the actual opener. Narrow
+space permits a separate action row instead of clipping or shrinking controls.
+
+Age is derived only from Runtime's existing `createdAt`, including time paused.
+Its localized title and accessible text explicitly say time since Goal creation;
+it is not execution time or a new lifecycle fact. The existing duration formatter
+keeps the product's hour/minute precision. Invalid timestamps omit this reading,
+and a future timestamp clamps to zero. The technical interval hook moved from
+the shell into `lib/useElapsedMillis.ts` for the two actual consumers, with no
+duplicate timer implementation. It neither writes commands nor rerenders the
+objective draft on each tick. Existing status admission, pending/offline states,
+stop reasons, errors, IME protection and generation retirement retain their owners.
+
+`features/chat/plan-progress/ui/ActivePlan.tsx` keeps its compact standing pill
+and the authoritative Session Plan identity, steps, current step and progress.
+Click, Enter or Space opens the existing nonmodal Base UI Popover with a named,
+focusable `ScrollRegion`. Page Down/End can read the entire list; Escape returns
+to the pill and Tab proceeds to the Goal summary. Accepted Plan revisions keep
+the same reader, focus and scroll position. Session/generation replacement,
+absence, unmount and the existing hidden-content signal retire its local open
+state. Returning to a hidden conversation requires an explicit reopen. Finished
+Plans remain reviewable. No Plan command, duplicate progress rule or new page
+was introduced.
+
+The Goal screenshot was treated as an approximately 2x capture: its proportions
+map to existing 12 px inset/overlap, UI-small text, semibold title and shared
+compact controls rather than new tokens. ZCode's actual `TodoPanel.tsx` and
+HeroUI's Popover demo provide explicit disclosure/read-task evidence; Flame does
+not copy ZCode's removal of completed Plans. The [Radix Popover model](https://www.radix-ui.com/primitives/docs/components/popover)
+supports a bounded, focus-managed contextual reader, while the [Tooltip model](https://www.radix-ui.com/primitives/docs/components/tooltip)
+does not supply this sustained keyboard reading path. The local ChatGPT Plan
+module inspected here only reexports its panel entry, so it is not used as focus
+evidence. The actual Wails observations below establish that behavior.
+
+Continue with another observed conversation → material → return path on current
+main; do not turn this completed rail/read task into an unrelated redesign.
 
 ## Reference products and example images
 
@@ -985,6 +1031,19 @@ reachable controls and width semantics. Existing type, color and surface owners
 remain the visual basis.
 
 ## Verification checkpoint
+
+For the reference Goal rail and keyboard Plan reading (2026-10-21):
+
+- Actual baseline Wails displayed a 12-step Plan in the old scrollable Tooltip. Pointer wheel reading reached the final condition, but Page Down/End on its pill left the first rows unchanged and Tab closed it. The original Plan-focused baseline passed **3 files / 19 tests**; Goal/identity baseline passed **4 files / 27 tests**. The human's current/reference images then established the Goal hierarchy and inset Composer rail as the priority.
+- Both bounded source-edit Claude Code CLI attempts reached their 240-second limits and left partial candidates without completed reports. Primary completed their tests, the shared clock move, Plan hidden-content retirement, browser-contract migrations and review. Frozen original Plan with final tests failed **10 and passed 15**; the candidate without hidden-content retirement failed **1 and passed 24**. Frozen original Goal failed **5 and passed 18**. Accepted implementations were restored exactly. Final focused checks passed **7 files / 58 tests**, covering command order/ownership, precise drafts, advancing creation age, paused age, timestamp boundaries, replacement editors, complete Plan reading, accepted revisions, focus returns, later focus and retirement.
+- An initial focused invocation overlapped icon regeneration and failed to import two suites; it is not behavioral evidence. Serial restaging removed that race. A new dialog-return test initially omitted focusing its opener; the harness was corrected to model keyboard activation, retaining its focus assertion. No production workaround, skipped check or weakened valid assertion was used.
+- Full checks first passed **385 files / 2,986 tests** on the earlier UI base. Primary then preserved the exact owned changes, fast-forwarded to main `5c6e2e3dc`, restored them with the two existing MCP import keys in all eight locales intact, and removed the temporary owned stash. The user's explicit latest-main request was followed by a fresh fetch confirming the same tip. Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **385 files / 2,990 tests** and every type/lint/format, boundary/contract/style/token/locale/resource, production-bundle and module-linkage gate. All eleven portable ESM resources remain unchanged.
+- Final `make check-native` passed Desktop tests/vet/build and the supported Wails build. Its binary is arm64 Mach-O, minimum macOS 13.0, SDK 26.5. All **19** accepted source/test/locale states, including the retired hook path, remained unchanged through native acceptance. Existing non-failing loopback diagnostics, fixture chunk-size and duplicate `-lobjc` warnings remain separate.
+- Actual English/light/14 px/Flame Orange at Actual Size matched the reference's strong status, quiet objective, 12 px inset and overlapping Composer shoulder, time/action alignment and circular Pause glyph. Pure keyboard Enter opened the Plan's actual scroll region; Page Down/End and a separate pointer-wheel pass reached the final bilingual condition. Escape returned to the same pill, Space reopened, and Tab left to Goal summary. Summary and expand/editor entry both exposed the full objective and returned to their own opener on cancellation. An edited objective was cancelled without submission; the original mixed-language Composer draft survived and accepted further text. One initial outside-click probe left the popup visible; independently repeated explicit open → outside click and open → wheel → outside click closed it and preserved input focus. That first probe is excluded from the closing conclusion, with no speculative component change.
+- English/dark/18 px/custom blue used the native Window → Move & Resize → Left action and keyboard Home to retain a **320 px Dock**. At **200%**, the Goal identity and trailing controls formed two readable rows, including circular Resume for the canonical paused Goal. The named Plan reader remained viewport-bounded and End reached its final condition. The complete Goal editor and Cancel/Save stayed reachable; cancellation restored Edit goal focus. Continued drafting and Actual Size restored the exact original text and 320 px Dock. One launch preceded completion of its profile build and still showed the old light URL; it was quit and excluded. The accepted dark instance was launched only after build/sign completion and its URL was checked.
+- Chinese/light/14 px/Orange matched the localized reference title and showed an explicit localized creation-age description. At **200%**, the Goal row retained readable truncation, duration and actions. After a user-change guard, primary refreshed the native state and restarted from an explicit closed/open Plan task; that interrupted probe is excluded. The localized reader's End reached the final bilingual condition, Escape returned to its pill, and Goal summary opened the full objective in the localized editor. Cancellation returned to the summary, followed by continued editing of the exact Chinese Composer draft. Zoom was reset before both enlarged instances quit.
+- Native acceptance uses the real Wails host and production presentation over private canonical memory Session/Plan inputs and the existing Goal fixture material. Only the long Plan and a recent Goal creation timestamp were varied before presentation. No live provider request, message submission, Goal lifecycle command, installation replacement or business mutation was issued. Paused/active layout and creation age are qualified natively; blocked/completing and timestamp/retirement boundaries retain unit coverage. Browser contracts were updated for explicit Plan activation and the intentional rail geometry, but browser/visual suites, performance benchmarks, VoiceOver, native OS IME composition, measured contrast, other-platform GUIs and unrelated root/CLI/SDK suites were not run. Runtime, protocol, stored schema, dependencies and shared UI package are unchanged by this batch.
+- Cleanup completed: owned CLI/check/build/native processes exited; the app was unregistered and its bundle, isolated data, overlays, prompts, partial reports, logs and acceptance root were removed. Newly created bundle-specific library paths passed preexistence/UID/birth-time guards. Generated fixtures, Vite state, staging, icons/UI bundles and native outputs were removed after tracked-path checks. Installed dependencies, global compiler/package caches, reference images, user data and unrelated processes were retained.
 
 For recorded Tool empty results and local recovery (2026-10-21):
 

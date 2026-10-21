@@ -8,6 +8,8 @@ import { Button, Disclosure, IconButton, vocab } from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent/index";
 import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n/index";
+import { durationText } from "@/lib/format";
+import { useElapsedMillis } from "@/lib/useElapsedMillis";
 import { notifyError } from "@/features/notifications/public/notifications";
 import { useCommandAction } from "@/features/command/public/commandAction";
 import {
@@ -28,8 +30,10 @@ import {
 } from "@/features/connection/public/serviceStatus";
 const goalTray = stylex.create({
   material: {
-    width: "100%",
-    marginBottom: "-1px",
+    alignSelf: "stretch",
+    marginInline: space.s3,
+    marginBottom: `calc(-1 * ${space.s3})`,
+    paddingBottom: space.s3,
     borderTopWidth: "var(--control-edge-width)",
     borderLeftWidth: "var(--control-edge-width)",
     borderRightWidth: "var(--control-edge-width)",
@@ -56,10 +60,9 @@ const gs = stylex.create({
   },
   identity: { minWidth: 0, flex: "1 1 24ch" },
   summary: {
-    flexWrap: "wrap",
+    flexWrap: "nowrap",
     justifyContent: "flex-start",
-    columnGap: space.s2,
-    rowGap: 0,
+    gap: space.s2,
     minHeight: "max(calc(var(--spacing) * 6), var(--control-target-min))",
     textDecorationLine: "underline",
     textDecorationColor: {
@@ -69,12 +72,11 @@ const gs = stylex.create({
     cursor: { default: null, ':is(:disabled, [aria-disabled="true"])': "default" },
     opacity: { default: null, ':is(:disabled, [aria-disabled="true"])': 1 },
   },
-  objective: { flex: "1 1 20ch" },
   actions: {
     display: "flex",
     flexShrink: 0,
     alignItems: "center",
-    gap: space.s3,
+    gap: space.s2,
     marginInlineStart: "auto",
   },
   reason: {
@@ -130,6 +132,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
     fallback: t("goal.error.update"),
   });
   const busy = clearAction.busy || statusAction.busy || editAction.busy;
+  const createdAt = goalCreatedAtMillis(goal.createdAt);
 
   const admitted = (fallback: string) => {
     if (runtimeCommandsAvailable()) return true;
@@ -184,15 +187,16 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             styles={gs.summary}
             onClick={openEditor}
           >
-            <span {...stylex.props(vocab.hold, vocab.muted, typeStep.uiXs)}>
+            <span {...stylex.props(vocab.hold, vocab.ink, vocab.strong, typeStep.uiSm)}>
               {t(GOAL_STATUS_I18N[goal.status].label)}
             </span>
-            <span {...stylex.props(gs.objective, vocab.min, vocab.truncate, vocab.ink)}>
+            <span {...stylex.props(vocab.fill, vocab.truncate, vocab.muted, typeStep.uiSm)}>
               {goal.objective}
             </span>
           </Button>
         </div>
         <div data-slot="goal-actions" {...stylex.props(gs.actions)}>
+          {createdAt !== null && <GoalElapsed createdAt={createdAt} />}
           <IconButton
             type="button"
             size="xs"
@@ -207,7 +211,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             <IconButton
               type="button"
               size="xs"
-              icon={iconGlyph(goal.status === "active" ? "pause" : "play")}
+              icon={iconGlyph(goal.status === "active" ? "circle-pause" : "circle-play")}
               quiet
               aria-label={t(goal.status === "active" ? "goal.action.pause" : "goal.action.resume")}
               disabled={controlsDisabled}
@@ -219,7 +223,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             <IconButton
               type="button"
               size="xs"
-              icon={iconGlyph("edit")}
+              icon={iconGlyph("maximize")}
               quiet
               aria-label={t("goal.action.edit")}
               disabled={controlsDisabled}
@@ -258,5 +262,27 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
         onSave={save}
       />
     </>
+  );
+}
+
+function goalCreatedAtMillis(createdAt: string): number | null {
+  const millis = Date.parse(createdAt);
+  return Number.isNaN(millis) ? null : millis;
+}
+
+function GoalElapsed({ createdAt }: { createdAt: number }) {
+  const t = useT();
+  const elapsed = useElapsedMillis(createdAt);
+  const duration = durationText(t, createdAt, createdAt + elapsed);
+  const label = t("goal.elapsed", { duration });
+  return (
+    <span
+      data-slot="goal-elapsed"
+      title={label}
+      {...stylex.props(vocab.hold, vocab.figures, vocab.muted, typeStep.uiSm)}
+    >
+      <span aria-hidden="true">{duration}</span>
+      <span className="sr-only">{label}</span>
+    </span>
   );
 }

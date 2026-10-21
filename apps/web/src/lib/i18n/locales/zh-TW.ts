@@ -219,6 +219,7 @@ export const zhTW: Record<string, string> = {
   "goal.action.resume": "恢復目標",
   "goal.action.clear": "清除目標",
   "goal.action.edit": "編輯目標",
+  "goal.elapsed": "目標建立至今：{{duration}}",
   "goal.edit.title": "編輯目標",
   "goal.edit.label": "目標",
   "goal.edit.save": "儲存",

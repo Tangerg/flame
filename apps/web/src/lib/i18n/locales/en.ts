@@ -232,6 +232,7 @@ export const en: Record<string, string> = {
   "goal.action.resume": "Resume goal",
   "goal.action.clear": "Clear goal",
   "goal.action.edit": "Edit goal",
+  "goal.elapsed": "Time since goal creation: {{duration}}",
   "goal.edit.title": "Edit goal",
   "goal.edit.label": "Goal",
   "goal.edit.save": "Save",
