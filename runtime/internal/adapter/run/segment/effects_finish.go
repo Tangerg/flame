@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"go.opentelemetry.io/otel"
@@ -119,7 +120,13 @@ func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 			return f.title(ctx, fin.SessionID, fin.OpeningUserText)
 		})
 	}
-	if !f.tasks.Start(ctx, func(ctx context.Context) { _ = title(ctx) }) {
+	if !f.tasks.Start(ctx, func(ctx context.Context) {
+		// The async title error has no caller to return to; without this the
+		// span is its only report and reaches no operator.
+		if err := title(ctx); err != nil {
+			slog.WarnContext(ctx, "segment: maintain session title", "run.id", fin.RunID, "error", err)
+		}
+	}) {
 		rejected := fmt.Errorf("segment: maintenance for run %q was rejected during shutdown", fin.RunID)
 		errs = append(errs, observeSegmentMaintenance(ctx, fin, "title", func(context.Context) error { return rejected }))
 	}
