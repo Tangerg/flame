@@ -437,6 +437,11 @@ export const ja: Record<string, string> = {
   "settings.connection.title": "バックエンド",
   "settings.connection.sub": "Flame Runtime のアドレス。適用するとデスクトップが再接続します。",
   "settings.connection.clearToken": "トークンを削除",
+  "settings.connection.discardToken": "トークンの変更を破棄",
+  "settings.connection.tokenSet": "現在の Runtime アドレスにはトークンが設定されています。",
+  "settings.connection.tokenNotSet": "現在の Runtime アドレスにはトークンが設定されていません。",
+  "settings.connection.tokenPending":
+    "トークンの変更は未適用です。この値を使うには適用してください。空欄のままにするとトークンを削除します。",
   "settings.connection.token": "アクセストークン",
   "settings.connection.tokenPlaceholder": "トークンを入力または置換",
   "settings.connection.tokenHint":

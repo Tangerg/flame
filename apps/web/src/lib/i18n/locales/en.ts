@@ -601,6 +601,11 @@ export const en: Record<string, string> = {
   "settings.connection.sub":
     "Where the Flame runtime is reachable. Applying reconnects the desktop app.",
   "settings.connection.clearToken": "Clear token",
+  "settings.connection.discardToken": "Discard token change",
+  "settings.connection.tokenSet": "A token is set for the current Runtime address.",
+  "settings.connection.tokenNotSet": "No token is set for the current Runtime address.",
+  "settings.connection.tokenPending":
+    "Token change not applied. Apply to use this value; leave it blank to remove the token.",
   "settings.connection.token": "Access token",
   "settings.connection.tokenPlaceholder": "Enter or replace the token",
   "settings.connection.tokenHint":

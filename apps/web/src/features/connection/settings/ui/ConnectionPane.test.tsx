@@ -23,6 +23,19 @@ vi.mock("@/features/connection/public/serviceStatus", () => ({
   refreshRuntimeServiceStatus: () => runtime.refresh(),
 }));
 
+function description(field: HTMLElement): string {
+  return (field.getAttribute("aria-describedby") ?? "")
+    .split(" ")
+    .map((id) => document.getElementById(id)?.textContent ?? "")
+    .join(" ");
+}
+
+function expectNoRuntimeCommand() {
+  expect(runtime.applyEndpoint).not.toHaveBeenCalled();
+  expect(runtime.resetEndpoint).not.toHaveBeenCalled();
+  expect(runtime.refresh).not.toHaveBeenCalled();
+}
+
 describe("ConnectionPane runtime status", () => {
   beforeEach(() => {
     runtime.hasToken = false;
@@ -160,5 +173,107 @@ describe("ConnectionPane runtime status", () => {
     expect(runtime.applyEndpoint).toHaveBeenCalledOnce();
     expect(document.activeElement).toBe(field);
     expect(screen.getByRole("alert")).toBeTruthy();
+  });
+
+  it("describes the current token and shows Clear as a pending change", () => {
+    runtime.hasToken = true;
+    runtime.snapshot = { phase: "ready", observation: null, failure: null };
+    render(<ConnectionPane />);
+    const token = screen.getByLabelText("Access token");
+
+    expect(description(token)).toContain("A token is set for the current Runtime address.");
+    expect(description(token)).toContain("Kept only in this window");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear token" }));
+
+    expect(description(token)).toContain("Token change not applied.");
+    expect(description(token)).not.toContain("A token is set");
+    expect(description(token)).toContain("Kept only in this window");
+    expectNoRuntimeCommand();
+  });
+
+  it("discards only the token edit and returns focus to the token field", () => {
+    runtime.hasToken = true;
+    runtime.snapshot = { phase: "ready", observation: null, failure: null };
+    render(<ConnectionPane />);
+    const url = screen.getByLabelText("URL") as HTMLInputElement;
+    const token = screen.getByLabelText("Access token") as HTMLInputElement;
+    const discard = screen.getByRole("button", { name: "Discard token change" });
+    expect((discard as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(url, { target: { value: "http://127.0.0.1:9999" } });
+    fireEvent.change(token, { target: { value: "draft-secret" } });
+    expect(description(token)).not.toContain("draft-secret");
+    discard.focus();
+    fireEvent.click(discard);
+
+    expect(url.value).toBe("http://127.0.0.1:9999");
+    expect(token.value).toBe("");
+    expect(description(token)).toContain("A token is set for the current Runtime address.");
+    expect((discard as HTMLButtonElement).disabled).toBe(true);
+    expect(document.activeElement).toBe(token);
+    expectNoRuntimeCommand();
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(runtime.applyEndpoint).toHaveBeenLastCalledWith("http://127.0.0.1:9999", undefined);
+  });
+
+  it("hands an edited token to Runtime exactly as typed", () => {
+    runtime.snapshot = { phase: "ready", observation: null, failure: null };
+    render(<ConnectionPane />);
+
+    fireEvent.change(screen.getByLabelText("Access token"), { target: { value: "  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    expect(runtime.applyEndpoint).toHaveBeenLastCalledWith("http://127.0.0.1:17171", "  ");
+  });
+
+  it("settles the pending state on the token presence Runtime reports after Apply", () => {
+    runtime.hasToken = true;
+    runtime.snapshot = { phase: "ready", observation: null, failure: null };
+    runtime.applyEndpoint.mockImplementation((endpoint: string) => {
+      runtime.hasToken = false;
+      return { kind: "applied", endpoint, changed: false };
+    });
+    render(<ConnectionPane />);
+    const token = screen.getByLabelText("Access token");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear token" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    expect(runtime.applyEndpoint).toHaveBeenLastCalledWith("http://127.0.0.1:17171", "");
+    expect(description(token)).toContain("No token is set for the current Runtime address.");
+    expect(description(token)).not.toContain("Token change not applied.");
+    const discard = screen.getByRole("button", { name: "Discard token change" });
+    expect((discard as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("ties a rejected token to its field and drops only that rejection on discard", () => {
+    runtime.snapshot = { phase: "ready", observation: null, failure: null };
+    runtime.applyEndpoint.mockReturnValue({ kind: "rejected", reason: "invalid_token" });
+    render(<ConnectionPane />);
+    const url = screen.getByLabelText("URL");
+    const token = screen.getByLabelText("Access token");
+    const discard = screen.getByRole("button", { name: "Discard token change" });
+
+    fireEvent.change(token, { target: { value: "bad token" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    const tokenError = screen.getByRole("alert").textContent ?? "";
+    expect(description(token)).toContain(tokenError);
+    expect(description(url)).not.toContain(tokenError);
+
+    fireEvent.click(discard);
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    runtime.applyEndpoint.mockReturnValue({ kind: "rejected", reason: "invalid_url" });
+    fireEvent.change(url, { target: { value: "not a url" } });
+    fireEvent.change(token, { target: { value: "draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    const urlError = screen.getByRole("alert").textContent ?? "";
+    fireEvent.click(discard);
+
+    expect(screen.getByRole("alert").textContent).toBe(urlError);
+    expect(description(url)).toContain(urlError);
+    expect(description(token)).not.toContain(urlError);
   });
 });

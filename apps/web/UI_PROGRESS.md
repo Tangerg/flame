@@ -1045,6 +1045,43 @@ their abbreviated, unparseable patch inputs, matching the Runtime presenter.
 The existing contract test exposed the omission. No frontend patch grammar,
 inferred count or permissive result fallback was introduced.
 
+## Connection token draft intent
+
+Connection settings now distinguishes a token already set for the current
+Runtime address, no current token, and an unapplied token edit. The pending
+description explains that Apply is required and a blank input removes the token.
+It never projects a secret value or predicts token retention for a draft address.
+The existing window-memory hint remains visible; both descriptions and any
+token-specific rejection are associated with the password field.
+
+The always-mounted Discard token change action clears only the local token edit,
+preserves the URL draft and URL validation feedback, and returns focus to the
+token input. It clears a token rejection and invokes no Runtime command.
+`ConnectionPane` retains the original Apply, explicit Clear and Reset owners.
+The endpoint use case alone trims and validates token input, binds credentials
+to the normalized address, and distinguishes omitted from explicit empty input.
+All eight locale dictionaries supply the four new descriptions/action labels.
+
+Read-only HeroUI `textfield/with-description.tsx`, `with-error.tsx` and its actual
+Description component associate field help and rejection with the input. This
+is a semantic reference; Flame retains its shared TextField, FormField,
+FormActions, Base UI and StyleX. better-writing's explicit completion/cancellation
+guidance and better-accessibility's description/focus guidance apply to this
+local edit. Existing typography, semantic surfaces and focus colors remain.
+
+| Severity | Location                                             | Before                                                                                  | After                                                                              | Why                                                                       |
+| -------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| MEDIUM   | `features/connection/settings/ui/ConnectionPane.tsx` | Clear enabled Apply without explaining the pending token edit or offering a local undo. | A described pending state and token-only discard retain the independent URL draft. | Users must distinguish their edit from accepted connection configuration. |
+
+Verification for this surface (2026-10-21):
+
+- The original endpoint/UI baseline passed **2 files / 26 tests**. Bounded edit-only Claude Code CLI supplied ten scoped files in **29 turns / 140.60 seconds**, without denials or subagents. Primary reviewed the actual diff and owner contracts. Focused typecheck, **2 files / 31 tests**, and all **1,081 keys across 8 locales** pass. Four new behavior cases fail on the frozen original component; the original six and the new raw-whitespace handoff case still pass. The candidate was restored byte-for-byte. Regressions cover pending/current descriptions, no command on Clear/discard, retained URL draft, focus return, explicit-empty/omitted/raw-whitespace arguments, accepted presence and rejection ownership.
+- Actual Wails baseline reproduced the missing pending state. EN/light/14 px/Flame Orange candidate passed pointer Clear → keyboard Discard → token focus with a separate CJK URL draft retained. An invalid URL rejection survives token discard; native Return on the restored URL uses the original accepted handoff. Left-half window/200% controlled reentry with query `connection`, Tab to Clear/Discard, visible pending text/action focus and body wheel pass. Explicit Clear/Apply updates current presence through the production endpoint use case and the fixture's in-memory commit. Actual Size/Close retains the original Composer text; native editing produces exactly `Token settings draft 保留 continue` with Composer focus.
+- Acceptance uses the existing visual Runtime configuration adapter and service-status port in an actual private Wails host. Only bootstrap data adds a disposable dummy token; the existing fixture commits configuration in memory without HTTP reconnection. No user credential is read or used. Inert fixture state-row clicks are excluded; controlled reentry uses the actual registered Mod+, command. Live authentication, a real Runtime reconnect, VoiceOver speech, OS IME, other-platform GUIs, browser visual suites and performance baselines are not qualified by this scene.
+- Final actual Wails ZH/dark/18 px/custom-blue query → URL draft → Clear → keyboard Discard preserves the separate address, reports accepted token presence and restores password focus. Native Left-half resizing retains query/draft; pending copy, window-memory hint and the focused Discard action stay visible. The body accepts wheel input. Restoring the accepted URL and using Return retains the existing token; explicit Clear/Apply then reports no token through the same private memory owner. Close retains the original conversation draft; native typing produces exactly `连接令牌草稿 保留 继续` with Composer focus.
+- Complete Web validation passes **386 files / 3,049 tests** and all subsequent checks in **179.80 seconds** under Node 22.22.1. The first pass reached the authored-class guard, whose string-shape heuristic mistook space-separated ARIA description references for CSS classes. Primary now composes the description ID list once instead of repeating full IDREF strings; the guard is unchanged, and the complete rerun passes. `make check-native` passes Desktop test/vet/build and the supported Wails build in **25.18 seconds**; final private build passes in 5.53 seconds. All **13** final reviewed source/contract/fixture hashes remain stable through acceptance. The arm64 binary reports minimum macOS 13.0 / SDK 26.5. Recurring non-failing loopback diagnostics and the duplicate `-lobjc` warning remain separate. Independent unchanged shared UI, CLI, Runtime and SDK suites were not rerun; no protocol, persisted-data or installed-resource migration is needed.
+- Cleanup completed: all three native processes and the bounded CLI process exited. The exact app was unregistered; its bundle, disposable homes/data, captures, overlays, prompt/report, logs, scripts and pointer were removed. Ten newly created worktree output/cache paths and the unique bundle's Caches/WebKit paths were removed under preexistence, tracked-content, UID, birth-time and non-symlink guards. Pre-existing shared UI Vite/compiler/package caches, installed dependencies, read-only references and unrelated primary working/index/untracked changes remain.
+
 ## Remembered rule action context
 
 Each remembered-rule Forget button is now described by its existing visible

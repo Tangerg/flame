@@ -462,6 +462,11 @@ export const fr: Record<string, string> = {
   "settings.connection.title": "Backend",
   "settings.connection.sub": "Adresse du runtime Flame. L’application reconnecte le bureau.",
   "settings.connection.clearToken": "Effacer le jeton",
+  "settings.connection.discardToken": "Annuler la modification du jeton",
+  "settings.connection.tokenSet": "Un jeton est défini pour l’adresse Runtime actuelle.",
+  "settings.connection.tokenNotSet": "Aucun jeton n’est défini pour l’adresse Runtime actuelle.",
+  "settings.connection.tokenPending":
+    "Modification du jeton non appliquée. Appliquez pour utiliser cette valeur ; laissez vide pour supprimer le jeton.",
   "settings.connection.token": "Jeton d’accès",
   "settings.connection.tokenPlaceholder": "Saisir ou remplacer le jeton",
   "settings.connection.tokenHint":

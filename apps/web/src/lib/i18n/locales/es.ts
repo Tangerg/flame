@@ -460,6 +460,12 @@ export const es: Record<string, string> = {
   "settings.connection.sub":
     "Dirección de Flame Runtime. Al aplicar, la aplicación de escritorio se vuelve a conectar.",
   "settings.connection.clearToken": "Borrar token",
+  "settings.connection.discardToken": "Descartar cambio del token",
+  "settings.connection.tokenSet": "Hay un token definido para la dirección de Runtime actual.",
+  "settings.connection.tokenNotSet":
+    "No hay ningún token definido para la dirección de Runtime actual.",
+  "settings.connection.tokenPending":
+    "Cambio del token sin aplicar. Aplica para usar este valor; déjalo en blanco para quitar el token.",
   "settings.connection.token": "Token de acceso",
   "settings.connection.tokenPlaceholder": "Introduce o reemplaza el token",
   "settings.connection.tokenHint":

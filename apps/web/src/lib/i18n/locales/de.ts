@@ -454,6 +454,11 @@ export const de: Record<string, string> = {
   "settings.connection.title": "Backend",
   "settings.connection.sub": "Adresse der Flame Runtime. Anwenden verbindet die Desktop-App neu.",
   "settings.connection.clearToken": "Token löschen",
+  "settings.connection.discardToken": "Token-Änderung verwerfen",
+  "settings.connection.tokenSet": "Für die aktuelle Runtime-Adresse ist ein Token festgelegt.",
+  "settings.connection.tokenNotSet": "Für die aktuelle Runtime-Adresse ist kein Token festgelegt.",
+  "settings.connection.tokenPending":
+    "Token-Änderung nicht übernommen. Übernehmen, um diesen Wert zu verwenden; leer lassen, um das Token zu entfernen.",
   "settings.connection.token": "Zugriffstoken",
   "settings.connection.tokenPlaceholder": "Token eingeben oder ersetzen",
   "settings.connection.tokenHint":

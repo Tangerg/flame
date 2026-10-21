@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StatusDot } from "@/ui/index";
 import { Button, FormActions, FormField, isImeKey, TextField, vocab } from "@flame/ui";
 import { useT, type Translate } from "@/lib/i18n/index";
@@ -94,6 +94,7 @@ export function ConnectionPane() {
   const [tokenEdited, setTokenEdited] = useState(false);
   const [error, setError] = useState<RuntimeEndpointRejection | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const tokenField = useRef<HTMLInputElement>(null);
 
   const trimmed = url.trim();
   const dirty = trimmed !== initial.trim() || tokenEdited;
@@ -123,6 +124,19 @@ export function ConnectionPane() {
     setTokenEdited(false);
     setError(null);
   };
+
+  const discardToken = () => {
+    setToken("");
+    setTokenEdited(false);
+    setError((current) => (current === "invalid_token" ? null : current));
+    tokenField.current?.focus();
+  };
+
+  const tokenState = tokenEdited
+    ? "settings.connection.tokenPending"
+    : hasRuntimeAccessToken()
+      ? "settings.connection.tokenSet"
+      : "settings.connection.tokenNotSet";
 
   const refresh = async () => {
     setRefreshing(true);
@@ -168,12 +182,19 @@ export function ConnectionPane() {
           </FormField>
           <FormField label={t("settings.connection.token")}>
             <TextField
+              ref={tokenField}
               id="runtime-local-token"
               type="password"
               autoComplete="off"
               aria-label={t("settings.connection.token")}
               invalid={error === "invalid_token"}
-              aria-describedby={error === "invalid_token" ? "runtime-connection-error" : undefined}
+              aria-describedby={[
+                "runtime-token-state",
+                "runtime-token-hint",
+                error === "invalid_token" ? "runtime-connection-error" : null,
+              ]
+                .filter(Boolean)
+                .join(" ")}
               value={token}
               onChange={(event) => {
                 setToken(event.target.value);
@@ -183,7 +204,16 @@ export function ConnectionPane() {
               spellCheck={false}
             />
           </FormField>
-          <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("settings.connection.tokenHint")}</p>
+          <p
+            id="runtime-token-state"
+            aria-live="polite"
+            {...stylex.props(vocab.muted, typeStep.uiSm)}
+          >
+            {t(tokenState)}
+          </p>
+          <p id="runtime-token-hint" {...stylex.props(vocab.muted, typeStep.uiSm)}>
+            {t("settings.connection.tokenHint")}
+          </p>
           <FormActions
             label={t("settings.connection.apply")}
             auxiliaryAction={
@@ -209,6 +239,15 @@ export function ConnectionPane() {
                   styles={vocab.hold}
                 >
                   {t("settings.connection.clearToken")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={!tokenEdited}
+                  onClick={discardToken}
+                  styles={vocab.hold}
+                >
+                  {t("settings.connection.discardToken")}
                 </Button>
               </>
             }

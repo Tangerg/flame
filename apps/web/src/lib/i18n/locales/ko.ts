@@ -437,6 +437,11 @@ export const ko: Record<string, string> = {
   "settings.connection.sub":
     "Flame Runtime 주소. 적용하면 데스크톱 앱이 새 주소로 다시 연결됩니다.",
   "settings.connection.clearToken": "토큰 지우기",
+  "settings.connection.discardToken": "토큰 변경 취소",
+  "settings.connection.tokenSet": "현재 Runtime 주소에 토큰이 설정되어 있습니다.",
+  "settings.connection.tokenNotSet": "현재 Runtime 주소에 설정된 토큰이 없습니다.",
+  "settings.connection.tokenPending":
+    "토큰 변경이 적용되지 않았습니다. 이 값을 사용하려면 적용하고, 토큰을 제거하려면 비워 두세요.",
   "settings.connection.token": "액세스 토큰",
   "settings.connection.tokenPlaceholder": "토큰 입력 또는 교체",
   "settings.connection.tokenHint":
