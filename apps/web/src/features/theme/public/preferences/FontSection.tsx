@@ -45,21 +45,22 @@ function FontPicker({
         }
       />
       <DropdownMenu.Content align="start" sideOffset={4}>
-        {[SYSTEM, ...fonts].map((family) => (
-          <DropdownMenu.Item
-            key={family || "system"}
-            onClick={() => onChange(family)}
-            style={family ? { fontFamily: `"${family}"` } : undefined}
-            layout="pickPlain"
-          >
-            <span {...stylex.props(vocab.truncate)}>{family || defaultLabel}</span>
-            {value === family ? (
-              <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
-            ) : (
-              <span aria-hidden />
-            )}
-          </DropdownMenu.Item>
-        ))}
+        <DropdownMenu.RadioGroup value={value} onValueChange={onChange}>
+          {[SYSTEM, ...fonts].map((family) => (
+            <DropdownMenu.RadioItem
+              key={family || "system"}
+              value={family}
+              label={family || defaultLabel}
+              style={family ? { fontFamily: `"${family}"` } : undefined}
+              layout="pickPlain"
+            >
+              <span {...stylex.props(vocab.truncate)}>{family || defaultLabel}</span>
+              <DropdownMenu.RadioItemIndicator>
+                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+              </DropdownMenu.RadioItemIndicator>
+            </DropdownMenu.RadioItem>
+          ))}
+        </DropdownMenu.RadioGroup>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   );

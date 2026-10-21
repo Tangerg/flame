@@ -42,7 +42,7 @@ it("shows a failed dictionary activation without discarding the selected prefere
   );
   render(<LanguageSection />);
   fireEvent.click(screen.getByRole("button", { name: "Language" }));
-  fireEvent.click(await screen.findByRole("menuitem", { name: "Japanese" }));
+  fireEvent.click(await screen.findByRole("menuitemradio", { name: "Japanese" }));
   expect(await screen.findByText("dictionary unavailable")).toBeTruthy();
   expect(activeLocale()).toBe("ja");
 });

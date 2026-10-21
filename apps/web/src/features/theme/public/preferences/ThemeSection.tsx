@@ -86,27 +86,15 @@ function SystemSwatch() {
   );
 }
 
-function ThemeItem({
-  swatch,
-  label,
-  active,
-  onSelect,
-}: {
-  swatch: ReactNode;
-  label: string;
-  active: boolean;
-  onSelect: () => void;
-}) {
+function ThemeItem({ swatch, label, value }: { swatch: ReactNode; label: string; value: string }) {
   return (
-    <DropdownMenu.Item layout="pickWide" onClick={onSelect}>
+    <DropdownMenu.RadioItem value={value} label={label} layout="pickWide">
       {swatch}
       <span {...stylex.props(th.name, vocab.truncate, typeStep.uiMd)}>{label}</span>
-      {active ? (
+      <DropdownMenu.RadioItemIndicator>
         <Icon name="check" size="sm" className={stylex.props(vocab.accent).className} />
-      ) : (
-        <span aria-hidden />
-      )}
-    </DropdownMenu.Item>
+      </DropdownMenu.RadioItemIndicator>
+    </DropdownMenu.RadioItem>
   );
 }
 
@@ -135,21 +123,21 @@ export function ThemeSection() {
           }
         />
         <DropdownMenu.Content align="start" sideOffset={4}>
-          <ThemeItem
-            swatch={<SystemSwatch />}
-            label={t("settings.theme.system")}
-            active={isSystem}
-            onSelect={() => setTheme("system")}
-          />
-          {themes.map((spec) => (
+          <DropdownMenu.RadioGroup value={theme} onValueChange={(id) => setTheme(id)}>
             <ThemeItem
-              key={spec.id}
-              swatch={<ThemeSwatch {...previewTokens(spec)} />}
-              label={spec.label}
-              active={theme === spec.id}
-              onSelect={() => setTheme(spec.id)}
+              swatch={<SystemSwatch />}
+              label={t("settings.theme.system")}
+              value="system"
             />
-          ))}
+            {themes.map((spec) => (
+              <ThemeItem
+                key={spec.id}
+                swatch={<ThemeSwatch {...previewTokens(spec)} />}
+                label={spec.label}
+                value={spec.id}
+              />
+            ))}
+          </DropdownMenu.RadioGroup>
         </DropdownMenu.Content>
       </DropdownMenu.Root>
     </SettingRow>

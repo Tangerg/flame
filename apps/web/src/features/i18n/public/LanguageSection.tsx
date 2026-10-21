@@ -30,25 +30,26 @@ export function LanguageSection() {
           }
         />
         <DropdownMenu.Content align="start" sideOffset={4}>
-          {locales.map((l) => (
-            <DropdownMenu.Item
-              key={l.id}
-              onClick={() =>
+          <DropdownMenu.RadioGroup
+            value={locale}
+            onValueChange={(id) => {
+              const chosen = locales.find((l) => l.id === id);
+              if (chosen)
                 void run(async () => {
-                  await selectLocale(l);
+                  await selectLocale(chosen);
                   return { ok: true };
-                }, t("settings.language.label"))
-              }
-              layout="pickPlain"
-            >
-              <span {...stylex.props(vocab.truncate)}>{l.label}</span>
-              {locale === l.id ? (
-                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
-              ) : (
-                <span aria-hidden />
-              )}
-            </DropdownMenu.Item>
-          ))}
+                }, t("settings.language.label"));
+            }}
+          >
+            {locales.map((l) => (
+              <DropdownMenu.RadioItem key={l.id} value={l.id} label={l.label} layout="pickPlain">
+                <span {...stylex.props(vocab.truncate)}>{l.label}</span>
+                <DropdownMenu.RadioItemIndicator>
+                  <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+                </DropdownMenu.RadioItemIndicator>
+              </DropdownMenu.RadioItem>
+            ))}
+          </DropdownMenu.RadioGroup>
         </DropdownMenu.Content>
       </DropdownMenu.Root>
       {feedback.state === "error" && (
