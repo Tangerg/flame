@@ -501,10 +501,14 @@ function RecordedRows({
                   )}
               </div>
             ))}
-            {!matching.length && (
-              <Metadata>
-                No matching rows. Close find to see the whole result.
-              </Metadata>
+            {!recorded.length ? (
+              <Metadata>No results were returned.</Metadata>
+            ) : (
+              !matching.length && (
+                <Metadata>
+                  No matching rows. Close find to see the whole result.
+                </Metadata>
+              )
             )}
             {matching.length > visible && (
               <Button
@@ -544,7 +548,9 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
     return resultContent(tool);
   }, [tool]);
   if (content.kind === "changes")
-    return (
+    return !content.changes.length ? (
+      <Metadata>No changes were recorded.</Metadata>
+    ) : (
       <table
         aria-label="Applied changes"
         style={{ width: "100%", tableLayout: "fixed" }}

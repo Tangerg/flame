@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-21. Continuous work is active in the isolated worktree. Global Focus composer now reveals the retained conversation and original editable draft in one navigation step; manual full-width reopening restores the same material and query through the existing Dock owner. Full-pane entry, search handoff, model catalog recovery, Dock focus and previous repairs remain integrated. Final frontend checks pass 385 files / 2,969 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
+Updated: 2026-10-21. Continuous work is active in the isolated worktree. Recorded Tools now distinguish original empty results from local Find with no matches, and empty change receipts have readable context. Global Composer reveal, owner-backed material reopening, full-pane entry, search handoff and previous repairs remain integrated. Final frontend checks pass 385 files / 2,974 tests, and the supported native gate and actual Wails acceptance pass. Owned acceptance processes, bundles, data, logs, builds and application caches are cleaned. Earlier integrated features and their qualified platform limits remain below.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -480,6 +480,28 @@ outside, collapsed, already-handled and editable-descendant copies stay native.
 The browser range is the only selection owner. Mutable result and virtual-output
 rows sit beneath one stable child so reconciliation cannot shorten its boundary
 offsets; the existing viewport, focus, scroll and measurement owners stay in place.
+
+Recorded result emptiness now comes from the captured rows, before local Find.
+Empty hit/web-result arrays say that no results were returned, including while a
+query is open. Only a filter hiding existing rows offers Close find to recover
+the original evidence. Clearing and closing retain their existing field/reader
+focus destinations, and explicit Copy still writes the captured source. An empty
+change receipt says that no changes were recorded instead of displaying an empty
+table. Literal blank source rows remain content. These are read-only projections;
+the Tool row still owns identity, status and errors, and no retry or replay is
+introduced. `plugins/tool-results/component/component.tsx` and its rebuilt ESM
+retain the same shape selectors, captured context and resource lifecycle.
+
+Read-only research compared HeroUI's actual table `empty-state.tsx` demo with
+ChatGPT's `compact-empty-state-7787ff604ab1.js`, an actual React interface component
+with separate title, description and optional actions. These establish empty-state
+composition; Flame's captured-result contract supplies outcome and replay policy.
+ZCode's actual
+`ToolCallBlocks/renderers/search.tsx` keeps search identity/status in the summary;
+its non-expandable result policy was not copied. Better-writing's distinction
+between original emptiness and filtered recovery, with existing layout,
+typography and semantic Metadata, fits Flame's inline evidence task without a
+new dialog, color system or state owner.
 
 Segmented tracks use the existing compact navigation shape step. Their items and
 moving backplate share the track radius minus its actual padding; there is no
@@ -964,6 +986,17 @@ remain the visual basis.
 
 ## Verification checkpoint
 
+For recorded Tool empty results and local recovery (2026-10-21):
+
+- Actual baseline Wails expanded a settled `glob` with captured `hits: []`. The Tool row said 0 matches, but the result body instructed Close find before Find was open; opening, typing and cancelling Find left that impossible recovery. A captured `apply_patch` with `changes: []` expanded to an empty table and blank body. Both were reproduced with production components, canonical projection and input-only empty-array variants; no recorded Tool executed. Focused baseline passed **3 files / 38 tests**.
+- Bounded edit-only Claude Code CLI completed the three allowed source/test/README files in 60 seconds without tool denials or claimed checks. Primary reviewed the final diff and added exact captured-source copying and field/reader focus assertions to its empty-array tests. Against the frozen original renderer, final regressions failed **3 and passed 31**; the accepted renderer was restored byte-for-byte. Final focused checks passed **3 files / 43 tests**. They cover empty hit/web arrays before/during/after Find, clear/close recovery of nonempty rows, exact raw copy, blank numbered source lines and empty/nonempty change receipts. Existing inert-content, source fidelity, ANSI, selection/copy, IME and continuation assertions remain intact; captured context refuses live Runtime, telemetry and replay I/O.
+- The owner builder regenerated all eleven ESM resources; only Tool-results changed. `npm run check --workspace @flame/plugins` passed type/lint/format, the isolated release test and every exact-resource check. Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **385 files / 2,974 tests** and all subsequent type/lint/format, boundary/contract/style/token/locale/resource, production-bundle and module-linkage gates. Final `make check-native` passed Desktop tests/vet/build and the supported Wails build. The binary is arm64 Mach-O, minimum macOS 13.0, SDK 26.5. All four accepted source/test/README/resource hashes remained unchanged throughout final native acceptance. Existing non-failing loopback, fixture chunk-size and duplicate `-lobjc` diagnostics remain separate.
+- Actual final Wails English/light/14 px/Flame Orange qualified an unsent mixed-language draft → search group → zero-result files → Find/query/clear/Escape. The original-empty notice stayed accurate, Clear kept the field focused, and Escape returned to Result. A separately observed Copy result → native system paste yielded exact `{"hits":[]}` in the Composer; subsequent editing retained it. The first combined paste/append probe did not isolate clipboard ordering and is excluded from the copy conclusion. No product clipboard behavior was changed.
+- English/dark/18 px/custom blue qualified native Window → Move & Resize → Left and pure keyboard resizing to a **320 px Dock**. Keyboard expansion of the captured empty change receipt showed its neutral notice, separate from the existing failed and denied rows. At **200%**, native wheel reading reached that notice beneath its focused Tool identity. The nonempty Read result's no-match query kept the real Close find recovery; pointer Clear restored all six original source lines and field focus, while queried Escape restored the same lines and Result focus. Continued editing retained the complete draft. Actual Size restored all three Dock tabs at 320 px.
+- Chinese host/light/14 px/Orange at **200%** qualified a captured web search with zero results, Find with a Chinese query, Escape to Result and continued editing of the original Chinese draft. The portable component retains its existing English control/copy vocabulary; this qualifies layout and interaction in the localized host, not complete plugin translation. Native zoom was reset before quitting both zoomed scenes.
+- Acceptance uses the existing captured Tool/installed-component lifecycle and actual Wails host over isolated canonical memory reads. The only result variants replace settled arrays before production projection; no scene links, focus counters, shortcuts or production branches were added. No Tool, draft, Run, live provider request, installation replacement or business mutation was submitted. Loading/running/absent results, generic inspection and errors retain their existing owners and regression coverage; this repair does not requalify every producer or live subscription. VoiceOver, native OS composition, measured contrast, other-platform GUIs, browser/visual suites, performance benchmarks and unrelated root/CLI/SDK suites were not run. Runtime, protocol, stored schema, shared UI and dependencies are unchanged. Existing installations still require normal explicit reinstallation/selection of the new resource digest; source/resource rebuilding does not update them.
+- Cleanup completed: owned CLI/check/build/native processes exited, the app was unregistered, and its bundle, isolated data, overlays, temporary sources/configuration, prompts/results and logs were removed. Newly created bundle-specific library paths passed preexistence/UID/birth-time guards. Worktree-generated fixtures, Vite state, staging, icons/UI bundles and native outputs were removed after tracked-path checks. Installed dependencies, global compiler/package caches, reference artwork, user data and unrelated processes were retained.
+
 For global Composer focus and retained material (2026-10-21):
 
 - Actual baseline Wails used the production `app.main` workbench contribution, registered default commands and command menu over the existing captured Session adapter. An unsent draft → Keyboard shortcuts → Mod-L stayed in Settings instead of revealing the conversation. Focused baseline passed **6 files / 102 tests**. This established an explicit command/presentation contract, separate from conditional asynchronous draft-acceptance focus.
@@ -1447,8 +1480,11 @@ justify a broader Composer rewrite or speculative performance work.
 
 Captured generic Tool JSON fidelity is now implemented and natively qualified
 above. Preserve its whitespace-only projection rather than recreating captured
-values for display. Continue the remaining material and task paths from current
-source; this fix does not requalify every specialized renderer or wire contract.
+values for display. Recorded original-empty and filtered-empty results are also
+implemented and qualified above; keep their distinct meanings, raw-copy and
+immutable-history boundaries. Continue the remaining material and task paths from
+current source; these repairs do not requalify every specialized renderer or wire
+contract.
 
 MCP draft feedback, pending fields, view completion and deterministic import-name collisions are now qualified above. Preserve these boundaries while continuing the remaining recorded-material and management task paths. Imports still submit independent creates: unrelated partial acknowledgements and unknown outcomes need an explicit command/recovery contract before a retry-flow change. Do not treat the local name-validation repair as transactional import or restart its completed native investigation.
 
