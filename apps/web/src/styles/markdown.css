@@ -10,7 +10,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 12px;
+  gap: calc(var(--spacing) * 3);
 }
 .md p.md-media-wide-block {
   width: 100%;
