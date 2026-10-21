@@ -13,7 +13,7 @@ import (
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices/memorycontract"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/memorycontract"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )

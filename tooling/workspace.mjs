@@ -104,7 +104,7 @@ export async function generate(repository = root) {
   run("go", ["generate", "./plugins/..."], repository);
   const memory = join(
     repository,
-    "runtime/internal/adapter/integration/pluginservices/memorycontract",
+    "runtime/internal/adapter/integration/memorycontract",
   );
   run(
     "go",

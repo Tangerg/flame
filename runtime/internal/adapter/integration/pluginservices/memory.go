@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices/memorycontract"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/memorycontract"
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"

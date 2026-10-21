@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/plugins/memory/backend/rpc"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices/memorycontract"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/memorycontract"
 )
 
 func TestPublishedCallerPolicyHasOneSource(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "..", "..", "plugins", "memory", "package", "io.github.tangerg.flame", "contracts", "caller-policy.generated.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "..", "plugins", "memory", "package", "io.github.tangerg.flame", "contracts", "caller-policy.generated.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
