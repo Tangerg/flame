@@ -40,7 +40,7 @@ type blockingRuntime struct {
 }
 
 func (b *blockingRuntime) Discover(context.Context) (*protocol.DiscoverResponse, error) {
-	return &protocol.DiscoverResponse{ProtocolVersion: protocol.ProtocolVersion}, nil
+	return &protocol.DiscoverResponse{ProtocolVersion: protocol.Version}, nil
 }
 
 func (b *blockingRuntime) StartRun(ctx context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {

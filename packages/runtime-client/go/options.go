@@ -46,7 +46,7 @@ func subscriptionOptions(options protocol.SubscriptionOptions) callConfig {
 
 func currentRequestMeta(meta protocol.RequestMeta) protocol.RequestMeta {
 	if meta.ProtocolVersion == "" {
-		meta.ProtocolVersion = protocol.ProtocolVersion
+		meta.ProtocolVersion = protocol.Version
 	}
 	return meta
 }

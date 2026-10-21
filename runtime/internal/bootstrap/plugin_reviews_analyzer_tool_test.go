@@ -84,7 +84,7 @@ func TestInstalledToolEntryReachesDeclaredAnalyzerDependency(t *testing.T) {
 
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Analyzer tool entry"}, "session").(*protocol.Session)
 	options := func(key string) delivery.Options {
-		return delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
+		return delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
 	}
 	invoke := func(method delivery.Name, request any, key string) delivery.Result {
 		t.Helper()

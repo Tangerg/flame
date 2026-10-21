@@ -100,14 +100,14 @@ func (s *skillBindingStub) assertCall(workspace string, meta protocol.RequestMet
 
 func (s *skillBindingStub) assertMeta(meta protocol.RequestMeta) {
 	s.t.Helper()
-	if meta.ProtocolVersion != protocol.ProtocolVersion {
+	if meta.ProtocolVersion != protocol.Version {
 		s.t.Fatalf("skill call meta = %+v", meta)
 	}
 }
 
 func (s *skillBindingStub) assertCommand(action string, options protocol.CommandOptions) {
 	s.t.Helper()
-	if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
+	if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.Version {
 		s.t.Fatalf("skill command options = %+v", options)
 	}
 	s.actions = append(s.actions, action)

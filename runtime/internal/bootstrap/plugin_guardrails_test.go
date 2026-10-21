@@ -61,7 +61,7 @@ func TestGuardrailsInstalledInputRefusesDispatchWithoutRewritingAuthoredHistory(
 	for index, text := range []string{"Public fixture input.", protected} {
 		key := strconv.Itoa(index)
 		session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Guarded work"}, "session-"+key).(*protocol.Session)
-		started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: text}}}, delivery.Options{IdempotencyKey: "start-" + key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: text}}}, delivery.Options{IdempotencyKey: "start-" + key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if started.Failure != nil {
 			t.Fatal(started.Failure)
 		}

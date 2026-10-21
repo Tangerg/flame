@@ -79,7 +79,7 @@ func newBundle(set *schemaSet) bundle {
 	return bundle{
 		Schema:  schemaDialect,
 		Title:   "Flame Runtime Protocol wire types",
-		Version: protocol.ProtocolVersion,
+		Version: protocol.Version,
 		Defs:    set.Definitions(),
 	}
 }

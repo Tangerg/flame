@@ -190,7 +190,7 @@ const acceptedCommandKey = "resume-crash"
 
 func acceptedCommandOptions() delivery.Options {
 	return delivery.Options{IdempotencyKey: acceptedCommandKey, IdempotencyNamespace: testsupport.IdempotencyNamespace,
-		RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
+		RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
 }
 
 func acceptedCommandEndpoint(t *testing.T, api *delivery.Handler, stores *persistence.Bundle) *delivery.Endpoint {

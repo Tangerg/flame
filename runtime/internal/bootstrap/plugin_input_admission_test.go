@@ -46,7 +46,7 @@ func TestReviewTypedInputRefusalPreservesIdentityAcrossExecutableCLI(t *testing.
 				t.Fatalf("typed structural refusal became execution uncertainty: input=%s stdout=%s stderr=%s error=%v", request.Input, output, stderr, err)
 			}
 		}
-		reply := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		reply := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if reply.Value != nil || !errors.Is(reply.Failure, protocol.ErrInvalidParams) {
 			t.Fatalf("Go entrance lost the typed structural refusal: %+v", reply)
 		}

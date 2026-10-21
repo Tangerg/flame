@@ -383,7 +383,7 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 	t.Cleanup(func() { _ = runtime.Close() })
 
 	discovery, err := runtime.Discover(t.Context(), protocol.CallOptions{})
-	if err != nil || discovery.ProtocolVersion != protocol.ProtocolVersion {
+	if err != nil || discovery.ProtocolVersion != protocol.Version {
 		t.Fatalf("Discover = (%+v, %v)", discovery, err)
 	}
 	if discovery.ServerInfo.Name != runtimeidentity.ProductName {

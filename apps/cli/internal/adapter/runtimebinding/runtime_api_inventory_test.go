@@ -171,7 +171,7 @@ func TestDiscoveryAcceptsRuntimeWithoutOptionalPlanCapability(t *testing.T) {
 func compatibleDiscovery() *protocol.DiscoverResponse {
 	maxConcurrentRuns := 4
 	return &protocol.DiscoverResponse{
-		ProtocolVersion: protocol.ProtocolVersion,
+		ProtocolVersion: protocol.Version,
 		ServerInfo: protocol.ServerInfo{
 			Name: "flame-runtime", Version: "test",
 			DefaultWorkspace: protocol.WorkspaceRef{Path: "/workspace"}, Home: "/home/test",

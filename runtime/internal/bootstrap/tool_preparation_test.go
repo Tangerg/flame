@@ -133,7 +133,7 @@ func TestProtocolPreservesToolPreparationFailuresAcrossRestart(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion})
+	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{ProtocolVersion: protocol.Version})
 	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "tool preparation failure",
 	})

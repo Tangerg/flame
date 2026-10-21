@@ -43,7 +43,7 @@ func TestClientPresentationPackagesAdmitComponentsWithoutBackend(t *testing.T) {
 				t.Fatal("resource differs from the admitted release")
 			}
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
-			refused := r.endpoint.Invoke(t.Context(), operation, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+			refused := r.endpoint.Invoke(t.Context(), operation, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 			if !errors.Is(refused.Failure, protocol.ErrPluginDisabled) {
 				t.Fatalf("disabled resource admitted: %v", refused.Failure)
 			}

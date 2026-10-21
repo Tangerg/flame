@@ -50,7 +50,7 @@ func TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalComm
 	installed := installCallContributor(t, r, binary, "stream-drop", trace.URL, contract)
 	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "contributor", Contract: contract.Identity().String(), Method: contract.Descriptor().Methods[0].Name, Input: `{}`, Target: capability.Target{Scope: "installation", Reference: installed.ID}}
 	invoke := func() delivery.Result {
-		return r.endpoint.Invoke(t.Context(), delivery.PluginsStream, request, delivery.Options{IdempotencyKey: "original-stream", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		return r.endpoint.Invoke(t.Context(), delivery.PluginsStream, request, delivery.Options{IdempotencyKey: "original-stream", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	}
 	first := invoke()
 	if first.Failure != nil {
@@ -78,7 +78,7 @@ func TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalComm
 	if chunks != 1 || finals != 0 || failures != 1 || starts.Load() != 1 {
 		t.Fatalf("process exit replayed or completed output: chunks=%d finals=%d failures=%d starts=%d", chunks, finals, failures, starts.Load())
 	}
-	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, delivery.Options{IdempotencyKey: "uninstall-unknown", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, delivery.Options{IdempotencyKey: "uninstall-unknown", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if !errors.Is(refused.Failure, protocol.ErrPluginInUse) {
 		t.Fatalf("unknown original command released its source dependency: %v", refused.Failure)
 	}

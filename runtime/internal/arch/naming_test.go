@@ -11,28 +11,31 @@ import (
 	"testing"
 )
 
-// TestExportedNamesUseTheirPackageQualifier keeps an internal API from saying
-// the same owner twice at every call site (for example, runs.RunEvent). The
-// aggregate itself may share the package name, as in run.Run; only an added
-// exported suffix is redundant because the qualifier already supplies it.
+// TestExportedNamesUseTheirPackageQualifier keeps an exported API from saying
+// the same owner twice at every call site (for example, runs.RunEvent). It covers
+// the public packages as well as internal, so a stutter cannot hide behind the
+// module boundary. The aggregate itself may share the package name, as in run.Run;
+// only an added exported suffix is redundant because the qualifier already
+// supplies it.
 func TestExportedNamesUseTheirPackageQualifier(t *testing.T) {
-	root := filepath.Join(moduleRoot(t), "internal")
+	root := moduleRoot(t)
 	err := walkProductionGoFiles(root, func(path string, file *ast.File) error {
-		prefixes := packageQualifierPrefixes(file.Name.Name)
+		pkg := file.Name.Name
+		prefixes := packageQualifierPrefixes(pkg)
 		for _, declaration := range file.Decls {
 			switch typed := declaration.(type) {
 			case *ast.FuncDecl:
 				if typed.Recv == nil {
-					assertNameUsesQualifier(t, path, prefixes, typed.Name.Name)
+					assertNameUsesQualifier(t, path, pkg, prefixes, typed.Name.Name)
 				}
 			case *ast.GenDecl:
 				for _, specification := range typed.Specs {
 					switch spec := specification.(type) {
 					case *ast.TypeSpec:
-						assertNameUsesQualifier(t, path, prefixes, spec.Name.Name)
+						assertNameUsesQualifier(t, path, pkg, prefixes, spec.Name.Name)
 					case *ast.ValueSpec:
 						for _, name := range spec.Names {
-							assertNameUsesQualifier(t, path, prefixes, name.Name)
+							assertNameUsesQualifier(t, path, pkg, prefixes, name.Name)
 						}
 					}
 				}
@@ -41,8 +44,16 @@ func TestExportedNamesUseTheirPackageQualifier(t *testing.T) {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("walk internal package names: %v", err)
+		t.Fatalf("walk package names: %v", err)
 	}
+}
+
+// acceptedQualifierEchoes names exact value families whose shared suffix is the
+// domain language rather than stutter. model.ModelIdentity is one of the parallel
+// {Provider,Model,ReasoningEffort}Identity trio; renaming it to model.Identity
+// would break that family the same way renaming run.Run would.
+var acceptedQualifierEchoes = map[string]bool{
+	"model.ModelIdentity": true,
 }
 
 func packageQualifierPrefixes(name string) []string {
@@ -63,9 +74,9 @@ func packageQualifierPrefixes(name string) []string {
 	return prefixes
 }
 
-func assertNameUsesQualifier(t *testing.T, path string, prefixes []string, name string) {
+func assertNameUsesQualifier(t *testing.T, path, pkg string, prefixes []string, name string) {
 	t.Helper()
-	if !ast.IsExported(name) {
+	if !ast.IsExported(name) || acceptedQualifierEchoes[pkg+"."+name] {
 		return
 	}
 	for _, prefix := range prefixes {
@@ -73,7 +84,7 @@ func assertNameUsesQualifier(t *testing.T, path string, prefixes []string, name 
 			continue
 		}
 		if ast.IsExported(name[len(prefix):]) {
-			t.Errorf("%s declares %s; package %s already supplies the %s prefix", path, name, filepath.Base(filepath.Dir(path)), prefix)
+			t.Errorf("%s declares %s; package %s already supplies the %s prefix", path, name, pkg, prefix)
 			return
 		}
 	}

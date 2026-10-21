@@ -98,7 +98,7 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 		t.Fatalf("conflicting private receipt became a definite recovery: stdout=%s stderr=%s error=%v", output, stderr, err)
 	}
 	recovered := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{
-		IdempotencyKey: arguments[len(arguments)-1], RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion},
+		IdempotencyKey: arguments[len(arguments)-1], RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
 	})
 	if recovered.Value != nil || recovered.Failure == nil || !errors.Is(recovered.Failure, protocol.ErrInternalError) || recovered.Failure.Problem().Type != protocol.ErrInternalError.Error() {
 		t.Fatalf("Go accepted another input's private receipt: %+v", recovered)

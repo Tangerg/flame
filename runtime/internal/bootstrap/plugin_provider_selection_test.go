@@ -37,7 +37,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 		{Role: "schedules", InstallationID: first.ID, Contribution: "memory-provider"},
 		{Role: "memory", InstallationID: first.ID, Contribution: "another"},
 	} {
-		response := r.endpoint.Invoke(t.Context(), delivery.PluginsSelectProvider, invalid, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		response := r.endpoint.Invoke(t.Context(), delivery.PluginsSelectProvider, invalid, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if response.Failure == nil || !errors.Is(response.Failure, protocol.ErrInvalidParams) {
 			t.Fatalf("invalid role/contribution accepted: %+v, %v", invalid, response.Failure)
 		}
@@ -51,7 +51,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	}
 	choose(first, "choose-first")
 	request := memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "original owner's fact"})
-	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}); result.Failure == nil {
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}); result.Failure == nil {
 		t.Fatal("lost response became confirmed")
 	}
 	if _, err := os.Stat(evidence); err != nil {

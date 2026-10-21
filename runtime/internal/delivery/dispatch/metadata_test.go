@@ -50,14 +50,14 @@ func TestExtractRequestMetaStripsTransportMember(t *testing.T) {
 				}
 			},
 			"runId": "run_1"
-		}`, protocol.ProtocolVersion)),
+		}`, protocol.Version)),
 	}
 
 	meta, rpcErr := extractRequestMeta(req)
 	if rpcErr != nil {
 		t.Fatalf("extractRequestMeta error = %v", rpcErr)
 	}
-	if meta.ProtocolVersion != protocol.ProtocolVersion {
+	if meta.ProtocolVersion != protocol.Version {
 		t.Fatalf("protocolVersion = %q", meta.ProtocolVersion)
 	}
 	if meta.ClientInfo == nil || meta.ClientInfo.Name != "cli" {
@@ -136,7 +136,7 @@ func TestDispatchRejectsUnsupportedProtocolVersion(t *testing.T) {
 			if problem.Type != protocol.ErrInvalidProtocolVersion.Error() {
 				t.Errorf("problem type = %q, want %q", problem.Type, protocol.ErrInvalidProtocolVersion.Error())
 			}
-			if !strings.Contains(problem.Detail, protocol.ProtocolVersion) {
+			if !strings.Contains(problem.Detail, protocol.Version) {
 				t.Errorf("detail %q does not say which version this build serves", problem.Detail)
 			}
 		})
@@ -147,7 +147,7 @@ func TestDispatchDoesNotMutateCallerRequestWhenStrippingMeta(t *testing.T) {
 	req := &transport.Request{
 		ID:     testID("1"),
 		Method: "unknown.method",
-		Params: jsontext.Value(fmt.Sprintf(`{"_meta":{"protocolVersion":%q},"value":1}`, protocol.ProtocolVersion)),
+		Params: jsontext.Value(fmt.Sprintf(`{"_meta":{"protocolVersion":%q},"value":1}`, protocol.Version)),
 	}
 	original := string(req.Params)
 	newTestRouter(t, nil).Dispatch(context.Background(), req)

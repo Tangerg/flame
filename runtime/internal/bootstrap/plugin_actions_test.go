@@ -27,7 +27,7 @@ func TestSessionActionUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T)
 	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: "rename-session"}, Path: "io.github.tangerg.flame/components/component.js"}
 	resourceRefused := func() {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, resource, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		result := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, resource, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if !errors.Is(result.Failure, protocol.ErrPluginDisabled) {
 			t.Fatalf("action resource after withdrawal: %v", result.Failure)
 		}
@@ -37,7 +37,7 @@ func TestSessionActionUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T)
 	r.must(delivery.PluginsReadResource, resource, "")
 	refused := func(in protocol.UpdateSessionRequest, key string, want error) {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), delivery.SessionsUpdate, in, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}, IdempotencyKey: key})
+		result := r.endpoint.Invoke(t.Context(), delivery.SessionsUpdate, in, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}, IdempotencyKey: key})
 		if !errors.Is(result.Failure, want) {
 			t.Fatalf("refusal: %v, want %v", result.Failure, want)
 		}

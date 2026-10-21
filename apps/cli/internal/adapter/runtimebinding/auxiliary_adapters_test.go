@@ -241,7 +241,7 @@ func assertWorkspaceQuery(t *testing.T, request protocol.WorkspaceQuery, options
 
 func assertCallMeta(t *testing.T, meta protocol.RequestMeta) {
 	t.Helper()
-	if meta.ProtocolVersion != protocol.ProtocolVersion {
+	if meta.ProtocolVersion != protocol.Version {
 		t.Fatalf("request meta = %+v", meta)
 	}
 }

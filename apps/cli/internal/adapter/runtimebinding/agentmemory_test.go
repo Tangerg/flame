@@ -194,7 +194,7 @@ func (a *agentMemoryBindingStub) item(id string, scope memory.Scope, content str
 
 func (a *agentMemoryBindingStub) assertMeta(meta protocol.RequestMeta) {
 	a.t.Helper()
-	if meta.ProtocolVersion != protocol.ProtocolVersion {
+	if meta.ProtocolVersion != protocol.Version {
 		a.t.Fatalf("request meta = %+v", meta)
 	}
 }

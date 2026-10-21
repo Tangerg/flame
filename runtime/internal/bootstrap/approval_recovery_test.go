@@ -92,7 +92,7 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 				}
 			})
 			ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
-				ProtocolVersion:    protocol.ProtocolVersion,
+				ProtocolVersion:    protocol.Version,
 				ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}},
 			})
 			session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
@@ -231,7 +231,7 @@ func TestProtocolRemembersEditedApprovalAfterWaitingRestart(t *testing.T) {
 		})
 	})}
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
-		ProtocolVersion:    protocol.ProtocolVersion,
+		ProtocolVersion:    protocol.Version,
 		ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}},
 	})
 	first, api := openProtocolRuntime(t, model)

@@ -209,7 +209,7 @@ func requestMeta(version string) protocol.RequestMeta {
 		version = "dev"
 	}
 	return protocol.RequestMeta{
-		ProtocolVersion: protocol.ProtocolVersion,
+		ProtocolVersion: protocol.Version,
 		ClientInfo:      &protocol.ClientInfo{Name: clientName, Version: version},
 		ClientCapabilities: &protocol.ClientCapabilities{
 			Features: map[string]protocol.FeaturePreference{
@@ -292,12 +292,12 @@ func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 	if discovery == nil {
 		return fmt.Errorf("%w: discovery response is nil", conversation.ErrIncompatibleRuntime)
 	}
-	if discovery.ProtocolVersion != protocol.ProtocolVersion {
+	if discovery.ProtocolVersion != protocol.Version {
 		return fmt.Errorf(
 			"%w: runtime serves %s, CLI requires %s",
 			conversation.ErrIncompatibleRuntime,
 			discovery.ProtocolVersion,
-			protocol.ProtocolVersion,
+			protocol.Version,
 		)
 	}
 	if discovery.Capabilities.Limits.RunReplay.Scope != protocol.ReplayScopeRuntimeInstanceRootSegment {

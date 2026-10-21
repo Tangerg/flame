@@ -101,7 +101,7 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 			t.Fatalf("changed input reached business execution or uncertainty: stdout=%s stderr=%s error=%v", output, stderr, err)
 		}
 	}
-	refused := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	refused := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if refused.Value != nil || refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrIdempotencyConflict) || refused.Failure.Problem().Type != protocol.ErrIdempotencyConflict.Error() {
 		t.Fatalf("Go and CLI entrances disagree about the original binding: %+v", refused)
 	}

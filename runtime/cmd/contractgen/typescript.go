@@ -268,7 +268,7 @@ func (t *tsEmitter) header() {
 // makes "the client sends what this build serves" true by construction.
 func (t *tsEmitter) protocolVersion() {
 	t.line("// The wire version this runtime serves; a client states it in request metadata.")
-	t.line("export const PROTOCOL_VERSION = %s;", strconv.Quote(protocol.ProtocolVersion))
+	t.line("export const PROTOCOL_VERSION = %s;", strconv.Quote(protocol.Version))
 	t.line("")
 	t.line("// The only Session Artifact version this runtime imports or exports.")
 	t.line("export const SESSION_ARTIFACT_VERSION = %d;", protocol.SessionArtifactVersion)

@@ -261,8 +261,8 @@ func TestProtocolVersionAgreesEverywhere(t *testing.T) {
 	if unmarshalErr := json.Unmarshal(raw, &manifest); unmarshalErr != nil {
 		t.Fatalf("decode manifest: %v", unmarshalErr)
 	}
-	if manifest.ProtocolVersion != protocol.ProtocolVersion {
-		t.Errorf("manifest protocol %q != code %q", manifest.ProtocolVersion, protocol.ProtocolVersion)
+	if manifest.ProtocolVersion != protocol.Version {
+		t.Errorf("manifest protocol %q != code %q", manifest.ProtocolVersion, protocol.Version)
 	}
 
 	// Canonical samples are another published statement. A client copies them
@@ -288,7 +288,7 @@ func TestProtocolVersionAgreesEverywhere(t *testing.T) {
 		}
 		for _, version := range collectProtocolVersions(decoded) {
 			stated++
-			if version != protocol.ProtocolVersion {
+			if version != protocol.Version {
 				t.Errorf("canonical sample %s states protocol version %q, which this build does not serve",
 					filepath.Base(path), version)
 			}
@@ -494,8 +494,8 @@ func TestOpenRPCDescribesEveryMethod(t *testing.T) {
 	if document.OpenRPC == "" {
 		t.Error("openrpc.json states no spec version")
 	}
-	if document.Info.Version != protocol.ProtocolVersion {
-		t.Errorf("openrpc.json is version %q, the code serves %q", document.Info.Version, protocol.ProtocolVersion)
+	if document.Info.Version != protocol.Version {
+		t.Errorf("openrpc.json is version %q, the code serves %q", document.Info.Version, protocol.Version)
 	}
 
 	var manifest struct {

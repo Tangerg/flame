@@ -98,7 +98,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 		if request.Provider != "deepseek" || request.Model != "deepseek-reasoner" || request.ReasoningEffort != "high" {
 			t.Fatalf("start model selection = %+v", request)
 		}
-		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion ||
+		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.Version ||
 			options.RequestMeta.ClientInfo == nil || options.RequestMeta.ClientInfo.Name != clientName {
 			t.Fatalf("start options = %+v", options)
 		}
@@ -648,7 +648,7 @@ func TestSteerRunBindsStructuredInputToTheObservedSegment(t *testing.T) {
 		if request.RunID != "run_1" || request.ExpectedSegmentID != "seg_2" || len(request.Input) != 1 || request.Input[0].Text != "focus on the parser" {
 			t.Fatalf("steer request = %+v", request)
 		}
-		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
+		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.Version {
 			t.Fatalf("steer options = %+v", options)
 		}
 		return nil, protocol.ErrStaleSegment

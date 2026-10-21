@@ -146,7 +146,7 @@ func (m *mcpBindingStub) GetMCPAuthorizationAttempt(_ context.Context, request p
 
 func (m *mcpBindingStub) assertMeta(meta protocol.RequestMeta) {
 	m.t.Helper()
-	if meta.ProtocolVersion != protocol.ProtocolVersion {
+	if meta.ProtocolVersion != protocol.Version {
 		m.t.Fatalf("MCP request meta = %+v", meta)
 	}
 }

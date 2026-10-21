@@ -6,7 +6,7 @@ import "github.com/Tangerg/flame/runtime/protocol"
 // customize advertised facts before negotiating them through the real adapter.
 func Discovery() *protocol.DiscoverResponse {
 	return &protocol.DiscoverResponse{
-		ProtocolVersion: protocol.ProtocolVersion,
+		ProtocolVersion: protocol.Version,
 		ServerInfo: protocol.ServerInfo{
 			InstanceID: "runtime_01234567-89ab-4cde-8f01-23456789abcd", Name: "flame-runtime", Version: "1.2.3",
 			DefaultWorkspace: protocol.WorkspaceRef{Path: "/workspace"}, Home: "/home/test",

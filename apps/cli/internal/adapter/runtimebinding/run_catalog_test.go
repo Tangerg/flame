@@ -36,7 +36,7 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 	}
 	stub := runCatalogBindingStub{
 		get: func(_ context.Context, request protocol.GetRunRequest, options protocol.CallOptions) (*protocol.RunRef, error) {
-			if request.RunID != wantRun.ID || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
+			if request.RunID != wantRun.ID || options.RequestMeta.ProtocolVersion != protocol.Version {
 				t.Fatalf("get = (%+v, %+v)", request, options)
 			}
 			return &wantRun, nil
@@ -44,7 +44,7 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 		list: func(_ context.Context, request protocol.ListRunsRequest, options protocol.CallOptions) (*protocol.Page[protocol.RunRef], error) {
 			if request.SessionID != "ses_1" || len(request.Statuses) != 1 || request.Statuses[0] != protocol.RunStatusFinished ||
 				!request.IncludeDescendants || request.Cursor != "opaque" || request.Limit == nil || *request.Limit != conversation.MaximumPageRows ||
-				options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
+				options.RequestMeta.ProtocolVersion != protocol.Version {
 				t.Fatalf("list = (%+v, %+v)", request, options)
 			}
 			return protocol.NewPageWithCursor([]protocol.RunRef{wantRun}, "next"), nil

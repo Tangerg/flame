@@ -137,7 +137,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	}
 	r.must(delivery.PluginsSetComposition, protocol.SetPluginCompositionRequest{Contract: contextContract.Identity().String(), Members: []protocol.PluginCompositionMember{{InstallationID: installed.ID, Contribution: "knowledgebase-context"}}}, "select-knowledge-context")
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "knowledge"}, "knowledge-session").(*protocol.Session)
-	run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Find the apple guide."}}}, delivery.Options{IdempotencyKey: "knowledge-run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Find the apple guide."}}}, delivery.Options{IdempotencyKey: "knowledge-run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if run.Failure != nil {
 		t.Fatal(run.Failure)
 	}

@@ -85,7 +85,7 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 		t.Fatalf("installed native callback failed: %+v %+v %v", typed, result, err)
 	}
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Native scratch work"}, "sandbox-session").(*protocol.Session)
-	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Execute the native sandbox fixture."}}}, delivery.Options{IdempotencyKey: "sandbox-run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Execute the native sandbox fixture."}}}, delivery.Options{IdempotencyKey: "sandbox-run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
 	}

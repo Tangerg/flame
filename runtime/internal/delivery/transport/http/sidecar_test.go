@@ -58,7 +58,7 @@ func TestInfoIsMinimalAndTyped(t *testing.T) {
 	if err := json.UnmarshalRead(resp.Body, &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if body.ProtocolVersion != protocol.ProtocolVersion {
+	if body.ProtocolVersion != protocol.Version {
 		t.Fatalf("protocolVersion = %q", body.ProtocolVersion)
 	}
 	if body.Server.Name != "flame-test" || body.Server.Version != "0.0.0" || body.Server.InstanceID != testRuntimeInstanceID {

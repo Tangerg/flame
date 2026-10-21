@@ -42,7 +42,7 @@ func memoryQueryResult(r *poMCPRuntime, input memoryrpc.ListInput) delivery.Resu
 	if err != nil {
 		return delivery.Result{Failure: protocol.NewFailure(err, err.Error())}
 	}
-	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 }
 func readMemoryPage(r *poMCPRuntime, input memoryrpc.ListInput) *protocol.Page[memorydomain.ItemSnapshot] {
 	r.t.Helper()

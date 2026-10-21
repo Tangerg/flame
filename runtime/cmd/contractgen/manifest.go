@@ -202,7 +202,7 @@ func build(walked *schemaSet) (manifest, error) {
 	registry := delivery.Contract()
 	shapes := dispatch.WireShapes()
 	return manifest{
-		ProtocolVersion:     protocol.ProtocolVersion,
+		ProtocolVersion:     protocol.Version,
 		Features:            protocol.FeatureKeys(),
 		Methods:             methods(registry),
 		Notifications:       notificationNames(shapes),

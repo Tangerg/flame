@@ -263,10 +263,10 @@ func validateOptions(method MethodMeta, options Options) *protocol.Failure {
 		return protocol.InvalidParameters(err)
 	}
 	version := options.RequestMeta.ProtocolVersion
-	if version != "" && version != protocol.ProtocolVersion {
+	if version != "" && version != protocol.Version {
 		return protocol.NewFailure(
 			protocol.ErrInvalidProtocolVersion,
-			fmt.Sprintf("protocolVersion %q is unsupported; expected %q", version, protocol.ProtocolVersion),
+			fmt.Sprintf("protocolVersion %q is unsupported; expected %q", version, protocol.Version),
 		)
 	}
 	if options.IdempotencyKey != "" && !method.Idempotency.Replays() {

@@ -66,7 +66,7 @@ func TestManagedMemoryToolUsesCapturedWorkspaceWithoutAnEmbeddingRole(t *testing
 		t.Fatal("human-created fact was not active")
 	}
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Recall prepared Memory", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "memory-session").(*protocol.Session)
-	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Recall the prepared memory fact."}}}, delivery.Options{IdempotencyKey: "memory-recall-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Recall the prepared memory fact."}}}, delivery.Options{IdempotencyKey: "memory-recall-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
 	}

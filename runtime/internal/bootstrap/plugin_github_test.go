@@ -106,7 +106,7 @@ func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *t
 		t.Fatalf("typed read bypassed resource admission: %+v", typed)
 	}
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "GitHub read"}, "github-session").(*protocol.Session)
-	run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Inspect the requested issue."}}}, delivery.Options{IdempotencyKey: "github-run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Inspect the requested issue."}}}, delivery.Options{IdempotencyKey: "github-run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if run.Failure != nil {
 		t.Fatal(run.Failure)
 	}

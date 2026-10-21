@@ -4532,11 +4532,6 @@
           "value": "\"tool_failed\""
         },
         {
-          "name": "ProtocolVersion",
-          "type": "untyped string",
-          "value": "\"2026-10-16.2\""
-        },
-        {
           "name": "ProviderAPIKeyOptional",
           "type": "ProviderCredentialRequirement",
           "value": "\"apiKeyOptional\""
@@ -5090,6 +5085,11 @@
           "name": "TrajectoryEntryRun",
           "type": "TrajectoryEntryType",
           "value": "\"run\""
+        },
+        {
+          "name": "Version",
+          "type": "untyped string",
+          "value": "\"2026-10-16.2\""
         },
         {
           "name": "WorkspaceAvailable",

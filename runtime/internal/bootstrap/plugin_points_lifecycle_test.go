@@ -97,7 +97,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	if _, found, err := cfg.Stores.PluginCommands.Get(t.Context(), operation.Identity(calling)); err != nil || found {
 		t.Fatalf("unavailable activation admitted a command route: found=%t, %v", found, err)
 	}
-	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, mutation, delivery.Options{IdempotencyKey: "withdrawn-provider-update", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, mutation, delivery.Options{IdempotencyKey: "withdrawn-provider-update", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("delivery turned a pre-admission refusal into uncertainty: %v", refused.Failure)
 	}
@@ -107,7 +107,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	// New point values cannot grant authority absent from the original setup.
 	second := activate(analyzerSource, "second-analyzer")
 	wait(second, "analyzer")
-	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if result.Failure == nil {
 		t.Fatal("current point values bypassed the consumer's frozen collaborators")
 	}
@@ -118,7 +118,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	wait(other, "reviews")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: consumer.ID}, "disable-consumer")
 	point := protocol.ResolvePluginPointRequest{Contract: consumer.Selected.Points[0].Contract, Target: request.Target, Attributes: `{"reviewStatus":"open"}`, Order: []protocol.PluginPointReference{}}
-	result = r.endpoint.Invoke(t.Context(), delivery.PluginsResolvePoint, point, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	result = r.endpoint.Invoke(t.Context(), delivery.PluginsResolvePoint, point, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("disabled consumer borrowed another installation's declaration: %v", result.Failure)
 	}

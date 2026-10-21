@@ -23,7 +23,7 @@ func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	request := memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "must not be silently resubmitted"})
 	invoke := func() *protocol.Failure {
-		return r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}).Failure
+		return r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}).Failure
 	}
 	if failure := invoke(); failure == nil {
 		t.Fatal("lost request appeared successful")
@@ -94,7 +94,7 @@ func TestObservedCommandNeverRetargetsToReplacementProvider(t *testing.T) {
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: second.ID, Contribution: "memory-provider"}, "replacement-provider")
 	r = reopenCommandRuntime(t, r, &cfg)
 	r.poMCPTools(server(second.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	replay := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "original-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	replay := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "original-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if replay.Failure == nil || !errors.Is(replay.Failure, protocol.ErrInternalError) {
 		t.Fatalf("old identity adopted replacement provider: %v", replay.Failure)
 	}

@@ -25,7 +25,7 @@ type fakeRuntime struct {
 
 func (f *fakeRuntime) Discover(context.Context) (*protocol.DiscoverResponse, error) {
 	return &protocol.DiscoverResponse{
-		ProtocolVersion: protocol.ProtocolVersion,
+		ProtocolVersion: protocol.Version,
 		ServerInfo: protocol.ServerInfo{
 			Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID,
 			DefaultWorkspace: protocol.WorkspaceRef{Path: "/workspace"}, Home: "/home",

@@ -102,7 +102,7 @@ func newOpenRPC(registry *delivery.Registry, shapes *dispatch.Shapes, set *schem
 		OpenRPC: openrpcVersion,
 		Info: openrpcInfo{
 			Title:       "Flame Runtime Protocol",
-			Version:     protocol.ProtocolVersion,
+			Version:     protocol.Version,
 			Description: "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface.",
 		},
 	}

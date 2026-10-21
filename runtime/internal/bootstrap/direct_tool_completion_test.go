@@ -109,7 +109,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 				t.Fatal(err)
 			}
 			ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
-				ProtocolVersion:    protocol.ProtocolVersion,
+				ProtocolVersion:    protocol.Version,
 				ClientCapabilities: &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}}},
 			})
 			session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{Title: "direct completion", Workspace: &protocol.WorkspaceRef{Path: home}})

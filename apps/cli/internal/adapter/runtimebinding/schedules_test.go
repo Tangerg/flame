@@ -173,7 +173,7 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 
 func (s *scheduleBindingStub) assertMeta(meta protocol.RequestMeta) {
 	s.t.Helper()
-	if meta.ProtocolVersion != protocol.ProtocolVersion {
+	if meta.ProtocolVersion != protocol.Version {
 		s.t.Fatalf("schedule request meta = %+v", meta)
 	}
 }

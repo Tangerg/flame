@@ -79,7 +79,7 @@ func TestInstalledModelDecoratorsObserveFrozenBeforeAfterOrder(t *testing.T) {
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "remote order"}, "session").(*protocol.Session)
 	start := func(key string) <-chan error {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: key}}}, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		result := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: key}}}, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if result.Failure != nil {
 			t.Fatal(result.Failure)
 		}

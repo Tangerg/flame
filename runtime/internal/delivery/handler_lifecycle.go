@@ -10,7 +10,7 @@ import (
 // lifecycle transition; business methods can run without calling it first.
 func (s *Handler) Discover(_ context.Context) (*protocol.DiscoverResponse, error) {
 	return &protocol.DiscoverResponse{
-		ProtocolVersion: protocol.ProtocolVersion,
+		ProtocolVersion: protocol.Version,
 		ServerInfo:      s.serverInfo,
 		Capabilities:    s.capabilities(),
 	}, nil

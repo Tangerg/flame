@@ -63,7 +63,7 @@ func TestScheduleModelToolCommitsToBackendAndInvalidatesHumanReads(t *testing.T)
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	subscription := r.endpoint.Invoke(ctx, delivery.RuntimeSubscribe, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicPluginDataChanged}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	subscription := r.endpoint.Invoke(ctx, delivery.RuntimeSubscribe, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicPluginDataChanged}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if subscription.Failure != nil {
 		t.Fatal(subscription.Failure)
 	}
@@ -82,7 +82,7 @@ func TestScheduleModelToolCommitsToBackendAndInvalidatesHumanReads(t *testing.T)
 		changed <- errors.New("schedule subscription ended before invalidation")
 	}()
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Schedule from model"}, "session").(*protocol.Session)
-	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Create a recurring progress inspection."}}}, delivery.Options{IdempotencyKey: "schedule-tool-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Create a recurring progress inspection."}}}, delivery.Options{IdempotencyKey: "schedule-tool-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
 	}
@@ -120,7 +120,7 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 	fact := mustMemoryAdd(r, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "owned fact"}), "fact")
 	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "second-install").(*protocol.PluginInstallation)
 	invoke := func(method delivery.Name, input any, key string) delivery.Result {
-		return r.endpoint.Invoke(t.Context(), method, input, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		return r.endpoint.Invoke(t.Context(), method, input, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	}
 	enabled := invoke(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: second.ID, Enabled: true}, "second-enable")
 	if enabled.Failure != nil || !enabled.Value.(*protocol.PluginInstallation).Enabled {
@@ -205,7 +205,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	changed := managedServiceChange(t, r, protocol.TopicPluginDataChanged)
 	request := memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "committed before transport loss"})
-	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
 		t.Fatal("withheld reply appeared successful")
 	}
@@ -245,7 +245,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 		t.Fatalf("restart changed original contract: %t, %v", found, err)
 	}
 	assertUnresolvedInstallationIsHeld(t, r, installed)
-	pending := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	pending := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if pending.Failure == nil || !errors.Is(pending.Failure, protocol.ErrInternalError) {
 		t.Fatalf("disabled original command became a definite result: %v", pending.Failure)
 	}
@@ -272,13 +272,13 @@ func assertUnresolvedInstallationIsHeld(t *testing.T, r *poMCPRuntime, installed
 		{delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}},
 		{delivery.PluginsConfigure, protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}},
 	} {
-		result := r.endpoint.Invoke(t.Context(), action.method, action.input, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		result := r.endpoint.Invoke(t.Context(), action.method, action.input, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if !errors.Is(result.Failure, protocol.ErrPluginInUse) {
 			t.Fatalf("unresolved command did not pin its installation for %s: %v", action.method, result.Failure)
 		}
 	}
 	if installed.Staged != nil {
-		result := r.endpoint.Invoke(t.Context(), delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Staged.Digest}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		result := r.endpoint.Invoke(t.Context(), delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Staged.Digest}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if !errors.Is(result.Failure, protocol.ErrPluginInUse) {
 			t.Fatalf("unresolved command did not pin its release: %v", result.Failure)
 		}
@@ -310,7 +310,7 @@ func managedServiceChange(t *testing.T, r *poMCPRuntime, topic protocol.RuntimeT
 	t.Helper()
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
-	subscription := r.endpoint.Invoke(ctx, delivery.RuntimeSubscribe, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{topic}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	subscription := r.endpoint.Invoke(ctx, delivery.RuntimeSubscribe, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{topic}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if subscription.Failure != nil {
 		t.Fatal(subscription.Failure)
 	}
@@ -353,7 +353,7 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	r.poMCPTools(server, ready)
 	changed := managedServiceChange(t, r, protocol.TopicPluginDataChanged)
 	request := scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "captured schedule", Instructions: "inspect captured work", Cron: "0 0 1 1 *", CWD: cfg.DefaultWorkspacePath})
-	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-create", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-create", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
 		t.Fatal("withheld create reply appeared successful")
 	}
@@ -395,7 +395,7 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 	r.poMCPTools(server, ready)
 	saved := readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", CWD: cfg.DefaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
-	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
 		t.Fatal("withheld manual result appeared successful")
 	}
@@ -460,7 +460,7 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 	r.poMCPTools(&server, ready)
 	saved := readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", CWD: cfg.DefaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
-	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
 		t.Fatal("withheld manual reply appeared successful")
 	}
@@ -492,7 +492,7 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 	t.Cleanup(func() { cancelWorkers(); <-joins.recovery })
 	deadline := time.Now().Add(lifecycleWaitBudget(t))
 	for {
-		result := r.endpoint.Invoke(t.Context(), delivery.RunsGet, protocol.GetRunRequest{RunID: pending.RunID}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		result := r.endpoint.Invoke(t.Context(), delivery.RunsGet, protocol.GetRunRequest{RunID: pending.RunID}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if result.Failure == nil {
 			break
 		}
@@ -539,7 +539,7 @@ func TestScheduleRunNowMissingReceiptRetainsUncertaintyWithoutCreatingRun(t *tes
 	r.poMCPTools(server, ready)
 	saved := readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "captured", Instructions: "inspect", Cron: "0 0 1 1 *"}), "create")
 	request := scheduleRunRequest(r, saved.ID)
-	options := delivery.Options{IdempotencyKey: "missing-receipt", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}
+	options := delivery.Options{IdempotencyKey: "missing-receipt", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	if outcome := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); outcome.Failure == nil {
 		t.Fatal("withheld manual request appeared successful")
 	}

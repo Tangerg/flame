@@ -52,7 +52,7 @@ func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 		if request.SessionID != "ses_1" || request.ToRunID != "run_1" || request.RestoreType != protocol.RestoreBoth {
 			t.Fatalf("rollback request = %+v", request)
 		}
-		if options.IdempotencyKey != string(commandID) || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
+		if options.IdempotencyKey != string(commandID) || options.RequestMeta.ProtocolVersion != protocol.Version {
 			t.Fatalf("rollback options = %+v", options)
 		}
 		return &protocol.RollbackSessionResponse{

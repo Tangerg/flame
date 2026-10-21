@@ -29,7 +29,7 @@ func TestUsageAdapterProjectsSessionAndSummaryReports(t *testing.T) {
 	cost := 0.25
 	stub := usageBindingStub{
 		session: func(_ context.Context, request protocol.SessionUsageRequest, options protocol.CallOptions) (*protocol.SessionUsage, error) {
-			if request.SessionID != "ses_1" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
+			if request.SessionID != "ses_1" || options.RequestMeta.ProtocolVersion != protocol.Version {
 				t.Fatalf("session usage request = %+v, options = %+v", request, options)
 			}
 			return &protocol.SessionUsage{
@@ -251,7 +251,7 @@ func TestModelConfigurationAdapterPreservesRoleAndSecretMutationSemantics(t *tes
 		}},
 	}
 	assertCommand := func(options protocol.CommandOptions) {
-		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
+		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.Version {
 			t.Fatalf("command options = %+v", options)
 		}
 	}

@@ -126,7 +126,7 @@ func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
 	host.Type("/status")
 	host.Press(input.Enter)
 	for _, want := range []string{
-		"flame-runtime 1.2.3", "protocol: " + protocol.ProtocolVersion, "default workspace: /workspace", "available features: mcp",
+		"flame-runtime 1.2.3", "protocol: " + protocol.Version, "default workspace: /workspace", "available features: mcp",
 		"run concurrency: at most 4 runs", "run replay: 1024 events / 1 MiB", "command replay retention: 10m",
 		"runtime subscriptions: 16 topics / 32 watches", "7 run events / 1 topics / 3 streaming methods",
 	} {

@@ -62,7 +62,7 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 	if err != nil || string(body) != string(authored) {
 		t.Fatalf("skills component bytes: %v", err)
 	}
-	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}}
+	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	refuse := func(method delivery.Name, input any, want error) {
 		t.Helper()
 		if result := r.endpoint.Invoke(t.Context(), method, input, options); !errors.Is(result.Failure, want) {

@@ -88,7 +88,7 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	r.poMCPTools(server, ready)
 	saved := readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", CWD: cfg.DefaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
-	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-core", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-core", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
 		t.Fatal("lost Core acknowledgement became private success")
 	}

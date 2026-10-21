@@ -33,7 +33,7 @@ type RuntimeInfo struct {
 
 func newInfoResponse(server protocol.ServerInfo) RuntimeInfo {
 	return RuntimeInfo{
-		ProtocolVersion: protocol.ProtocolVersion,
+		ProtocolVersion: protocol.Version,
 		Server: RuntimeServerInfo{
 			InstanceID: server.InstanceID,
 			Name:       server.Name,
