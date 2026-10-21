@@ -9,10 +9,9 @@ import { selectAgentSession } from "@/features/agent/public/session";
 import { useAgentSessions } from "@/features/agent/public/session";
 import { matchSessions } from "@/features/navigation/session-search/application/sessionMatches";
 import { useSessionSearchStore } from "@/features/navigation/session-search/application/sessionSearchState";
-import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { color, type as typeStep } from "@flame/ui/tokens.stylex";
 const cmd = stylex.create({
   glyph: { flexShrink: 0, color: color.fgMuted },
-  glyphSlot: { height: "var(--icon-sm)", width: "var(--icon-sm)", flexShrink: 0 },
   label: {
     minWidth: 0,
     flex: 1,
@@ -20,7 +19,6 @@ const cmd = stylex.create({
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  keys: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1 },
   stamp: { flexShrink: 0, color: color.fgFaint },
 });
 

@@ -11,7 +11,6 @@ import { useForkSession } from "@/features/agent/public/session";
 import { useRenameSession } from "@/features/agent/public/session";
 import { useToggleFavorite } from "@/features/agent/public/session";
 import { focusComposer } from "@/features/composer/public/focus";
-import { showWorkspaceDock } from "@/features/workspace/public/navigation";
 import { openSettingsView } from "@/features/workspace/public/deeplinks";
 import {
   runtimeCommandsAvailable,
@@ -29,7 +28,6 @@ export interface WorkIndexActions {
   forkSession: (id: string) => void;
   deleteSession: (id: string) => void;
   toggleFavorite: (id: string, expectedRevision: number, favorite: boolean) => void;
-  openContextDock: () => void;
   openSettings: () => void;
 }
 
@@ -90,7 +88,6 @@ export function useWorkIndexActions(): WorkIndexActions {
       toggleFavorite: (id, expectedRevision, favorite) => {
         void toggleFavorite(id, expectedRevision, favorite);
       },
-      openContextDock: showWorkspaceDock,
       openSettings: () => {
         openSettingsView();
       },

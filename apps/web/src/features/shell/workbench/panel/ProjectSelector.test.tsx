@@ -26,7 +26,6 @@ const mocks = vi.hoisted(() => ({
     forkSession: vi.fn(),
     deleteSession: vi.fn(),
     toggleFavorite: vi.fn(),
-    openContextDock: vi.fn(),
     openSettings: vi.fn(),
   },
 }));

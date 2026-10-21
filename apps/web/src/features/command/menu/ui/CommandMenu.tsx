@@ -32,7 +32,6 @@ const cmd = stylex.create({
     whiteSpace: "nowrap",
   },
   keys: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1 },
-  stamp: { flexShrink: 0, color: color.fgFaint },
 });
 
 export function CommandMenu() {
