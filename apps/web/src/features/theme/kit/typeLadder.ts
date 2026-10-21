@@ -18,8 +18,8 @@ const STEPS: Readonly<
   "ui-md": { ratio: 1, floorPx: UI_FONT_SIZE_MIN_PX },
   prose: { ratio: 1.143, floorPx: 0 },
   code: { ratio: 0.857, floorPx: 10 },
-  "display-sm": { aboveProse: true, ratio: 1.143, floorPx: 0 },
-  "display-md": { aboveProse: true, ratio: 1.286, floorPx: 0 },
+  "display-sm": { aboveProse: true, ratio: 1.286, floorPx: 0 },
+  "display-md": { aboveProse: true, ratio: 1.429, floorPx: 0 },
   "display-lg": { aboveProse: true, ratio: 1.714, floorPx: 0 },
 };
 

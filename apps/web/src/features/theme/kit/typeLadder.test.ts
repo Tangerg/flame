@@ -14,8 +14,8 @@ describe("uiTypeLadder", () => {
       "ui-md": 14,
       prose: 16,
       code: 12,
-      "display-sm": 17,
-      "display-md": 18,
+      "display-sm": 18,
+      "display-md": 20,
       "display-lg": 24,
     });
   });
@@ -64,8 +64,8 @@ describe("uiTypeLadderCssVariables", () => {
       "--fs-ui-md": "14px",
       "--fs-prose": "16px",
       "--fs-code": "12px",
-      "--fs-display-sm": "17px",
-      "--fs-display-md": "18px",
+      "--fs-display-sm": "18px",
+      "--fs-display-md": "20px",
       "--fs-display-lg": "24px",
     });
   });

@@ -53,7 +53,6 @@
   --color-negative-edge: color-mix(in srgb, var(--tone-negative) 38%, transparent);
   --text-ui-2xs--letter-spacing: 0;
   --text-code--letter-spacing: 0;
-  --text-display-md--line-height: 1.2;
   --animate-sweep: flame-sweep calc(1300ms * var(--motion-scale)) linear infinite;
   --animate-shimmer: flame-shimmer calc(4000ms * var(--motion-scale)) linear infinite;
   --animate-pulse-dot: flame-pulse calc(1600ms * var(--motion-scale)) ease-in-out infinite;
@@ -189,8 +188,8 @@
   --fs-prose: 16px;
   --fs-code: 12px;
 
-  --fs-display-sm: 17px;
-  --fs-display-md: 18px;
+  --fs-display-sm: 18px;
+  --fs-display-md: 20px;
   --fs-display-lg: 24px;
 
   --icon-xs: 12px;

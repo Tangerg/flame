@@ -147,12 +147,13 @@ export const type = stylex.create({
   uiMd: { fontSize: "var(--fs-ui-md)", letterSpacing: "var(--tracking-ui)" },
   displaySm: {
     fontSize: "var(--fs-display-sm)",
-    letterSpacing: "var(--tracking-ui)",
+    letterSpacing: "var(--tracking-display)",
+    lineHeight: "var(--leading-snug)",
   },
   displayMd: {
     fontSize: "var(--fs-display-md)",
     letterSpacing: "var(--tracking-display)",
-    lineHeight: "var(--text-display-md--line-height)",
+    lineHeight: "var(--leading-snug)",
   },
   displayLg: {
     fontSize: "var(--fs-display-lg)",
