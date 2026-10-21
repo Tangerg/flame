@@ -1509,6 +1509,27 @@
         "output"
       ]
     },
+    "ComponentPlacement": {
+      "type": "string",
+      "enum": [
+        "export",
+        "workspaceView",
+        "sessionAction",
+        "fileRenderer",
+        "toolResultRenderer"
+      ]
+    },
+    "ComponentScope": {
+      "type": "string",
+      "enum": [
+        "installation",
+        "workspace",
+        "session",
+        "client",
+        "file",
+        "toolResult"
+      ]
+    },
     "ConfigurePluginRequest": {
       "type": "object",
       "properties": {
@@ -6409,11 +6430,10 @@
           "pattern": "^[a-z][a-z0-9._-]{0,63}$"
         },
         "placement": {
-          "type": "string"
+          "$ref": "#/$defs/ComponentPlacement"
         },
         "scope": {
-          "type": "string",
-          "pattern": "^(installation|workspace|session|client|file|toolResult)$"
+          "$ref": "#/$defs/ComponentScope"
         },
         "selector": {
           "$ref": "#/$defs/PluginRendererSelector"

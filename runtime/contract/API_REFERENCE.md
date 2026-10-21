@@ -986,7 +986,6 @@ TypeScript validator from this single registry projection.
 | `PluginClientComponent` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `material` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
-| `PluginClientComponent` | `scope` | `pattern("^(installation|workspace|session|client|file|toolResult)$")` |
 | `OpenPluginResourcesRequest` | `componentId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginPoint` | `contract` | `nonEmpty` |
 | `PluginPoint` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |

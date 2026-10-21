@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { asyncDisposeSymbol, type Host } from "dougong";
 import { type FlameClient } from "@flame/runtime-client";
-import { type PluginInstallation } from "@flame/runtime-client/wire";
+import { type PluginClientComponent, type PluginInstallation } from "@flame/runtime-client/wire";
 import { definePlugin } from "@/extensions/definePlugin";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { type ContributionLifetime } from "@/extensions/definePlugin";
@@ -16,7 +16,7 @@ const openResources = vi.fn<FlameClient["plugins"]["openResources"]>();
 
 const client = { plugins: { openResources } } as unknown as FlameClient;
 
-const entry = {
+const entry: PluginClientComponent = {
   id: "panel",
   title: "Panel",
   scope: "installation",

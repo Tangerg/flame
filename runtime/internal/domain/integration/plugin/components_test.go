@@ -3,8 +3,8 @@ package plugin
 import "testing"
 
 func TestExportedComponentsHaveNoHostPlacementPolicy(t *testing.T) {
-	for _, scope := range []string{"installation", "workspace", "session", "client", "file", "toolResult"} {
-		t.Run(scope, func(t *testing.T) {
+	for _, scope := range []ComponentScope{"installation", "workspace", "session", "client", "file", "toolResult"} {
+		t.Run(string(scope), func(t *testing.T) {
 			builder, err := NewBuilder("exports", "", "")
 			if err != nil {
 				t.Fatal(err)
@@ -30,9 +30,11 @@ func TestExportedComponentsHaveNoHostPlacementPolicy(t *testing.T) {
 
 func TestSessionActionPlacementAdmission(t *testing.T) {
 	for _, test := range []struct {
-		name, scope, material string
-		selector              *RendererSelector
-		valid                 bool
+		name     string
+		scope    ComponentScope
+		material string
+		selector *RendererSelector
+		valid    bool
 	}{
 		{name: "session", scope: "session", valid: true},
 		{name: "client", scope: "client"},

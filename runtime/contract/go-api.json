@@ -3512,6 +3512,61 @@
           "value": "\"root\""
         },
         {
+          "name": "ComponentPlacementExport",
+          "type": "ComponentPlacement",
+          "value": "\"export\""
+        },
+        {
+          "name": "ComponentPlacementFileRenderer",
+          "type": "ComponentPlacement",
+          "value": "\"fileRenderer\""
+        },
+        {
+          "name": "ComponentPlacementSessionAction",
+          "type": "ComponentPlacement",
+          "value": "\"sessionAction\""
+        },
+        {
+          "name": "ComponentPlacementToolResultRenderer",
+          "type": "ComponentPlacement",
+          "value": "\"toolResultRenderer\""
+        },
+        {
+          "name": "ComponentPlacementWorkspaceView",
+          "type": "ComponentPlacement",
+          "value": "\"workspaceView\""
+        },
+        {
+          "name": "ComponentScopeClient",
+          "type": "ComponentScope",
+          "value": "\"client\""
+        },
+        {
+          "name": "ComponentScopeFile",
+          "type": "ComponentScope",
+          "value": "\"file\""
+        },
+        {
+          "name": "ComponentScopeInstallation",
+          "type": "ComponentScope",
+          "value": "\"installation\""
+        },
+        {
+          "name": "ComponentScopeSession",
+          "type": "ComponentScope",
+          "value": "\"session\""
+        },
+        {
+          "name": "ComponentScopeToolResult",
+          "type": "ComponentScope",
+          "value": "\"toolResult\""
+        },
+        {
+          "name": "ComponentScopeWorkspace",
+          "type": "ComponentScope",
+          "value": "\"workspace\""
+        },
+        {
           "name": "ContentBlockImage",
           "type": "ContentBlockType",
           "value": "\"image\""
@@ -6148,6 +6203,16 @@
               "type": "string"
             }
           ]
+        },
+        {
+          "name": "ComponentPlacement",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ComponentScope",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "ConfigurePluginRequest",
@@ -9439,12 +9504,12 @@
             },
             {
               "name": "Scope",
-              "type": "string",
+              "type": "ComponentScope",
               "tag": "json:\"scope\""
             },
             {
               "name": "Placement",
-              "type": "string",
+              "type": "ComponentPlacement",
               "tag": "json:\"placement\""
             },
             {

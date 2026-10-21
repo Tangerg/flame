@@ -12,9 +12,39 @@ import (
 	"github.com/Tangerg/flame/runtime/fingerprint"
 )
 
-const ComponentScopePattern = `^(installation|workspace|session|client|file|toolResult)$`
+// ComponentScope is the host context a client component renders in.
+type ComponentScope string
 
-var componentScope = regexp.MustCompile(ComponentScopePattern)
+const (
+	ComponentScopeInstallation ComponentScope = "installation"
+	ComponentScopeWorkspace    ComponentScope = "workspace"
+	ComponentScopeSession      ComponentScope = "session"
+	ComponentScopeClient       ComponentScope = "client"
+	ComponentScopeFile         ComponentScope = "file"
+	ComponentScopeToolResult   ComponentScope = "toolResult"
+)
+
+func (s ComponentScope) Valid() bool {
+	switch s {
+	case ComponentScopeInstallation, ComponentScopeWorkspace, ComponentScopeSession,
+		ComponentScopeClient, ComponentScopeFile, ComponentScopeToolResult:
+		return true
+	default:
+		return false
+	}
+}
+
+// ComponentPlacement is the host surface a client component attaches to.
+type ComponentPlacement string
+
+const (
+	ComponentPlacementExport             ComponentPlacement = "export"
+	ComponentPlacementWorkspaceView      ComponentPlacement = "workspaceView"
+	ComponentPlacementSessionAction      ComponentPlacement = "sessionAction"
+	ComponentPlacementFileRenderer       ComponentPlacement = "fileRenderer"
+	ComponentPlacementToolResultRenderer ComponentPlacement = "toolResultRenderer"
+)
+
 var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)
 
 // ClientComponent describes a public rendering entry with an optional own
@@ -23,8 +53,8 @@ type ClientComponent struct {
 	Selector     *RendererSelector
 	ID           ContributionID
 	Title        string
-	Scope        string
-	Placement    string
+	Scope        ComponentScope
+	Placement    ComponentPlacement
 	Entry        string
 	Export       string
 	Contribution ContributionID
@@ -40,28 +70,28 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 			return err
 		}
 	}
-	if value.Title == "" || len(value.Title) > MaxPresentationTitleBytes || !utf8.ValidString(value.Title) || !componentScope.MatchString(value.Scope) || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
+	if value.Title == "" || len(value.Title) > MaxPresentationTitleBytes || !utf8.ValidString(value.Title) || !value.Scope.Valid() || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", value.ID)
 	}
 	switch value.Placement {
-	case "export":
+	case ComponentPlacementExport:
 		if value.Selector != nil || value.Material != "" {
 			return refuse(DiagnosticInvalidDeclaration, "exported component cannot declare host placement metadata")
 		}
-	case "workspaceView":
-		if (value.Scope == "file" || value.Scope == "toolResult") || value.Selector != nil {
+	case ComponentPlacementWorkspaceView:
+		if (value.Scope == ComponentScopeFile || value.Scope == ComponentScopeToolResult) || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "workspace component has a renderer target")
 		}
-	case "sessionAction":
-		if value.Scope != "session" || value.Material != "" || value.Selector != nil {
+	case ComponentPlacementSessionAction:
+		if value.Scope != ComponentScopeSession || value.Material != "" || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "session action requires session context")
 		}
-	case "fileRenderer":
-		if value.Scope != "file" || value.Material != "" || value.Selector == nil || value.Selector.Kind != RendererFileExtension || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !fileExtensionPattern.MatchString(value.Selector.Name) {
+	case ComponentPlacementFileRenderer:
+		if value.Scope != ComponentScopeFile || value.Material != "" || value.Selector == nil || value.Selector.Kind != RendererFileExtension || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !fileExtensionPattern.MatchString(value.Selector.Name) {
 			return refuse(DiagnosticInvalidDeclaration, "file component requires an exact extension selector")
 		}
-	case "toolResultRenderer":
-		if value.Scope != "toolResult" || value.Material != "" || value.Selector == nil || value.Selector.Name == "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !utf8.ValidString(value.Selector.Name) {
+	case ComponentPlacementToolResultRenderer:
+		if value.Scope != ComponentScopeToolResult || value.Material != "" || value.Selector == nil || value.Selector.Name == "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !utf8.ValidString(value.Selector.Name) {
 			return refuse(DiagnosticInvalidDeclaration, "tool result component requires an exact selector")
 		}
 		switch value.Selector.Kind {

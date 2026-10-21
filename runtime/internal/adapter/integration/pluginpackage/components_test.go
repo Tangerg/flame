@@ -66,7 +66,7 @@ func TestComponentAdmissionPreservesTargetScopeAndNavigationKey(t *testing.T) {
 			}
 			declaration := release.Declaration()
 			if test.admitted {
-				if len(declaration.Components) != 1 || declaration.Components[0].Scope != test.scope || (test.material != "" && declaration.Components[0].Material != "diff") || len(declaration.Diagnostics) != 0 {
+				if len(declaration.Components) != 1 || string(declaration.Components[0].Scope) != test.scope || (test.material != "" && declaration.Components[0].Material != "diff") || len(declaration.Diagnostics) != 0 {
 					t.Fatalf("workspace metadata: %+v", declaration)
 				}
 			} else if len(declaration.Components) != 0 || len(declaration.Diagnostics) != 1 {

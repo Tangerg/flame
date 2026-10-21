@@ -9002,10 +9002,6 @@
         {
           "field": "material",
           "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
-        },
-        {
-          "field": "scope",
-          "constraint": "pattern(\"^(installation|workspace|session|client|file|toolResult)$\")"
         }
       ]
     },

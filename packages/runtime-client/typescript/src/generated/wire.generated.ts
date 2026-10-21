@@ -388,6 +388,10 @@ export interface CommandResult {
   output: string;
 }
 
+export type ComponentPlacement = "export" | "workspaceView" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
+
+export type ComponentScope = "installation" | "workspace" | "session" | "client" | "file" | "toolResult";
+
 export interface ConfigurePluginRequest {
   digest: string;
   installationId: string;
@@ -1179,8 +1183,8 @@ export interface PluginClientComponent {
   export: string;
   id: string;
   material?: string;
-  placement: string;
-  scope: string;
+  placement: ComponentPlacement;
+  scope: ComponentScope;
   selector?: PluginRendererSelector;
   title: string;
 }
@@ -2239,6 +2243,8 @@ export const WIRE_ENUMS = {
   CancelRunResponseType: ["root", "child"],
   CapabilityRequirementType: ["feature", "interruptType", "runtimeTopic"],
   ChangeStatus: ["added", "deleted", "modified", "moved"],
+  ComponentPlacement: ["export", "workspaceView", "sessionAction", "fileRenderer", "toolResultRenderer"],
+  ComponentScope: ["installation", "workspace", "session", "client", "file", "toolResult"],
   ContentBlockType: ["text", "image"],
   DiffBaselineType: ["head", "mergeBase", "emptyTree"],
   DiffFormat: ["rows", "raw"],

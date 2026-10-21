@@ -21,6 +21,8 @@ import (
 // permits frames the runtime rejects.
 var wireEnums = map[reflect.Type][]string{
 	reflect.TypeFor[protocol.PluginRendererSelectorType]():        {string(protocol.PluginRendererToolName), string(protocol.PluginRendererResultShape), string(protocol.PluginRendererFileExtension)},
+	reflect.TypeFor[protocol.ComponentScope]():                    {string(protocol.ComponentScopeInstallation), string(protocol.ComponentScopeWorkspace), string(protocol.ComponentScopeSession), string(protocol.ComponentScopeClient), string(protocol.ComponentScopeFile), string(protocol.ComponentScopeToolResult)},
+	reflect.TypeFor[protocol.ComponentPlacement]():                {string(protocol.ComponentPlacementExport), string(protocol.ComponentPlacementWorkspaceView), string(protocol.ComponentPlacementSessionAction), string(protocol.ComponentPlacementFileRenderer), string(protocol.ComponentPlacementToolResultRenderer)},
 	reflect.TypeFor[protocol.ToolAttemptState]():                  {string(protocol.ToolAttemptStarted), string(protocol.ToolAttemptCompleted), string(protocol.ToolAttemptIncomplete)},
 	reflect.TypeFor[protocol.ToolCategory]():                      {string(protocol.ToolCategoryShell), string(protocol.ToolCategoryEdit), string(protocol.ToolCategoryRead), string(protocol.ToolCategorySearch), string(protocol.ToolCategoryWeb), string(protocol.ToolCategoryTask), string(protocol.ToolCategoryUnknown)},
 	reflect.TypeFor[protocol.TrajectoryEntryType]():               {string(protocol.TrajectoryEntryRun), string(protocol.TrajectoryEntryModel), string(protocol.TrajectoryEntryEndpoint), string(protocol.TrajectoryEntryItem)},

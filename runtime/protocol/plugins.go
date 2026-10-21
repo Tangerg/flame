@@ -377,12 +377,35 @@ type PluginPointBinding struct {
 	Value          string `json:"value"`
 }
 
+// ComponentScope is the host context a plugin client component renders in.
+type ComponentScope string
+
+const (
+	ComponentScopeInstallation ComponentScope = "installation"
+	ComponentScopeWorkspace    ComponentScope = "workspace"
+	ComponentScopeSession      ComponentScope = "session"
+	ComponentScopeClient       ComponentScope = "client"
+	ComponentScopeFile         ComponentScope = "file"
+	ComponentScopeToolResult   ComponentScope = "toolResult"
+)
+
+// ComponentPlacement is the host surface a plugin client component attaches to.
+type ComponentPlacement string
+
+const (
+	ComponentPlacementExport             ComponentPlacement = "export"
+	ComponentPlacementWorkspaceView      ComponentPlacement = "workspaceView"
+	ComponentPlacementSessionAction      ComponentPlacement = "sessionAction"
+	ComponentPlacementFileRenderer       ComponentPlacement = "fileRenderer"
+	ComponentPlacementToolResultRenderer ComponentPlacement = "toolResultRenderer"
+)
+
 type PluginClientComponent struct {
 	Selector     *PluginRendererSelector `json:"selector,omitzero"`
 	ID           string                  `json:"id"`
 	Title        string                  `json:"title"`
-	Scope        string                  `json:"scope"`
-	Placement    string                  `json:"placement"`
+	Scope        ComponentScope          `json:"scope"`
+	Placement    ComponentPlacement      `json:"placement"`
 	Entry        string                  `json:"entry"`
 	Export       string                  `json:"export"`
 	Contribution string                  `json:"contribution,omitzero"`
