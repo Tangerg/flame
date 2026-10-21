@@ -2208,6 +2208,20 @@ stylesheet only mirrors — a stylesheet-mirror test caught it. A renderHook
 regression for the waiting-turn fix is deferred to the consolidated testing pass
 (the pure admission rule is already covered).
 
+A dedicated accessibility/keyboard pass (code-verifiable defects only, recorded in
+commits) followed. It converted the theme, font and language pickers from
+DropdownMenu.Item to the RadioGroup/RadioItem/RadioItemIndicator pattern the model-
+role picker already used, so the selected option now carries menuitemradio +
+aria-checked instead of a decorative check; routed the project row's "working
+directory missing" state into the row's own aria-label (the state had been passed to
+an Icon that drops aria-label and forces aria-hidden); and gave the plugin error
+disclosure the aria-expanded every other disclosure has. The @flame/ui primitive
+layer and the dialog/combobox/live-region wiring were verified clean. One low-
+severity gap is left: the session row's favorite star is visual-only in the row's
+accessible name — folding it in needs a new "favorited" state string across eight
+locales and the state is already reachable from the row menu, so it is deferred
+rather than guessed.
+
 The genuinely open items are now design and native-acceptance decisions, not
 defects; each needs a Wails look and an explicit choice before implementing:
 
