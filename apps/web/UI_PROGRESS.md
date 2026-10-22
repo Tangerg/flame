@@ -2618,6 +2618,21 @@ each dock view is still pending):
   `RunStatusPill`/`RunAnnouncer` share one run-status owner; `RunErrorBanner`'s faint
   `error.code` is a deliberate, test-pinned reference; and `FloatingComposer` /
   `CwdMissingBanner` route through the shared `SystemMessage`/`EmptyState` owners.
+- The shared `@flame/ui` interactive primitives (`select`, `segmented`, `disclosure`,
+  `modal-dialog`, `floating-surface`, `switch`/`checkbox`/`slider`, `action-menu`,
+  `choice-list`, and the `menu`/`popover`/`confirm-dialog`/`catalog-picker`/`search-overlay`
+  wrappers) were audited on the Radix interaction lens (keyboard, focus enter/restore,
+  trigger↔content ARIA, modal boundaries). They came back clean — the trigger/content
+  relationships, `aria-expanded`/`aria-controls`/`aria-activedescendant`, hidden-owner
+  `finalFocus`, and pending-but-focusable semantics are correctly delegated to Base UI or
+  hand-wired and are locked by `components.test`/`popup-visibility.test`/`stateAttributes`.
+  One latent trap was hardened: `ModalDialog` only rendered `auxiliaryAction` inside the
+  `footer && …` branch, so a dialog passing only `auxiliaryAction` would silently drop it;
+  the footer region now renders when either is present (no change for the current
+  consumers, which all pass a footer). Left as intentional/harmless: `segmented`'s
+  `role="tab"` value-selectors (consistent, test-pinned, no dangling `aria-controls`) and
+  `action-menu`'s redundant menu-level `disabled` in the per-item condition (unreachable
+  while the trigger is disabled).
 
 ## Working and maintenance practice
 
