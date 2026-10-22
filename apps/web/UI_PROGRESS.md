@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance popup anchoring/native zoom painting, rapid Select dismissal, object-menu names and shared modal keyboard release are published on remote main at `f4a535440`, `346c1c07e`, `57d54301e` and `1e4887e5e`. Reading-band breakout respects user/nested boundaries and subagent readers compose the complete shared column, published at `a6f63253e`. Native full-pane/Dock, source return, large typography and zoom acceptance is qualified below. Final frontend tests passed 388 files / 3,020 tests. The preceding full Web run failed one Runtime readiness test (3,068 passed / 1 failed); its isolated 49-test file passed, which does not make that aggregate green. The existing MCP API-consumer guard also still fails. A native math follow-up qualifies the recorded caret-navigation path and draft return without a product patch; horizontal wheel delivery remains unverified. Delivery and cleanup are recorded below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. Popup anchoring/native zoom painting, rapid Select dismissal, object-menu names, shared modal keyboard release and bounded message reading are published on remote main; their receipts remain below. Approval-mode reads now distinguish recoverable failures from an unsupported method, with eight localized titles and native recovery/return coverage. The current full Web run passed 3,073 tests and failed the recurring Memory MCP readiness case; that complete 49-test Runtime file passed separately, which does not make the aggregate green. The existing MCP API-consumer inventory also still fails. All other later Web checks and the supported native check passed. The math follow-up qualifies its recorded text-caret reading path; physical horizontal wheel delivery remains unverified. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1223,10 +1223,112 @@ routes that state through `DataView`'s `unsupported` config, removing the
 duplicate. The two `ToolControls` auxiliary-query failures stopped using a
 section label as the error title and share the one error title and tone.
 
-Verification: `@flame/ui` rebuilt; its and the web `typecheck`/`lint` pass,
-`knip` clean, `@flame/ui` tests (74) and the web suite (3069) green. The shared
-`EmptyState`/`IconMark` default is unchanged, so this is additive for existing
-empties; native Wails acceptance of the new error tones is pending.
+The original shared-tone verification rebuilt `@flame/ui`, passed its 74 tests
+and the then-current 3,069-test Web suite. Current native acceptance below
+qualifies negative failure, warning unsupported and ordinary empty presentation
+in the Approvals page. It does not extend that qualification to every other
+consumer, including the earlier subagent-unavailable and auxiliary Tool states.
+
+### Approval-mode read recovery
+
+Actual Wails on `8e567257a` exposed a classification defect in `ApprovalsPane`:
+a canonical `internal_error` from `approval.getMode` displayed "This runtime
+doesn't expose approval-mode control," followed by Retry successfully revealing
+Safe/Balanced/Auto. An actual typed `method_not_found` displayed the same claim
+and offered the same futile mode Retry. The adjacent Rules list already used
+the shared error distinction correctly. This was local selection of a status
+surface, not evidence that Runtime lacked approval control or that the shared
+query owner needed a new state.
+
+`ApprovalsPane` now uses the existing `isUnsupportedMethod(error)` predicate.
+Only typed `method_not_found` renders the shared warning `EmptyState`, shield
+glyph and existing approval-specific unavailable explanation, with no mode
+Retry or choices. Other read failures render `DataError` with the localized
+`approvals.error.loadMode` title and the real refetch callback. Its negative
+tone and recovery description remain shared. The new title is present in all
+eight locales. `ModeRow` still owns the pending skeleton, accepted selection
+and write intent; the loading Mode label, Rules row, query retry/retirement,
+commands, focus, theme and geometry owners are unchanged. HTTP 404 is not used
+as a missing-method discriminator.
+
+Reference basis: the actual HeroUI `alert.stories.tsx` separates warning
+information from a recoverable connection error with Retry. ZCode's actual
+`settings/model-provider-section/StatusCards.tsx` distinguishes explicit
+availability reasons from recoverable unavailability instead of treating
+display text as status authority. Flame keeps its existing shared primitives
+and semantic tones. The better-writing/accessibility guidance informs a named
+failed object, an actionable recovery path and preservation of native keyboard
+behavior; static reference code is not native focus evidence.
+
+Five new presentation regressions use actual SDK error values and test the
+observable explanation/action boundary, HTTP 404 recovery, accepted-mode return
+and the existing Mode/loading state. Against original production source,
+four failed and loading passed (1.94 s). Final focused coverage passed five
+files / 27 tests (2.41 s), including all 22 existing query/mode/rule/DataView
+cases. The test assertions remained unchanged through implementation and
+acceptance. The first bounded Claude Code CLI attempt supplied the test proposal
+but its Write was denied by its own dontAsk policy (104.61 s, no edits);
+primary review applied the proposal and ran the failing baseline. A second
+Read/Edit-only invocation changed the one component and eight locales
+(67.63 s, no denials). Primary reviewed the actual diff and ran all validation.
+
+Native acceptance used canonical isolated Runtime responses through the real
+SDK and production components/host. It retained the repository's one automatic
+query retry. The fixture's direct bootstrap mode read was allowed, then only
+its seeded cache entry was removed before React mounted so the real query
+could receive the two failed attempts. An earlier private composition that
+failed bootstrap before mounting the interface is excluded as setup evidence.
+No approval mutation was admitted; the fixture recorded zero such requests.
+
+English/light/14 px/Orange qualified the new failure title, shared recovery
+copy, negative glyph, visible keyboard focus and Search → Approvals tab →
+pane → mode Retry. Enter admitted the real refetch, and the pending Mode
+label/skeleton remained. Subsequent Tab stayed at the independent Rules Retry;
+the accepted mode was Balanced. Retrying Rules produced the actual "No rules
+yet" state, followed by keyboard Close to the workspace and exact native
+Composer input `Approval recovery draft 保留`. Chinese/dark/18 px/blue
+qualified the warning shield/explanation with no mode Retry or choices; its
+remaining Rules Retry recovered independently while mode reads stayed at two.
+
+A separate Chinese/dark/18 px failure scene retained "无法加载审批模式" after
+the explicit retry and its existing automatic retry both failed. Twenty native
+Zoom In commands qualified 200%; an actual window resize changed the capture
+from 2878×1798 to 2632×1798. Real body scrolling exposed the recovery description
+and focused Retry with a visible blue ring. The passive private HUD obscured
+part of the lower viewport at this zoom; that fixture chrome is excluded from
+product layout evidence. Actual Size was restored. A two-Tab attempt after the
+native menu left the document before Close and did not close Settings; that
+keyboard-close path is not qualified and no component cause is inferred.
+Pointer Close returned to the workspace, where native Composer input exactly
+matched `恢复检查草稿 保留`. Pre-existing-draft preservation, VoiceOver, OS IME,
+measured contrast, the other six locales' native layout and other platforms
+are not newly qualified by these scenes.
+
+The full Web aggregate failed (149.27 s): 389 files / 3,073 tests passed and
+the unchanged Runtime file failed its shipped Memory MCP source-readiness
+case. That complete file passed separately with one worker (49 tests,
+41.89 s); its non-failing loopback diagnostics remain separate. This does not
+establish the readiness cause or make the aggregate green. Typecheck, lint and
+format passed before the test phase. All 22 later checks then ran independently:
+21 passed, including locale closure, production bundle and all 11 portable
+resources; only the existing `mcp.servers.reconnect has no non-test frontend
+consumer` inventory failed, with its 16 tests passing. The supported
+`make check-native` passed (22.65 s). Existing guards, assertions and timeouts
+were not weakened; Runtime, SDK and dependency sources stayed unchanged.
+No browser visual suite or benchmark was run, and no data/protocol migration
+is required.
+
+All 51 reviewed product/test/host/fixture/manifest inputs and four private
+harness inputs stayed frozen through native acceptance and checks. All six
+owned native PIDs and two CLI PIDs exited; the exact app was unregistered and
+its private root, data, logs, pointer, ten new build/cache outputs and two
+bundle-specific Library directories were removed with ownership and copied
+source-hash guards. The pre-existing UI test cache, dependencies/compiler caches,
+user data, unrelated processes, references and primary checkout were preserved.
+Remote main was refetched at `8e567257a` before publication. Continue with a
+fresh complete existing task; auxiliary MCP tool-data recovery/identity is a
+review candidate requiring current native evidence. Do not repeat this resolved
+classification defect or infer a focus failure solely from pending body focus.
 
 ## Wide-content breakout in the reading band
 

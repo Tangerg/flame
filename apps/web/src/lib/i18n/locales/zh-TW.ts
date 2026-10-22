@@ -333,6 +333,7 @@ export const zhTW: Record<string, string> = {
   "approvals.forget": "忘記 {{tool}}",
   "approvals.unavailable": "核准控制不可用",
   "approvals.unavailable.sub": "此執行時未提供核准模式控制。",
+  "approvals.error.loadMode": "無法載入核准模式",
   "approvals.error.mode": "無法變更核准模式。",
   "approvals.error.forget": "無法清除該決定。",
 

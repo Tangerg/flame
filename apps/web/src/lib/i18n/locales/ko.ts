@@ -340,6 +340,7 @@ export const ko: Record<string, string> = {
   "approvals.forget": "{{tool}} 잊기",
   "approvals.unavailable": "승인 컨트롤을 사용할 수 없음",
   "approvals.unavailable.sub": "이 런타임은 승인 모드 제어를 제공하지 않습니다.",
+  "approvals.error.loadMode": "승인 모드를 불러올 수 없습니다",
   "approvals.error.mode": "승인 모드를 변경할 수 없습니다.",
   "approvals.error.forget": "결정을 지울 수 없습니다.",
 

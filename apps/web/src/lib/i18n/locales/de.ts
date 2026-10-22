@@ -355,6 +355,7 @@ export const de: Record<string, string> = {
   "approvals.forget": "{{tool}} vergessen",
   "approvals.unavailable": "Freigabesteuerung nicht verfügbar",
   "approvals.unavailable.sub": "Diese Runtime bietet keine Freigabemodus-Steuerung.",
+  "approvals.error.loadMode": "Freigabemodus konnte nicht geladen werden",
   "approvals.error.mode": "Freigabemodus konnte nicht geändert werden.",
   "approvals.error.forget": "Entscheidung konnte nicht gelöscht werden.",
 

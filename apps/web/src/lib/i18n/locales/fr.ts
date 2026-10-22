@@ -362,6 +362,7 @@ export const fr: Record<string, string> = {
   "approvals.forget": "Oublier {{tool}}",
   "approvals.unavailable": "Contrôles d'approbation indisponibles",
   "approvals.unavailable.sub": "Ce runtime n'expose pas le contrôle du mode d'approbation.",
+  "approvals.error.loadMode": "Impossible de charger le mode d'approbation",
   "approvals.error.mode": "Impossible de changer le mode d'approbation.",
   "approvals.error.forget": "Impossible d'effacer la décision.",
 

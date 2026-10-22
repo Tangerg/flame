@@ -340,6 +340,7 @@ export const ja: Record<string, string> = {
   "approvals.forget": "{{tool}} を忘れる",
   "approvals.unavailable": "承認コントロールを利用できません",
   "approvals.unavailable.sub": "このランタイムは承認モードの制御を提供していません。",
+  "approvals.error.loadMode": "承認モードを読み込めませんでした",
   "approvals.error.mode": "承認モードを変更できませんでした。",
   "approvals.error.forget": "決定をクリアできませんでした。",
 

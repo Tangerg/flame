@@ -438,6 +438,7 @@ export const zh: Record<string, string> = {
   "approvals.forget": "忘记 {{tool}}",
   "approvals.unavailable": "审批控制不可用",
   "approvals.unavailable.sub": "此运行时未提供审批模式控制。",
+  "approvals.error.loadMode": "无法加载审批模式",
   "approvals.error.mode": "无法更改审批模式。",
   "approvals.error.forget": "无法清除该决定。",
 

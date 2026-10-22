@@ -385,6 +385,7 @@ export const en: Record<string, string> = {
   "approvals.forget": "Forget {{tool}}",
   "approvals.unavailable": "Approval controls unavailable",
   "approvals.unavailable.sub": "This runtime doesn't expose approval-mode control.",
+  "approvals.error.loadMode": "Couldn't load approval mode",
   "approvals.error.mode": "Couldn't change the approval mode.",
   "approvals.error.forget": "Couldn't clear the decision.",
 
