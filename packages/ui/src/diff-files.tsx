@@ -131,12 +131,14 @@ export function DiffFileHeader({
   children?: ReactNode;
   ref?: Ref<HTMLHeadingElement>;
 }) {
+  const cut = file.path.lastIndexOf("/") + 1;
   return (
     <div {...stylex.props(styles.headingLine)}>
       <div {...stylex.props(styles.headingCopy)}>
         <h2 ref={ref} tabIndex={-1} {...stylex.props(styles.name, type.uiMd)}>
-          {file.path.slice(file.path.lastIndexOf("/") + 1)}
+          {file.path.slice(cut)}
         </h2>
+        {cut > 0 && <DiffFilePath path={file.path.slice(0, cut - 1)} />}
         <FileState file={file} />
       </div>
       {children}
