@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. The next verified change makes shared Select dismissal finish before rapid keyboard navigation. Native acceptance and owned-resource cleanup are complete; publish its three explicit paths before starting the next batch. Aggregate test timeouts and the existing MCP API-consumer guard failure are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. Shared Select dismissal now finishes before rapid keyboard navigation, published at `346c1c07e` after native acceptance and owned-resource cleanup. Aggregate test timeouts and the existing MCP API-consumer guard failure are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1680,7 +1680,10 @@ Verification and delivery boundary:
   and two unique bundle Library paths, after preexistence, canonical-path, UID,
   birth-time, symlink and tracked-file checks. Existing dependencies, the shared
   UI Vite cache, compiler/package caches, references and the user's parallel
-  primary checkout remain. Publish the three explicit paths, then continue native
+  primary checkout remain. The three explicit paths were committed at
+  `346c1c07e` with normal formatting, workspace-lint and commit-message hooks,
+  then pushed to remote `main`; `git ls-remote` confirmed the exact revision.
+  The committed Select hash still matches native acceptance. Continue native
   context-menu focus continuity and retained-content popup boundaries; neither
   whole-product VoiceOver coverage nor untested focus paths are claimed.
 
