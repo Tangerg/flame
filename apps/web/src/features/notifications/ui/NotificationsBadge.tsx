@@ -54,12 +54,11 @@ export function NotificationsBadge() {
             size="sm"
             quiet
             badge={notificationBadgeText(unread) ?? undefined}
-            title={
+            aria-label={
               unread > 0
                 ? t("status.notifications.unread", { count: unread })
                 : t("status.notifications")
             }
-            aria-label={t("status.notifications")}
           />
         }
       />

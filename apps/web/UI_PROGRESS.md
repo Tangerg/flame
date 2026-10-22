@@ -2903,6 +2903,20 @@ open/close is robust and test-pinned. Three defects were fixed:
   file path so it is focusable and scrollable. The tree-list view (which has
   focusable treeitems) is unchanged.
 
+## Notifications audit
+
+The notifications surface is clean: the toaster delegates to `sonner` (live
+region, auto-dismiss, hover-pause handled by the library); the store is a single
+owner (id-sequenced log trimmed to 200, `dismiss`/`clearAll` as projections, the
+toast a transient echo); the badge list is id-keyed, the clear-all button is
+`focusableWhenDisabled`, and the popover is labelled. One a11y gap was fixed: the
+bell button carried the unread count only in its visual badge and `title`
+tooltip, while its accessible name was the static "Notifications", so a screen
+reader never heard the count. The count is now in the `aria-label`
+(`N unread notifications`), which also drives the tooltip (`IconButton` falls back
+to the aria-label), so the redundant `title` was dropped — one count-aware label
+serves the badge, the tooltip, and the accessible name.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.

@@ -18,7 +18,7 @@ it("reads and dismisses global notifications without navigating the conversation
     .push({ plugin: "test", level: "error", message: "Could not save" });
   const location = window.location.href;
   render(<NotificationsBadge />);
-  fireEvent.click(screen.getByRole("button", { name: "Notifications" }));
+  fireEvent.click(screen.getByRole("button", { name: /unread notifications/i }));
   await screen.findByText("Could not save");
   const dismiss = screen.getAllByRole("button", { name: "Dismiss" });
   fireEvent.click(dismiss[0]!);
