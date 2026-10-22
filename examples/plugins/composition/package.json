@@ -15,14 +15,14 @@
     "@flame/component-sdk": "*",
     "@flame/ui": "*",
     "@flame/runtime-client": "*",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
     "@types/react": "^19.3.0",
-    "rolldown": "^1.2.13",
-    "oxlint": "^1.87.0",
+    "rolldown": "^1.2.15",
+    "oxlint": "^1.89.0",
     "prettier": "^3.9.10"
   }
 }
