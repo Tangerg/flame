@@ -2574,6 +2574,23 @@ each dock view is still pending):
   preview-in-summary / labelled-in-detail idiom, left as-is. `usage`'s input/output token
   overlap and the `diagnostics` "Attributes" `PanelSection` heading nesting are low-value
   items left for a later pass.
+- The settings "resource library" panes (`PackageManager`, `PluginsPane`,
+  `ProviderSelections`, `PendingCommands`, `InstalledComponent`/`ComponentCompositions`)
+  were then audited for the same browse→read→return lens. One real defect was fixed:
+  `ProviderSelections` wrapped a `DataView` (loading/empty/error + a count) around
+  `providers.data` (the recorded selections), but the browsable content is the role list,
+  whose roles derive from installation contributions independently of `providers.data` —
+  so with roles present but no recorded selection the "No provider has been selected"
+  empty card rendered above a working role list, and the skeleton/error showed while the
+  roles rendered anyway. The role list is now the state host (shown whenever there are
+  roles; `DataView` owns empty/loading/error only when there are none), and the redundant
+  count line (restating each row's selected/unselected) is gone. Also minor: the
+  package-manager release-manifest `CodeBlock` reused the enclosing "Release details"
+  disclosure's label as its region name; it now has its own `packages.manifest` name.
+  `PendingCommands`, the index keys (stateless/non-reorderable), the edit-dialog identity
+  repeat (intentional, pinned), and the `InstalledComponent`/`ComponentCompositions`
+  mount pipeline (deliberate lightweight error-boundary fallbacks, pinned) were verified
+  clean.
 
 ## Working and maintenance practice
 
