@@ -2331,8 +2331,14 @@ defects; each needs a Wails look and an explicit choice before implementing:
   (subagent transcripts) where the wider gutter may be deliberate, and `ViewHeader` is
   workspace-scoped, so unifying is a cross-feature + geometry call for the native eye,
   not a blind swap; the narrow full-pane path stacks a two-level header; and
-  `WorkspaceViewBody` nests a redundant scroll owner under panels that already bring
-  their own `ScrollArea`.
+  `WorkspaceViewBody` (`overflowY:auto` + `useScrollReach`) wraps every mounted view,
+  including `WorkspaceViewLayout`-based ones that already bring their own `ScrollArea`.
+  Because `AgentWorkspaceView` is height-constrained (`flex:1; min-height:0`), the inner
+  `ScrollArea` owns the scroll and the outer `overflowY` never fires — so this is an
+  inert redundant layer (and a dead outer `useScrollReach`), not a double-scrollbar bug.
+  Removing one scroll owner would have to account for simple plugin views that rely on
+  the outer scroll and for both the dock and main render paths, so it is an
+  architecture cleanup to verify against native scrolling, not a blind removal.
 - **Wide-content breakout geometry.** Tune `--wide-column-max` (56rem), confirm the
   left-anchored growth reads well across the 640–1151px band, and judge the 1152px
   breakout↔navigation-rail transition. Implemented; native acceptance pending.
