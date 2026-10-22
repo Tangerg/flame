@@ -36,4 +36,13 @@ export const en: Record<string, string> = {
   "skills.truncated": "More skills were omitted from this result.",
   "skills.empty": "No skills were returned.",
   "http.truncated": "Truncated",
+  "caption.source": "Source",
+  "caption.answer": "Answer",
+  "caption.instructions": "Instructions",
+  "caption.memories": "Memories",
+  "caption.skills": "Skills",
+  "caption.result": "Result",
+  "caption.matches": "Matches",
+  "caption.results": "Results",
+  "caption.response": "Response",
 };

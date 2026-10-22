@@ -12,7 +12,11 @@ export const es: Record<string, string> = {
   "signal.logs": "Registros",
   "counts.label": "Recuentos de telemetría local",
   "observations.title": "Observaciones locales",
-  "observations.summary":
+  "observations.summary_one":
+    "{{count}} observación en la última lectura del búfer. Es posible que se hayan descartado observaciones más antiguas.",
+  "observations.summary_many":
+    "{{count}} observaciones en la última lectura del búfer. Es posible que se hayan descartado observaciones más antiguas.",
+  "observations.summary_other":
     "{{count}} observaciones en la última lectura del búfer. Es posible que se hayan descartado observaciones más antiguas.",
   "observations.empty.title": "No hay observaciones locales en esta lectura.",
   "observations.empty.sub":
@@ -25,6 +29,11 @@ export const es: Record<string, string> = {
   "fact.recorded": "Registrado",
   "fact.span": "Span",
   "duration.ms": "{{ms}} ms",
+  "metric.count": "Recuento",
+  "metric.sum": "Suma",
+  "metric.p50": "p50",
+  "metric.p95": "p95",
+  "metric.avg": "Promedio",
   "attributes.title": "Atributos",
   "raw.title": "Observación sin procesar",
   "raw.label": "Detalles de la observación local",

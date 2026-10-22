@@ -28,13 +28,12 @@ import {
 } from "@/features/composer/public/focus";
 import { useT } from "@/lib/i18n/index";
 import {
-  composerCompositionKeyIntent,
   composerKeyBindingKey,
   composerPasteIntent,
 } from "@/features/composer/application/composerInputEvents";
+import { useCompositionCommitGuard } from "@/features/composer/ui/useCompositionCommitGuard";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { type ComposerSubmission } from "@/features/composer/application/ports/state";
-const COMPOSITION_COMMIT_GRACE_MS = 100;
 
 interface Args {
   value: string;
@@ -67,12 +66,7 @@ export function useComposerInputController({
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
   const [caret, setCaret] = useState(0);
-  const composingRef = useRef(false);
-  const compositionCommittedAtRef = useRef<number | null>(null);
-  const commitIsFresh = (): boolean => {
-    const at = compositionCommittedAtRef.current;
-    return at !== null && performance.now() - at <= COMPOSITION_COMMIT_GRACE_MS;
-  };
+  const composition = useCompositionCommitGuard();
   const applyMention = useCallback(
     (text: string, next: number) => {
       onChange(text);
@@ -107,35 +101,30 @@ export function useComposerInputController({
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {
     const target = event.target;
     const nativeComposing = (event.nativeEvent as { isComposing?: boolean }).isComposing === true;
-    if (composingRef.current && !nativeComposing) {
-      composingRef.current = false;
-      compositionCommittedAtRef.current = performance.now();
-    }
+    composition.noteChange(nativeComposing);
     onChange(target.value);
-    if (composingRef.current || nativeComposing) return;
+    if (composition.isComposing() || nativeComposing) return;
     setCaret(target.selectionStart ?? target.value.length);
   };
 
   const handleSelect = (event: SyntheticEvent<HTMLTextAreaElement>): void => {
-    if (composingRef.current) return;
+    if (composition.isComposing()) return;
     setCaret(event.currentTarget.selectionStart ?? 0);
   };
 
   const handleCompositionStart = (): void => {
-    composingRef.current = true;
-    compositionCommittedAtRef.current = null;
+    composition.start();
   };
 
   const handleCompositionEnd = (event: CompositionEvent<HTMLTextAreaElement>): void => {
-    composingRef.current = false;
-    compositionCommittedAtRef.current = performance.now();
+    composition.end();
     const target = event.currentTarget;
     onChange(target.value);
     setCaret(target.selectionStart ?? target.value.length);
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>): void => {
-    compositionCommittedAtRef.current = null;
+    composition.clear();
     const files = imageFiles(event.clipboardData?.files);
     const text = event.clipboardData?.getData("text") ?? "";
     const intent = composerPasteIntent(files, text, acceptsImages);
@@ -156,7 +145,7 @@ export function useComposerInputController({
   };
 
   const handleDrop = (files: File[]): void => {
-    compositionCommittedAtRef.current = null;
+    composition.clear();
     if (files.length === 0) return;
     if (!acceptsImages) {
       notifyError(t("composer.attachImage.unsupported"));
@@ -166,16 +155,11 @@ export function useComposerInputController({
   };
 
   const clearCompositionCommit = (): void => {
-    compositionCommittedAtRef.current = null;
+    composition.clear();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
-    const compositionIntent = composerCompositionKeyIntent(
-      event.nativeEvent,
-      composingRef.current,
-      commitIsFresh(),
-    );
-    compositionCommittedAtRef.current = null;
+    const compositionIntent = composition.keyIntent(event.nativeEvent);
     if (compositionIntent !== null) {
       if (compositionIntent === "committed-enter") event.preventDefault();
       return;

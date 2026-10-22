@@ -24,7 +24,9 @@ export const de: Record<string, string> = {
   "pending.check": "Ursprüngliches Ergebnis prüfen",
   "pending.retire": "Ursprünglichen Befehl zurückziehen",
   "archive.title": "Archiv",
-  "archive.count":
+  "archive.count_one":
+    "{{count}} gespeicherter Bericht. Die Kapazität beträgt 64; entferne einen Bericht, um Platz zu schaffen.",
+  "archive.count_other":
     "{{count}} gespeicherte Berichte. Die Kapazität beträgt 64; entferne einen Bericht, um Platz zu schaffen.",
   "archive.capture.note":
     "Eine Erfassung kopiert vor ihrer Ausführung die Kernabrechnung der {{daily}} (täglich) oder der {{weekly}} (wöchentlich), nicht eines Kalendertags oder einer Kalenderwoche.",

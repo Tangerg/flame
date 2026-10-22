@@ -37,10 +37,7 @@ export function useCopyFeedback(
     mounted: true,
     resetTimer: undefined,
   });
-  const [accepted, setAccepted] = useState<{
-    material: string;
-    lease: object;
-  } | null>(null);
+  const [accepted, setAccepted] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     const owner = ownerRef.current;
@@ -77,7 +74,7 @@ export function useCopyFeedback(
       return false;
     }
 
-    setAccepted({ material, lease });
+    setAccepted(material);
     owner.resetTimer = setTimeout(() => {
       owner.resetTimer = undefined;
       if (
@@ -92,7 +89,7 @@ export function useCopyFeedback(
   }, [copyMaterial, material, resetAfterMs]);
 
   return {
-    copied: accepted?.material === material,
+    copied: accepted === material,
     copy,
   };
 }

@@ -69,9 +69,9 @@ export function SkillRow({
           {review
             ? t("badge.proposal")
             : "lifecycle" in item
-              ? item.lifecycle
+              ? t(`lifecycle.${item.lifecycle}`)
               : "scope" in item
-                ? item.scope
+                ? t(`scope.${item.scope}`)
                 : t("badge.available")}
         </Badge>
       }
@@ -95,7 +95,7 @@ export function SkillRow({
         <RecordHeading
           title={item.name}
           description={item.description}
-          status={<Badge>{item.lifecycle}</Badge>}
+          status={<Badge>{t(`lifecycle.${item.lifecycle}`)}</Badge>}
           actions={children}
         />
       </ListRow>
@@ -109,7 +109,10 @@ export function SkillRow({
       )}
       <Facts
         values={[
-          [t("fact.scope"), "scope" in item ? item.scope : undefined],
+          [
+            t("fact.scope"),
+            "scope" in item ? t(`scope.${item.scope}`) : undefined,
+          ],
           [t("fact.revision"), "revision" in item ? item.revision : undefined],
           [
             t("fact.installation"),

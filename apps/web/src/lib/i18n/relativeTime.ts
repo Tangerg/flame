@@ -1,9 +1,6 @@
-import i18next from "i18next";
+import { activeLocale, localeToBcp47 } from "@/lib/i18n/index";
 export function bcp47(): string {
-  const lng = i18next.language ?? "en";
-  if (lng === "zh") return "zh-CN";
-  if (lng === "zh-TW" || lng.toLowerCase() === "zh-tw") return "zh-TW";
-  return lng;
+  return localeToBcp47(activeLocale());
 }
 
 const dateTimeCache = new Map<string, Intl.DateTimeFormat>();

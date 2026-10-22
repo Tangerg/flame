@@ -154,17 +154,33 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
     case "read":
       return {
         kind: "rows",
-        label: "source",
+        label: t("caption.source"),
         rows: sourceRows(source.replace(/\n$/, ""), tool.range?.start ?? 1),
       };
     case "ask_user":
-      return { kind: "rows", label: "answer", rows: proseRows(source) };
+      return {
+        kind: "rows",
+        label: t("caption.answer"),
+        rows: proseRows(source),
+      };
     case "load_skill":
-      return { kind: "rows", label: "instructions", rows: proseRows(source) };
+      return {
+        kind: "rows",
+        label: t("caption.instructions"),
+        rows: proseRows(source),
+      };
     case "search_memory":
-      return { kind: "rows", label: "memories", rows: proseRows(source) };
+      return {
+        kind: "rows",
+        label: t("caption.memories"),
+        rows: proseRows(source),
+      };
     case "list_skills":
-      return { kind: "rows", label: "skills", rows: skillRows(source, t) };
+      return {
+        kind: "rows",
+        label: t("caption.skills"),
+        rows: skillRows(source, t),
+      };
     case "read_skill_resource":
     case "read_tool_result":
     case "search_tools":
@@ -172,7 +188,11 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
     case "stop_shell":
     case "propose_skill":
     case "delegate_task":
-      return { kind: "rows", label: "result", rows: sourceRows(source) };
+      return {
+        kind: "rows",
+        label: t("caption.result"),
+        rows: sourceRows(source),
+      };
   }
   const result = parsed(source);
   if (Array.isArray(result.changes))
@@ -180,7 +200,7 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
   if (Array.isArray(result.hits))
     return {
       kind: "rows",
-      label: "matches",
+      label: t("caption.matches"),
       rows: result.hits.map((hit) => {
         const value = record(hit);
         return {
@@ -193,7 +213,7 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
   if (Array.isArray(result.results))
     return {
       kind: "rows",
-      label: "results",
+      label: t("caption.results"),
       rows: result.results.map((hit) => {
         const value = record(hit);
         const title = text(value.title).trim();
@@ -212,7 +232,7 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
       .join("\n");
     return {
       kind: "rows",
-      label: "response",
+      label: t("caption.response"),
       rows: [
         {
           kind: "located",
@@ -230,7 +250,7 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
     };
   return {
     kind: "rows",
-    label: "result",
+    label: t("caption.result"),
     rows: sourceRows(
       typeof result.output === "string" ? result.output : source,
     ),

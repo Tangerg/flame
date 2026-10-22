@@ -11,7 +11,7 @@ export const ko: Record<string, string> = {
   "signal.logs": "로그",
   "counts.label": "로컬 텔레메트리 개수",
   "observations.title": "로컬 관측 기록",
-  "observations.summary":
+  "observations.summary_other":
     "최근 버퍼 읽기에 {{count}}개의 관측 기록이 있습니다. 오래된 관측 기록은 제거되었을 수 있습니다.",
   "observations.empty.title": "이번 읽기에는 로컬 관측 기록이 없습니다.",
   "observations.empty.sub":
@@ -24,6 +24,11 @@ export const ko: Record<string, string> = {
   "fact.recorded": "기록 시각",
   "fact.span": "스팬",
   "duration.ms": "{{ms}} ms",
+  "metric.count": "개수",
+  "metric.sum": "합계",
+  "metric.p50": "p50",
+  "metric.p95": "p95",
+  "metric.avg": "평균",
   "attributes.title": "속성",
   "raw.title": "원시 관측 기록",
   "raw.label": "로컬 관측 기록 세부 정보",

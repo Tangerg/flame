@@ -125,7 +125,7 @@ it("opens a named document directly from its filtered catalog row and returns to
   expect(readButtons()).toHaveLength(1);
   expect(opener).toBe(
     within(catalog()).getByRole("button", {
-      name: /^runtime-boundaries\s*project\s*Keep durable decisions with their Runtime owner\.$/,
+      name: /^runtime-boundaries\s*Project\s*Keep durable decisions with their Runtime owner\.$/,
     }),
   );
   expect(opener!.hasAttribute("aria-expanded")).toBe(false);

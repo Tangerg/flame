@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  foldExchanges,
-  type AnchoredTurn,
-} from "@/features/chat/narrative-rails/adapters/transcriptAnchors";
-const turn = (id: string, role: string | null, top: number): AnchoredTurn => ({ id, role, top });
+import { foldExchanges } from "@/features/chat/narrative-rails/adapters/transcriptAnchors";
+const turn = (id: string, role: string | null, top: number) => ({ id, role, top });
 
 describe("foldExchanges", () => {
   it("keeps a question and its answer as one exchange, named by the question", () => {

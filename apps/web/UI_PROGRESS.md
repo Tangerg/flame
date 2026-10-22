@@ -3008,3 +3008,72 @@ beside a visible value.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
 - Commit explicit owned paths, push verified milestones to remote `main`, preserve unrelated working files during integration and clean owned resources. Update this file with the new product state and verification scope rather than starting another round log.
 - Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction and task model across pages. The user's explicit 2026-10-21 resume restores continuous batches until they ask to stop. Retain verification, integration into `main`, push and cleanup for every batch.
+
+## Milestone closure (2026-10-23)
+
+The user halted the continuous polishing and asked for a milestone close-out: a
+final full-codebase pass over the UI surface for remaining bugs and bad smells,
+strict `AGENTS.md` and one-fact-one-owner compliance, root-cause only (breaking
+allowed), then commit and push to `main`. Four parallel read-only audits covered
+`packages/ui`, `packages/component-sdk` + the 11 dock plugins, `apps/web`
+features, and the `apps/web` shell/`lib`/`ui`/`extensions`. Every reported finding
+was re-verified against the code before acting; several were rejected.
+
+Genuine defects fixed root-cause this round:
+
+- **MermaidBlock masked a render error with a stale diagram.** The last-good SVG
+  was substituted whenever `current.status !== "rendered"`, which swallowed the
+  terminal `error` state and showed an outdated diagram forever instead of the
+  source fallback. The placeholder now applies only while `status === "loading"`;
+  `error` falls through to the `ShikiCodeBlock` source.
+- **A denied tool row lied about `aria-expanded`.** `ToolGroupMember` advertised
+  `aria-expanded` and toggled with no panel to disclose. Disclosability is now one
+  fact (`!model.denied`): a denied row renders as a static summary `div`, mirroring
+  the `AgentActivityDisclosure`/`TriggerShell` contract (which already gates on
+  `children != null`, so `ToolCard` needed no change).
+- **Two divergent IME commit guards.** `QuestionCard` reimplemented the composer's
+  composition-commit guard with a weaker bare-boolean that could swallow a
+  deliberate Enter after a pointer reposition. Extracted the composer's
+  time-bounded mechanism into one shared `useCompositionCommitGuard`
+  (`features/composer/ui`), consumed by both the composer controller and
+  `QuestionCard` through `composer/public/composition`.
+- **One BCP-47 tag owner.** `localeToBcp47` in `lib/i18n` is now the single owner of
+  each app locale's Intl/`html lang` tag; `syncHtmlLang`, `relativeTime.bcp47`, and
+  `format.decimal` all call it (previously two agreeing mappers plus one that
+  skipped mapping).
+- **Plugin i18n completeness.** `tool-results` content-category captions,
+  `diagnostics` metric labels, and `skills` lifecycle/scope badges are now
+  translated; `diagnostics.observations.summary`, `usagereports.archive.count`, and
+  `skills.summary.*` gained plural families; `schedules` `LastRunAt`/`CreatedAt` use
+  the memoized Intl formatter like `NextRunAt`. All 8 locales complete; the two
+  `visual/*` contracts that pinned the old hardcoded English captions/scope were
+  updated to the translated en values (a real contract change, not a blind edit).
+- **Dead surface removed.** `clipboard.ts` dropped a write-only `lease` field from
+  its accepted state; `AnchoredTurn` (test-only export) was inlined into its test;
+  `data-table.tsx` (owned only `ScrollRegion`) was renamed to `scroll-region.tsx`.
+
+Rejected as non-defects (do not re-flag): the seven `@flame/ui` "unused" exports
+(`ShareBar`, `MetricValue`, `DocumentBody`, `EvidenceImage`, `TileGrid`, `Tile`,
+`PanelFooter`) and `Stats`/`copyWholeReader` are live plugin-facing API consumed
+by `plugins/*` via the importmap externalization — an audit that scopes consumer
+search to `apps`+`packages` misses them. `ToolCard`'s denied disclosure is already
+correct. Raw wire-enum badges in the `trajectory`/`diagnostics` forensic
+("recorded evidence") views are by design. `TurnRail` preview cost is unproven and
+was left per the measure-first rule.
+
+Recorded debt (out of scope for this milestone; revisit on next touch):
+
+- `plugins/memory/component/client.ts` is a 293-line parallel memory client with a
+  second, divergent `MemoryItem` type, used only by
+  `apps/web/tests/integration/runtime-http.e2e.test.ts`. Production memory access
+  has a single owner (`bindOperations`); this duplication is confined to the live
+  e2e harness. Trigger: when that e2e or the memory wire types are next changed,
+  drive the test through `bindOperations` or reuse the wire `MemoryItem`.
+- `lib/i18n` `detectInitial` does not clamp a stored/navigator locale to the
+  supported set owned by `features/i18n` (`BUNDLED`); `fallbackLng: "en"` masks the
+  content impact, and an unsupported value only mis-sets `html lang`. A clean fix
+  needs the composition root to pass the supported set into `lib/i18n`; deferred to
+  avoid reworking init ordering here.
+- `component-sdk` `failureText` default fallback is an English string; `skills` and
+  `schedules` surface it for a non-`Error` throw without a localized fallback. Low
+  severity; revisit when those read paths next change.

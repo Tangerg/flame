@@ -24,7 +24,7 @@ export const ja: Record<string, string> = {
   "pending.check": "元の結果を確認",
   "pending.retire": "元のコマンドを取り下げる",
   "archive.title": "アーカイブ",
-  "archive.count":
+  "archive.count_other":
     "保存済みレポート {{count}} 件。容量は 64 件です。1 件削除して空きを作ってください。",
   "archive.capture.note":
     "キャプチャは実行前に {{daily}}（日次）または {{weekly}}（週次）のコア会計をコピーします。暦日や暦週ではありません。",

@@ -24,7 +24,7 @@ export const ko: Record<string, string> = {
   "pending.check": "원래 결과 확인",
   "pending.retire": "원래 명령 취소",
   "archive.title": "아카이브",
-  "archive.count":
+  "archive.count_other":
     "저장된 보고서 {{count}}개. 용량은 64개입니다. 보고서를 삭제하여 공간을 확보하세요.",
   "archive.capture.note":
     "캡처는 실행 전에 {{daily}}(일간) 또는 {{weekly}}(주간)의 핵심 정산을 복사하며, 달력상의 하루나 한 주가 아닙니다.",

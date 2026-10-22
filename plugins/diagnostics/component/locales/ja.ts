@@ -12,7 +12,7 @@ export const ja: Record<string, string> = {
   "signal.logs": "ログ",
   "counts.label": "ローカルテレメトリの件数",
   "observations.title": "ローカル観測記録",
-  "observations.summary":
+  "observations.summary_other":
     "直近のバッファ読み取りに {{count}} 件の観測記録があります。古い観測記録は破棄されている場合があります。",
   "observations.empty.title": "この読み取りにはローカル観測記録がありません。",
   "observations.empty.sub":
@@ -25,6 +25,11 @@ export const ja: Record<string, string> = {
   "fact.recorded": "記録時刻",
   "fact.span": "スパン",
   "duration.ms": "{{ms}} ms",
+  "metric.count": "件数",
+  "metric.sum": "合計",
+  "metric.p50": "p50",
+  "metric.p95": "p95",
+  "metric.avg": "平均",
   "attributes.title": "属性",
   "raw.title": "生の観測記録",
   "raw.label": "ローカル観測記録の詳細",

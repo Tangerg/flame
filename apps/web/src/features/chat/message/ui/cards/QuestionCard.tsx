@@ -31,7 +31,7 @@ import {
   useQuestionCardActions,
 } from "@/features/chat/message/application/questionCardModel";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
-import { composerCompositionKeyIntent } from "@/features/composer/public/composition";
+import { useCompositionCommitGuard } from "@/features/composer/public/composition";
 import {
   color,
   corner,
@@ -154,8 +154,7 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
   const requestRef = useRef<HTMLDivElement>(null);
   const focusQuestionOnChange = useRef(false);
   const activeQuestionRef = useRef<HTMLDivElement>(null);
-  const composingRef = useRef(false);
-  const compositionCommitPendingRef = useRef(false);
+  const composition = useCompositionCommitGuard();
   const actions = useQuestionCardActions({ resumeRunId, itemId, questions, draft });
   const activeIndex = Math.min(questionIndex, Math.max(questions.length - 1, 0));
   const activeQuestion = questions[activeIndex];
@@ -179,8 +178,7 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
   const navigateQuestion = (nextIndex: number) => {
     const bounded = Math.min(Math.max(nextIndex, 0), Math.max(questions.length - 1, 0));
     if (bounded === activeIndex) return;
-    composingRef.current = false;
-    compositionCommitPendingRef.current = false;
+    composition.reset();
     focusQuestionOnChange.current = true;
     setQuestionIndex(bounded);
   };
@@ -263,38 +261,28 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
   };
 
   const handleCompositionStart = () => {
-    composingRef.current = true;
-    compositionCommitPendingRef.current = false;
+    composition.start();
   };
 
   const handleAnswerChange = (event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     if (!activeQuestion) return;
     const value = event.currentTarget.value;
     const nativeComposing = (event.nativeEvent as { isComposing?: boolean }).isComposing === true;
-    if (composingRef.current && !nativeComposing) {
-      composingRef.current = false;
-      compositionCommitPendingRef.current = true;
-    }
+    composition.noteChange(nativeComposing);
     setDraft((previous) => setQuestionText(previous, activeIndex, activeQuestion, value));
   };
 
   const handleCompositionEnd = (
     event: CompositionEvent<HTMLTextAreaElement | HTMLInputElement>,
   ) => {
-    composingRef.current = false;
-    compositionCommitPendingRef.current = true;
+    composition.end();
     if (!activeQuestion) return;
     const value = event.currentTarget.value;
     setDraft((previous) => setQuestionText(previous, activeIndex, activeQuestion, value));
   };
 
   const handleAnswerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
-    const compositionIntent = composerCompositionKeyIntent(
-      event.nativeEvent,
-      composingRef.current,
-      compositionCommitPendingRef.current,
-    );
-    compositionCommitPendingRef.current = false;
+    const compositionIntent = composition.keyIntent(event.nativeEvent);
     if (compositionIntent !== null) {
       if (compositionIntent === "committed-enter") event.preventDefault();
       return;
@@ -427,9 +415,8 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
                 onKeyDown={handleAnswerKeyDown}
-                onBlur={() => {
-                  compositionCommitPendingRef.current = false;
-                }}
+                onKeyUp={() => composition.clear()}
+                onBlur={() => composition.clear()}
                 className={stylex.props(qc.textArea).className}
               />
             </div>
@@ -458,9 +445,8 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
                 onKeyDown={handleAnswerKeyDown}
-                onBlur={() => {
-                  compositionCommitPendingRef.current = false;
-                }}
+                onKeyUp={() => composition.clear()}
+                onBlur={() => composition.clear()}
                 styles={qc.freeField}
               />
             </div>

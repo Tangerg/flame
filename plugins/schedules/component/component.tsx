@@ -550,10 +550,13 @@ export function Schedules({ context }: { context: ComponentContext }) {
                     [
                       t("fact.lastFiring"),
                       hasTime(item.LastRunAt)
-                        ? item.LastRunAt
+                        ? dateTime.format(new Date(item.LastRunAt))
                         : t("fact.neverFired"),
                     ],
-                    [t("fact.created"), item.CreatedAt],
+                    [
+                      t("fact.created"),
+                      dateTime.format(new Date(item.CreatedAt)),
+                    ],
                   ]}
                 />
               </Disclosure>

@@ -39,4 +39,13 @@ export const de: Record<string, string> = {
   "skills.truncated": "Weitere Skills wurden aus diesem Ergebnis ausgelassen.",
   "skills.empty": "Es wurden keine Skills zurückgegeben.",
   "http.truncated": "Gekürzt",
+  "caption.source": "Quelltext",
+  "caption.answer": "Antwort",
+  "caption.instructions": "Anweisungen",
+  "caption.memories": "Memory",
+  "caption.skills": "Skills",
+  "caption.result": "Ergebnis",
+  "caption.matches": "Treffer",
+  "caption.results": "Ergebnisse",
+  "caption.response": "Antwort",
 };

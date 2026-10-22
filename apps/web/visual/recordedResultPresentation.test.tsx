@@ -260,8 +260,8 @@ it("distinguishes an empty skill list from a result where no summary fit", () =>
 });
 
 it.each([
-  { name: "glob", result: JSON.stringify({ hits: [] }), label: "matches" },
-  { name: "web_search", result: JSON.stringify({ results: [] }), label: "results" },
+  { name: "glob", result: JSON.stringify({ hits: [] }), label: "Matches" },
+  { name: "web_search", result: JSON.stringify({ results: [] }), label: "Results" },
 ])(
   "states that $name returned nothing before, during and after Find",
   async ({ name, result, label }) => {

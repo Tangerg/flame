@@ -21,12 +21,6 @@ interface TurnExtent {
   share: number;
 }
 
-export interface AnchoredTurn {
-  id: string;
-  role: string | null;
-  top: number;
-}
-
 export function foldExchanges<T extends { id: string; role: string | null }>(
   turns: readonly T[],
 ): T[] {

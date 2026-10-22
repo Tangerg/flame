@@ -23,7 +23,7 @@ export const zhTW: Record<string, string> = {
   "pending.check": "檢查原始結果",
   "pending.retire": "撤銷原始命令",
   "archive.title": "封存",
-  "archive.count":
+  "archive.count_other":
     "已儲存 {{count}} 份報告。容量為 64；移除一份報告以騰出空間。",
   "archive.capture.note":
     "擷取會在執行前複製 {{daily}}（每日）或 {{weekly}}（每週）的核心核算，而不是某個日曆日或日曆週。",

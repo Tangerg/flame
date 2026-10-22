@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { ScrollRegion } from "./data-table";
+import { ScrollRegion } from "./scroll-region";
 import { color, space, surface, type } from "./tokens.stylex";
 
 export type ComparisonRow =

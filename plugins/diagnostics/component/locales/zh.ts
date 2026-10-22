@@ -11,7 +11,7 @@ export const zh: Record<string, string> = {
   "signal.logs": "日志",
   "counts.label": "本地遥测计数",
   "observations.title": "本地观测记录",
-  "observations.summary":
+  "observations.summary_other":
     "最近一次缓冲区读取中有 {{count}} 条观测记录。较早的观测记录可能已被淘汰。",
   "observations.empty.title": "本次读取没有本地观测记录。",
   "observations.empty.sub": "请选择其他信号，或在使用工作台后刷新。",
@@ -23,6 +23,11 @@ export const zh: Record<string, string> = {
   "fact.recorded": "记录时间",
   "fact.span": "跨度",
   "duration.ms": "{{ms}} ms",
+  "metric.count": "数量",
+  "metric.sum": "总和",
+  "metric.p50": "p50",
+  "metric.p95": "p95",
+  "metric.avg": "平均值",
   "attributes.title": "属性",
   "raw.title": "原始观测记录",
   "raw.label": "本地观测记录详情",

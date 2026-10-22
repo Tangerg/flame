@@ -169,7 +169,7 @@ function DiagnosticsReport({
                     .map(
                       (key) =>
                         [
-                          key,
+                          t(`metric.${key}`),
                           `${row[key]}${row.unit ? ` ${row.unit}` : ""}`,
                         ] as Fact,
                     )}

@@ -11,7 +11,9 @@ export const en: Record<string, string> = {
   "signal.logs": "Logs",
   "counts.label": "Local telemetry counts",
   "observations.title": "Local observations",
-  "observations.summary":
+  "observations.summary_one":
+    "{{count}} observation in the last buffer read. Older observations may have been evicted.",
+  "observations.summary_other":
     "{{count}} observations in the last buffer read. Older observations may have been evicted.",
   "observations.empty.title": "No local observations in this read.",
   "observations.empty.sub":
@@ -24,6 +26,11 @@ export const en: Record<string, string> = {
   "fact.recorded": "Recorded",
   "fact.span": "Span",
   "duration.ms": "{{ms}} ms",
+  "metric.count": "Count",
+  "metric.sum": "Sum",
+  "metric.p50": "p50",
+  "metric.p95": "p95",
+  "metric.avg": "Average",
   "attributes.title": "Attributes",
   "raw.title": "Raw observation",
   "raw.label": "Local observation details",

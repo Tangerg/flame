@@ -1,8 +1,8 @@
-import { activeLocale, type Translate } from "@/lib/i18n/index";
+import { activeLocale, localeToBcp47, type Translate } from "@/lib/i18n/index";
 const formatters = new Map<string, Intl.NumberFormat>();
 
 function decimal(value: number, fractionDigits: number, exact = false): string {
-  const locale = activeLocale();
+  const locale = localeToBcp47(activeLocale());
   const key = `${locale}/${fractionDigits}/${exact}`;
   let formatter = formatters.get(key);
   if (!formatter) {

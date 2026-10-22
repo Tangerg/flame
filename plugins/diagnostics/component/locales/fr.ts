@@ -12,7 +12,11 @@ export const fr: Record<string, string> = {
   "signal.logs": "Journaux",
   "counts.label": "Décomptes de télémétrie locale",
   "observations.title": "Observations locales",
-  "observations.summary":
+  "observations.summary_one":
+    "{{count}} observation lors de la dernière lecture du tampon. Les observations plus anciennes ont pu être supprimées.",
+  "observations.summary_many":
+    "{{count}} observations lors de la dernière lecture du tampon. Les observations plus anciennes ont pu être supprimées.",
+  "observations.summary_other":
     "{{count}} observations lors de la dernière lecture du tampon. Les observations plus anciennes ont pu être supprimées.",
   "observations.empty.title": "Aucune observation locale dans cette lecture.",
   "observations.empty.sub":
@@ -25,6 +29,11 @@ export const fr: Record<string, string> = {
   "fact.recorded": "Enregistré",
   "fact.span": "Span",
   "duration.ms": "{{ms}} ms",
+  "metric.count": "Nombre",
+  "metric.sum": "Somme",
+  "metric.p50": "p50",
+  "metric.p95": "p95",
+  "metric.avg": "Moyenne",
   "attributes.title": "Attributs",
   "raw.title": "Observation brute",
   "raw.label": "Détails de l’observation locale",

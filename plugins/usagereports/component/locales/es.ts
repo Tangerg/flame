@@ -24,7 +24,11 @@ export const es: Record<string, string> = {
   "pending.check": "Comprobar el resultado original",
   "pending.retire": "Retirar el comando original",
   "archive.title": "Archivo",
-  "archive.count":
+  "archive.count_one":
+    "{{count}} informe guardado. La capacidad es 64; elimina un informe para hacer sitio.",
+  "archive.count_many":
+    "{{count}} informes guardados. La capacidad es 64; elimina un informe para hacer sitio.",
+  "archive.count_other":
     "{{count}} informes guardados. La capacidad es 64; elimina un informe para hacer sitio.",
   "archive.capture.note":
     "Una captura copia la contabilidad base de las {{daily}} (diario) o los {{weekly}} (semanal) antes de ejecutarse, no un día o una semana del calendario.",

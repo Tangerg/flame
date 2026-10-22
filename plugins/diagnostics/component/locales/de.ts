@@ -11,7 +11,9 @@ export const de: Record<string, string> = {
   "signal.logs": "Logs",
   "counts.label": "Lokale Telemetriezählung",
   "observations.title": "Lokale Beobachtungen",
-  "observations.summary":
+  "observations.summary_one":
+    "{{count}} Beobachtung beim letzten Pufferlesevorgang. Ältere Beobachtungen wurden möglicherweise verdrängt.",
+  "observations.summary_other":
     "{{count}} Beobachtungen beim letzten Pufferlesevorgang. Ältere Beobachtungen wurden möglicherweise verdrängt.",
   "observations.empty.title":
     "Keine lokalen Beobachtungen in diesem Lesevorgang.",
@@ -25,6 +27,11 @@ export const de: Record<string, string> = {
   "fact.recorded": "Aufgezeichnet",
   "fact.span": "Span",
   "duration.ms": "{{ms}} ms",
+  "metric.count": "Anzahl",
+  "metric.sum": "Summe",
+  "metric.p50": "p50",
+  "metric.p95": "p95",
+  "metric.avg": "Durchschnitt",
   "attributes.title": "Attribute",
   "raw.title": "Rohbeobachtung",
   "raw.label": "Details der lokalen Beobachtung",

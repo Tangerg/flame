@@ -32,9 +32,15 @@ void i18next.use(initReactI18next).init({
   returnNull: false,
 });
 
+// The single owner of each app locale's BCP-47 tag for Intl and `html lang`.
+// Only `zh` needs normalization; every other id is already a valid tag.
+export function localeToBcp47(loc: Locale): string {
+  return loc === "zh" ? "zh-CN" : loc;
+}
+
 function syncHtmlLang(loc: Locale): void {
   if (typeof document === "undefined") return;
-  document.documentElement.lang = loc === "zh" ? "zh-CN" : loc;
+  document.documentElement.lang = localeToBcp47(loc);
 }
 
 syncHtmlLang(initial);

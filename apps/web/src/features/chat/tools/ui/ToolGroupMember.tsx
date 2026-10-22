@@ -61,38 +61,52 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
   const summaryId = useId();
   const bodyId = useId();
   const actions = useToolRowActions(tool, summaryId);
-  const disclosed = expanded && !model.denied;
+  // Disclosability is one fact: a denied tool has no preview, so the row is a
+  // static summary, never a disclosure that claims aria-expanded with no panel.
+  const disclosable = !model.denied;
+  const disclosed = disclosable && expanded;
+  const rowClassName = stylex.props(gm.row, typeStep.uiSm, disclosed && gm.rowExpanded).className;
+
+  const summary = (
+    <>
+      <span aria-hidden {...stylex.props(gm.mark, vocab.faint)}>
+        <Icon name={toolCallIconFor(tool)} size="sm" />
+      </span>
+      <ToolText value={model.intent.label} styles={[vocab.hold, gm.inherit]} />
+      {model.detail && <ToolText value={model.detail} styles={[vocab.fill, vocab.faint]} />}
+      {model.diffStat && <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />}
+      {headline && (
+        <span
+          data-tone={headline.tone}
+          {...stylex.props(gm.meta, toolMetaInk.member[headline.tone], typeStep.uiXs)}
+        >
+          {headline.label}
+        </span>
+      )}
+      <ToolStatusMarks model={model} />
+    </>
+  );
 
   return (
     <div>
       <div {...stylex.props(gm.line, reveal.host)}>
-        <Pressable
-          id={summaryId}
-          data-tool={tool.name}
-          type="button"
-          aria-expanded={expanded}
-          aria-controls={disclosed ? bodyId : undefined}
-          onClick={onToggleExpand}
-          className={stylex.props(gm.row, typeStep.uiSm, expanded && gm.rowExpanded).className}
-        >
-          <span aria-hidden {...stylex.props(gm.mark, vocab.faint)}>
-            <Icon name={toolCallIconFor(tool)} size="sm" />
-          </span>
-          <ToolText value={model.intent.label} styles={[vocab.hold, gm.inherit]} />
-          {model.detail && <ToolText value={model.detail} styles={[vocab.fill, vocab.faint]} />}
-          {model.diffStat && (
-            <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />
-          )}
-          {headline && (
-            <span
-              data-tone={headline.tone}
-              {...stylex.props(gm.meta, toolMetaInk.member[headline.tone], typeStep.uiXs)}
-            >
-              {headline.label}
-            </span>
-          )}
-          <ToolStatusMarks model={model} />
-        </Pressable>
+        {disclosable ? (
+          <Pressable
+            id={summaryId}
+            data-tool={tool.name}
+            type="button"
+            aria-expanded={expanded}
+            aria-controls={disclosed ? bodyId : undefined}
+            onClick={onToggleExpand}
+            className={rowClassName}
+          >
+            {summary}
+          </Pressable>
+        ) : (
+          <div id={summaryId} data-tool={tool.name} className={rowClassName}>
+            {summary}
+          </div>
+        )}
         {actions.length > 0 && <span {...stylex.props(gm.actions)}>{actions}</span>}
       </div>
       <ToolFailureLine model={model} />

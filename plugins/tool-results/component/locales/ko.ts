@@ -36,4 +36,13 @@ export const ko: Record<string, string> = {
   "skills.truncated": "이 결과에서 더 많은 스킬이 생략되었습니다.",
   "skills.empty": "반환된 스킬이 없습니다.",
   "http.truncated": "잘림",
+  "caption.source": "소스",
+  "caption.answer": "답변",
+  "caption.instructions": "지침",
+  "caption.memories": "메모리",
+  "caption.skills": "스킬",
+  "caption.result": "결과",
+  "caption.matches": "일치 항목",
+  "caption.results": "결과",
+  "caption.response": "응답",
 };

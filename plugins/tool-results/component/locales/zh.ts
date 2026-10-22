@@ -35,4 +35,13 @@ export const zh: Record<string, string> = {
   "skills.truncated": "此结果中省略了更多技能。",
   "skills.empty": "未返回任何技能。",
   "http.truncated": "已截断",
+  "caption.source": "源代码",
+  "caption.answer": "回答",
+  "caption.instructions": "指令",
+  "caption.memories": "记忆",
+  "caption.skills": "技能",
+  "caption.result": "结果",
+  "caption.matches": "匹配项",
+  "caption.results": "结果",
+  "caption.response": "响应",
 };

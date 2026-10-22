@@ -36,4 +36,13 @@ export const ja: Record<string, string> = {
   "skills.truncated": "この結果ではさらに多くのスキルが省略されました。",
   "skills.empty": "スキルは返されませんでした。",
   "http.truncated": "切り詰め",
+  "caption.source": "ソース",
+  "caption.answer": "回答",
+  "caption.instructions": "指示",
+  "caption.memories": "メモリ",
+  "caption.skills": "スキル",
+  "caption.result": "結果",
+  "caption.matches": "一致",
+  "caption.results": "結果",
+  "caption.response": "レスポンス",
 };

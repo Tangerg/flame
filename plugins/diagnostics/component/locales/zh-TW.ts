@@ -11,7 +11,7 @@ export const zhTW: Record<string, string> = {
   "signal.logs": "日誌",
   "counts.label": "本機遙測計數",
   "observations.title": "本機觀測記錄",
-  "observations.summary":
+  "observations.summary_other":
     "最近一次緩衝區讀取中有 {{count}} 筆觀測記錄。較舊的觀測記錄可能已被淘汰。",
   "observations.empty.title": "本次讀取沒有本機觀測記錄。",
   "observations.empty.sub": "請選擇其他訊號，或在使用工作台後重新整理。",
@@ -23,6 +23,11 @@ export const zhTW: Record<string, string> = {
   "fact.recorded": "記錄時間",
   "fact.span": "跨度",
   "duration.ms": "{{ms}} ms",
+  "metric.count": "數量",
+  "metric.sum": "總和",
+  "metric.p50": "p50",
+  "metric.p95": "p95",
+  "metric.avg": "平均值",
   "attributes.title": "屬性",
   "raw.title": "原始觀測記錄",
   "raw.label": "本機觀測記錄詳情",

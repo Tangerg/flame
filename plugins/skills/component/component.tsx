@@ -117,7 +117,9 @@ export function Skills({ context }: { context: ComponentContext }) {
               <PanelTitle ref={heading} tabIndex={-1} size="sm" aria-level={2}>
                 {opened.name}
               </PanelTitle>
-              {skillDocument && <Badge>{skillDocument.scope}</Badge>}
+              {skillDocument && (
+                <Badge>{t(`scope.${skillDocument.scope}`)}</Badge>
+              )}
             </Toolbar>
           </>
         ) : (
@@ -236,7 +238,7 @@ export function Skills({ context }: { context: ComponentContext }) {
             <Facts
               values={[
                 [t("fact.workspace"), workspace!.ref.path],
-                [t("fact.scope"), review.proposal.scope],
+                [t("fact.scope"), t(`scope.${review.proposal.scope}`)],
                 [t("fact.revision"), review.proposal.revision],
               ]}
             />

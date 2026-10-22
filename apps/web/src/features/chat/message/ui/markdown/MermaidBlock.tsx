@@ -169,7 +169,7 @@ export function MermaidBlock({ code }: Props) {
   const currentSvg = current.status === "rendered" ? current.svg! : null;
   if (currentSvg !== null && currentSvg !== lastSvg) setLastSvg(currentSvg);
   const rendered: MermaidRenderResult =
-    current.status !== "rendered" && lastSvg !== null
+    current.status === "loading" && lastSvg !== null
       ? { status: "rendered", svg: lastSvg }
       : current;
 
