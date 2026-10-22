@@ -68,7 +68,7 @@ function title(row: Observation) {
     <RecordSummary
       icon={Gauge}
       title={row.name}
-      description={row.description || row.kind}
+      description={row.description || undefined}
       status={<Badge>{row.kind}</Badge>}
     />
   );

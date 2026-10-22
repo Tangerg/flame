@@ -13,7 +13,6 @@ import {
   DocumentBody,
   ImageNotice,
   Panel,
-  RecordBody,
   ScrollRegion,
   TaskListItem,
   readCalloutMarker,
@@ -253,12 +252,6 @@ export function Markdown({ context }: { context: ComponentContext }) {
     () => renderTokens(Lexer.lex(file.content, { gfm: true })),
     [file.content],
   );
-  if (file.startLine !== 1 || file.truncated)
-    return (
-      <RecordBody>
-        The complete file is required. Use the source view.
-      </RecordBody>
-    );
   return (
     <Panel label="Markdown file">
       <DocumentBody>{content}</DocumentBody>
