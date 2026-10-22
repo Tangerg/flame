@@ -419,7 +419,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
           ) : undefined
         }
       >
-        <RecordGroup variant="cards" id="items" aria-label="Saved schedules">
+        <RecordGroup variant="list" id="items" aria-label="Saved schedules">
           {page && !matching.length && (
             <EmptyState
               icon={CalendarClock}
@@ -437,7 +437,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
             />
           )}
           {matching.map((item) => (
-            <ListRow variant="card" key={item.ID}>
+            <ListRow key={item.ID}>
               <RecordHeading
                 title={item.Title || "Untitled schedule"}
                 actions={
