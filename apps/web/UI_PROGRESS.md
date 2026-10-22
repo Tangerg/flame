@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. Shared Select dismissal now finishes before rapid keyboard navigation, published at `346c1c07e`. Object-menu names are published at `57d54301e` after integration and renewed native acceptance on current dependencies; existing context-menu keyboard continuity is also qualified. Shared modal dismissal now releases keyboard navigation immediately, published at `1e4887e5e`; native search, nested editing and transcript previews are qualified below. The current Web test run passed all 3,069 tests; the existing MCP API-consumer guard still fails. Earlier aggregate timeouts, current delivery and cleanup are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance popup anchoring/native zoom painting, rapid Select dismissal, object-menu names and shared modal keyboard release are published on remote main at `f4a535440`, `346c1c07e`, `57d54301e` and `1e4887e5e`. Reading-band breakout now respects user and nested-content boundaries; subagent readers compose the complete shared reading column. Native full-pane/Dock, source return, large typography and zoom acceptance is qualified below. Final frontend tests passed 388 files / 3,020 tests. The preceding full Web run failed one Runtime readiness test (3,068 passed / 1 failed); its isolated 49-test file passed, which does not make that aggregate green. The existing MCP API-consumer guard also still fails. Delivery, cleanup and the separate unqualified math-input path are recorded below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1176,22 +1176,33 @@ rendering. Shell consumers (`MessageStream`, `ChatStream`, `FloatingComposer`)
 import the axis through the chat public surface — the same direction by which the
 shell already consumes `MessageTurn`.
 
-The root cause this fixes: the delegated-run (subagent) transcript lives in the
-`chat` context and could not reach the shell-housed measure without a backward
-dependency, so `SubagentsPanel` rendered its transcript with no column cap —
-edge-to-edge in a widened Dock or full pane while the main transcript capped.
-`SubagentsPanel` now wraps its transcript content in `readingColumn.box`, so a
-delegated run caps and centers on the same axis as the primary conversation. The
-narrow Dock is unchanged because its content already sits below the cap; the
-existing scroller gutter is retained. Reference basis: ChatGPT/Codex drive the
-whole reading column from one measure variable (real-UI CSS), and ZCode centers a
-capped reading column in detail panes.
+The earlier move repaired the dependency direction but left an incomplete
+composition: `SubagentsPanel` used the capped box without its gutter. Actual
+Wails showed an 808 px inner body where the main reader had 768 px; padding on
+the outside scroller did not repair that contract. The existing transcript div
+now composes both `readingColumn.box` and `readingColumn.gutter`. Its local
+`--reading-gutter` projects the existing `--layout-compact-gutter`, preserving the
+narrow Dock's inset. The overview list keeps that same token on its scroller;
+the transcript no longer adds a second outer inset. Shared reading tokens and
+the existing 640 px gutter breakpoint remain authoritative.
 
-Verification: `typecheck`, `check:layers`/`contexts`/`published-boundaries`/`circular`,
-`lint` and `knip` pass; the full web unit suite is green (388 files / 3069 tests).
-Native Wails interaction acceptance for the widened-Dock and full-pane subagent
-reading is pending and not claimed here. Next reading work is controlled
-wide-content breakout (code/tables/media exceeding the prose measure).
+Final Wails acceptance qualified the complete composition in English/light/14 px/
+Flame Orange and Chinese/dark/18 px/custom blue. The full-pane body uses the
+shared 768 px inner cap at Actual Size, and a native window resize enters the
+existing wide-content band without losing its right gutter. Moving the selected
+third fanout task into a 473 px Dock retains identity and the compact inset.
+A separate 523→725 px Dock drag, 200% native zoom, actual narrow window and
+task → file → task → conversation path retain the original source focus and
+exact Chinese Composer draft. The fixture sidebar was explicitly collapsed for
+zoomed reading; its static layout is not production navigation evidence.
+
+Reference basis: ChatGPT's actual
+`deob/webview/assets/subagent-panel-3efa108a843d.js` centers a full-width body on
+the shared thread cap. ZCode's actual conversation/message components keep
+user content within its local boundary. The inspected Markdown exporter is
+excluded from interface evidence. Verification and remaining limits are shared
+with the reading-band repair below; this composition no longer has pending
+widened-Dock/full-pane native acceptance.
 
 ## Empty, error and unsupported state ownership
 
@@ -1219,43 +1230,96 @@ empties; native Wails acceptance of the new error tones is pending.
 
 ## Wide-content breakout in the reading band
 
-Code, wide media, Mermaid diagrams and tables now extend past the prose measure in
-the window-width band where the per-turn navigation rail is hidden, so dense
-content gets room without colliding with the rail. The breakout lives only in
-`markdown.css`, gated to `@container conversation (min-width: 640px) and
-(max-width: 1151.98px)`: below 640px (narrow Dock) and in the rail's `>=1152px`
-band it is inert, so those presentations are unchanged.
+Actual Wails on `955cfb690` exposed the missing boundary in the original broad
+`.md` descendant rule. Expanded user code and images escaped the narrower user
+bubble; quote, list and Callout code borrowed the conversation pane's width and
+put actions behind the Dock or outside their local surface. The width formula
+was not the owner of eligibility.
 
-Wide blocks are left-anchored — their left edge stays on the prose's left edge and
-they grow rightward — matching the conversation's left-aligned prose (`65ch` with
-`margin-inline-end: auto`) rather than centering against it. Width is
-`max(100%, min(var(--wide-column-max), 100cqi - max(0px, (100cqi - var(--reading-column-max)) / 2) - 2 * var(--reading-gutter-wide)))`:
-never narrower than the column (no regression), and bounded so the right edge keeps
-two gutters of clearance from the pane — no horizontal scrollbar by construction
-across the whole band, including the narrow end where the column already fills the
-pane. `--wide-column-max` (56rem) is the single tunable owner.
+`BlockRenderer` now marks its existing text wrapper with
+`data-slot="message-text"`. `markdown.css` grants breakout only through the
+observed outer assistant text chain:
+`.msg-content:not([data-user-message-bubble]) > [data-block-anchor] > [data-slot="message-text"] > .md`.
+Only direct code, media, Mermaid frames and display math inside a direct paragraph
+take the wide width. Direct table containers take only `max-width`, preserving
+intrinsic narrow tables. User bubbles, nested Markdown, list/quote/Callout content,
+reasoning and NarrativeWave text keep their local boundary. No wrapper, clipping,
+measurement, new state or event workaround was added.
 
-Scope: full-width blocks take the width directly — code (`.md .shiki-block`),
-media (`.md p.md-media-wide-block`), Mermaid (its `data-wide-markdown-block` frame)
-and math (`.md .katex-display`); `.md .md-table-container` takes it as a `max-width`
-so a narrow table stays fit-content and only a wide one grows. The whole `@container`
-rule sits after every base rule and defines `--md-wide-width` once on `.md`, so each
-selector wins its cascade by order and a future base rule cannot silently outrank it
-(the hazard that had left media unwidened behind its own base rule). The bounded
-table height, code/text selection and lightbox escapes are width-independent and
-untouched. Verification: lint, every CSS check
-(variables/dead-tokens/styles/shorthand/classes) and the markdown render suite (12
-files / 118 tests) pass. NATIVE ACCEPTANCE PENDING AND REQUIRED: the
-`--wide-column-max` value, the look across the band, the 1152px rail transition, and
-that the `.md`-scoped rules win over the StyleX/base frames all need real Wails
-verification and tuning; this environment cannot judge the geometry.
+The existing 640–1151.98 px `conversation` container band, left-anchored growth,
+56rem cap and width formula remain:
+`max(100%, min(var(--wide-column-max), 100cqi - max(0px, (100cqi - var(--reading-column-max)) / 2) - 2 * var(--reading-gutter-wide)))`.
+The complete subagent column composition above makes that geometry apply to the
+same owned axis in a full pane and a widened Dock. Ordinary code, table and media
+scrolling, selection, typography, radius, theme and Runtime owners are unchanged.
+The better-layout, better-typography and better-accessibility guidance informs
+stable grouping, reading measure and reachable local operations; it does not
+justify a second component system or global theme change.
 
-The delegated-run (subagent) transcript now establishes the same `conversation`
-container on its reader, so its wide content breaks out on the identical rule in a
-wide pane and stays inert in the narrow Dock. This closes the gap where only the
-main transcript, not a full-pane subagent view, widened its code and tables. The
-container mirrors the conversation pane's own; the subagent reader already owned
-its relative position and gutters, so nothing else changes.
+Native acceptance used the production Wails v3 host with isolated data and
+canonical captured messages augmented only with code, table, wide SVG and nested
+evidence. Before the subagent gutter correction, English/light/14 px/Orange
+qualified bounded expanded user code/image (including the image's END), nested
+evidence, wrap and keyboard Copy acknowledgement, file/source return and the
+exact mixed-language draft. An actual window resize qualified outer code growing
+beyond prose. After the final composition, renewed English full-pane acceptance
+showed the shared 768 px inner cap; resizing the native capture from 2878×1798 to
+2678×1798 grew the outer code to its 896 px cap with a 20 px right gutter.
+Selected-task → file → task restores the exact source link; moving that task
+into the 473 px Dock keeps the same task and local inset. Final Chinese/dark/
+18 px/blue acceptance qualified 523→725 px pointer resizing, 20 successful
+native Zoom In commands (200%), a 2632×1798 window, local code wrapping,
+Tab → Copy with visible focus/acknowledgement, file → task → original third
+fanout return, and the exact `子任务阅读草稿 保留` draft. Actual Size was restored
+before exit. These observations qualify the exercised layouts; a visibly present
+turn-navigation rail, all possible transitions and other native platforms were
+not qualified.
+
+Final checks: 14 focused files / 143 tests passed (4.89 s); frontend project
+388 files / 3,020 tests passed (113.01 s). Typecheck, lint, format and all eleven
+initial style/design checks passed. The later 22 checks were run independently:
+21 passed, including the production bundle and all 11 portable resources; the
+existing API-consumer inventory still rejects
+`mcp.servers.reconnect has no non-test frontend consumer`. Its 16 tests passed.
+The final `make check-native` passed (28.51 s). The preceding full Web aggregate
+failed (167.06 s, 388 files passed / 1 failed, 3,068 tests passed / 1 failed):
+the shipped Memory MCP source did not become ready in
+`runtime-http.e2e.test.ts`. That complete Runtime file passed separately with
+one worker (49 tests, 42.48 s); this does not establish the readiness cause or
+make the failed aggregate green. No Runtime, SDK, resource, timeout, assertion or
+guard was changed. No browser visual suite or benchmark was started.
+
+Claude Code CLI was used for bounded implementation: the first attempt reached
+its turn limit without edits (65.41 s); the second proposed the selector but both
+edits were denied by its own dontAsk file patterns (34.72 s). Primary review
+included the actual block-anchor wrapper and applied the two-file repair. A
+third attempt successfully composed the subagent gutter (18.18 s, no denials);
+primary review corrected the brief's assumed compact pixel value by projecting
+the actual existing token. All actual diffs, gates and native results were
+reviewed independently. The 34 frozen product/host/fixture/manifest inputs and
+three private harness inputs matched the reviewed versions through final native
+acceptance.
+
+The separate math-content probe remains unqualified for horizontal input. Display
+math was focusable/readable; trusted ArrowRight reached the focused KaTeX scroller
+with `defaultPrevented=false`, but its 870 px content retained offset zero in both
+the changed band (659 px viewport) and the unchanged outside-band control
+(768 px viewport). Native CUA horizontal wheel produced no observed DOM wheel
+event. A passive private HUD confirmed visible/focused document state; it did not
+change scrolling or input. This evidence does not establish a current-patch
+regression or a general WebKit defect. Next, compare a bare native HTML scroller
+and qualify actual input delivery before changing an owner. No focus handler,
+scroll fallback, activation request or font substitution was added.
+
+Cleanup verified all 11 owned native PIDs and three CLI PIDs had exited,
+unregistered the exact app bundle and removed its temporary root, data, logs,
+pointer, ten newly created build/cache outputs and two bundle-specific Library
+directories. Pre-existing UI test cache, dependency/compiler caches, user data,
+read-only references, unrelated processes and the primary checkout were retained.
+Copied static assets with inherited creation times were accepted only after
+exact source-hash, current write-time, UID and non-link checks. Remote main was
+refetched at `955cfb690` before publication; commit/push receipts follow after
+delivery.
 
 ## Tool argument copy outcomes
 
@@ -2816,9 +2880,12 @@ defects; each needs a Wails look and an explicit choice before implementing:
   windowed reader toward a stable-document model first. A matching both-panels Esc/Backspace "return to
   this panel's list" (distinct from the conversation-return) is a shared gap in Flame and
   ZCode alike, not a ZCode advantage; if added later, do it symmetrically in both panels.
-- **Wide-content breakout geometry.** Tune `--wide-column-max` (56rem), confirm the
-  left-anchored growth reads well across the 640–1151px band, and judge the 1152px
-  breakout↔navigation-rail transition. Implemented; native acceptance pending.
+- **Wide-content boundaries and native math input.** User/nested boundaries,
+  left-anchored outer growth, the shared subagent cap/gutter and exercised
+  full-pane/Dock/200% return paths are now qualified above; do not repeat them as
+  pending work. A visibly present turn rail was not qualified. Horizontal math
+  input needs a bare native scroller comparison and confirmed input delivery
+  before assigning a defect owner or adding behavior.
 - **Standalone ToolCard open-state (reviewed — keep).** A standalone card keeps its
   promoted write/exec result visible via a manual toggle ("meaningful results stay"),
   while the grouped `ToolGroup` auto-collapses on completion. This is a justified

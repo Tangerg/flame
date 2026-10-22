@@ -47,11 +47,11 @@ const styles = stylex.create({
   },
   headLine: { minWidth: 0, flex: 1 },
   scroller: {
-    paddingInline: "var(--layout-compact-gutter)",
     paddingBlock: space.s3,
     scrollPaddingBlockEnd:
       "calc(var(--control-height-md) + var(--transcript-jump-gap) + var(--layout-control-gap))",
   },
+  overview: { paddingInline: "var(--layout-compact-gutter)" },
   group: { marginBottom: space.s4 },
   title: { marginBottom: space.s2 },
   reader: {
@@ -64,7 +64,11 @@ const styles = stylex.create({
     containerName: "conversation",
     "--transcript-jump-gap": space.s4,
   },
-  transcript: { minWidth: 0, paddingBottom: space.s12 },
+  transcript: {
+    minWidth: 0,
+    paddingBottom: space.s12,
+    "--reading-gutter": "var(--layout-compact-gutter)",
+  },
   evidence: { marginBottom: space.s6 },
   summary: { display: "grid", gap: space.s0_5, minWidth: 0, flex: 1 },
   name: {
@@ -181,7 +185,7 @@ export function SubagentsPanel() {
         {selected && summary?.cancelable && <SubagentStopButton run={selected.narrative.run} />}
       </header>
       <Activity key={entries[0]?.narrative.run.sessionId} mode={selectedId ? "hidden" : "visible"}>
-        <ScrollArea className={stylex.props(styles.scroller).className}>
+        <ScrollArea className={stylex.props(styles.scroller, styles.overview).className}>
           {entries.length === 0 ? (
             <EmptyState icon={iconGlyph("bot")} title={t("subagents.empty")} />
           ) : (
@@ -285,7 +289,7 @@ function SubagentTranscript({
           onFocusCapture={(event) =>
             stopFollowOnReadingFocus(event, { scrollRef, state, stopScroll })
           }
-          {...stylex.props(rc.box, styles.transcript)}
+          {...stylex.props(rc.box, rc.gutter, styles.transcript)}
         >
           {(summary.detail || narrative.run.outcome?.unresolvedEffects?.length) && (
             <div {...stylex.props(styles.evidence)}>

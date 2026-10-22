@@ -36,7 +36,7 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
   switch (block.kind) {
     case "text":
       return (
-        <div key={key}>
+        <div key={key} data-slot="message-text">
           {ctx.textReveal === "instant" ? (
             <MarkdownMessage text={block.text} reveal="instant" />
           ) : (

@@ -104,8 +104,12 @@
   background-clip: content-box;
 }
 
+/* Only outer message text can borrow pane width; nested content has its own boundary. */
 @container conversation (min-width: 640px) and (max-width: 1151.98px) {
-  .md {
+  .msg-content:not([data-user-message-bubble])
+    > [data-block-anchor]
+    > [data-slot="message-text"]
+    > .md {
     --md-wide-width: max(
       100%,
       min(
@@ -114,15 +118,26 @@
       )
     );
   }
-  .md p.md-media-wide-block,
-  .md [data-wide-markdown-block="true"],
-  .md .shiki-block,
-  .md .katex-display {
+  .msg-content:not([data-user-message-bubble])
+    > [data-block-anchor]
+    > [data-slot="message-text"]
+    > .md
+    > :is(p.md-media-wide-block, [data-wide-markdown-block="true"], .shiki-block),
+  .msg-content:not([data-user-message-bubble])
+    > [data-block-anchor]
+    > [data-slot="message-text"]
+    > .md
+    > p
+    > .katex-display {
     width: var(--md-wide-width);
     max-width: var(--md-wide-width);
     margin-inline: 0;
   }
-  .md .md-table-container {
+  .msg-content:not([data-user-message-bubble])
+    > [data-block-anchor]
+    > [data-slot="message-text"]
+    > .md
+    > .md-table-container {
     max-width: var(--md-wide-width);
   }
 }
