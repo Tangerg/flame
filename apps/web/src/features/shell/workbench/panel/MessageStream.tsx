@@ -18,6 +18,7 @@ import { useCurrentRootMaterial, type CurrentRootMaterial } from "@/features/age
 import { MessageTurn } from "@/features/chat/public/message/rendering";
 import { RootRunOutcome } from "@/features/chat/public/message/rendering";
 import { transcriptTurnContentVisibility } from "@/features/shell/workbench/panel/transcriptTurnContentVisibility";
+import { TurnErrorBoundary } from "@/features/shell/workbench/panel/TurnErrorBoundary";
 import { space } from "@flame/ui/tokens.stylex";
 const ms = stylex.create({
   viewport: {
@@ -173,18 +174,19 @@ export function MessageStream({ rows, ctx, sessionId }: Props) {
           {rows.map((row, index) => {
             const previous = rows[index - 1]?.message;
             return (
-              <TranscriptTurn
-                key={row.message.id}
-                row={row}
-                ctx={ctx}
-                sessionId={sessionId}
-                isLast={index === rows.length - 1}
-                isRunning={running}
-                next={rows[index + 1]?.message}
-                terminalRun={index === terminalTurnIndex ? currentRoot : null}
-                opensDay={dayBreaks[index] ?? false}
-                previous={previous}
-              />
+              <TurnErrorBoundary key={row.message.id} resetKey={row.message.id}>
+                <TranscriptTurn
+                  row={row}
+                  ctx={ctx}
+                  sessionId={sessionId}
+                  isLast={index === rows.length - 1}
+                  isRunning={running}
+                  next={rows[index + 1]?.message}
+                  terminalRun={index === terminalTurnIndex ? currentRoot : null}
+                  opensDay={dayBreaks[index] ?? false}
+                  previous={previous}
+                />
+              </TurnErrorBoundary>
             );
           })}
         </AnimatePresence>

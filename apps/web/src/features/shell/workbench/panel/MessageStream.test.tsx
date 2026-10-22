@@ -30,9 +30,14 @@ vi.mock("@/features/agent/public/run", () => ({
 
 vi.mock("@/features/chat/public/message/rendering", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/chat/public/message/rendering")>();
+  const Actual = actual.MessageTurn;
   return {
     ...actual,
     RootRunOutcome: () => <div data-testid="root-run-outcome" />,
+    MessageTurn: (props: Parameters<typeof Actual>[0]) => {
+      if (props.row.message.id === "render-boom") throw new Error("render-boom");
+      return <Actual {...props} />;
+    },
   };
 });
 
@@ -165,6 +170,40 @@ describe("MessageStream terminal footer materialization", () => {
     expect(
       screen.getByTestId("root-run-outcome").closest<HTMLElement>("[data-turn-id]")?.dataset.turnId,
     ).toBe("assistant-terminal-footer");
+  });
+});
+
+function throwingRow(): TranscriptRow {
+  return {
+    message: {
+      id: "render-boom",
+      runId: null,
+      role: "assistant",
+      blocks: [],
+    },
+    runOwner: { kind: "unassigned" },
+    facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map<string, string>() },
+  };
+}
+
+describe("MessageStream turn resilience", () => {
+  afterEach(() => {
+    root.current = { running: true, terminalTurnIndex: () => -1 };
+  });
+
+  it("contains a turn that fails to render without blanking its siblings", () => {
+    root.current = { running: false, terminalTurnIndex: () => -1 };
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <MessageStream
+        rows={[throwingRow(), transcriptRow("complete")]}
+        ctx={CTX}
+        sessionId="session-resilience"
+      />,
+    );
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(document.querySelector('[data-turn-id="assistant-terminal-footer"]')).not.toBeNull();
+    errors.mockRestore();
   });
 });
 
