@@ -63,7 +63,7 @@ const chipStyles = stylex.create({
   close: {
     scale: "calc(0.96 + 0.04 * var(--reveal, 1))",
     transitionProperty: "opacity, scale, background-color, color",
-    transitionDuration: "var(--dur-fast)",
+    transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
   },
 });

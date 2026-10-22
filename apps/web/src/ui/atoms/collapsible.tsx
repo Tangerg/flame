@@ -9,7 +9,7 @@ const styles = stylex.create({
     gridTemplateColumns: "minmax(0, 1fr)",
     transitionProperty: "grid-template-rows",
     transitionDuration: motionToken.med,
-    transitionTimingFunction: "var(--ease-out)",
+    transitionTimingFunction: motionToken.easeOut,
   },
   // The zero minimum keeps WebKit's intrinsic track in sync when open content wraps.
   open: { gridTemplateRows: "minmax(0, 1fr)" },

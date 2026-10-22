@@ -813,7 +813,7 @@ html.theme-dark {
   box-shadow:
     var(--app-pane-split) var(--split-boundary),
     var(--app-pane-wash) var(--seam-wash);
-  transition: box-shadow var(--dur-fast) ease-out;
+  transition: box-shadow var(--polish-fast);
 }
 
 .pane-split[data-split-side="end"] {

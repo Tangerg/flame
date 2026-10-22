@@ -30,7 +30,7 @@ const rowStyles = stylex.create({
         surface.selectedHover,
     },
     transitionProperty: "background-color, color",
-    transitionDuration: "var(--dur-color)",
+    transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
   },
   tracked: {
@@ -57,7 +57,11 @@ const rowStyles = stylex.create({
       "@media (hover: none)": space.s8,
     },
   },
-  fade: { transitionProperty: "opacity", transitionDuration: motion.fast },
+  fade: {
+    transitionProperty: "opacity",
+    transitionDuration: motion.fast,
+    transitionTimingFunction: motion.easeState,
+  },
   glyph: { flexShrink: 0, color: color.fg },
   glyphStacked: { marginTop: "1px" },
   stack: { display: "flex", minWidth: 0, flex: 1, flexDirection: "column", gap: "1px" },

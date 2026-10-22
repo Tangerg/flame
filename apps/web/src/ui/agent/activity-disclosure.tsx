@@ -100,12 +100,8 @@ const styles = stylex.create({
   chevron: {
     pointerEvents: "none",
     display: "flex",
-    flexShrink: 0,
     marginInlineStart: "calc(var(--spacing) * -1)",
     color: color.fgFaint,
-    transitionProperty: "rotate",
-    transitionDuration: motion.fast,
-    transitionTimingFunction: motion.easeState,
   },
   actions: {
     display: "flex",
@@ -263,7 +259,7 @@ export function AgentActivityDisclosure({
               aria-hidden
               data-slot="agent-activity-chevron"
               data-open={open ? "" : undefined}
-              {...stylex.props(styles.chevron, !open && chevron.shut)}
+              {...stylex.props(chevron.base, styles.chevron, !open && chevron.shut)}
             >
               <Icon name="chevron-down" size="xs" />
             </span>
