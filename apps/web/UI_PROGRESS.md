@@ -2531,12 +2531,16 @@ each dock view is still pending):
   and a repeated full-path `Metadata` at the top of the body; `DiffFileHeader` (in
   `@flame/ui`, consumed only by this plugin; `apps/web` uses the unchanged
   `DiffFileList`) now shows name + dimmed directory once and the body line is gone.
-  Restating panel description removed. Hiding the overview Comparison selector in the
-  file view was tried and reverted: `visual/diffPresentation.test.tsx` shows changing
-  the Uncommitted/Branch scope while reading a file is a supported flow (with Refresh
-  focus and Escape-return cases), so the selector stays. Leaning the diff file-view
-  chrome further is a native-design decision (whether scope becomes list-level), not a
-  blind removal.
+  Restating panel description removed. The overview Comparison (Uncommitted/Branch)
+  selector is now a files-list control: it renders only in the files-list view, so
+  opening a file drops a sticky bar (three → two in the narrow dock) and leads with the
+  file navigation + identity, matching ZCode/Codex where scope is list-level (the user
+  authorised this breaking change). Refresh stays reachable from the file view (moved
+  into the file-navigation row). The comparison-failure contract — retain the last-good
+  read, show the stale notice, recover on Refresh — is now retested from the files list
+  in `visual/diffPresentation.test.tsx`. (An earlier attempt that hid the whole
+  comparison bar including Refresh broke the file-view Refresh cases; keeping Refresh in
+  the file-nav row is the fix.)
 - **usage** — merging the period Toolbar and the search/group FilterBar into one bar
   was tried and reverted: `visual/usageScopePresentation.test.tsx` asserts the report
   range (period) precedes the local filters, and FilterBar leads with search, which
