@@ -2781,6 +2781,36 @@ stay open until clicked, cluttering the transcript) or moving the collapse
 trigger from settle to a turn boundary (superseded), which needs a history latch.
 The auto-tidy vs read-stability choice is a product decision; left for the user.
 
+## Sidebar / navigation surface audit
+
+A deep audit of the sidebar + navigation surface (session/project list, rows,
+session search, working-directory and session-action dialogs, and the workIndex
+ownership behind them) found it in notably good shape — no correctness defects.
+Verified clean: every list is id-keyed (no index keys on the reorderable session/
+project rows); the session title has one owner (the query-cache prop; the rename
+editor is uncontrolled and closes on commit, so no optimistic title strands);
+`activeSessionId` and `activeCwd` both derive from the same active session and the
+project-grouping key is the same `workspace.path`, so the active-project indicator
+cannot disagree with grouping; rename blur/Enter/Escape/IME and delete targeting
+are correct and test-pinned; the working-directory picker cannot strand on error;
+no effects/timers/listeners leak. One real mental-model gap was fixed:
+
+- **`SessionActionDialog` named only the action, not its target session.** A
+  contributed session action opened a large modal titled e.g. "Export transcript"
+  with nothing in the dialog chrome identifying which session it acts on (the
+  session was only passed into the plugin body, with no host guarantee it echoes
+  the title). The dialog now shows the session title as its `description`
+  (`session.title.trim() || t("session.untitled")`), so the target object is
+  unambiguous — directly serving the brief's "which object does this act on" axis.
+
+Left as an acceptable pattern, not a defect (recorded for completeness): the
+session rows are a flat set of `<button>`s with `aria-current="page"` rather than
+`role="list"`/`listitem` with `aria-setsize`/`aria-posinset`, so a screen reader
+hears each session as a standalone button without "item 3 of 8" framing. This is
+a legitimate buttons + aria-current navigation pattern (used widely); adding list
+semantics is an enhancement weighed against wrapping each row and threading
+set-size/position through the partially-rendered ("show more") list, not a smell.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.

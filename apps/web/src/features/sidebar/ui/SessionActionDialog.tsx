@@ -18,6 +18,7 @@ export function SessionActionDialog({
     <ModalDialog
       open
       title={action.title}
+      description={session.title.trim() || t("session.untitled")}
       closeLabel={t("common.close")}
       size="lg"
       onOpenChange={(open) => {
