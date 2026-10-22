@@ -16,8 +16,7 @@ export const composerKeymap = definePlugin({
   name: "flame.builtin.composer-keymap",
   setup(ctx) {
     for (const binding of composerKeyBindings({
-      send: ({ submit, event }) => {
-        if (event.shiftKey) return false;
+      send: ({ submit }) => {
         if (!runtimeCommandsAvailable()) return true;
         submit();
         return true;

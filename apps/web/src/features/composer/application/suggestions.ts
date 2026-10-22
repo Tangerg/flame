@@ -23,21 +23,25 @@ export function handleSuggestionKey<T>(
     list.dismiss();
     return true;
   }
+  // While the popup is open these keys belong to it, even with no items to
+  // show (loading / error / "no matches"): otherwise they fall through to the
+  // composer bindings and e.g. ArrowUp recalls history over the draft.
   const count = list.items.length;
-  if (count === 0) return false;
   switch (event.key) {
     case "ArrowDown":
-      list.setIndex((list.index + 1) % count);
+      if (count > 0) list.setIndex((list.index + 1) % count);
       return true;
     case "ArrowUp":
-      list.setIndex((list.index - 1 + count) % count);
+      if (count > 0) list.setIndex((list.index - 1 + count) % count);
       return true;
     case "Tab":
-      list.accept(list.items[list.index] ?? list.items[0]!);
+      if (count > 0) list.accept(list.items[list.index] ?? list.items[0]!);
+      else list.dismiss();
       return true;
     case "Enter":
       if (event.shiftKey) return false;
-      list.accept(list.items[list.index] ?? list.items[0]!);
+      if (count > 0) list.accept(list.items[list.index] ?? list.items[0]!);
+      else list.dismiss();
       return true;
     default:
       return false;
