@@ -2523,7 +2523,10 @@ each dock view is still pending):
   read-only facts. The card led with a raw `Cron` code line as identity and repeated
   Next firing; the human-readable Next firing is now the primary line, the cron
   expression moved into the facts, and the duplicate was dropped. The restating panel
-  description is gone.
+  description is gone. The saved-schedules group also moved from the `cards` variant to
+  the `list` variant: at the 320–480px dock width the `minmax(20rem, 1fr)` cards grid
+  always collapsed to one column, so per-card borders were chrome with no multi-column
+  benefit; one divided-row surface matches the ZCode/Codex schedule lists.
 - **diff** — the file identity was split between the sticky `DiffFileHeader` (basename)
   and a repeated full-path `Metadata` at the top of the body; `DiffFileHeader` (in
   `@flame/ui`, consumed only by this plugin; `apps/web` uses the unchanged
