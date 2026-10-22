@@ -146,6 +146,7 @@ export function SubagentsPanel() {
             icon={iconGlyph("list")}
             size="sm"
             aria-label={t("subagents.all")}
+            data-chrome-focus=""
             onClick={() => openWorkspaceSubagentRun(null)}
           />
         )}
