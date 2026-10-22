@@ -2280,6 +2280,20 @@ chevron, collapsible, catalog-picker, …) were then swept directly: the fixed p
 dimensions there (`catalog-picker` 300/400/280px, `chip` 220px max-width) are
 legitimate large layout constants, and `skeleton`'s `key={i}` is correct for a
 fixed-count, identity-less, stateless placeholder list — no defects.
+A third subagent read the composer input + suggestion system in full (`Composer`,
+`useComposerInputController`, the file-mention / slash / suggestion application state,
+`TextArea`/`OptionRow`/`Popover`): IME composition commit (229-keyCode + grace window),
+content-identity list keys, suggestion-index clamping, caret-insertion math, the
+`aria-controls`/`aria-activedescendant` wiring, token usage and dead code all verified
+clean. The one low-severity item — the composer `TextArea` sets `aria-controls` +
+`aria-activedescendant` but no `aria-expanded`/`role="combobox"` — is reviewed and kept
+as-is: this is the industry inline-completion pattern for a _multiline_ autocomplete
+(GitHub/Slack @-mention), where `role="combobox"` would make AT mis-announce the
+multi-line editor as a single-line edit and a bare `aria-expanded` is out of spec on
+`role="textbox"` (and would trip the a11y lint). The popup already signals presence:
+`SuggestionPopup` renders `role="listbox"` for options and `role="status"` (aria-live)
+for the loading/empty branch, and the `aria-activedescendant` change on open is itself
+announced — so adding the combobox role would regress AT, not help.
 Of note, a defensive XSS audit traced every dangerouslySetInnerHTML and URL sink:
 mermaid SVG (beautiful-mermaid escapes all text/attrs), shiki (escaped code), the
 markdown raw-HTML path (remarkLiteralUnknownHtml downgrades every non-allowlisted,
