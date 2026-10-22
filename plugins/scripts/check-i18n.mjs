@@ -14,6 +14,11 @@ const PAIR_PATTERN =
 const PLACEHOLDER_PATTERN = /\{\{(\w+)\}\}/g;
 const LITERAL_KEY_PATTERN = /\bt\(\s*"([^"]+)"/g;
 const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/;
+// Anti-regression (mirrors apps/web check-locales Rules 11/14): once a plugin
+// is localized, a hardcoded multi-word UI string bypasses every catalog.
+const JSX_PROSE = />[A-Z][a-z]+(?: [A-Za-z]+)+[.!?]?</g;
+const PROSE_PROP =
+  /\b(?:title|label|placeholder|sub|description|aria-label|ariaLabel|clearLabel|closeLabel)="[A-Z][a-z]+ [A-Za-z ]+"/g;
 
 const withoutComments = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
@@ -110,6 +115,14 @@ for (const plugin of plugins) {
       if (enKeys.has(m[1]) || enFamilies.has(m[1])) continue;
       failures.push(`${plugin}/${f}: t("${m[1]}") has no key in en`);
     }
+    for (const m of code.matchAll(JSX_PROSE))
+      failures.push(
+        `${plugin}/${f}: hardcoded UI text "${m[0].slice(1, -1)}" — route through t()`,
+      );
+    for (const m of code.matchAll(PROSE_PROP))
+      failures.push(
+        `${plugin}/${f}: hardcoded UI prop ${m[0]} — route through t()`,
+      );
   }
 }
 

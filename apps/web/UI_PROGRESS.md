@@ -2739,8 +2739,16 @@ context.locale)`, threads the translator (and active locale) into sub-components
   it now builds the same translator from the plugin's `en` catalog and passes `t`/`locale`;
   and the icon-gallery `Gallery` (which took no context) now receives one, so
   `installVisualWorkspaceFixture.ts` mounts it through `InstalledComponent` like the other
-  views instead of rendering it bare. Still open: a hardcoded-literal ban (host Rule 11/14)
-  as the anti-regression gate, and native host acceptance of the localized dock views.
+  views instead of rendering it bare.
+- **Anti-regression gate (done).** `check-i18n` now also mirrors the host `check-locales`
+  Rules 11/14 for the plugin tree: in any localized plugin's component files it rejects a
+  hardcoded multi-word JSX text node (`>Two words<`) or a prose-valued string literal on a
+  UI prop (`label="Two words"`), so a future hardcoded string fails the build instead of
+  silently shipping English to eight locales. The patterns are conservative (capital-led,
+  multi-word) — zero false positives across the 11 migrated plugins, and verified to still
+  catch `>No results found.<` / `label="Save report"` while ignoring `{t(...)}`,
+  single-token `<code>` data and translated expression props. The one remaining open item is
+  native host acceptance of the localized dock views, which only the user can perform.
 
 ## Working and maintenance practice
 
