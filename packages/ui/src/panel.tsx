@@ -494,14 +494,20 @@ export function PanelSection({
   description,
   actions,
   children,
+  className,
   ...props
 }: Omit<ComponentPropsWithRef<"section">, "title"> & {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
 }) {
+  const styled = stylex.props(styles.section);
   return (
-    <section {...props} {...stylex.props(styles.section)}>
+    <section
+      {...props}
+      {...styled}
+      className={clsx(styled.className, className)}
+    >
       <div {...stylex.props(styles.sectionHead)}>
         <div {...stylex.props(styles.sectionCopy)}>
           <h2 {...stylex.props(styles.sectionHeading, type.uiSm)}>{title}</h2>
@@ -573,12 +579,18 @@ export function FormActions({
 export function ListRow({
   children,
   variant = "row",
+  className,
   ...props
 }: ComponentPropsWithRef<"article"> & { variant?: "row" | "card" }) {
+  const styled = stylex.props(
+    styles.row,
+    variant === "card" && CARD_SURFACE.face,
+  );
   return (
     <article
       {...props}
-      {...stylex.props(styles.row, variant === "card" && CARD_SURFACE.face)}
+      {...styled}
+      className={clsx(styled.className, className)}
     >
       {children}
     </article>
@@ -597,9 +609,14 @@ export function Metadata({
   );
 }
 
-export function Form({ children, ...props }: ComponentPropsWithRef<"form">) {
+export function Form({
+  children,
+  className,
+  ...props
+}: ComponentPropsWithRef<"form">) {
+  const styled = stylex.props(styles.form);
   return (
-    <form {...props} {...stylex.props(styles.form)}>
+    <form {...props} {...styled} className={clsx(styled.className, className)}>
       {children}
     </form>
   );
@@ -609,6 +626,7 @@ export function RecordForm({
   children,
   opener,
   ref,
+  className,
   ...props
 }: ComponentPropsWithRef<"section"> & {
   opener?: HTMLElement | (() => HTMLElement | null);
@@ -638,6 +656,11 @@ export function RecordForm({
       }
     };
   }, [opener]);
+  const styled = stylex.props(
+    CARD_SURFACE.face,
+    styles.form,
+    styles.recordForm,
+  );
   return (
     <section
       {...props}
@@ -646,7 +669,8 @@ export function RecordForm({
         if (typeof ref === "function") return ref(node);
         if (ref) ref.current = node;
       }}
-      {...stylex.props(CARD_SURFACE.face, styles.form, styles.recordForm)}
+      {...styled}
+      className={clsx(styled.className, className)}
     >
       {children}
     </section>

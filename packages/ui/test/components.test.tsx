@@ -32,9 +32,13 @@ import {
   FormSection,
   FontScaleProvider,
   copyWholeReader,
+  Facts,
   IconButton,
+  ListRow,
   Metadata,
   ModalDialog,
+  PanelSection,
+  Stats,
   RecordForm,
   SearchField,
   type SearchFieldProps,
@@ -723,6 +727,33 @@ describe("shared controls", () => {
     const status = screen.getByRole("status");
     expect(status.classList.contains("sr-only")).toBe(true);
     expect(status.textContent).toBe("Read complete.");
+  });
+  it("applies the caller's className on structural primitives", () => {
+    render(
+      <PanelSection title="Danger" className="danger-zone">
+        <ListRow className="row-pinned">
+          <Stats values={[["Total", 1]]} className="totals-wide" />
+        </ListRow>
+      </PanelSection>,
+    );
+    expect(document.querySelector("section.danger-zone")).not.toBeNull();
+    expect(document.querySelector("article.row-pinned")).not.toBeNull();
+    expect(document.querySelector("dl.totals-wide")).not.toBeNull();
+  });
+  it("drops nullish facts and tolerates duplicate labels", () => {
+    render(
+      <Facts
+        values={[
+          ["Owner", "a"],
+          ["Owner", "b"],
+          ["Due", null],
+          ["Note", undefined],
+        ]}
+      />,
+    );
+    expect(
+      [...document.querySelectorAll("dt")].map((n) => n.textContent),
+    ).toEqual(["Owner", "Owner"]);
   });
   it("projects the field's invalid state to its accessible state", () => {
     const view = render(<TextField invalid aria-label="Endpoint" />);

@@ -2953,6 +2953,40 @@ key, but the new `role="alert"` now announces why — acceptable feedback. (3) T
 args-editor object re-registers the keymap actions each render (correct, minor); a
 `useMemo` is a future cleanup.
 
+## @flame/ui layout/structural primitives audit
+
+The shared layout vocabulary every dock plugin and settings pane builds on was
+audited as a library. `text-field` (TextField/TextArea/SearchField ref-forwarding,
+className merge, invalid→aria-invalid, controlled/clear contract), `Panel`,
+`Toolbar`/`FilterBar`/`FormActions`/`FormSection`/`FormField` (required group
+labels, useId, search-only handling) and `RecordGroup`/`Metadata` were verified
+clean and test-pinned. Two defects were fixed:
+
+- **Seven structural primitives silently dropped the caller's `className`
+  (app-wide).** `PanelSection`, `ListRow`, `Form`, `RecordForm` (panel.tsx) and
+  `Stats`, `TileGrid`, `Tile` (records.tsx) typed `className` as an accepted prop
+  but spread `{...props}` _before_ `{...stylex.props()}` with no merge, so
+  StyleX's own className overwrote the caller's — `<ListRow className="pinned">`
+  or `<PanelSection className="danger-zone">` applied nothing, with no type error.
+  They now merge via `clsx(styled.className, className)` like their correct
+  siblings (`Panel`, `Metadata`, `RecordGroup`, the fields). Regression test added.
+- **`Facts` rendered a blank row for a `null` value and keyed by label.** It
+  filtered only `undefined`, so a `null` value (a natural "no value" sentinel,
+  valid per `Fact`) produced a labelled term with an empty definition; and both
+  `Facts` and `Stats` used `key={label}`, so duplicate labels collided. `Facts`
+  now filters `!= null` and both key by index (stateless, non-reorderable display
+  rows). Regression test added.
+
+Recorded as a11y debt, not changed here: heading levels are hardcoded
+(`PanelTitle`→h1, `PanelSection`/`RecordTitle`→h2, `RecordHeading`→h3) with no
+level/context, so a flat `Panel`→`RecordGroup`→`RecordHeading` skips h1→h3 and
+side-by-side panels emit multiple h1s. The correct fix is a heading-level context
+threaded through the primitives (a design-system feature touching every heading +
+consumer), not a hasty per-tag change; left for a focused pass. Not defects:
+`ScrollRegion`'s fixed `role="region"` + required label matches the clean
+`Toolbar`/`FilterBar` purpose-built-region pattern; `ShareBar`'s `aria-hidden`
+meter is decorative beside a visible value.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.

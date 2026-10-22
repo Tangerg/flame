@@ -371,9 +371,9 @@ export function Facts({ values }: { values: readonly Fact[] }) {
   return (
     <dl {...stylex.props(styles.facts, type.uiSm)}>
       {values
-        .filter(([, value]) => value !== undefined)
-        .map(([label, value]) => (
-          <div key={label} {...stylex.props(styles.fact)}>
+        .filter(([, value]) => value != null)
+        .map(([label, value], index) => (
+          <div key={index} {...stylex.props(styles.fact)}>
             <dt {...stylex.props(styles.label, type.uiXs)}>{label}</dt>
             <dd {...stylex.props(styles.value)}>
               <bdi>{value}</bdi>
@@ -385,12 +385,14 @@ export function Facts({ values }: { values: readonly Fact[] }) {
 }
 export function Stats({
   values,
+  className,
   ...props
 }: { values: readonly Fact[] } & ComponentPropsWithRef<"dl">) {
+  const styled = stylex.props(CARD_SURFACE.face, styles.stats);
   return (
-    <dl {...props} {...stylex.props(CARD_SURFACE.face, styles.stats)}>
-      {values.map(([label, value]) => (
-        <div key={label} {...stylex.props(styles.stat)}>
+    <dl {...props} {...styled} className={clsx(styled.className, className)}>
+      {values.map(([label, value], index) => (
+        <div key={index} {...stylex.props(styles.stat)}>
           <dt {...stylex.props(styles.label, type.uiSm)}>{label}</dt>
           <dd {...stylex.props(styles.count, type.displayLg)}>{value}</dd>
         </div>
@@ -403,10 +405,16 @@ export function EvidenceImage({ src, alt }: { src: string; alt: string }) {
 }
 export function TileGrid({
   children,
+  className,
   ...props
 }: ComponentPropsWithRef<"section">) {
+  const styled = stylex.props(styles.grid, type.uiSm);
   return (
-    <section {...props} {...stylex.props(styles.grid, type.uiSm)}>
+    <section
+      {...props}
+      {...styled}
+      className={clsx(styled.className, className)}
+    >
       {children}
     </section>
   );
@@ -414,12 +422,15 @@ export function TileGrid({
 export function Tile({
   visual,
   children,
+  className,
   ...props
 }: ComponentPropsWithRef<"article"> & { visual: ReactNode }) {
+  const styled = stylex.props(CARD_SURFACE.face, styles.tile, type.uiSm);
   return (
     <article
       {...props}
-      {...stylex.props(CARD_SURFACE.face, styles.tile, type.uiSm)}
+      {...styled}
+      className={clsx(styled.className, className)}
     >
       <div {...stylex.props(styles.visual)}>{visual}</div>
       {children}
