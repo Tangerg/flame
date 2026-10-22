@@ -2293,11 +2293,18 @@ defects; each needs a Wails look and an explicit choice before implementing:
   `text-button` and catalog rows. Root cause is the palette ladder: `kit/palette.ts`
   derives muted from `step(neutral, 11)` and faint from `step(neutral, 10)`, and the
   light neutral scale compresses those adjacent steps (the depth-step term is 0% in
-  light). The fix is a palette-ladder change (widen the light faint step / re-space the
-  neutral scale), not a stylesheet literal — the stylesheet mirrors the computed spec
-  and `stylesheetMirror.test.ts` enforces agreement — and it needs native verification
-  across every faint consumer in both themes. (Reasoning's own light contrast is the
-  separate pending item noted below.)
+  light). The fix is a palette-ladder change (re-space the neutral scale), not a
+  stylesheet literal — the stylesheet mirrors the computed spec and
+  `stylesheetMirror.test.ts` enforces agreement. **Crucially it is AA-constrained:**
+  `palette.test.ts` requires every text step, faint included, to clear WCAG AA text
+  (4.5:1) against all planes, and in the light theme faint already sits near that floor
+  — a probe that nudged light faint toward the canvas (to ~#7d7d7d, ~3.7:1) restored the
+  muted/faint gap but was correctly rejected by that AA invariant. So faint cannot
+  simply be dimmed; the real fix must re-space the ladder _inside_ the AA floor (e.g.
+  darken muted / shrink the soft→muted gap to free muted→faint room), which is a
+  deliberate palette-design tradeoff needing native verification across every faint
+  consumer in both themes. (Reasoning's own light contrast is the separate pending item
+  noted below.)
 - **Reasoning while streaming.** Today a quiet one-line glimpse; ChatGPT shows the
   full capped auto-following panel inline, but the newer ZCode reference explicitly
   reverted from that panel back to a default-collapsed glimpse (an expanded
