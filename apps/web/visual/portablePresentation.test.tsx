@@ -2,10 +2,12 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, expect, it } from "vitest";
 import { TrajectoryReport } from "../../../plugins/trajectory/component/component";
 import { Markdown } from "../../../plugins/file-renderers/component/component";
-import { type ComponentContext } from "@flame/component-sdk";
+import { createTranslator, type ComponentContext } from "@flame/component-sdk";
 import { type ContentBlock, type TrajectoryEntry } from "@flame/runtime-client/wire";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { visualTrajectory } from "./trajectorySnapshot";
+import { en as trajectoryEn } from "../../../plugins/trajectory/component/locales/en";
+const reportT = createTranslator({ en: trajectoryEn }, "en");
 afterEach(cleanup);
 
 function renderCapturedMarkdown(content: string) {
@@ -207,6 +209,8 @@ it("shows tool execution status independently of its approval decision", () => {
   }
   render(
     <TrajectoryReport
+      t={reportT}
+      locale="en"
       kind="all"
       run="all"
       search=""
@@ -283,6 +287,8 @@ it("keeps timed-out Runs and refused or canceled tools in attention without rewr
   };
   const { container } = render(
     <TrajectoryReport
+      t={reportT}
+      locale="en"
       page={{ data: [timeout, refused, canceledTool, canceledRun, completed] }}
       kind="attention"
       run="all"
@@ -335,6 +341,8 @@ it("reads settled neutral states as quiet metadata and keeps attention states be
   });
   render(
     <TrajectoryReport
+      t={reportT}
+      locale="en"
       page={{ data: [run("run_settled", "completed"), run("run_broken", "failed")] }}
       kind="all"
       run="all"
@@ -368,7 +376,16 @@ it("distinguishes same-time Runs before expansion and keeps one Run identity fac
       spawnedByItemId: "item_delegate",
     },
   };
-  render(<TrajectoryReport page={{ data: [root, child] }} kind="all" run="all" search="" />);
+  render(
+    <TrajectoryReport
+      t={reportT}
+      locale="en"
+      page={{ data: [root, child] }}
+      kind="all"
+      run="all"
+      search=""
+    />,
+  );
 
   for (const entry of [root, child]) {
     const trigger = screen.getByRole("button", { name: new RegExp(entry.run.id), expanded: false });
@@ -442,6 +459,8 @@ it("reads recorded text and images in order while keeping full evidence and reas
   const entries: TrajectoryEntry[] = cases.map(({ item }) => ({ type: "item", occurredAt, item }));
   const { container } = render(
     <TrajectoryReport
+      t={reportT}
+      locale="en"
       page={{ data: [...entries, { type: "item", occurredAt, item: redacted }] }}
       kind="all"
       run="all"

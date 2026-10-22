@@ -10,8 +10,10 @@ import {
 import { ArrowLeft, Refresh } from "@flame/icons/react";
 import {
   bindOperations,
+  createTranslator,
   mutationSettlementIsUnknown,
   type ComponentContext,
+  type Translate,
 } from "@flame/component-sdk";
 import { scrollPositions, type ScrollPosition } from "@flame/component-sdk";
 import type { JSONNumber } from "@flame/runtime-client";
@@ -39,6 +41,16 @@ import {
   type MethodInputs,
   type MethodOutputs,
 } from "./methods.generated";
+import { en } from "./locales/en";
+import { zh } from "./locales/zh";
+import { zhTW } from "./locales/zh-TW";
+import { ja } from "./locales/ja";
+import { ko } from "./locales/ko";
+import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { de } from "./locales/de";
+
+const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
 const captureMethod = "flame.usage-reports/capture.v1";
 const listMethod = "flame.usage-reports/list.v1";
@@ -58,30 +70,41 @@ type OpenedReport = {
   error?: string;
 };
 type ArchiveReturn = { opener?: HTMLElement; scroll: ScrollPosition[] };
-const periods = {
-  daily: { label: "Daily", window: "last 24 hours" },
-  weekly: { label: "Weekly", window: "last 7 days" },
-} satisfies Record<Period, { label: string; window: string }>;
-const number = new Intl.NumberFormat("en-US");
-const dollars = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
-const format = (value: JSONNumber | undefined, formatter: Intl.NumberFormat) =>
-  value === undefined
-    ? "Not reported"
-    : typeof value === "object"
-      ? value.toString()
-      : formatter.format(value);
-const amount = (value?: JSONNumber) => format(value, dollars);
-const count = (value?: JSONNumber) => format(value, number);
+const PERIODS = ["daily", "weekly"] as const satisfies readonly Period[];
+type Formatters = {
+  count: (value?: JSONNumber) => string;
+  amount: (value?: JSONNumber) => string;
+};
+function makeFormatters(locale: string, t: Translate): Formatters {
+  const number = new Intl.NumberFormat(locale);
+  const dollars = new Intl.NumberFormat(locale, { maximumFractionDigits: 6 });
+  const format = (
+    value: JSONNumber | undefined,
+    formatter: Intl.NumberFormat,
+  ) =>
+    value === undefined
+      ? t("cost.notReported")
+      : typeof value === "object"
+        ? value.toString()
+        : formatter.format(value);
+  return {
+    count: (value) => format(value, number),
+    amount: (value) => format(value, dollars),
+  };
+}
 const failure = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
-const observed = (header: Header) =>
-  new Date(header.observedAt).toLocaleString();
-const lowerBound = (header: Header) =>
+const observed = (header: Header, locale: string) =>
+  new Date(header.observedAt).toLocaleString(locale);
+const lowerBound = (header: Header, t: Translate, locale: string) =>
   header.since
-    ? new Date(header.since).toLocaleString()
-    : "Beginning of retained evidence";
-const reportTitle = (header: Header) =>
-  `${periods[header.period].label} report · ${observed(header)}`;
+    ? new Date(header.since).toLocaleString(locale)
+    : t("evidence.beginning");
+const reportTitle = (header: Header, t: Translate, locale: string) =>
+  t("report.title", {
+    period: t(`period.${header.period}.label`),
+    observed: observed(header, locale),
+  });
 
 export function UsageReports({ context }: { context: ComponentContext }) {
   const bound = useMemo(() => {
@@ -94,6 +117,9 @@ export function UsageReports({ context }: { context: ComponentContext }) {
 }
 
 function Archive({ context }: { context: BoundContext }) {
+  const locale = context.locale;
+  const t = useMemo(() => createTranslator(CATALOGS, locale), [locale]);
+  const fmt = useMemo(() => makeFormatters(locale, t), [locale, t]);
   const operations = useMemo(
     () =>
       bindOperations<MethodInputs, MethodOutputs>(context, CAPABILITY_JSON, {
@@ -272,20 +298,18 @@ function Archive({ context }: { context: BoundContext }) {
         // A later completion opens the saved report only while the user
         // remains where the command started.
         if (current === active || current === current?.ownerDocument.body) {
-          setMessage("Core report saved.");
+          setMessage(t("message.saved"));
           open(result, undefined, active);
         } else
           setMessage(
-            `Core report saved: ${reportTitle(result)}. It is listed in the archive.`,
+            t("message.savedArchived", {
+              title: reportTitle(result, t, locale),
+            }),
           );
         void refresh(signal);
         return;
       }
-      setMessage(
-        removed
-          ? "Saved report removed. Core accounting is unchanged."
-          : "Original report removal confirmed. Core accounting is unchanged.",
-      );
+      setMessage(t(removed ? "message.removed" : "message.removalConfirmed"));
       const accepted = await refresh(signal);
       if (signal.aborted) return;
       // A recovered removal reports success without its original target. Only
@@ -302,8 +326,8 @@ function Archive({ context }: { context: BoundContext }) {
       if (!signal.aborted)
         setMessage(
           mutationSettlementIsUnknown(error)
-            ? "Confirmation is unknown. Check the original outcome before submitting another archive change."
-            : `The archive change failed: ${failure(error)}`,
+            ? t("message.unknown")
+            : t("message.archiveFailed", { error: failure(error) }),
         );
     } finally {
       if (!signal.aborted) {
@@ -318,7 +342,7 @@ function Archive({ context }: { context: BoundContext }) {
     try {
       void observe(operations.command(captureMethod, { period }));
     } catch (error) {
-      setMessage(`The capture could not be admitted: ${failure(error)}`);
+      setMessage(t("message.captureRejected", { error: failure(error) }));
     }
   }
 
@@ -337,7 +361,7 @@ function Archive({ context }: { context: BoundContext }) {
       );
     } catch (error) {
       setRemoving(undefined);
-      setMessage(`The removal could not be admitted: ${failure(error)}`);
+      setMessage(t("message.removalRejected", { error: failure(error) }));
     }
   }
 
@@ -356,15 +380,10 @@ function Archive({ context }: { context: BoundContext }) {
     setPending(true);
     try {
       await command.retire(signal);
-      if (!signal.aborted)
-        setMessage(
-          "Original command retired. Any report already saved remains in the archive.",
-        );
+      if (!signal.aborted) setMessage(t("message.retired"));
     } catch (error) {
       if (!signal.aborted)
-        setMessage(
-          `The original command could not be retired: ${failure(error)}`,
-        );
+        setMessage(t("message.retireFailed", { error: failure(error) }));
     } finally {
       if (!signal.aborted) setPending(false);
     }
@@ -374,26 +393,22 @@ function Archive({ context }: { context: BoundContext }) {
   return (
     <Panel
       ref={panel}
-      label="Saved usage reports"
+      label={t("panel.title")}
       header={
         <PanelHeader
-          title="Saved usage reports"
-          description={
-            opened
-              ? undefined
-              : "Immutable copies of core accounting reports. Live accounting is unaffected."
-          }
+          title={t("panel.title")}
+          description={opened ? undefined : t("panel.description")}
         />
       }
       controls={
         opened ? (
           <>
             <Toolbar
-              label="Saved report"
+              label={t("report.scope.label")}
               actions={
                 <IconButton
                   icon={Refresh}
-                  aria-label="Refresh report"
+                  aria-label={t("report.refresh")}
                   size="md"
                   pending={opened.loading}
                   onClick={() => void read(opened.header.id)}
@@ -407,31 +422,34 @@ function Archive({ context }: { context: BoundContext }) {
                 onClick={() => leave(activeElement(), true)}
               >
                 <Icon glyph={ArrowLeft} size="sm" />
-                Back to archive
+                {t("report.back")}
               </Button>
               <PanelTitle ref={heading} tabIndex={-1} size="sm" aria-level={2}>
-                {reportTitle(opened.header)}
+                {reportTitle(opened.header, t, locale)}
               </PanelTitle>
             </Toolbar>
           </>
         ) : (
-          <Toolbar label="Archive actions">
+          <Toolbar label={t("archive.actions.label")}>
             <Select
-              label="Capture period"
+              label={t("capture.period.label")}
               value={period}
               onValueChange={(value) => setPeriod(value as Period)}
-              options={(Object.keys(periods) as Period[]).map((value) => ({
+              options={PERIODS.map((value) => ({
                 value,
-                label: `${periods[value].label} · ${periods[value].window}`,
+                label: t("period.windowed", {
+                  label: t(`period.${value}.label`),
+                  window: t(`period.${value}.window`),
+                }),
               }))}
             />
             <Button disabled={pending || unknown.length > 0} onClick={save}>
-              Save report
+              {t("capture.save")}
             </Button>
             <IconButton
               ref={refreshButton}
               icon={Refresh}
-              aria-label="Refresh archive"
+              aria-label={t("archive.refresh")}
               size="md"
               pending={archive.loading}
               onClick={() => void refresh(ownerSignal())}
@@ -442,16 +460,16 @@ function Archive({ context }: { context: BoundContext }) {
     >
       {message && <Metadata role="status">{message}</Metadata>}
       {unknown.map((command) => (
-        <Toolbar key={command.idempotencyKey} label="Original archive command">
-          <Metadata>Confirmation pending for the original command.</Metadata>
+        <Toolbar key={command.idempotencyKey} label={t("pending.label")}>
+          <Metadata>{t("pending.note")}</Metadata>
           <Button
             disabled={pending}
             onClick={() => void observe(command.recover(ownerSignal()))}
           >
-            Check original outcome
+            {t("pending.check")}
           </Button>
           <Button disabled={pending} onClick={() => void retire(command)}>
-            Retire original command
+            {t("pending.retire")}
           </Button>
         </Toolbar>
       ))}
@@ -461,50 +479,62 @@ function Archive({ context }: { context: BoundContext }) {
           removeButton={removeButton}
           pending={pending || unknown.length > 0}
           remove={requestRemoval}
+          t={t}
+          locale={locale}
+          fmt={fmt}
         />
       )}
       <div hidden={Boolean(opened)}>
         <PanelSection
-          title="Archive"
-          description={
-            headers &&
-            `${headers.length} saved reports. Capacity is 64; remove a report to make room.`
-          }
+          title={t("archive.title")}
+          description={headers && t("archive.count", { count: headers.length })}
         >
           <Metadata>
-            {`A capture copies core accounting for the ${periods.daily.window} (daily) or the ${periods.weekly.window} (weekly) before it runs, not a calendar day or week.`}
+            {t("archive.capture.note", {
+              daily: t("period.daily.window"),
+              weekly: t("period.weekly.window"),
+            })}
           </Metadata>
           {archive.loading && !headers && (
-            <Metadata role="status">Reading saved reports…</Metadata>
+            <Metadata role="status">{t("archive.reading")}</Metadata>
           )}
           {archive.error && (
             <Metadata role="alert">
-              The archive could not be read: {archive.error}.
-              {headers && " The last accepted archive remains shown."}
+              {t(headers ? "archive.error.retained" : "archive.error", {
+                error: archive.error,
+              })}
             </Metadata>
           )}
           {headers && !headers.length && (
             <EmptyState
-              title="No saved reports"
-              sub="Choose a period and save the current core report."
+              title={t("archive.empty.title")}
+              sub={t("archive.empty.sub")}
             />
           )}
           {headers && headers.length > 0 && (
-            <RecordGroup variant="list" aria-label="Saved reports">
+            <RecordGroup variant="list" aria-label={t("archive.list.label")}>
               {headers.map((header) => (
                 <ListRow key={header.id}>
                   <RecordHeading
-                    title={`${periods[header.period].label} · ${observed(header)}`}
-                    description={`${periods[header.period].window} · Starts ${lowerBound(header)}`}
+                    title={t("row.title", {
+                      period: t(`period.${header.period}.label`),
+                      observed: observed(header, locale),
+                    })}
+                    description={t("row.description", {
+                      window: t(`period.${header.period}.window`),
+                      since: lowerBound(header, t, locale),
+                    })}
                     actions={
                       <Button
-                        aria-label={`View report: ${reportTitle(header)}`}
+                        aria-label={t("report.view.aria", {
+                          title: reportTitle(header, t, locale),
+                        })}
                         onClick={(event) => {
                           setMessage(undefined);
                           open(header, event.currentTarget, activeElement());
                         }}
                       >
-                        View report
+                        {t("report.view")}
                       </Button>
                     }
                   />
@@ -518,9 +548,11 @@ function Archive({ context }: { context: BoundContext }) {
         <ModalDialog
           open
           role="alertdialog"
-          title={`Remove ${reportTitle(removing)}?`}
-          description="Only this saved copy is removed. Core accounting evidence and totals are unchanged, and the copy cannot be restored."
-          closeLabel="Close removal confirmation"
+          title={t("removal.title", {
+            title: reportTitle(removing, t, locale),
+          })}
+          description={t("removal.description")}
+          closeLabel={t("removal.close")}
           size="sm"
           initialFocus={cancelRemoval}
           finalFocus={removalReturn}
@@ -536,7 +568,7 @@ function Archive({ context }: { context: BoundContext }) {
                 disabled={pending}
                 onClick={dismissRemoval}
               >
-                Cancel
+                {t("removal.cancel")}
               </Button>
               <Button
                 variant="tonal"
@@ -545,7 +577,7 @@ function Archive({ context }: { context: BoundContext }) {
                 aria-busy={pending}
                 onClick={confirmRemoval}
               >
-                {pending ? "Removing report…" : "Remove saved report"}
+                {pending ? t("removal.removing") : t("report.remove")}
               </Button>
             </>
           }
@@ -553,11 +585,14 @@ function Archive({ context }: { context: BoundContext }) {
           <Facts
             values={[
               [
-                "Period",
-                `${periods[removing.period].label} · ${periods[removing.period].window}`,
+                t("fact.period"),
+                t("period.windowed", {
+                  label: t(`period.${removing.period}.label`),
+                  window: t(`period.${removing.period}.window`),
+                }),
               ],
-              ["Core observation", observed(removing)],
-              ["Actual lower bound", lowerBound(removing)],
+              [t("fact.observation"), observed(removing, locale)],
+              [t("fact.lowerBound"), lowerBound(removing, t, locale)],
             ]}
           />
         </ModalDialog>
@@ -571,70 +606,82 @@ function SavedReport({
   removeButton,
   pending,
   remove,
+  t,
+  locale,
+  fmt,
 }: {
   opened: OpenedReport;
   removeButton: Ref<HTMLButtonElement>;
   pending: boolean;
   remove: () => void;
+  t: Translate;
+  locale: string;
+  fmt: Formatters;
 }) {
   const { header, accepted: report } = opened;
   const summary = report?.summary;
   return (
     <>
-      <Metadata>
-        Saved copy of a core accounting report. It does not update when live
-        accounting changes.
-      </Metadata>
+      <Metadata>{t("report.saved.note")}</Metadata>
       <Facts
         values={[
           [
-            "Period",
-            `${periods[header.period].label} · ${periods[header.period].window}`,
+            t("fact.period"),
+            t("period.windowed", {
+              label: t(`period.${header.period}.label`),
+              window: t(`period.${header.period}.window`),
+            }),
           ],
-          ["Core observation", observed(header)],
-          ["Actual lower bound", lowerBound(header)],
+          [t("fact.observation"), observed(header, locale)],
+          [t("fact.lowerBound"), lowerBound(header, t, locale)],
         ]}
       />
       {opened.loading && (
-        <Metadata role="status">Reading saved report…</Metadata>
+        <Metadata role="status">{t("report.reading")}</Metadata>
       )}
       {opened.error && (
         <Metadata role="alert">
           {report
-            ? `The saved report could not be refreshed: ${opened.error}. The last accepted report remains visible.`
-            : `The saved report could not be read: ${opened.error}.`}
+            ? t("report.error.refresh", { error: opened.error })
+            : t("report.error.read", { error: opened.error })}
         </Metadata>
       )}
       {summary && (
         <PanelSection
-          title="Saved core totals"
-          description="Values are the saved core response. Unknown usage and prices retain their core meaning."
+          title={t("report.totals.title")}
+          description={t("report.totals.description")}
         >
           <Facts
             values={[
-              ["Model attempts", count(summary.coverage.calls)],
-              ["Known input tokens", count(summary.total.inputTokens)],
-              ["Known output tokens", count(summary.total.outputTokens)],
-              ["Known price subtotal (USD)", amount(summary.recordedCostUsd)],
-              ["Total cost (USD)", amount(summary.total.costUsd)],
+              [t("fact.attempts"), fmt.count(summary.coverage.calls)],
+              [t("fact.inputTokens"), fmt.count(summary.total.inputTokens)],
+              [t("fact.outputTokens"), fmt.count(summary.total.outputTokens)],
+              [t("fact.knownSubtotal"), fmt.amount(summary.recordedCostUsd)],
+              [t("fact.totalCost"), fmt.amount(summary.total.costUsd)],
               [
-                "Usage recorded",
+                t("fact.usageRecorded"),
                 `${summary.coverage.reportedCalls}/${summary.coverage.calls}`,
               ],
               [
-                "Priced attempts",
+                t("fact.pricedAttempts"),
                 `${summary.coverage.pricedCalls}/${summary.coverage.calls}`,
               ],
-              ["Outcome unknown", count(summary.coverage.unknownCalls)],
+              [
+                t("fact.outcomeUnknown"),
+                fmt.count(summary.coverage.unknownCalls),
+              ],
             ]}
           />
-          <Disclosure title="Daily core breakdown">
+          <Disclosure title={t("report.breakdown.title")}>
             <RecordGroup variant="list">
               {summary.byDay.map((day) => (
                 <ListRow key={day.key}>
                   <RecordHeading
                     title={day.key}
-                    description={`${count(day.coverage.calls)} attempts · ${amount(day.recordedCostUsd)} known USD`}
+                    description={t("report.breakdown.row", {
+                      attempts: fmt.count(day.coverage.calls),
+                      cost: fmt.amount(day.recordedCostUsd),
+                    })}
                   />
                 </ListRow>
               ))}
@@ -642,16 +689,16 @@ function SavedReport({
           </Disclosure>
         </PanelSection>
       )}
-      <Disclosure title="Exact report identity">
+      <Disclosure title={t("report.identity.title")}>
         <Facts
           values={[
-            ["Report ID", header.id],
-            ["Observed at (UTC)", header.observedAt],
-            ["Lower bound (UTC)", header.since],
+            [t("fact.reportId"), header.id],
+            [t("fact.observedAt"), header.observedAt],
+            [t("fact.lowerBoundUtc"), header.since],
           ]}
         />
       </Disclosure>
-      <Toolbar label="Saved report actions">
+      <Toolbar label={t("report.actions.label")}>
         <Button
           ref={removeButton}
           variant="tonal"
@@ -659,7 +706,7 @@ function SavedReport({
           disabled={pending}
           onClick={remove}
         >
-          Remove saved report
+          {t("report.remove")}
         </Button>
       </Toolbar>
     </>

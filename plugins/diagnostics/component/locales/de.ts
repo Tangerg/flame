@@ -1,0 +1,36 @@
+export const de: Record<string, string> = {
+  "panel.title": "Client-Diagnose",
+  "panel.description": "Lokale Traces, Metriken und Logs von dieser Workbench.",
+  "controls.label": "Diagnosesteuerung",
+  refresh: "Aktualisieren",
+  "actions.label": "Diagnoseaktionen",
+  "actions.clear": "Lokale Beobachtungen löschen",
+  "signal.label": "Telemetriesignal",
+  "signal.spans": "Traces",
+  "signal.metrics": "Metriken",
+  "signal.logs": "Logs",
+  "counts.label": "Lokale Telemetriezählung",
+  "observations.title": "Lokale Beobachtungen",
+  "observations.summary":
+    "{{count}} Beobachtungen beim letzten Pufferlesevorgang. Ältere Beobachtungen wurden möglicherweise verdrängt.",
+  "observations.empty.title":
+    "Keine lokalen Beobachtungen in diesem Lesevorgang.",
+  "observations.empty.sub":
+    "Wähle ein anderes Signal oder aktualisiere nach der Nutzung der Workbench.",
+  "span.meta": "{{ms}} ms · {{kind}}",
+  "fact.started": "Gestartet",
+  "fact.duration": "Dauer",
+  "fact.trace": "Trace",
+  "fact.parentSpan": "Übergeordneter Span",
+  "fact.recorded": "Aufgezeichnet",
+  "fact.span": "Span",
+  "duration.ms": "{{ms}} ms",
+  "attributes.title": "Attribute",
+  "raw.title": "Rohbeobachtung",
+  "raw.label": "Details der lokalen Beobachtung",
+  "about.title": "Über die Client-Diagnose",
+  "about.note":
+    "Es wird nur der lokale Puffer dieses Clients angezeigt. Aktualisieren liest den neuesten Inhalt; Löschen entfernt lokale Beobachtungen. Die Runtime-Abrechnung und die Remote-Telemetrie bleiben unverändert.",
+  "read.failed": "Lokale Beobachtungen konnten nicht gelesen werden.",
+  "clear.failed": "Lokale Beobachtungen konnten nicht gelöscht werden.",
+};

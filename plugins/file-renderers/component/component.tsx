@@ -6,7 +6,11 @@ import {
   type ReactNode,
 } from "react";
 import { Lexer, type Token, type Tokens } from "marked";
-import type { ComponentContext } from "@flame/component-sdk";
+import {
+  createTranslator,
+  type ComponentContext,
+  type Translate,
+} from "@flame/component-sdk";
 import {
   Callout,
   CodeBlock,
@@ -18,6 +22,16 @@ import {
   readCalloutMarker,
   type CalloutKind,
 } from "@flame/ui";
+import { en } from "./locales/en";
+import { zh } from "./locales/zh";
+import { zhTW } from "./locales/zh-TW";
+import { ja } from "./locales/ja";
+import { ko } from "./locales/ko";
+import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { de } from "./locales/de";
+
+const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
 function visibleText(children: ReactNode): string {
   return Children.toArray(children)
@@ -60,7 +74,7 @@ function calloutOf(
 }
 
 // Parsed file content never supplies HTML or executable URL attributes.
-function renderTokens(tokens: Token[]): ReactNode[] {
+function renderTokens(tokens: Token[], t: Translate): ReactNode[] {
   return tokens.map((token, key) => {
     switch (token.type) {
       case "space":
@@ -76,37 +90,39 @@ function renderTokens(tokens: Token[]): ReactNode[] {
         return createElement(
           ["h1", "h2", "h3", "h4", "h5", "h6"][value.depth - 1] ?? "h6",
           { key, dir: "auto" },
-          renderTokens(value.tokens),
+          renderTokens(value.tokens, t),
         );
       }
       case "paragraph":
         return (
           <p key={key} dir="auto">
-            {renderTokens((token as Tokens.Paragraph).tokens)}
+            {renderTokens((token as Tokens.Paragraph).tokens, t)}
           </p>
         );
       case "strong":
         return (
           <strong key={key}>
-            {renderTokens((token as Tokens.Strong).tokens)}
+            {renderTokens((token as Tokens.Strong).tokens, t)}
           </strong>
         );
       case "em":
-        return <em key={key}>{renderTokens((token as Tokens.Em).tokens)}</em>;
+        return (
+          <em key={key}>{renderTokens((token as Tokens.Em).tokens, t)}</em>
+        );
       case "del":
         return (
-          <del key={key}>{renderTokens((token as Tokens.Del).tokens)}</del>
+          <del key={key}>{renderTokens((token as Tokens.Del).tokens, t)}</del>
         );
       case "blockquote": {
         const quoted = (token as Tokens.Blockquote).tokens;
         const callout = calloutOf(quoted);
         return callout ? (
           <Callout key={key} kind={callout.kind}>
-            {renderTokens(callout.tokens)}
+            {renderTokens(callout.tokens, t)}
           </Callout>
         ) : (
           <blockquote key={key} dir="auto">
-            {renderTokens(quoted)}
+            {renderTokens(quoted, t)}
           </blockquote>
         );
       }
@@ -121,7 +137,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
         return (
           <CodeBlock
             key={key}
-            label={`Code block ${key + 1}`}
+            label={t("code.block", { n: key + 1 })}
             language={value.lang || undefined}
           >
             {value.text}
@@ -130,7 +146,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
       }
       case "link": {
         const value = token as Tokens.Link;
-        const label = renderTokens(value.tokens);
+        const label = renderTokens(value.tokens, t);
         return (
           <span key={key} title={value.title ?? undefined}>
             {label}
@@ -147,7 +163,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
             key={key}
             label={value.text || undefined}
             detail={
-              /^data:/i.test(value.href) ? "Embedded image data" : value.href
+              /^data:/i.test(value.href) ? t("image.embedded") : value.href
             }
             title={value.title ?? undefined}
           />
@@ -156,7 +172,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
       case "list": {
         const value = token as Tokens.List;
         const rows = value.items.map((item, index) => {
-          const content = renderTokens(item.tokens);
+          const content = renderTokens(item.tokens, t);
           if (!item.task) return <li key={index}>{content}</li>;
           const primary = item.tokens.find(
             (part) => part.type === "paragraph" || part.type === "text",
@@ -166,7 +182,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
               key={index}
               checked={item.checked === true}
               label={visibleText(
-                primary ? renderTokens([primary]) : null,
+                primary ? renderTokens([primary], t) : null,
               ).trim()}
             >
               {content}
@@ -194,7 +210,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
       case "table": {
         const value = token as Tokens.Table;
         return (
-          <ScrollRegion key={key} label={`Markdown table ${key + 1}`}>
+          <ScrollRegion key={key} label={t("table.label", { n: key + 1 })}>
             <table dir="auto">
               <thead>
                 <tr>
@@ -204,7 +220,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
                       dir="auto"
                       style={{ textAlign: value.align[index] ?? undefined }}
                     >
-                      {renderTokens(cell.tokens)}
+                      {renderTokens(cell.tokens, t)}
                     </th>
                   ))}
                 </tr>
@@ -218,7 +234,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
                         dir="auto"
                         style={{ textAlign: value.align[column] ?? undefined }}
                       >
-                        {renderTokens(cell.tokens)}
+                        {renderTokens(cell.tokens, t)}
                       </td>
                     ))}
                   </tr>
@@ -231,7 +247,7 @@ function renderTokens(tokens: Token[]): ReactNode[] {
       case "text": {
         const value = token as Tokens.Text;
         return value.tokens ? (
-          <span key={key}>{renderTokens(value.tokens)}</span>
+          <span key={key}>{renderTokens(value.tokens, t)}</span>
         ) : (
           value.text
         );
@@ -248,12 +264,16 @@ function renderTokens(tokens: Token[]): ReactNode[] {
 export function Markdown({ context }: { context: ComponentContext }) {
   const file = context.file;
   if (!file) throw new Error("Markdown requires a captured file context");
+  const t = useMemo(
+    () => createTranslator(CATALOGS, context.locale),
+    [context.locale],
+  );
   const content = useMemo(
-    () => renderTokens(Lexer.lex(file.content, { gfm: true })),
-    [file.content],
+    () => renderTokens(Lexer.lex(file.content, { gfm: true }), t),
+    [file.content, t],
   );
   return (
-    <Panel label="Markdown file">
+    <Panel label={t("panel.label")}>
       <DocumentBody>{content}</DocumentBody>
     </Panel>
   );

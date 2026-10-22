@@ -1,15 +1,18 @@
 import { Button, Metadata, RecordBody, RecordGroup, Toolbar } from "@flame/ui";
+import { type Translate } from "@flame/component-sdk";
 import { type Command, type Feedback } from "./types";
 export function MemoryFeedback({
   feedback,
   original,
   pending,
   reconcile,
+  t,
 }: {
   feedback?: Feedback;
   original?: Command;
   pending: boolean;
   reconcile(): void;
+  t: Translate;
 }) {
   if (!feedback && !original) return null;
   return (
@@ -17,28 +20,22 @@ export function MemoryFeedback({
       <RecordGroup role={feedback?.state === "refused" ? "alert" : "status"}>
         <RecordBody>
           {feedback &&
-            `${feedback.label} · ${
-              feedback.state === "submitting"
-                ? "submitting…"
-                : feedback.state === "unknown"
-                  ? "confirmation unknown. Check the original result before submitting another change."
-                  : feedback.state === "refused"
-                    ? "refused."
-                    : "confirmed."
-            }`}
+            t(`feedback.${feedback.state}`, { label: feedback.label })}
         </RecordBody>
         {feedback?.detail && <RecordBody>{feedback.detail}</RecordBody>}
       </RecordGroup>
       {feedback?.state === "refused" && (
-        <Metadata>Review the recorded result, then try again.</Metadata>
+        <Metadata>{t("feedback.refusedHint")}</Metadata>
       )}
       {original && (
-        <Toolbar label="Original Memory command">
+        <Toolbar label={t("feedback.original.label")}>
           <Metadata>
-            Original command: {original.promise.idempotencyKey}
+            {t("feedback.original", {
+              key: original.promise.idempotencyKey,
+            })}
           </Metadata>
           <Button disabled={pending} onClick={reconcile}>
-            Check original result
+            {t("feedback.check")}
           </Button>
         </Toolbar>
       )}

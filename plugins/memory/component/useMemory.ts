@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bindOperations,
+  createTranslator,
   mutationSettlementIsUnknown,
   type ComponentContext,
 } from "@flame/component-sdk";
@@ -17,7 +18,20 @@ import {
   type Command,
   type Feedback,
 } from "./types";
+import { en } from "./locales/en";
+import { zh } from "./locales/zh";
+import { zhTW } from "./locales/zh-TW";
+import { ja } from "./locales/ja";
+import { ko } from "./locales/ko";
+import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { de } from "./locales/de";
+const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 export function useMemory(context: ComponentContext) {
+  const t = useMemo(
+    () => createTranslator(CATALOGS, context.locale),
+    [context.locale],
+  );
   const operations = useMemo(() => {
     if (!context.binding)
       throw new Error("Memory requires its declared callable contribution");
@@ -90,14 +104,11 @@ export function useMemory(context: ComponentContext) {
           setRead((previous) => ({
             ...previous,
             loading: false,
-            error:
-              error instanceof Error
-                ? error.message
-                : "Memory could not be read.",
+            error: error instanceof Error ? error.message : t("error.read"),
           }));
       }
     },
-    [context, operations, scope, cwd],
+    [context, operations, scope, cwd, t],
   );
   useEffect(() => {
     const owner = new AbortController();
@@ -126,10 +137,7 @@ export function useMemory(context: ComponentContext) {
         if (!signal.aborted)
           setRead((previous) => ({
             ...previous,
-            error:
-              error instanceof Error
-                ? error.message
-                : "Memory updates could not be observed.",
+            error: error instanceof Error ? error.message : t("error.observe"),
           }));
       }
     };
@@ -194,7 +202,7 @@ export function useMemory(context: ComponentContext) {
         report(
           original,
           "refused",
-          error instanceof Error ? error.message : "The change was refused.",
+          error instanceof Error ? error.message : t("error.refused"),
         );
       }
     } finally {
@@ -225,10 +233,7 @@ export function useMemory(context: ComponentContext) {
       update({
         label,
         state: "refused",
-        detail:
-          error instanceof Error
-            ? error.message
-            : "The change could not be submitted.",
+        detail: error instanceof Error ? error.message : t("error.submit"),
       });
     }
   }
@@ -246,13 +251,12 @@ export function useMemory(context: ComponentContext) {
       report(
         unknown,
         "unknown",
-        error instanceof Error
-          ? error.message
-          : "The original result could not be checked.",
+        error instanceof Error ? error.message : t("error.check"),
       );
     }
   }
   return {
+    t,
     edit,
     locked,
     setEdit,

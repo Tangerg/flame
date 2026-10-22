@@ -6,8 +6,13 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ComponentContext } from "@flame/component-sdk";
-import { scrollPositions, type ScrollPosition } from "@flame/component-sdk";
+import {
+  createTranslator,
+  scrollPositions,
+  type ComponentContext,
+  type ScrollPosition,
+  type Translate,
+} from "@flame/component-sdk";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -38,13 +43,20 @@ import {
   Select,
   Toolbar,
 } from "@flame/ui";
+import { en } from "./locales/en";
+import { zh } from "./locales/zh";
+import { zhTW } from "./locales/zh-TW";
+import { ja } from "./locales/ja";
+import { ko } from "./locales/ko";
+import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { de } from "./locales/de";
 
-const COMPARISONS = [
-  { value: "worktree", label: "Uncommitted changes" },
-  { value: "base", label: "Branch changes" },
-];
-const comparisonName = (mode: DiffMode) =>
-  COMPARISONS.find((comparison) => comparison.value === mode)?.label ?? mode;
+const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
+
+const COMPARISONS: DiffMode[] = ["worktree", "base"];
+const comparisonName = (t: Translate, mode: DiffMode) =>
+  t(`comparison.${mode}`);
 
 type Read = {
   loading: boolean;
@@ -56,6 +68,10 @@ type Selection =
   | { view: "file"; path: string; returnTo: "files" | "source" };
 
 export function WorkspaceDiff({ context }: { context: ComponentContext }) {
+  const t = useMemo(
+    () => createTranslator(CATALOGS, context.locale),
+    [context.locale],
+  );
   const workspace = useMemo(() => {
     if (!context.workspace || !context.workspace.focus)
       throw new Error("Workspace diff requires a workspace context");
@@ -115,13 +131,10 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         setRead((previous) => ({
           ...previous,
           loading: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "The diff could not be read.",
+          error: error instanceof Error ? error.message : t("read.failed"),
         }));
     }
-  }, [context, mode, workspace]);
+  }, [context, mode, workspace, t]);
   useEffect(() => {
     void refresh();
     return () => reading.current?.abort();
@@ -191,7 +204,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   return (
     <Panel
       ref={panel}
-      label="Workspace diff"
+      label={t("panel.title")}
       onFocusCapture={(event) => {
         lastFocus.current = event.target;
       }}
@@ -212,7 +225,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       header={
         <PanelHeader
           size="md"
-          title="Workspace diff"
+          title={t("panel.title")}
           context={
             <Metadata>
               <DiffFilePath path={workspace.ref.path} />
@@ -224,11 +237,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         <>
           {!file && (
             <Toolbar
-              label="Comparison scope"
+              label={t("scope.label")}
               actions={
                 <IconButton
                   icon={Refresh}
-                  aria-label="Refresh"
+                  aria-label={t("refresh")}
                   size="md"
                   pending={read.loading}
                   onClick={() => void refresh()}
@@ -236,53 +249,71 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               }
             >
               <Select
-                label="Comparison"
+                label={t("comparison.label")}
                 value={mode}
-                options={COMPARISONS}
+                options={COMPARISONS.map((value) => ({
+                  value,
+                  label: t(`comparison.${value}`),
+                }))}
                 onValueChange={(value) => setMode(value as DiffMode)}
               />
             </Toolbar>
           )}
           {read.loading && (
             <Metadata role="status">
-              Reading {comparisonName(mode).toLocaleLowerCase()}…
+              {t("status.reading", {
+                name: comparisonName(t, mode).toLocaleLowerCase(),
+              })}
             </Metadata>
           )}
           {read.error && (
             <Metadata role="alert">
-              Could not read {comparisonName(mode).toLocaleLowerCase()}:{" "}
-              {read.error}
+              {t("status.error", {
+                name: comparisonName(t, mode).toLocaleLowerCase(),
+                error: read.error,
+              })}
             </Metadata>
           )}
           {accepted &&
             (read.loading || read.error || accepted.mode !== mode) && (
               <Metadata role="status">
-                Showing {comparisonName(accepted.mode).toLocaleLowerCase()} from
-                the last successful read.
+                {t("status.stale", {
+                  name: comparisonName(t, accepted.mode).toLocaleLowerCase(),
+                })}
               </Metadata>
             )}
           {file ? (
             <>
               <Toolbar
-                label="Changed file navigation"
+                label={t("navigation.label")}
                 actions={
                   <>
                     <Metadata
                       aria-live="polite"
-                      aria-label={`File ${index + 1} of ${navigationFiles.length}${filter && navigationFiles === matching ? " matching files" : ""}`}
+                      aria-label={
+                        filter && navigationFiles === matching
+                          ? t("navigation.positionMatching", {
+                              position: index + 1,
+                              total: navigationFiles.length,
+                            })
+                          : t("navigation.position", {
+                              position: index + 1,
+                              total: navigationFiles.length,
+                            })
+                      }
                     >
                       {index + 1} / {navigationFiles.length}
                     </Metadata>
                     <IconButton
                       icon={ChevronLeft}
-                      aria-label="Previous file"
+                      aria-label={t("nav.previous")}
                       size="sm"
                       disabled={index <= 0}
                       onClick={() => openFile(navigationFiles[index - 1]!.path)}
                     />
                     <IconButton
                       icon={ChevronRight}
-                      aria-label="Next file"
+                      aria-label={t("nav.next")}
                       size="sm"
                       disabled={
                         index < 0 || index >= navigationFiles.length - 1
@@ -291,7 +322,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                     />
                     <IconButton
                       icon={Refresh}
-                      aria-label="Refresh"
+                      aria-label={t("refresh")}
                       size="sm"
                       pending={read.loading}
                       onClick={() => void refresh()}
@@ -304,8 +335,8 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   size="sm"
                   aria-label={
                     selection.view === "file" && selection.returnTo === "files"
-                      ? "Back to changed files"
-                      : "Show changed files"
+                      ? t("files.back")
+                      : t("files.show")
                   }
                   onClick={showFiles}
                 >
@@ -318,21 +349,21 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                     }
                     size="sm"
                   />
-                  Files
+                  {t("files.button")}
                 </Button>
               </Toolbar>
               <DiffFileHeader ref={heading} file={file}>
                 {!file.binary && file.rows.length > 0 && (
                   <Select
                     size="sm"
-                    label="Diff layout"
+                    label={t("layout.label")}
                     value={layout}
                     onValueChange={(value) =>
                       setLayout(value as "unified" | "split")
                     }
                     options={[
-                      { value: "unified", label: "Unified" },
-                      { value: "split", label: "Side by side" },
+                      { value: "unified", label: t("layout.unified") },
+                      { value: "split", label: t("layout.split") },
                     ]}
                   />
                 )}
@@ -340,16 +371,16 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
             </>
           ) : (
             <FilterBar
-              label="File controls"
+              label={t("controls.label")}
               search={
                 <SearchField
                   ref={search}
-                  aria-label="Filter files"
-                  placeholder="Find a changed file"
+                  aria-label={t("filter.label")}
+                  placeholder={t("filter.placeholder")}
                   value={filter}
                   onChange={(event) => setFilter(event.target.value)}
                   onClear={() => setFilter("")}
-                  clearLabel="Clear filter"
+                  clearLabel={t("filter.clear")}
                   disabled={!accepted}
                 />
               }
@@ -362,32 +393,37 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         <>
           {!read.loading && !read.error && accepted.mode === mode && (
             <Metadata role="status" className="sr-only">
-              Showing {comparisonName(accepted.mode).toLocaleLowerCase()}.
+              {t("status.loaded", {
+                name: comparisonName(t, accepted.mode).toLocaleLowerCase(),
+              })}
             </Metadata>
           )}
           {accepted.diff.truncated && (
-            <Metadata role="note">
-              Partial diff. Only the included files and line changes are shown.
-            </Metadata>
+            <Metadata role="note">{t("partial")}</Metadata>
           )}
           {selection.path && !selected && (
             <Metadata>
-              The requested file is not included in this read:{" "}
-              <DiffFilePath path={selection.path} />
+              {t("missing")} <DiffFilePath path={selection.path} />
             </Metadata>
           )}
           <div hidden={Boolean(file)}>
             <PanelSection
-              title={`${files.length} ${accepted.diff.truncated ? "included" : "changed"} ${files.length === 1 ? "file" : "files"}`}
+              title={t(
+                accepted.diff.truncated ? "files.included" : "files.changed",
+                { count: files.length },
+              )}
               description={
                 filter
-                  ? `${matching.length} of ${files.length} files match`
+                  ? t("files.match", {
+                      matching: matching.length,
+                      total: files.length,
+                    })
                   : undefined
               }
               actions={
                 textFiles.length > 0 ? (
                   <DiffStat
-                    title="Line changes in included text files"
+                    title={t("stat.title")}
                     added={total("added")}
                     removed={total("removed")}
                   />
@@ -398,37 +434,35 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                 <EmptyState
                   icon={FileDiff}
                   size="compact"
-                  title="No changes in this comparison."
-                  sub="Choose another comparison or refresh after editing a file."
+                  title={t("empty.title")}
+                  sub={t("empty.sub")}
                 />
               )}
               {files.length > 0 && !matching.length && (
                 <EmptyState
                   size="compact"
-                  title="No matching files."
-                  sub="Clear the filter to show changed files."
+                  title={t("nomatch.title")}
+                  sub={t("nomatch.sub")}
                 />
               )}
               <DiffFileList
                 ref={list}
                 files={matching}
-                label="Changed files"
+                label={t("files.region")}
                 currentPath={selection.path}
                 onSelect={openFile}
               />
             </PanelSection>
           </div>
           {file && (
-            <section aria-label={`Changes in ${file.path}`}>
+            <section aria-label={t("file.changes", { path: file.path })}>
               {file.previousPath && (
                 <Metadata>
-                  Renamed from <DiffFilePath path={file.previousPath} />
+                  {t("file.renamed")} <DiffFilePath path={file.previousPath} />
                 </Metadata>
               )}
               {file.binary ? (
-                <Metadata>
-                  Binary content is not displayed. Line counts are unavailable.
-                </Metadata>
+                <Metadata>{t("file.binary")}</Metadata>
               ) : file.rows.length ? (
                 <DiffTable
                   key={file.path}
@@ -436,33 +470,37 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   layout={layout}
                   label={file.path}
                   labels={{
-                    region: `Scrollable diff for ${file.path}`,
-                    beforeLine: "Before line",
-                    beforeCode: "Before code",
-                    afterLine: "After line",
-                    afterCode: "After code",
-                    changedCode: "Changed code",
+                    region: t("table.region", { path: file.path }),
+                    beforeLine: t("table.beforeLine"),
+                    beforeCode: t("table.beforeCode"),
+                    afterLine: t("table.afterLine"),
+                    afterCode: t("table.afterCode"),
+                    changedCode: t("table.changedCode"),
                   }}
                 />
               ) : (
-                <Metadata>
-                  No line changes. Only file metadata changed.
-                </Metadata>
+                <Metadata>{t("file.metadataOnly")}</Metadata>
               )}
             </section>
           )}
-          <Disclosure title="Comparison details">
+          <Disclosure title={t("details.title")}>
             <Metadata>
               {accepted.diff.baseline.type === "emptyTree"
-                ? "No commits yet. Changes are compared with an empty tree."
+                ? t("details.emptyTree")
                 : accepted.mode === "worktree"
-                  ? "Changes against HEAD, including staged, unstaged and untracked files."
-                  : "Committed and uncommitted tracked changes since the common ancestor with the default branch. Untracked files are excluded."}
+                  ? t("details.worktree")
+                  : t("details.base")}
             </Metadata>
             <Metadata>
               {accepted.diff.baseline.type === "emptyTree"
-                ? "Baseline: empty tree"
-                : `Baseline: ${accepted.diff.baseline.type === "head" ? "HEAD" : "merge base"} · ${accepted.diff.baseline.commit}`}
+                ? t("baseline.emptyTree")
+                : t("baseline.label", {
+                    ref:
+                      accepted.diff.baseline.type === "head"
+                        ? t("baseline.head")
+                        : t("baseline.mergeBase"),
+                    commit: accepted.diff.baseline.commit,
+                  })}
             </Metadata>
           </Disclosure>
         </>

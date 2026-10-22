@@ -1,0 +1,36 @@
+export const ja: Record<string, string> = {
+  "panel.title": "クライアント診断",
+  "panel.description":
+    "このワークベンチからのローカルのトレース、メトリクス、ログ。",
+  "controls.label": "診断コントロール",
+  refresh: "更新",
+  "actions.label": "診断アクション",
+  "actions.clear": "ローカル観測記録を消去",
+  "signal.label": "テレメトリ信号",
+  "signal.spans": "トレース",
+  "signal.metrics": "メトリクス",
+  "signal.logs": "ログ",
+  "counts.label": "ローカルテレメトリの件数",
+  "observations.title": "ローカル観測記録",
+  "observations.summary":
+    "直近のバッファ読み取りに {{count}} 件の観測記録があります。古い観測記録は破棄されている場合があります。",
+  "observations.empty.title": "この読み取りにはローカル観測記録がありません。",
+  "observations.empty.sub":
+    "別の信号を選択するか、ワークベンチを使用してから更新してください。",
+  "span.meta": "{{ms}} ms · {{kind}}",
+  "fact.started": "開始時刻",
+  "fact.duration": "継続時間",
+  "fact.trace": "トレース",
+  "fact.parentSpan": "親スパン",
+  "fact.recorded": "記録時刻",
+  "fact.span": "スパン",
+  "duration.ms": "{{ms}} ms",
+  "attributes.title": "属性",
+  "raw.title": "生の観測記録",
+  "raw.label": "ローカル観測記録の詳細",
+  "about.title": "クライアント診断について",
+  "about.note":
+    "表示されるのはこのクライアントのローカルバッファのみです。更新で最新の内容を読み取り、消去でローカル観測記録を削除します。Runtime の集計とリモートテレメトリは変更されません。",
+  "read.failed": "ローカル観測記録を読み取れませんでした。",
+  "clear.failed": "ローカル観測記録を消去できませんでした。",
+};

@@ -30,6 +30,7 @@ import { MemoryFeedback } from "./MemoryFeedback";
 import { useMemory } from "./useMemory";
 export function Memory({ context }: { context: ComponentContext }) {
   const {
+    t,
     edit,
     locked,
     setEdit,
@@ -68,7 +69,7 @@ export function Memory({ context }: { context: ComponentContext }) {
   } = useMemory(context);
   return (
     <Panel
-      label="Agent memory"
+      label={t("panel.title")}
       onKeyDown={(event) => {
         if (
           event.key !== "Escape" ||
@@ -85,14 +86,14 @@ export function Memory({ context }: { context: ComponentContext }) {
       header={
         <PanelHeader
           size="md"
-          title="Agent memory"
+          title={t("panel.title")}
           context={
             <Metadata>
               {scope === "user"
-                ? "User memory"
+                ? t("scope.user")
                 : cwd
-                  ? `Project memory · ${cwd}`
-                  : "Choose a Session with a workspace, or select User memory."}
+                  ? t("scope.project.path", { path: cwd })
+                  : t("scope.none")}
             </Metadata>
           }
         />
@@ -100,12 +101,12 @@ export function Memory({ context }: { context: ComponentContext }) {
       controls={
         <>
           <Toolbar
-            label="Memory navigation"
+            label={t("nav.label")}
             actions={
               <>
                 <IconButton
                   icon={Refresh}
-                  aria-label="Refresh"
+                  aria-label={t("refresh")}
                   size="md"
                   disabled={read.loading || cwd === undefined || pending}
                   onClick={() => {
@@ -125,17 +126,17 @@ export function Memory({ context }: { context: ComponentContext }) {
                     });
                   }}
                 >
-                  <Icon glyph={Plus} size="sm" /> Add memory
+                  <Icon glyph={Plus} size="sm" /> {t("add")}
                 </Button>
               </>
             }
           >
             <Segmented
-              ariaLabel="Memory scope"
+              ariaLabel={t("segment.label")}
               value={scope}
               options={[
-                { value: "project", label: "Current project" },
-                { value: "user", label: "User" },
+                { value: "project", label: t("segment.project") },
+                { value: "user", label: t("segment.user") },
               ]}
               onChange={(value) => {
                 if (edit || command.current || observing.current) return;
@@ -149,17 +150,17 @@ export function Memory({ context }: { context: ComponentContext }) {
             />
           </Toolbar>
           <FilterBar
-            label="Memory controls"
+            label={t("controls.label")}
             search={
               <SearchField
                 id="search"
                 ref={searchElement}
-                aria-label="Search this page"
-                placeholder="Text or ID on this page"
+                aria-label={t("search.label")}
+                placeholder={t("search.placeholder")}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 onClear={() => setSearch("")}
-                clearLabel="Clear search"
+                clearLabel={t("search.clear")}
               />
             }
           >
@@ -167,41 +168,43 @@ export function Memory({ context }: { context: ComponentContext }) {
               open={filtersOpen}
               onOpenChange={setFiltersOpen}
               title={
-                activeFilters ? `Filters · ${activeFilters} active` : "Filters"
+                activeFilters
+                  ? t("filters.active", { n: activeFilters })
+                  : t("filters.title")
               }
               actions={
                 activeFilters > 0 && (
                   <Button size="sm" variant="ghost" onClick={clearFilters}>
-                    Clear filters
+                    {t("filters.clear")}
                   </Button>
                 )
               }
             >
-              <Toolbar label="Memory filters">
+              <Toolbar label={t("filters.label")}>
                 <Select
-                  label="Memory status"
+                  label={t("status.label")}
                   value={status}
                   onValueChange={setStatus}
                   options={[
-                    { value: "all", label: "All statuses" },
-                    { value: "pending", label: "Pending review" },
-                    { value: "active", label: "Active" },
+                    { value: "all", label: t("status.all") },
+                    { value: "pending", label: t("status.pending") },
+                    { value: "active", label: t("status.active") },
                   ]}
                 />
                 <Select
-                  label="Memory origin"
+                  label={t("origin.label")}
                   value={origin}
                   onValueChange={setOrigin}
                   options={[
-                    { value: "all", label: "All origins" },
-                    { value: "auto", label: "Mined" },
-                    { value: "user", label: "User authored" },
+                    { value: "all", label: t("origin.all") },
+                    { value: "auto", label: t("origin.auto") },
+                    { value: "user", label: t("origin.user") },
                   ]}
                 />
                 <Checkbox
                   checked={pinned}
                   onCheckedChange={setPinned}
-                  label="Pinned only"
+                  label={t("pinned.only")}
                 />
               </Toolbar>
             </Disclosure>
@@ -209,28 +212,32 @@ export function Memory({ context }: { context: ComponentContext }) {
         </>
       }
     >
-      {read.loading && <p role="status">Reading recorded memory…</p>}
+      {read.loading && <p role="status">{t("reading")}</p>}
       {read.error && <p role="alert">{read.error}</p>}
       {edit?.type === "delete" ? (
-        <RecordForm aria-label="Confirm memory deletion" opener={resolveOpener}>
-          <RecordTitle>Delete this memory?</RecordTitle>
+        <RecordForm
+          aria-label={t("delete.confirm.label")}
+          opener={resolveOpener}
+        >
+          <RecordTitle>{t("delete.title")}</RecordTitle>
           <RecordMeta>
             <span>
-              {edit.item.Scope === "project" ? "Project memory" : "User memory"}
+              {edit.item.Scope === "project"
+                ? t("scope.project")
+                : t("scope.user")}
             </span>
             <span>{edit.item.ID}</span>
           </RecordMeta>
           <RecordBody>{edit.item.Content}</RecordBody>
-          <Metadata>
-            This memory will no longer be available to the agent.
-          </Metadata>
+          <Metadata>{t("delete.notice")}</Metadata>
           <MemoryFeedback
             feedback={editorFeedback}
             original={unknown?.source === "editor" ? unknown : undefined}
             pending={pending}
             reconcile={reconcile}
+            t={t}
           />
-          <FormActions label="Memory deletion confirmation">
+          <FormActions label={t("delete.actions.label")}>
             <Button
               variant="ghost"
               disabled={locked}
@@ -238,7 +245,7 @@ export function Memory({ context }: { context: ComponentContext }) {
               autoFocus
               onClick={() => setEdit(undefined)}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               variant="tonal"
@@ -248,31 +255,31 @@ export function Memory({ context }: { context: ComponentContext }) {
                 change(
                   "flame.memory/delete.v1",
                   { ID: edit.item.ID },
-                  `Delete ${edit.item.ID}`,
+                  t("command.delete", { id: edit.item.ID }),
                   "editor",
                 )
               }
             >
-              Delete memory
+              {t("delete.confirm")}
             </Button>
           </FormActions>
         </RecordForm>
       ) : edit ? (
         <RecordForm
-          aria-label={edit.type === "add" ? "Add memory" : "Edit memory"}
+          aria-label={edit.type === "add" ? t("add") : t("edit")}
           opener={resolveOpener}
         >
           <RecordTitle>
-            {edit.type === "add" ? "Add memory" : "Edit memory"}
+            {edit.type === "add" ? t("add") : t("edit")}
           </RecordTitle>
           {edit.type === "update" && (
             <RecordMeta>
               <span>{edit.item.ID}</span>
             </RecordMeta>
           )}
-          <FormField label="Memory content">
+          <FormField label={t("content.label")}>
             <TextArea
-              aria-label="Memory content"
+              aria-label={t("content.label")}
               // oxlint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               rows={6}
@@ -288,14 +295,15 @@ export function Memory({ context }: { context: ComponentContext }) {
             original={unknown?.source === "editor" ? unknown : undefined}
             pending={pending}
             reconcile={reconcile}
+            t={t}
           />
-          <FormActions label="Save memory content">
+          <FormActions label={t("save.actions.label")}>
             <Button
               disabled={locked}
               variant="ghost"
               onClick={() => setEdit(undefined)}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               variant="primary"
@@ -314,7 +322,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                         CWD: cwd!,
                         Content: edit.content.trim(),
                       },
-                      `Add ${scope} memory`,
+                      t(`command.add.${scope}`),
                       "editor",
                     )
                   : change(
@@ -323,12 +331,12 @@ export function Memory({ context }: { context: ComponentContext }) {
                         ID: edit.item.ID,
                         Content: edit.content.trim(),
                       },
-                      `Edit ${edit.item.ID}`,
+                      t("command.edit", { id: edit.item.ID }),
                       "editor",
                     )
               }
             >
-              Save
+              {t("save")}
             </Button>
           </FormActions>
         </RecordForm>
@@ -347,6 +355,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                 original={unknown?.source === "record" ? unknown : undefined}
                 pending={pending}
                 reconcile={reconcile}
+                t={t}
               />
             }
             authoring={Boolean(edit)}
@@ -367,16 +376,19 @@ export function Memory({ context }: { context: ComponentContext }) {
               });
             }}
             command={change}
+            t={t}
           />
           {current &&
             (current.cursors.length > 1 ||
               Boolean(current.page.NextCursor)) && (
               <PanelFooter>
                 <Metadata>
-                  Page {current.cursors.length} · {current.page.Rows.length}{" "}
-                  recorded items
+                  {t("footer.page", {
+                    page: current.cursors.length,
+                    count: current.page.Rows.length,
+                  })}
                 </Metadata>{" "}
-                <Toolbar label="Memory pages">
+                <Toolbar label={t("pages.label")}>
                   <Button
                     disabled={
                       read.loading || pending || current.cursors.length === 1
@@ -386,7 +398,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                       if (owner) void load(owner, current.cursors.slice(0, -1));
                     }}
                   >
-                    Previous page
+                    {t("pages.previous")}
                   </Button>
                   <Button
                     disabled={
@@ -401,7 +413,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                         ]);
                     }}
                   >
-                    Next page
+                    {t("pages.next")}
                   </Button>
                 </Toolbar>{" "}
               </PanelFooter>

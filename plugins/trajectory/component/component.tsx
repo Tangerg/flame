@@ -7,8 +7,10 @@ import {
   useState,
 } from "react";
 import {
+  createTranslator,
   mutationSettlementIsUnknown,
   type ComponentContext,
+  type Translate,
 } from "@flame/component-sdk";
 import type { MutationPromise } from "@flame/runtime-client";
 import type { ReactNode } from "react";
@@ -55,6 +57,16 @@ import {
   type Fact,
   type Tone,
 } from "@flame/ui";
+import { en } from "./locales/en";
+import { zh } from "./locales/zh";
+import { zhTW } from "./locales/zh-TW";
+import { ja } from "./locales/ja";
+import { ko } from "./locales/ko";
+import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { de } from "./locales/de";
+
+const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
 const runId = (row: TrajectoryEntry) =>
   row.type === "run"
@@ -149,29 +161,28 @@ function identity(row: TrajectoryEntry): string {
         ? row.endpoint.id
         : row.item.id;
 }
-const ITEM_TITLE = {
-  agentMessage: "Agent response",
-  userMessage: "User message",
-  reasoning: "Reasoning",
-  question: "Question",
-  compaction: "Context compaction",
-};
-function title(row: TrajectoryEntry) {
+function title(row: TrajectoryEntry, t: Translate, locale: string) {
   let title: string;
   let state: string;
   let decision: string | undefined;
   if (row.type === "run") {
-    title = `Run · ${row.run.provider}/${row.run.model}`;
+    title = t("title.run", {
+      provider: row.run.provider,
+      model: row.run.model,
+    });
     state = row.run.outcome?.type ?? row.run.status;
   } else if (row.type === "model") {
-    title = "Model call";
+    title = t("title.model");
     state = row.model.state;
   } else if (row.type === "endpoint") {
-    title = `Model endpoint · ${row.endpoint.provider}/${row.endpoint.model}`;
+    title = t("title.endpoint", {
+      provider: row.endpoint.provider,
+      model: row.endpoint.model,
+    });
     state = row.endpoint.state;
   } else {
     const item = row.item;
-    title = item.type === "toolCall" ? item.tool.name : ITEM_TITLE[item.type];
+    title = item.type === "toolCall" ? item.tool.name : t(`item.${item.type}`);
     state = item.status;
     if (item.type === "toolCall") decision = item.approvalDecision;
   }
@@ -195,20 +206,26 @@ function title(row: TrajectoryEntry) {
           {tone === "neutral" && <span>{state}</span>}
           {row.type === "run" && <code>{row.run.id}</code>}
           <time dateTime={row.occurredAt}>
-            {new Intl.DateTimeFormat(navigator.language, {
+            {new Intl.DateTimeFormat(locale, {
               hour: "numeric",
               minute: "2-digit",
               second: "2-digit",
             }).format(new Date(row.occurredAt))}
           </time>
-          {decision && <span>Approval: {decision}</span>}
+          {decision && <span>{t("approval.inline", { decision })}</span>}
         </RecordMeta>
       }
       status={tone !== "neutral" && <Badge tone={tone}>{state}</Badge>}
     />
   );
 }
-function Observation({ row: recorded }: { row: TrajectoryEntry }) {
+function Observation({
+  row: recorded,
+  t,
+}: {
+  row: TrajectoryEntry;
+  t: Translate;
+}) {
   const row = evidence(recorded);
   const body: ReactNode[] = [];
   if (row.type === "item") {
@@ -223,7 +240,7 @@ function Observation({ row: recorded }: { row: TrajectoryEntry }) {
             <EvidenceImage
               key={index}
               src={`data:${part.mime};base64,${part.data}`}
-              alt={`Recorded ${part.mime} image`}
+              alt={t("image.alt", { mime: part.mime })}
             />,
           );
         }
@@ -240,71 +257,82 @@ function Observation({ row: recorded }: { row: TrajectoryEntry }) {
   }
   const facts: Fact[] =
     row.type === "run"
-      ? [["Run ID", row.run.id]]
+      ? [[t("fact.runId"), row.run.id]]
       : [
-          ["Record ID", identity(row)],
-          ["Run ID", runId(row) || "Session only"],
+          [t("fact.recordId"), identity(row)],
+          [t("fact.runId"), runId(row) || t("value.sessionOnly")],
         ];
   const notes: ReactNode[] = [];
   if (row.type === "model") {
     const source = row.model;
     facts.push(
-      ["Segment ID", source.segmentId],
-      ["Recorded settlement", source.settledAt ?? "Unrecorded"],
+      [t("fact.segmentId"), source.segmentId],
+      [t("fact.settlement"), source.settledAt ?? t("value.unrecorded")],
     );
     if (["completed", "failed"].includes(source.state) && source.settledAt) {
       const duration =
         Date.parse(source.settledAt) - Date.parse(source.startedAt);
       if (Number.isFinite(duration) && duration >= 0)
-        facts.push(["Wall duration (ms)", duration]);
+        facts.push([t("fact.wallDurationMs"), duration]);
     }
     facts.push(
-      ["First output (ms)", source.firstOutputLatencyMillis ?? "Unrecorded"],
-      ["Input tokens", source.usage?.inputTokens ?? "Unrecorded"],
-      ["Output tokens", source.usage?.outputTokens ?? "Unrecorded"],
+      [
+        t("fact.firstOutputMs"),
+        source.firstOutputLatencyMillis ?? t("value.unrecorded"),
+      ],
+      [
+        t("fact.inputTokens"),
+        source.usage?.inputTokens ?? t("value.unrecorded"),
+      ],
+      [
+        t("fact.outputTokens"),
+        source.usage?.outputTokens ?? t("value.unrecorded"),
+      ],
     );
     for (const [key, label] of [
-      ["cacheReadTokens", "Cache read tokens"],
-      ["cacheWriteTokens", "Cache write tokens"],
-      ["reasoningTokens", "Reasoning tokens"],
+      ["cacheReadTokens", "fact.cacheReadTokens"],
+      ["cacheWriteTokens", "fact.cacheWriteTokens"],
+      ["reasoningTokens", "fact.reasoningTokens"],
     ] as const)
       if (source.usage?.[key] !== undefined)
-        facts.push([label, source.usage[key]]);
-    if (!source.usage) notes.push("Usage was not recorded for this call.");
-    if (source.state === "unknown")
-      notes.push(
-        "The final outcome was not observed. Settlement time is not measured execution time.",
-      );
+        facts.push([t(label), source.usage[key]]);
+    if (!source.usage) notes.push(t("note.usageMissing"));
+    if (source.state === "unknown") notes.push(t("note.outcomeUnobserved"));
   } else if (row.type === "endpoint") {
     facts.push(
-      ["Calling operation", row.endpoint.caller.id],
-      ["Parent operation", row.endpoint.caller.parent ?? "Unrecorded"],
-      ["Origin", row.endpoint.caller.origin],
-      ["Cost (USD)", row.endpoint.costUSD ?? "Unpriced"],
-      ["Recorded settlement", row.endpoint.settledAt ?? "Unrecorded"],
+      [t("fact.callingOperation"), row.endpoint.caller.id],
+      [
+        t("fact.parentOperation"),
+        row.endpoint.caller.parent ?? t("value.unrecorded"),
+      ],
+      [t("fact.origin"), row.endpoint.caller.origin],
+      [t("fact.costUsd"), row.endpoint.costUSD ?? t("value.unpriced")],
+      [t("fact.settlement"), row.endpoint.settledAt ?? t("value.unrecorded")],
     );
     if (row.endpoint.failure) notes.push(row.endpoint.failure);
     if (row.endpoint.state === "unknown")
-      notes.push(
-        "The provider outcome was not observed. Missing usage does not mean zero consumption.",
-      );
+      notes.push(t("note.providerUnobserved"));
   } else if (row.type === "run") {
-    facts.push(["Root Run ID", row.run.rootRunId ?? "Unrecorded"]);
-    if (row.run.parentRunId) facts.push(["Parent Run ID", row.run.parentRunId]);
+    facts.push([
+      t("fact.rootRunId"),
+      row.run.rootRunId ?? t("value.unrecorded"),
+    ]);
+    if (row.run.parentRunId)
+      facts.push([t("fact.parentRunId"), row.run.parentRunId]);
     if (row.run.spawnedByItemId)
-      facts.push(["Delegating Item ID", row.run.spawnedByItemId]);
+      facts.push([t("fact.delegatingItemId"), row.run.spawnedByItemId]);
   } else if (row.item.type === "toolCall") {
     facts.push([
-      "Execution duration (ms)",
-      row.item.durationMillis ?? "Unrecorded",
+      t("fact.executionDurationMs"),
+      row.item.durationMillis ?? t("value.unrecorded"),
     ]);
     if (row.item.approvalDecision)
-      facts.push(["Approval", row.item.approvalDecision]);
+      facts.push([t("fact.approval"), row.item.approvalDecision]);
   }
   if (row.type === "item" && row.item.type === "reasoning" && row.item.redacted)
-    notes.push("Reasoning was redacted.");
+    notes.push(t("note.reasoningRedacted"));
   const raw = (
-    <CodeBlock label="Recorded evidence" language="json">
+    <CodeBlock label={t("evidence.recorded")} language="json">
       {JSON.stringify(row, null, 2)}
     </CodeBlock>
   );
@@ -316,7 +344,7 @@ function Observation({ row: recorded }: { row: TrajectoryEntry }) {
         <Metadata key={index}>{note}</Metadata>
       ))}
       {body.length ? (
-        <Disclosure title="Recorded evidence">{raw}</Disclosure>
+        <Disclosure title={t("evidence.recorded")}>{raw}</Disclosure>
       ) : (
         raw
       )}
@@ -328,11 +356,15 @@ export function TrajectoryReport({
   kind,
   run,
   search,
+  t,
+  locale,
 }: {
   page: Page<TrajectoryEntry>;
   kind: string;
   run: string;
   search: string;
+  t: Translate;
+  locale: string;
 }) {
   const rows = page.data;
   const matching = rows.filter((row) => {
@@ -360,27 +392,26 @@ export function TrajectoryReport({
   return (
     <>
       <PanelSection
-        title="Recorded activity"
+        title={t("activity.title")}
         description={
           <RecordMeta>
             <span>
               {matching.length === rows.length
-                ? `${rows.length} ${rows.length === 1 ? "record" : "records"} on this page`
-                : `${matching.length} of ${rows.length} ${rows.length === 1 ? "record" : "records"} on this page`}
+                ? t("records.onPage", { count: rows.length })
+                : t("records.ofTotal", {
+                    count: rows.length,
+                    matching: matching.length,
+                  })}
             </span>
-            <span>
-              {toolCalls} {toolCalls === 1 ? "tool call" : "tool calls"}
-            </span>
-            <span>
-              {attention} {attention === 1 ? "needs" : "need"} attention
-            </span>
+            <span>{t("toolCalls", { count: toolCalls })}</span>
+            <span>{t("attention", { count: attention })}</span>
           </RecordMeta>
         }
       >
         <RecordGroup
           variant="list"
           id="records"
-          aria-label="Trajectory observations"
+          aria-label={t("records.label")}
         >
           {matching.map((row) => (
             <Disclosure
@@ -390,17 +421,17 @@ export function TrajectoryReport({
               data-trajectory-kind={
                 row.type === "item" ? row.item.type : row.type
               }
-              title={title(row)}
+              title={title(row, t, locale)}
             >
               <Metadata>
                 <time dateTime={row.occurredAt}>
-                  {new Intl.DateTimeFormat(navigator.language, {
+                  {new Intl.DateTimeFormat(locale, {
                     dateStyle: "medium",
                     timeStyle: "medium",
                   }).format(new Date(row.occurredAt))}
                 </time>
               </Metadata>
-              <Observation row={row} />
+              <Observation row={row} t={t} />
             </Disclosure>
           ))}
           {!matching.length && (
@@ -408,39 +439,29 @@ export function TrajectoryReport({
               icon={Activity}
               size="compact"
               title={
-                rows.length
-                  ? "No records on this page match this filter."
-                  : "No recorded trajectory observations."
+                rows.length ? t("empty.filtered.title") : t("empty.none.title")
               }
-              sub={
-                rows.length
-                  ? "Clear the filter or select All observations and All Runs."
-                  : "Refresh after a Run records observations."
-              }
+              sub={rows.length ? t("empty.filtered.sub") : t("empty.none.sub")}
             />
           )}
         </RecordGroup>
-        <Disclosure title="Model activity">
+        <Disclosure title={t("modelActivity.title")}>
           <Facts
             values={[
               [
-                "Logical model calls",
+                t("fact.logicalModelCalls"),
                 rows.filter((row) => row.type === "model").length,
               ],
               [
-                "Model endpoints",
+                t("fact.modelEndpoints"),
                 rows.filter((row) => row.type === "endpoint").length,
               ],
             ]}
           />
         </Disclosure>
       </PanelSection>
-      <Disclosure title="About these records">
-        <Metadata>
-          Counts and filters apply to this page. Missing provider evidence stays
-          unrecorded; timestamps do not imply causality. Export complete Session
-          trajectory from the trusted command menu.
-        </Metadata>
+      <Disclosure title={t("about.title")}>
+        <Metadata>{t("about.note")}</Metadata>
       </Disclosure>
     </>
   );
@@ -457,6 +478,10 @@ type Read = {
 };
 
 export function Trajectory({ context }: { context: ComponentContext }) {
+  const t = useMemo(
+    () => createTranslator(CATALOGS, context.locale),
+    [context.locale],
+  );
   const [kind, setKind] = useState("all");
   const [run, setRun] = useState("all");
   const [search, setSearch] = useState("");
@@ -512,14 +537,11 @@ export function Trajectory({ context }: { context: ComponentContext }) {
           setRead((previous) => ({
             ...previous,
             loading: false,
-            error:
-              error instanceof Error
-                ? error.message
-                : "Recorded observations could not be read.",
+            error: error instanceof Error ? error.message : t("read.failed"),
           }));
       }
     },
-    [context, sessionId],
+    [context, sessionId, t],
   );
   useEffect(() => {
     void load();
@@ -535,48 +557,48 @@ export function Trajectory({ context }: { context: ComponentContext }) {
   }, [accepted]);
   const rows = accepted?.page.data ?? [];
   const runOptions = [
-    { value: "all", label: "All Runs" },
+    { value: "all", label: t("run.all") },
     ...Array.from(
       new Set([...rows.map(runId), ...(run === "all" ? [] : [run])]),
     ).map((id) => ({
       value: id,
-      label: id || "Session only",
+      label: id || t("value.sessionOnly"),
     })),
   ];
 
   return (
     <Panel
-      label="Session trajectory"
+      label={t("panel.title")}
       header={
         <PanelHeader
           size="md"
-          title="Session trajectory"
+          title={t("panel.title")}
           context={
             <Metadata>
-              Session <code>{sessionId}</code>
+              {t("panel.session")} <code>{sessionId}</code>
             </Metadata>
           }
         />
       }
       controls={
         <FilterBar
-          label="Trajectory controls"
+          label={t("controls.label")}
           search={
             <SearchField
               size="lg"
               id="search"
-              aria-label="Filter this page"
-              placeholder="Recorded text or ID"
+              aria-label={t("search.label")}
+              placeholder={t("search.placeholder")}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               onClear={() => setSearch("")}
-              clearLabel="Clear filter"
+              clearLabel={t("search.clear")}
             />
           }
           actions={
             <IconButton
               icon={Refresh}
-              aria-label="Refresh"
+              aria-label={t("refresh")}
               size="md"
               pending={read.loading}
               onClick={() =>
@@ -590,23 +612,23 @@ export function Trajectory({ context }: { context: ComponentContext }) {
           <Select
             size="lg"
             id="kind"
-            label="Observation type"
+            label={t("kind.label")}
             value={kind}
             onValueChange={setKind}
             options={[
-              { value: "all", label: "All observations" },
-              { value: "run", label: "Runs" },
-              { value: "model", label: "Logical model calls" },
-              { value: "endpoint", label: "Model endpoints" },
-              { value: "toolCall", label: "Tool calls" },
-              { value: "message", label: "Messages" },
-              { value: "attention", label: "Needs attention" },
+              { value: "all", label: t("kind.all") },
+              { value: "run", label: t("kind.run") },
+              { value: "model", label: t("kind.model") },
+              { value: "endpoint", label: t("kind.endpoint") },
+              { value: "toolCall", label: t("kind.toolCall") },
+              { value: "message", label: t("kind.message") },
+              { value: "attention", label: t("kind.attention") },
             ]}
           />
           <Select
             size="lg"
             id="run"
-            label="Run filter"
+            label={t("run.label")}
             value={run}
             onValueChange={setRun}
             options={runOptions}
@@ -614,29 +636,32 @@ export function Trajectory({ context }: { context: ComponentContext }) {
         </FilterBar>
       }
     >
-      {read.loading && <p role="status">Reading recorded observations…</p>}
+      {read.loading && <p role="status">{t("status.reading")}</p>}
       {read.error && (
-        <p role="alert">The requested page could not be read: {read.error}</p>
+        <p role="alert">{t("status.error", { error: read.error })}</p>
       )}
       {accepted && (
         <>
           <Metadata ref={summary} tabIndex={-1} role="status">
-            {accepted.page.data.length} recorded{" "}
-            {accepted.page.data.length === 1 ? "observation" : "observations"}{" "}
-            loaded on page {accepted.cursors.length}.
-            {read.error && " Showing the last accepted page."}
+            {t("summary.loaded", {
+              count: accepted.page.data.length,
+              page: accepted.cursors.length,
+            })}
+            {read.error && ` ${t("summary.stale")}`}
           </Metadata>
           <TrajectoryReport
             page={accepted.page}
             kind={kind}
             run={run}
             search={search}
+            t={t}
+            locale={context.locale}
           />
           {(accepted.cursors.length > 1 ||
             Boolean(accepted.page.nextCursor)) && (
             <PanelFooter>
               {" "}
-              <Toolbar label="Trajectory pages">
+              <Toolbar label={t("pages.label")}>
                 <Button
                   pending={read.loading}
                   disabled={accepted.cursors.length === 1}
@@ -648,7 +673,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
                     )
                   }
                 >
-                  Newer records
+                  {t("pages.newer")}
                 </Button>
                 <Button
                   pending={read.loading}
@@ -661,7 +686,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
                     )
                   }
                 >
-                  Older records
+                  {t("pages.older")}
                 </Button>
               </Toolbar>
             </PanelFooter>
@@ -675,6 +700,10 @@ export function Trajectory({ context }: { context: ComponentContext }) {
 export function RenameSession({ context }: { context: ComponentContext }) {
   const session = context.sessionTarget;
   if (!session) throw new Error("A captured Session action target is required");
+  const t = useMemo(
+    () => createTranslator(CATALOGS, context.locale),
+    [context.locale],
+  );
   const [title, setTitle] = useState(session.title);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
@@ -715,10 +744,10 @@ export function RenameSession({ context }: { context: ComponentContext }) {
         );
       }}
     >
-      <FormSection title="Session details">
-        <FormField label="Session title">
+      <FormSection title={t("rename.section")}>
+        <FormField label={t("rename.titleLabel")}>
           <TextField
-            aria-label="Session title"
+            aria-label={t("rename.titleLabel")}
             // oxlint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
             value={title}
@@ -728,17 +757,11 @@ export function RenameSession({ context }: { context: ComponentContext }) {
           />
         </FormField>
         {failure && (
-          <p role="alert">
-            {failure} The captured revision remains unchanged; reopen this
-            action to inspect the current Session.
-          </p>
+          <p role="alert">{t("rename.failure", { message: failure })}</p>
         )}
         {unknown && (
           <>
-            <p role="status">
-              The change is unconfirmed. Reconcile the original command before
-              submitting another edit.
-            </p>
+            <p role="status">{t("rename.unconfirmed")}</p>
             <Button
               type="button"
               pending={busy}
@@ -749,29 +772,32 @@ export function RenameSession({ context }: { context: ComponentContext }) {
               }}
             >
               {busy ? (
-                <span role="status">Checking original command…</span>
+                <span role="status">{t("rename.checking")}</span>
               ) : (
-                "Reconcile original command"
+                t("rename.reconcile")
               )}
             </Button>
           </>
         )}
         {saved && (
           <p role="status">
-            Saved {saved.id} · Revision {saved.revision} ·{" "}
-            {saved.title || "Untitled"}. Close and reopen to make another edit.
+            {t("rename.saved", {
+              id: saved.id,
+              revision: saved.revision,
+              title: saved.title || t("rename.untitled"),
+            })}
           </p>
         )}
-        <Disclosure title="Captured session">
+        <Disclosure title={t("rename.captured")}>
           <Facts
             values={[
-              ["Session", session.id],
-              ["Revision", session.revision],
+              [t("panel.session"), session.id],
+              [t("rename.factRevision"), session.revision],
             ]}
           />
         </Disclosure>
       </FormSection>
-      <FormActions label="Save session title">
+      <FormActions label={t("rename.actions")}>
         <Button
           variant="primary"
           type="submit"
@@ -783,9 +809,9 @@ export function RenameSession({ context }: { context: ComponentContext }) {
           }
         >
           {busy && !unknown ? (
-            <span role="status">Saving title…</span>
+            <span role="status">{t("rename.saving")}</span>
           ) : (
-            "Save title"
+            t("rename.save")
           )}
         </Button>
       </FormActions>

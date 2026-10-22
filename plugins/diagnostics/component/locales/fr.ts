@@ -1,0 +1,36 @@
+export const fr: Record<string, string> = {
+  "panel.title": "Diagnostic du client",
+  "panel.description":
+    "Traces, métriques et journaux locaux de ce plan de travail.",
+  "controls.label": "Contrôles de diagnostic",
+  refresh: "Actualiser",
+  "actions.label": "Actions de diagnostic",
+  "actions.clear": "Effacer les observations locales",
+  "signal.label": "Signal de télémétrie",
+  "signal.spans": "Traces",
+  "signal.metrics": "Métriques",
+  "signal.logs": "Journaux",
+  "counts.label": "Décomptes de télémétrie locale",
+  "observations.title": "Observations locales",
+  "observations.summary":
+    "{{count}} observations lors de la dernière lecture du tampon. Les observations plus anciennes ont pu être supprimées.",
+  "observations.empty.title": "Aucune observation locale dans cette lecture.",
+  "observations.empty.sub":
+    "Sélectionnez un autre signal ou actualisez après avoir utilisé le plan de travail.",
+  "span.meta": "{{ms}} ms · {{kind}}",
+  "fact.started": "Démarré",
+  "fact.duration": "Durée",
+  "fact.trace": "Trace",
+  "fact.parentSpan": "Span parent",
+  "fact.recorded": "Enregistré",
+  "fact.span": "Span",
+  "duration.ms": "{{ms}} ms",
+  "attributes.title": "Attributs",
+  "raw.title": "Observation brute",
+  "raw.label": "Détails de l’observation locale",
+  "about.title": "À propos du diagnostic du client",
+  "about.note":
+    "Seul le tampon local de ce client est affiché. Actualiser lit son contenu le plus récent ; Effacer supprime les observations locales. Le décompte du Runtime et la télémétrie distante restent inchangés.",
+  "read.failed": "Impossible de lire les observations locales.",
+  "clear.failed": "Impossible d’effacer les observations locales.",
+};

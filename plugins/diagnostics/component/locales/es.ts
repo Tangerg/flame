@@ -1,0 +1,36 @@
+export const es: Record<string, string> = {
+  "panel.title": "Diagnóstico del cliente",
+  "panel.description":
+    "Trazas, métricas y registros locales de este banco de trabajo.",
+  "controls.label": "Controles de diagnóstico",
+  refresh: "Actualizar",
+  "actions.label": "Acciones de diagnóstico",
+  "actions.clear": "Borrar observaciones locales",
+  "signal.label": "Señal de telemetría",
+  "signal.spans": "Trazas",
+  "signal.metrics": "Métricas",
+  "signal.logs": "Registros",
+  "counts.label": "Recuentos de telemetría local",
+  "observations.title": "Observaciones locales",
+  "observations.summary":
+    "{{count}} observaciones en la última lectura del búfer. Es posible que se hayan descartado observaciones más antiguas.",
+  "observations.empty.title": "No hay observaciones locales en esta lectura.",
+  "observations.empty.sub":
+    "Selecciona otra señal o actualiza después de usar el banco de trabajo.",
+  "span.meta": "{{ms}} ms · {{kind}}",
+  "fact.started": "Iniciado",
+  "fact.duration": "Duración",
+  "fact.trace": "Traza",
+  "fact.parentSpan": "Span principal",
+  "fact.recorded": "Registrado",
+  "fact.span": "Span",
+  "duration.ms": "{{ms}} ms",
+  "attributes.title": "Atributos",
+  "raw.title": "Observación sin procesar",
+  "raw.label": "Detalles de la observación local",
+  "about.title": "Acerca del diagnóstico del cliente",
+  "about.note":
+    "Solo se muestra el búfer local de este cliente. Actualizar lee su contenido más reciente; Borrar elimina las observaciones locales. El recuento de Runtime y la telemetría remota no cambian.",
+  "read.failed": "No se pudieron leer las observaciones locales.",
+  "clear.failed": "No se pudieron borrar las observaciones locales.",
+};
