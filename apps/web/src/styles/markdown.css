@@ -57,8 +57,8 @@
 .md-table-actions {
   display: flex;
   justify-self: end;
-  gap: 2px;
-  padding-top: 2px;
+  gap: calc(var(--spacing) * 0.5);
+  padding-top: calc(var(--spacing) * 0.5);
   opacity: 0;
   pointer-events: none;
   user-select: none;
@@ -70,7 +70,7 @@
   pointer-events: auto;
 }
 .md table .md-table-cell-numeric {
-  min-width: calc(3ch + 24px);
+  min-width: calc(3ch + var(--spacing) * 6);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
