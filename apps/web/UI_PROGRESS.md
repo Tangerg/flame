@@ -2273,13 +2273,30 @@ defects; each needs a Wails look and an explicit choice before implementing:
   redesign, not a cleanup. The two return buttons also duplicate their markup and
   disagree on `data-chrome-focus` (window header sets it, dock header does not); a
   shared `ReturnButton` would fix both once the ring convention is chosen.
-- **Shared scroll-restore primitive for plugin components.** The diff, usagereports
-  and skills plugin components carry a byte-identical `scrollPositions` helper (and
-  `ScrollPosition` type) plus the same master/detail focus-and-scroll-restore dance.
-  Plugins may import only `@flame/ui` + the wire client, so the authoritative owner
-  would be a `@flame/ui` scroll-restore hook — a deliberate primitive extraction, not
-  just moving the 11-line helper behind a name, so this is a refactoring signal rather
-  than a quick dedup.
+- **Shared primitives for plugin-component duplication (prioritised backlog).** An
+  audit of every `plugins/*/component/**` UI (which may import only `@flame/ui`,
+  `@flame/component-sdk` and the wire client — `@flame/component-sdk` is consumed from
+  source, so new exports there reach plugins directly) found three real cross-plugin
+  duplications, all best fixed by deliberate shared owners plus a plugin ESM rebuild
+  and host render verification, not blind partial extraction:
+  1. _Master/detail scroll+focus restore_ — byte-identical `scrollPositions` +
+     `ScrollPosition` plus the `pendingFocus` ref and the scroll-to-0 / restore-scroll
+     / focus-opener `useLayoutEffect` in `diff`, `usagereports`, and `skills`
+     (`skills/useSkills.ts:37-48,69-72,238-256`, `diff/component.tsx:55-68,99-102,
+173-200`, `usagereports/component.tsx:58-96,136-139,189-211`). Owner: a
+     `useMasterDetailFocus` hook (+ `ScrollPosition`) in `@flame/component-sdk`.
+  2. _Reconcilable-command state + UI_ — the submit→pending→uncertain→reconcile/retire
+     protocol and its status `<section>` are copied across `skills`, `schedules`,
+     `memory`, `usagereports`, and (slim) `trajectory`; the `Command` type and the
+     `failure()` helper are byte-identical in skills/schedules. Owner: a
+     `useReconcilableCommand` hook in `@flame/component-sdk` + an `UnconfirmedCommand`
+     status component in `@flame/ui`, collapsing five copies.
+  3. _Status/alert text primitive_ — some plugins use the `@flame/ui` `Metadata` muted
+     status, others a raw `<p role="status|alert">`; standardise on `Metadata` or add
+     a `StatusText` primitive. Also minor: a duplicated `Intl.NumberFormat("en-US")`
+     (`usage`/`usagereports`) and a set of unreferenced DOM `id`s that read vestigial
+     but may be host deep-link anchors (verify against the sandbox shell before
+     removing). Token/alpha and accessibility are otherwise clean across the plugins.
 - **Settings-list primitive consistency.** The loaded-plugins list (`PluginsPane`)
   hand-rolls its record rows and a manual expand/collapse where its sibling
   `PackageManager.PackageRow` composes `ListRow` + `RecordHeading` + `Disclosure`;
