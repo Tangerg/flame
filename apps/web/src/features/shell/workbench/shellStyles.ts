@@ -23,7 +23,7 @@ export const shellStyles = stylex.create({
   banner: { marginBlock: space.s2_5 },
   bannerCard: {
     display: "grid",
-    gridTemplateColumns: "auto 1fr auto",
+    gridTemplateColumns: "auto minmax(0, 1fr) auto",
     alignItems: "flex-start",
     gap: space.s2_5,
     borderRadius: radius.lg,
