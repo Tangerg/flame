@@ -37,6 +37,7 @@ function mountRename() {
     sessionId: "ses_1",
     sessionTarget: Object.freeze({ id: "ses_1", title: "Original title", revision: 7 }),
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
+    locale: "en",
     signal: owner.signal,
     track: (operation) => {
       tracked.push(operation);

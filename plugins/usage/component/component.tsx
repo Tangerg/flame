@@ -1,5 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { ComponentContext } from "@flame/component-sdk";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createTranslator,
+  type ComponentContext,
+  type Translate,
+} from "@flame/component-sdk";
 import { ChartColumn, Refresh } from "@flame/icons/react";
 import type { UsageSummary } from "@flame/runtime-client/wire";
 import {
@@ -23,136 +27,173 @@ import {
   Stats,
   Toolbar,
 } from "@flame/ui";
+import { en } from "./locales/en";
+import { zh } from "./locales/zh";
+import { zhTW } from "./locales/zh-TW";
+import { ja } from "./locales/ja";
+import { ko } from "./locales/ko";
+import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { de } from "./locales/de";
 
-const number = new Intl.NumberFormat("en-US");
-const dollars = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 6,
-});
-const fields = [
-  ["Input tokens", "inputTokens"],
-  ["Output tokens", "outputTokens"],
-  ["Cache read tokens", "cacheReadTokens"],
-  ["Cache write tokens", "cacheWriteTokens"],
-  ["Reasoning tokens", "reasoningTokens"],
+const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
+
+type Formatters = {
+  number: (value: number) => string;
+  cost: (amount?: number) => string;
+};
+
+function makeFormatters(locale: string, t: Translate): Formatters {
+  const number = new Intl.NumberFormat(locale);
+  const dollars = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 6,
+  });
+  return {
+    number: (value) => number.format(value),
+    cost: (amount) =>
+      amount === undefined ? t("cost.notReported") : dollars.format(amount),
+  };
+}
+
+const FIELDS = [
+  "inputTokens",
+  "outputTokens",
+  "cacheReadTokens",
+  "cacheWriteTokens",
+  "reasoningTokens",
 ] as const;
-const options = [
-  { value: "byProvider", label: "Provider" },
-  { value: "byModel", label: "Model" },
-  { value: "byDay", label: "UTC day" },
-  { value: "byOrigin", label: "Calling origin" },
-  { value: "byScope", label: "Association" },
-];
-const cost = (amount?: number) =>
-  amount === undefined ? "Not reported" : dollars.format(amount);
+
+const GROUPS = [
+  "byProvider",
+  "byModel",
+  "byDay",
+  "byOrigin",
+  "byScope",
+] as const;
+
 export function UsageReport({
   report,
   group,
   filter,
+  t,
+  fmt,
 }: {
   report: UsageSummary;
   group: string;
   filter: string;
+  t: Translate;
+  fmt: Formatters;
 }) {
-  const buckets =
-    report[
-      group as "byProvider" | "byModel" | "byDay" | "byOrigin" | "byScope"
-    ] ?? [];
+  const buckets = report[group as (typeof GROUPS)[number]] ?? [];
   const matching = buckets.filter((bucket) =>
     bucket.key.toLocaleLowerCase().includes(filter.toLocaleLowerCase()),
   );
   return (
     <>
       <PanelSection
-        title="Overview"
-        description={`${number.format(report.coverage.calls)} model attempts · ${number.format(report.coverage.reportedCalls)} with usage · ${number.format(report.coverage.pricedCalls)} priced`}
+        title={t("overview.title")}
+        description={t("overview.summary", {
+          calls: fmt.number(report.coverage.calls),
+          reported: fmt.number(report.coverage.reportedCalls),
+          priced: fmt.number(report.coverage.pricedCalls),
+        })}
       >
         <Stats
           id="totals"
-          aria-label="Recorded usage totals"
+          aria-label={t("totals.label")}
           values={[
             report.total.costUsd === undefined
-              ? ["Known price subtotal (USD)", cost(report.recordedCostUsd)]
-              : ["Total cost (USD)", cost(report.total.costUsd)],
+              ? [t("fact.knownSubtotal"), fmt.cost(report.recordedCostUsd)]
+              : [t("fact.totalCost"), fmt.cost(report.total.costUsd)],
             [
-              "Known input tokens",
-              number.format(report.total.inputTokens ?? 0),
+              t("fact.known.inputTokens"),
+              fmt.number(report.total.inputTokens ?? 0),
             ],
             [
-              "Known output tokens",
-              number.format(report.total.outputTokens ?? 0),
+              t("fact.known.outputTokens"),
+              fmt.number(report.total.outputTokens ?? 0),
             ],
           ]}
         />
-        <Disclosure title="Accounting details">
+        <Disclosure title={t("accounting.title")}>
           <Facts
             values={[
-              ["Known price subtotal (USD)", cost(report.recordedCostUsd)],
-              ["Total cost (USD)", cost(report.total.costUsd)],
-              ...fields.map(
-                ([label, key]) =>
+              [t("fact.knownSubtotal"), fmt.cost(report.recordedCostUsd)],
+              [t("fact.totalCost"), fmt.cost(report.total.costUsd)],
+              ...FIELDS.map(
+                (key) =>
                   [
-                    `Known ${label.toLowerCase()}`,
-                    number.format(report.total[key] ?? 0),
+                    t(`fact.known.${key}`),
+                    fmt.number(report.total[key] ?? 0),
                   ] as const,
               ),
-              ["Model attempts", number.format(report.coverage.calls)],
+              [t("fact.attempts"), fmt.number(report.coverage.calls)],
               [
-                "Usage recorded",
+                t("fact.usageRecorded"),
                 `${report.coverage.reportedCalls}/${report.coverage.calls}`,
               ],
               [
-                "Priced attempts",
+                t("fact.pricedAttempts"),
                 `${report.coverage.pricedCalls}/${report.coverage.calls}`,
               ],
-              ["In progress", number.format(report.coverage.startedCalls)],
-              ["Outcome unknown", number.format(report.coverage.unknownCalls)],
-              ["Associated Sessions", number.format(report.sessions)],
-              ["Associated Runs", number.format(report.runs)],
+              [t("fact.inProgress"), fmt.number(report.coverage.startedCalls)],
+              [
+                t("fact.outcomeUnknown"),
+                fmt.number(report.coverage.unknownCalls),
+              ],
+              [t("fact.sessions"), fmt.number(report.sessions)],
+              [t("fact.runs"), fmt.number(report.runs)],
             ]}
           />
-          <Metadata>
-            Token totals include reported usage only. Unknown outcomes and
-            unreported usage may add consumption. The known price subtotal
-            includes priced attempts only; total cost requires every attempt to
-            be priced. Deleted or never recorded calls cannot be reconstructed.
-            Zero tokens are recorded values. “Not reported” means there is no
-            complete price for that total or bucket.
-          </Metadata>
+          <Metadata>{t("accounting.note")}</Metadata>
         </Disclosure>
       </PanelSection>
       <div id="empty" hidden={report.coverage.calls !== 0}>
         <EmptyState
           icon={ChartColumn}
           size="compact"
-          title="No retained model attempts in this period."
-          sub="Choose another period above or refresh after model activity."
+          title={t("empty.title")}
+          sub={t("empty.sub")}
         />
       </div>
       <PanelSection
         id="breakdown"
-        aria-label="Usage breakdown"
+        aria-label={t("breakdown.title")}
         hidden={report.coverage.calls === 0}
-        title="Usage breakdown"
-        description={`Recorded costs by ${options.find((option) => option.value === group)!.label.toLowerCase()}`}
+        title={t("breakdown.title")}
+        description={t("breakdown.by", {
+          group: t(`group.${group}`).toLocaleLowerCase(),
+        })}
       >
-        <RecordGroup variant="list" aria-label="Recorded usage by source">
+        <RecordGroup variant="list" aria-label={t("breakdown.group")}>
           {matching.map((bucket) => (
             <ListRow key={bucket.key}>
               <RecordHeading
                 title={bucket.key}
                 actions={
-                  <MetricValue>{cost(bucket.recordedCostUsd)} USD</MetricValue>
+                  <MetricValue>
+                    {t("bucket.costUsd", {
+                      cost: fmt.cost(bucket.recordedCostUsd),
+                    })}
+                  </MetricValue>
                 }
                 description={
                   <RecordMeta>
-                    <span>{number.format(bucket.coverage.calls)} attempts</span>
                     <span>
-                      {number.format(bucket.total.inputTokens ?? 0)} known input
+                      {t("bucket.attempts", {
+                        calls: fmt.number(bucket.coverage.calls),
+                      })}
                     </span>
                     <span>
-                      {number.format(bucket.total.outputTokens ?? 0)} known
-                      output tokens
+                      {t("bucket.knownInput", {
+                        tokens: fmt.number(bucket.total.inputTokens ?? 0),
+                      })}
+                    </span>
+                    <span>
+                      {t("bucket.knownOutput", {
+                        tokens: fmt.number(bucket.total.outputTokens ?? 0),
+                      })}
                     </span>
                   </RecordMeta>
                 }
@@ -165,23 +206,23 @@ export function UsageReport({
                     total={report.recordedCostUsd}
                   />
                 )}
-              <Disclosure title="Token and coverage details">
+              <Disclosure title={t("bucket.details")}>
                 <Facts
                   values={[
-                    ["Known cost (USD)", cost(bucket.recordedCostUsd)],
+                    [t("fact.knownCost"), fmt.cost(bucket.recordedCostUsd)],
                     [
-                      "Usage / attempts",
+                      t("fact.usagePerAttempts"),
                       `${bucket.coverage.reportedCalls}/${bucket.coverage.calls}`,
                     ],
                     [
-                      "Priced / attempts",
+                      t("fact.pricedPerAttempts"),
                       `${bucket.coverage.pricedCalls}/${bucket.coverage.calls}`,
                     ],
-                    ...fields.map(
-                      ([label, key]) =>
+                    ...FIELDS.map(
+                      (key) =>
                         [
-                          `Known ${label.toLowerCase()}`,
-                          number.format(bucket.total[key] ?? 0),
+                          t(`fact.known.${key}`),
+                          fmt.number(bucket.total[key] ?? 0),
                         ] as const,
                     ),
                   ]}
@@ -192,23 +233,23 @@ export function UsageReport({
           {!matching.length && (
             <EmptyState
               size="compact"
-              title="No matching rows."
-              sub="Clear the filter to show recorded usage."
+              title={t("breakdown.empty.title")}
+              sub={t("breakdown.empty.sub")}
             />
           )}
         </RecordGroup>
-        <Metadata>Filtering rows does not change the report totals.</Metadata>
+        <Metadata>{t("breakdown.note")}</Metadata>
       </PanelSection>
     </>
   );
 }
 
-const periods = [
-  { value: "all", label: "All time", query: {} },
-  { value: "30", label: "Last 30 days", query: { sinceDays: 30 } },
-  { value: "7", label: "Last 7 days", query: { sinceDays: 7 } },
+const PERIODS = [
+  { value: "all", query: {} },
+  { value: "30", query: { sinceDays: 30 } },
+  { value: "7", query: { sinceDays: 7 } },
 ] as const;
-type Period = (typeof periods)[number];
+type Period = (typeof PERIODS)[number];
 type Read = {
   loading: boolean;
   accepted?: { report: UsageSummary; period: Period };
@@ -216,9 +257,17 @@ type Read = {
 };
 
 export function Usage({ context }: { context: ComponentContext }) {
+  const t = useMemo(
+    () => createTranslator(CATALOGS, context.locale),
+    [context.locale],
+  );
+  const fmt = useMemo(
+    () => makeFormatters(context.locale, t),
+    [context.locale, t],
+  );
   const [group, setGroup] = useState("byProvider");
   const [filter, setFilter] = useState("");
-  const [period, setPeriod] = useState<Period>(periods[0]);
+  const [period, setPeriod] = useState<Period>(PERIODS[0]);
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
   const refresh = useCallback(async () => {
@@ -238,34 +287,31 @@ export function Usage({ context }: { context: ComponentContext }) {
         setRead((previous) => ({
           ...previous,
           loading: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "The report could not be read.",
+          error: error instanceof Error ? error.message : t("read.failed"),
         }));
     }
-  }, [context, period]);
+  }, [context, period, t]);
   useEffect(() => {
     void refresh();
     return () => reading.current?.abort();
   }, [refresh]);
   return (
     <Panel
-      label="Usage"
+      label={t("panel.title")}
       header={
         <PanelHeader
-          title="Usage"
-          description="Recorded model usage and cost."
+          title={t("panel.title")}
+          description={t("panel.description")}
         />
       }
       controls={
         <>
           <Toolbar
-            label="Report scope"
+            label={t("scope.label")}
             actions={
               <IconButton
                 icon={Refresh}
-                aria-label="Refresh"
+                aria-label={t("refresh")}
                 size="md"
                 pending={read.loading}
                 onClick={() => void refresh()}
@@ -274,48 +320,59 @@ export function Usage({ context }: { context: ComponentContext }) {
           >
             <Select
               size="lg"
-              label="Period"
+              label={t("period.label")}
               value={period.value}
-              options={periods.map(({ value, label }) => ({ value, label }))}
+              options={PERIODS.map(({ value }) => ({
+                value,
+                label: t(`period.${value}`),
+              }))}
               onValueChange={(value) =>
-                setPeriod(periods.find((item) => item.value === value)!)
+                setPeriod(PERIODS.find((item) => item.value === value)!)
               }
             />
           </Toolbar>
-          {read.loading && <Metadata role="status">Reading usage…</Metadata>}
+          {read.loading && (
+            <Metadata role="status">{t("status.reading")}</Metadata>
+          )}
           {read.error && (
             <Metadata role="alert">
-              The current report could not be read: {read.error}
+              {t("status.error", { error: read.error })}
             </Metadata>
           )}
           {read.accepted &&
             (read.loading || read.error || read.accepted.period !== period) && (
               <Metadata role="status">
-                Showing {read.accepted.period.label.toLocaleLowerCase()} from
-                the last successful read.
+                {t("status.stale", {
+                  period: t(
+                    `period.${read.accepted.period.value}`,
+                  ).toLocaleLowerCase(),
+                })}
               </Metadata>
             )}
           <FilterBar
-            label="Usage controls"
+            label={t("controls.label")}
             search={
               <SearchField
                 size="lg"
                 id="filter"
-                aria-label="Filter sources"
-                placeholder="Find a source"
+                aria-label={t("filter.label")}
+                placeholder={t("filter.placeholder")}
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
                 onClear={() => setFilter("")}
-                clearLabel="Clear filter"
+                clearLabel={t("filter.clear")}
               />
             }
           >
             <Select
               size="lg"
-              label="Group by"
+              label={t("group.label")}
               value={group}
               onValueChange={setGroup}
-              options={options}
+              options={GROUPS.map((value) => ({
+                value,
+                label: t(`group.${value}`),
+              }))}
             />
           </FilterBar>
         </>
@@ -325,13 +382,17 @@ export function Usage({ context }: { context: ComponentContext }) {
         <>
           {!read.loading && !read.error && read.accepted.period === period && (
             <Metadata role="status" className="sr-only">
-              Recorded usage loaded. {read.accepted.period.label}.
+              {t("status.loaded", {
+                period: t(`period.${read.accepted.period.value}`),
+              })}
             </Metadata>
           )}
           <UsageReport
             report={read.accepted.report}
             group={group}
             filter={filter}
+            t={t}
+            fmt={fmt}
           />
         </>
       )}

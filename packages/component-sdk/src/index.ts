@@ -92,6 +92,8 @@ export interface ComponentContext {
   readonly sessionId?: string;
   readonly sessionTarget?: CapturedSession;
   readonly binding?: Readonly<PluginOperationBinding>;
+  // The host owns the active locale; a component projects it, never selects it.
+  readonly locale: string;
   readonly signal: AbortSignal;
   track<T>(operation: Promise<T>): Promise<T>;
   compose(composition: ComponentComposition): ReactNode;
@@ -125,6 +127,46 @@ export type PluginComponent<Input = unknown, Props = unknown> = ComponentType<{
   contribution?: Props;
   children?: ReactNode;
 }>;
+
+export type Catalog = Readonly<Record<string, string>>;
+
+export type Translate = (
+  key: string,
+  params?: Readonly<Record<string, string | number>>,
+) => string;
+
+// Mirrors the host i18next conventions: flat dotted keys, {{name}}
+// interpolation, _one/_other plural suffixes via Intl.PluralRules on `count`,
+// with en as reference and fallback.
+export function createTranslator(
+  catalogs: Readonly<Record<string, Catalog>>,
+  locale: string,
+): Translate {
+  const base = catalogs.en ?? {};
+  const active = catalogs[locale] ?? catalogs[locale.split("-")[0]!] ?? base;
+  const plural =
+    typeof Intl !== "undefined" && "PluralRules" in Intl
+      ? new Intl.PluralRules(locale)
+      : undefined;
+  return (key, params) => {
+    let lookup = key;
+    if (params && typeof params.count === "number") {
+      const category = plural ? plural.select(params.count) : "other";
+      const suffixed = `${key}_${category}`;
+      lookup =
+        active[suffixed] !== undefined || base[suffixed] !== undefined
+          ? suffixed
+          : `${key}_other`;
+    }
+    const template =
+      active[lookup] ?? base[lookup] ?? active[key] ?? base[key] ?? key;
+    return params
+      ? template.replace(/\{\{(\w+)\}\}/g, (whole, name: string) =>
+          name in params ? String(params[name]) : whole,
+        )
+      : template;
+  };
+}
 
 function output<R>(reply: CallPluginResponse): R {
   if (reply.failure)

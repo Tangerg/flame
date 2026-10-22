@@ -19,6 +19,7 @@ function capturedContext(
       digest: "a".repeat(64),
       componentId: "recorded-result",
     }),
+    locale: "en",
     signal: new AbortController().signal,
     toolResult: Object.freeze({
       id: "item_recorded_result",

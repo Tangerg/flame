@@ -31,6 +31,7 @@ async function openUsage() {
     component: { installationId: "usage-review", digest: "a".repeat(64), componentId: "usage" },
     runtime,
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
+    locale: "en",
     signal: owner.signal,
     track: (operation) => operation,
     compose: () => null,

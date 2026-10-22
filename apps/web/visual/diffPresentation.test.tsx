@@ -37,6 +37,7 @@ function mountDiff(
     runtime,
     workspace: { ref: { path: "/Users/visual/scope" }, focus: { path, revision: 1n } },
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
+    locale: "en",
     signal: owner.signal,
     track: (operation) => operation,
     compose: () => null,

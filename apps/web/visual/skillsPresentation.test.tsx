@@ -43,6 +43,7 @@ async function mountSkills() {
     runtime,
     workspace: { ref: { path: VISUAL_WORKSPACE_PATH } },
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
+    locale: "en",
     signal: owner.signal,
     track: (operation) => operation,
     compose: () => null,

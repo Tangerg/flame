@@ -97,6 +97,7 @@ async function mountTrajectory() {
     runtime,
     sessionId: VISUAL_SESSION_ID,
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
+    locale: "en",
     signal: owner.signal,
     track: (operation) => operation,
     compose: () => null,

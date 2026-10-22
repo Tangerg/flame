@@ -34,6 +34,7 @@ beforeEach(() => {
       throw new Error("Composition is not used by this fixture");
     },
     runtime: client,
+    locale: "en",
     signal: owner.signal,
     binding: {
       installationId: "e4407303-68e3-495d-86d6-9c3f575a51ed",

@@ -11,6 +11,7 @@ afterEach(cleanup);
 function renderCapturedMarkdown(content: string) {
   const context: ComponentContext = {
     component: { installationId: "captured-file", digest: "a".repeat(64), componentId: "markdown" },
+    locale: "en",
     signal: new AbortController().signal,
     file: {
       path: "review.md",

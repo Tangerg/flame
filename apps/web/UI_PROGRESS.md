@@ -2682,6 +2682,48 @@ each dock view is still pending):
   is pre-existing, not surfaced here, and left untouched. Verified: `plugins` check,
   `vitest run visual` (167), web `typecheck` + `lint` all green.
 
+## Plugin internationalization (i18n)
+
+The dock plugins were English-only: the host app is localized (i18next, 8 locales,
+~128 `useT` sites) but `@flame/component-sdk` exposed no locale channel, so every plugin
+hardcoded English. The fix is root-cause, not a patch: the host owns the active locale and
+projects it; each plugin owns its own strings and ships them in its bundle; one shared
+translator spans host and plugins.
+
+- **Ownership.** Active locale has one owner — the host i18next singleton
+  (`localStorage["flame.locale"]`). A plugin's catalog is owned by that plugin. The engine
+  is one shared mechanism in the SDK. Rejected the alternative of extracting a shared i18n
+  package so plugins share the host singleton: it would make plugin strings register into a
+  host-owned store (muddier ownership) and migrate ~128 host sites for no ownership gain.
+- **SDK contract (breaking, all consumers migrated in-batch).** `ComponentContext` gains a
+  required `locale: string`, and the SDK exports `createTranslator(catalogs, locale)` →
+  `Translate`. The translator mirrors the host i18next conventions exactly so one vocabulary
+  spans both: flat dotted keys, `{{name}}` interpolation, `_one`/`_other` plural suffixes via
+  `Intl.PluralRules` on a `count` param, with `en` as reference and fallback.
+- **Host injection.** `RenderingComponent` (`InstalledComponent.tsx`) reads `useLocale()` and
+  threads it into `ComponentInstance` + the memo deps; `capture()` freezes it into the
+  context. One call covers every scope (client/session/workspace/installation/file/tool-
+  result) and the composed path, because `ComponentCompositions` re-emits `RenderingComponent`.
+  A locale change recreates the frozen context and re-renders the plugin. The 14 test context
+  mocks gained `locale: "en"`.
+- **Catalogs ride in the bundle.** rolldown inlines a static `import { zh } from "./locales/zh"`
+  into `component.js` (same path as the generated `methods.generated.ts`), so no new package/
+  runtime plumbing — just rebuild and commit the larger `component.js`. Each plugin ships 8
+  catalog modules (`en` reference + 7) in `component/locales/`.
+- **Enforcement.** `plugins/scripts/check-i18n.mjs` (wired into `plugins` `check`) mirrors the
+  host's `check-locales` for the plugin tree the host script never walks: every migrated
+  plugin carries all 8 locales, no duplicate/extra/missing key (plural families held to each
+  locale's `Intl.PluralRules` categories), placeholder parity vs `en`, and every literal
+  `t("…")` names an `en` key.
+- **Pilot: `usage` (complete).** Fully migrated — all strings via `t()`, `UsageReport` takes
+  `t`/`fmt`, and the `Intl.NumberFormat("en-US")` hardcoding now follows `context.locale`
+  (aligning with the plugins that already used `navigator.language` for dates). `en` matches
+  the prior copy verbatim, so `visual/usageScopePresentation.test.tsx` passes unchanged.
+  Verified: component-sdk check, plugins check (incl. check:i18n), web typecheck + lint,
+  `vitest run visual` (167). Remaining plugins migrate in later batches; the final batch adds
+  a hardcoded-literal ban (host Rule 11/14) as the anti-regression gate, and native host
+  acceptance of the localized dock views is still pending.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.

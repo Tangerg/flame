@@ -7,7 +7,7 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
-import { useT } from "@/lib/i18n/index";
+import { useLocale, useT } from "@/lib/i18n/index";
 import { Button } from "@flame/ui/button";
 import { FailureDetails } from "@/ui/index";
 import { failureDiagnostics } from "@/lib/diagnostics";
@@ -103,7 +103,7 @@ class ComponentInstance {
   private controller = new AbortController();
   private listeners = new Set<() => void>();
   private context: ComponentContext;
-  constructor(private readonly sources: ComponentSources) {
+  constructor(private readonly sources: ComponentSources & { locale: string }) {
     this.context = this.capture();
   }
   private capture(): ComponentContext {
@@ -137,6 +137,7 @@ class ComponentInstance {
           })
         : undefined,
       binding: this.sources.binding ? structuredClone(this.sources.binding) : undefined,
+      locale: this.sources.locale,
       signal,
       telemetry: captureClientTelemetry(signal),
       track: <T,>(operation: Promise<T>): Promise<T> =>
@@ -187,6 +188,7 @@ function RenderingInstance({
 }
 
 export function RenderingComponent(props: ComponentProps & ComponentSources) {
+  const locale = useLocale();
   const {
     runtime,
     binding,
@@ -214,6 +216,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
         sessionTarget,
         component,
         compose,
+        locale,
       }),
     [
       runtime,
@@ -227,6 +230,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
       sessionTarget,
       component,
       compose,
+      locale,
     ],
   );
   return (
