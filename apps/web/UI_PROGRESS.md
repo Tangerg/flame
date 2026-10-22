@@ -2559,9 +2559,21 @@ each dock view is still pending):
   that coexistence; the real improvement is in-place row editing (editor replacing the
   edited row), a larger refactor to weigh against the coexistence contract and verify
   natively — deferred, not a blind swap.
-- Not changed (reviewed): `tool-results` is an embedded single-object result, not a
-  master/detail list; `diagnostics` is clean; `trajectory`'s duplicate page-count line
-  and `usage`'s input/output token overlap are low-value de-dups left for a later pass.
+- A second deep audit covered the plugins the first pass only skimmed (trajectory,
+  tool-results, diagnostics, file-renderers, icon-gallery). Two real defects were fixed:
+  `file-renderers` re-ran the `startLine !== 1 || truncated` truncation check and
+  returned invented "use the source view" copy, but its host `RecordedFileComponent`
+  already applies that predicate and returns the real fallback before mounting — a dead,
+  unreachable branch duplicating a host-owned decision, now removed; and `diagnostics`
+  set a metric row's description to `row.description || row.kind` while the status Badge
+  already owns `kind`, so an empty-description metric printed the kind twice (now falls
+  back to no description). `tool-results` and `icon-gallery` are clean (the `key={index}`
+  in tool-results is correct for its deliberately-stable stateless row container; the
+  icon-gallery `title` is the article's accessible name, pinned by a test). `trajectory`
+  is clean apart from expanded rows re-printing a couple of summary values — a deliberate
+  preview-in-summary / labelled-in-detail idiom, left as-is. `usage`'s input/output token
+  overlap and the `diagnostics` "Attributes" `PanelSection` heading nesting are low-value
+  items left for a later pass.
 
 ## Working and maintenance practice
 
