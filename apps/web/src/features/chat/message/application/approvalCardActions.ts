@@ -49,7 +49,7 @@ export function useApprovalCardActions({
   argsEditor?: ApprovalArgsCommitter;
   runtimeAvailable: boolean;
 }): ApprovalCardActionState {
-  const { submit, pending, registerActions } = useApprovalSubmit(resumeRunId, itemId);
+  const { submit, pending, done, registerActions } = useApprovalSubmit(resumeRunId, itemId);
 
   const approve = useCallback(
     (rememberScope?: RememberScope) => {
@@ -74,7 +74,7 @@ export function useApprovalCardActions({
   }, [approve, decline, registerable, registerActions]);
 
   return {
-    disabled: !runtimeAvailable || !canSubmitApproval({ resumeRunId, itemId, pending }),
+    disabled: !runtimeAvailable || done || !canSubmitApproval({ resumeRunId, itemId, pending }),
     approve,
     decline,
   };

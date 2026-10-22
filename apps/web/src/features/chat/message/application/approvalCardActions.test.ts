@@ -13,11 +13,13 @@ type RegisteredApprovalActions = {
 const hitl = vi.hoisted(() => ({
   registerActions: vi.fn<(actions: RegisteredApprovalActions) => () => void>(() => () => undefined),
   submit: vi.fn(),
+  done: false,
 }));
 
 vi.mock("@/features/agent/public/hitl", () => ({
   useApprovalSubmit: () => ({
     pending: null,
+    done: hitl.done,
     registerActions: hitl.registerActions,
     submit: hitl.submit,
   }),
@@ -27,7 +29,10 @@ vi.mock("@/features/agent/public/messagePresentation", () => ({
   canSubmitApproval: () => true,
 }));
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  hitl.done = false;
+});
 
 describe("approvalSubmitOptions", () => {
   it("omits the options object when approval has no extra payload", () => {
@@ -72,6 +77,14 @@ describe("useApprovalCardActions", () => {
 
     act(() => result.current.decline());
     expect(hitl.submit).toHaveBeenLastCalledWith("deny");
+  });
+
+  it("stays disabled once a decision is submitted, even after pending clears", () => {
+    hitl.done = true;
+    const { result } = renderHook(() =>
+      useApprovalCardActions({ resumeRunId: "run", itemId: "item", runtimeAvailable: true }),
+    );
+    expect(result.current.disabled).toBe(true);
   });
 
   it("keeps the registered keyboard approval one-shot", () => {

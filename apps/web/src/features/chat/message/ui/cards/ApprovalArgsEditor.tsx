@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useLayoutEffect, useRef } from "react";
+import { useId, useLayoutEffect, useRef } from "react";
 import { useT } from "@/lib/i18n/index";
 import { SectionLabel } from "@/ui/index";
 import { TextButton } from "@/ui/index";
@@ -26,6 +26,7 @@ export function ApprovalArgsEditor({
   onTextChange: (text: string) => void;
 }) {
   const t = useT();
+  const errorId = useId();
   const editor = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     if (editing) editor.current?.focus();
@@ -57,6 +58,7 @@ export function ApprovalArgsEditor({
             invalid={invalid}
             value={argsText}
             aria-label={t("approval.args.label")}
+            aria-describedby={invalid ? errorId : undefined}
             spellCheck={false}
             rows={Math.min(10, argsText.split("\n").length + 1)}
             onChange={(e) => {
@@ -65,7 +67,11 @@ export function ApprovalArgsEditor({
             variant="well"
           />
           {invalid && (
-            <div {...stylex.props(ae.error, vocab.negative, typeStep.uiXs, face.mono)}>
+            <div
+              id={errorId}
+              role="alert"
+              {...stylex.props(ae.error, vocab.negative, typeStep.uiXs, face.mono)}
+            >
               {t("approval.args.invalid")}
             </div>
           )}

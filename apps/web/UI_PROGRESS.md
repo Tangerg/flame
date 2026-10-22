@@ -2917,6 +2917,42 @@ reader never heard the count. The count is now in the `aria-label`
 to the aria-label), so the redundant `title` was dropped — one count-aware label
 serves the badge, the tooltip, and the accessible name.
 
+## HITL approval surface audit
+
+A deep audit of the human-in-the-loop approval surface (the inline card that gates
+tool execution, its args editor, and the submit coordinator) found the
+decision-integrity core clean: single-card double-submit is latched by
+`useInterruptResume`'s `submitted` ref (test-pinned), decisions are owned by an
+`(sessionId, rootRunId, itemId)` registry so they can't land on the wrong request,
+withdrawn/superseded requests roll back, answer-vs-approval routing is correct, and
+the card is keyed by `itemId` so a new interrupt mounts a fresh args draft. Fixes:
+
+- **Buttons re-enabled but were inert after settle (one-owner).** On settle
+  `useInterruptResume` cleared `pending` (to stop the spinner) but the submit latch
+  (`submitted` ref) stayed set, while the buttons' `disabled` was derived from
+  `pending` — so in the settle→view-refresh window the Deny/Allow buttons lit back
+  up yet clicking them no-opped. `useInterruptResume` now exposes a reactive `done`
+  that stays set until the card unmounts, and the card disables on it, matching the
+  latch. Regression test added.
+- **A11y on the gating card.** The card Surface is now `role="group"` labelled by
+  its prompt (so a screen-reader user can find the pending decision); the resolved
+  Approved/Declined outcome is wrapped in `role="status"` so the decision is
+  announced; and the args editor's "invalid JSON" message is now `role="alert"`
+  with an id joined to the textarea's `aria-describedby`, so the reason is announced
+  and associated.
+
+Recorded, not changed: (1) a HIGH-flagged potential double-resume on the keyboard
+approve path in the same settle→refresh window — the keymap's `submitPendingApproval`
+re-enters only guarded by batch-staging, not the card latch; I traced that in that
+window the interrupt is still in `awaiting` so the card is still mounted and the
+second keypress goes through the card's latched actions (blocked), making the bare
+`resumeInterrupt` fallback path's reachability unconfirmed. It gates tool execution,
+so it is left for reproduction rather than a speculative change to the critical
+resume path. (2) The keyboard approve with invalid edited args still consumes the
+key, but the new `role="alert"` now announces why — acceptable feedback. (3) The
+args-editor object re-registers the keymap actions each render (correct, minor); a
+`useMemo` is a future cleanup.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.

@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { useId } from "react";
 import { toolFamilyId } from "@/lib/toolFamilies";
 import { toolIconFor } from "@/features/agent/public/toolIcon";
 import { type ApprovalDecision } from "@/features/agent/public/hitl";
@@ -57,6 +58,7 @@ export function ApprovalCard({
   rememberable = false,
 }: Props) {
   const t = useT();
+  const promptId = useId();
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const hasArgs = args !== undefined;
   const argsEditor = useApprovalArgsEditor({
@@ -70,10 +72,18 @@ export function ApprovalCard({
   });
 
   if (decision === "approve") {
-    return <HitlSettledRow label={t("approval.settled.approved")} />;
+    return (
+      <div role="status">
+        <HitlSettledRow label={t("approval.settled.approved")} />
+      </div>
+    );
   }
   if (decision === "deny") {
-    return <Divider icon={<Icon name="x" size="xs" />}>{t("approval.settled.declined")}</Divider>;
+    return (
+      <div role="status">
+        <Divider icon={<Icon name="x" size="xs" />}>{t("approval.settled.declined")}</Divider>
+      </div>
+    );
   }
   if (resumeRunId === undefined) return null;
 
@@ -84,6 +94,8 @@ export function ApprovalCard({
     <Surface
       variant="card"
       inset="none"
+      role="group"
+      aria-labelledby={promptId}
       data-slot="approval-surface"
       className={stylex.props(ms.cardClip).className}
     >
@@ -96,7 +108,9 @@ export function ApprovalCard({
           />
           <span {...stylex.props(vocab.truncate)}>{identity.label}</span>
         </div>
-        <div {...stylex.props(ms.cardPrompt, typeStep.uiMd)}>{title}</div>
+        <div id={promptId} {...stylex.props(ms.cardPrompt, typeStep.uiMd)}>
+          {title}
+        </div>
       </div>
 
       {(cmd.trim() || hasArgs) && (

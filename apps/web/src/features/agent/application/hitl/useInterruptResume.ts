@@ -14,6 +14,9 @@ export function resumeInterrupt(
 
 export function useInterruptResume<P>(runId?: string, itemId?: string) {
   const [pending, setPending] = useState<P | null>(null);
+  // `pending` clears on settle so a spinner stops; `done` stays so the controls
+  // remain disabled until the card unmounts, matching the submit latch.
+  const [done, setDone] = useState(false);
   const [sessionId] = useState(() => agentSessionState().getActiveSessionId());
   const submitted = useRef(false);
 
@@ -21,9 +24,11 @@ export function useInterruptResume<P>(runId?: string, itemId?: string) {
     (marker: P, response: InterruptResumePayload) => {
       if (!runId || !itemId || submitted.current) return;
       submitted.current = true;
+      setDone(true);
       setPending(marker);
       const rollback = () => {
         submitted.current = false;
+        setDone(false);
         setPending(null);
       };
       if (
@@ -37,5 +42,5 @@ export function useInterruptResume<P>(runId?: string, itemId?: string) {
     [runId, itemId, sessionId],
   );
 
-  return { pending, resume, sessionId };
+  return { pending, done, resume, sessionId };
 }
