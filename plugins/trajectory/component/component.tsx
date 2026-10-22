@@ -161,7 +161,7 @@ function identity(row: TrajectoryEntry): string {
         ? row.endpoint.id
         : row.item.id;
 }
-function title(row: TrajectoryEntry, t: Translate, locale: string) {
+function title(row: TrajectoryEntry, t: Translate, clock: Intl.DateTimeFormat) {
   let title: string;
   let state: string;
   let decision: string | undefined;
@@ -206,11 +206,7 @@ function title(row: TrajectoryEntry, t: Translate, locale: string) {
           {tone === "neutral" && <span>{state}</span>}
           {row.type === "run" && <code>{row.run.id}</code>}
           <time dateTime={row.occurredAt}>
-            {new Intl.DateTimeFormat(locale, {
-              hour: "numeric",
-              minute: "2-digit",
-              second: "2-digit",
-            }).format(new Date(row.occurredAt))}
+            {clock.format(new Date(row.occurredAt))}
           </time>
           {decision && <span>{t("approval.inline", { decision })}</span>}
         </RecordMeta>
@@ -389,6 +385,23 @@ export function TrajectoryReport({
     (row) => row.type === "item" && row.item.type === "toolCall",
   ).length;
   const attention = rows.filter(needsAttention).length;
+  const clock = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+    [locale],
+  );
+  const occurred = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+        timeStyle: "medium",
+      }),
+    [locale],
+  );
   return (
     <>
       <PanelSection
@@ -421,14 +434,11 @@ export function TrajectoryReport({
               data-trajectory-kind={
                 row.type === "item" ? row.item.type : row.type
               }
-              title={title(row, t, locale)}
+              title={title(row, t, clock)}
             >
               <Metadata>
                 <time dateTime={row.occurredAt}>
-                  {new Intl.DateTimeFormat(locale, {
-                    dateStyle: "medium",
-                    timeStyle: "medium",
-                  }).format(new Date(row.occurredAt))}
+                  {occurred.format(new Date(row.occurredAt))}
                 </time>
               </Metadata>
               <Observation row={row} t={t} />

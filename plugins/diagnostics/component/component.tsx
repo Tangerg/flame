@@ -43,7 +43,7 @@ const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 type Signal = "spans" | "metrics" | "logs";
 type Observation = SpanRow | MetricRow | LogRow;
 
-function title(row: Observation, t: Translate, locale: string) {
+function title(row: Observation, t: Translate, clock: Intl.DateTimeFormat) {
   if ("durationMillis" in row)
     return (
       <RecordSummary
@@ -69,9 +69,7 @@ function title(row: Observation, t: Translate, locale: string) {
         }
         description={
           <time dateTime={new Date(row.timeMs).toISOString()}>
-            {new Intl.DateTimeFormat(locale, {
-              timeStyle: "medium",
-            }).format(new Date(row.timeMs))}
+            {clock.format(new Date(row.timeMs))}
           </time>
         }
         status={<Badge>{row.severity}</Badge>}
@@ -99,6 +97,10 @@ function DiagnosticsReport({
   locale: string;
 }) {
   const rows = snapshot[signal];
+  const clock = useMemo(
+    () => new Intl.DateTimeFormat(locale, { timeStyle: "medium" }),
+    [locale],
+  );
   return (
     <>
       <Stats
@@ -122,7 +124,7 @@ function DiagnosticsReport({
             <Disclosure
               variant="row"
               key={`${signal}:${row.id}`}
-              title={title(row, t, locale)}
+              title={title(row, t, clock)}
             >
               {"durationMillis" in row && (
                 <>
