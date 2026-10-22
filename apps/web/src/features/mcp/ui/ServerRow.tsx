@@ -137,6 +137,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
               <>
                 <Switch
                   checked={server.enabled}
+                  disabled={toggleAction.busy}
                   onCheckedChange={(value) => onToggle(value)}
                   ariaLabel={t("mcp.enable.aria", { server: server.id.name })}
                 />

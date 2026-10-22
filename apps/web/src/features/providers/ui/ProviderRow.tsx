@@ -58,6 +58,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
   const materialGeneration = useProviderMutationMaterialGeneration();
   const { feedback, reset, fail, run } = useAsyncFeedback(materialGeneration);
   const feedbackId = useId();
+  const baseUrlHintId = useId();
 
   const enabled = p.configured;
   const fromEnv = p.credential?.fromEnvironment ?? false;
@@ -131,6 +132,9 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
   };
 
   const describedBy = feedback.state === "error" ? feedbackId : undefined;
+  const baseUrlDescribedBy =
+    [describedBy, dirty && !valid ? baseUrlHintId : undefined].filter(Boolean).join(" ") ||
+    undefined;
 
   return (
     <ListRow>
@@ -186,7 +190,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
             required={p.requiresBaseUrl}
             invalid={dirty && !valid}
             aria-label={t("providers.baseUrl.aria", { provider: p.id })}
-            aria-describedby={describedBy}
+            aria-describedby={baseUrlDescribedBy}
             value={draft.baseUrl}
             onChange={(e) => edit((value) => value.withBaseURL(e.target.value))}
             placeholder={t("providers.baseUrl.placeholder")}
@@ -254,7 +258,9 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
         </SystemMessage>
       )}
       {dirty && !valid && (
-        <p {...stylex.props(ss.hintSpaced, typeStep.uiSm)}>{t("providers.baseUrl.required")}</p>
+        <p id={baseUrlHintId} {...stylex.props(ss.hintSpaced, typeStep.uiSm)}>
+          {t("providers.baseUrl.required")}
+        </p>
       )}
       <ConfirmDialog
         open={confirmingClear}

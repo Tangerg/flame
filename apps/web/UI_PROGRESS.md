@@ -2811,6 +2811,38 @@ a legitimate buttons + aria-current navigation pattern (used widely); adding lis
 semantics is an enhancement weighed against wrapping each row and threading
 set-size/position through the partially-rendered ("show more") list, not a smell.
 
+## Settings panes and Goal surface audit
+
+The Goal surface (`GoalStatusSurface`, `GoalModeIndicator`) was read and is clean:
+stable per-goal keys, the edit draft is reset on open (no stale draft), the
+elapsed timer is isolated in its own component, `aria-pressed`/`aria-busy`/labels
+are correct, and the replace `ConfirmDialog` names its target objective.
+
+A deep audit of the settings/configuration panes (providers, mcp, approvals,
+connection, settings shell, theme, plugins) found them in good shape — one owner
+per setting (draft stores keyed by id+generation, optimistic values reverting via
+`finally`), immutable fields correctly disabled on edit, no secrets echoed, stable
+keys, double-submit guarded. Two real defects were fixed:
+
+- **Provider base-URL error not associated with its field (`ProviderRow.tsx`).**
+  The "Base URL is required" hint was a bare `<p>` with no `id`, so the invalid
+  field's `aria-describedby` pointed only at the save/test failure — a screen
+  reader heard "invalid" with no reason. The hint now has an id that joins the
+  field's `aria-describedby` while invalid (matching the `ConnectionPane`
+  contract). No new keys.
+- **MCP enable toggle had no in-flight state (`ServerRow.tsx`).** The enable
+  `Switch` was `checked={server.enabled}` with no `disabled`, so toggling under
+  latency snapped the thumb back (cache updates only on success) and a second
+  click was swallowed by the `useCommandAction` re-entrancy guard with no
+  feedback — the control looked frozen. It is now `disabled={toggleAction.busy}`
+  during the mutation, matching `ToolControls`/`HooksPane`.
+
+Verified clean (not changed): ConnectionPane secret/dirty/describedby, approvals
+optimistic revert, ServerForm immutable-name + no-echo, provider draft stores,
+theme single-owner, plugins operations-generation ownership. The index-containing
+keys in `HooksPane`/`PackageManager` combine the index with stable ids on
+stateless rows — no reachable corruption.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
