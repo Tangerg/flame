@@ -206,6 +206,7 @@ function FilePreview({
           icon={iconGlyph("chevron-left")}
           size="sm"
           aria-label={t("file.backToFiles")}
+          data-chrome-focus=""
           onClick={closeWorkspaceFile}
         />
       }

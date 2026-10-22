@@ -2277,9 +2277,14 @@ defects; each needs a Wails look and an explicit choice before implementing:
 - **Panel-header / two-level return.** The Dock view-header variants and the
   Dock-return (`←`) vs in-view back (`‹`/`list`) affordances could unify into one
   identity+actions+return contract or breadcrumb; this is a focus-and-visual
-  redesign, not a cleanup. The two return buttons also duplicate their markup and
-  disagree on `data-chrome-focus` (window header sets it, dock header does not); a
-  shared `ReturnButton` would fix both once the ring convention is chosen.
+  redesign, not a cleanup. The `data-chrome-focus` disagreement is resolved: the
+  dock view-header back (`FileWorkspace` chevron) now suppresses the outline ring
+  like every other chrome navigation control (window-header return/close, sidebar
+  rows, menu items), so the two return affordances indicate keyboard focus the same
+  way. The icons intentionally differ (`‹` in-view back vs `←` dock-return), so they
+  are not duplicate markup to merge; the shared `ReturnButton` already owns the
+  arrow/dock-return affordance. The remaining header unification (one
+  identity+actions+return contract or breadcrumb) is still a design/native decision.
 - **Shared primitives for plugin-component duplication (prioritised backlog).** An
   audit of every `plugins/*/component/**` UI (which may import only `@flame/ui`,
   `@flame/component-sdk` and the wire client — `@flame/component-sdk` is consumed from
