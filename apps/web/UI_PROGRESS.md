@@ -2269,6 +2269,17 @@ keys were deleted. The only off-grid raw-px spacing left in `apps/web/src` —
 deliberate optical tuck (it tucks the project tray behind the composer with a ~9px
 lip); its values are not 4px-grid multiples, so forcing them onto the grid or into
 `space.*` would change the look and needs a native eye, not a blind rewrite.
+A second subagent then independently read the navigation / chrome / shared-primitive
+surfaces (sidebar, navigation, `ui/agent`) and they came back clean apart from one
+token-grid bypass, now fixed: the `AgentStatusPill` floor was a raw `22px` min-height
+(between `space.s5` and `s6`, tracking no token) that would not scale with a density
+or type-scale change; it is now the `5.5` half-step of the 4px grid
+(`calc(var(--spacing) * 5.5)`, output-identical). The remaining `ui/atoms/` primitives
+(button, confirm-dialog, data-view, data-error, system-message, skeleton, chip,
+chevron, collapsible, catalog-picker, …) were then swept directly: the fixed panel
+dimensions there (`catalog-picker` 300/400/280px, `chip` 220px max-width) are
+legitimate large layout constants, and `skeleton`'s `key={i}` is correct for a
+fixed-count, identity-less, stateless placeholder list — no defects.
 Of note, a defensive XSS audit traced every dangerouslySetInnerHTML and URL sink:
 mermaid SVG (beautiful-mermaid escapes all text/attrs), shiki (escaped code), the
 markdown raw-HTML path (remarkLiteralUnknownHtml downgrades every non-allowlisted,
