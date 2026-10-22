@@ -1,9 +1,9 @@
 .plugin-boundary-error {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin: 8px 0;
-  padding: 10px 12px;
+  gap: var(--spacing);
+  margin: calc(var(--spacing) * 2) 0;
+  padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 3);
   border: 1px solid var(--color-negative-edge);
   border-radius: var(--shape-sm);
   background: var(--color-negative-wash);
@@ -13,7 +13,7 @@
 }
 .plugin-boundary-actions {
   display: flex;
-  gap: 8px;
+  gap: calc(var(--spacing) * 2);
 }
 .plugin-boundary-error code {
   font-family: var(--font-mono);
