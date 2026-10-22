@@ -84,7 +84,7 @@ const styles = stylex.create({
   hideWhenListEmpty: { display: { default: null, ":is([data-empty])": "none" } },
   group: {
     display: "grid",
-    rowGap: "2px",
+    rowGap: space.s0_5,
     paddingBottom: space.s1_5,
     ":last-child": { paddingBottom: 0 },
   },

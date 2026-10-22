@@ -9,7 +9,7 @@ import { ContextMenuPrimitive, MenuPrimitive } from "@/ui/primitives/index";
 import { FLOATING_LAYER, FLOATING_PANEL } from "@flame/ui/floating-surface";
 import { floatingRow, floatingRowStyles, type RowLayout } from "@/ui/atoms/option-row";
 const menuStyles = stylex.create({
-  rows: { display: "grid", alignContent: "start", rowGap: "2px" },
+  rows: { display: "grid", alignContent: "start", rowGap: space.s0_5 },
   item: { position: "relative" },
   separator: {
     position: "relative",
