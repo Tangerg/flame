@@ -1330,10 +1330,9 @@ Remote main was refetched at `8e567257a` before publication. The batch was
 committed with normal hooks at `c6a3c10cc2e1894cb4a531d8c81be37b8593a5a2`
 and pushed to remote main; `ls-remote` confirmed that exact commit. All ten
 accepted source/test hashes match its blobs, with a clean owned worktree and
-zero unpushed commits at that checkpoint. Continue with a fresh complete
-existing task; auxiliary MCP tool-data recovery/identity is a
-review candidate requiring current native evidence. Do not repeat this resolved
-classification defect or infer a focus failure solely from pending body focus.
+zero unpushed commits at that checkpoint. The auxiliary MCP tool-data recovery
+follow-up is now qualified below. Do not repeat this resolved classification
+defect or infer a focus failure solely from pending body focus.
 
 ### MCP tool read identity and scoped recovery
 
@@ -1424,7 +1423,10 @@ private root/data/logs/pointer, ten newly generated outputs/caches and two
 bundle-specific Library directories were removed with ownership/source-hash
 guards. Pre-existing caches, user data, references, unrelated processes and the
 primary checkout were preserved. Remote main was refetched at `eae9c91ad`
-before publication.
+before publication. Normal hooks committed the batch at
+`4d3b00510d893de5afb7e761fd9bfac24bc6f012`; push and `ls-remote` confirmed that
+exact commit on remote main. All ten accepted source/test hashes match its
+blobs, with a clean owned worktree and zero unpushed commits at that checkpoint.
 
 **Next investigation:** after asynchronous tool content replacement, native
 focus remained on Cancel but that button was below the captured viewport.
