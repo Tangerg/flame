@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { Fragment, type ReactNode, type Ref } from "react";
 import { FileDiff } from "@flame/icons/react";
 import { DiffStat } from "./diff-stat";
+import { useHeadingTag } from "./heading-level";
 import { Icon } from "./font-scale";
 import { RecordButton, RecordGroup } from "./records";
 import { color, layout, space, type, weight } from "./tokens.stylex";
@@ -132,12 +133,13 @@ export function DiffFileHeader({
   ref?: Ref<HTMLHeadingElement>;
 }) {
   const cut = file.path.lastIndexOf("/") + 1;
+  const Tag = useHeadingTag();
   return (
     <div {...stylex.props(styles.headingLine)}>
       <div {...stylex.props(styles.headingCopy)}>
-        <h2 ref={ref} tabIndex={-1} {...stylex.props(styles.name, type.uiMd)}>
+        <Tag ref={ref} tabIndex={-1} {...stylex.props(styles.name, type.uiMd)}>
           {file.path.slice(cut)}
-        </h2>
+        </Tag>
         {cut > 0 && <DiffFilePath path={file.path.slice(0, cut - 1)} />}
         <FileState file={file} />
       </div>
