@@ -7,7 +7,7 @@ import {
   useState,
   type Ref,
 } from "react";
-import { ArrowLeft } from "@flame/icons/react";
+import { ArrowLeft, Refresh } from "@flame/icons/react";
 import {
   bindOperations,
   mutationSettlementIsUnknown,
@@ -21,6 +21,7 @@ import {
   EmptyState,
   Facts,
   Icon,
+  IconButton,
   ListRow,
   Metadata,
   ModalDialog,
@@ -390,12 +391,13 @@ function Archive({ context }: { context: BoundContext }) {
             <Toolbar
               label="Saved report"
               actions={
-                <Button
+                <IconButton
+                  icon={Refresh}
+                  aria-label="Refresh report"
+                  size="md"
                   pending={opened.loading}
                   onClick={() => void read(opened.header.id)}
-                >
-                  Refresh report
-                </Button>
+                />
               }
             >
               <Button
@@ -426,12 +428,14 @@ function Archive({ context }: { context: BoundContext }) {
             <Button disabled={pending || unknown.length > 0} onClick={save}>
               Save report
             </Button>
-            <Button
+            <IconButton
               ref={refreshButton}
+              icon={Refresh}
+              aria-label="Refresh archive"
+              size="md"
+              pending={archive.loading}
               onClick={() => void refresh(ownerSignal())}
-            >
-              Refresh archive
-            </Button>
+            />
           </Toolbar>
         )
       }

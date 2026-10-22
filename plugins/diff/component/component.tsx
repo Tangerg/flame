@@ -26,6 +26,7 @@ import {
   DiffTable,
   Disclosure,
   EmptyState,
+  FilterBar,
   Icon,
   IconButton,
   isImeKey,
@@ -338,15 +339,20 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               </DiffFileHeader>
             </>
           ) : (
-            <SearchField
-              ref={search}
-              aria-label="Filter files"
-              placeholder="Find a changed file"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-              onClear={() => setFilter("")}
-              clearLabel="Clear filter"
-              disabled={!accepted}
+            <FilterBar
+              label="File controls"
+              search={
+                <SearchField
+                  ref={search}
+                  aria-label="Filter files"
+                  placeholder="Find a changed file"
+                  value={filter}
+                  onChange={(event) => setFilter(event.target.value)}
+                  onClear={() => setFilter("")}
+                  clearLabel="Clear filter"
+                  disabled={!accepted}
+                />
+              }
             />
           )}
         </>

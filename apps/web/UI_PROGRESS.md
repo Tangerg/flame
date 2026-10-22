@@ -2633,6 +2633,54 @@ each dock view is still pending):
   `role="tab"` value-selectors (consistent, test-pinned, no dangling `aria-controls`) and
   `action-menu`'s redundant menu-level `disabled` in the per-item condition (unreachable
   while the trigger is disabled).
+- The `@flame/ui` display primitives (`records`, `data-table`, `code-block`, `callout`,
+  `badge`, `empty-state`, `item-highlight`) and the `tool-results` plugin renderer were
+  swept last. The only candidate was hardcoded-English strings (`callout`'s
+  Note/Tip/Important/Warning/Caution titles; `tool-results`' Find/Copy/row-count copy).
+  Verdict: not a smell — both layers are English-by-design. `@flame/ui` has zero i18n
+  (no `useT`/`i18n`/translation anywhere in the package; strings are English defaults the
+  consumer overrides via props), and the callout titles mirror the GFM `[!NOTE]` marker
+  keyword the author wrote, matching GitHub's own alert rendering. The plugin sandbox is
+  the same: `@flame/component-sdk` exports no i18n channel, so every dock plugin
+  (schedules, diff, usage, memory, …) is English by construction. Localizing either layer
+  is a feature addition (new override props / a sandbox i18n channel + per-plugin
+  catalogs), not a bad-smell fix, and is out of scope for this pass. On the mental-model
+  axis `tool-results` is clean: it owns only the result presentation (CodeFrame + line
+  numbers + find + paging), while the enclosing tool-result record header owns "where am
+  I / which object" — the result-vs-detail split is correct. This closes the systematic
+  dock-plugin + shared-primitive sweep; all substantive dock views (schedules, diff,
+  usage, usagereports, skills, memory, diagnostics, trajectory, tool-results, file-
+  renderers) now conform to the task model, and the one remaining open item is native
+  host acceptance of the shipped visual changes, which only the user can perform.
+- A final cross-plugin pass compared the eight list/detail views on one axis — do two
+  plugins solve the _same_ chrome problem differently without cause. Consistent already:
+  every list uses `PanelHeader`; per-object identity (diff/memory/trajectory) always lands
+  in `PanelHeader context`; pagination is uniformly `PanelFooter` + a pages `Toolbar`. Two
+  genuine divergences were fixed. (1) **Refresh vocabulary** — seven plugins render refresh
+  as `IconButton icon={Refresh}`; `usagereports` alone used text `Button`s ("Refresh
+  archive" / "Refresh report") and did not even import the icon. Both are now the house
+  `IconButton` (descriptive text preserved as the `aria-label`/tooltip; the list control
+  keeps its focus-restoration ref and gains `pending={archive.loading}` — safe because
+  `pending` sets only `aria-disabled`, never native `disabled`, so the button stays a
+  programmatic focus target; `visual/usageReports.test.tsx`'s name-based locators and the
+  `disabled=false`/`aria-disabled=true` held-refresh assertions still hold). (2) **List
+  filter chrome** — five plugins route their client-side search through a labelled
+  `FilterBar`; `diff` dropped a bare `SearchField` straight into `controls`, so it alone
+  lacked the `role="group"` region and the filter-bar container. It is now wrapped in
+  `FilterBar label="File controls"`, making diff's list read as scope `Toolbar` + filter
+  `FilterBar` exactly like `usage` (`visual/diffPresentation.test.tsx`'s searchbox locators
+  and the scope→filter order assertion are unaffected). Two divergences were left as
+  justified variation, not forced into uniformity: `schedules` keeps Refresh in its
+  FilterBar options row beside the status Select because its trailing `actions` slot is
+  owned by the Add/Templates create actions the other plugins lack — grouping re-read with
+  the status filter is coherent and avoids crowding three controls in the narrow dock; and
+  `diff`'s detail stacks a navigation `Toolbar` (Back + file count + prev/next + refresh)
+  over the shared `DiffFileHeader` (identity + layout Select) because its file detail
+  genuinely carries per-file navigation and a layout toggle that `skills`/`usagereports`
+  details do not — the two bars separate navigation from identity rather than duplicating a
+  header. The `SearchField` `size` split (five `lg`, two default `md` incl. memory + diff)
+  is pre-existing, not surfaced here, and left untouched. Verified: `plugins` check,
+  `vitest run visual` (167), web `typecheck` + `lint` all green.
 
 ## Working and maintenance practice
 
