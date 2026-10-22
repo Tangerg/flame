@@ -2387,6 +2387,24 @@ defects; each needs a Wails look and an explicit choice before implementing:
   provider row's ≤440px masked-key reflow are deliberate layouts — unifying is a UX
   decision plus a native look, not a blind swap.
 
+- **Plugin render-crash fallback vs SystemMessage (reviewed; spacing landed).** The
+  `PluginBoundary` fallback (`overlays.css` `.plugin-boundary-error`) hand-rolls a
+  negative-toned inline card holding the `plugins.renderFailed` Trans, a `<code>` with
+  the raw error, a retry `TextButton` and `FailureDetails`. Its spacing now sits on the
+  shared grid, but it still owns bespoke error chrome where the consistency pass routed
+  the form/config alerts onto `SystemMessage` (`variant="error"`, `action`, children).
+  Folding this crash fallback onto `SystemMessage` too would unify the inline-error
+  vocabulary, but it carries extra content (code + diagnostics disclosure) and distinct
+  crash-recovery semantics, so it is a visual/native decision, not a blind swap.
+
+- **Streaming-text animation timings.** The markdown word-reveal (`overlays.css`
+  `.fade-in`, `700ms ease-in-out`) and the stream caret (`.type-caret`, `1050ms`
+  blink) are the only animations with bespoke millisecond bases rather than the
+  `--dur-*` ladder (they do multiply `--motion-scale`, so reduced motion still zeroes
+  them). These are content-reveal cadences, not UI-chrome transitions, so they may be
+  deliberately off-ladder; mapping them onto `--dur-slow`/`--ease-state` would change
+  the actual timing and reveal feel, which needs a Wails look before adopting.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
