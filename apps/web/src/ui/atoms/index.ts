@@ -4,6 +4,7 @@ export { ChoiceList, ChoiceOption } from "@/ui/atoms/choice-list";
 export { Chip } from "@/ui/atoms/chip";
 export { ColorPickerInput } from "@/ui/atoms/color-picker-input";
 export { ConfirmDialog } from "@/ui/atoms/confirm-dialog";
+export { DataError } from "@/ui/atoms/data-error";
 export { DataView } from "@/ui/atoms/data-view";
 export { FailureDetails } from "@/ui/atoms/failure-details";
 export { FilePath } from "@/ui/atoms/file-path";

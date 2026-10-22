@@ -3,8 +3,8 @@ import { type ReactNode } from "react";
 import { type IconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
 import { isUnsupportedMethod } from "@/lib/rpcErrors";
-import { Button } from "@flame/ui/button";
 import { EmptyState, type EmptyStateSize } from "@flame/ui/empty-state";
+import { DataError } from "@/ui/atoms/data-error";
 import { SkeletonList, type SkeletonListVariant } from "@/ui/atoms/skeleton";
 interface EmptyConfig {
   icon?: IconName;
@@ -62,26 +62,7 @@ export function DataView<T>({
     );
   }
   if (failure != null) {
-    return (
-      <EmptyState
-        icon={iconGlyph("alert")}
-        tone="negative"
-        title={t("dataView.error.title")}
-        sub={t("dataView.error.sub")}
-        {...error}
-        action={
-          onRetry && (
-            <Button
-              variant="outline"
-              size={error?.size === "compact" ? "xs" : "sm"}
-              onClick={onRetry}
-            >
-              {t("common.retry")}
-            </Button>
-          )
-        }
-      />
-    );
+    return <DataError onRetry={onRetry} {...error} />;
   }
   if (!items || items.length === 0) {
     return empty ? <EmptyState {...empty} icon={iconGlyph(empty.icon)} /> : null;

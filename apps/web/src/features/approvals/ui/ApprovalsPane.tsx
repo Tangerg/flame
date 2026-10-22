@@ -1,5 +1,4 @@
-import { iconGlyph } from "@/ui/icons/index";
-import { Button, EmptyState } from "@flame/ui";
+import { DataError } from "@/ui/index";
 import { useApprovalModeConfig } from "@/features/approvals/application/approvalConfig";
 import { useT } from "@/lib/i18n/index";
 import { SettingsGroup } from "@/ui/settings/SettingsGroup";
@@ -10,16 +9,10 @@ export function ApprovalsPane() {
   const { data: approval, isError, refetch } = useApprovalModeConfig();
   if (isError) {
     return (
-      <EmptyState
-        icon={iconGlyph("alert")}
-        tone="negative"
+      <DataError
+        onRetry={() => refetch()}
         title={t("approvals.unavailable")}
         sub={t("approvals.unavailable.sub")}
-        action={
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            {t("common.retry")}
-          </Button>
-        }
       />
     );
   }

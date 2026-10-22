@@ -1,13 +1,12 @@
-import { iconGlyph } from "@/ui/icons/index";
 import { forgetRules, allowMCPTool } from "@/features/agent/public/approvalPolicy";
 import { useApprovalRules } from "@/features/agent/public/approvalPolicy";
 import { setMCPToolExposure } from "@/features/mcp/application/mcpServerConfig";
 import { useCommandAction } from "@/features/command/public/commandAction";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import * as stylex from "@stylexjs/stylex";
-import { DataView } from "@/ui/index";
+import { DataError, DataView } from "@/ui/index";
 import { Switch } from "@flame/ui";
-import { Button, EmptyState, vocab } from "@flame/ui";
+import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import {
   sameMCPServer,
@@ -74,24 +73,8 @@ export function ToolControls({ server }: Props) {
   return (
     <div {...stylex.props(tc.panel)}>
       <p {...stylex.props(typeStep.uiSm, vocab.muted)}>{t("mcp.tools.policyHint")}</p>
-      {exposure.error != null && (
-        <EmptyState
-          icon={iconGlyph("alert")}
-          tone="negative"
-          title={t("dataView.error.title")}
-          sub={t("dataView.error.sub")}
-          action={<Button onClick={() => exposure.refetch()}>{t("common.retry")}</Button>}
-        />
-      )}
-      {rules.error != null && (
-        <EmptyState
-          icon={iconGlyph("alert")}
-          tone="negative"
-          title={t("dataView.error.title")}
-          sub={t("dataView.error.sub")}
-          action={<Button onClick={() => rules.refetch()}>{t("common.retry")}</Button>}
-        />
-      )}
+      {exposure.error != null && <DataError onRetry={() => exposure.refetch()} />}
+      {rules.error != null && <DataError onRetry={() => rules.refetch()} />}
       <DataView
         items={tools.data}
         isLoading={tools.isLoading}
