@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. Shared Select dismissal now finishes before rapid keyboard navigation, published at `346c1c07e`. Native acceptance now also qualifies existing context-menu keyboard continuity, and product object menus expose their target identity. The current Web test run passed all 3,069 tests; the existing MCP API-consumer guard still fails. Earlier aggregate timeouts, current delivery and cleanup are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. Shared Select dismissal now finishes before rapid keyboard navigation, published at `346c1c07e`. Object-menu names are published at `57d54301e` after integration and renewed native acceptance on current dependencies; existing context-menu keyboard continuity is also qualified. The current Web test run passed all 3,069 tests; the existing MCP API-consumer guard still fails. Earlier aggregate timeouts, current delivery and cleanup are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1794,9 +1794,13 @@ Verification and delivery boundary:
   guards. Existing dependencies, the shared UI Vite cache, compiler/package
   caches, references, shared application state and the user's parallel primary
   checkout remain.
-  Publication is the remaining delivery step. Next qualify actual catalog
-  Popover and bounded Dialog rapid dismissal before deciding whether either
-  needs a change; no shared exit-policy defect is assumed.
+  The eleven explicit paths were committed at `57d54301e` with normal formatter,
+  workspace-lint and commit-message hooks and pushed to remote `main`.
+  `git ls-remote` confirmed the exact published revision. All six committed
+  product hashes still match final native acceptance, and the owned working tree
+  is clean. Next qualify actual catalog Popover and bounded Dialog rapid
+  dismissal before deciding whether either needs a change; no shared exit-policy
+  defect is assumed.
 
 ## Native workspace zoom and Dock geometry
 
