@@ -903,14 +903,19 @@ html.theme-dark {
 }
 
 .truncate-fade {
+  --truncate-fade-width: calc(var(--spacing) * 4);
   display: block;
   width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: clip;
   white-space: nowrap;
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
-  mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--truncate-fade-width)),
+    transparent
+  );
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--truncate-fade-width)), transparent);
 }
 
 @keyframes agent-overflow-reveal {
@@ -921,8 +926,8 @@ html.theme-dark {
 
 @keyframes agent-overflow-lead {
   to {
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 16px);
-    mask-image: linear-gradient(to right, transparent, #000 16px);
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--truncate-fade-width));
+    mask-image: linear-gradient(to right, transparent, #000 var(--truncate-fade-width));
   }
 }
 
