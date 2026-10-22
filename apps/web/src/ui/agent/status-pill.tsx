@@ -6,7 +6,7 @@ import { StatusDot } from "@/ui/atoms/status-dot";
 const styles = stylex.create({
   pill: {
     display: "inline-flex",
-    minHeight: "22px",
+    minHeight: "calc(var(--spacing) * 5.5)",
     flexShrink: 0,
     borderRadius: radius.button,
     "corner-shape": "round",
