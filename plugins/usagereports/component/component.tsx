@@ -13,6 +13,7 @@ import {
   mutationSettlementIsUnknown,
   type ComponentContext,
 } from "@flame/component-sdk";
+import { scrollPositions, type ScrollPosition } from "@flame/component-sdk";
 import type { JSONNumber } from "@flame/runtime-client";
 import {
   Button,
@@ -55,7 +56,6 @@ type OpenedReport = {
   accepted?: Report;
   error?: string;
 };
-type ScrollPosition = { element: HTMLElement; top: number };
 type ArchiveReturn = { opener?: HTMLElement; scroll: ScrollPosition[] };
 const periods = {
   daily: { label: "Daily", window: "last 24 hours" },
@@ -81,19 +81,6 @@ const lowerBound = (header: Header) =>
     : "Beginning of retained evidence";
 const reportTitle = (header: Header) =>
   `${periods[header.period].label} report · ${observed(header)}`;
-
-function scrollPositions(element: HTMLElement | null): ScrollPosition[] {
-  const positions: ScrollPosition[] = [];
-  for (
-    let parent = element?.parentElement;
-    parent;
-    parent = parent.parentElement
-  ) {
-    if (/(auto|scroll)/.test(getComputedStyle(parent).overflowY))
-      positions.push({ element: parent, top: parent.scrollTop });
-  }
-  return positions;
-}
 
 export function UsageReports({ context }: { context: ComponentContext }) {
   const bound = useMemo(() => {

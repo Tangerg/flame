@@ -10,6 +10,7 @@ import {
 import {
   mutationSettlementIsUnknown,
   isErrorType,
+  scrollPositions,
   type ComponentContext,
 } from "@flame/component-sdk";
 import { type MutationPromise } from "@flame/runtime-client";
@@ -20,7 +21,6 @@ import {
   type Target,
   type Read,
   type OpenedDocument,
-  type ScrollPosition,
   type CatalogReturn,
   type Command,
   type Review,
@@ -34,18 +34,6 @@ const failure = (error: unknown) =>
   error instanceof Error
     ? error.message
     : "The operation could not be completed.";
-function scrollPositions(element: HTMLElement | null): ScrollPosition[] {
-  const positions: ScrollPosition[] = [];
-  for (
-    let parent = element?.parentElement;
-    parent;
-    parent = parent.parentElement
-  ) {
-    if (/(auto|scroll)/.test(getComputedStyle(parent).overflowY))
-      positions.push({ element: parent, top: parent.scrollTop });
-  }
-  return positions;
-}
 export function useSkills(context: ComponentContext) {
   const workspace = useMemo(
     () =>

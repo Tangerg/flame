@@ -1,4 +1,5 @@
 import { type MutationPromise } from "@flame/runtime-client";
+import type { ScrollPosition } from "@flame/component-sdk";
 import {
   type ManagedSkill,
   type Page,
@@ -24,7 +25,6 @@ export type OpenedDocument = {
   accepted?: SkillDetail;
   error?: string;
 };
-export type ScrollPosition = { element: HTMLElement; top: number };
 export type CatalogReturn = { opener: HTMLElement; scroll: ScrollPosition[] };
 export type Command = {
   promise: MutationPromise<void>;

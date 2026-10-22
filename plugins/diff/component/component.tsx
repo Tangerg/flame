@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import type { ComponentContext } from "@flame/component-sdk";
+import { scrollPositions, type ScrollPosition } from "@flame/component-sdk";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -52,20 +53,6 @@ type Read = {
 type Selection =
   | { view: "files"; path: string | null }
   | { view: "file"; path: string; returnTo: "files" | "source" };
-type ScrollPosition = { element: HTMLElement; top: number };
-
-function scrollPositions(element: HTMLElement | null): ScrollPosition[] {
-  const positions: ScrollPosition[] = [];
-  for (
-    let parent = element?.parentElement;
-    parent;
-    parent = parent.parentElement
-  ) {
-    if (/(auto|scroll)/.test(getComputedStyle(parent).overflowY))
-      positions.push({ element: parent, top: parent.scrollTop });
-  }
-  return positions;
-}
 
 export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const workspace = useMemo(() => {
