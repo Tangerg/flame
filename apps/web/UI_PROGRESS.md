@@ -2232,6 +2232,20 @@ the useCommandAction toast-on-failure flow by hand — the server toggle without
 in-flight guard — while sibling rows in the same features already used the helper
 (now both routed through it).
 
+Deeper verification lenses (state ownership, hooks/effects, layout-correctness,
+i18n usage, and untrusted-content security) came back clean except for the
+turn-rail session-switch rebind and the banner-card grid hardening recorded above.
+Of note, a defensive XSS audit traced every dangerouslySetInnerHTML and URL sink:
+mermaid SVG (beautiful-mermaid escapes all text/attrs), shiki (escaped code), the
+markdown raw-HTML path (remarkLiteralUnknownHtml downgrades every non-allowlisted,
+attribute-free inline tag to text before rehype-raw, with markdownUrlTransform
+dropping javascript:/data: schemes and external links carrying
+rel="noopener noreferrer"), image src (data:image/* allowlist), and KaTeX
+(trust:false) are all safe — no exploitable injection. Optional defense-in-depth,
+not implemented because it risks the rich katex/shiki/mermaid render and closes no
+live path: add rehype-sanitize as a redundant allowlist layer after rehype-raw and
+make allowElement an allowlist rather than a denylist.
+
 The genuinely open items are now design and native-acceptance decisions, not
 defects; each needs a Wails look and an explicit choice before implementing:
 
