@@ -11,6 +11,7 @@ import {
   mutationSettlementIsUnknown,
   isErrorType,
   scrollPositions,
+  failureText as failure,
   type ComponentContext,
 } from "@flame/component-sdk";
 import { type MutationPromise } from "@flame/runtime-client";
@@ -30,10 +31,6 @@ export const sections = [
   { value: "review", label: "Skill proposals" },
   { value: "library", label: "Personal Skill library" },
 ];
-const failure = (error: unknown) =>
-  error instanceof Error
-    ? error.message
-    : "The operation could not be completed.";
 export function useSkills(context: ComponentContext) {
   const workspace = useMemo(
     () =>

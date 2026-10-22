@@ -3,6 +3,7 @@ import {
   bindOperations,
   mutationSettlementIsUnknown,
   OperationFailure,
+  failureText as failure,
   type ComponentContext,
 } from "@flame/component-sdk";
 import { type Model } from "@flame/runtime-client/wire";
@@ -24,10 +25,6 @@ import {
 } from "./types";
 export const hasTime = (value: string) => value !== "0001-01-01T00:00:00Z";
 export const enabled = (item: Schedule) => hasTime(item.NextRunAt);
-const failure = (error: unknown) =>
-  error instanceof Error
-    ? error.message
-    : "The operation could not be completed.";
 export const selection = (model?: Model, reasoningEffort = "") => ({
   provider: model?.provider ?? "",
   model: model?.id ?? "",

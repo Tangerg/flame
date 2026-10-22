@@ -29,6 +29,7 @@ export type {
 export { mutationSettlementIsUnknown } from "@flame/runtime-client";
 export { isErrorType } from "@flame/runtime-client";
 export { scrollPositions, type ScrollPosition } from "./scroll";
+export { failureText } from "./errorText";
 
 export interface WorkspaceContext {
   readonly ref: Readonly<WorkspaceRef>;
