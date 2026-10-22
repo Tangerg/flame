@@ -42,12 +42,12 @@ const styles = stylex.create({
     flexShrink: 0,
     minWidth: 0,
     minHeight: "var(--surface-header-height)",
-    paddingInline: "var(--reading-gutter-wide)",
+    paddingInline: "var(--layout-compact-gutter)",
     paddingBlock: space.s2,
   },
   headLine: { minWidth: 0, flex: 1 },
   scroller: {
-    paddingInline: "var(--reading-gutter-wide)",
+    paddingInline: "var(--layout-compact-gutter)",
     paddingBlock: space.s3,
     scrollPaddingBlockEnd:
       "calc(var(--control-height-md) + var(--transcript-jump-gap) + var(--layout-control-gap))",
