@@ -2325,20 +2325,23 @@ defects; each needs a Wails look and an explicit choice before implementing:
   horizontal-scroll strip and fade masks, matching ZCode/ChatGPT/browser tabs and
   preserving label readability; equal-width-shrink was not adopted. **Strip separation
   (reviewed — keep):** the tabstrip tint band is the softer, modern grouping and is kept
-  over a hard divider. Remaining items stay native/architectural judgments:
-  `SubagentsPanel` hand-rolls its header at the wide reading gutter (20px) rather than
-  composing `ViewHeader` at the compact gutter (16px) — but it is a reading surface
-  (subagent transcripts) where the wider gutter may be deliberate, and `ViewHeader` is
-  workspace-scoped, so unifying is a cross-feature + geometry call for the native eye,
-  not a blind swap; the narrow full-pane path stacks a two-level header; and
-  `WorkspaceViewBody` (`overflowY:auto` + `useScrollReach`) wraps every mounted view,
-  including `WorkspaceViewLayout`-based ones that already bring their own `ScrollArea`.
-  Because `AgentWorkspaceView` is height-constrained (`flex:1; min-height:0`), the inner
-  `ScrollArea` owns the scroll and the outer `overflowY` never fires — so this is an
-  inert redundant layer (and a dead outer `useScrollReach`), not a double-scrollbar bug.
-  Removing one scroll owner would have to account for simple plugin views that rely on
-  the outer scroll and for both the dock and main render paths, so it is an
-  architecture cleanup to verify against native scrolling, not a blind removal.
+  over a hard divider. Remaining dock items are now resolved: **`SubagentsPanel` chrome gutter aligned
+  (fixed)** — its header and link list hand-rolled the wide reading gutter (20px) while
+  the sibling file dock panel's header sits on the compact gutter (16px), so the two
+  dock panels opened the same column at different left edges; the header and list are
+  chrome/navigation (not reading content), so they now use the compact gutter the file
+  panel and tab strip share, while the subagent transcript body keeps its own reading
+  column. **Two-level header (reviewed — intended):** the dock tab strip is suppressed
+  in the promoted `presentedMain` path (`DockHeader` renders only when
+  `!presentedMain`), so a tab-selector + object-identity stack appears only in normal
+  dock mode, which is the deliberate hierarchy, not a redundancy. **`WorkspaceViewBody`
+  default scroll (reviewed — sound):** it is the uniform view host (region, focus,
+  `PluginBoundary`, `Suspense`) and its `overflowY:auto` is a default-scroll safety net
+  for views that do not self-scroll; for `WorkspaceViewLayout`-based views the
+  height-constrained inner `ScrollArea` owns the scroll and the outer never fires (inert,
+  no double scrollbar). Removing the outer scroll would require proving every plugin view
+  self-scrolls across both render paths, which is not safely knowable, so the uniform
+  default-scroll host is kept (KISS + correctness) rather than churned.
 - **Wide-content breakout geometry.** Tune `--wide-column-max` (56rem), confirm the
   left-anchored growth reads well across the 640–1151px band, and judge the 1152px
   breakout↔navigation-rail transition. Implemented; native acceptance pending.
