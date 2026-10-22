@@ -28,7 +28,7 @@ const HUE_CHROMA: Record<Scheme, readonly number[]> = {
 const SOLID_HOVER_SHIFT: Record<Scheme, number> = { light: -0.03, dark: 0.04 };
 
 const NEUTRAL_INK: Record<Scheme, readonly number[]> = {
-  light: [0, 2.2, 4.4, 6.6, 9, 12, 17, 26, 46, 51, 62, 100],
+  light: [0, 2.2, 4.4, 6.6, 9, 12, 17, 26, 46, 51, 74, 100],
   dark: [0, 4, 8.5, 12, 15.5, 20, 27, 39, 46.5, 52.5, 70, 100],
 };
 

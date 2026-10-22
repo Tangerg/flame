@@ -151,8 +151,8 @@
 
   --color-text: #1b1b1b;
   --color-text-bright: #111111;
-  --color-text-soft: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #3a3a3a);
-  --color-text-muted: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #656565);
+  --color-text-soft: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #303030);
+  --color-text-muted: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #4c4c4c);
   --color-text-faint: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #696969);
   --color-text-on-accent: #000000;
 
