@@ -201,10 +201,12 @@ export function ModalDialog({
                 {children}
               </div>
             )}
-            {footer && (
+            {(footer || auxiliaryAction) && (
               <footer {...stylex.props(styles.footer)}>
                 {auxiliaryAction}
-                <div {...stylex.props(styles.actions)}>{footer}</div>
+                {footer && (
+                  <div {...stylex.props(styles.actions)}>{footer}</div>
+                )}
               </footer>
             )}
           </Dialog.Popup>
