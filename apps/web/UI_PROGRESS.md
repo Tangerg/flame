@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. The isolated UI branch incorporated current remote main at `8b9b403ff` before this batch. Appearance size selectors now track their triggers, and the shared floating surface avoids a native page-zoom painting failure. The verified shared-popup repair is published on remote main at `f4a535440`; native acceptance and cleanup are complete. A pre-existing MCP API-consumer guard failure is qualified below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. The next verified change makes shared Select dismissal finish before rapid keyboard navigation. Native acceptance and owned-resource cleanup are complete; publish its three explicit paths before starting the next batch. Aggregate test timeouts and the existing MCP API-consumer guard failure are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1579,7 +1579,7 @@ Verification and coverage for this repair:
 
 ## Immediate popup dismissal and keyboard continuity
 
-Base UI marks an Escape dismissal with `data-instant="dismiss"`. The shared
+Base UI marks a Menu Escape dismissal with `data-instant="dismiss"`. The shared
 floating motion now honors that existing signal with `transition-property: none`.
 Previously it still ran the host's short exit transition, whose default base is
 80 ms. While the retiring portal and focus guards remained mounted, consecutive
@@ -1603,6 +1603,86 @@ feedback support completing dismissal before the next keyboard step.
 | Severity | Location                                  | Before                                               | After                                                                                                   | Why                                                                                                      |
 | -------- | ----------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | MEDIUM   | `packages/ui/src/floating-surface.tsx:25` | Immediate Escape/Tab could restart page focus order. | The existing dismissal signal ends transitions; native forward focus reaches the adjacent role control. | Focus-order continuity (2.4.3) and an immediate dismissal that carries no additional visual information. |
+
+Select has a different primitive contract: Base UI 1.9 exposes its authoritative
+`open` state but no instant-dismiss attribute. `SelectPopup` keeps its focus
+manager enabled until unmount, and the inherited exit transition delays that
+cleanup. On exact main `121bec6d5`, three native Default-motion trials of
+Interface size → Escape (35 ms) → Tab (35 ms) left focus on the document; Space
+then scrolled the page. Pure keyboard entry reproduced it too. The same three
+trials with Motion Off all reached Code size and opened it. The adjacent
+font-family Menu already passed with Default motion.
+
+`packages/ui/src/select.tsx` now projects that existing `open` state through the
+primitive's `className(state)` contract. Its one StyleX merge keeps the shared
+entry styles while open and applies `transition-property: none` while closed.
+No second open state, dismissal attribute, event handler, focus callback or delay
+was added. Base UI still owns value, guards, unmount and final focus; the hidden
+owner's `finalFocus={false}` remains authoritative. Both package and application
+StyleX builds use static classes with `dev: false`, so selecting their class name
+does not discard a dynamic inline-style value. General floating motion is
+unchanged. This fixes appearance sizes, installed filters and nested form choices
+through their existing shared Select.
+
+The [Radix Select keyboard model](https://www.radix-ui.com/primitives/docs/components/select#keyboard-interactions)
+returns Escape to its trigger. The installed implementation and
+[Base UI Popup contract](https://base-ui.com/react/components/select#popup)
+establish the actual state and focus owner here. Better-accessibility's focus
+order and better-ui's information-free exit guidance support removing the delay
+at the Select presentation boundary, without replacing the primitive.
+
+| Severity | Location                        | Before                                                                                      | After                                                                                    | Why                                                                           |
+| -------- | ------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| HIGH     | `packages/ui/src/select.tsx:22` | A retiring Select could absorb rapid forward navigation and leave Space scrolling the page. | Dismissal releases focus before the next Tab; entry motion and selected identity remain. | The next keyboard action must continue from the control the user just closed. |
+
+Verification and delivery boundary:
+
+- Bounded Claude Code CLI (`claude-opus-5-5`, 31.45 seconds, no subagents or
+  permission denials) edited only Select and its existing README paragraph.
+  Primary reviewed the full diff, built classes, actual primitive lifecycle and
+  all native results. No synthetic DOM-animation test is presented as coverage:
+  Happy DOM does not execute WKWebView transitions or native Tab navigation.
+- Shared UI's complete check passed **5 files / 79 tests**, the independent packed
+  consumer, build, types, lint and formatting in 9.50 seconds. Its existing
+  selection, Escape, retained-content retirement, modal and anchor regressions
+  remain intact. The production bundle and all **11** portable component rebuild
+  comparisons passed; generated resources are unchanged.
+- Actual Wails EN/light/14 px/Flame Orange passed **three Default and three Slow**
+  35 ms Escape/Tab/Space trials. Pure keyboard entry, reverse Code size → Interface
+  size, Code size → font smoothing, mouse selection/reopened identity, Home/Enter
+  restoration and background wheel passed. The installed Schedules status
+  Select reaches Refresh. In its Add dialog, the same rapid sequence reaches
+  Refresh model choices while preserving the typed title; stepped Escape first
+  returns to Model, then closes to Add schedule.
+- Actual Wails ZH/dark/18 px/custom blue passed **three trials at native 200%**,
+  then **three more after system Move & Resize → Left**. Both size identities
+  remain unchanged, and Code size Home/End exposes readable first/last choices.
+  Background wheel moves the source out of view without leaving its list painted
+  over the page. Native resizing retains readable options, and Escape returns to
+  the visible Code size control. Actual Size was restored before Quit. The first
+  dark harness incorrectly requested unregistered `zh-CN`; that blank fixture is
+  excluded. The corrected `zh` build uses the same reviewed product inputs.
+- The full Web check is **not green**: its test run passed **3,063 tests / 386
+  files**, but the unchanged Runtime portable-package MCP readiness case and icon
+  all-master matrix timed out (244.27 seconds overall). The two original files
+  subsequently passed **54/54** with one worker in 50.06 seconds; this does not
+  turn the aggregate failure into a pass or establish its cause. Types, lint and
+  formatting had passed before the aggregate stopped. All later checks were run
+  serially: only the existing `mcp.servers.reconnect` API-consumer inventory
+  failed; its 16 guard tests passed. No Runtime, icon, MCP, guard, timeout or
+  assertion change is included. All other later gates and `make check-native`
+  passed; the latter took 24.85 seconds. No browser visual suite or benchmark ran.
+- All **16** reviewed product/host inputs remained identical through final native
+  acceptance. Four owned native PIDs (including the excluded locale attempt) and
+  both owned CLI launch PIDs exited. The exact bundle was unregistered. Its
+  bundle, private homes, captures, prompts, overlays, logs, acceptance root and
+  pointer were removed, together with ten newly created worktree outputs/caches
+  and two unique bundle Library paths, after preexistence, canonical-path, UID,
+  birth-time, symlink and tracked-file checks. Existing dependencies, the shared
+  UI Vite cache, compiler/package caches, references and the user's parallel
+  primary checkout remain. Publish the three explicit paths, then continue native
+  context-menu focus continuity and retained-content popup boundaries; neither
+  whole-product VoiceOver coverage nor untested focus paths are claimed.
 
 ## Native workspace zoom and Dock geometry
 

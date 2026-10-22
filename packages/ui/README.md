@@ -110,7 +110,10 @@ update this local presentation without tracking the current file or scroll posit
 `Select` keeps its popup anchored beside the trigger rather than overlapping the
 selected item with it. Base UI tracks ancestor scrolling and resizing, handles
 viewport collisions and retains selection and focus ownership. Desktop appearance
-sizes and portable filters use this same positioning contract.
+sizes and portable filters use this same positioning contract. The popup keeps
+the shared entry motion but closes without an exit transition: Base UI holds
+its focus manager until the popup unmounts, so an animated exit delays focus
+return and a quick Tab after Escape would leave focus on the document.
 `FLOATING_PANEL` and `FLOATING_TIP` apply the theme's backdrop filter directly to
 the surface. Keeping the filter on a negative-layer pseudo-element inside a
 scrolling popup can leave its options unpainted in WKWebView at native page zoom.

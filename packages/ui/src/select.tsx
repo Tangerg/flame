@@ -19,6 +19,8 @@ const styles = stylex.create({
     maxWidth: "min(var(--available-width), calc(100dvw - var(--spacing) * 8))",
     overscrollBehavior: "contain",
   },
+  // An exit transition delays Base UI's final focus until unmount.
+  closed: { transitionProperty: "none" },
   item: {
     display: "flex",
     alignItems: "center",
@@ -101,12 +103,15 @@ export function Select({
         >
           <SelectPrimitive.Popup
             finalFocus={visible ? undefined : false}
-            {...stylex.props(
-              FLOATING_PANEL,
-              MENU_SURFACE.content,
-              styles.popup,
-              type.uiMd,
-            )}
+            className={(state) =>
+              stylex.props(
+                FLOATING_PANEL,
+                MENU_SURFACE.content,
+                styles.popup,
+                type.uiMd,
+                !state.open && styles.closed,
+              ).className
+            }
           >
             {options.map((option) => (
               <SelectPrimitive.Item
