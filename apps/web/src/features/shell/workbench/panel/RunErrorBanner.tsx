@@ -19,9 +19,8 @@ import { showWorkspaceDock } from "@/features/workspace/public/navigation";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { type AgentProblem } from "@/features/agent/public/sessionView";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
-import { color, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const reb = stylex.create({
-  plain: { fontWeight: weight.regular },
   sans: { fontFamily: "var(--font-sans)" },
   glyph: { marginTop: space.s0_5, color: color.negative },
 });

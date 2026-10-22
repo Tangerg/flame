@@ -63,14 +63,6 @@ export const messageStyles = stylex.create({
     color: color.fgMuted,
   },
 
-  statusWord: {
-    display: "inline-flex",
-    minWidth: 0,
-    alignItems: "center",
-    gap: space.s1,
-    fontWeight: weight.medium,
-  },
-
   body: { minWidth: 0, textWrap: "pretty", lineHeight: leading.prose, color: color.fg },
   bubble: {
     maxWidth: "min(100%, max(70%, 32rem))",
