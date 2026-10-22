@@ -523,6 +523,9 @@ export const en: Record<string, string> = {
   "mcp.error.toggle": "Couldn't change the server.",
   "mcp.error.signIn": "Sign-in failed.",
   "mcp.error.test": "Test failed",
+  "mcp.error.loadTools": "Couldn't load tools",
+  "mcp.error.loadToolVisibility": "Couldn't load tool visibility",
+  "mcp.error.loadAutoApproveRules": "Couldn't load auto-approve rules",
   "mcp.testOutcome.timedOut":
     "The server didn't respond in time — check the command or URL and retry.",
   "mcp.testOutcome.failed":

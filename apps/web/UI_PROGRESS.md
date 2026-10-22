@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. Popup anchoring/native zoom painting, rapid Select dismissal, object-menu names, shared modal keyboard release and bounded message reading are published on remote main; their receipts remain below. Approval-mode reads now distinguish recoverable failures from an unsupported method, with eight localized titles and native recovery/return coverage. The current full Web run passed 3,073 tests and failed the recurring Memory MCP readiness case; that complete 49-test Runtime file passed separately, which does not make the aggregate green. The existing MCP API-consumer inventory also still fails. All other later Web checks and the supported native check passed. The math follow-up qualifies its recorded text-caret reading path; physical horizontal wheel delivery remains unverified. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. Popup anchoring/native zoom painting, rapid Select dismissal, object-menu names, shared modal keyboard release and bounded message reading are published on remote main; their receipts remain below. Approval-mode reads distinguish recoverable failures from an unsupported method, and MCP tool errors now identify their three independent read scopes in eight locales. Current complete Web testing passed 390 files and 3,077 tests; the existing MCP API-consumer inventory still fails, so the full check is not green. All remaining Web checks and the supported native check passed. Native tool recovery retains drafts and scoped retries; a focused-action visibility observation after asynchronous content replacement remains the next investigation. The math follow-up qualifies its recorded text-caret reading path; physical horizontal wheel delivery remains unverified. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1220,14 +1220,15 @@ rendering an error as a neutral empty — the same icon as "nothing here" and no
 retry — and now use the alert glyph with the negative tone, with Approvals
 offering a retry. `HooksPane` dropped its hand-rolled unsupported branch and
 routes that state through `DataView`'s `unsupported` config, removing the
-duplicate. The two `ToolControls` auxiliary-query failures stopped using a
-section label as the error title and share the one error title and tone.
+duplicate. `ToolControls` uses the shared recovery surface; its local titles now
+name tool visibility, auto-approve rules and the tools list so their independent
+retries remain understandable.
 
 The original shared-tone verification rebuilt `@flame/ui`, passed its 74 tests
 and the then-current 3,069-test Web suite. Current native acceptance below
 qualifies negative failure, warning unsupported and ordinary empty presentation
-in the Approvals page. It does not extend that qualification to every other
-consumer, including the earlier subagent-unavailable and auxiliary Tool states.
+in the Approvals page. The MCP follow-up below qualifies its named recovery
+states. The earlier subagent-unavailable path is not newly qualified here.
 
 ### Approval-mode read recovery
 
@@ -1333,6 +1334,107 @@ zero unpushed commits at that checkpoint. Continue with a fresh complete
 existing task; auxiliary MCP tool-data recovery/identity is a
 review candidate requiring current native evidence. Do not repeat this resolved
 classification defect or infer a focus failure solely from pending body focus.
+
+### MCP tool read identity and scoped recovery
+
+Actual Wails on `eae9c91ad` showed two identical "Couldn't load" explanations
+inside Edit docs → Manage tools when `mcp.tools.exposure` and
+`approval.listRules` failed. Both exposed Retry while the tools themselves
+remained readable. Activating the first Retry accepted visibility alone: its
+read count became three, rules stayed failed at two, and the long tool's actual
+disabled value became visible. The remaining generic explanation did not name
+the failed object. A tool-list failure used the same generic title. Independent
+query and switch guards were already correct; missing presentation context was
+the defect.
+
+`features/mcp/ui/ToolControls.tsx` now supplies the existing `DataError` title
+for tool visibility and auto-approve rules, and `DataView.error.title` for the
+tool list. Three complete messages are present in all eight locales, using the
+existing Tool visibility and Auto-approve vocabulary. The negative surface,
+recovery description, Retry label, actual refetch callbacks, independent
+loading/error/disabled state, accepted values, stale-rule/source matching,
+commands and geometry remain with their existing owners. No new component,
+state, effect, focus handler, dependency or protocol/data migration was needed.
+
+The better-writing guidance grounds the named failed object and recoverable
+action; better-accessibility informs native keyboard and visible-focus checks.
+HeroUI's actual `alert.stories.tsx` pairs a named connection failure with Retry.
+ZCode's actual `settings/model-provider-section/StatusCards.tsx` derives
+availability and recovery from explicit facts. These are read-only references,
+not evidence of Flame's native behavior. Flame retains its shared primitives,
+Base UI, StyleX and semantic tokens.
+
+A Read/Edit-only Claude Code CLI invocation added three regressions to the
+existing test file (56.09 s); primary reviewed the diff and removed one
+unnecessary explanatory comment. All four old cases passed and the three new
+cases failed against unchanged production source (2.15 s). A second bounded
+Read/Edit invocation changed only the component and eight locales (90.73 s,
+no permission denials). Primary reviewed every actual source/locale diff.
+Final focused verification passed four files / 32 tests (3.07 s), covering
+distinct failures, each retry callback, independent accepted visibility,
+retained material, no automatic writes and the existing command/source guards.
+The 59 reviewed inputs and four private harness inputs then stayed frozen
+through native acceptance and final checks.
+
+The native fixture enabled the canonical MCP capability and supplied validated
+server/tool/exposure/rule responses through the real SDK, production components
+and Wails beta.34 host. The ordinary fixture's initially unnegotiated MCP feature
+correctly yielded an empty catalog; that first setup is excluded from product
+failure evidence. All scenes refused and recorded zero MCP/approval mutations.
+
+English/light/14 px/Orange qualified keyboard entry from Settings to Edit docs,
+the three named failures, and successive real visibility → rules → tools
+retries. Each accepted at three reads; unrelated failed reads stayed at two
+until explicitly retried. The exact command draft `fixture-docs --draft 保留`
+survived all recoveries, accepted enabled/off values appeared, and focus stayed
+on the user's later Cancel. After real body scrolling exposed that control,
+Enter cancelled and restored Edit docs. Seven Shift-Tabs reached Close; Enter
+returned to the original Workspace diff, followed by exact native Composer
+input `Tool recovery draft 保留`.
+
+Chinese/dark/18 px/custom blue qualified all three titles and retained
+`fixture-docs --草稿 保留` after a visibility retry and the unchanged automatic
+retry both failed. Visibility reached four reads while rules/tools stayed at
+two. Twenty actual View → Zoom In commands reached 200%; a native edge drag
+changed the capture from 2878×1798 to 2632×1798. Shift-Tab/Tab reached each Retry,
+and body wheel reading exposed each complete title, description and blue ring.
+The left diagnostic HUD is excluded fixture chrome. Actual Size was restored;
+pointer Cancel returned to Edit docs, then seven Shift-Tabs and Enter closed
+Settings. Exact native Composer input was `工具恢复后继续输入 保留`. Both Composer
+strings were entered after returning; preservation of a pre-existing Composer
+draft is not newly claimed. VoiceOver, OS IME, measured contrast, the other six
+locales' native layouts and other-platform GUIs were not run.
+
+The full Web command reached the existing API-consumer guard (176.21 s):
+typecheck, lint, formatting and all 390 files / 3,077 tests passed, followed by
+unused-code, circular/context, published-boundary, layer and port checks.
+The inventory still rejects `mcp.servers.reconnect has no non-test frontend
+consumer`; its 16 tests passed. The remaining 15 checks ran separately and
+passed, including locale closure, production bundle and all 11 portable
+resources. `make check-native` passed (22.70 s). The former Memory MCP readiness
+failure did not reproduce in this complete run; no readiness repair is claimed,
+and the non-failing loopback diagnostics remain separate. The full check is
+still failed at the inventory. No assertion, timeout or guard was weakened,
+and no browser visual suite or benchmark ran.
+
+All five owned native PIDs and two CLI PIDs exited. One post-Quit accessibility
+read reopened the exact private bundle; that extra PID is recorded and excluded,
+then exited without another dead-app query. The app was unregistered and its
+private root/data/logs/pointer, ten newly generated outputs/caches and two
+bundle-specific Library directories were removed with ownership/source-hash
+guards. Pre-existing caches, user data, references, unrelated processes and the
+primary checkout were preserved. Remote main was refetched at `eae9c91ad`
+before publication.
+
+**Next investigation:** after asynchronous tool content replacement, native
+focus remained on Cancel but that button was below the captured viewport.
+Actual body scrolling exposed its ring and the accepted cancellation/return
+worked. This is an observed visibility limit, not a repaired or fully classified
+cause; do not infer that shrinking content alone caused it. Trace the existing
+`Panel.keepBodyFocusVisible` boundary and reproduce the geometry before choosing
+a shared repair. It currently handles focus entry and control-zone resizing,
+not all body replacements. Preserve later outside focus and deliberate reading
+scroll; do not add an unconditional refocus or per-query scroll workaround.
 
 ## Wide-content breakout in the reading band
 

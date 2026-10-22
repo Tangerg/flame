@@ -73,8 +73,12 @@ export function ToolControls({ server }: Props) {
   return (
     <div {...stylex.props(tc.panel)}>
       <p {...stylex.props(typeStep.uiSm, vocab.muted)}>{t("mcp.tools.policyHint")}</p>
-      {exposure.error != null && <DataError onRetry={() => exposure.refetch()} />}
-      {rules.error != null && <DataError onRetry={() => rules.refetch()} />}
+      {exposure.error != null && (
+        <DataError title={t("mcp.error.loadToolVisibility")} onRetry={() => exposure.refetch()} />
+      )}
+      {rules.error != null && (
+        <DataError title={t("mcp.error.loadAutoApproveRules")} onRetry={() => rules.refetch()} />
+      )}
       <DataView
         items={tools.data}
         isLoading={tools.isLoading}
@@ -82,6 +86,7 @@ export function ToolControls({ server }: Props) {
         onRetry={tools.refetch}
         skeletonCount={3}
         empty={{ icon: "tool", title: t("mcp.tools.empty") }}
+        error={{ title: t("mcp.error.loadTools") }}
       >
         {(tools) => (
           <SettingsGroup>

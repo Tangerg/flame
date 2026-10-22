@@ -797,6 +797,9 @@ export const ko: Record<string, string> = {
   "mcp.error.toggle": "서버를 변경할 수 없습니다.",
   "mcp.error.signIn": "로그인에 실패했습니다.",
   "mcp.error.test": "테스트 실패",
+  "mcp.error.loadTools": "도구를 불러올 수 없습니다",
+  "mcp.error.loadToolVisibility": "도구 표시 설정을 불러올 수 없습니다",
+  "mcp.error.loadAutoApproveRules": "자동 승인 규칙을 불러올 수 없습니다",
   "mcp.testOutcome.timedOut":
     "서버가 제때 응답하지 않았습니다. 명령 또는 URL을 확인하고 다시 시도하세요.",
   "mcp.testOutcome.failed":

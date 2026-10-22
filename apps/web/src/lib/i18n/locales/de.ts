@@ -833,6 +833,10 @@ export const de: Record<string, string> = {
   "mcp.error.toggle": "Server konnte nicht geändert werden.",
   "mcp.error.signIn": "Anmeldung fehlgeschlagen.",
   "mcp.error.test": "Test fehlgeschlagen",
+  "mcp.error.loadTools": "Tools konnten nicht geladen werden",
+  "mcp.error.loadToolVisibility": "Tool-Sichtbarkeit konnte nicht geladen werden",
+  "mcp.error.loadAutoApproveRules":
+    "Regeln für automatische Genehmigung konnten nicht geladen werden",
   "mcp.testOutcome.timedOut":
     "Der Server hat nicht rechtzeitig geantwortet – prüfe Befehl oder URL und versuche es erneut.",
   "mcp.testOutcome.failed":

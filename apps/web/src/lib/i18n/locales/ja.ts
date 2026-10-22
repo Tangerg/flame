@@ -801,6 +801,9 @@ export const ja: Record<string, string> = {
   "mcp.error.toggle": "サーバーを変更できませんでした。",
   "mcp.error.signIn": "サインインに失敗しました。",
   "mcp.error.test": "テストに失敗しました",
+  "mcp.error.loadTools": "ツールを読み込めませんでした",
+  "mcp.error.loadToolVisibility": "ツールの表示設定を読み込めませんでした",
+  "mcp.error.loadAutoApproveRules": "自動承認ルールを読み込めませんでした",
   "mcp.testOutcome.timedOut":
     "サーバーが時間内に応答しませんでした。コマンドまたは URL を確認して再試行してください。",
   "mcp.testOutcome.failed":

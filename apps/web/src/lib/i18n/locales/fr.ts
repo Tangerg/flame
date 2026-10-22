@@ -849,6 +849,9 @@ export const fr: Record<string, string> = {
   "mcp.error.toggle": "Impossible de modifier le serveur.",
   "mcp.error.signIn": "Échec de la connexion.",
   "mcp.error.test": "Échec du test",
+  "mcp.error.loadTools": "Impossible de charger les outils",
+  "mcp.error.loadToolVisibility": "Impossible de charger la visibilité des outils",
+  "mcp.error.loadAutoApproveRules": "Impossible de charger les règles d'approbation automatique",
   "mcp.testOutcome.timedOut":
     "Le serveur n'a pas répondu à temps — vérifiez la commande ou l'URL et réessayez.",
   "mcp.testOutcome.failed":
