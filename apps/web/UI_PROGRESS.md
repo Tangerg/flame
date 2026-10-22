@@ -2233,8 +2233,15 @@ in-flight guard — while sibling rows in the same features already used the hel
 (now both routed through it).
 
 Deeper verification lenses (state ownership, hooks/effects, layout-correctness,
-i18n usage, and untrusted-content security) came back clean except for the
-turn-rail session-switch rebind and the banner-card grid hardening recorded above.
+i18n usage, untrusted-content security, and motion / reduced-motion) came back
+clean except for the turn-rail session-switch rebind and the banner-card grid
+hardening recorded above. Reduced motion in particular is sound across three
+coordinated layers: a global CSS `!important` catch-all that forces every
+animation/transition to 0s and a single iteration under both the OS
+`prefers-reduced-motion` query and the in-app `data-motion="off"` toggle, the
+`--motion-scale` token wrapping every `--dur-*`/`--animate-*` duration, and a
+`MotionConfig reducedMotion="user"` plus `motionScale()` gate on the motion/react
+layer.
 Of note, a defensive XSS audit traced every dangerouslySetInnerHTML and URL sink:
 mermaid SVG (beautiful-mermaid escapes all text/attrs), shiki (escaped code), the
 markdown raw-HTML path (remarkLiteralUnknownHtml downgrades every non-allowlisted,
