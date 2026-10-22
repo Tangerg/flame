@@ -5,7 +5,6 @@ import { MarkdownMessage } from "@/features/chat/message/ui/markdown/MarkdownMes
 import { Icon } from "@/ui/index";
 import { Loader } from "@/ui/index";
 import { scrollEdges, useScrollEdges } from "@/ui/index";
-import { vocab } from "@flame/ui";
 import { AgentActivityDisclosure } from "@/ui/agent/index";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n/index";
@@ -164,7 +163,7 @@ export function ReasoningBlock({ text, status }: Props) {
         <div ref={content} className={stylex.props(ms.quote, typeStep.uiMd).className}>
           <MarkdownMessage text={text} streaming={streaming} reveal="smooth" />
           {status === "incomplete" && (
-            <div {...stylex.props(rb.note, vocab.faint, typeStep.uiSm, face.mono)}>
+            <div {...stylex.props(rb.note, typeStep.uiSm, face.mono)}>
               <Icon name="x" size="xs" /> {t("reasoning.interrupted")}
             </div>
           )}
