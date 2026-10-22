@@ -2,6 +2,7 @@ export const de: Record<string, string> = {
   "packages.installTitle": "Plugin installieren",
   "packages.installedTitle": "Installierte Pakete",
   "packages.details": "Versionsdetails",
+  "packages.manifest": "Release-Manifest",
   "packages.actions": "Paketaktionen",
   "packages.digest": "Versionsprüfsumme",
   "plugins.loadedTitle": "Geladene Client-Plugins",
@@ -19,7 +20,6 @@ export const de: Record<string, string> = {
   "packages.providers.future":
     "Die Auswahl gilt für künftige Aktivierungen. Bestehende Ausführungen behalten ihre Bindungen.",
   "packages.providers.none": "Kein Anbieter ausgewählt.",
-  "packages.providers.count": "{{count}} gespeicherte Auswahlen",
   "packages.providers.current": "Ausgewählt: {{name}} · {{contribution}}",
   "packages.providers.unavailable": "Ausgewählt, aber nicht verfügbar: {{name}} · {{contribution}}",
   "packages.providers.unselected": "Für diese Rolle ist kein Anbieter ausgewählt.",

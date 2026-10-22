@@ -338,7 +338,7 @@ function PackageRow({
         />
         <ContributionRequirements installation={installation} operations={operations} />
         <PointInspection installation={installation} operations={operations} />
-        <CodeBlock label={t("packages.details")} language="json" labels={codeLabels}>
+        <CodeBlock label={t("packages.manifest")} language="json" labels={codeLabels}>
           {preview}
         </CodeBlock>
       </Disclosure>

@@ -2,6 +2,7 @@ export const es: Record<string, string> = {
   "packages.installTitle": "Instalar un complemento",
   "packages.installedTitle": "Paquetes instalados",
   "packages.details": "Detalles de la versión",
+  "packages.manifest": "Manifiesto de la versión",
   "packages.actions": "Acciones del paquete",
   "packages.digest": "Resumen de la versión",
   "plugins.loadedTitle": "Complementos cargados en el cliente",
@@ -19,7 +20,6 @@ export const es: Record<string, string> = {
   "packages.providers.future":
     "Las selecciones se aplican a futuras activaciones. Las ejecuciones existentes conservan sus enlaces.",
   "packages.providers.none": "No se ha seleccionado un proveedor.",
-  "packages.providers.count": "{{count}} selecciones registradas",
   "packages.providers.current": "Seleccionado: {{name}} · {{contribution}}",
   "packages.providers.unavailable": "Seleccionado pero no disponible: {{name}} · {{contribution}}",
   "packages.providers.unselected": "No hay proveedor seleccionado para este rol.",

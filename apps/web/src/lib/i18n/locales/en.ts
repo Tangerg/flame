@@ -2,6 +2,7 @@ export const en: Record<string, string> = {
   "packages.installTitle": "Install a plugin",
   "packages.installedTitle": "Installed packages",
   "packages.details": "Release details",
+  "packages.manifest": "Release manifest",
   "packages.actions": "Package actions",
   "packages.digest": "Release digest",
   "plugins.loadedTitle": "Loaded client plugins",
@@ -18,7 +19,6 @@ export const en: Record<string, string> = {
   "packages.providers.future":
     "Selections apply to future activations. Existing execution keeps its captured bindings.",
   "packages.providers.none": "No provider has been selected.",
-  "packages.providers.count": "{{count}} recorded selections",
   "packages.providers.current": "Selected: {{name}} · {{contribution}}",
   "packages.providers.unavailable": "Selected but unavailable: {{name}} · {{contribution}}",
   "packages.providers.unselected": "No provider selected for this role.",

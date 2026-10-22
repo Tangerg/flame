@@ -2,6 +2,7 @@ export const ja: Record<string, string> = {
   "packages.installTitle": "プラグインをインストール",
   "packages.installedTitle": "インストール済みパッケージ",
   "packages.details": "リリースの詳細",
+  "packages.manifest": "リリースマニフェスト",
   "packages.actions": "パッケージの操作",
   "packages.digest": "リリースのダイジェスト",
   "plugins.loadedTitle": "読み込まれたクライアントプラグイン",
@@ -19,7 +20,6 @@ export const ja: Record<string, string> = {
   "packages.providers.future":
     "選択は次回の起動に適用されます。実行中の処理は既存のバインドを保持します。",
   "packages.providers.none": "プロバイダーは未選択です。",
-  "packages.providers.count": "記録された選択：{{count}} 件",
   "packages.providers.current": "選択済み：{{name}} · {{contribution}}",
   "packages.providers.unavailable": "選択済みですが利用不可：{{name}} · {{contribution}}",
   "packages.providers.unselected": "このロールのプロバイダーは未選択です。",

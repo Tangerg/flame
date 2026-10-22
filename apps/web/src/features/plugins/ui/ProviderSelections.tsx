@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { type MutationPromise } from "@flame/runtime-client";
 import { mutationSettlementIsUnknown } from "@flame/runtime-client";
 import { type PluginInstallation, type PluginProviderSelection } from "@flame/runtime-client/wire";
-import { Button, Metadata, PanelSection, Select, Toolbar } from "@flame/ui";
+import { Button, PanelSection, Select, Toolbar } from "@flame/ui";
 import { DataView } from "@/ui/index";
 import { SystemMessage } from "@/ui/index";
 import { SettingRow } from "@/ui/settings/SettingRow";
@@ -48,27 +48,30 @@ export function ProviderSelections({
         </Button>
       }
     >
-      <DataView
-        items={providers.data ?? []}
-        isLoading={providers.isLoading}
-        failure={providers.error}
-        onRetry={providers.refetch}
-        empty={{ icon: "blocks", title: t("packages.providers.none") }}
-      >
-        {(rows) => <Metadata>{t("packages.providers.count", { count: rows.length })}</Metadata>}
-      </DataView>
-      <SettingsGroup>
-        {[...roles].sort().map((role) => (
-          <ProviderRole
-            key={role}
-            role={role}
-            current={(providers.data ?? []).find((value) => value.role === role)}
-            installations={installations}
-            operations={operations}
-            refresh={providers.refetch}
-          />
-        ))}
-      </SettingsGroup>
+      {roles.size > 0 ? (
+        <SettingsGroup>
+          {[...roles].sort().map((role) => (
+            <ProviderRole
+              key={role}
+              role={role}
+              current={(providers.data ?? []).find((value) => value.role === role)}
+              installations={installations}
+              operations={operations}
+              refresh={providers.refetch}
+            />
+          ))}
+        </SettingsGroup>
+      ) : (
+        <DataView
+          items={providers.data ?? []}
+          isLoading={providers.isLoading}
+          failure={providers.error}
+          onRetry={providers.refetch}
+          empty={{ icon: "blocks", title: t("packages.providers.none") }}
+        >
+          {() => null}
+        </DataView>
+      )}
     </PanelSection>
   );
 }

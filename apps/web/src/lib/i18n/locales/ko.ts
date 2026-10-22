@@ -2,6 +2,7 @@ export const ko: Record<string, string> = {
   "packages.installTitle": "플러그인 설치",
   "packages.installedTitle": "설치된 패키지",
   "packages.details": "릴리스 세부 정보",
+  "packages.manifest": "릴리스 매니페스트",
   "packages.actions": "패키지 작업",
   "packages.digest": "릴리스 다이제스트",
   "plugins.loadedTitle": "클라이언트에 로드된 플러그인",
@@ -18,7 +19,6 @@ export const ko: Record<string, string> = {
   "packages.providers.future":
     "선택은 이후 활성화에 적용됩니다. 기존 실행은 이미 연결된 공급자를 유지합니다.",
   "packages.providers.none": "선택된 공급자가 없습니다.",
-  "packages.providers.count": "기록된 선택 {{count}}개",
   "packages.providers.current": "선택됨: {{name}} · {{contribution}}",
   "packages.providers.unavailable": "선택되었지만 사용할 수 없음: {{name}} · {{contribution}}",
   "packages.providers.unselected": "이 역할에 선택된 공급자가 없습니다.",
