@@ -74,11 +74,15 @@ function TreeNode({
   depth,
   cursor,
   tree,
+  pos,
+  size,
 }: {
   entry: WorkspaceFileEntry;
   depth: number;
   cursor: string | null;
   tree: TreeContext;
+  pos: number;
+  size: number;
 }) {
   const t = useT();
   const memory = useWorkspaceViewMemory();
@@ -136,6 +140,8 @@ function TreeNode({
       selected={selected}
       focusable={focusable}
       onActivate={activate}
+      aria-posinset={pos}
+      aria-setsize={size}
       aria-label={entry.name}
       aria-describedby={status ? statusId : undefined}
       aria-current={selected ? "true" : undefined}
@@ -210,13 +216,15 @@ function TreeNode({
             empty={{ icon: "folder", title: t("file.empty.title"), size: "compact" }}
           >
             {(rows) =>
-              rows.map((child) => (
+              rows.map((child, index) => (
                 <TreeNode
                   key={child.path}
                   entry={child}
                   depth={depth + 1}
                   cursor={holds(child, childCursor) ? childCursor : null}
                   tree={tree}
+                  pos={index + 1}
+                  size={rows.length}
                 />
               ))
             }
@@ -262,13 +270,15 @@ export function FileTree({
   };
   return (
     <Tree.Root aria-label={t("workspace.view.title.file")} {...stylex.props(ft.pad)}>
-      {entries.map((entry) => (
+      {entries.map((entry, index) => (
         <TreeNode
           key={entry.path}
           entry={entry}
           depth={0}
           cursor={holds(entry, cursor) ? cursor : null}
           tree={tree}
+          pos={index + 1}
+          size={entries.length}
         />
       ))}
     </Tree.Root>

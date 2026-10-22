@@ -203,6 +203,7 @@ function FilePreview({
     <WorkspaceViewLayout
       scrollInset="flush"
       scrollRef={scrollPort}
+      scrollLabel={viewer.path}
       navigation={
         <IconButton
           ref={backRef}

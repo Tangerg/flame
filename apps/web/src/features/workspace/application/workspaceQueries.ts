@@ -73,4 +73,6 @@ export const useWorkspaceListFiles = createParameterizedDataQuery<
 export const useWorkspaceReadFile = createParameterizedDataQuery<
   WorkspaceReadFileQuery,
   WorkspaceFileContent
->(WORKSPACE_READ_FILE_KEY);
+>(WORKSPACE_READ_FILE_KEY, {
+  keepWhenContinuous: (previous, next) => previous.cwd === next.cwd && previous.path === next.path,
+});

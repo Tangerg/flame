@@ -2874,6 +2874,35 @@ Left as correct, not a defect: the palette input does not take Home/End for
 first/last option — for an editable combobox the ARIA APG assigns Home/End to the
 text cursor, which is the current behavior; list navigation stays on the arrows.
 
+## Workspace file browser audit
+
+A deep audit of the file browser (tree, viewer, workspace layout) found its core
+clean — tree/list keys are path-based, file reads abort on path change and never
+land stale, window/mode state is render-computed with an intent guard, the
+active-path/viewer/tree-highlight have one owner, and focus management on
+open/close is robust and test-pinned. Three defects were fixed:
+
+- **"Load earlier/later" lost the reader's place (`dataQuery.ts` +
+  `workspaceQueries.ts`).** Widening the line window changed the react-query key;
+  with no placeholder the read went `pending`, `DataView` replaced the file with
+  a skeleton, and the scroll-anchor restoration ran against the skeleton height
+  (clamping to 0) and was then consumed — so the content vanished and the reader
+  was dumped to the top. `createParameterizedDataQuery` gained an opt-in
+  `keepWhenContinuous(prev, next)` predicate; the file read keeps the prior
+  content when only the window changed (same cwd+path), so there is no skeleton
+  flash and the anchor restores position against the real height. A file _switch_
+  (path change) still shows loading. Regression test added.
+- **Lazily-loaded tree items omitted `aria-setsize`/`aria-posinset`
+  (`FileTree.tsx`).** Folder children load on expand, so the full tree is never in
+  the DOM — exactly the case WAI-ARIA requires set/position for. Each `TreeNode`
+  now carries its 1-based position and sibling count.
+- **File viewer scroll region was not keyboard-operable (`scroll-area.tsx`,
+  `WorkspaceViewLayout.tsx`).** A plain-text file has no focusable descendants, so
+  a keyboard-only user could not scroll it (WCAG 2.1.1). `ScrollArea` gained
+  opt-in `tabIndex`/`role`/`aria-label`; the file viewer names its region by the
+  file path so it is focusable and scrollable. The tree-list view (which has
+  focusable treeitems) is unchanged.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.

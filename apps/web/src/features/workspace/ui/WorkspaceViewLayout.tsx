@@ -12,12 +12,16 @@ const wl = stylex.create({
 interface Props extends ViewHeaderProps {
   scrollInset?: "rows" | "flush";
   scrollRef?: Ref<HTMLDivElement>;
+  // When the scrolled content has no focusable elements (a file viewer), name
+  // the region so it is keyboard-focusable and scrollable.
+  scrollLabel?: string;
   children: ReactNode;
 }
 
 export function WorkspaceViewLayout({
   scrollInset = "rows",
   scrollRef,
+  scrollLabel,
   children,
   ...header
 }: Props) {
@@ -26,6 +30,9 @@ export function WorkspaceViewLayout({
       <ViewHeader {...header} />
       <ScrollArea
         ref={scrollRef}
+        tabIndex={scrollLabel ? 0 : undefined}
+        role={scrollLabel ? "region" : undefined}
+        aria-label={scrollLabel}
         className={stylex.props(wl.viewport, scrollInset === "rows" && wl.rows).className}
       >
         {children}

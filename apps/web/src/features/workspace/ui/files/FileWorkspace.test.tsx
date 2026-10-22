@@ -152,6 +152,23 @@ describe("workspace files panel", () => {
     expect(readFile).toHaveBeenCalledWith({ cwd: undefined, path: "src/main.go" });
   });
 
+  it("keeps the file shown while a wider line window loads", async () => {
+    readFile.mockResolvedValue({ content: "middle chunk", startLine: 1300, totalLines: 3000 });
+    openWorkspaceFile("src/big.go");
+    mount(<FileWorkspace />);
+    await screen.findByText("middle chunk");
+
+    const pending = Promise.withResolvers<WorkspaceFileContent>();
+    readFile.mockReturnValueOnce(pending.promise);
+    fireEvent.click(screen.getByRole("button", { name: /earlier/i }));
+
+    // placeholderData holds the content instead of flashing a skeleton.
+    expect(screen.getByText("middle chunk")).toBeTruthy();
+
+    pending.resolve({ content: "earlier\nmiddle chunk", startLine: 1100, totalLines: 3000 });
+    await screen.findByText("earlier");
+  });
+
   it("renders a whole file through the renderer registered for its extension", async () => {
     readFile.mockResolvedValue({ content: "# Title", startLine: 1, totalLines: 1 });
     openWorkspaceFile("docs/README.md");
