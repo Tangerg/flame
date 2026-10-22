@@ -1325,8 +1325,12 @@ its private root, data, logs, pointer, ten new build/cache outputs and two
 bundle-specific Library directories were removed with ownership and copied
 source-hash guards. The pre-existing UI test cache, dependencies/compiler caches,
 user data, unrelated processes, references and primary checkout were preserved.
-Remote main was refetched at `8e567257a` before publication. Continue with a
-fresh complete existing task; auxiliary MCP tool-data recovery/identity is a
+Remote main was refetched at `8e567257a` before publication. The batch was
+committed with normal hooks at `c6a3c10cc2e1894cb4a531d8c81be37b8593a5a2`
+and pushed to remote main; `ls-remote` confirmed that exact commit. All ten
+accepted source/test hashes match its blobs, with a clean owned worktree and
+zero unpushed commits at that checkpoint. Continue with a fresh complete
+existing task; auxiliary MCP tool-data recovery/identity is a
 review candidate requiring current native evidence. Do not repeat this resolved
 classification defect or infer a focus failure solely from pending body focus.
 
