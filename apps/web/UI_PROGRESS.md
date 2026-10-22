@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. The isolated UI branch incorporated current remote main at `8b9b403ff` before this batch. Appearance size selectors now track their triggers, and the shared floating surface avoids a native page-zoom painting failure. Native acceptance and cleanup are complete; a pre-existing MCP API-consumer guard failure is qualified below. Complete explicit-path publication, then continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. The isolated UI branch incorporated current remote main at `8b9b403ff` before this batch. Appearance size selectors now track their triggers, and the shared floating surface avoids a native page-zoom painting failure. The verified shared-popup repair is published on remote main at `f4a535440`; native acceptance and cleanup are complete. A pre-existing MCP API-consumer guard failure is qualified below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1570,7 +1570,10 @@ Verification and coverage for this repair:
   preexistence, UID, birth-time, tracked-file and path guards before removal.
   Pre-existing dependencies, the shared UI Vite cache, compiler/package caches,
   the user's parallel checkout and read-only references remain.
-- Explicit-path publication is the remaining delivery step. Then continue with
+- The seven explicit paths were committed at `f4a535440` with normal formatter,
+  workspace-lint and commit-message hooks, then pushed to remote `main`.
+  `git ls-remote` confirmed the exact published revision. The user's parallel
+  primary checkout was not used for staging, commits or cleanup. Continue with
   fast dismissal/focus continuity, retained-content popup retirement and the
   actual MCP failure/recovery boundary. The current goal remains active.
 
