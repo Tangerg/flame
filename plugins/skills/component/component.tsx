@@ -93,7 +93,7 @@ export function Skills({ context }: { context: ComponentContext }) {
         opened ? (
           <>
             <Toolbar
-              label="Skill document navigation"
+              label="Skill document"
               actions={
                 <IconButton
                   icon={Refresh}
@@ -113,8 +113,6 @@ export function Skills({ context }: { context: ComponentContext }) {
                 <Icon glyph={ArrowLeft} size="sm" />
                 Available Skills
               </Button>
-            </Toolbar>
-            <Toolbar label="Skill document">
               <PanelTitle ref={heading} tabIndex={-1} size="sm" aria-level={2}>
                 {opened.name}
               </PanelTitle>

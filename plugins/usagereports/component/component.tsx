@@ -388,7 +388,7 @@ function Archive({ context }: { context: BoundContext }) {
         opened ? (
           <>
             <Toolbar
-              label="Report navigation"
+              label="Saved report"
               actions={
                 <Button
                   pending={opened.loading}
@@ -407,8 +407,6 @@ function Archive({ context }: { context: BoundContext }) {
                 <Icon glyph={ArrowLeft} size="sm" />
                 Back to archive
               </Button>
-            </Toolbar>
-            <Toolbar label="Saved report">
               <PanelTitle ref={heading} tabIndex={-1} size="sm" aria-level={2}>
                 {reportTitle(opened.header)}
               </PanelTitle>
