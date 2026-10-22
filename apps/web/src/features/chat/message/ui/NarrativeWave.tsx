@@ -9,17 +9,24 @@ import { ToolGroupRows } from "@/features/chat/public/tools/rendering";
 import { useT } from "@/lib/i18n/index";
 import { type TurnFacts } from "@/features/agent/public/conversation";
 import { unitSeam } from "@/features/chat/message/application/renderUnitRhythm";
+import { renderUnitKey } from "@/features/chat/message/application/renderUnitAnchor";
 import { seamStep } from "@/features/chat/message/ui/messageStyles";
 import { type BlockCtx } from "@/features/chat/message/ui/blockContext";
 import { waveGlyph } from "@/features/chat/message/ui/narrativeWaveGlyphs";
 interface Props {
+  messageId: string;
   units: MessageRenderUnit[];
   facts: TurnFacts;
   ctx: BlockCtx;
-  renderUnit: (unit: MessageRenderUnit, facts: TurnFacts, ctx: BlockCtx) => ReactNode;
+  renderUnit: (
+    messageId: string,
+    unit: MessageRenderUnit,
+    facts: TurnFacts,
+    ctx: BlockCtx,
+  ) => ReactNode;
 }
 
-export function NarrativeWave({ units, facts, ctx, renderUnit }: Props) {
+export function NarrativeWave({ messageId, units, facts, ctx, renderUnit }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const tools = waveToolCalls(units, facts.toolCalls);
@@ -38,7 +45,10 @@ export function NarrativeWave({ units, facts, ctx, renderUnit }: Props) {
       stickyHeader
     >
       {units.map((unit, index) => (
-        <div key={index} {...stylex.props(seamStep[unitSeam(units[index - 1], unit) ?? "none"])}>
+        <div
+          key={renderUnitKey(messageId, unit)}
+          {...stylex.props(seamStep[unitSeam(units[index - 1], unit) ?? "none"])}
+        >
           {unit.kind === "toolGroup" ? (
             <ToolGroupRows
               tools={unit.tools}
@@ -46,7 +56,7 @@ export function NarrativeWave({ units, facts, ctx, renderUnit }: Props) {
               onToggleExpand={ctx.onToggleExpand}
             />
           ) : (
-            renderUnit(unit, facts, ctx)
+            renderUnit(messageId, unit, facts, ctx)
           )}
         </div>
       ))}

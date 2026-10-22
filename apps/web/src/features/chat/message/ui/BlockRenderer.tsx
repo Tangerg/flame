@@ -119,9 +119,17 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
   }
 }
 
-function renderUnit(unit: MessageRenderUnit, facts: TurnFacts, ctx: BlockCtx) {
+function renderUnit(messageId: string, unit: MessageRenderUnit, facts: TurnFacts, ctx: BlockCtx) {
   if (unit.kind === "wave")
-    return <NarrativeWave units={unit.units} facts={facts} ctx={ctx} renderUnit={renderUnit} />;
+    return (
+      <NarrativeWave
+        messageId={messageId}
+        units={unit.units}
+        facts={facts}
+        ctx={ctx}
+        renderUnit={renderUnit}
+      />
+    );
   if (unit.kind === "toolGroup") {
     return (
       <ToolGroup
@@ -162,7 +170,7 @@ export function renderMessageBlocks(
             .className
         }
       >
-        {renderUnit(unit, facts, ctx)}
+        {renderUnit(message.id, unit, facts, ctx)}
       </motion.div>
     );
   });
