@@ -265,12 +265,11 @@ export function Memory({ context }: { context: ComponentContext }) {
           <RecordTitle>
             {edit.type === "add" ? "Add memory" : "Edit memory"}
           </RecordTitle>
-          <RecordMeta>
-            <span>
-              {scope === "project" ? "Project memory" : "User memory"}
-            </span>
-            {edit.type === "update" && <span>{edit.item.ID}</span>}
-          </RecordMeta>
+          {edit.type === "update" && (
+            <RecordMeta>
+              <span>{edit.item.ID}</span>
+            </RecordMeta>
+          )}
           <FormField label="Memory content">
             <TextArea
               aria-label="Memory content"
