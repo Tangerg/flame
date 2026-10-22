@@ -33,11 +33,16 @@ import {
   FontScaleProvider,
   copyWholeReader,
   Facts,
+  HeadingLevel,
   IconButton,
   ListRow,
   Metadata,
   ModalDialog,
+  Panel,
+  PanelHeader,
   PanelSection,
+  RecordGroup,
+  RecordHeading,
   Stats,
   RecordForm,
   SearchField,
@@ -754,6 +759,41 @@ describe("shared controls", () => {
     expect(
       [...document.querySelectorAll("dt")].map((n) => n.textContent),
     ).toEqual(["Owner", "Owner"]);
+  });
+  it("derives heading levels from nesting without skips", () => {
+    render(
+      <Panel label="Reports" header={<PanelHeader title="Reports" />}>
+        <RecordGroup>
+          <ListRow>
+            <RecordHeading title="Row A" />
+          </ListRow>
+        </RecordGroup>
+        <PanelSection title="Archive">
+          <RecordHeading title="Row B" />
+        </PanelSection>
+      </Panel>,
+    );
+    expect(screen.getByRole("heading", { name: "Reports" }).tagName).toBe("H2");
+    expect(screen.getByRole("heading", { name: "Row A" }).tagName).toBe("H3");
+    expect(screen.getByRole("heading", { name: "Archive" }).tagName).toBe("H3");
+    expect(screen.getByRole("heading", { name: "Row B" }).tagName).toBe("H4");
+  });
+  it("lets a region reset the base heading level", () => {
+    render(
+      <HeadingLevel value={1}>
+        <Panel label="Settings" header={<PanelHeader title="Providers" />}>
+          <RecordGroup>
+            <ListRow>
+              <RecordHeading title="OpenAI" />
+            </ListRow>
+          </RecordGroup>
+        </Panel>
+      </HeadingLevel>,
+    );
+    expect(screen.getByRole("heading", { name: "Providers" }).tagName).toBe(
+      "H1",
+    );
+    expect(screen.getByRole("heading", { name: "OpenAI" }).tagName).toBe("H2");
   });
   it("projects the field's invalid state to its accessible state", () => {
     const view = render(<TextField invalid aria-label="Endpoint" />);

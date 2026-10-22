@@ -5,7 +5,7 @@ import { knownIconName } from "@/ui/index";
 import { SkeletonList } from "@/ui/index";
 import { TextButton } from "@/ui/index";
 import { VerticalTabs } from "@/ui/index";
-import { isImeKey, Panel, PanelHeader, SearchField } from "@flame/ui";
+import { HeadingLevel, isImeKey, Panel, PanelHeader, SearchField } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import {
@@ -131,10 +131,11 @@ function SettingsPaneFrame({
   children: ReactNode;
 }) {
   return (
-    <Panel label={title}>
-      <PanelHeader title={title} description={description} />
-      <div {...stylex.props(sp.body)}>{children}</div>
-    </Panel>
+    <HeadingLevel value={1}>
+      <Panel label={title} header={<PanelHeader title={title} description={description} />}>
+        <div {...stylex.props(sp.body)}>{children}</div>
+      </Panel>
+    </HeadingLevel>
   );
 }
 

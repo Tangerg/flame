@@ -13,6 +13,7 @@ import {
 } from "react";
 import { CARD_SURFACE } from "./control-surface";
 import { PanelLayoutContext } from "./panel-layout";
+import { HeadingLevel, useHeadingTag } from "./heading-level";
 import { clsx } from "clsx";
 import {
   color,
@@ -357,25 +358,27 @@ export function Panel({
     >
       <div {...stylex.props(styles.content, hosted && styles.hostedContent)}>
         {header}
-        {hasControls && (
+        <HeadingLevel>
+          {hasControls && (
+            <div
+              ref={controlsRef}
+              data-slot="panel-controls"
+              {...stylex.props(styles.controls)}
+            >
+              {controls}
+            </div>
+          )}
           <div
-            ref={controlsRef}
-            data-slot="panel-controls"
-            {...stylex.props(styles.controls)}
+            ref={bodyRef}
+            data-slot="panel-body"
+            onFocus={(event) => keepBodyFocusVisible(event.target)}
+            {...stylex.props(styles.body)}
           >
-            {controls}
+            <PanelLayoutContext value={panelLayout}>
+              {children}
+            </PanelLayoutContext>
           </div>
-        )}
-        <div
-          ref={bodyRef}
-          data-slot="panel-body"
-          onFocus={(event) => keepBodyFocusVisible(event.target)}
-          {...stylex.props(styles.body)}
-        >
-          <PanelLayoutContext value={panelLayout}>
-            {children}
-          </PanelLayoutContext>
-        </div>
+        </HeadingLevel>
       </div>
     </section>
   );
@@ -474,6 +477,7 @@ export function PanelTitle({
   className,
   ...props
 }: ComponentPropsWithRef<"h1"> & { size?: PanelTitleSize }) {
+  const Tag = useHeadingTag();
   const styled = stylex.props(
     styles.title,
     size === "lg"
@@ -483,9 +487,9 @@ export function PanelTitle({
         : type.displaySm,
   );
   return (
-    <h1 {...props} {...styled} className={clsx(styled.className, className)}>
+    <Tag {...props} {...styled} className={clsx(styled.className, className)}>
       {children}
-    </h1>
+    </Tag>
   );
 }
 
@@ -501,6 +505,7 @@ export function PanelSection({
   description?: ReactNode;
   actions?: ReactNode;
 }) {
+  const Tag = useHeadingTag();
   const styled = stylex.props(styles.section);
   return (
     <section
@@ -510,12 +515,12 @@ export function PanelSection({
     >
       <div {...stylex.props(styles.sectionHead)}>
         <div {...stylex.props(styles.sectionCopy)}>
-          <h2 {...stylex.props(styles.sectionHeading, type.uiSm)}>{title}</h2>
+          <Tag {...stylex.props(styles.sectionHeading, type.uiSm)}>{title}</Tag>
           {description && <Metadata>{description}</Metadata>}
         </div>
         {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
       </div>
-      {children}
+      <HeadingLevel>{children}</HeadingLevel>
     </section>
   );
 }

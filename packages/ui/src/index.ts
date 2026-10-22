@@ -8,6 +8,7 @@ export * from "./empty-state";
 export * from "./glyph-swap";
 export * from "./typography";
 export * from "./font-scale";
+export * from "./heading-level";
 export * from "./panel";
 export * from "./modal-dialog";
 export * from "./records";

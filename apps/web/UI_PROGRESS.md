@@ -2977,15 +2977,23 @@ clean and test-pinned. Two defects were fixed:
   now filters `!= null` and both key by index (stateless, non-reorderable display
   rows). Regression test added.
 
-Recorded as a11y debt, not changed here: heading levels are hardcoded
-(`PanelTitle`→h1, `PanelSection`/`RecordTitle`→h2, `RecordHeading`→h3) with no
-level/context, so a flat `Panel`→`RecordGroup`→`RecordHeading` skips h1→h3 and
-side-by-side panels emit multiple h1s. The correct fix is a heading-level context
-threaded through the primitives (a design-system feature touching every heading +
-consumer), not a hasty per-tag change; left for a focused pass. Not defects:
-`ScrollRegion`'s fixed `role="region"` + required label matches the clean
-`Toolbar`/`FilterBar` purpose-built-region pattern; `ShareBar`'s `aria-hidden`
-meter is decorative beside a visible value.
+A follow-up fixed the heading-level defect (previously recorded as debt): heading
+tags were hardcoded (`PanelTitle`→h1, `PanelSection`/`RecordTitle`→h2,
+`RecordHeading`→h3), so a flat `Panel`→`RecordHeading` skipped h1→h3 and
+side-by-side dock panels each emitted an `<h1>` competing with the shell's sole
+`<h1>` (`SessionIdentity`). A new `heading-level` context (`useHeadingTag`,
+`HeadingLevel`) now derives each tag from nesting depth: the context defaults to 2
+(a Panel sits below the shell `<h1>`), a Panel's body/controls and a PanelSection's
+children each push one level, and `PanelTitle`/`PanelSection`/`RecordHeading`/
+`RecordTitle` render `h{level}`. The dock plugins (which pass `PanelHeader` via the
+`header` prop) now emit a correct h2→h3→h4 outline with no change needed; the one
+app consumer whose panels are the top of their own document, `SettingsPage`, wraps
+its pane in `<HeadingLevel value={1}>` (and now passes its header via the `header`
+prop, matching the plugins) so a settings pane title is the page's `<h1>`.
+Heading-outline regression tests added. Not defects: `ScrollRegion`'s fixed
+`role="region"` + required label matches the clean `Toolbar`/`FilterBar`
+purpose-built-region pattern; `ShareBar`'s `aria-hidden` meter is decorative
+beside a visible value.
 
 ## Working and maintenance practice
 

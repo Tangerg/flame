@@ -12,6 +12,7 @@ import {
   weight,
 } from "./tokens.stylex";
 import { ChevronRight } from "@flame/icons/react";
+import { useHeadingTag } from "./heading-level";
 import { Button, type ButtonProps, type ButtonVariants } from "./button";
 import { CARD_SURFACE } from "./control-surface";
 import { Icon, type IconGlyph } from "./font-scale";
@@ -261,11 +262,12 @@ export function RecordHeading({
   status?: ReactNode;
   actions?: ReactNode;
 }) {
+  const Tag = useHeadingTag();
   return (
     <div {...stylex.props(styles.heading)}>
       <div {...stylex.props(styles.headingCopy)}>
         <div {...stylex.props(styles.headingLine)}>
-          <h3 {...stylex.props(styles.title, type.uiMd)}>{title}</h3>
+          <Tag {...stylex.props(styles.title, type.uiMd)}>{title}</Tag>
           {status}
         </div>
         {description && (
@@ -298,7 +300,8 @@ export function RecordMeta({ children }: { children: ReactNode }) {
   return <span {...stylex.props(styles.meta, type.uiSm)}>{children}</span>;
 }
 export function RecordTitle({ children }: { children: ReactNode }) {
-  return <h2 {...stylex.props(styles.title, type.displaySm)}>{children}</h2>;
+  const Tag = useHeadingTag();
+  return <Tag {...stylex.props(styles.title, type.displaySm)}>{children}</Tag>;
 }
 export function RecordSummary({
   title,
