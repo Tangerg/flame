@@ -264,7 +264,10 @@ function SubagentTranscript({
   const expandedIds = useExpandedWorkspaceToolIds();
   const onToggleExpand = useToggleWorkspaceTool();
   const textReveal = useStreamRevealStore((state) => state.streamReveal);
-  const ctx: BlockCtx = { expandedIds, onToggleExpand, textReveal };
+  const ctx = useMemo<BlockCtx>(
+    () => ({ expandedIds, onToggleExpand, textReveal }),
+    [expandedIds, onToggleExpand, textReveal],
+  );
   const measured = useContentVisible() && !hidden;
   const { narrative, facts } = entry;
   const rows = useMemo(() => delegatedTranscriptRows(narrative, facts), [narrative, facts]);

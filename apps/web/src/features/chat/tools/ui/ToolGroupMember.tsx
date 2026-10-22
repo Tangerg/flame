@@ -59,7 +59,9 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
   const headline = headlineToolMetaItem(model.metaItems);
 
   const summaryId = useId();
+  const bodyId = useId();
   const actions = useToolRowActions(tool, summaryId);
+  const disclosed = expanded && !model.denied;
 
   return (
     <div>
@@ -69,6 +71,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
           data-tool={tool.name}
           type="button"
           aria-expanded={expanded}
+          aria-controls={disclosed ? bodyId : undefined}
           onClick={onToggleExpand}
           className={stylex.props(gm.row, typeStep.uiSm, expanded && gm.rowExpanded).className}
         >
@@ -93,8 +96,8 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
         {actions.length > 0 && <span {...stylex.props(gm.actions)}>{actions}</span>}
       </div>
       <ToolFailureLine model={model} />
-      {expanded && !model.denied && (
-        <div {...stylex.props(gm.body)}>
+      {disclosed && (
+        <div id={bodyId} {...stylex.props(gm.body)}>
           <ToolPreview tool={tool} />
         </div>
       )}

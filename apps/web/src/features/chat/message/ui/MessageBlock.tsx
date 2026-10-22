@@ -74,10 +74,16 @@ function MessageBlockInner({
 
   const columnRef = useRef<HTMLDivElement | null>(null);
   const heldFocus = useRef(false);
+  const lastFocused = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!heldFocus.current) return;
     if (document.activeElement !== document.body) return;
+    const prior = lastFocused.current;
     heldFocus.current = false;
+    lastFocused.current = null;
+    // Reclaim only the focus the stream took: a child that had focus and is now
+    // unmounted. One still in the DOM means the user blurred to body on purpose.
+    if (prior?.isConnected) return;
     columnRef.current?.focus({ preventScroll: true });
   });
 
@@ -134,11 +140,15 @@ function MessageBlockInner({
         <div
           ref={columnRef}
           tabIndex={-1}
-          onFocusCapture={() => {
+          onFocusCapture={(event) => {
             heldFocus.current = true;
+            lastFocused.current = event.target as HTMLElement;
           }}
           onBlurCapture={(event) => {
-            if (event.relatedTarget) heldFocus.current = false;
+            if (event.relatedTarget) {
+              heldFocus.current = false;
+              lastFocused.current = null;
+            }
           }}
           {...stylex.props(reveal.host, messageStyles.column, isUser && messageStyles.columnUser)}
         >
