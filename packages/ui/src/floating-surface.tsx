@@ -11,15 +11,7 @@ const styles = stylex.create({
     color: color.fg,
     backgroundColor: surface.floating,
     boxShadow: "var(--shadow-popover)",
-    "::before": {
-      content: "",
-      pointerEvents: "none",
-      position: "absolute",
-      inset: 0,
-      zIndex: -1,
-      borderRadius: "inherit",
-      backdropFilter: "var(--floating-backdrop)",
-    },
+    backdropFilter: "var(--floating-backdrop)",
   },
   motion: {
     transitionProperty: {

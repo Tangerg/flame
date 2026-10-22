@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-22. Captured Session naming now retains the submitted title and focus during saving, provides explicit pending feedback, and preserves the existing refusal and original-command recovery paths. Trajectory Run filters are integrated at `0b17cc0dc`; tool copy outcomes at `4f1725e94`. Verification and cleanup for the final naming milestone are recorded below. The user requested a milestone pause after this batch; do not start another batch without an explicit resume.
+Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. The isolated UI branch incorporated current remote main at `8b9b403ff` before this batch. Appearance size selectors now track their triggers, and the shared floating surface avoids a native page-zoom painting failure. Native acceptance and cleanup are complete; a pre-existing MCP API-consumer guard failure is qualified below. Complete explicit-path publication, then continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user resumed continuous desktop UI work on 2026-10-21 and requested a milestone pause on 2026-10-22 after completing the current captured Session naming batch. The UI checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`, initially based on `8e7a4c977`; the primary checkout is `/Users/tangerg/Desktop/flame` on `main`. Finish the verified batch, integrate its explicit paths, push and clean owned resources, then pause. Existing plugin polish remains limited to existing UI; do not add backend-only pages. Further research or implementation requires an explicit resume.
+The current goal explicitly resumes the earlier milestone pause. Work in `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`; the primary checkout `/Users/tangerg/Desktop/flame` contains the user's parallel work and must remain untouched. The UI branch fast-forwarded 158 commits to remote main `8b9b403ff` before the current component pass. Verify current Git state before integration, commit explicit owned paths and push to remote `main`, clean owned resources, then continue the next evidence-backed batch. Do not sweep the user's local main commits or uncommitted files into this work.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -18,7 +18,7 @@ hidden and frame callbacks stayed paused. Do not repeat that activation request
 or add a component workaround from these inconsistent signals. Those completed
 isolation roots and their new caches are also cleaned; details follow.
 
-The 2026-10-21 resume superseded an earlier pause; the latest 2026-10-22 stop request now ends this continuation at the naming milestone. Any future resumed batch still requires native acceptance, relevant gates, explicit-path integration and push to `main`, cleanup and in-place handoff updates. Native page zoom and the single Dock width projection remain integrated. Open workspace views now retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
+The 2026-10-23 goal supersedes the earlier 2026-10-22 milestone pause. Every resumed batch still requires native acceptance, relevant gates, explicit-path integration and push to `main`, cleanup and in-place handoff updates. Native page zoom and the single Dock width projection remain integrated. Open workspace views retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
 
 Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The subsequent native focus investigation qualified the existing keyboard resize path and isolated clicked-label reverse navigation to a WebKit behavior also reproduced by a bare HTML button. No host preference or component workaround was added. The precise scenarios and limits are below.
 
@@ -1440,6 +1440,139 @@ Verification for this surface (2026-10-21):
 - Complete `npm run check --workspace @flame/web` passed **386 files / 3,042 tests** and every subsequent owner check in 158.17 seconds under CI Node 22.22.1. `make check-native` passed in 38.05 seconds. Latest main updates `d2d8110ca`, `bcf43bb21` and `cefd9b98c` were incorporated without file overlap; they change Go package/public-constant names and a generator target, retaining the same wire-version literal. Native checks passed again in 20.83 and 28.99 seconds. All 13 reviewed source hashes remained stable. The full Web suite and independent shared UI/portable suites were not repeated after these Go-only updates; Web's plugin-resource and module checks passed within its complete check. The final integration also retains the two directory-map documentation additions from `fcc70f424`; no behavior changed and the same 13 reviewed hashes remain stable.
 - Cleanup completed: all three owned native processes and the CLI exited, the exact app bundle was unregistered, and its bundle, disposable data, captures, overlays, prompts/reports, logs and pointer were removed. Ten newly created worktree output/cache paths and the unique bundle's Caches/WebKit paths passed preexistence, UID and birth-time guards before removal. Pre-existing shared UI Vite caches, installed dependencies, shared compiler/package caches, read-only references, user data and unrelated main work remain.
 - This uses production components and the Wails host with private data-only `hooks.list` capture. No live hooks, shell command, trust change, provider execution or Run was invoked. VoiceOver, measured pixel contrast, other-platform GUIs, browser/visual suites, performance benchmarks and unrelated root/CLI/SDK suites are not newly qualified. No protocol, persisted data, dependency or installed-resource migration is required.
+
+## Anchored controls and native floating-surface composition
+
+The 2026-10-23 resumed scope starts with the reported **Interface size** and
+**Code size** selectors. Font-family pickers use a different Menu composition;
+their baseline followed scrolling correctly. The shared-component inspection
+traced every in-repository Positioner owner: shared Select, ActionMenu and
+Tooltip, application Menu/ContextMenu and Popover/AnchoredPanel, plus the shared
+ModalDialog and CatalogPicker compositions. This is a bounded floating-control
+repair, not a declaration that every page or component state has passed review.
+
+`packages/ui/src/select.tsx` now sets `alignItemWithTrigger={false}` on Base UI's
+Positioner. Base UI 1.9's selected-item overlap mode uses a fixed position and
+turns off ancestor-scroll, element-resize and layout-shift anchor tracking.
+Settings has its own scrolling viewport, so the trigger could move while the
+list stayed behind. Actual Wails reproduced that detached Code size popup,
+including a blank overlap, before the change. Ordinary anchored positioning
+keeps the existing collision bounds, selected value and focus owners; neither
+settings field gets a local event handler, observer, state or offset workaround.
+Portable filter controls consume the same repair.
+
+Native 200% acceptance then exposed a second cause in
+`packages/ui/src/floating-surface.tsx`: the scrolling list had valid option
+rectangles, opacity 1, visible state and contrasting foreground/background, yet
+painted only its empty surface. In the visible, focused WKWebView, disabling only
+`--floating-backdrop` immediately revealed the same options without moving them.
+The final surface applies that existing backdrop-filter token directly to its
+face and removes the negative-layer `::before`. The 200% list then paints and
+scrolls correctly with the original blur restored. This repairs the common face
+used by Select, ActionMenu, Menu, ContextMenu, Popover and Tooltip, while keeping
+background, theme/custom-accent ownership, corners, shadow and motion tokens.
+ModalDialog retains its separate bounded task and backdrop contracts.
+
+References are read-only. HeroUI's local select/listbox example keeps selected
+identity with the control owner; Arc's real `morph-select` implementation bounds
+option scrolling and keyboard navigation. Neither supplies Flame's portal
+geometry. The installed Base UI Positioner and anchor-positioning implementation
+establish the actual tracking contract. better-layout supports a stable trigger
+relationship and reachable overflow; better-accessibility supports scoped
+keyboard/focus behavior; better-ui supports one compositing owner and restrained
+routine feedback. The six better domain skills were loaded; no new palette,
+typeface or wording convention was introduced.
+
+| Severity | Domain | Location                                 | Before                                                                                          | After                                                                         | Why                                                                            |
+| -------- | ------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| HIGH     | Layout | `packages/ui/src/select.tsx:97`          | A size list could stay at its old screen location after the enclosing pane scrolled.            | Use normal anchored positioning with Base UI tracking and collision handling. | A shared popup must stay associated with the control it changes.               |
+| HIGH     | UI     | `packages/ui/src/floating-surface.tsx:7` | A negative-layer backdrop inside a scrolling face could hide valid options at native page zoom. | Apply the same backdrop filter directly to the face.                          | Options must remain visibly readable at 200%, including within a bounded list. |
+
+Verification and coverage for this repair:
+
+- The bounded Claude Code CLI made the Select positioning edit, then reached its
+  240-second wall limit without a report or a test. Primary review retained the
+  small diff and completed regression coverage and native investigation; no CLI
+  completion claim is treated as evidence.
+- `packages/ui/test/select-positioning.test.tsx` renders the built shared Select
+  with real Base UI and controlled external geometry. After focus enters the
+  list, moving its trigger and dispatching ancestor scroll must move the popup
+  by the same delta; a subsequent resize must move it again. The frozen original
+  fails at the scroll delta (unchanged 0 instead of -60), and the restored
+  candidate passes. No primitive mock, prop assertion or source-text test is
+  used. The existing popup/modal visibility suite remains the lifecycle owner.
+  The final focused run passed **3 files / 16 tests**. This DOM test covers
+  positioning behavior; native painting is verified separately below.
+- Actual Wails passed Interface size and Code size at EN/light/14 px/Flame Orange:
+  open, background wheel scroll, viewport-side collision, pointer/keyboard
+  selection, reopening the selected value and stepped Escape focus return.
+  ZH/dark/18 px/custom blue passed at native 200%: both lists visibly follow
+  scrolling, Home/End reach the bounded list's first/last choices, and Code size
+  Escape returns to its own trigger. The system Move & Resize command produced
+  a narrow window; a visible right-edge resize kept an open list attached while
+  the settings navigation reflowed. One attempted bottom-edge drag was outside
+  the visible window and is excluded; the subsequent right-edge resize visibly
+  changed the window width and popup placement.
+- On the repaired shared face, the font-family Menu remains readable at 200%.
+  The actual workspace panel-catalog Popover supports search and Enter into
+  Schedules with destination focus. The installed Diff Select changes the real
+  table layout and returns focus; Schedules ActionMenu supports arrow navigation
+  and Escape to its record trigger. Its Add dialog preserves the typed title
+  while the nested model Select closes on the first Escape; a second Escape
+  closes the task and returns to Add. Refresh Tooltip is visible on keyboard
+  focus and dismisses with Escape. Dock ContextMenu opens by right-click and
+  Shift+F10, supports arrow navigation and closes without changing panel order.
+  Context-menu focus return and very rapid consecutive Escape/Tab still need
+  targeted qualification; do not infer those from stepped dismissal.
+- Layout, typography and accessibility observations above cover these concrete
+  paths in the existing token system. Existing localized EN/ZH labels and action
+  meanings were checked without copy changes. Color roles and neutral canvas
+  were retained in light/dark/custom-accent scenes; whole-product contrast,
+  VoiceOver, other operating-system GUIs, every plugin state and live provider
+  execution are not newly qualified. Full visual/motion coverage continues in
+  subsequent evidence-backed component batches. Browser visual suites and
+  performance benchmarks were not run.
+- Complete shared UI checks passed **5 files / 79 tests** plus the independent
+  packed-consumer test, with type/lint/format checks, in 28.54 seconds. Portable
+  resource build and plugin checks passed; generated installed resources did not
+  change. Quality gates also exposed unused composition-boundary re-exports from
+  main. The boundary now exports only its real cross-feature hook, and the
+  hook's return interface stays private. Composer and QuestionCard keep the same
+  shared implementation; their focused checks passed **2 files / 18 tests**.
+- Two aggregate Web runs under Node 24.11.1 failed Runtime readiness or lifecycle
+  deadlines (one and seven cases respectively), while all 387 frontend files
+  passed. The isolated original readiness case subsequently passed unchanged in
+  17.14 seconds. Under CI Node 22.22.1, the complete Runtime file passed **49/49**
+  in 45.06 seconds, then the full Web test run passed **388 files / 3,065 tests**
+  in 148.55 seconds. Earlier failures remain failures; changing the execution
+  environment is not proof of their cause.
+- The CI aggregate check is **not green**: its later `check:api-consumers` fails
+  because `mcp.servers.reconnect` has no non-test frontend consumer. Main had
+  already removed the Desktop reconnect chain; its TypeScript SDK projection
+  remains used only by the real-MCP integration test, while the CLI owns
+  `/mcp-reconnect`. Those MCP sources and the guard are unchanged by this batch.
+  No exemption or assertion weakening was retained. Address this boundary when
+  qualifying the actual MCP failure/recovery flow, rather than adding a control
+  solely to satisfy an inventory. All checks after that guard were run serially
+  and passed, including plugin-resource closure, bundle/module checks, tokens,
+  locales, styles, chrome and bootstrap; a final typecheck passed too.
+  `make check-native` passed in **43.95 seconds**. No Go, protocol, dependency or
+  persisted-data change is included.
+- The final EN/light/14 px/Flame Orange Wails build contains no diagnostic probe
+  or backdrop override. Both size selectors remain readable and follow wheel
+  scrolling; Code size keyboard selection, reopened selected identity and Escape
+  focus return pass again. Its private native build passed in 3.93 seconds.
+  All **16** reviewed source/input hashes still matched after final acceptance.
+- Cleanup completed: six owned native PIDs and the bounded CLI exited, the exact
+  app bundle was unregistered, and its bundle, private homes, captures, probes,
+  overlays, prompts, logs, root and pointer were removed. Ten newly created
+  worktree output/cache paths and two unique bundle Library paths passed
+  preexistence, UID, birth-time, tracked-file and path guards before removal.
+  Pre-existing dependencies, the shared UI Vite cache, compiler/package caches,
+  the user's parallel checkout and read-only references remain.
+- Explicit-path publication is the remaining delivery step. Then continue with
+  fast dismissal/focus continuity, retained-content popup retirement and the
+  actual MCP failure/recovery boundary. The current goal remains active.
 
 ## Immediate popup dismissal and keyboard continuity
 

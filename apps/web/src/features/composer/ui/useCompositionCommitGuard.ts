@@ -8,7 +8,7 @@ import {
 // window finishes composition and must not also submit. Past it, Enter submits.
 const COMPOSITION_COMMIT_GRACE_MS = 100;
 
-export interface CompositionCommitGuard {
+interface CompositionCommitGuard {
   isComposing: () => boolean;
   start: () => void;
   end: () => void;

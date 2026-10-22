@@ -107,6 +107,14 @@ two body lines and their leading inset would remain below the header.
 The measured header height also keeps focused body content clear; the header does
 not add its own height to its focus offset. Header, viewport and controls resizing
 update this local presentation without tracking the current file or scroll position.
+`Select` keeps its popup anchored beside the trigger rather than overlapping the
+selected item with it. Base UI tracks ancestor scrolling and resizing, handles
+viewport collisions and retains selection and focus ownership. Desktop appearance
+sizes and portable filters use this same positioning contract.
+`FLOATING_PANEL` and `FLOATING_TIP` apply the theme's backdrop filter directly to
+the surface. Keeping the filter on a negative-layer pseudo-element inside a
+scrolling popup can leave its options unpainted in WKWebView at native page zoom.
+The surface keeps the same background, blur token, corners, shadow and motion.
 `ActionMenu` owns secondary action presentation, keyboard behavior and focus return; each command
 receives its actual trigger as the opener for an inline editor. `triggerContent`
 replaces the default ellipsis with a text trigger for named action menus.

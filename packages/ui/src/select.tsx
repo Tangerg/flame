@@ -97,6 +97,7 @@ export function Select({
         <SelectPrimitive.Positioner
           {...stylex.props(FLOATING_LAYER)}
           sideOffset={4}
+          alignItemWithTrigger={false}
         >
           <SelectPrimitive.Popup
             finalFocus={visible ? undefined : false}
