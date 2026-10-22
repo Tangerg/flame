@@ -2279,12 +2279,14 @@ defects; each needs a Wails look and an explicit choice before implementing:
   source, so new exports there reach plugins directly) found three real cross-plugin
   duplications, all best fixed by deliberate shared owners plus a plugin ESM rebuild
   and host render verification, not blind partial extraction:
-  1. _Master/detail scroll+focus restore_ — byte-identical `scrollPositions` +
-     `ScrollPosition` plus the `pendingFocus` ref and the scroll-to-0 / restore-scroll
-     / focus-opener `useLayoutEffect` in `diff`, `usagereports`, and `skills`
-     (`skills/useSkills.ts:37-48,69-72,238-256`, `diff/component.tsx:55-68,99-102,
-173-200`, `usagereports/component.tsx:58-96,136-139,189-211`). Owner: a
-     `useMasterDetailFocus` hook (+ `ScrollPosition`) in `@flame/component-sdk`.
+  1. _Master/detail scroll+focus restore_ — the byte-identical `scrollPositions`
+     helper and `ScrollPosition` type now have one owner in `@flame/component-sdk`
+     (the three inline copies in diff/usagereports/skills are removed). The remaining
+     duplication is the orchestration around it — the `pendingFocus` ref and the
+     scroll-to-0 / restore-scroll / focus-opener `useLayoutEffect` — which should
+     become a `useMasterDetailFocus` hook in `@flame/component-sdk`; it varies per
+     plugin (saved-return shape, view literals), so it needs deliberate design and
+     host render verification.
   2. _Reconcilable-command state + UI_ — the submit→pending→uncertain→reconcile/retire
      protocol and its status `<section>` are copied across `skills`, `schedules`,
      `memory`, `usagereports`, and (slim) `trajectory`; the `Command` type and the
