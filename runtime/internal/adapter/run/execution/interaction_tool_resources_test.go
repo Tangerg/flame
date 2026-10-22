@@ -102,7 +102,7 @@ func TestInteractionReleasesScopedFilesystemTools(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: string(domaintool.Read), Arguments: `{"path":"note.txt"}`})
+					invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: string(domaintool.Read), Arguments: `{"path":"note.txt"}`}, nil)
 					if err != nil {
 						t.Fatal(err)
 					}

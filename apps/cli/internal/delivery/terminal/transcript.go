@@ -526,7 +526,7 @@ func (t *transcriptView) place(block headless.Block, finished bool) headless.Blo
 
 type discardedOutput struct{}
 
-func (discardedOutput) Print(grid.Drawable) {}
+func (discardedOutput) Print(grid.Drawable) error { return nil }
 
 func (t *transcriptView) DiscardExcess() {
 	if t.content.Width() <= 0 {

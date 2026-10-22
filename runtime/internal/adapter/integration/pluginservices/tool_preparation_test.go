@@ -184,7 +184,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			invocation, err := bound.Contract().Prepare(chat.ToolCall{ID: "provider-call", Name: bound.Contract().Definition().Name, Arguments: `{}`})
+			invocation, err := bound.Contract().Prepare(chat.ToolCall{ID: "provider-call", Name: bound.Contract().Definition().Name, Arguments: `{}`}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

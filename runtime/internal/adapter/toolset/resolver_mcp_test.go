@@ -24,8 +24,8 @@ func (m mcpToolStub) Definition() chat.ToolDefinition {
 	return chat.ToolDefinition{Name: m.name, InputSchema: []byte(`{"type":"object"}`)}
 }
 
-func (mcpToolStub) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
-	return chat.ToolOutput{}, nil
+func (mcpToolStub) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
+	return toolcontract.Result{}, nil
 }
 
 func (m mcpToolStub) MCPToolIdentity() (string, string) { return m.server, m.remote }

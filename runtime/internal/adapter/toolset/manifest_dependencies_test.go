@@ -37,8 +37,8 @@ type unrealizedMCPTool struct{ name, remote string }
 func (u unrealizedMCPTool) Definition() chat.ToolDefinition {
 	return chat.ToolDefinition{Name: u.name, InputSchema: []byte(`{"type":"object"}`)}
 }
-func (unrealizedMCPTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
-	return chat.ToolOutput{}, nil
+func (unrealizedMCPTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
+	return toolcontract.Result{}, nil
 }
 func (u unrealizedMCPTool) MCPToolIdentity() (string, string) { return "reviews", u.remote }
 

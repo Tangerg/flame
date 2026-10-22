@@ -1,23 +1,23 @@
 module github.com/Tangerg/flame/examples/plugins/reviews/backend
 
-go 1.27.0
+go 1.27.3
 
 require (
 	github.com/Tangerg/flame v0.1.0-layout.20261021.8
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
-	github.com/Tangerg/scope/core v0.53.0
+	github.com/Tangerg/scope/core v0.55.0
 	github.com/invopop/jsonschema v0.14.0
-	modernc.org/sqlite v1.60.1
+	modernc.org/sqlite v1.61.0
 )
 
 require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/Tangerg/scope/a2a v0.53.0 // indirect
-	github.com/Tangerg/scope/mcp v0.53.0 // indirect
-	github.com/Tangerg/scope/otel v0.53.0 // indirect
-	github.com/Tangerg/scope/skills v0.53.0 // indirect
-	github.com/Tangerg/scope/tools v0.53.0 // indirect
-	github.com/Tangerg/scope/tools/skills v0.53.0 // indirect
+	github.com/Tangerg/scope/a2a v0.55.0 // indirect
+	github.com/Tangerg/scope/mcp v0.55.0 // indirect
+	github.com/Tangerg/scope/otel v0.55.0 // indirect
+	github.com/Tangerg/scope/skills v0.55.0 // indirect
+	github.com/Tangerg/scope/tools v0.55.0 // indirect
+	github.com/Tangerg/scope/tools/skills v0.55.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/a2aproject/a2a-go/v2 v2.6.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect
@@ -62,7 +62,7 @@ require (
 	golang.org/x/tools v0.52.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.78.0 // indirect
+	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )

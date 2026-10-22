@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/keylock"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
@@ -38,7 +37,7 @@ func TestMutationCannotAdvanceReadEvidence(t *testing.T) {
 				arguments = editArguments(t, "notes.txt", "before", "applied")
 				next = editArguments(t, "notes.txt", "external", "overwritten")
 			}
-			interleaved := decorateCall(base, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+			interleaved := decorateCall(base, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 				output, err := base.Call(ctx, invocation)
 				if err == nil {
 					err = os.WriteFile(path, []byte("external\n"), 0o600)
@@ -70,7 +69,7 @@ func TestMutationPreservesAcknowledgedOutputAfterCancellation(t *testing.T) {
 	base := mustApplyPatchTool(t, recordingExecutor{LocalExecutor: executor})
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	completed := decorateCall(base, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	completed := decorateCall(base, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		output, err := base.Call(ctx, invocation)
 		if err == nil {
 			cancel()
@@ -99,8 +98,8 @@ func TestUnresolvedMutationConsumesReadEvidence(t *testing.T) {
 	read := withReadTracking(mustRuntimeReadTool(t, executor), tracker, root)
 	base := mustApplyPatchTool(t, recordingExecutor{LocalExecutor: executor})
 	cause := errors.New("commit acknowledgement unavailable")
-	unresolved := decorateCall(base, func(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
-		return chat.ToolOutput{}, cause
+	unresolved := decorateCall(base, func(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
+		return toolcontract.Result{}, cause
 	})
 	mutation := guardedMutation(unresolved, nil, tracker, keylock.NewSet(), root, executor)
 	if _, err := callTextTool(t.Context(), read, readArguments("notes.txt")); err != nil {

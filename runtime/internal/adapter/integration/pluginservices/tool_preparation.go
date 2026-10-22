@@ -18,7 +18,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
 )
@@ -45,7 +44,7 @@ func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPrepara
 			return nil, nil, err
 		}
 		if !installed {
-			return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+			return func(invocation toolcontract.Invocation) (toolcontract.Result, error) {
 				return executable.Call(ctx, invocation)
 			}, func() {}, nil
 		}
@@ -86,7 +85,7 @@ func prepareInstalledTool(ctx context.Context, executable mcp.Executable, host m
 		return nil, nil, err
 	}
 	scoped := scopeCallbacks(ctx, metadata)
-	return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	return func(invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		defer invalidations.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 		return executable.Call(scoped, invocation)
 	}, release, nil
@@ -134,7 +133,7 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 		release()
 		return nil, nil, err
 	}
-	return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	return func(invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		return source.Call(scoped, invocation)
 	}, release, nil
 }

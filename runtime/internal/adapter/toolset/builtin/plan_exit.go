@@ -30,46 +30,45 @@ default permission mode. Rejection keeps the session in read-only Plan mode.`
 type exitArgs struct{}
 
 type exiter struct {
-	modes     planExitPolicy
-	plan      planStateReader
-	interrupt runs.InterruptFunc
+	modes planExitPolicy
+	plan  planStateReader
 }
 
 func newExit(modes planExitPolicy, plan planStateReader, interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
 	if modes == nil || plan == nil {
 		return nil, nil
 	}
-	if interrupt == nil {
-		interrupt = runs.InterruptUnavailable
-	}
-	return toolcontract.NewFunc[exitArgs, string](
+	e := &exiter{modes: modes, plan: plan}
+	return newInterruptTool[exitArgs](
 		toolcontract.FuncConfig{Name: string(tool.ExitPlanMode), Description: exitDescription},
-		(&exiter{modes: modes, plan: plan, interrupt: interrupt}).exit,
+		interrupt,
+		e.request,
+		e.render,
 	)
 }
 
-func (e *exiter) exit(ctx context.Context, _ exitArgs) (string, error) {
+func (e *exiter) request(ctx context.Context, _ exitArgs) (runs.Interrupt, string, error) {
 	sessionID := executionctx.SessionID(ctx)
 	if sessionID == "" {
-		return "", errors.New("exit_plan_mode: no active session")
+		return runs.Interrupt{}, "", errors.New("exit_plan_mode: no active session")
 	}
 	mode, err := e.modes.Mode(ctx, sessionID)
 	if err != nil {
-		return "", toolfailure.Definite(fmt.Errorf("exit_plan_mode: %w", err))
+		return runs.Interrupt{}, "", toolfailure.Definite(fmt.Errorf("exit_plan_mode: %w", err))
 	}
 	// Calling this outside Plan mode, or with nothing planned, is the model
 	// mis-sequencing its own tools. Both messages are written for it, so they have
 	// to arrive as this call's outcome rather than end the Run.
 	if mode != approval.ModePlan {
-		return "", toolfailure.Definite(errors.New("exit_plan_mode: current session is not in Plan mode"))
+		return runs.Interrupt{}, "", toolfailure.Definite(errors.New("exit_plan_mode: current session is not in Plan mode"))
 	}
 	state, err := e.plan.State(ctx, sessionID)
 	if err != nil {
-		return "", toolfailure.Definite(fmt.Errorf("exit_plan_mode: %w", err))
+		return runs.Interrupt{}, "", toolfailure.Definite(fmt.Errorf("exit_plan_mode: %w", err))
 	}
 	steps := state.Steps()
 	if len(steps) == 0 {
-		return "", toolfailure.Definite(errors.New("exit_plan_mode: current Plan is empty; call set_plan before requesting approval"))
+		return runs.Interrupt{}, "", toolfailure.Definite(errors.New("exit_plan_mode: current Plan is empty; call set_plan before requesting approval"))
 	}
 
 	arguments := `{}`
@@ -89,18 +88,18 @@ func (e *exiter) exit(ctx context.Context, _ exitArgs) (string, error) {
 		},
 	}
 	if validateErr := pending.Validate(); validateErr != nil {
-		return "", fmt.Errorf("exit_plan_mode: %w", validateErr)
+		return runs.Interrupt{}, "", fmt.Errorf("exit_plan_mode: %w", validateErr)
 	}
-	resolution, err := e.interrupt(
-		ctx,
-		interrupt.Key(string(interrupt.Question), string(tool.ExitPlanMode), arguments),
-		pending,
-	)
-	if err != nil {
-		return "", err
-	}
+	return pending, interrupt.Key(string(interrupt.Question), string(tool.ExitPlanMode), arguments), nil
+}
+
+func (e *exiter) render(ctx context.Context, _ exitArgs, resolution interrupt.Resolution) (string, error) {
 	if selectedChoice(resolution.Question().Answers()) != approveLabel {
 		return "Plan not approved. The session remains in Plan mode; revise the Plan or continue investigating.", nil
+	}
+	sessionID := executionctx.SessionID(ctx)
+	if sessionID == "" {
+		return "", errors.New("exit_plan_mode: no active session")
 	}
 	restored, changed, err := e.modes.ExitPlanMode(ctx, sessionID)
 	if err != nil {

@@ -1,8 +1,8 @@
-go 1.27.0
+go 1.27.3
 
 use (
 	.
 	./apps/desktop
-	./packages/local-runtime
 	./examples/plugins/reviews/backend
+	./packages/local-runtime
 )

@@ -32,23 +32,23 @@ type authorizedTool struct {
 }
 
 func (t authorizedTool) Unwrap() toolcontract.Tool { return t.Tool }
-func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 	if err := t.admit(ctx); err != nil {
-		return chat.ToolOutput{}, err
+		return toolcontract.Result{}, err
 	}
 	if installation, managed := t.config.Server.Source.Origin().Installation(); managed {
 		captured, err := operation.Capture(ctx, capability.Target{Scope: "installation", Reference: installation.String()})
 		if err != nil {
-			return chat.ToolOutput{}, err
+			return toolcontract.Result{}, err
 		}
 		metadata := scopemcp.RequestMetaFromContext(ctx)
 		if err := metadata.Set(pluginsdk.InvocationMetadataKey, captured); err != nil {
-			return chat.ToolOutput{}, err
+			return toolcontract.Result{}, err
 		}
 		ctx = scopemcp.WithRequestMeta(ctx, metadata)
 		ctx, err = pluginsdk.WithInvocation(ctx, captured)
 		if err != nil {
-			return chat.ToolOutput{}, err
+			return toolcontract.Result{}, err
 		}
 	}
 	if t.prepare == nil {
@@ -56,17 +56,17 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 	}
 	call, release, err := t.prepare(ctx, t.source, t.host)
 	if err != nil {
-		return chat.ToolOutput{}, err
+		return toolcontract.Result{}, err
 	}
 	if release == nil {
-		return chat.ToolOutput{}, errors.New("mcp: prepared tool call requires release")
+		return toolcontract.Result{}, errors.New("mcp: prepared tool call requires release")
 	}
 	defer release()
 	if call == nil {
-		return chat.ToolOutput{}, errors.New("mcp: prepared tool call is required")
+		return toolcontract.Result{}, errors.New("mcp: prepared tool call is required")
 	}
 	if err := t.admit(ctx); err != nil {
-		return chat.ToolOutput{}, err
+		return toolcontract.Result{}, err
 	}
 	return call(invocation)
 }

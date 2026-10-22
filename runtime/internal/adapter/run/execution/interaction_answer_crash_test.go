@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -66,24 +65,20 @@ func (s answerCrashTrees) SaveExecutionTree(ctx context.Context, update runs.Exe
 
 func answerCrashExecutor(t *testing.T, trees runs.ExecutionTreeStore, workspace string) *InteractionExecutor {
 	t.Helper()
-	question, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "ask", Description: "Ask for a value."}, func(ctx context.Context, _ struct{}) (string, error) {
-		resolution, err := runinput.Require(ctx, "crash.question", runs.Interrupt{Kind: interrupt.Question, Question: &runs.QuestionPrompt{ToolName: "ask", Arguments: `{}`, Fields: []runs.QuestionFieldSpec{{Prompt: "Which value?"}}}})
-		if err != nil {
-			return "", err
-		}
-		file, err := os.OpenFile(filepath.Join(workspace, "effects.txt"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
-		if err != nil {
-			return "", err
-		}
-		_, writeErr := fmt.Fprintln(file, resolution.Question().Answers()[0][0])
-		if err := errors.Join(writeErr, file.Close()); err != nil {
-			return "", err
-		}
-		return resolution.Question().Answers()[0][0], nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	question := newQuestionTool(t, "ask", "Ask for a value.", "crash.question",
+		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
+		func(resolution interrupt.Resolution) (string, error) {
+			file, err := os.OpenFile(filepath.Join(workspace, "effects.txt"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+			if err != nil {
+				return "", err
+			}
+			answer := resolution.Question().Answers()[0][0]
+			_, writeErr := fmt.Fprintln(file, answer)
+			if err := errors.Join(writeErr, file.Close()); err != nil {
+				return "", err
+			}
+			return answer, nil
+		})
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolBatchResponse([]chat.ToolCall{{ID: "a", Name: "ask", Arguments: `{}`}, {ID: "b", Name: "ask", Arguments: `{}`}}, 2, 1), interactionUsageTextResponse("done", 3, 1),
 	}}

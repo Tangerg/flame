@@ -180,7 +180,7 @@ func (d *Discovery) Catalog() string {
 	return b.String()
 }
 
-func (d *Discovery) Call(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+func (d *Discovery) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 	return d.inner.Call(ctx, invocation)
 }
 

@@ -83,7 +83,7 @@ func (r DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argum
 	if !found {
 		return tool.Result{}, fmt.Errorf("toolset: direct tool %q is not registered", name)
 	}
-	proposed, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: arguments.Canonical()})
+	proposed, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: arguments.Canonical()}, nil)
 	if prepareErr != nil {
 		return tool.Result{}, fmt.Errorf("%w: direct tool %q: %w", tool.ErrInvalidArguments, name, prepareErr)
 	}
@@ -91,7 +91,7 @@ func (r DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argum
 	if err != nil {
 		return tool.Result{}, err
 	}
-	invocation, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: normalized})
+	invocation, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: normalized}, nil)
 	if prepareErr != nil {
 		return tool.Result{}, fmt.Errorf("toolset: prepare direct tool %q: %w", name, prepareErr)
 	}
@@ -99,5 +99,5 @@ func (r DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argum
 	if callErr != nil {
 		return tool.Result{}, callErr
 	}
-	return directResult(output)
+	return directResult(output.Output)
 }

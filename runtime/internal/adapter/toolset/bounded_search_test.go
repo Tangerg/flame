@@ -310,11 +310,11 @@ func TestRuntimeSearchRejectsUndecodableIntegersAtAdmission(t *testing.T) {
 			`{"pattern":"x","max_results":1e1}`,
 			`{"pattern":"x","max_results":10.0}`,
 		} {
-			if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: name, Arguments: arguments}); !errors.Is(err, toolcontract.ErrInvalidInvocation) {
+			if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: name, Arguments: arguments}, nil); !errors.Is(err, toolcontract.ErrInvalidInvocation) {
 				t.Errorf("%s admitted %s: %v", name, arguments, err)
 			}
 		}
-		if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: name, Arguments: `{"pattern":"x","max_results":10}`}); err != nil {
+		if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: name, Arguments: `{"pattern":"x","max_results":10}`}, nil); err != nil {
 			t.Fatalf("%s rejected valid integer: %v", name, err)
 		}
 	}

@@ -54,7 +54,7 @@ func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "provider-id", Name: binding.Contract().Definition().Name, Arguments: `{}`})
+	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "provider-id", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *test
 			t.Fatal(err)
 		}
 		var received sdkmcp.Meta
-		if err := json.Unmarshal(output.Details, &received); err != nil {
+		if err := json.Unmarshal(output.Output.Details, &received); err != nil {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(received["test.example/opaque-context"], meta["test.example/opaque-context"]) {
@@ -181,7 +181,7 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 		}
 		invocation, err := binding.Contract().Prepare(chat.ToolCall{
 			ID: "test_call", Name: binding.Contract().Definition().Name, Arguments: `{"id":"one"}`,
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -284,7 +284,7 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "exact", Name: binding.Contract().Definition().Name, Arguments: `{}`})
+			invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "exact", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -295,14 +295,14 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 			// JSON member order is transport-owned; number lexemes and explicit
 			// empty objects must survive without float64 conversion.
 			var got, want map[string]jsontext.Value
-			if err := json.Unmarshal(output.Details, &got); err != nil {
+			if err := json.Unmarshal(output.Output.Details, &got); err != nil {
 				t.Fatal(err)
 			}
 			if err := json.Unmarshal([]byte(payload), &want); err != nil {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(got, want) {
-				t.Fatalf("structured result = %s, want %s", output.Details, payload)
+				t.Fatalf("structured result = %s, want %s", output.Output.Details, payload)
 			}
 		})
 	}

@@ -22,8 +22,8 @@ import (
 type idleTool struct{}
 
 func (idleTool) Definition() chat.ToolDefinition { return chat.ToolDefinition{Name: "idle"} }
-func (idleTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
-	return chat.ToolOutput{}, nil
+func (idleTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
+	return toolcontract.Result{}, nil
 }
 
 // BenchmarkAuthorizedToolCall measures the per-call source authorization of one

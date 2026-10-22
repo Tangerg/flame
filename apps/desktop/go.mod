@@ -1,10 +1,10 @@
 module github.com/Tangerg/flame/apps/desktop
 
-go 1.27.0
+go 1.27.3
 
 require (
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261021.2
-	github.com/wailsapp/wails/v3 v3.0.0-beta.29
+	github.com/wailsapp/wails/v3 v3.0.0-beta.34
 )
 
 require (
@@ -13,7 +13,7 @@ require (
 	github.com/coder/websocket v1.8.15 // indirect
 	github.com/go-json-experiment/json v0.0.0-20260820222146-c27c302e5fc3 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/godbus/dbus/v5 v5.2.2 // indirect
+	github.com/godbus/dbus/v5 v5.2.4 // indirect
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect

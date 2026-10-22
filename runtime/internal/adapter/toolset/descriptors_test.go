@@ -111,8 +111,8 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 		Plan:         rolePlanStore{},
 		GoalReader:   activeGoalStub{},
 		GoalReporter: activeGoalStub{},
-		Interrupt: func(context.Context, string, runs.Interrupt) (interrupt.Resolution, error) {
-			return interrupt.Resolution{}, nil
+		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
+			return interrupt.Resolution{}, nil, nil
 		},
 	})
 	if err != nil {
@@ -167,8 +167,8 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 		Online: OnlineConfig{
 			HTTPAllowedHosts: []string{"example.com"}, // backs http_request
 		},
-		Interrupt: func(context.Context, string, runs.Interrupt) (interrupt.Resolution, error) {
-			return interrupt.Resolution{}, nil
+		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
+			return interrupt.Resolution{}, nil, nil
 		},
 	})
 	if err != nil {

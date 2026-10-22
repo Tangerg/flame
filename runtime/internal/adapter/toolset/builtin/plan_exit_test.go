@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type modeStore struct {
@@ -139,11 +140,11 @@ func TestRejectionKeepsPlanMode(t *testing.T) {
 	if _, err := policy.EnterPlanMode(t.Context(), sessionID); err != nil {
 		t.Fatal(err)
 	}
-	interrupt := func(_ context.Context, _ string, pending runs.Interrupt) (interrupt.Resolution, error) {
+	interrupt := func(_ context.Context, _ toolcontract.Invocation, _ string, pending runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
 		if pending.Question == nil || !strings.Contains(pending.Question.Fields[0].Prompt, "inspect") {
 			t.Fatalf("prompt does not present the canonical Plan: %+v", pending.Question)
 		}
-		return testsupport.QuestionAnswer(t, [][]string{{rejectLabel}}), nil
+		return testsupport.QuestionAnswer(t, [][]string{{rejectLabel}}), nil, nil
 	}
 	tool, err := newExit(policy, planReader{steps: []plandomain.Step{{Description: "inspect", Status: plandomain.StatusInProgress}}}, interrupt)
 	if err != nil {
@@ -167,11 +168,11 @@ func TestApprovalReturnsTheSessionToTheCurrentDefault(t *testing.T) {
 	if err := policy.SetDefaultMode(t.Context(), approval.ModeYolo); err != nil {
 		t.Fatal(err)
 	}
-	interrupt := func(_ context.Context, _ string, pending runs.Interrupt) (interrupt.Resolution, error) {
+	interrupt := func(_ context.Context, _ toolcontract.Invocation, _ string, pending runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
 		if got := pending.Question.Arguments; got != `{}` {
 			t.Fatalf("interrupt arguments = %q", got)
 		}
-		return testsupport.QuestionAnswer(t, [][]string{{approveLabel}}), nil
+		return testsupport.QuestionAnswer(t, [][]string{{approveLabel}}), nil, nil
 	}
 	tool, err := newExit(policy, planReader{steps: []plandomain.Step{{Description: "implement", Status: plandomain.StatusPending}}}, interrupt)
 	if err != nil {

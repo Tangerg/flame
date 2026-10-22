@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestRequireRejectsEmptyKeyBeforeParking(t *testing.T) {
@@ -19,7 +20,7 @@ func TestRequireRejectsEmptyKeyBeforeParking(t *testing.T) {
 	}
 	ctx := WithCapabilities(t.Context(), []interrupt.Kind{interrupt.Question})
 	for _, key := range []string{"", " \t"} {
-		if _, err := Require(ctx, key, prompt); err == nil || !strings.Contains(err.Error(), "request key is required") {
+		if _, _, err := Require(ctx, toolcontract.Invocation{}, key, prompt); err == nil || !strings.Contains(err.Error(), "request key is required") {
 			t.Fatalf("Require(%q) error = %v, want required-key error", key, err)
 		}
 	}

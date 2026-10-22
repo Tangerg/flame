@@ -30,19 +30,19 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, root *filesystem
 	if tr == nil {
 		return inner
 	}
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		request, decodeErr := decodeToolArguments[fs.ReadRequest](invocation)
 		if decodeErr != nil {
-			return chat.ToolOutput{}, fmt.Errorf("track read arguments: %w", decodeErr)
+			return toolcontract.Result{}, fmt.Errorf("track read arguments: %w", decodeErr)
 		}
 		path, pathErr := resolveRootPath(root, request.Path)
 		if pathErr != nil {
-			return chat.ToolOutput{}, fmt.Errorf("track read path: %w", pathErr)
+			return toolcontract.Result{}, fmt.Errorf("track read path: %w", pathErr)
 		}
 		abs := filepath.Join(root.identity, path)
 		before, existedBefore, err := observeFingerprintExistingFile(ctx, root, path, maxRuntimeReadFileBytes)
 		if err != nil {
-			return chat.ToolOutput{}, fmt.Errorf("track read %s: %w", request.Path, err)
+			return toolcontract.Result{}, fmt.Errorf("track read %s: %w", request.Path, err)
 		}
 		out, err := inner.Call(ctx, invocation)
 		if err != nil {
@@ -69,24 +69,24 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesyste
 	if tr == nil {
 		return inner
 	}
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
-			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths before applying patch: %w", err)
+			return toolcontract.Result{}, fmt.Errorf("inspect mutation paths before applying patch: %w", err)
 		}
 		sessionID := executionctx.SessionID(ctx)
 		targets, blocked, err := admitMutationPaths(ctx, tr, root, sessionID, paths)
 		if err != nil {
-			return chat.ToolOutput{}, err
+			return toolcontract.Result{}, err
 		}
 		if blocked != "" {
 			failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
 				Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput(blocked),
 			})
 			if err != nil {
-				return chat.ToolOutput{}, err
+				return toolcontract.Result{}, err
 			}
-			return chat.ToolOutput{}, failure
+			return toolcontract.Result{}, failure
 		}
 		for _, target := range targets {
 			tr.forget(sessionID, target)
@@ -221,23 +221,23 @@ func sameFingerprintObservation(left, right fingerprintObservation) bool {
 // closure and resolved workspace root. It is a filesystem decorator, not an LSP
 // query tool, so it lives here rather than in package lsp.
 func withMutationDiagnostics(inner toolcontract.Tool, ci *codeintel.Analyzer, root *filesystemRoot) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
-			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths before diagnostics: %w", err)
+			return toolcontract.Result{}, fmt.Errorf("inspect mutation paths before diagnostics: %w", err)
 		}
 		path := ""
 		if len(paths) == 1 {
 			path = paths[0]
 		}
-		var output chat.ToolOutput
+		var output toolcontract.Result
 		if ci != nil {
 			if err := verifyWorkspacePath(root); err != nil {
-				output, callErr := inner.Call(ctx, invocation)
+				result, callErr := inner.Call(ctx, invocation)
 				if callErr != nil {
-					return output, callErr
+					return result, callErr
 				}
-				return appendToolOutputText(output, "\n\nDiagnostics unavailable: "+err.Error()), nil
+				return toolcontract.Result{Output: appendToolOutputText(result.Output, "\n\nDiagnostics unavailable: "+err.Error())}, nil
 			}
 		}
 		section, err := ci.DiagnoseMutation(ctx, root.Name(), path, func() error {
@@ -249,8 +249,8 @@ func withMutationDiagnostics(inner toolcontract.Tool, ci *codeintel.Analyzer, ro
 			return output, err
 		}
 		if err := verifyWorkspacePath(root); err != nil {
-			return appendToolOutputText(output, "\n\nDiagnostics unavailable: "+err.Error()), nil
+			return toolcontract.Result{Output: appendToolOutputText(output.Output, "\n\nDiagnostics unavailable: "+err.Error())}, nil
 		}
-		return appendToolOutputText(output, "\n\n"+section), nil
+		return toolcontract.Result{Output: appendToolOutputText(output.Output, "\n\n"+section)}, nil
 	})
 }

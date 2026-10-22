@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -286,7 +287,9 @@ func (o *observedInteractionModel) begin(
 	defer func() {
 		if err != nil {
 			o.session.accounting.discardPreparedModelContext(preparedInvocation)
-			o.session.modelFailures.record(preparedInvocation.Relation().ProcessID(), interaction.HostFailure(err))
+			// Scope settles every begin failure as an unknown host outcome; its
+			// internal classification is the Runtime's own, projected here.
+			o.session.modelFailures.record(preparedInvocation.Relation().ProcessID(), &run.FailureError{Kind: run.FailureInternal, Err: err})
 			err = errors.Join(err, o.session.stopModelProcess(ctx, preparedInvocation.Relation().ProcessID()))
 		}
 	}()
@@ -300,12 +303,10 @@ func (o *observedInteractionModel) begin(
 	if err := o.session.commitAppliedInputs(
 		ctx, member, invocation.Relation().ProcessID(), invocation.AppliedSteerSignalIDs(),
 	); err != nil {
-		return interaction.ModelInvocation{}, "", interaction.HostFailure(err)
+		return interaction.ModelInvocation{}, "", err
 	}
 	if err := o.session.commitFact(ctx, member, runs.ModelCallStarted{CallID: callID}); err != nil {
-		return interaction.ModelInvocation{}, "", interaction.HostFailure(
-			fmt.Errorf("execution: commit model call start: %w", err),
-		)
+		return interaction.ModelInvocation{}, "", fmt.Errorf("execution: commit model call start: %w", err)
 	}
 	return invocation, callID, nil
 }

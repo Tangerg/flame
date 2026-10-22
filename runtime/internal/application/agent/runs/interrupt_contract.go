@@ -13,17 +13,21 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/optional"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // InterruptFunc is the consumer-owned capability a tool uses to park the
-// current execution on one application interrupt. Tool packages depend only on
-// this contract and never on execution internals.
-type InterruptFunc func(context.Context, string, Interrupt) (interrupt.Resolution, error)
+// current execution on one application interrupt. On re-entry (Scope carries
+// the answer on the invocation) it returns the resolved decision; on a first
+// request it returns a Scope InputRequest the tool returns as
+// tool.Result{InputRequest}. Tool packages depend only on this contract and
+// never on execution internals.
+type InterruptFunc func(context.Context, toolcontract.Invocation, string, Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error)
 
 // InterruptUnavailable is the fail-closed default for a tool environment that
 // has no execution interrupt provider.
-func InterruptUnavailable(context.Context, string, Interrupt) (interrupt.Resolution, error) {
-	return interrupt.Resolution{}, errors.New("runs: execution interrupts are unavailable")
+func InterruptUnavailable(context.Context, toolcontract.Invocation, string, Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
+	return interrupt.Resolution{}, nil, errors.New("runs: execution interrupts are unavailable")
 }
 
 // ApprovalPrompt is the complete durable plan for one gated tool call.

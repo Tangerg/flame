@@ -18,7 +18,7 @@ func callTextTool(ctx context.Context, executable toolcontract.Tool, arguments s
 	if err != nil {
 		return "", err
 	}
-	text, ok := output.Text()
+	text, ok := output.Output.Text()
 	if !ok {
 		return "", errors.New("toolset test: Tool output contains non-text content")
 	}
@@ -58,6 +58,6 @@ func prepareTestInvocation(
 	}
 	invocation, err := binding.Contract().Prepare(chat.ToolCall{
 		ID: "test_call", Name: binding.Contract().Definition().Name, Arguments: arguments,
-	})
+	}, nil)
 	return binding, invocation, err
 }

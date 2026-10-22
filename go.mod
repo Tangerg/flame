@@ -1,48 +1,48 @@
 module github.com/Tangerg/flame
 
-go 1.27.0
+go 1.27.3
 
 require (
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261021.2
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
-	github.com/Tangerg/oolong/components v0.24.0
-	github.com/Tangerg/oolong/core v0.24.0
-	github.com/Tangerg/oolong/highlight v0.24.0
-	github.com/Tangerg/oolong/latex v0.24.0
-	github.com/Tangerg/oolong/markdown v0.24.0
-	github.com/Tangerg/oolong/mermaid v0.24.0
-	github.com/Tangerg/oolong/ptytest v0.24.0
-	github.com/Tangerg/scope/a2a v0.53.0
-	github.com/Tangerg/scope/agent v0.53.0
-	github.com/Tangerg/scope/core v0.53.0
-	github.com/Tangerg/scope/mcp v0.53.0
-	github.com/Tangerg/scope/models/alibaba v0.53.0
-	github.com/Tangerg/scope/models/anthropic v0.53.0
-	github.com/Tangerg/scope/models/azureopenai v0.53.0
-	github.com/Tangerg/scope/models/catalog v0.53.0
-	github.com/Tangerg/scope/models/deepseek v0.53.0
-	github.com/Tangerg/scope/models/fireworks v0.53.0
-	github.com/Tangerg/scope/models/google v0.53.0
-	github.com/Tangerg/scope/models/groq v0.53.0
-	github.com/Tangerg/scope/models/huggingface v0.53.0
-	github.com/Tangerg/scope/models/minimax v0.53.0
-	github.com/Tangerg/scope/models/mistral v0.53.0
-	github.com/Tangerg/scope/models/moonshot v0.53.0
-	github.com/Tangerg/scope/models/openai v0.53.0
-	github.com/Tangerg/scope/models/openrouter v0.53.0
-	github.com/Tangerg/scope/models/perplexity v0.53.0
-	github.com/Tangerg/scope/models/together v0.53.0
-	github.com/Tangerg/scope/models/xai v0.53.0
-	github.com/Tangerg/scope/models/xiaomi v0.53.0
-	github.com/Tangerg/scope/models/zhipu v0.53.0
-	github.com/Tangerg/scope/otel v0.53.0
-	github.com/Tangerg/scope/otel/agent v0.53.0
-	github.com/Tangerg/scope/skills v0.53.0
-	github.com/Tangerg/scope/tools v0.53.0
-	github.com/Tangerg/scope/tools/skills v0.53.0
+	github.com/Tangerg/oolong/components v0.25.0
+	github.com/Tangerg/oolong/core v0.25.0
+	github.com/Tangerg/oolong/highlight v0.25.0
+	github.com/Tangerg/oolong/latex v0.25.0
+	github.com/Tangerg/oolong/markdown v0.25.0
+	github.com/Tangerg/oolong/mermaid v0.25.0
+	github.com/Tangerg/oolong/ptytest v0.25.0
+	github.com/Tangerg/scope/a2a v0.55.0
+	github.com/Tangerg/scope/agent v0.55.0
+	github.com/Tangerg/scope/core v0.55.0
+	github.com/Tangerg/scope/mcp v0.55.0
+	github.com/Tangerg/scope/models/alibaba v0.55.0
+	github.com/Tangerg/scope/models/anthropic v0.55.0
+	github.com/Tangerg/scope/models/azureopenai v0.55.0
+	github.com/Tangerg/scope/models/catalog v0.55.0
+	github.com/Tangerg/scope/models/deepseek v0.55.0
+	github.com/Tangerg/scope/models/fireworks v0.55.0
+	github.com/Tangerg/scope/models/google v0.55.0
+	github.com/Tangerg/scope/models/groq v0.55.0
+	github.com/Tangerg/scope/models/huggingface v0.55.0
+	github.com/Tangerg/scope/models/minimax v0.55.0
+	github.com/Tangerg/scope/models/mistral v0.55.0
+	github.com/Tangerg/scope/models/moonshot v0.55.0
+	github.com/Tangerg/scope/models/openai v0.55.0
+	github.com/Tangerg/scope/models/openrouter v0.55.0
+	github.com/Tangerg/scope/models/perplexity v0.55.0
+	github.com/Tangerg/scope/models/together v0.55.0
+	github.com/Tangerg/scope/models/xai v0.55.0
+	github.com/Tangerg/scope/models/xiaomi v0.55.0
+	github.com/Tangerg/scope/models/zhipu v0.55.0
+	github.com/Tangerg/scope/otel v0.55.0
+	github.com/Tangerg/scope/otel/agent v0.55.0
+	github.com/Tangerg/scope/skills v0.55.0
+	github.com/Tangerg/scope/tools v0.55.0
+	github.com/Tangerg/scope/tools/skills v0.55.0
 	github.com/Tangerg/sse v0.0.6
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/go-chi/chi/v5 v5.4.0
+	github.com/go-chi/chi/v5 v5.5.0
 	github.com/go-chi/cors v1.2.2
 	github.com/google/uuid v1.6.0
 	github.com/invopop/jsonschema v0.14.0
@@ -68,7 +68,7 @@ require (
 	golang.org/x/text v0.43.0
 	golang.org/x/tools v0.52.0
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.60.1
+	modernc.org/sqlite v1.61.0
 )
 
 require (
@@ -77,13 +77,13 @@ require (
 	cloud.google.com/go/compute/metadata v0.10.0 // indirect
 	codeberg.org/go-latex/latex v0.3.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/Tangerg/scope/models/protocol/anthropic v0.53.0 // indirect
-	github.com/Tangerg/scope/models/protocol/openai v0.53.0 // indirect
-	github.com/a2aproject/a2a-go/v2 v2.6.0 // indirect
+	github.com/Tangerg/scope/models/protocol/anthropic v0.55.0 // indirect
+	github.com/Tangerg/scope/models/protocol/openai v0.55.0 // indirect
+	github.com/a2aproject/a2a-go/v2 v2.7.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.27.0 // indirect
 	github.com/alecthomas/repr v0.5.4 // indirect
-	github.com/anthropics/anthropic-sdk-go v1.81.0 // indirect
+	github.com/anthropics/anthropic-sdk-go v1.84.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bluekeyes/go-gitdiff v0.9.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.10.3 // indirect
@@ -91,7 +91,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/coder/websocket v1.8.15 // indirect
-	github.com/dlclark/regexp2/v2 v2.8.4 // indirect
+	github.com/dlclark/regexp2/v2 v2.9.1 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
@@ -100,17 +100,16 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
-	github.com/google/pprof v0.0.0-20261008003335-7bae8d8c4c9e // indirect
 	github.com/google/s2a-go v0.1.11 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.3.23 // indirect
-	github.com/googleapis/gax-go/v2 v2.26.2 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.3.24 // indirect
+	github.com/googleapis/gax-go/v2 v2.27.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mattn/go-runewidth v0.0.31 // indirect
 	github.com/modelcontextprotocol/go-sdk v1.6.1 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
-	github.com/openai/openai-go/v3 v3.78.0 // indirect
+	github.com/openai/openai-go/v3 v3.85.1 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
@@ -137,19 +136,18 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
-	golang.org/x/image v0.46.0 // indirect
+	golang.org/x/image v0.47.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
-	google.golang.org/api v0.304.0 // indirect
+	google.golang.org/api v0.308.0 // indirect
 	google.golang.org/genai v1.75.0 // indirect
-	google.golang.org/genproto v0.0.0-20261005182115-fad411399dd8 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20261012220534-4341edf3f941 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
 	google.golang.org/grpc v1.84.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	modernc.org/libc v1.78.0 // indirect
+	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )

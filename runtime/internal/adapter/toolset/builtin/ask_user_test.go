@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // TestAskUser_Validation: malformed args and an empty questions list are
@@ -39,9 +40,9 @@ func TestAskUser_Validation(t *testing.T) {
 // The schema admits questions the interrupt contract refuses. Nothing has parked
 // when that refusal happens, so it must fail the call rather than lose the Run tree.
 func TestAskUserQuestionRejectionFailsTheCallNotTheRun(t *testing.T) {
-	tool, err := NewAskUser(func(context.Context, string, runs.Interrupt) (interrupt.Resolution, error) {
+	tool, err := NewAskUser(func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
 		t.Fatal("a refused question must not park")
-		return interrupt.Resolution{}, nil
+		return interrupt.Resolution{}, nil, nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -58,9 +59,9 @@ func TestAskUserQuestionRejectionFailsTheCallNotTheRun(t *testing.T) {
 
 func TestAskUserKeepsOptionsOpenToARealUserAnswer(t *testing.T) {
 	var captured runs.Interrupt
-	tool, err := NewAskUser(func(_ context.Context, _ string, request runs.Interrupt) (interrupt.Resolution, error) {
+	tool, err := NewAskUser(func(_ context.Context, _ toolcontract.Invocation, _ string, request runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
 		captured = request
-		return testsupport.QuestionAnswer(t, [][]string{{"another database"}}), nil
+		return testsupport.QuestionAnswer(t, [][]string{{"another database"}}), nil, nil
 	})
 	if err != nil {
 		t.Fatal(err)

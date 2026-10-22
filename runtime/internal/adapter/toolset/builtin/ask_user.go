@@ -57,29 +57,25 @@ func (a askUserArgs) arguments() (string, error) {
 	return string(b), nil
 }
 
-type asker struct {
-	interrupt runs.InterruptFunc
-}
-
-// NewAskUser builds the ask_user tool.
+// NewAskUser builds the ask_user tool. First entry returns a Scope InputRequest
+// that parks the call; re-entry renders the human's structured answers at this
+// same call site.
 func NewAskUser(interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
-	if interrupt == nil {
-		interrupt = runs.InterruptUnavailable
-	}
-	t := &asker{interrupt: interrupt}
-	return toolcontract.NewFunc[askUserArgs, string](
+	return newInterruptTool[askUserArgs](
 		toolcontract.FuncConfig{
 			Name:        string(tool.AskUser),
 			Description: "Ask the user one to four questions and wait for their answers. Use this only when progress requires a decision, clarification, or information only the user can provide, not for routine progress updates. Give two to four `options` for a multiple-choice question and put the recommended option first; the user may still provide a custom answer. Omit `options` for free text, and set `multi_select` only when options are present and more than one may apply.",
 		},
-		t.ask,
+		interrupt,
+		askUserPlan,
+		askUserResolve,
 	)
 }
 
-func (a *asker) ask(ctx context.Context, args askUserArgs) (string, error) {
+func askUserPlan(_ context.Context, args askUserArgs) (runs.Interrupt, string, error) {
 	arguments, err := args.arguments()
 	if err != nil {
-		return "", err
+		return runs.Interrupt{}, "", err
 	}
 	in := runs.QuestionPrompt{
 		ToolName:  string(tool.AskUser),
@@ -90,18 +86,14 @@ func (a *asker) ask(ctx context.Context, args askUserArgs) (string, error) {
 	// The interrupt contract owns the question rules; the schema only approximates
 	// them, so a refusal here is the model's argument rejected before anything parks.
 	if err := pending.Validate(); err != nil {
-		return "", toolfailure.Definite(fmt.Errorf("ask_user: %w", err))
+		return runs.Interrupt{}, "", toolfailure.Definite(fmt.Errorf("ask_user: %w", err))
 	}
-	// First pass interrupts (bubbles up, parks); resume returns the human's
-	// structured answers at this same call site.
-	res, err := a.interrupt(ctx,
-		interrupt.Key(string(interrupt.Question), string(tool.AskUser), arguments),
-		pending,
-	)
-	if err != nil {
-		return "", err
-	}
-	return answerText(in, res.Question().Answers()), nil
+	return pending, interrupt.Key(string(interrupt.Question), string(tool.AskUser), arguments), nil
+}
+
+func askUserResolve(_ context.Context, args askUserArgs, resolution interrupt.Resolution) (string, error) {
+	in := runs.QuestionPrompt{ToolName: string(tool.AskUser), Fields: args.toFields()}
+	return answerText(in, resolution.Question().Answers()), nil
 }
 
 // answerText renders the human's answers as the tool's result text, pairing

@@ -24,10 +24,7 @@ import (
 func TestAcceptedAnswerDeliveryAdvancesOnlyThePausedHead(t *testing.T) {
 	for _, delivered := range []int{1, 2} {
 		t.Run(fmt.Sprintf("answers_%d", delivered), func(t *testing.T) {
-			question, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "ask", Description: "Ask for a value."}, waitingDelegateQuestion)
-			if err != nil {
-				t.Fatal(err)
-			}
+			question := newDelegateQuestionTool(t, "Ask for a value.")
 			model := &observationScriptModel{responses: []*chat.Response{
 				interactionToolBatchResponse([]chat.ToolCall{
 					{ID: "a", Name: "ask", Arguments: `{}`},

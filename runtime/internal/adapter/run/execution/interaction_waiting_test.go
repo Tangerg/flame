@@ -26,8 +26,59 @@ import (
 	modeltext "github.com/Tangerg/flame/runtime/model/text"
 	"github.com/Tangerg/flame/runtime/sandbox"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
+
+// questionTool is a test Tool that parks on a product Question through Scope's
+// native input contract, mirroring the production ask_user tool, so the waiting,
+// restore, and delegate tests exercise the real continuation path rather than a
+// substitute. render projects the restored answer into the model-visible result.
+type questionTool struct {
+	definition chat.ToolDefinition
+	key        string
+	prompt     runs.Interrupt
+	render     func(interrupt.Resolution) (string, error)
+}
+
+func newQuestionTool(t *testing.T, name, description, key string, fields []runs.QuestionFieldSpec, render func(interrupt.Resolution) (string, error)) toolcontract.Tool {
+	t.Helper()
+	schema, err := jsonschema.For[struct{}]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	definition := chat.ToolDefinition{Name: name, Description: description, InputSchema: schema.JSON()}
+	if err := definition.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	return &questionTool{
+		definition: definition,
+		key:        key,
+		prompt:     runs.Interrupt{Kind: interrupt.Question, Question: &runs.QuestionPrompt{ToolName: name, Arguments: `{}`, Fields: fields}},
+		render:     render,
+	}
+}
+
+func (q *questionTool) Definition() chat.ToolDefinition { return q.definition }
+
+func (q *questionTool) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
+	resolution, request, err := runinput.Require(ctx, invocation, q.key, q.prompt)
+	if err != nil {
+		return toolcontract.Result{}, err
+	}
+	if request != nil {
+		return toolcontract.Result{InputRequest: request}, nil
+	}
+	text, err := q.render(resolution)
+	if err != nil {
+		return toolcontract.Result{}, err
+	}
+	output := chat.NewTextToolOutput(text)
+	if err := output.Validate(); err != nil {
+		return toolcontract.Result{}, err
+	}
+	return toolcontract.Result{Output: output}, nil
+}
 
 func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *testing.T) {
 	workspace := t.TempDir()
@@ -38,25 +89,12 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		requests  [][]chat.Message
 		mu        sync.Mutex
 	)
-	question, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "ask", Description: "Ask for one value before completing.",
-	}, func(ctx context.Context, _ struct{}) (string, error) {
-		resolution, err := runinput.Require(ctx, "question.ask", runs.Interrupt{
-			Kind: interrupt.Question,
-			Question: &runs.QuestionPrompt{
-				ToolName: "ask", Arguments: `{}`,
-				Fields: []runs.QuestionFieldSpec{{Prompt: "Which value?"}},
-			},
+	question := newQuestionTool(t, "ask", "Ask for one value before completing.", "question.ask",
+		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
+		func(resolution interrupt.Resolution) (string, error) {
+			toolCalls++
+			return resolution.Question().Answers()[0][0], nil
 		})
-		if err != nil {
-			return "", err
-		}
-		toolCalls++
-		return resolution.Question().Answers()[0][0], nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolResponse(chat.ToolCall{ID: "ask_call", Name: "ask", Arguments: `{}`}, 2, 1),
 		interactionUsageTextResponse("completed", 3, 1),
@@ -547,24 +585,11 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	question, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "ask", Description: "Ask before continuing.",
-	}, func(ctx context.Context, _ struct{}) (string, error) {
-		resolution, requireErr := runinput.Require(ctx, "question.after-search", runs.Interrupt{
-			Kind: interrupt.Question,
-			Question: &runs.QuestionPrompt{
-				ToolName: "ask", Arguments: `{}`,
-				Fields: []runs.QuestionFieldSpec{{Prompt: "Continue?"}},
-			},
+	question := newQuestionTool(t, "ask", "Ask before continuing.", "question.after-search",
+		[]runs.QuestionFieldSpec{{Prompt: "Continue?"}},
+		func(resolution interrupt.Resolution) (string, error) {
+			return resolution.Question().Answers()[0][0], nil
 		})
-		if requireErr != nil {
-			return "", requireErr
-		}
-		return resolution.Question().Answers()[0][0], nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	model := &advertisementWaitingModel{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.BuiltInTool(t, "search_tools"), testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
@@ -1073,22 +1098,9 @@ func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) runs.E
 
 func newQuestionCheckpointTool(t *testing.T) toolcontract.Tool {
 	t.Helper()
-	question, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "ask", Description: "Ask before completing.",
-	}, func(ctx context.Context, _ struct{}) (string, error) {
-		_, err := runinput.Require(ctx, "question.ask", runs.Interrupt{
-			Kind: interrupt.Question,
-			Question: &runs.QuestionPrompt{
-				ToolName: "ask", Arguments: `{}`,
-				Fields: []runs.QuestionFieldSpec{{Prompt: "Which value?"}},
-			},
-		})
-		return "", err
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return question
+	return newQuestionTool(t, "ask", "Ask before completing.", "question.ask",
+		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
+		func(interrupt.Resolution) (string, error) { return "", nil })
 }
 
 func observeInteractionUntilWaiting(

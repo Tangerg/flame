@@ -200,7 +200,7 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 		if owner == nil {
 			return zero, false, errors.New("execution: captured Tool owner is unavailable")
 		}
-		if _, err := owner.binding.Contract().Prepare(corechat.ToolCall{ID: metadata.Start.SourceCallID, Name: metadata.Start.ToolName, Arguments: metadata.Start.Arguments}); err != nil {
+		if _, err := owner.binding.Contract().Prepare(corechat.ToolCall{ID: metadata.Start.SourceCallID, Name: metadata.Start.ToolName, Arguments: metadata.Start.Arguments}, nil); err != nil {
 			return zero, false, fmt.Errorf("execution: validate captured effective arguments: %w", err)
 		}
 	}

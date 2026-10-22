@@ -69,7 +69,7 @@ func TestPreparedToolObservesUncertainReplyOnlyAfterAdmittedDispatch(t *testing.
 	registry := &mutableSourceRegistry{server: server.Clone()}
 	var settlements atomic.Int32
 	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, func(ctx context.Context, source inframcp.Executable, _ ToolHost) (ToolCall, func(), error) {
-		return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+		return func(invocation toolcontract.Invocation) (toolcontract.Result, error) {
 			defer settlements.Add(1)
 			return source.Call(ctx, invocation)
 		}, func() {}, nil
@@ -93,7 +93,7 @@ func TestPreparedToolObservesUncertainReplyOnlyAfterAdmittedDispatch(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "write", Name: binding.Contract().Definition().Name, Arguments: `{}`})
+	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "write", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 				t.Fatal(err)
 			}
 			invoke := func(binding toolcontract.Binding) error {
-				invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`})
+				invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
 				if err != nil {
 					return err
 				}
@@ -275,7 +275,7 @@ func TestFrozenExecutableAfterReconnectIsRejected(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`})
+		invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
 		if err != nil {
 			return err
 		}
@@ -345,7 +345,7 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`})
+	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

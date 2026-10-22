@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -145,13 +144,13 @@ func (t frozenInstallationTool) Unwrap() toolcontract.Tool { return t.Tool }
 func (t frozenInstallationTool) InstallationActivation() (plugin.Activation, error) {
 	return t.activation.Clone(), nil
 }
-func (t frozenInstallationTool) Call(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+func (t frozenInstallationTool) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 	current, err := InstallationActivation(t.Tool)
 	if err != nil {
-		return chat.ToolOutput{}, err
+		return toolcontract.Result{}, err
 	}
 	if !current.Equal(t.activation) {
-		return chat.ToolOutput{}, plugin.ErrStale
+		return toolcontract.Result{}, plugin.ErrStale
 	}
 	return t.Tool.Call(ctx, invocation)
 }

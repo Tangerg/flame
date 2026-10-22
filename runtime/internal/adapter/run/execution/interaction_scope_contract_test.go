@@ -92,16 +92,16 @@ func (scopeOutputTool) Definition() chat.ToolDefinition {
 	return chat.ToolDefinition{Name: "inspect", Description: "Inspect the workspace.", InputSchema: jsontext.Value(`{"type":"object","additionalProperties":false}`)}
 }
 
-func (s scopeOutputTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
-	return s.output.Clone(), nil
+func (s scopeOutputTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
+	return toolcontract.Result{Output: s.output.Clone()}, nil
 }
 
 type scopeDefinitionTool struct{ definition chat.ToolDefinition }
 
 func (s *scopeDefinitionTool) Definition() chat.ToolDefinition { return s.definition.Clone() }
 
-func (*scopeDefinitionTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
-	return chat.NewTextToolOutput("done"), nil
+func (*scopeDefinitionTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
+	return toolcontract.Result{Output: chat.NewTextToolOutput("done")}, nil
 }
 
 func TestObservedToolPreservesBoundDefinition(t *testing.T) {

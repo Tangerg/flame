@@ -20,7 +20,7 @@ func TestPublicBindingsCompileForAnExternalModule(t *testing.T) {
 	root := moduleRoot(t)
 	goMod := `module example.com/runtimeconsumer
 
-go 1.27.0
+go 1.27.3
 
 
 `
@@ -169,11 +169,11 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 	}
 	writeConsumerFile(t, filepath.Join(directory, "go.sum"), string(checksums))
 
-	workspace := fmt.Sprintf("go 1.27.0\n\nuse (\n%s\n%s\n%s\n)\n", filepath.ToSlash(directory), filepath.ToSlash(filepath.Dir(root)), filepath.ToSlash(filepath.Join(root, "..", "packages", "local-runtime")))
+	workspace := fmt.Sprintf("go 1.27.3\n\nuse (\n%s\n%s\n%s\n)\n", filepath.ToSlash(directory), filepath.ToSlash(filepath.Dir(root)), filepath.ToSlash(filepath.Join(root, "..", "packages", "local-runtime")))
 	writeConsumerFile(t, filepath.Join(directory, "go.work"), workspace)
 	dependencies := exec.CommandContext(t.Context(), "go", "list", "-deps", runtimeModulePath)
 	dependencies.Dir = directory
-	dependencies.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame", "GOTOOLCHAIN=local")
+	dependencies.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame", "GOTOOLCHAIN=auto")
 	output, err := dependencies.CombinedOutput()
 	if err != nil {
 		t.Fatalf("load external Runtime build closure: %v\n%s", err, output)
@@ -185,7 +185,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 	}
 	command := exec.CommandContext(t.Context(), "go", "test", "./...")
 	command.Dir = directory
-	command.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame", "GOTOOLCHAIN=local")
+	command.Env = append(os.Environ(), "GOWORK="+filepath.Join(directory, "go.work"), "GOPROXY=off", "GONOPROXY=none", "GONOSUMDB=github.com/Tangerg/flame", "GOTOOLCHAIN=auto")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("compile external Runtime consumer: %v\n%s", err, output)
 	}

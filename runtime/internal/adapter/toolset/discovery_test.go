@@ -33,11 +33,11 @@ func (m mcpTool) Definition() chat.ToolDefinition {
 	}
 }
 
-func (m mcpTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
+func (m mcpTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
 	if m.result == "" {
-		return chat.NewTextToolOutput("ok"), nil
+		return toolcontract.Result{Output: chat.NewTextToolOutput("ok")}, nil
 	}
-	return chat.NewTextToolOutput(m.result), nil
+	return toolcontract.Result{Output: chat.NewTextToolOutput(m.result)}, nil
 }
 
 func (m mcpTool) MCPToolIdentity() (string, string) { return m.server, m.remote }
@@ -243,11 +243,11 @@ func TestDiscoveryRejectsUndecodableIntegersAtAdmission(t *testing.T) {
 		`{"query":"issue","limit":1e1}`,
 		`{"query":"issue","limit":10.0}`,
 	} {
-		if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: "search_tools", Arguments: arguments}); !errors.Is(err, toolcontract.ErrInvalidInvocation) {
+		if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: "search_tools", Arguments: arguments}, nil); !errors.Is(err, toolcontract.ErrInvalidInvocation) {
 			t.Errorf("discovery admitted %s: %v", arguments, err)
 		}
 	}
-	if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: "search_tools", Arguments: `{"query":"issue","limit":10}`}); err != nil {
+	if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: "search_tools", Arguments: `{"query":"issue","limit":10}`}, nil); err != nil {
 		t.Fatalf("discovery rejected valid integer: %v", err)
 	}
 }

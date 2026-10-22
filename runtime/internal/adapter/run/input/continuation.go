@@ -1,6 +1,7 @@
-// Package input translates product Interrupt values to Agent Framework
-// Interaction pending inputs and semantic response Signals. Agent Framework owns the
-// wait lifecycle; this package owns only the anti-corruption boundary.
+// Package input translates product Interrupt values to Scope's Tool input
+// contract. Scope owns the suspension, wait, and re-entry; this package owns
+// only the anti-corruption boundary between a product Interrupt and Scope's
+// InputRequest and Continuation.
 package input
 
 import (
@@ -16,20 +17,20 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/jsonschema"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // resolutionSchema derives the response contract from the payload type this
-// package decodes, so the shape the Agent Framework enforces at the wait
-// boundary cannot drift from the shape that is read back. Which remember scopes
-// exist stays with approval.Scope, which rejects an unknown one at decode.
-var resolutionSchema = sync.OnceValues(func() (jsontext.Value, error) {
+// package decodes, so the shape Scope enforces at the wait boundary cannot
+// drift from the shape that is read back. Which remember scopes exist stays
+// with approval.Scope, which rejects an unknown one at decode.
+var resolutionSchema = sync.OnceValues(func() (jsonschema.Schema, error) {
 	schema, err := jsonschema.For[ResolutionPayload]()
 	if err != nil {
-		return nil, fmt.Errorf("run input: derive resolution schema: %w", err)
+		return jsonschema.Schema{}, fmt.Errorf("run input: derive resolution schema: %w", err)
 	}
-	return jsontext.Value(schema.JSON()), nil
+	return schema, nil
 })
 
 type capabilityContextKey struct{}
@@ -52,7 +53,7 @@ type continuationWire struct {
 	Prompt       jsontext.Value `json:"prompt"`
 }
 
-// Continuation is the validated product input restored while Agent Framework re-enters
+// Continuation is the validated product input Scope restored while re-entering
 // the Tool invocation that requested it.
 type Continuation struct {
 	Key        string
@@ -60,10 +61,10 @@ type Continuation struct {
 	Resolution interrupt.Resolution
 }
 
-// Restore reads the exact prompt and response from Agent Framework's public Tool-input
-// continuation context. found=false identifies an initial invocation.
-func Restore(ctx context.Context) (Continuation, bool, error) {
-	continuation, found := interaction.ToolInputContinuationFromContext(ctx)
+// Restore decodes Scope's re-entry continuation into the exact prompt and
+// validated resolution it froze. found=false identifies an initial invocation.
+func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
+	continuation, found := invocation.Continuation()
 	if !found {
 		return Continuation{}, false, nil
 	}
@@ -95,29 +96,39 @@ func Restore(ctx context.Context) (Continuation, bool, error) {
 	return Continuation{Key: state.Key, Interrupt: prompt, Resolution: resolution}, true, nil
 }
 
-// Require returns a restored decision at the original call site or requests a
-// new Agent Framework Interaction input.
-func Require(ctx context.Context, key string, prompt runs.Interrupt) (interrupt.Resolution, error) {
+// Require returns a restored decision for an already-answered request, or a
+// Scope InputRequest the Tool returns as tool.Result{InputRequest} to park on
+// new input. Scope owns the suspension, wait identity, and re-entry.
+func Require(ctx context.Context, invocation toolcontract.Invocation, key string, prompt runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
 	promptJSON, err := admitRequirement(ctx, key, prompt)
 	if err != nil {
-		return interrupt.Resolution{}, err
+		return interrupt.Resolution{}, nil, err
 	}
-	continued, restored, err := Restore(ctx)
+	continued, restored, err := Restore(invocation)
 	if err != nil {
-		return interrupt.Resolution{}, err
+		return interrupt.Resolution{}, nil, err
 	}
 	if restored {
-		return restoredResolution(continued, key, promptJSON)
+		resolution, err := restoredResolution(continued, key, promptJSON)
+		return resolution, nil, err
 	}
 	stateJSON, err := encodeRequirementState(key, promptJSON)
 	if err != nil {
-		return interrupt.Resolution{}, err
+		return interrupt.Resolution{}, nil, err
 	}
 	schema, err := resolutionSchema()
 	if err != nil {
-		return interrupt.Resolution{}, err
+		return interrupt.Resolution{}, nil, err
 	}
-	return interrupt.Resolution{}, interaction.RequireToolInput(promptJSON, schema, stateJSON)
+	request, err := toolcontract.NewInputRequest(toolcontract.InputRequestConfig{
+		Prompt:            []byte(promptJSON),
+		ResponseSchema:    schema,
+		ContinuationState: []byte(stateJSON),
+	})
+	if err != nil {
+		return interrupt.Resolution{}, nil, fmt.Errorf("run input: build input request: %w", err)
+	}
+	return interrupt.Resolution{}, &request, nil
 }
 
 func admitRequirement(ctx context.Context, key string, prompt runs.Interrupt) (jsontext.Value, error) {

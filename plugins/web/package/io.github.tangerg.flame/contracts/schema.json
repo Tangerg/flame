@@ -141,7 +141,7 @@
       "additionalProperties": false,
       "properties": {
         "allowed_domains": {
-          "description": "Only include results from at most 20 domains (bare domain names, no protocol). Mutually exclusive with blocked_domains.",
+          "description": "Only include results from the allowed domains (bare domain names, no protocol). Mutually exclusive with blocked_domains.",
           "items": {
             "type": "string"
           },
@@ -149,7 +149,7 @@
           "type": "array"
         },
         "blocked_domains": {
-          "description": "Exclude results from at most 20 domains (bare domain names, no protocol). Mutually exclusive with allowed_domains.",
+          "description": "Exclude results from these domains (bare domain names, no protocol). Mutually exclusive with allowed_domains.",
           "items": {
             "type": "string"
           },
@@ -163,7 +163,7 @@
               "minimum": -9223372036854775808
             }
           ],
-          "description": "Maximum results to return, from 1 to 20. Omit to use the configured search default (typically 5-10).",
+          "description": "Maximum results to return within the supported search limit. Omit to use the configured search default (typically 5-10).",
           "maximum": 20,
           "minimum": 1,
           "type": "integer"

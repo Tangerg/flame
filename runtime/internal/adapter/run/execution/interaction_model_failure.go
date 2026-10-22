@@ -6,7 +6,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
 // interactionModelFailures owns the product classification of stopped model
@@ -30,9 +29,7 @@ func (i *interactionModelFailures) record(processID agent.ProcessID, cause error
 		Kind:   run.FailureProviderUnavailable,
 		Detail: executorDiagnostic(cause),
 	}
-	if errors.Is(cause, interaction.ErrHostFailure) {
-		failure.Kind = run.FailureInternal
-	} else if classified, ok := errors.AsType[*run.FailureError](cause); ok {
+	if classified, ok := errors.AsType[*run.FailureError](cause); ok {
 		delay := classified.RetryAfter
 		if delay < 0 || !classified.Kind.AllowsRetryAfter() {
 			delay = 0

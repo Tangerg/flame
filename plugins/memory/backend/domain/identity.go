@@ -66,4 +66,12 @@ func (i *ItemID) UnmarshalText(text []byte) error {
 	return err
 }
 
-func (ItemID) JSONSchemaPattern() string { return ItemIDPattern }
+// itemIDModel mirrors the pattern-constrained string an ItemID marshals to, so
+// schema derivation describes the text wire shape the opaque struct hides.
+type itemIDModel string
+
+func (itemIDModel) JSONSchemaPattern() string { return ItemIDPattern }
+
+// JSONSchemaAlias projects ItemID's text encoding as its string wire model, as
+// Scope's schema derivation requires for a struct with custom encoding.
+func (ItemID) JSONSchemaAlias() any { return itemIDModel("") }

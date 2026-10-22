@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -34,10 +33,6 @@ func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	inputRequired := interaction.RequireToolInput([]byte(`{"question":"continue?"}`), []byte(`{"type":"boolean"}`), []byte(`{}`))
-	if !errors.Is(inputRequired, interaction.ErrToolInputRequired) {
-		t.Fatal(inputRequired)
-	}
 	for _, test := range []struct {
 		name    string
 		failure *toolcontract.Failure
@@ -45,8 +40,6 @@ func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
 	}{
 		{name: "partial", failure: partial},
 		{name: "denied", failure: denied},
-		{name: "partial joined with input", failure: partial, joined: inputRequired},
-		{name: "denied joined with input", failure: denied, joined: inputRequired},
 		{name: "partial joined with cancellation", failure: partial, joined: context.Canceled},
 	} {
 		t.Run(test.name, func(t *testing.T) {

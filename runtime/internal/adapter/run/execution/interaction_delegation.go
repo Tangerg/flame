@@ -8,6 +8,7 @@ import (
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 const defaultDelegateDepth = 4
@@ -30,7 +31,7 @@ func newDelegatedInteractionDefinition(
 	if inner == nil {
 		return nil, errors.New("execution: delegated Interaction definition is nil")
 	}
-	inputSchema, err := agent.SchemaFor[delegateInput]()
+	inputSchema, err := jsonschema.For[delegateInput]()
 	if err != nil {
 		return nil, fmt.Errorf("execution: delegated task input schema: %w", err)
 	}

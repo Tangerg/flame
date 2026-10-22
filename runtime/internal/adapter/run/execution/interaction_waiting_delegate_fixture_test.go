@@ -1,13 +1,11 @@
 package execution
 
 import (
-	"context"
 	"errors"
 	"slices"
 	"testing"
 	"time"
 
-	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -31,12 +29,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	t.Helper()
 
 	model := newWaitingDelegateModel()
-	question, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "ask", Description: "Ask the user for the value required by delegated work.",
-	}, waitingDelegateQuestion)
-	if err != nil {
-		t.Fatal(err)
-	}
+	question := newDelegateQuestionTool(t, "Ask the user for the value required by delegated work.")
 	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:     t.Context(),
 		ChatResolver: staticInteractionChatResolver(model),
@@ -76,21 +69,18 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	}
 }
 
-func waitingDelegateQuestion(ctx context.Context, _ struct{}) (string, error) {
-	resolution, err := runinput.Require(ctx, "delegate.required-value", runs.Interrupt{
-		Kind: interrupt.Question,
-		Question: &runs.QuestionPrompt{
-			ToolName: "ask", Arguments: `{}`,
-			Fields: []runs.QuestionFieldSpec{{Prompt: "Which value should the delegate use?"}},
-		},
-	})
-	if err != nil {
-		return "", err
-	}
-	if len(resolution.Question().Answers()) != 1 || len(resolution.Question().Answers()[0]) != 1 {
+func newDelegateQuestionTool(t *testing.T, description string) toolcontract.Tool {
+	return newQuestionTool(t, "ask", description, "delegate.required-value",
+		[]runs.QuestionFieldSpec{{Prompt: "Which value should the delegate use?"}},
+		delegateQuestionAnswer)
+}
+
+func delegateQuestionAnswer(resolution interrupt.Resolution) (string, error) {
+	answers := resolution.Question().Answers()
+	if len(answers) != 1 || len(answers[0]) != 1 {
 		return "", errors.New("delegated question returned an invalid answer shape")
 	}
-	return resolution.Question().Answers()[0][0], nil
+	return answers[0][0], nil
 }
 
 func takeFirstIdentifier(identifiers *[]string) string {

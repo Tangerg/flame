@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/keylock"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -263,7 +262,7 @@ func TestReadTrackingRejectsAFileChangedAfterReadBeforeStamp(t *testing.T) {
 	base := mustReadTool(t, mustLocalExecutor(t, dir))
 	readFinished := make(chan struct{})
 	release := make(chan struct{})
-	blocking := decorateCall(base, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	blocking := decorateCall(base, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		out, err := base.Call(ctx, invocation)
 		close(readFinished)
 		<-release
@@ -296,7 +295,7 @@ func TestReadTrackingRejectsSameContentReplacementDuringRead(t *testing.T) {
 	base := mustRuntimeReadTool(t, mustLocalExecutor(t, dir))
 	readFinished := make(chan struct{})
 	release := make(chan struct{})
-	blocking := decorateCall(base, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	blocking := decorateCall(base, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		out, err := base.Call(ctx, invocation)
 		close(readFinished)
 		<-release
@@ -338,7 +337,7 @@ func TestReadStampAndSamePathMutationAreAtomic(t *testing.T) {
 	readStarted := make(chan struct{})
 	releaseRead := make(chan struct{})
 	baseRead := mustReadTool(t, executor)
-	blockingRead := decorateCall(baseRead, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	blockingRead := decorateCall(baseRead, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		out, err := baseRead.Call(ctx, invocation)
 		close(readStarted)
 		<-releaseRead

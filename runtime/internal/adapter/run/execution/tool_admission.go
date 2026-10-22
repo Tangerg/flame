@@ -43,7 +43,7 @@ func (a toolAdmission) prepare(ctx context.Context, callID string) (ToolAuthoriz
 	}
 	request := ToolAuthorizationRequest{SessionID: a.input.SessionID, WorkspaceCWD: a.input.WorkspaceCWD, CallID: callID, Tool: a.ref, SourceFingerprint: a.fingerprint, Arguments: arguments,
 		SafetyClass: a.interpreter.SafetyClass(a.ref), FileMutation: fileMutationScope(a.executable, arguments, a.input.CWD), ShellCommand: a.interpreter.ShellCommand(a.ref, arguments.Canonical()), RequireApproval: forceApproval}
-	if _, err := a.binding.Contract().Prepare(chat.ToolCall{ID: callID, Name: request.Tool.ModelName(), Arguments: arguments.Canonical()}); err != nil {
+	if _, err := a.binding.Contract().Prepare(chat.ToolCall{ID: callID, Name: request.Tool.ModelName(), Arguments: arguments.Canonical()}, nil); err != nil {
 		return request, ToolAuthorizationDecision{}, errors.Join(tool.ErrInvalidArguments, err)
 	}
 	if !a.interpreter.UsesStandardPolicy(a.ref) {

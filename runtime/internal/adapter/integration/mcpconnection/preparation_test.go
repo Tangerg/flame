@@ -84,7 +84,7 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 				if change == "invalid prepared call" {
 					return nil, func() { releases.Add(1) }, nil
 				}
-				return func(invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+				return func(invocation toolcontract.Invocation) (toolcontract.Result, error) {
 					defer settled.Add(1)
 					return source.Call(ctx, invocation)
 				}, func() { releases.Add(1) }, nil
@@ -108,7 +108,7 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 			if err != nil {
 				t.Fatal(err)
 			}
-			invocation, err := bound.Contract().Prepare(chat.ToolCall{ID: "write", Name: bound.Contract().Definition().Name, Arguments: `{}`})
+			invocation, err := bound.Contract().Prepare(chat.ToolCall{ID: "write", Name: bound.Contract().Definition().Name, Arguments: `{}`}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

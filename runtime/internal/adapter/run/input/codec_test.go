@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/agent"
 )
 
 func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
@@ -164,11 +163,7 @@ func TestContinuationCodecRejectsAliasesAndDuplicates(t *testing.T) {
 // this schema before the codec ever sees it, so a shape the codec requires and
 // a shape the schema admits cannot be two different answers.
 func TestResolutionSchemaGatesWhatTheCodecReads(t *testing.T) {
-	raw, err := resolutionSchema()
-	if err != nil {
-		t.Fatal(err)
-	}
-	schema, err := agent.ParseSchema(raw)
+	schema, err := resolutionSchema()
 	if err != nil {
 		t.Fatal(err)
 	}

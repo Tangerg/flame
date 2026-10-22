@@ -27,7 +27,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -426,7 +425,7 @@ func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientS
 	}
 }
 
-type ToolCall func(toolcontract.Invocation) (chat.ToolOutput, error)
+type ToolCall func(toolcontract.Invocation) (toolcontract.Result, error)
 
 // ToolHost opens one installed tool call's canonical host grant through Pool.OpenRPC,
 // its single owner, so a model Tool reaches the same host capability and frozen

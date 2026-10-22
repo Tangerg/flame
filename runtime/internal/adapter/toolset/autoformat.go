@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
@@ -33,10 +32,10 @@ var errAutoFormatFileTooLarge = fmt.Errorf(
 	"auto-format: file exceeds the %d MiB limit", maxAutoFormatFileBytes>>20)
 
 func withAutoFormat(inner toolcontract.Tool, root *filesystemRoot, executor *fs.LocalExecutor) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
-			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths before formatting: %w", err)
+			return toolcontract.Result{}, fmt.Errorf("inspect mutation paths before formatting: %w", err)
 		}
 		out, err := inner.Call(ctx, invocation)
 		if err != nil || len(paths) == 0 {
@@ -51,7 +50,7 @@ func withAutoFormat(inner toolcontract.Tool, root *filesystemRoot, executor *fs.
 		if len(failed) == 0 {
 			return out, nil
 		}
-		return appendToolOutputText(out, "\n\nAuto-format skipped or failed:\n- "+strings.Join(failed, "\n- ")), nil
+		return toolcontract.Result{Output: appendToolOutputText(out.Output, "\n\nAuto-format skipped or failed:\n- "+strings.Join(failed, "\n- "))}, nil
 	})
 }
 

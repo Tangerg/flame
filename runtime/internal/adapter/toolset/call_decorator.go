@@ -9,7 +9,7 @@ import (
 
 // decorateCall replaces Call while preserving the inner capability declarations
 // — the shared spine of read/mutation guards and post-mutation diagnostics.
-func decorateCall(inner toolcontract.Tool, call func(context.Context, toolcontract.Invocation) (chat.ToolOutput, error)) toolcontract.Tool {
+func decorateCall(inner toolcontract.Tool, call func(context.Context, toolcontract.Invocation) (toolcontract.Result, error)) toolcontract.Tool {
 	return &callDecorator{inner: inner, call: call}
 }
 
@@ -18,12 +18,12 @@ func decorateCall(inner toolcontract.Tool, call func(context.Context, toolcontra
 // tool, so a decorator stack preserves the inner tool's full contract.
 type callDecorator struct {
 	inner toolcontract.Tool
-	call  func(context.Context, toolcontract.Invocation) (chat.ToolOutput, error)
+	call  func(context.Context, toolcontract.Invocation) (toolcontract.Result, error)
 }
 
 func (c *callDecorator) Definition() chat.ToolDefinition { return c.inner.Definition() }
 
-func (c *callDecorator) Call(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
+func (c *callDecorator) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 	return c.call(ctx, invocation)
 }
 

@@ -89,10 +89,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 			return interactionToolBatchResponse(calls, 2, 1), nil
 		}
 	})
-	question, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "ask", Description: "Ask for a value."}, waitingDelegateQuestion)
-	if err != nil {
-		t.Fatal(err)
-	}
+	question := newDelegateQuestionTool(t, "Ask for a value.")
 	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime: t.Context(), ChatResolver: staticInteractionChatResolver(model),
 		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
