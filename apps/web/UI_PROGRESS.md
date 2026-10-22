@@ -2503,6 +2503,49 @@ defects; each needs a Wails look and an explicit choice before implementing:
   deliberately off-ladder; mapping them onto `--dur-slow`/`--ease-state` would change
   the actual timing and reveal feel, which needs a Wails look before adopting.
 
+## Dock plugin layout and the task mental model
+
+The user judged the dock plugin views (naming diff and schedules) as less reasonable
+than ChatGPT/ZCode and asked for a systematic layout pass referencing them. Grounding:
+the dock is a narrow column (`shellGeometry` 320–480px), so competing control chrome
+hurts most there; the Ace Design references (`acedesign.io` Alpaca and Marketer, studied
+from the cached mockups) show the target composition — a breadcrumb or single object-
+identity header, section labels, label-value rows, right-aligned muted metadata, one
+purposeful set of actions, and generous whitespace ("let the layout explain"). A
+subagent audited every dock plugin against that and the task model; the ranked fixes
+shipped so far (each a `plugins/*/component` source edit plus its rebuilt ESM resource;
+`cd plugins && npm run build && npm run check` verifies them; native host acceptance of
+each dock view is still pending):
+
+- **schedules** — Run now was buried in the "Schedule details" disclosure while
+  Edit/Enable/Delete sat in the row action menu, so the primary "what's next" was the
+  hardest to reach; Run now is now the first action-menu item and the disclosure is
+  read-only facts. The card led with a raw `Cron` code line as identity and repeated
+  Next firing; the human-readable Next firing is now the primary line, the cron
+  expression moved into the facts, and the duplicate was dropped. The restating panel
+  description is gone.
+- **diff** — in the single-file view the overview Comparison (Uncommitted/Branch)
+  selector + Refresh stayed resident, stacking three to four sticky bars in the narrow
+  dock; that bar now renders only in the files-list view. The file identity was split
+  between the sticky `DiffFileHeader` (basename) and a repeated full-path `Metadata` at
+  the top of the body; `DiffFileHeader` (in `@flame/ui`, consumed only by this plugin;
+  `apps/web` uses the unchanged `DiffFileList`) now shows name + dimmed directory once
+  and the body line is gone. Restating panel description removed.
+- **usage** — two stacked full-width control bars (period Toolbar + search/group
+  FilterBar) merged into one FilterBar (search + refresh lead, period + group-by as the
+  options row).
+- **usagereports, skills** — the detail view stacked a navigation Toolbar (Back +
+  Refresh) over a second Toolbar holding only the title; collapsed into one row (Back +
+  title + skills' scope badge as content, Refresh as the trailing action).
+- **memory** — the editor restated the scope a third time (already in the always-visible
+  Segmented and the header); dropped, leaving only the record id on an update. The
+  deeper item — the edit `RecordForm` is injected at the panel top rather than a
+  list→detail switch that keeps the edited row in view — is deferred: it needs the body
+  render-order reworked and native verification of the edit/cancel focus flow.
+- Not changed (reviewed): `tool-results` is an embedded single-object result, not a
+  master/detail list; `diagnostics` is clean; `trajectory`'s duplicate page-count line
+  and `usage`'s input/output token overlap are low-value de-dups left for a later pass.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
