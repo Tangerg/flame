@@ -212,7 +212,6 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         <PanelHeader
           size="md"
           title="Workspace diff"
-          description="Current workspace changes"
           context={
             <Metadata>
               <DiffFilePath path={workspace.ref.path} />
@@ -222,25 +221,27 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       }
       controls={
         <>
-          <Toolbar
-            label="Comparison scope"
-            actions={
-              <IconButton
-                icon={Refresh}
-                aria-label="Refresh"
-                size="md"
-                pending={read.loading}
-                onClick={() => void refresh()}
+          {!file && (
+            <Toolbar
+              label="Comparison scope"
+              actions={
+                <IconButton
+                  icon={Refresh}
+                  aria-label="Refresh"
+                  size="md"
+                  pending={read.loading}
+                  onClick={() => void refresh()}
+                />
+              }
+            >
+              <Select
+                label="Comparison"
+                value={mode}
+                options={COMPARISONS}
+                onValueChange={(value) => setMode(value as DiffMode)}
               />
-            }
-          >
-            <Select
-              label="Comparison"
-              value={mode}
-              options={COMPARISONS}
-              onValueChange={(value) => setMode(value as DiffMode)}
-            />
-          </Toolbar>
+            </Toolbar>
+          )}
           {read.loading && (
             <Metadata role="status">
               Reading {comparisonName(mode).toLocaleLowerCase()}…
