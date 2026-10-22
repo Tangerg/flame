@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. Shared Select dismissal now finishes before rapid keyboard navigation, published at `346c1c07e`. Object-menu names are published at `57d54301e` after integration and renewed native acceptance on current dependencies; existing context-menu keyboard continuity is also qualified. The current Web test run passed all 3,069 tests; the existing MCP API-consumer guard still fails. Earlier aggregate timeouts, current delivery and cleanup are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. Shared Select dismissal now finishes before rapid keyboard navigation, published at `346c1c07e`. Object-menu names are published at `57d54301e` after integration and renewed native acceptance on current dependencies; existing context-menu keyboard continuity is also qualified. Shared modal dismissal now releases keyboard navigation immediately; native search, nested editing and transcript previews are qualified below. The current Web test run passed all 3,069 tests; the existing MCP API-consumer guard still fails. Earlier aggregate timeouts, current delivery and cleanup are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1688,6 +1688,101 @@ Verification and delivery boundary:
   retained-content popup boundaries; neither whole-product VoiceOver coverage
   nor untested focus paths are claimed. The context-menu qualification follows.
 
+### Shared modal dismissal
+
+Exact main `66e66c6de` exposed the remaining contract difference in the real
+sidebar SearchOverlay: an ordinary Escape returned to Search sessions and the
+next Tab reached New session, but all **three** consecutive 35 ms Escape/Tab
+trials stayed on Search sessions. The same product inputs with Motion Off passed
+**three of three**. Base UI 1.9 Dialog keeps its focus manager enabled until the
+retiring popup unmounts, and its `data-closed` signal does not use Menu's instant
+dismiss attribute. The common 80 ms exit therefore consumed the next action.
+CatalogPicker is a Popover, not a Dialog; its existing instant dismissal passed
+all three baseline trials. Schedules conditionally unmounts its edit dialog and
+also passed all three. Those controls were not defective or redesigned.
+
+`packages/ui/src/floating-surface.tsx` now ends panel and scrim transitions when
+Base UI marks a modal `data-closed`. `modalPanel()` merges that modal policy after
+the common motion group. One property list and one easing constant own the
+unchanged entry declarations. Base UI retains open state, guards, unmount and
+return focus; callers retain their initial/final-focus and hidden-owner policies.
+SearchOverlay, ModalDialog and transcript LightboxDialog use this same boundary.
+Select, Menu, ordinary floating panels and tips keep their existing policies.
+No state, timer, event handler, focus callback, observer or dependency was added.
+
+[Radix Dialog's keyboard model](https://www.radix-ui.com/primitives/docs/components/dialog#keyboard-interactions)
+and the installed [Base UI Dialog contract](https://base-ui.com/react/components/dialog)
+anchor return and modal isolation. Better-accessibility's focus order and
+better-ui's information-free exit guidance support making the next action
+available immediately. The read-only Arc Dialog implementation uses a different
+Radix/Motion presence owner; its lifecycle was not copied. HeroUI's real modal
+form and dismissal examples informed the bounded-task comparison.
+
+Verification and delivery boundary:
+
+- Bounded Claude Code CLI used configured `claude-opus-5-5`, completing nine turns
+  in **28.76 seconds** without subagents or permission denials. It edited only
+  the shared surface and its existing README paragraph. Primary reviewed the
+  actual diff, primitive lifecycle, callers, compiled classes and native results.
+  The unchanged chrome guard caught a real missing adjacent easing declaration
+  in the first patch; primary made the shared easing explicit and the guard now
+  passes. No guard, assertion or timeout was weakened.
+- The first candidate passed shared UI **79 tests** plus the packed consumer and
+  the focused popup **3 files / 24 tests**. The full Web test run passed **389
+  files / 3,069 tests** in **100.41 seconds**; its **123.99-second aggregate failed**
+  only at the existing `mcp.servers.reconnect` non-test consumer inventory. Its
+  16 guard tests passed. Types, lint, formatting, dependency and architecture
+  checks passed before that stop. Runtime, SDK and the inventory are unchanged.
+- That full run and the first EN native search pass precede the explicit easing
+  repair. The five effective surface class sets and emitted CSS bytes were
+  identical after that metadata repair; exact class ordering changed. The final
+  source then passed shared UI **79 tests plus packed consumer** in **8.25
+  seconds**, focused **24 tests** in **2.79 seconds**, typecheck, and all fifteen
+  later gates serially, including chrome, all **11** portable resource rebuild
+  comparisons, production bundle and plugin modules. Final `make check-native`
+  passed in **22.27 seconds** with Go 1.27.3 and Wails host/JS beta.34. The full
+  Web suite was not repeated after the CSS-equivalent metadata repair. No browser
+  visual suite, benchmark or simulated native-transition test ran.
+- Actual Wails EN/light/14 px/Flame Orange passed three Default-motion rapid
+  Escape/Tab trials to New session, reverse navigation to Hide sidebar, immediate
+  reopen, pointer scrim dismissal and real result selection. The mixed query
+  `Native query 保留` retired on reopen according to the existing query policy.
+  Selecting Align desktop shell and Work Index updated the actual sidebar
+  selection and returned to Search; the fixture's static main panel is not a
+  real conversation execution.
+- On the final source, actual EN Schedules nested Model Select closed to Refresh
+  model choices while preserving `Modal task 保留`; outer Escape/Tab reached
+  Schedule templates in three trials. Three CatalogPicker trials reached Search
+  this page with the exact `Modal continuity draft 保留` Composer draft retained.
+  The file reader's reading-guide.md was also visited, but that renderer owns
+  static images/tables and does not qualify the transcript Lightbox.
+- The actual long-content transcript supplied the real MarkdownTable and image
+  Lightboxes on final source. Pointer wheel revealed the table and its visible
+  Expand control. The bounded table preview had readable content and initial
+  Table content focus. Stepped Escape returned to Expand table; all three rapid
+  keyboard trials reached the same ordinary next control, Copy table. The
+  adjacent Inline architecture image opened its actual viewer with identity
+  1/2; ordinary and rapid dismissal reached Inline detail. No image download or
+  real task submission was performed, and this plain-text fixture does not
+  requalify file navigation inside an expanded table.
+- Final Wails ZH/dark/18 px/custom blue passed three Actual Size and three 200%
+  rapid trials. Twenty successful native Zoom In commands were recorded in four
+  bounded chunks. Actual list wheel scrolling and arrow navigation exposed the
+  last result, Draft a release note, within the popup. The real native window
+  shrank from **2878×1798 to 2632×1798 screenshot pixels**; the popup stayed bounded
+  and readable, and three further rapid trials reached 新建会话. Actual Size was
+  restored before Quit. Native accessibility and screenshots were inspected;
+  VoiceOver speech, IME composition and other platforms are not newly qualified.
+- All **28** reviewed product/host/fixture/manifest inputs and **two** private
+  harness inputs stayed identical through final acceptance. All seven owned
+  native PIDs and the CLI PID exited. The exact bundle was unregistered. Its
+  bundle, homes, overlays, captures, prompts, reports, logs, root and pointer were
+  removed together with ten newly created worktree outputs/caches and two unique
+  bundle Library paths, using preexistence, canonical-path, UID, birth-time,
+  symlink and tracked-file guards. Existing dependencies, shared UI Vite cache,
+  compiler/package caches, read-only references and the user's primary checkout
+  remain. Remote main was fetched again and remained at the accepted base.
+
 ## Object identity in context menus
 
 Native inspection of exact main `a1ca0566e` found unnamed root menus for Dock
@@ -1798,9 +1893,10 @@ Verification and delivery boundary:
   workspace-lint and commit-message hooks and pushed to remote `main`.
   `git ls-remote` confirmed the exact published revision. All six committed
   product hashes still match final native acceptance, and the owned working tree
-  is clean. Next qualify actual catalog Popover and bounded Dialog rapid
-  dismissal before deciding whether either needs a change; no shared exit-policy
-  defect is assumed.
+  is clean at that delivery checkpoint. The subsequent catalog, bounded Dialog
+  and shared-modal dismissal qualification is recorded above. Continue the
+  result → detail → source workflow from current production behavior; do not
+  repeat the completed popup checks or assume an unobserved defect.
 
 ## Native workspace zoom and Dock geometry
 

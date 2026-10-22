@@ -319,8 +319,11 @@ cancellation precedes the primary action. Both groups wrap within the available
 width, using the shared control gap internally and content gap between groups.
 The parent form or record composition owns spacing before the actions;
 `FormActions` adds no outer inset or separator.
-`modalPanel()` owns the elevated modal face, corners, shadow and motion. Document
-lightboxes own their close control and reserve its space alongside their content;
+`modalPanel()` owns the elevated modal face, corners, shadow and motion. Modal
+panels and `MODAL_SCRIM` keep the shared entry motion but have no transition once
+Base UI marks them `data-closed`: a dialog holds its focus isolation until the
+exit finishes, so an animated exit would swallow a Tab pressed right after Escape.
+Document lightboxes own their close control and reserve its space alongside their content;
 callers supply the localized close label. Top-aligned overlays derive their
 available height from the same inset that positions them, preserving the compact
 bottom gutter. Search overlays keep the query row fixed while their results scroll.

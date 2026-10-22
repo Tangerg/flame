@@ -2,6 +2,8 @@ import * as stylex from "@stylexjs/stylex";
 import { color, layout, motion, radius, space, surface } from "./tokens.stylex";
 
 const MODAL_TOP_INSET = space.s24;
+const MOTION_PROPERTIES = "opacity, scale, translate";
+const MOTION_EASING = "var(--ease-out)";
 
 const styles = stylex.create({
   face: {
@@ -15,10 +17,10 @@ const styles = stylex.create({
   },
   motion: {
     transitionProperty: {
-      default: "opacity, scale, translate",
+      default: MOTION_PROPERTIES,
       ':is([data-instant="dismiss"])': "none",
     },
-    transitionTimingFunction: "var(--ease-out)",
+    transitionTimingFunction: MOTION_EASING,
     transitionDuration: {
       default: motion.fast,
       ":is([data-ending-style])": motion.instant,
@@ -48,8 +50,11 @@ const styles = stylex.create({
     inset: 0,
     zIndex: "var(--layer-modal)",
     backgroundColor: surface.scrim,
-    transitionProperty: "opacity",
-    transitionTimingFunction: "var(--ease-out)",
+    transitionProperty: {
+      default: "opacity",
+      ":is([data-closed])": "none",
+    },
+    transitionTimingFunction: MOTION_EASING,
     transitionDuration: {
       default: motion.fast,
       ":is([data-ending-style])": motion.instant,
@@ -59,6 +64,14 @@ const styles = stylex.create({
       ":is([data-starting-style])": 0,
       ":is([data-ending-style])": 0,
     },
+  },
+  // Base UI keeps a closing dialog's focus guards until its exit transition ends.
+  modalMotion: {
+    transitionProperty: {
+      default: MOTION_PROPERTIES,
+      ":is([data-closed])": "none",
+    },
+    transitionTimingFunction: MOTION_EASING,
   },
   rise: { animation: motion.riseIn },
   modal: {
@@ -93,4 +106,5 @@ export const modalPanel = (place: "centred" | "top" = "centred") => [
   styles.modal,
   place === "top" ? styles.modalTop : styles.modalCentred,
   styles.motion,
+  styles.modalMotion,
 ];
