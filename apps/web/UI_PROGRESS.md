@@ -2368,12 +2368,16 @@ defects; each needs a Wails look and an explicit choice before implementing:
   (`contextDockStore`, restored cold-start) where ZCode's layout only rehydrates on reload
   and its scroll memory is in-process. The lone implementable delta surfaced —
   `FileWorkspace.tsx:93` unmounts `FilePreview` on return, losing deep scroll on reopening
-  the _same_ file where ZCode keeps a per-path scrollTop — is **consciously declined for
-  now (YAGNI):** reopen already anchors to the persisted `targetLine`, the file list keeps
-  its scroll/selection via `<Activity>`, and a keep-mounted/last-viewer + per-path-scroll
-  restore (with target-line precedence) is real complexity for a narrow trigger
-  (same file, no target line, deep scroll, round-trip). Revisit trigger: a user report of
-  losing scroll position on file reopen. A matching both-panels Esc/Backspace "return to
+  the _same_ file where ZCode keeps a per-path scrollTop — is **declined after reading the
+  code:** `FilePreview` is a _windowed_ reader whose loaded line window and rendered/source
+  mode are state keyed by the `viewer` intent object (`:137-141, 164-168`), so each reopen
+  (a new viewer object) deliberately resets the window to `initialWindow(targetLine)`.
+  A preserved `scrollTop` is relative to a dynamically-loaded window, so restoring it across
+  that intent reset would not line up with the same content — scroll preservation fights the
+  windowed-reader design, not just YAGNI. Reopen already anchors to the persisted
+  `targetLine` and the file list keeps its own scroll/selection via `<Activity>`. Revisit
+  trigger: a user report of losing scroll on file reopen, which would mean rethinking the
+  windowed reader toward a stable-document model first. A matching both-panels Esc/Backspace "return to
   this panel's list" (distinct from the conversation-return) is a shared gap in Flame and
   ZCode alike, not a ZCode advantage; if added later, do it symmetrically in both panels.
 - **Wide-content breakout geometry.** Tune `--wide-column-max` (56rem), confirm the
