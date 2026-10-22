@@ -2356,6 +2356,26 @@ defects; each needs a Wails look and an explicit choice before implementing:
   no double scrollbar). Removing the outer scroll would require proving every plugin view
   self-scrolls across both render paths, which is not safely knowable, so the uniform
   default-scroll host is kept (KISS + correctness) rather than churned.
+  **Reference comparison against ZCode (brief-mandated method):** a dedicated subagent
+  read ZCode's side-panel system against Flame's dock on every task-model axis and
+  found Flame matches or exceeds it — ZCode uses a split-pane tree (no tab bar, no
+  `role="tab"`/`aria-current`, no keyboard tab-switch/close), whereas Flame's dock owns
+  roving-arrow tab focus, `Delete`/middle-click/menu close with post-close focus
+  settlement, `Escape → returnToSource` cross-view keyboard return, focus-return to the
+  originating tree item / run link (`FileWorkspace.tsx:72-87`, `SubagentsPanel.tsx:99-128`;
+  ZCode returns focus to neither), `DataView`/`SkeletonList` skeletons, and
+  session-persisted open tabs + active view + file path/line + expanded dirs
+  (`contextDockStore`, restored cold-start) where ZCode's layout only rehydrates on reload
+  and its scroll memory is in-process. The lone implementable delta surfaced —
+  `FileWorkspace.tsx:93` unmounts `FilePreview` on return, losing deep scroll on reopening
+  the _same_ file where ZCode keeps a per-path scrollTop — is **consciously declined for
+  now (YAGNI):** reopen already anchors to the persisted `targetLine`, the file list keeps
+  its scroll/selection via `<Activity>`, and a keep-mounted/last-viewer + per-path-scroll
+  restore (with target-line precedence) is real complexity for a narrow trigger
+  (same file, no target line, deep scroll, round-trip). Revisit trigger: a user report of
+  losing scroll position on file reopen. A matching both-panels Esc/Backspace "return to
+  this panel's list" (distinct from the conversation-return) is a shared gap in Flame and
+  ZCode alike, not a ZCode advantage; if added later, do it symmetrically in both panels.
 - **Wide-content breakout geometry.** Tune `--wide-column-max` (56rem), confirm the
   left-anchored growth reads well across the 640–1151px band, and judge the 1152px
   breakout↔navigation-rail transition. Implemented; native acceptance pending.
