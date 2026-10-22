@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. Shared Select dismissal now finishes before rapid keyboard navigation, published at `346c1c07e`. Object-menu names are published at `57d54301e` after integration and renewed native acceptance on current dependencies; existing context-menu keyboard continuity is also qualified. Shared modal dismissal now releases keyboard navigation immediately; native search, nested editing and transcript previews are qualified below. The current Web test run passed all 3,069 tests; the existing MCP API-consumer guard still fails. Earlier aggregate timeouts, current delivery and cleanup are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. Shared Select dismissal now finishes before rapid keyboard navigation, published at `346c1c07e`. Object-menu names are published at `57d54301e` after integration and renewed native acceptance on current dependencies; existing context-menu keyboard continuity is also qualified. Shared modal dismissal now releases keyboard navigation immediately, published at `1e4887e5e`; native search, nested editing and transcript previews are qualified below. The current Web test run passed all 3,069 tests; the existing MCP API-consumer guard still fails. Earlier aggregate timeouts, current delivery and cleanup are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1782,6 +1782,12 @@ Verification and delivery boundary:
   symlink and tracked-file guards. Existing dependencies, shared UI Vite cache,
   compiler/package caches, read-only references and the user's primary checkout
   remain. Remote main was fetched again and remained at the accepted base.
+  The three explicit paths were committed at `1e4887e5e` with normal formatter,
+  workspace-lint and commit-message hooks and pushed to remote `main`.
+  `git ls-remote` confirmed the exact revision, and the committed shared-surface
+  hash still matches final native acceptance. The owned working tree was clean
+  with no unpublished commit at that delivery checkpoint. Continue the actual
+  result → detail → source workflow; the resumed goal remains active.
 
 ## Object identity in context menus
 
