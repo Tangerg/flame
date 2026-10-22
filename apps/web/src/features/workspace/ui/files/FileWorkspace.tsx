@@ -10,9 +10,9 @@ import { DataView } from "@/ui/index";
 import { Popover } from "@/ui/index";
 import { Segmented } from "@flame/ui";
 import { TextButton } from "@/ui/index";
-import { fileIconName } from "@/ui/index";
+import { Icon, fileIconName } from "@/ui/index";
 import { Button, EmptyState, IconButton, isImeKey, TextField, useCopyFeedback } from "@flame/ui";
-import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { localWorkspace } from "@/features/workspace/application/ports/localWorkspace";
 import { workspaceErrorClassifier } from "@/features/workspace/application/ports/workspaceErrorClassifier";
 import { useT } from "@/lib/i18n/index";
@@ -36,6 +36,9 @@ const WINDOW_RADIUS = 200;
 const fp = stylex.create({
   workspace: { display: "flex", flex: 1, flexDirection: "column", minWidth: 0, minHeight: 0 },
   context: { display: "flex", flexDirection: "column", gap: space.s0_5, minWidth: 0 },
+  identity: { display: "flex", alignItems: "center", gap: space.s1_5, minWidth: 0 },
+  identityIcon: { flexShrink: 0, color: color.fgFaint },
+  identityName: { minWidth: 0, overflowWrap: "anywhere" },
   edge: { display: "flex", justifyContent: "center", paddingBlock: space.s1_5 },
   goto: {
     display: "flex",
@@ -210,7 +213,12 @@ function FilePreview({
           onClick={closeWorkspaceFile}
         />
       }
-      identity={<span title={viewer.path}>{name}</span>}
+      identity={
+        <span title={viewer.path} {...stylex.props(fp.identity)}>
+          <Icon name={icon} size="sm" className={stylex.props(fp.identityIcon).className} />
+          <span {...stylex.props(fp.identityName)}>{name}</span>
+        </span>
+      }
       sub={
         <span {...stylex.props(fp.context)}>
           {directory && <span {...stylex.props(face.mono)}>{directory}/</span>}

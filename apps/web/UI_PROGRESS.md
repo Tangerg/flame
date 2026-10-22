@@ -2262,6 +2262,17 @@ defects; each needs a Wails look and an explicit choice before implementing:
   re-addable, a session loses history) or drift — decide whether config removal
   should confirm, then make the tier explicit so it is not read as inconsistency.
 
+- **Context Dock vs ZCode (reviewed; file-type icon landed).** The dock's two
+  master→detail panels (file, subagents) already match or exceed ZCode on identity
+  ownership, mount/scroll retention, return semantics, and the centralised
+  empty/loading/error contract (`DataView`). One clear gap was fixed: the file detail
+  header now shows its file-type icon (reusing the already-computed `fileIconName`,
+  which had only fed the unsupported empty state) so the object's kind reads at a
+  glance. Remaining items are forks: the two in-view back affordances use different
+  glyphs (file `‹` vs subagent `list`) — unifying needs an icon-convention choice;
+  `SubagentsPanel` hand-rolls its header instead of composing `ViewHeader`; the narrow
+  full-pane path stacks a two-level header; and `WorkspaceViewBody` nests a redundant
+  scroll owner under panels that already bring their own `ScrollArea`.
 - **Wide-content breakout geometry.** Tune `--wide-column-max` (56rem), confirm the
   left-anchored growth reads well across the 640–1151px band, and judge the 1152px
   breakout↔navigation-rail transition. Implemented; native acceptance pending.
