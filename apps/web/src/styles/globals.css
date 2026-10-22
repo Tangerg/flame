@@ -766,7 +766,7 @@ html.theme-dark {
   height: var(--surface-header-height);
   flex-shrink: 0;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--spacing) * 2);
   padding-inline: var(--reading-gutter);
   background-color: var(--app-header-surface);
   -webkit-app-region: drag;
