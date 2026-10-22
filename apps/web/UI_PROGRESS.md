@@ -2606,6 +2606,18 @@ each dock view is still pending):
   paragraphs and four-op auxiliary stack, and `ServerForm`'s disabled immutable-name
   field (identity echo justified by the create/edit-parallel, name-is-immutable
   affordance).
+- The shell/workbench chrome (session identity, run status pill, banners, project
+  selector, window header, floating composer) was audited last and came back clean apart
+  from one "let the layout explain" item, now fixed: the project picker trigger showed a
+  visible "Choose project" label, repeated it as the `title` tooltip ("Choose a project
+  to run this chat"), and the dropdown opened with a "Select your project" heading over
+  the project list — three labels for one control. The tooltip and heading (and their
+  now-unused i18n keys + heading style/imports) are gone; the button names itself and the
+  list + "New project" name the menu. Everything else verified clean: `SessionIdentity`
+  vs the OS `document.title` are separate legitimate projections (not competing owners);
+  `RunStatusPill`/`RunAnnouncer` share one run-status owner; `RunErrorBanner`'s faint
+  `error.code` is a deliberate, test-pinned reference; and `FloatingComposer` /
+  `CwdMissingBanner` route through the shared `SystemMessage`/`EmptyState` owners.
 
 ## Working and maintenance practice
 
