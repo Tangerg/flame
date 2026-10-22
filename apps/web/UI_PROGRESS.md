@@ -2254,6 +2254,21 @@ one owner, so the marquee's leading and trailing fades move together by
 construction. The `AgentOverflowLabel` marquee duration stays distance-proportional
 (`distance / (fontSize * 2)`, constant speed) and still multiplies `--motion-scale`,
 so reduced motion zeroes it.
+A dedicated subagent re-read the whole message/transcript rendering surface
+(ChatStream, MessageStream, MessageTurn, BlockRenderer, every card, the markdown
+subtree, ImagePreviewGallery, SubagentsPanel, ChatPanel) and it came back clean apart
+from one correctness fix and two dead-style removals, now shipped: `NarrativeWave`
+keyed its sub-units by array index while its sibling `renderMessageBlocks` keys the
+same `MessageRenderUnit[]` by content identity (`renderUnitKey`); since a wave child
+can be a stateful `ReasoningBlock`, a membership/order shift between streaming renders
+would have stranded an expanded/elapsed state on the wrong block, so the message id is
+now threaded through `renderUnit` into the wave and both renderers key identically.
+The unreferenced `messageStyles.statusWord` and `RunErrorBanner` `reb.plain` style
+keys were deleted. The only off-grid raw-px spacing left in `apps/web/src` —
+`ProjectSelector` `marginBottom: -18px` / `paddingBottom: 27px` — stays as a
+deliberate optical tuck (it tucks the project tray behind the composer with a ~9px
+lip); its values are not 4px-grid multiples, so forcing them onto the grid or into
+`space.*` would change the look and needs a native eye, not a blind rewrite.
 Of note, a defensive XSS audit traced every dangerouslySetInnerHTML and URL sink:
 mermaid SVG (beautiful-mermaid escapes all text/attrs), shiki (escaped code), the
 markdown raw-HTML path (remarkLiteralUnknownHtml downgrades every non-allowlisted,
