@@ -2268,11 +2268,17 @@ make allowElement an allowlist rather than a denylist.
 The genuinely open items are now design and native-acceptance decisions, not
 defects; each needs a Wails look and an explicit choice before implementing:
 
-- **Destructive-confirmation tiering.** Session delete and goal replace route through
-  ConfirmDialog; MCP server delete and API-key clear remove user-configured state
-  without confirmation. This may be a deliberate stakes tier (a server/key is
-  re-addable, a session loses history) or drift — decide whether config removal
-  should confirm, then make the tier explicit so it is not read as inconsistency.
+- **Destructive-confirmation tiering — resolved (confirm persisted removals).**
+  Session delete and goal replace routed through ConfirmDialog, but MCP server delete
+  and API-key clear removed persisted user state on a single click. Resolved by
+  levelling up, not down: removing a persisted user-configured entity or secret is a
+  genuine data-integrity risk (a cleared key may exist nowhere else; a deleted server
+  drops its whole config), so both now open a destructive `ConfirmDialog` matching
+  session/goal, with a title/body added across all eight locales and the existing
+  action label reused as the confirm. The explicit tier is: reversible toggles act
+  immediately; irreversible removal of persisted user state confirms. (`ServerForm`
+  delete-flow tests click through the dialog, scoping to the `alertdialog` since its
+  confirm shares the "Delete" label.)
 
 - **Context Dock vs ZCode (reviewed; file-type icon landed).** The dock's two
   master→detail panels (file, subagents) already match or exceed ZCode on identity
@@ -2388,15 +2394,18 @@ defects; each needs a Wails look and an explicit choice before implementing:
   provider row's ≤440px masked-key reflow are deliberate layouts — unifying is a UX
   decision plus a native look, not a blind swap.
 
-- **Plugin render-crash fallback vs SystemMessage (reviewed; spacing landed).** The
-  `PluginBoundary` fallback (`overlays.css` `.plugin-boundary-error`) hand-rolls a
-  negative-toned inline card holding the `plugins.renderFailed` Trans, a `<code>` with
-  the raw error, a retry `TextButton` and `FailureDetails`. Its spacing now sits on the
-  shared grid, but it still owns bespoke error chrome where the consistency pass routed
-  the form/config alerts onto `SystemMessage` (`variant="error"`, `action`, children).
-  Folding this crash fallback onto `SystemMessage` too would unify the inline-error
-  vocabulary, but it carries extra content (code + diagnostics disclosure) and distinct
-  crash-recovery semantics, so it is a visual/native decision, not a blind swap.
+- **Plugin render-crash fallback → SystemMessage (implemented; native acceptance
+  pending).** The `PluginBoundary` fallback used to hand-roll a negative-toned inline
+  card (`overlays.css` `.plugin-boundary-error`: own border, wash, radius, tone) holding
+  the `plugins.renderFailed` Trans, a `<code>`, a retry `TextButton` and `FailureDetails`,
+  where the consistency pass had already routed form and config alerts onto
+  `SystemMessage`. It now renders through `SystemMessage` (`variant="error"`,
+  `shape="form"`, retry in the `action` slot); the plugin name, the error `<code>` and
+  the `FailureDetails` disclosure are the banner's children, `.plugin-boundary-error`
+  keeps only the stacking column, and `.plugin-boundary-actions` is deleted. The
+  boundary's `role="alert"`, code tag and retry contract are unchanged
+  (`PluginBoundary.test.tsx` 4/4). The crash banner now carries the shared error icon
+  and tone instead of its bespoke border — confirm the in-pane look in Wails.
 
 - **Streaming-text animation timings.** The markdown word-reveal (`overlays.css`
   `.fade-in`, `700ms ease-in-out`) and the stream caret (`.type-caret`, `1050ms`
