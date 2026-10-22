@@ -1318,8 +1318,11 @@ directories. Pre-existing UI test cache, dependency/compiler caches, user data,
 read-only references, unrelated processes and the primary checkout were retained.
 Copied static assets with inherited creation times were accepted only after
 exact source-hash, current write-time, UID and non-link checks. Remote main was
-refetched at `955cfb690` before publication; commit/push receipts follow after
-delivery.
+refetched at `955cfb690` before publication. Commit `a6f63253e` passed normal
+format/workspace-lint hooks and was pushed to remote `main`; `ls-remote` confirmed
+the exact tip. Its three committed product-source hashes match final native
+acceptance, and the owned worktree was clean with no unpublished work at that
+checkpoint. Continue the native math-input comparison from this delivered base.
 
 ## Tool argument copy outcomes
 
