@@ -221,25 +221,27 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       }
       controls={
         <>
-          <Toolbar
-            label="Comparison scope"
-            actions={
-              <IconButton
-                icon={Refresh}
-                aria-label="Refresh"
-                size="md"
-                pending={read.loading}
-                onClick={() => void refresh()}
+          {!file && (
+            <Toolbar
+              label="Comparison scope"
+              actions={
+                <IconButton
+                  icon={Refresh}
+                  aria-label="Refresh"
+                  size="md"
+                  pending={read.loading}
+                  onClick={() => void refresh()}
+                />
+              }
+            >
+              <Select
+                label="Comparison"
+                value={mode}
+                options={COMPARISONS}
+                onValueChange={(value) => setMode(value as DiffMode)}
               />
-            }
-          >
-            <Select
-              label="Comparison"
-              value={mode}
-              options={COMPARISONS}
-              onValueChange={(value) => setMode(value as DiffMode)}
-            />
-          </Toolbar>
+            </Toolbar>
+          )}
           {read.loading && (
             <Metadata role="status">
               Reading {comparisonName(mode).toLocaleLowerCase()}…
@@ -285,6 +287,13 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                         index < 0 || index >= navigationFiles.length - 1
                       }
                       onClick={() => openFile(navigationFiles[index + 1]!.path)}
+                    />
+                    <IconButton
+                      icon={Refresh}
+                      aria-label="Refresh"
+                      size="sm"
+                      pending={read.loading}
+                      onClick={() => void refresh()}
                     />
                   </>
                 }

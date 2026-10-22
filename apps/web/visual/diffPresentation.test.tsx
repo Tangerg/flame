@@ -199,9 +199,9 @@ it("keeps partial, binary, rename and metadata-only states distinct from a clean
   expect(screen.queryByRole("combobox", { name: "Diff layout" })).toBeNull();
 });
 
-it("retains the accepted comparison and selected reader on failure, then retries the requested scope", async () => {
+it("retains the accepted comparison on failure, then retries the requested scope", async () => {
   const read = vi.fn(async () => REVIEW_DIFF);
-  mountDiff(ACTIVE_DIFF_FILE, read);
+  mountDiff("", read);
   await loaded();
   read.mockRejectedValueOnce(new Error("No common ancestor"));
   await comparison("Branch changes");
@@ -210,7 +210,7 @@ it("retains the accepted comparison and selected reader on failure, then retries
   expect(screen.getByRole("status").textContent).toBe(
     "Showing uncommitted changes from the last successful read.",
   );
-  expect(screen.getAllByRole("table")).toHaveLength(1);
+  expect(screen.getByRole("heading", { name: "2 changed files" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Comparison details" }));
   expect(screen.getByText(/Changes against HEAD/)).toBeTruthy();
   read.mockResolvedValueOnce({
