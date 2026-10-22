@@ -2316,17 +2316,32 @@ defects; each needs a Wails look and an explicit choice before implementing:
   (subagent's `list` glyph was the outlier), keeping the `‹` in-view-back vs `←`
   dock-return convention; their aria-labels still differ in framing (file "Back to
   files" vs subagent "All subagents"), left as-is since both name an accurate
-  destination. Remaining items are forks:
-  `SubagentsPanel` hand-rolls its header instead of composing `ViewHeader`; the narrow
-  full-pane path stacks a two-level header; and `WorkspaceViewBody` nests a redundant
-  scroll owner under panels that already bring their own `ScrollArea`.
+  destination. **Dock column gutter unified (fixed):** the tab strip aligned its labels
+  to the wide reading gutter (20px) while the view content header sits on the compact
+  gutter (16px), so a tab and the identity it labels were 4px out of vertical line; the
+  strip now references `--layout-compact-gutter` for its start padding (label x = strip
+  start + tab inset = 16px), so tab and content read as one column. **Tab size model
+  (reviewed — keep):** tabs are content-width (`flex-shrink:0`, 160px label cap) with a
+  horizontal-scroll strip and fade masks, matching ZCode/ChatGPT/browser tabs and
+  preserving label readability; equal-width-shrink was not adopted. **Strip separation
+  (reviewed — keep):** the tabstrip tint band is the softer, modern grouping and is kept
+  over a hard divider. Remaining items stay native/architectural judgments:
+  `SubagentsPanel` hand-rolls its header at the wide reading gutter (20px) rather than
+  composing `ViewHeader` at the compact gutter (16px) — but it is a reading surface
+  (subagent transcripts) where the wider gutter may be deliberate, and `ViewHeader` is
+  workspace-scoped, so unifying is a cross-feature + geometry call for the native eye,
+  not a blind swap; the narrow full-pane path stacks a two-level header; and
+  `WorkspaceViewBody` nests a redundant scroll owner under panels that already bring
+  their own `ScrollArea`.
 - **Wide-content breakout geometry.** Tune `--wide-column-max` (56rem), confirm the
   left-anchored growth reads well across the 640–1151px band, and judge the 1152px
   breakout↔navigation-rail transition. Implemented; native acceptance pending.
-- **Standalone ToolCard open-state.** Today a persistent manual toggle keeps a
-  promoted write/exec result visible (a coherent "meaningful results stay" design);
-  ChatGPT and the internal `ToolGroup` instead auto-collapse on completion. Decide
-  whether standalone cards should adopt the status-driven default with a pin.
+- **Standalone ToolCard open-state (reviewed — keep).** A standalone card keeps its
+  promoted write/exec result visible via a manual toggle ("meaningful results stay"),
+  while the grouped `ToolGroup` auto-collapses on completion. This is a justified
+  per-context difference (one promoted result stays legible; a wave of grouped tools
+  collapses to cut clutter), not drift — SRP across the two owners — so it is kept
+  rather than forced to one behavior.
 - **Light-theme text ladder collapse (muted ≈ faint) — fixed, native acceptance
   pending.** A color-semantics audit found the role usage consistent, but one real
   value defect: in the light theme `--color-text-muted` (#656565) and `--color-text-faint`
