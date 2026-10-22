@@ -61,7 +61,7 @@ function RuntimeConnectionNotice() {
           key="runtime-connection-notice"
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 2, transition: disclosureExitTransition }}
+          exit={{ opacity: 0, y: 4, transition: disclosureExitTransition }}
           transition={disclosureTransition}
           className={stylex.props(fc.notice).className}
         >
