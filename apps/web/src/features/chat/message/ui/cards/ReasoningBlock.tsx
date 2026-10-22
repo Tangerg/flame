@@ -35,7 +35,7 @@ const rb = stylex.create({
     WebkitMaskImage: `linear-gradient(to right, transparent 0, #000 var(--glimpse-lead, 0px))`,
   },
   glimpseTail: { justifyContent: "flex-end" },
-  glimpseLine: { flexShrink: 0, whiteSpace: "nowrap" },
+  glimpseLine: { flexShrink: 0, whiteSpace: "nowrap", color: "var(--color-text-reasoning)" },
   aside: {
     marginTop: space.s3,
     paddingBottom: space.s1_5,
@@ -129,6 +129,7 @@ export function ReasoningBlock({ text, status }: Props) {
     <AgentActivityDisclosure
       icon="brain"
       shell="line"
+      ink="dim"
       label={streaming ? <Loader text={label} /> : label}
       detail={
         glimpse && (
@@ -140,7 +141,7 @@ export function ReasoningBlock({ text, status }: Props) {
             style={{ "--glimpse-lead": glimpseClipped ? GLIMPSE_LEAD : "0px" } as CSSProperties}
             {...stylex.props(rb.glimpse, glimpseClipped && rb.glimpseTail)}
           >
-            <span ref={glimpseLineRef} {...stylex.props(rb.glimpseLine, vocab.faint)}>
+            <span ref={glimpseLineRef} {...stylex.props(rb.glimpseLine)}>
               {glimpse}
             </span>
           </span>

@@ -93,6 +93,10 @@ const styles = stylex.create({
     "--row-ink": { default: color.fgMuted, ":hover": color.fg },
     "--row-detail-ink": { default: color.fgFaint, ":hover": color.fgMuted },
   },
+  headerPublishesDim: {
+    "--row-ink": { default: "var(--color-text-reasoning)", ":hover": color.fgMuted },
+    "--row-detail-ink": { default: "var(--color-text-reasoning)", ":hover": color.fgFaint },
+  },
   chevron: {
     pointerEvents: "none",
     display: "flex",
@@ -140,6 +144,7 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     progress?: { value: number; label: string };
     toggleLabel?: string;
     tone?: ActivityTone;
+    ink?: "dim";
     shell: ActivityShell;
     summaryId?: string;
     children?: ReactNode;
@@ -160,6 +165,7 @@ export function AgentActivityDisclosure({
   progress,
   toggleLabel,
   tone = "neutral",
+  ink,
   shell,
   summaryId,
   children,
@@ -216,7 +222,7 @@ export function AgentActivityDisclosure({
           stylex.props(
             reveal.host,
             styles.header,
-            styles.headerPublishes,
+            ink === "dim" ? styles.headerPublishesDim : styles.headerPublishes,
             stickyHeader && [styles.stuck, line ? styles.stuckLine : styles.stuckCard],
           ).className,
         )}

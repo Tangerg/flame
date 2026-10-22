@@ -2269,11 +2269,23 @@ defects; each needs a Wails look and an explicit choice before implementing:
   promoted write/exec result visible (a coherent "meaningful results stay" design);
   ChatGPT and the internal `ToolGroup` instead auto-collapse on completion. Decide
   whether standalone cards should adopt the status-driven default with a pin.
-- **Reasoning while streaming.** Today a quiet one-line glimpse; the reference shows
-  the full capped auto-following panel inline. Decide which.
-- **Reasoning dimness.** Body is `fgMuted` (≈64%, the generic muted step); the
-  reference runs reasoning dimmer (≈30–40%), which needs a new token and a
-  readability call.
+- **Reasoning while streaming.** Today a quiet one-line glimpse; ChatGPT shows the
+  full capped auto-following panel inline, but the newer ZCode reference explicitly
+  reverted from that panel back to a default-collapsed glimpse (an expanded
+  streaming reasoning panel keeps crowding tools and body). Flame already matches
+  ZCode, and `ReasoningBlock.test.tsx` locks "starts shut while it thinks" as a
+  deliberate choice — keep the glimpse.
+- **Reasoning dimness (implemented; pending native alpha/readability acceptance).**
+  Both references run reasoning dimmer than Flame did (ChatGPT title ≈30% / body
+  ≈50–60%; ZCode a uniform base-text ≈40% alpha), and Flame was the brightest of the
+  three (body/label `fgMuted` ≈64%, glimpse `fgFaint` ≈55%). Added a reasoning-only
+  `--color-text-reasoning` token (`apps/web/src/styles/globals.css`,
+  `color-mix(in oklab, var(--color-text) 45%, transparent)`, theme-adaptive) and
+  routed the reasoning body (`messageStyles.quote`), glimpse (`ReasoningBlock`
+  `glimpseLine`) and the disclosure label/detail through it via a new
+  `AgentActivityDisclosure` `ink="dim"` variant (tools keep the default ink). The
+  45% start value is tunable toward the ≈40% reference; confirm the exact alpha and
+  dark/light contrast in Wails.
 - **Panel-header / two-level return.** The Dock view-header variants and the
   Dock-return (`←`) vs in-view back (`‹`/`list`) affordances could unify into one
   identity+actions+return contract or breadcrumb; this is a focus-and-visual

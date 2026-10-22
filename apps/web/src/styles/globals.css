@@ -32,6 +32,7 @@
   --color-success-wash: color-mix(in srgb, var(--tone-success) 10%, transparent);
   --color-info-wash: color-mix(in srgb, var(--tone-info) 10%, transparent);
   --color-accent-wash: color-mix(in srgb, var(--tone-accent) 10%, transparent);
+  --color-text-reasoning: color-mix(in oklab, var(--color-text) 45%, transparent);
   --color-negative-badge: color-mix(in srgb, var(--tone-negative) 18%, transparent);
   --color-warning-badge: color-mix(in srgb, var(--tone-warning) 18%, transparent);
   --color-success-badge: color-mix(in srgb, var(--tone-success) 18%, transparent);
