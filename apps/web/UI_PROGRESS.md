@@ -2289,10 +2289,17 @@ defects; each needs a Wails look and an explicit choice before implementing:
      host render verification.
   2. _Reconcilable-command state + UI_ — the submit→pending→uncertain→reconcile/retire
      protocol and its status `<section>` are copied across `skills`, `schedules`,
-     `memory`, `usagereports`, and (slim) `trajectory`; the `Command` type and the
-     `failure()` helper are byte-identical in skills/schedules. Owner: a
-     `useReconcilableCommand` hook in `@flame/component-sdk` + an `UnconfirmedCommand`
-     status component in `@flame/ui`, collapsing five copies.
+     `memory`, `usagereports`, and (slim) `trajectory`; the `Command` type and
+     `reconcile()` are byte-identical, but `observe()`/`submit()` genuinely vary per
+     plugin — different success/error copy, different revision-conflict side effects,
+     and different state to clear (skills' review, schedules' edit/delete/taskOpener).
+     So the owner is a `useReconcilableCommand` hook in `@flame/component-sdk` that
+     keeps the pending/uncertain/reconcile machinery and takes the per-plugin
+     success/error handling as callbacks (plus an `UnconfirmedCommand` status component
+     in `@flame/ui`). Extracting only the shared `Command` type + `failure()` leaves the
+     ~60-line stateful body duplicated five times, so the hook is the real fix — a
+     stateful refactor across five sandboxed UIs that needs host render verification,
+     not a blind pure extraction like the scrollPositions helper above.
   3. _Status/alert text primitive_ — some plugins use the `@flame/ui` `Metadata` muted
      status, others a raw `<p role="status|alert">`; standardise on `Metadata` or add
      a `StatusText` primitive. Also minor: a duplicated `Intl.NumberFormat("en-US")`
