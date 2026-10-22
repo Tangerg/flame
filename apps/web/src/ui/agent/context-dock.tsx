@@ -83,7 +83,7 @@ const styles = stylex.create({
     fontWeight: weight.medium,
     color: "inherit",
   },
-  labelClosable: { paddingLeft: space.s2, paddingRight: space.s1 },
+  labelClosable: { paddingLeft: "var(--dock-tab-inset)", paddingRight: space.s1 },
   glyph: { flexShrink: 0, opacity: "var(--glyph-step)" },
   tabClose: { marginRight: space.s0_5 },
   badge: { flexShrink: 0, fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },

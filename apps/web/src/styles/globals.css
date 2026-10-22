@@ -520,6 +520,7 @@ html.theme-dark {
   --color-on-media: #ffffff;
   --window-sidebar-control-span: calc(var(--control-height-sm) + 10px);
   --dock-control-span: calc(var(--control-height-sm) + 10px);
+  --dock-tab-inset: calc(var(--spacing) * 2);
   --surface-header-height: 46px;
   --dur-drawer: calc(var(--dur-drawer-base) * var(--motion-scale));
   --ease-drawer: linear(
@@ -600,7 +601,7 @@ html.theme-dark {
 .agent-dock-control {
   position: absolute;
   inset-block-start: 0;
-  inset-inline-end: 6px;
+  inset-inline-end: calc(var(--spacing) * 1.5);
   z-index: var(--layer-chrome-control);
   display: flex;
   height: var(--surface-header-height);
@@ -876,8 +877,8 @@ html.theme-dark {
 }
 
 .agent-context-dock > .agent-surface-header:first-child {
-  gap: 4px;
-  padding-inline: calc(var(--reading-gutter-wide) - 8px) var(--dock-control-span);
+  gap: calc(var(--spacing) * 1);
+  padding-inline: calc(var(--reading-gutter-wide) - var(--dock-tab-inset)) var(--dock-control-span);
   background: var(--app-dock-tabstrip-surface);
 }
 
@@ -891,7 +892,7 @@ html.theme-dark {
   min-width: 0;
   flex: 1;
   align-items: center;
-  gap: 2px;
+  gap: calc(var(--spacing) * 0.5);
   overflow-x: auto;
   scroll-padding-inline: var(--dock-tab-edge);
   scrollbar-width: none;

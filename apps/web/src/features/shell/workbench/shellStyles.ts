@@ -20,6 +20,7 @@ export const shellStyles = stylex.create({
   anchor: { position: "relative", minHeight: 0, flex: 1 },
 
   spacer: { minWidth: space.s4, flex: 1 },
+  toEnd: { marginInlineStart: "auto" },
   banner: { marginBlock: space.s2_5 },
   bannerCard: {
     display: "grid",

@@ -119,6 +119,7 @@ function AddDockViewPicker({
           quiet
           aria-label={t("dock.action.browse")}
           data-dock-view-id={activeViewId}
+          className={stylex.props(sh.toEnd).className}
         />
       }
       onSelect={(item) => openWorkspaceViewInDock(item.id, triggerRef.current ?? undefined)}
