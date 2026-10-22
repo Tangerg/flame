@@ -226,7 +226,6 @@ export function Schedules({ context }: { context: ComponentContext }) {
                 ref={titleElement}
                 size="lg"
                 aria-label="Title"
-                placeholder="Title"
                 value={edit.draft.Title}
                 disabled={busy}
                 onChange={(event) => patch("Title", event.target.value)}
@@ -235,7 +234,6 @@ export function Schedules({ context }: { context: ComponentContext }) {
             <FormField label="Instructions">
               <TextArea
                 aria-label="Instructions"
-                placeholder="Instructions"
                 value={edit.draft.Instructions}
                 disabled={busy}
                 rows={4}
