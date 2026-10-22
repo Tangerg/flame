@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useActiveSessionId } from "@/features/agent/public/session";
 const TURN_ANCHOR_ATTR = "data-turn-id";
 
 const TURN_ROLE_ATTR = "data-turn-role";
@@ -53,6 +54,7 @@ function sameMap(a: TranscriptMap, b: TranscriptMap): boolean {
 
 export function useTranscriptMap(): TranscriptMap {
   const [map, setMap] = useState<TranscriptMap>(EMPTY);
+  const sessionId = useActiveSessionId();
 
   useEffect(() => {
     const root = scroller();
@@ -106,7 +108,7 @@ export function useTranscriptMap(): TranscriptMap {
       observer.disconnect();
       mutations.disconnect();
     };
-  }, []);
+  }, [sessionId]);
 
   return map;
 }
