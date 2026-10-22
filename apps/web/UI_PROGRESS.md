@@ -2296,10 +2296,11 @@ defects; each needs a Wails look and an explicit choice before implementing:
      So the owner is a `useReconcilableCommand` hook in `@flame/component-sdk` that
      keeps the pending/uncertain/reconcile machinery and takes the per-plugin
      success/error handling as callbacks (plus an `UnconfirmedCommand` status component
-     in `@flame/ui`). Extracting only the shared `Command` type + `failure()` leaves the
-     ~60-line stateful body duplicated five times, so the hook is the real fix — a
-     stateful refactor across five sandboxed UIs that needs host render verification,
-     not a blind pure extraction like the scrollPositions helper above.
+     in `@flame/ui`). The byte-identical `failure()` helper is already extracted
+     (`@flame/component-sdk` `failureText`); the remaining duplication is the ~60-line
+     stateful body, so the hook is the real fix — a stateful refactor across five
+     sandboxed UIs that needs host render verification, not a blind pure extraction
+     like the scrollPositions helper above.
   3. _Status/alert text primitive_ — some plugins use the `@flame/ui` `Metadata` muted
      status, others a raw `<p role="status|alert">`; standardise on `Metadata` or add
      a `StatusText` primitive. Also minor: a duplicated `Intl.NumberFormat("en-US")`
