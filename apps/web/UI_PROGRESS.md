@@ -2283,6 +2283,21 @@ defects; each needs a Wails look and an explicit choice before implementing:
   promoted write/exec result visible (a coherent "meaningful results stay" design);
   ChatGPT and the internal `ToolGroup` instead auto-collapse on completion. Decide
   whether standalone cards should adopt the status-driven default with a pin.
+- **Light-theme text ladder collapse (muted ≈ faint).** A color-semantics audit found
+  the role usage consistent (feedback colors only feed feedback, `accentText` vs the
+  raw `accent` solid are not confused, `fgFaint` only paints genuine tertiary text),
+  but one real value defect: in the light theme `--color-text-muted` (#656565) and
+  `--color-text-faint` (#696969) differ by ~4/255, so the two-tier metadata hierarchy
+  (muted label over faint detail) that reads clearly in dark (#a3a3a3 vs #8c8c8c) is
+  lost in light across `activity-disclosure`, `context-dock`, `QuestionCard`, `kbd`,
+  `text-button` and catalog rows. Root cause is the palette ladder: `kit/palette.ts`
+  derives muted from `step(neutral, 11)` and faint from `step(neutral, 10)`, and the
+  light neutral scale compresses those adjacent steps (the depth-step term is 0% in
+  light). The fix is a palette-ladder change (widen the light faint step / re-space the
+  neutral scale), not a stylesheet literal — the stylesheet mirrors the computed spec
+  and `stylesheetMirror.test.ts` enforces agreement — and it needs native verification
+  across every faint consumer in both themes. (Reasoning's own light contrast is the
+  separate pending item noted below.)
 - **Reasoning while streaming.** Today a quiet one-line glimpse; ChatGPT shows the
   full capped auto-following panel inline, but the newer ZCode reference explicitly
   reverted from that panel back to a default-collapsed glimpse (an expanded
