@@ -143,7 +143,7 @@ export function SubagentsPanel() {
         {selectedId && (
           <IconButton
             ref={backRef}
-            icon={iconGlyph("list")}
+            icon={iconGlyph("chevron-left")}
             size="sm"
             aria-label={t("subagents.all")}
             data-chrome-focus=""

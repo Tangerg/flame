@@ -2268,8 +2268,11 @@ defects; each needs a Wails look and an explicit choice before implementing:
   empty/loading/error contract (`DataView`). One clear gap was fixed: the file detail
   header now shows its file-type icon (reusing the already-computed `fileIconName`,
   which had only fed the unsupported empty state) so the object's kind reads at a
-  glance. Remaining items are forks: the two in-view back affordances use different
-  glyphs (file `‹` vs subagent `list`) — unifying needs an icon-convention choice;
+  glance. The two in-view master→detail back controls now share the `‹` chevron
+  (subagent's `list` glyph was the outlier), keeping the `‹` in-view-back vs `←`
+  dock-return convention; their aria-labels still differ in framing (file "Back to
+  files" vs subagent "All subagents"), left as-is since both name an accurate
+  destination. Remaining items are forks:
   `SubagentsPanel` hand-rolls its header instead of composing `ViewHeader`; the narrow
   full-pane path stacks a two-level header; and `WorkspaceViewBody` nests a redundant
   scroll owner under panels that already bring their own `ScrollArea`.
