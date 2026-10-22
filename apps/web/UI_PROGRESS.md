@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance popup anchoring/native zoom painting, rapid Select dismissal, object-menu names and shared modal keyboard release are published on remote main at `f4a535440`, `346c1c07e`, `57d54301e` and `1e4887e5e`. Reading-band breakout now respects user and nested-content boundaries; subagent readers compose the complete shared reading column. Native full-pane/Dock, source return, large typography and zoom acceptance is qualified below. Final frontend tests passed 388 files / 3,020 tests. The preceding full Web run failed one Runtime readiness test (3,068 passed / 1 failed); its isolated 49-test file passed, which does not make that aggregate green. The existing MCP API-consumer guard also still fails. Delivery, cleanup and the separate unqualified math-input path are recorded below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance popup anchoring/native zoom painting, rapid Select dismissal, object-menu names and shared modal keyboard release are published on remote main at `f4a535440`, `346c1c07e`, `57d54301e` and `1e4887e5e`. Reading-band breakout respects user/nested boundaries and subagent readers compose the complete shared column, published at `a6f63253e`. Native full-pane/Dock, source return, large typography and zoom acceptance is qualified below. Final frontend tests passed 388 files / 3,020 tests. The preceding full Web run failed one Runtime readiness test (3,068 passed / 1 failed); its isolated 49-test file passed, which does not make that aggregate green. The existing MCP API-consumer guard also still fails. A native math follow-up qualifies the recorded caret-navigation path and draft return without a product patch; horizontal wheel delivery remains unverified. Delivery and cleanup are recorded below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1300,17 +1300,6 @@ reviewed independently. The 34 frozen product/host/fixture/manifest inputs and
 three private harness inputs matched the reviewed versions through final native
 acceptance.
 
-The separate math-content probe remains unqualified for horizontal input. Display
-math was focusable/readable; trusted ArrowRight reached the focused KaTeX scroller
-with `defaultPrevented=false`, but its 870 px content retained offset zero in both
-the changed band (659 px viewport) and the unchanged outside-band control
-(768 px viewport). Native CUA horizontal wheel produced no observed DOM wheel
-event. A passive private HUD confirmed visible/focused document state; it did not
-change scrolling or input. This evidence does not establish a current-patch
-regression or a general WebKit defect. Next, compare a bare native HTML scroller
-and qualify actual input delivery before changing an owner. No focus handler,
-scroll fallback, activation request or font substitution was added.
-
 Cleanup verified all 11 owned native PIDs and three CLI PIDs had exited,
 unregistered the exact app bundle and removed its temporary root, data, logs,
 pointer, ten newly created build/cache outputs and two bundle-specific Library
@@ -1322,7 +1311,68 @@ refetched at `955cfb690` before publication. Commit `a6f63253e` passed normal
 format/workspace-lint hooks and was pushed to remote `main`; `ls-remote` confirmed
 the exact tip. Its three committed product-source hashes match final native
 acceptance, and the owned worktree was clean with no unpublished work at that
-checkpoint. Continue the native math-input comparison from this delivered base.
+checkpoint. The native math-input follow-up below uses this delivered product
+base without reopening the completed reading-boundary repair.
+
+### Native math reading and input qualification
+
+The earlier repeated-Right probe showed offset zero in both the changed band
+(659 px viewport) and the unchanged outside-band control (768 px viewport),
+despite a focused 870 px expression and trusted, unprevented input. Its missing
+fact was the document selection. A follow-up on delivered base `c6e37ee16`
+compared plain HTML div/span, a table and the canonical KaTeX objective inside
+the same production Wails host. Passive text receipts recorded focus, selection,
+offsets and input, without changing selection, scrolling or event defaults.
+
+In the native control, Tab focused the plain scroller at offset zero with no
+selection. Right then placed a collapsed document caret at its trailing END and
+revealed it at offset 566; Left moved that caret by a character, retaining the
+same offset until it crossed back to the leading text. Four further Left keys
+returned offset zero. Span, table and KaTeX controls also exposed their trailing
+content through native text navigation. The initial width-only div/span controls
+had all their text in the visible half and showed no offset change; these were
+not representative evidence of an inaccessible trailing text result. Advancing
+frame callbacks, visible/focused document state and a separate text-field caret
+check exclude the earlier hidden/fullscreen initialization condition in these
+specific observations. This is an observation of native selection behavior,
+not a claim about a particular platform preference or every scroll input.
+
+The real production math fixture then received the same selection observations,
+with its canonical messages unchanged. English/light/14 px/Orange at Actual Size
+showed the first term, matrix and tall fraction. From the exact Composer draft
+`Formula reading draft 保留`, five Shift+Tab keys reached Poor → Good →
+Regenerate → Copy message → Mathematical expression without activating actions.
+The first Right placed a caret at offset zero in the following explanatory
+paragraph; it did not pan the focused math. One Left returned the caret into
+the rendered expression's final `)`, producing a trusted scroll event and
+offset 268 in the 602 px viewport over 870 px content. The actual final `(1)`
+tag was visible within the reader. Five Tab keys returned through the existing
+actions to Composer, retaining the exact draft. This closes the earlier
+unqualified final-tag/task-return path for this scenario. It does not qualify
+continuous arrow panning, a faster reverse path to the first term, different
+typography/zoom or physical horizontal wheel input. CUA horizontal scrolling
+still produced no observed DOM wheel event, including in the bare control;
+absence of that delivery is not a product wheel-failure verdict.
+
+No product source, native preference, ARIA, selection owner or keyboard/scroll
+fallback changed. The shared `useScrollReach`, `MarkdownMath` and browser default
+remain the owners. The better-accessibility guidance favors preserving native
+text interaction until a complete task demonstrates a defect. Thirty-five
+product/host/fixture/manifest inputs and the private production harness inputs
+remained frozen through acceptance. The native control builds passed, Web staging
+passed (5.81 s), the production-fixture Wails build passed (5.24 s), math rendering/
+trust tests passed (4 tests, 2.23 s) and scroll-reach contracts passed (9 tests,
+1.15 s). Full Web/native aggregate checks were not repeated for this documentation
+qualification; the unchanged product revision retains the preceding batch's
+explicit pass/failure limits above. No browser suite or benchmark was run.
+
+All six follow-up native PIDs exited. The exact app was unregistered; its private
+root, data, logs, pointer, seven newly created build/test outputs and two
+bundle-specific Library directories were removed with the same ownership and
+source-copy guards. Dependencies, compiler caches, the pre-existing UI test cache,
+user data and primary checkout were retained. This research required no detail
+implementation task for Claude Code CLI. Continue with another observed complete
+workspace task; do not add a math handler from the retired offset-only inference.
 
 ## Tool argument copy outcomes
 
@@ -2883,12 +2933,13 @@ defects; each needs a Wails look and an explicit choice before implementing:
   windowed reader toward a stable-document model first. A matching both-panels Esc/Backspace "return to
   this panel's list" (distinct from the conversation-return) is a shared gap in Flame and
   ZCode alike, not a ZCode advantage; if added later, do it symmetrically in both panels.
-- **Wide-content boundaries and native math input.** User/nested boundaries,
+- **Wide-content boundaries and native math input (qualified within scope).** User/nested boundaries,
   left-anchored outer growth, the shared subagent cap/gutter and exercised
   full-pane/Dock/200% return paths are now qualified above; do not repeat them as
-  pending work. A visibly present turn rail was not qualified. Horizontal math
-  input needs a bare native scroller comparison and confirmed input delivery
-  before assigning a defect owner or adding behavior.
+  pending work. A visibly present turn rail was not qualified. The native math
+  follow-up now records text-caret navigation, visible final tag and exact draft
+  return. Physical horizontal wheel delivery and broader typography/zoom remain
+  outside that qualification; do not infer a component defect from offset alone.
 - **Standalone ToolCard open-state (reviewed — keep).** A standalone card keeps its
   promoted write/exec result visible via a manual toggle ("meaningful results stay"),
   while the grouped `ToolGroup` auto-collapses on completion. This is a justified
