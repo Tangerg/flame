@@ -56,6 +56,9 @@ const chipStyles = stylex.create({
     padding: 0,
     color: { default: "inherit", ":hover": color.fg },
     cursor: "default",
+    transitionProperty: "color",
+    transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
   close: {
     scale: "calc(0.96 + 0.04 * var(--reveal, 1))",

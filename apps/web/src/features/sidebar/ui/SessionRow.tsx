@@ -217,7 +217,6 @@ export function SessionRow({
         <AgentRow
           ref={rowRef}
           onClick={() => onSelect(session.id)}
-          data-chrome-focus=""
           aria-current={active ? "page" : undefined}
           aria-label={`${title} — ${accessibleStatus}`}
           active={active}

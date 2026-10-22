@@ -130,6 +130,7 @@ export function AgentRow({
   const detailBox = stylex.props(rowStyles.detail, typeStep.uiXs);
   const button = (
     <Button
+      data-chrome-focus=""
       {...props}
       type={type}
       variant="ghost"
