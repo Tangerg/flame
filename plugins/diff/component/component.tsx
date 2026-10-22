@@ -221,27 +221,25 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       }
       controls={
         <>
-          {!file && (
-            <Toolbar
-              label="Comparison scope"
-              actions={
-                <IconButton
-                  icon={Refresh}
-                  aria-label="Refresh"
-                  size="md"
-                  pending={read.loading}
-                  onClick={() => void refresh()}
-                />
-              }
-            >
-              <Select
-                label="Comparison"
-                value={mode}
-                options={COMPARISONS}
-                onValueChange={(value) => setMode(value as DiffMode)}
+          <Toolbar
+            label="Comparison scope"
+            actions={
+              <IconButton
+                icon={Refresh}
+                aria-label="Refresh"
+                size="md"
+                pending={read.loading}
+                onClick={() => void refresh()}
               />
-            </Toolbar>
-          )}
+            }
+          >
+            <Select
+              label="Comparison"
+              value={mode}
+              options={COMPARISONS}
+              onValueChange={(value) => setMode(value as DiffMode)}
+            />
+          </Toolbar>
           {read.loading && (
             <Metadata role="status">
               Reading {comparisonName(mode).toLocaleLowerCase()}…

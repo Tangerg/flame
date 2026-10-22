@@ -202,7 +202,8 @@ it("keeps a held Refresh focused and single, yields to a later choice and disabl
   await waitFor(() => expect(screen.queryByText("Reading schedules…")).toBeNull());
   expect(document.activeElement).toBe(query);
 
-  fireEvent.click(screen.getAllByRole("button", { name: "Run now" })[0]!);
+  fireEvent.click(screen.getAllByRole("button", { name: /^More actions for/ })[0]!);
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Run now" }));
   await screen.findByText("Run schedule now…");
   expect(refresh.disabled).toBe(true);
   expect(screen.getByRole<HTMLButtonElement>("button", { name: "Add schedule" }).disabled).toBe(

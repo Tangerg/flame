@@ -21,6 +21,7 @@ import {
   FilterBar,
   Select,
   Stats,
+  Toolbar,
 } from "@flame/ui";
 
 const number = new Intl.NumberFormat("en-US");
@@ -259,20 +260,8 @@ export function Usage({ context }: { context: ComponentContext }) {
       }
       controls={
         <>
-          <FilterBar
-            label="Usage controls"
-            search={
-              <SearchField
-                size="lg"
-                id="filter"
-                aria-label="Filter sources"
-                placeholder="Find a source"
-                value={filter}
-                onChange={(event) => setFilter(event.target.value)}
-                onClear={() => setFilter("")}
-                clearLabel="Clear filter"
-              />
-            }
+          <Toolbar
+            label="Report scope"
             actions={
               <IconButton
                 icon={Refresh}
@@ -292,14 +281,7 @@ export function Usage({ context }: { context: ComponentContext }) {
                 setPeriod(periods.find((item) => item.value === value)!)
               }
             />
-            <Select
-              size="lg"
-              label="Group by"
-              value={group}
-              onValueChange={setGroup}
-              options={options}
-            />
-          </FilterBar>
+          </Toolbar>
           {read.loading && <Metadata role="status">Reading usage…</Metadata>}
           {read.error && (
             <Metadata role="alert">
@@ -313,6 +295,29 @@ export function Usage({ context }: { context: ComponentContext }) {
                 the last successful read.
               </Metadata>
             )}
+          <FilterBar
+            label="Usage controls"
+            search={
+              <SearchField
+                size="lg"
+                id="filter"
+                aria-label="Filter sources"
+                placeholder="Find a source"
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+                onClear={() => setFilter("")}
+                clearLabel="Clear filter"
+              />
+            }
+          >
+            <Select
+              size="lg"
+              label="Group by"
+              value={group}
+              onValueChange={setGroup}
+              options={options}
+            />
+          </FilterBar>
         </>
       }
     >

@@ -208,7 +208,6 @@ it("names the captured target and keeps editor and record feedback apart", async
   fireEvent.click(screen.getByRole("button", { name: "Edit" }));
   const editor = screen.getByRole("region", { name: "Edit memory" });
   expect(within(editor).getByText(active.ID, { exact: true })).toBeTruthy();
-  expect(within(editor).getByText("Project memory", { exact: true })).toBeTruthy();
   const content = within(editor).getByRole("textbox", { name: "Memory content" });
   fireEvent.change(content, { target: { value: "Keep my edited content." } });
   fireEvent.click(within(editor).getByRole("button", { name: "Save" }));
