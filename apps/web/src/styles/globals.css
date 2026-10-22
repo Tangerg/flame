@@ -878,7 +878,8 @@ html.theme-dark {
 
 .agent-context-dock > .agent-surface-header:first-child {
   gap: calc(var(--spacing) * 1);
-  padding-inline: calc(var(--reading-gutter-wide) - var(--dock-tab-inset)) var(--dock-control-span);
+  padding-inline: calc(var(--layout-compact-gutter) - var(--dock-tab-inset))
+    var(--dock-control-span);
   background: var(--app-dock-tabstrip-surface);
 }
 
