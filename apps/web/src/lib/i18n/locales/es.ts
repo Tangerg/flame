@@ -451,7 +451,6 @@ export const es: Record<string, string> = {
   "settings.completionSound": "Sonido de finalización",
   "settings.completionSound.sub":
     "Reproduce un sonido cuando una ejecución termina mientras la app está en segundo plano.",
-  "settings.completionSound.toggle": "Reproducir un sonido",
   "settings.language.label": "Idioma",
   "settings.language.sub": "Idioma de la interfaz. Se pueden añadir más vía plugins.",
 

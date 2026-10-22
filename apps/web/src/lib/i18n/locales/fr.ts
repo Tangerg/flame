@@ -454,7 +454,6 @@ export const fr: Record<string, string> = {
   "settings.completionSound": "Son de fin",
   "settings.completionSound.sub":
     "Jouer un son lorsqu'une exécution se termine alors que l'application est en arrière-plan.",
-  "settings.completionSound.toggle": "Jouer un son",
   "settings.language.label": "Langue",
   "settings.language.sub": "Langue de l'interface. D'autres peuvent être ajoutées via plugins.",
 

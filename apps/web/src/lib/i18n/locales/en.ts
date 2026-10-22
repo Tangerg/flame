@@ -592,7 +592,6 @@ export const en: Record<string, string> = {
   "settings.completionSound": "Completion sound",
   "settings.completionSound.sub":
     "Play a chime when a run finishes while the app is in the background.",
-  "settings.completionSound.toggle": "Play a chime",
   "settings.language.label": "Language",
   "settings.language.sub": "Interface language. More locales can be added via plugins.",
 

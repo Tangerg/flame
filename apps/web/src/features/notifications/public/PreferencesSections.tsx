@@ -2,7 +2,6 @@ import { useT } from "@/lib/i18n/index";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { useEffect } from "react";
 import { Switch } from "@flame/ui";
-import { Checkbox } from "@flame/ui";
 import { useCompletionSoundStore } from "@/features/notifications/public/completionSound";
 import {
   refreshNotificationAuthorization,
@@ -17,10 +16,10 @@ export function CompletionSoundSection() {
 
   return (
     <SettingRow label={t("settings.completionSound")} sub={t("settings.completionSound.sub")}>
-      <Checkbox
+      <Switch
         checked={completionSound}
         onCheckedChange={setCompletionSound}
-        label={t("settings.completionSound.toggle")}
+        ariaLabel={t("settings.completionSound")}
       />
     </SettingRow>
   );
