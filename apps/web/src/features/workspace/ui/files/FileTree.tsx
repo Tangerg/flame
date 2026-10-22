@@ -190,7 +190,7 @@ function TreeNode({
     <div role="none">
       <ContextMenu.Root>
         <ContextMenu.Trigger render={row} />
-        <ContextMenu.Content>
+        <ContextMenu.Content aria-label={entry.path}>
           <ContextMenu.IconItem icon="copy" onSelect={() => void copyText(entry.path)}>
             {t("file.copyPath")}
           </ContextMenu.IconItem>

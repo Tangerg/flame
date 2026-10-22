@@ -37,7 +37,7 @@ describe("messageContextMenu", () => {
 
   it("shows Edit in composer + copy items for a user message", () => {
     render(
-      <MessageContextMenu msg={buildMessage({ role: "user" })}>
+      <MessageContextMenu msg={buildMessage({ role: "user" })} label="You">
         <div>user message</div>
       </MessageContextMenu>,
     );
@@ -51,7 +51,7 @@ describe("messageContextMenu", () => {
     const assistant = buildMessage({ role: "assistant" });
     material.messages = [assistant];
     render(
-      <MessageContextMenu msg={assistant}>
+      <MessageContextMenu msg={assistant} label="Assistant">
         <div>assistant message</div>
       </MessageContextMenu>,
     );
@@ -61,6 +61,16 @@ describe("messageContextMenu", () => {
     expect(screen.queryByText("Edit in composer")).toBeNull();
   });
 
+  it("names the menu after the displayed message author", async () => {
+    render(
+      <MessageContextMenu msg={buildMessage({ role: "user" })} label="You">
+        <div>user message</div>
+      </MessageContextMenu>,
+    );
+    openMenu("user message");
+    expect(await screen.findByRole("menu", { name: "You" })).toBeTruthy();
+  });
+
   it("does not show copy items when the message body is empty", () => {
     render(
       <MessageContextMenu
@@ -68,6 +78,7 @@ describe("messageContextMenu", () => {
           role: "user",
           blocks: [{ kind: "text", text: "", status: "complete" }],
         })}
+        label="You"
       >
         <div>empty</div>
       </MessageContextMenu>,
@@ -85,6 +96,7 @@ describe("messageContextMenu", () => {
           role: "user",
           blocks: [{ kind: "image", mime: "image/png", data: "abc" }],
         })}
+        label="You"
       >
         <div>image only</div>
       </MessageContextMenu>,
@@ -102,6 +114,7 @@ describe("messageContextMenu", () => {
           role: "user",
           blocks: [{ kind: "text", text: "draft me again", status: "complete" }],
         })}
+        label="You"
       >
         <div>user msg</div>
       </MessageContextMenu>,

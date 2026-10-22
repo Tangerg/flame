@@ -19,10 +19,11 @@ import { runtimeCapability } from "@/features/connection/public/capabilities";
 import { useActiveConversationMessages } from "@/features/agent/public/conversation";
 interface Props {
   msg: Message;
+  label: string;
   children: ReactNode;
 }
 
-export function MessageContextMenu({ msg, children }: Props) {
+export function MessageContextMenu({ msg, label, children }: Props) {
   const t = useT();
   const copy = messageCopyPayloads(msg);
   const canRestoreFiles = runtimeCapability("checkpoints");
@@ -32,7 +33,7 @@ export function MessageContextMenu({ msg, children }: Props) {
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger render={children as ReactElement} />
-      <ContextMenu.Content>
+      <ContextMenu.Content aria-label={label}>
         {menu.copyMarkdown && (
           <ContextMenu.IconItem
             icon="copy"

@@ -252,7 +252,7 @@ export function SessionRow({
     <>
       <ContextMenu.Root>
         <ContextMenu.Trigger render={row} />
-        <ContextMenu.Content>
+        <ContextMenu.Content aria-label={title}>
           {menu.map((item) => (
             <ContextMenu.IconItem
               key={item.id}

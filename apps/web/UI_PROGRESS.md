@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. Shared Select dismissal now finishes before rapid keyboard navigation, published at `346c1c07e` after native acceptance and owned-resource cleanup. Aggregate test timeouts and the existing MCP API-consumer guard failure are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. Shared Select dismissal now finishes before rapid keyboard navigation, published at `346c1c07e`. Native acceptance now also qualifies existing context-menu keyboard continuity, and product object menus expose their target identity. The current Web test run passed all 3,069 tests; the existing MCP API-consumer guard still fails. Earlier aggregate timeouts, current delivery and cleanup are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The current goal explicitly resumes the earlier milestone pause. Work in `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`; the primary checkout `/Users/tangerg/Desktop/flame` contains the user's parallel work and must remain untouched. The UI branch fast-forwarded 158 commits to remote main `8b9b403ff` before the current component pass. Verify current Git state before integration, commit explicit owned paths and push to remote `main`, clean owned resources, then continue the next evidence-backed batch. Do not sweep the user's local main commits or uncommitted files into this work.
+The current goal explicitly resumes the earlier milestone pause. Work in `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`; the primary checkout `/Users/tangerg/Desktop/flame` contains the user's parallel work and must remain untouched. The UI branch fast-forwarded 158 commits to remote main `8b9b403ff` before the current component pass, and integrated the later dependency/Scope updates through `75fea673d` before publishing object-menu names. That integration received renewed frontend and native acceptance. Verify current Git state before integration, commit explicit owned paths and push to remote `main`, clean owned resources, then continue the next evidence-backed batch. Do not sweep the user's local main commits or uncommitted files into this work.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -1522,8 +1522,9 @@ Verification and coverage for this repair:
   closes the task and returns to Add. Refresh Tooltip is visible on keyboard
   focus and dismisses with Escape. Dock ContextMenu opens by right-click and
   Shift+F10, supports arrow navigation and closes without changing panel order.
-  Context-menu focus return and very rapid consecutive Escape/Tab still need
-  targeted qualification; do not infer those from stepped dismissal.
+  Context-menu focus return and very rapid consecutive Escape/Tab were not
+  qualified at that checkpoint. The object-menu follow-up below now covers
+  true keyboard entry and consecutive navigation in the actual host.
 - Layout, typography and accessibility observations above cover these concrete
   paths in the existing token system. Existing localized EN/ZH labels and action
   meanings were checked without copy changes. Color roles and neutral canvas
@@ -1684,8 +1685,118 @@ Verification and delivery boundary:
   `346c1c07e` with normal formatting, workspace-lint and commit-message hooks,
   then pushed to remote `main`; `git ls-remote` confirmed the exact revision.
   The committed Select hash still matches native acceptance. Continue native
-  context-menu focus continuity and retained-content popup boundaries; neither
-  whole-product VoiceOver coverage nor untested focus paths are claimed.
+  retained-content popup boundaries; neither whole-product VoiceOver coverage
+  nor untested focus paths are claimed. The context-menu qualification follows.
+
+## Object identity in context menus
+
+Native inspection of exact main `a1ca0566e` found unnamed root menus for Dock
+views, Session identity, messages and file entries. These pointer context menus
+have no ordinary Menu controlling-button name relationship. Their product owners
+already hold the displayed identity, so each root now uses that identity as its
+accessible name: view/session titles, message authors and complete file paths.
+`SessionRow` reuses its existing trimmed title or localized Untitled session
+fallback. `MessageBlock` supplies the same role label used by its visible heading.
+`AgentDockTab.title` now states the actual string contract supplied by ChatPanel;
+icons and badges keep their separate slots. All real callers were checked before
+narrowing the previously unused ReactNode possibility. No second identity state,
+generic required-name API, focus handler or translation was added. Nested Restore
+keeps the primitive's controlling-item relationship.
+
+The [W3C menu pattern](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/)
+recommends an author-provided label or a relationship to the controlling element.
+The generic menu role does not universally require an accessible name; this
+change makes the current object explicit within Flame's task model. Better
+accessibility's meaningful-name and focus-order guidance informed the review.
+[Radix Context Menu](https://www.radix-ui.com/primitives/docs/components/context-menu)
+and the installed Base UI lifecycle supplied the keyboard comparison. Native
+baseline already passed true Shift+F10 entry, arrow navigation, stepped Escape
+return and three 35 ms Escape/Tab/Space trials from a focused Dock tab. Its Tab
+control reached Browse panels. This batch improves naming and qualifies that
+existing focus behavior; it does not claim to repair a ContextMenu focus defect.
+
+Verification and delivery boundary:
+
+- Bounded Claude Code CLI used its configured `claude-opus-5-5`. The first pass
+  reached its 12-turn limit after 89.86 seconds with partial edits, rather than a
+  completed result. The narrower second pass completed in 67.85 seconds. Neither
+  used subagents or had permission denials. Primary reviewed the diff, traced
+  every Dock title producer, completed the string contract and owned all checks
+  and native acceptance.
+- With the six original product files temporarily restored, the four new naming
+  cases failed and 21 existing cases passed. The candidate passed the focused
+  **7 files / 127 tests** and typecheck. Tests query real menus, including an
+  inactive tab's target, message author, normal session and blank-title fallback.
+  The inactive-tab synthetic context event does not qualify native pointer
+  selection policy. No existing assertion or primitive was mocked or weakened.
+- The initial full Web test run passed **389 files / 3,069 tests** in 194.51
+  seconds, and `make check-native` passed in 28.16 seconds. Before publication,
+  remote main advanced by two dependency/Scope commits through `75fea673d`.
+  They fast-forwarded without touching the six product edits. Root `npm ci`
+  installed the current lock; React is now 19.3.1, Motion 14.6.0 and both Wails
+  host and JS Runtime are beta.34. Renewed shared UI checks passed **79 tests**
+  plus the independent packed consumer in 8.72 seconds. Renewed full Web tests
+  passed **389 files / 3,069 tests** in 107.97 seconds. The aggregate remains
+  **failed** solely at the known non-test consumer inventory for
+  `mcp.servers.reconnect`; its 16 guard tests pass. Every later gate ran serially
+  and passed again, including all **11** portable resource rebuild comparisons,
+  production bundle and plugin modules. Native check initially selected the
+  machine's Go 1.27.0 under the coordinator's local-toolchain rule and failed the
+  new manifest requirement. A command-scoped PATH to the already available
+  Go 1.27.3 corrected that environment; `make check-native` passed in 33.81
+  seconds. No global configuration changed. No Runtime, SDK, guard, timeout or
+  business-semantic edit is part of this UI diff. Prior aggregate timeouts remain
+  historical failures; these passes do not establish their cause. No browser
+  visual suite or benchmark ran.
+- Actual Wails EN/light/14 px/Flame Orange exposed Workspace diff, Files, the
+  current Session title and You as the corresponding native menu names. Three
+  candidate 35 ms Escape/Tab/Space trials reached Browse panels with the exact
+  pasted mixed CJK/English Composer draft and panel order retained. Stepped
+  dismissal returned to the source tab. The visible file alias `resizer.ts`
+  exposed its full `apps/web/src/features/shell/workbench/panel/DockResizer.tsx`
+  identity. A verified native right-edge resize kept that menu readable. One
+  rejected drag based on incorrectly parsed JPEG dimensions made no resize and
+  is excluded; the corrected screenshot measurement verifies the actual change.
+- Actual Wails ZH/dark/18 px/custom blue used the production sidebar with private
+  business-data seeds for a long bilingual title and a blank title. The first
+  native menu retained the complete title behind visible ellipsis; the second
+  used the existing localized Untitled session fallback. Escape returned to the
+  real row; true Shift+F10 and 35 ms Escape/Tab reached its adjacent More trigger,
+  and Space opened that ordinary labelled action menu. At native **200%**, the
+  actual list scrolled to the last row, all five actions remained readable, and
+  the same source return and rapid next-focus path passed. Actual Size was
+  restored before Quit. Native accessibility names were inspected; VoiceOver
+  speech, IME composition and mutating menu commands were not newly qualified.
+- Native acceptance was repeated on the merged dependency graph using Wails
+  beta.34. EN/light/14 px/Orange passed three renewed rapid keyboard trials with
+  the same draft and order retained. Session, message, Dock and full file-path
+  menu identities passed, and a measured native resize from 2878×1798 to
+  2632×1798 screenshot pixels retained the readable file menu. ZH/dark/18 px/
+  custom blue again passed the full long/blank title identities, ordinary next
+  focus, true Shift+F10, rapid Escape/Tab and the following action-menu opening.
+  At 200%, the actual sidebar scrolled to the last row; all five menu actions,
+  original-row return and the rapid next-focus/open path passed. A 20-command CUA
+  batch hit the tool's 30-second limit; that partial count is excluded. Actual
+  Size was restored, then twenty successful native Zoom In commands were
+  recorded individually in four bounded chunks before the final checks. A
+  setup click on the screen-reader-only message heading opened WebKit's own
+  menu; it is excluded and the visible message body supplied the verified target.
+  Actual Size was restored again before Quit.
+- The first native pass froze **17** product/host/fixture inputs and three private
+  harness inputs. The merged pass froze **24** product/host/fixture/manifest
+  inputs and three private harness inputs; all remained identical through their
+  respective final acceptance. All five owned native PIDs across the two passes
+  and both CLI PIDs exited. Both exact bundles were unregistered and both private
+  roots and pointers removed, including bundles, homes, overlays, captures,
+  reference HTML, CLI prompts/reports/logs and recheck logs. Each pass removed its
+  ten newly created worktree outputs/caches and two unique bundle Library paths
+  after preexistence, canonical-path, UID, birth-time, symlink and tracked-file
+  guards. Existing dependencies, the shared UI Vite cache, compiler/package
+  caches, references, shared application state and the user's parallel primary
+  checkout remain.
+  Publication is the remaining delivery step. Next qualify actual catalog
+  Popover and bounded Dialog rapid dismissal before deciding whether either
+  needs a change; no shared exit-policy defect is assumed.
 
 ## Native workspace zoom and Dock geometry
 

@@ -158,7 +158,9 @@ function MessageBlockInner({
           {msg.phase === "commentary" ? (
             messageContent
           ) : (
-            <MessageContextMenu msg={msg}>{messageContent}</MessageContextMenu>
+            <MessageContextMenu msg={msg} label={roleLabel}>
+              {messageContent}
+            </MessageContextMenu>
           )}
           {isUser && <SteerInputStatus feedback={row.inputFeedback} messageId={msg.id} />}
           {isUser && !msg.steer && msg.runId === null && (

@@ -266,6 +266,15 @@ describe("AgentDockTabs focus continuity", () => {
     expect(document.activeElement).toBe(screen.getByRole("tab", { name: "plan" }));
   });
 
+  it("names the menu after the inactive tab it was opened on", async () => {
+    render(<DockHarness initial={["files", "diff", "plan"]} />);
+
+    fireEvent.contextMenu(rowOf("plan"));
+
+    expect(await screen.findByRole("menu", { name: "plan" })).toBeTruthy();
+    expect(screen.queryByRole("menu", { name: "files" })).toBeNull();
+  });
+
   it("keeps the moved tab focused after a menu reorder", async () => {
     render(<DockHarness initial={["files", "diff", "plan"]} />);
 
