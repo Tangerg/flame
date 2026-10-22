@@ -7,18 +7,17 @@ import { RulesRow } from "@/features/approvals/ui/RulesRow";
 export function ApprovalsPane() {
   const t = useT();
   const { data: approval, isError, refetch } = useApprovalModeConfig();
-  if (isError) {
-    return (
-      <DataError
-        onRetry={() => refetch()}
-        title={t("approvals.unavailable")}
-        sub={t("approvals.unavailable.sub")}
-      />
-    );
-  }
   return (
     <SettingsGroup>
-      <ModeRow approval={approval} />
+      {isError ? (
+        <DataError
+          onRetry={() => refetch()}
+          title={t("approvals.unavailable")}
+          sub={t("approvals.unavailable.sub")}
+        />
+      ) : (
+        <ModeRow approval={approval} />
+      )}
       <RulesRow />
     </SettingsGroup>
   );

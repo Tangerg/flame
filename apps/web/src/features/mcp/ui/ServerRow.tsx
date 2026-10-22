@@ -37,7 +37,10 @@ const STATUS_TONE: Record<MCPServerSettings["status"], DotTone> = {
 };
 
 function TransportBadge({ transport }: { transport: MCPTransport }) {
-  return <Tag size="sm">{transport}</Tag>;
+  const t = useT();
+  return (
+    <Tag size="sm">{t(transport === "stdio" ? "mcp.transport.stdio" : "mcp.transport.http")}</Tag>
+  );
 }
 
 const sr = stylex.create({
