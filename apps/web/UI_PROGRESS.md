@@ -2544,9 +2544,14 @@ each dock view is still pending):
   title + skills' scope badge as content, Refresh as the trailing action).
 - **memory** — the editor restated the scope a third time (already in the always-visible
   Segmented and the header); dropped, leaving only the record id on an update. The
-  deeper item — the edit `RecordForm` is injected at the panel top rather than a
-  list→detail switch that keeps the edited row in view — is deferred: it needs the body
-  render-order reworked and native verification of the edit/cancel focus flow.
+  deeper item — the edit `RecordForm` sits above the still-rendered list rather than a
+  list→detail switch — is NOT a plain list→detail fix: `current` stays truthy during an
+  edit so the catalog renders below the editor on purpose, and
+  `visual/memoryDrafts.test.tsx` ("keeps editor and record feedback apart") locks in
+  that you can Approve/act on other rows while editing one. Hiding the list would break
+  that coexistence; the real improvement is in-place row editing (editor replacing the
+  edited row), a larger refactor to weigh against the coexistence contract and verify
+  natively — deferred, not a blind swap.
 - Not changed (reviewed): `tool-results` is an embedded single-object result, not a
   master/detail list; `diagnostics` is clean; `trajectory`'s duplicate page-count line
   and `usage`'s input/output token overlap are low-value de-dups left for a later pass.
