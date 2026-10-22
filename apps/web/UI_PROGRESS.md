@@ -2295,45 +2295,46 @@ defects; each needs a Wails look and an explicit choice before implementing:
   promoted write/exec result visible (a coherent "meaningful results stay" design);
   ChatGPT and the internal `ToolGroup` instead auto-collapse on completion. Decide
   whether standalone cards should adopt the status-driven default with a pin.
-- **Light-theme text ladder collapse (muted ≈ faint).** A color-semantics audit found
-  the role usage consistent (feedback colors only feed feedback, `accentText` vs the
-  raw `accent` solid are not confused, `fgFaint` only paints genuine tertiary text),
-  but one real value defect: in the light theme `--color-text-muted` (#656565) and
-  `--color-text-faint` (#696969) differ by ~4/255, so the two-tier metadata hierarchy
-  (muted label over faint detail) that reads clearly in dark (#a3a3a3 vs #8c8c8c) is
-  lost in light across `activity-disclosure`, `context-dock`, `QuestionCard`, `kbd`,
-  `text-button` and catalog rows. Root cause is the palette ladder: `kit/palette.ts`
-  derives muted from `step(neutral, 11)` and faint from `step(neutral, 10)`, and the
-  light neutral scale compresses those adjacent steps (the depth-step term is 0% in
-  light). The fix is a palette-ladder change (re-space the neutral scale), not a
-  stylesheet literal — the stylesheet mirrors the computed spec and
-  `stylesheetMirror.test.ts` enforces agreement. **Crucially it is AA-constrained:**
-  `palette.test.ts` requires every text step, faint included, to clear WCAG AA text
-  (4.5:1) against all planes, and in the light theme faint already sits near that floor
-  — a probe that nudged light faint toward the canvas (to ~#7d7d7d, ~3.7:1) restored the
-  muted/faint gap but was correctly rejected by that AA invariant. So faint cannot
-  simply be dimmed; the real fix must re-space the ladder _inside_ the AA floor (e.g.
-  darken muted / shrink the soft→muted gap to free muted→faint room), which is a
-  deliberate palette-design tradeoff needing native verification across every faint
-  consumer in both themes. (Reasoning's own light contrast is the separate pending item
-  noted below.)
+- **Light-theme text ladder collapse (muted ≈ faint) — fixed, native acceptance
+  pending.** A color-semantics audit found the role usage consistent, but one real
+  value defect: in the light theme `--color-text-muted` (#656565) and `--color-text-faint`
+  (#696969) differed by ~4/255, so the two-tier metadata hierarchy (muted label over
+  faint detail) that reads clearly in dark was lost in light across
+  `activity-disclosure`, `context-dock`, `QuestionCard`, `kbd`, `text-button` and
+  catalog rows. Root cause is the palette ladder: `kit/scale.ts` `NEUTRAL_INK` derives
+  muted from step 11 and faint from step 10, and the light neutral scale compressed
+  those adjacent ink shares (62 vs 51) while the AA bump then pulled both to the same
+  dim floor — on the warm custom light canvas muted and faint came out byte-identical.
+  It is AA-constrained: `palette.test.ts` requires every text step, faint included, to
+  clear WCAG AA (4.5:1) against all planes, and light faint already sits at that floor,
+  so it cannot be lightened. The shipped fix re-spaces the ladder _inside_ the floor by
+  darkening the muted ink anchor (step 11) from 62 to 74, measured against the real
+  computed values: built-in light now steps evenly (L 0.22 / 0.31 / 0.42 / 0.52) and
+  custom light muted/faint separate, faint keeps its floor value, and the dark ladder
+  is untouched. `soft` tracks muted through its 55% anchor, so the `:root` mirror moved
+  with it (`stylesheetMirror.test.ts` and the 111 `palette.test.ts` AA cases pass).
+  Confirm the muted weight across both light canvases in Wails.
 - **Reasoning while streaming.** Today a quiet one-line glimpse; ChatGPT shows the
   full capped auto-following panel inline, but the newer ZCode reference explicitly
   reverted from that panel back to a default-collapsed glimpse (an expanded
   streaming reasoning panel keeps crowding tools and body). Flame already matches
   ZCode, and `ReasoningBlock.test.tsx` locks "starts shut while it thinks" as a
   deliberate choice — keep the glimpse.
-- **Reasoning dimness (implemented; pending native alpha/readability acceptance).**
+- **Reasoning dimness (implemented and natively accepted; alpha confirmed optimal).**
   Both references run reasoning dimmer than Flame did (ChatGPT title ≈30% / body
   ≈50–60%; ZCode a uniform base-text ≈40% alpha), and Flame was the brightest of the
-  three (body/label `fgMuted` ≈64%, glimpse `fgFaint` ≈55%). Added a reasoning-only
-  `--color-text-reasoning` token (`apps/web/src/styles/globals.css`,
-  `color-mix(in oklab, var(--color-text) 45%, transparent)`, theme-adaptive) and
-  routed the reasoning body (`messageStyles.quote`), glimpse (`ReasoningBlock`
-  `glimpseLine`) and the disclosure label/detail through it via a new
-  `AgentActivityDisclosure` `ink="dim"` variant (tools keep the default ink). The
-  45% start value is tunable toward the ≈40% reference; confirm the exact alpha and
-  dark/light contrast in Wails.
+  three. A reasoning-only `--color-text-reasoning` token
+  (`apps/web/src/styles/globals.css`) now carries the body (`messageStyles.quote`),
+  glimpse (`ReasoningBlock` `glimpseLine`) and the disclosure label/detail via an
+  `AgentActivityDisclosure` `ink="dim"` variant (tools keep the default ink). The two
+  theme alphas are **not** the same number because they are matched on _effective_
+  composited contrast, not on alpha: light `var(--color-text) 58%` and dark `45%` both
+  land at ~4.0:1 over the canvas (measured: light 58% → 4.11, dark 45% → 4.04), a
+  deliberate "quieter than body" tier below AA that both references also run. Literally
+  adopting the ZCode 40% figure in light was measured to crash the composite to 2.46:1
+  (unreadable), so the reference alpha does not transfer across canvas luminance; the
+  current contrast-matched pair is the tuned result and was already accepted in Wails.
+  Keep it.
 - **Panel-header / two-level return.** The Dock view-header variants and the
   Dock-return (`←`) vs in-view back (`‹`/`list`) affordances could unify into one
   identity+actions+return contract or breadcrumb; this is a focus-and-visual
