@@ -2524,16 +2524,21 @@ each dock view is still pending):
   Next firing; the human-readable Next firing is now the primary line, the cron
   expression moved into the facts, and the duplicate was dropped. The restating panel
   description is gone.
-- **diff** — in the single-file view the overview Comparison (Uncommitted/Branch)
-  selector + Refresh stayed resident, stacking three to four sticky bars in the narrow
-  dock; that bar now renders only in the files-list view. The file identity was split
-  between the sticky `DiffFileHeader` (basename) and a repeated full-path `Metadata` at
-  the top of the body; `DiffFileHeader` (in `@flame/ui`, consumed only by this plugin;
-  `apps/web` uses the unchanged `DiffFileList`) now shows name + dimmed directory once
-  and the body line is gone. Restating panel description removed.
-- **usage** — two stacked full-width control bars (period Toolbar + search/group
-  FilterBar) merged into one FilterBar (search + refresh lead, period + group-by as the
-  options row).
+- **diff** — the file identity was split between the sticky `DiffFileHeader` (basename)
+  and a repeated full-path `Metadata` at the top of the body; `DiffFileHeader` (in
+  `@flame/ui`, consumed only by this plugin; `apps/web` uses the unchanged
+  `DiffFileList`) now shows name + dimmed directory once and the body line is gone.
+  Restating panel description removed. Hiding the overview Comparison selector in the
+  file view was tried and reverted: `visual/diffPresentation.test.tsx` shows changing
+  the Uncommitted/Branch scope while reading a file is a supported flow (with Refresh
+  focus and Escape-return cases), so the selector stays. Leaning the diff file-view
+  chrome further is a native-design decision (whether scope becomes list-level), not a
+  blind removal.
+- **usage** — merging the period Toolbar and the search/group FilterBar into one bar
+  was tried and reverted: `visual/usageScopePresentation.test.tsx` asserts the report
+  range (period) precedes the local filters, and FilterBar leads with search, which
+  inverted that order. The scope-bar-then-filter-bar split is the intended "set the
+  range, then filter within it" order and is kept.
 - **usagereports, skills** — the detail view stacked a navigation Toolbar (Back +
   Refresh) over a second Toolbar holding only the title; collapsed into one row (Back +
   title + skills' scope badge as content, Refresh as the trailing action).
@@ -2552,6 +2557,7 @@ each dock view is still pending):
 - The latest goal asks the primary agent to own the overall task model and prefer Claude Code CLI for bounded implementation details. This supersedes the earlier no-Claude preference. The primary agent still owns reference research, implementation review, real Wails acceptance, verification, commits, pushes and cleanup; CLI output is evidence to inspect, not approval to skip those responsibilities.
 - Apply relevant better-series skills and inspect the references in depth. Preserve StyleX, Base UI, semantic tokens and one fact/one owner. Runtime owns durable product semantics; layout work does not authorize rebuilding those state machines in the client.
 - Batch meaningful changes, then review their combined visual and interaction result. Prioritize development and actual native computer use. The user explicitly asked not to run visual/browser suites and to avoid meaningless tests; retain necessary regression coverage and module checks, and reuse valid results when source and dependencies have not changed.
+- A `plugins/*/component` change is not verified by `cd plugins && npm run check` alone: `apps/web/visual/*.test.tsx` imports several plugin sources directly (`../../../plugins/<name>/component/component`) and encodes their behavioural contracts (diff, schedules, memory, usage, …). Run `vitest run visual` (or the affected `visual/*.test.tsx`) for any dock plugin edit before committing; treat a broken contract as a signal to reconsider the change, not just to update the test.
 - After cleaning generated outputs, run `make stage-web` before the standalone Web check: it builds the current icons, shared UI and production resources. Web's `check` does not stage those prerequisites. The native coordinator includes staging. Keep builds, module checks and native acceptance serial so cleared shared outputs cannot appear as missing-resource or dependency failures.
 - Portable renderer changes include rebuilding and checking their published ESM resources. A source or resource rebuild does not update an existing Runtime installation; verify the actual selected resource when that installation is in scope.
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
