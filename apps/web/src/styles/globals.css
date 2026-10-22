@@ -518,8 +518,8 @@ html.theme-dark {
   --color-media-scrim: rgb(0 0 0 / 0.55);
   --color-media-preview: rgb(0 0 0 / 0.9);
   --color-on-media: #ffffff;
-  --window-sidebar-control-span: calc(var(--control-height-sm) + 10px);
-  --dock-control-span: calc(var(--control-height-sm) + 10px);
+  --window-sidebar-control-span: calc(var(--control-height-sm) + var(--spacing) * 2.5);
+  --dock-control-span: calc(var(--control-height-sm) + var(--spacing) * 2.5);
   --dock-tab-inset: calc(var(--spacing) * 2);
   --surface-header-height: 46px;
   --dur-drawer: calc(var(--dur-drawer-base) * var(--motion-scale));
@@ -887,7 +887,7 @@ html.theme-dark {
 }
 
 .agent-dock-tabs {
-  --dock-tab-edge: 16px;
+  --dock-tab-edge: calc(var(--spacing) * 4);
   display: flex;
   min-width: 0;
   flex: 1;
