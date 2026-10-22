@@ -2242,6 +2242,18 @@ animation/transition to 0s and a single iteration under both the OS
 `--motion-scale` token wrapping every `--dur-*`/`--animate-*` duration, and a
 `MotionConfig reducedMotion="user"` plus `motionScale()` gate on the motion/react
 layer.
+A follow-up repo-wide motion/grid sweep confirmed no `.tsx` still carries a raw
+`var(--dur|ease|animate-*)` string or a hard-coded framer `duration:` (all route
+through the `motion.*` tokens / `lib/motion` variants), and the sidebar carries no
+off-grid literal. It found and fixed one residual: the truncate fade-mask edge was
+the literal `16px` spelled three times — the trailing fade on `.truncate-fade` and
+the leading fade reached by the `agent-overflow-lead` marquee keyframe — which must
+read as one fade yet could drift. `.truncate-fade` now owns it as
+`--truncate-fade-width` on the 4px grid (output-identical) and every mask reads that
+one owner, so the marquee's leading and trailing fades move together by
+construction. The `AgentOverflowLabel` marquee duration stays distance-proportional
+(`distance / (fontSize * 2)`, constant speed) and still multiplies `--motion-scale`,
+so reduced motion zeroes it.
 Of note, a defensive XSS audit traced every dangerouslySetInnerHTML and URL sink:
 mermaid SVG (beautiful-mermaid escapes all text/attrs), shiki (escaped code), the
 markdown raw-HTML path (remarkLiteralUnknownHtml downgrades every non-allowlisted,
