@@ -2,6 +2,7 @@ import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useId, useRef, useState } from "react";
+import { ConfirmDialog } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { SystemMessage } from "@/ui/index";
 import { ProviderIcon } from "@/ui/index";
@@ -52,6 +53,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
   const [draft, setDraft] = useProviderDraft(p);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [confirmingClear, setConfirmingClear] = useState(false);
   const savingLatch = useRef(false);
   const materialGeneration = useProviderMutationMaterialGeneration();
   const { feedback, reset, fail, run } = useAsyncFeedback(materialGeneration);
@@ -196,7 +198,12 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
         label={t("providers.save")}
         auxiliaryAction={
           hasStoredKey && (
-            <Button variant="ghost" size="sm" pending={saving} onClick={() => void onClearKey()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              pending={saving}
+              onClick={() => setConfirmingClear(true)}
+            >
               {t("providers.apiKey.clear")}
             </Button>
           )
@@ -249,6 +256,16 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
       {dirty && !valid && (
         <p {...stylex.props(ss.hintSpaced, typeStep.uiSm)}>{t("providers.baseUrl.required")}</p>
       )}
+      <ConfirmDialog
+        open={confirmingClear}
+        onOpenChange={setConfirmingClear}
+        title={t("providers.apiKey.clear.title")}
+        body={t("providers.apiKey.clear.body", { provider: p.id })}
+        confirmLabel={t("providers.apiKey.clear")}
+        cancelLabel={t("common.cancel")}
+        destructive
+        onConfirm={() => void onClearKey()}
+      />
     </ListRow>
   );
 }

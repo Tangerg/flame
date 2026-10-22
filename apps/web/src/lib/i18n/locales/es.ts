@@ -366,6 +366,9 @@ export const es: Record<string, string> = {
 
   "providers.apiKey.replace": "Reemplazar clave de API…",
   "providers.apiKey.clear": "Quitar clave guardada",
+  "providers.apiKey.clear.title": "¿Quitar la clave guardada?",
+  "providers.apiKey.clear.body":
+    "{{provider}} pierde su clave de API guardada. Tendrás que volver a pegarla para reconectar.",
   "providers.apiKey.placeholder": "Clave de API",
   "providers.apiKey.aria": "Clave de API de {{provider}}",
   "providers.baseUrl.placeholder": "URL base",
@@ -769,6 +772,9 @@ export const es: Record<string, string> = {
   "mcp.save": "Guardar",
   "mcp.saving": "Guardando…",
   "mcp.delete": "Eliminar",
+  "mcp.delete.title": "¿Eliminar este servidor?",
+  "mcp.delete.body":
+    "«{{server}}» y sus herramientas se eliminan. Puedes volver a añadirlo más tarde.",
   "mcp.test": "Probar",
   "mcp.testing": "Probando…",
   "mcp.connectionOk": "Conexión correcta",

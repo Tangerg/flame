@@ -335,6 +335,8 @@ export const zh: Record<string, string> = {
   "mcp.save": "保存",
   "mcp.saving": "保存中…",
   "mcp.delete": "删除",
+  "mcp.delete.title": "删除这个服务器？",
+  "mcp.delete.body": "“{{server}}”及其工具都会移除。之后可以重新添加。",
   "mcp.test": "测试",
   "mcp.testing": "测试中…",
   "mcp.connectionOk": "连接正常",
@@ -461,6 +463,8 @@ export const zh: Record<string, string> = {
 
   "providers.apiKey.replace": "替换 API 密钥…",
   "providers.apiKey.clear": "移除已保存密钥",
+  "providers.apiKey.clear.title": "移除已保存的密钥？",
+  "providers.apiKey.clear.body": "{{provider}} 将失去已保存的 API 密钥，需要重新粘贴才能再次连接。",
   "providers.apiKey.placeholder": "API 密钥",
   "providers.apiKey.envPlaceholder": "正在使用环境变量密钥 — 输入以覆盖",
   "providers.apiKey.aria": "{{provider}} API 密钥",

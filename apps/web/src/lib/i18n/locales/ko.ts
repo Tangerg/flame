@@ -347,6 +347,9 @@ export const ko: Record<string, string> = {
 
   "providers.apiKey.replace": "API 키 교체…",
   "providers.apiKey.clear": "저장된 키 제거",
+  "providers.apiKey.clear.title": "저장된 키를 제거할까요?",
+  "providers.apiKey.clear.body":
+    "{{provider}}의 저장된 API 키가 사라집니다. 다시 연결하려면 키를 다시 붙여넣어야 합니다.",
   "providers.apiKey.placeholder": "API 키",
   "providers.apiKey.aria": "{{provider}} API 키",
   "providers.baseUrl.placeholder": "기본 URL",
@@ -726,6 +729,8 @@ export const ko: Record<string, string> = {
   "mcp.save": "저장",
   "mcp.saving": "저장 중…",
   "mcp.delete": "삭제",
+  "mcp.delete.title": "이 서버를 삭제할까요?",
+  "mcp.delete.body": "'{{server}}'과 그 도구가 제거됩니다. 나중에 다시 추가할 수 있습니다.",
   "mcp.test": "테스트",
   "mcp.testing": "테스트 중…",
   "mcp.connectionOk": "연결 정상",

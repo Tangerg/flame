@@ -410,6 +410,9 @@ export const en: Record<string, string> = {
 
   "providers.apiKey.replace": "Replace API key…",
   "providers.apiKey.clear": "Remove stored key",
+  "providers.apiKey.clear.title": "Remove the stored key?",
+  "providers.apiKey.clear.body":
+    "{{provider}} loses its saved API key. You'll need to paste it again to reconnect.",
   "providers.apiKey.placeholder": "API key",
   "providers.apiKey.envPlaceholder": "Using environment key — type to override",
   "providers.apiKey.aria": "{{provider}} API key",
@@ -448,6 +451,8 @@ export const en: Record<string, string> = {
   "mcp.save": "Save",
   "mcp.saving": "Saving…",
   "mcp.delete": "Delete",
+  "mcp.delete.title": "Delete this server?",
+  "mcp.delete.body": '"{{server}}" and its tools are removed. You can add it back later.',
   "mcp.test": "Test",
   "mcp.testing": "Testing…",
   "mcp.connectionOk": "Connection OK",

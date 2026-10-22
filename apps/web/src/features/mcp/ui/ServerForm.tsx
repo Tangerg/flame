@@ -2,6 +2,7 @@ import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useLayoutEffect, useRef, useState } from "react";
+import { ConfirmDialog } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { SystemMessage } from "@/ui/index";
 import { Segmented, Switch } from "@flame/ui";
@@ -58,6 +59,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
   const draft = edit.fields;
 
   const [saving, setSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const materialGeneration = useMCPServerMutationMaterialGeneration();
   const { feedback, reset, fail, run } = useAsyncFeedback(materialGeneration);
 
@@ -335,7 +337,7 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               tone="negative"
               size="sm"
               pending={saving}
-              onClick={() => void onDelete()}
+              onClick={() => setConfirmingDelete(true)}
             >
               {t("mcp.delete")}
             </Button>
@@ -380,6 +382,18 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
       </span>
       {feedback.state === "error" && (
         <SystemMessage variant="warning">{feedback.reason}</SystemMessage>
+      )}
+      {server && (
+        <ConfirmDialog
+          open={confirmingDelete}
+          onOpenChange={setConfirmingDelete}
+          title={t("mcp.delete.title")}
+          body={t("mcp.delete.body", { server: server.id.name })}
+          confirmLabel={t("mcp.delete")}
+          cancelLabel={t("common.cancel")}
+          destructive
+          onConfirm={() => void onDelete()}
+        />
       )}
     </RecordForm>
   );

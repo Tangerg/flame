@@ -347,6 +347,9 @@ export const ja: Record<string, string> = {
 
   "providers.apiKey.replace": "API キーを置き換え…",
   "providers.apiKey.clear": "保存済みキーを削除",
+  "providers.apiKey.clear.title": "保存済みキーを削除しますか？",
+  "providers.apiKey.clear.body":
+    "{{provider}} の保存済み API キーが失われます。再接続するには貼り付け直す必要があります。",
   "providers.apiKey.placeholder": "API キー",
   "providers.apiKey.aria": "{{provider}} の API キー",
   "providers.baseUrl.placeholder": "ベース URL",
@@ -730,6 +733,8 @@ export const ja: Record<string, string> = {
   "mcp.save": "保存",
   "mcp.saving": "保存中…",
   "mcp.delete": "削除",
+  "mcp.delete.title": "このサーバーを削除しますか？",
+  "mcp.delete.body": "「{{server}}」とそのツールが削除されます。後で再び追加できます。",
   "mcp.test": "テスト",
   "mcp.testing": "テスト中…",
   "mcp.connectionOk": "接続は正常です",

@@ -340,6 +340,8 @@ export const zhTW: Record<string, string> = {
 
   "providers.apiKey.replace": "替換 API 金鑰…",
   "providers.apiKey.clear": "移除已儲存金鑰",
+  "providers.apiKey.clear.title": "移除已儲存的金鑰？",
+  "providers.apiKey.clear.body": "{{provider}} 將失去已儲存的 API 金鑰，需要重新貼上才能再次連線。",
   "providers.apiKey.placeholder": "API 金鑰",
   "providers.apiKey.aria": "{{provider}} API 金鑰",
   "providers.baseUrl.placeholder": "Base URL",
@@ -717,6 +719,8 @@ export const zhTW: Record<string, string> = {
   "mcp.save": "儲存",
   "mcp.saving": "正在儲存…",
   "mcp.delete": "刪除",
+  "mcp.delete.title": "刪除這個伺服器？",
+  "mcp.delete.body": "「{{server}}」及其工具都會移除。之後可以重新新增。",
   "mcp.test": "測試",
   "mcp.testing": "正在測試…",
   "mcp.connectionOk": "連線正常",

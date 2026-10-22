@@ -369,6 +369,9 @@ export const fr: Record<string, string> = {
 
   "providers.apiKey.replace": "Remplacer la clé API…",
   "providers.apiKey.clear": "Supprimer la clé enregistrée",
+  "providers.apiKey.clear.title": "Supprimer la clé enregistrée ?",
+  "providers.apiKey.clear.body":
+    "{{provider}} perd sa clé API enregistrée. Vous devrez la recoller pour vous reconnecter.",
   "providers.apiKey.placeholder": "Clé API",
   "providers.apiKey.aria": "Clé API {{provider}}",
   "providers.baseUrl.placeholder": "URL de base",
@@ -772,6 +775,9 @@ export const fr: Record<string, string> = {
   "mcp.save": "Enregistrer",
   "mcp.saving": "Enregistrement…",
   "mcp.delete": "Supprimer",
+  "mcp.delete.title": "Supprimer ce serveur ?",
+  "mcp.delete.body":
+    "« {{server}} » et ses outils sont supprimés. Vous pourrez l’ajouter de nouveau plus tard.",
   "mcp.test": "Tester",
   "mcp.testing": "Test en cours…",
   "mcp.connectionOk": "Connexion OK",
