@@ -2591,6 +2591,21 @@ each dock view is still pending):
   repeat (intentional, pinned), and the `InstalledComponent`/`ComponentCompositions`
   mount pipeline (deliberate lightweight error-boundary fallbacks, pinned) were verified
   clean.
+- The MCP / hooks / approvals / connection settings panes + forms were then audited.
+  Two fixes: the MCP server row's transport badge rendered the raw `streamableHttp` enum
+  while the edit form localizes the same value to "Streamable HTTP" — the badge now uses
+  the `mcp.transport.*` label (one vocabulary); and `ApprovalsPane` early-returned a
+  full-pane `DataError` on an approval-mode read failure, unmounting the independent
+  `RulesRow` (its own `DataView`) — the mode error now lives in the mode row's slot so the
+  rules list survives a mode-only failure. This "error hosted on the wrong collection /
+  unmounting independent content" shape appeared twice (here and `ProviderSelections`);
+  the remaining `DataError` sites are correct — `ToolControls` scopes three independent
+  errors by design, and every other pane routes error through a `DataView` wrapping its
+  own list. Verified intentional (pinned by tests, not changed): `HooksPane` scope text,
+  `ModeRow` aria+visible label pattern, `ConnectionPane`'s separate token state/hint
+  paragraphs and four-op auxiliary stack, and `ServerForm`'s disabled immutable-name
+  field (identity echo justified by the create/edit-parallel, name-is-immutable
+  affordance).
 
 ## Working and maintenance practice
 
