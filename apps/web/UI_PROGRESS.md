@@ -2750,6 +2750,37 @@ context.locale)`, threads the translator (and active locale) into sub-components
   single-token `<code>` data and translated expression props. The one remaining open item is
   native host acceptance of the localized dock views, which only the user can perform.
 
+## Conversation/transcript surface audit
+
+A deep audit of the chat stream (message blocks, narrative rails, plan progress,
+tools, subagents, ChatStream/ChatPanel) on correctness/a11y/one-owner/streaming
+lenses found it largely clean (keys derive from stable material ids, reveal loops
+clean up, run-status facets have one owner). Three genuine defects were fixed:
+
+- **Streaming focus trap (`MessageBlock.tsx`).** The focus-retention latch
+  reclaimed focus to the message column on any stream chunk once armed and focus
+  had fallen to `<body>` — including when the user deliberately clicked blank,
+  non-focusable space, snapping keyboard focus back onto the streaming turn. It
+  now records the last-focused child and reclaims only when that child has
+  actually unmounted (a child still in the DOM = a deliberate blur to body).
+- **Subagent per-chunk re-render (`SubagentsPanel.tsx`).** It rebuilt its
+  `BlockCtx` inline every render, defeating `MessageBlock`'s `memo` so every
+  settled turn in a streaming subagent transcript re-rendered per chunk; now
+  memoized like the top-level `ChatStream` ctx.
+- **Tool-member disclosure a11y (`ToolGroupMember.tsx`).** `aria-expanded` with
+  no `aria-controls`/`id` link; now wired to match the `AgentActivityDisclosure`
+  contract the sibling `ToolCard` uses.
+
+Recorded, not changed — a genuine product tradeoff needing a call: an unpinned
+`ToolGroup`'s open state is `pinned ?? (needsAttention && !superseded)`, so a
+group that auto-opened because a tool was running **collapses the instant the
+last tool settles**, which can hide content mid-read. This auto-tidy-on-settle is
+deliberate and test-pinned (`toolGroupModel.test.ts:24-26`). Fixing the read-
+stability flaw means changing that tested UX — either dropping auto-tidy (groups
+stay open until clicked, cluttering the transcript) or moving the collapse
+trigger from settle to a turn boundary (superseded), which needs a history latch.
+The auto-tidy vs read-stability choice is a product decision; left for the user.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
