@@ -11,6 +11,7 @@ import {
   mutationSettlementIsUnknown,
   isErrorType,
   scrollPositions,
+  createTranslator,
   failureText as failure,
   type ComponentContext,
 } from "@flame/component-sdk";
@@ -26,12 +27,25 @@ import {
   type Command,
   type Review,
 } from "./types";
-export const sections = [
-  { value: "available", label: "Available Skills" },
-  { value: "review", label: "Skill proposals" },
-  { value: "library", label: "Personal Skill library" },
-];
+import { en } from "./locales/en";
+import { zh } from "./locales/zh";
+import { zhTW } from "./locales/zh-TW";
+import { ja } from "./locales/ja";
+import { ko } from "./locales/ko";
+import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { de } from "./locales/de";
+const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
+export const SECTION_VALUES = [
+  "available",
+  "review",
+  "library",
+] as const satisfies readonly Target[];
 export function useSkills(context: ComponentContext) {
+  const t = useMemo(
+    () => createTranslator(CATALOGS, context.locale),
+    [context.locale],
+  );
   const workspace = useMemo(
     () =>
       context.workspace
@@ -245,7 +259,7 @@ export function useSkills(context: ComponentContext) {
       pending.current = undefined;
       if (!context.signal.aborted) {
         setCommand(undefined);
-        setNotice(`${captured.label} completed.`);
+        setNotice(t("notice.completed", { label: captured.label }));
         void refresh();
       }
     } catch (error) {
@@ -263,7 +277,7 @@ export function useSkills(context: ComponentContext) {
         setCommand(undefined);
         setNotice(
           isErrorType(error, "revision_conflict")
-            ? "The proposal changed. Read the latest revision before deciding again."
+            ? t("notice.revisionConflict")
             : failure(error),
         );
         void refresh();
@@ -312,9 +326,10 @@ export function useSkills(context: ComponentContext) {
       .includes(search.toLocaleLowerCase()),
   );
   const disabled = Boolean(command) || read.loading || Boolean(read.error);
-  const title = sections.find((section) => section.value === target)!.label;
+  const title = t(`section.${target}`);
   const skillDocument = opened?.accepted;
   return {
+    t,
     panel,
     opened,
     review,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bindOperations,
+  createTranslator,
   mutationSettlementIsUnknown,
   OperationFailure,
   failureText as failure,
@@ -13,6 +14,15 @@ import {
   type MethodOutputs,
 } from "../package/io.github.tangerg.flame/contracts/methods.generated";
 import { templates } from "./templates";
+import { en } from "./locales/en";
+import { zh } from "./locales/zh";
+import { zhTW } from "./locales/zh-TW";
+import { ja } from "./locales/ja";
+import { ko } from "./locales/ko";
+import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { de } from "./locales/de";
+const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 import {
   type Schedule,
   type Page,
@@ -31,6 +41,18 @@ export const selection = (model?: Model, reasoningEffort = "") => ({
   reasoningEffort,
 });
 export function useSchedules(context: ComponentContext) {
+  const t = useMemo(
+    () => createTranslator(CATALOGS, context.locale),
+    [context.locale],
+  );
+  const dateTime = useMemo(
+    () =>
+      new Intl.DateTimeFormat(context.locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
+    [context.locale],
+  );
   const operations = useMemo(() => {
     if (!context.binding)
       throw new Error("Schedules requires its own callable contribution");
@@ -193,8 +215,11 @@ export function useSchedules(context: ComponentContext) {
             typeof output === "object" &&
             "RunID" in output &&
             "SessionID" in output
-            ? `Runtime accepted Run ${output.RunID} in Session ${output.SessionID}.`
-            : `${captured.label} completed.`,
+            ? t("notice.accepted", {
+                run: String(output.RunID),
+                session: String(output.SessionID),
+              })
+            : t("notice.completed", { label: captured.label }),
         );
         void refresh();
       }
@@ -213,7 +238,7 @@ export function useSchedules(context: ComponentContext) {
         setCommand(undefined);
         setNotice(
           error instanceof OperationFailure && error.code === "revision"
-            ? "The schedule changed. Read its latest revision and open a new edit before saving."
+            ? t("notice.revision")
             : failure(error),
         );
         if (error instanceof OperationFailure && error.code === "revision") {
@@ -268,8 +293,8 @@ export function useSchedules(context: ComponentContext) {
     setNotice(undefined);
     setEdit({
       draft: {
-        Title: template?.title ?? "",
-        Instructions: template?.instructions ?? "",
+        Title: template ? t(`template.${template.id}.title`) : "",
+        Instructions: template ? t(`template.${template.id}.instructions`) : "",
         Cron: template?.cron ?? "",
         CWD: context.workspace?.ref.path ?? "",
         ModelSelection: selection(),
@@ -311,9 +336,9 @@ export function useSchedules(context: ComponentContext) {
             ReasoningEffort: draft.ModelSelection.reasoningEffort,
           },
         },
-        "Save schedule",
+        t("command.save"),
       );
-    else submit("flame.schedules/create.v1", draft, "Create schedule");
+    else submit("flame.schedules/create.v1", draft, t("command.create"));
   }
   function cancelTask() {
     if (pending.current) return;
@@ -354,6 +379,8 @@ export function useSchedules(context: ComponentContext) {
         ])
       : "default";
   return {
+    t,
+    dateTime,
     notice,
     command,
     reconcile,

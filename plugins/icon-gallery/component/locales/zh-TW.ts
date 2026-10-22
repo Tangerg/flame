@@ -1,0 +1,15 @@
+export const zhTW: Record<string, string> = {
+  "panel.title": "Flame 圖示庫",
+  "panel.description": "原創繪製，以其標準的 24 px 視覺尺寸顯示。",
+  "filters.label": "圖示篩選",
+  "filter.label": "篩選圖示",
+  "filter.placeholder": "名稱或分類",
+  "filter.clear": "清除篩選",
+  "category.label": "圖示分類",
+  "category.all": "全部分類",
+  counts: "{{total}} 個圖示中的 {{visible}} 個",
+  "section.count": "{{n}} 個圖示",
+  "section.aria": "{{category}} 圖示繪製",
+  "empty.title": "沒有符合的圖示",
+  "empty.sub": "試試其他名稱或分類。",
+};

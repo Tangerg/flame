@@ -1,0 +1,15 @@
+export const zh: Record<string, string> = {
+  "panel.title": "Flame 图标库",
+  "panel.description": "原创绘制，以其标准的 24 px 视觉尺寸显示。",
+  "filters.label": "图标筛选",
+  "filter.label": "筛选图标",
+  "filter.placeholder": "名称或分类",
+  "filter.clear": "清除筛选",
+  "category.label": "图标分类",
+  "category.all": "全部分类",
+  counts: "{{total}} 个图标中的 {{visible}} 个",
+  "section.count": "{{n}} 个图标",
+  "section.aria": "{{category}} 图标绘制",
+  "empty.title": "没有匹配的图标",
+  "empty.sub": "尝试其他名称或分类。",
+};

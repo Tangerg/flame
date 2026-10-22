@@ -1,0 +1,15 @@
+export const ko: Record<string, string> = {
+  "panel.title": "Flame 아이콘 갤러리",
+  "panel.description": "원본 드로잉을 표준 24 px 시각 크기로 표시합니다.",
+  "filters.label": "아이콘 필터",
+  "filter.label": "아이콘 필터링",
+  "filter.placeholder": "이름 또는 카테고리",
+  "filter.clear": "필터 지우기",
+  "category.label": "아이콘 카테고리",
+  "category.all": "모든 카테고리",
+  counts: "전체 {{total}}개 중 {{visible}}개 아이콘",
+  "section.count": "아이콘 {{n}}개",
+  "section.aria": "{{category}} 아이콘 드로잉",
+  "empty.title": "일치하는 아이콘 없음",
+  "empty.sub": "다른 이름이나 카테고리를 시도해 보세요.",
+};

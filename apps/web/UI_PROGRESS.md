@@ -2720,9 +2720,27 @@ translator spans host and plugins.
   (aligning with the plugins that already used `navigator.language` for dates). `en` matches
   the prior copy verbatim, so `visual/usageScopePresentation.test.tsx` passes unchanged.
   Verified: component-sdk check, plugins check (incl. check:i18n), web typecheck + lint,
-  `vitest run visual` (167). Remaining plugins migrate in later batches; the final batch adds
-  a hardcoded-literal ban (host Rule 11/14) as the anti-regression gate, and native host
-  acceptance of the localized dock views is still pending.
+  `vitest run visual` (167).
+- **All 11 dock plugins localized (complete).** After the pilot, the rest were migrated in
+  batches: file-renderers, diagnostics, usagereports, trajectory, memory, diff, then skills,
+  schedules, tool-results, icon-gallery. Each ships 8 catalogs under `component/locales`,
+  routes every authored user-visible string through `createTranslator(CATALOGS,
+context.locale)`, threads the translator (and active locale) into sub-components, hooks and
+  helpers, and fixes the locale-pinned formatting it carried (`Intl.NumberFormat("en-US")`,
+  `Intl.DateTimeFormat(navigator.language, …)`, bare `toLocaleString()` → `context.locale`).
+  Each plugin's `en` reproduces its prior English verbatim, so every visual test passes
+  unchanged. Notable shapes handled rather than concatenated: composed command labels reused
+  in notices (`"{{label}} completed."`), two-variant read errors as distinct keys, plural
+  families only where the English actually inflects (diff's `files.changed`/`files.included`,
+  trajectory's record/tool-call counts, tool-results' earlier-lines), with each locale's
+  `Intl.PluralRules` categories enforced by check:i18n. Domain/protocol enum values and
+  developer-facing thrown errors stay English (Runtime owns those). Two cross-cutting host
+  edits: `portablePresentation.test.tsx` renders trajectory's `TrajectoryReport` directly, so
+  it now builds the same translator from the plugin's `en` catalog and passes `t`/`locale`;
+  and the icon-gallery `Gallery` (which took no context) now receives one, so
+  `installVisualWorkspaceFixture.ts` mounts it through `InstalledComponent` like the other
+  views instead of rendering it bare. Still open: a hardcoded-literal ban (host Rule 11/14)
+  as the anti-regression gate, and native host acceptance of the localized dock views.
 
 ## Working and maintenance practice
 

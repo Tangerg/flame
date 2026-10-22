@@ -9,9 +9,11 @@ import {
 } from "./recorded-output";
 import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Search } from "@flame/icons/react";
-import type {
-  CapturedToolResult,
-  ComponentContext,
+import {
+  createTranslator,
+  type CapturedToolResult,
+  type ComponentContext,
+  type Translate,
 } from "@flame/component-sdk";
 import {
   Button,
@@ -24,6 +26,16 @@ import {
   RecordSummary,
   selectAllInReader,
 } from "@flame/ui";
+import { en } from "./locales/en";
+import { zh } from "./locales/zh";
+import { zhTW } from "./locales/zh-TW";
+import { ja } from "./locales/ja";
+import { ko } from "./locales/ko";
+import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { de } from "./locales/de";
+
+const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
 type Row =
   | { kind: "source"; number: number; body: string }
@@ -80,7 +92,7 @@ function xmlElements(element: Element): Element[] | undefined {
   return Array.from(element.children);
 }
 
-function skillRows(source: string): Row[] {
+function skillRows(source: string, t: Translate): Row[] {
   const document = new DOMParser().parseFromString(source, "application/xml");
   const root = document.documentElement;
   if (!root) return sourceRows(source);
@@ -104,7 +116,7 @@ function skillRows(source: string): Row[] {
     ) {
       rows.push({
         kind: "notice",
-        body: "More skills were omitted from this result.",
+        body: t("skills.truncated"),
       });
       continue;
     }
@@ -130,12 +142,10 @@ function skillRows(source: string): Row[] {
       body: fields[1]!.textContent ?? "",
     });
   }
-  return rows.length
-    ? rows
-    : [{ kind: "notice", body: "No skills were returned." }];
+  return rows.length ? rows : [{ kind: "notice", body: t("skills.empty") }];
 }
 
-function resultContent(tool: CapturedToolResult): ResultContent {
+function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
   const source = tool.result ?? "";
   switch (tool.name) {
     case "shell":
@@ -154,7 +164,7 @@ function resultContent(tool: CapturedToolResult): ResultContent {
     case "search_memory":
       return { kind: "rows", label: "memories", rows: proseRows(source) };
     case "list_skills":
-      return { kind: "rows", label: "skills", rows: skillRows(source) };
+      return { kind: "rows", label: "skills", rows: skillRows(source, t) };
     case "read_skill_resource":
     case "read_tool_result":
     case "search_tools":
@@ -206,7 +216,7 @@ function resultContent(tool: CapturedToolResult): ResultContent {
       rows: [
         {
           kind: "located",
-          location: `${result.status} ${text(result.duration)}${result.truncated ? " · Truncated" : ""}`,
+          location: `${result.status} ${text(result.duration)}${result.truncated ? ` · ${t("http.truncated")}` : ""}`,
           body: `${headers}\n${text(result.body)}`,
         },
       ],
@@ -249,10 +259,12 @@ function RecordedRows({
   label,
   source,
   recorded,
+  t,
 }: {
   label: string;
   source: string;
   recorded: Row[];
+  t: Translate;
 }) {
   const [finding, setFinding] = useState(false);
   const [filter, setFilter] = useState("");
@@ -333,13 +345,20 @@ function RecordedRows({
         <CodeCaption
           language={label}
           code={source}
-          labels={resultActions("Copy result")}
+          labels={resultActions(t, t("result.copy"))}
           wrappable={false}
         >
           {recorded.length > RESULT_PAGE_ROWS && (
             <span role="status" style={{ fontVariantNumeric: "tabular-nums" }}>
-              {Math.min(visible, matching.length)} of {matching.length}{" "}
-              {filter ? "matches" : "rows"}
+              {filter
+                ? t("result.countMatches", {
+                    shown: Math.min(visible, matching.length),
+                    total: matching.length,
+                  })
+                : t("result.countRows", {
+                    shown: Math.min(visible, matching.length),
+                    total: matching.length,
+                  })}
             </span>
           )}
           {!finding && (
@@ -347,7 +366,7 @@ function RecordedRows({
               icon={Search}
               size="xs"
               quiet
-              aria-label="Find"
+              aria-label={t("find.open")}
               onClick={() => setFinding(true)}
             />
           )}
@@ -355,8 +374,9 @@ function RecordedRows({
         {finding && (
           <div data-slot="recorded-result-controls" style={findBar}>
             <FindField
-              label="Result search"
-              fieldLabel="Filter result"
+              t={t}
+              label={t("result.search")}
+              fieldLabel={t("result.filter")}
               value={filter}
               fieldRef={search}
               onChange={(value) => {
@@ -371,7 +391,7 @@ function RecordedRows({
           ref={viewport}
           data-slot="recorded-result-viewport"
           role="region"
-          aria-label="Result"
+          aria-label={t("result.region")}
           tabIndex={0}
           data-focus-inset=""
           style={{
@@ -442,7 +462,7 @@ function RecordedRows({
                       fontVariantNumeric: "tabular-nums",
                     }}
                   >
-                    <span className="sr-only">Line </span>
+                    <span className="sr-only">{t("result.line")}</span>
                     {row.number}
                   </span>
                 )}
@@ -502,13 +522,9 @@ function RecordedRows({
               </div>
             ))}
             {!recorded.length ? (
-              <Metadata>No results were returned.</Metadata>
+              <Metadata>{t("result.empty")}</Metadata>
             ) : (
-              !matching.length && (
-                <Metadata>
-                  No matching rows. Close find to see the whole result.
-                </Metadata>
-              )
+              !matching.length && <Metadata>{t("result.noMatches")}</Metadata>
             )}
             {matching.length > visible && (
               <Button
@@ -522,8 +538,9 @@ function RecordedRows({
                 }}
                 style={{ marginBlockStart: "var(--layout-control-gap)" }}
               >
-                Show {Math.min(RESULT_PAGE_ROWS, matching.length - visible)}{" "}
-                more matching rows
+                {t("result.showMore", {
+                  rows: Math.min(RESULT_PAGE_ROWS, matching.length - visible),
+                })}
               </Button>
             )}
           </div>
@@ -534,31 +551,36 @@ function RecordedRows({
 }
 
 const CHANGE_VERB = {
-  added: "Created",
-  modified: "Edited",
-  moved: "Moved",
-  deleted: "Deleted",
+  added: "change.added",
+  modified: "change.modified",
+  moved: "change.moved",
+  deleted: "change.deleted",
 } as const;
 
 export function RecordedResult({ context }: { context: ComponentContext }) {
+  const t = useMemo(
+    () => createTranslator(CATALOGS, context.locale),
+    [context.locale],
+  );
   const tool = context.toolResult;
   const content = useMemo(() => {
     if (!tool || tool.status === "running" || typeof tool.result !== "string")
       throw new Error("A settled captured Tool result is required");
-    return resultContent(tool);
-  }, [tool]);
+    return resultContent(tool, t);
+  }, [tool, t]);
   if (content.kind === "changes")
     return !content.changes.length ? (
-      <Metadata>No changes were recorded.</Metadata>
+      <Metadata>{t("changes.empty")}</Metadata>
     ) : (
       <table
-        aria-label="Applied changes"
+        aria-label={t("changes.applied")}
         style={{ width: "100%", tableLayout: "fixed" }}
       >
         <tbody>
           {content.changes.map((change, index) => {
             const path = text(change.path);
             const status = text(change.status);
+            const verb = CHANGE_VERB[status as keyof typeof CHANGE_VERB];
             return (
               <tr key={`${path}:${index}`}>
                 <td
@@ -569,7 +591,7 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
                     fontSize: "var(--fs-ui-sm)",
                   }}
                 >
-                  {CHANGE_VERB[status as keyof typeof CHANGE_VERB] ?? status}
+                  {verb ? t(verb) : status}
                 </td>
                 <td
                   style={{
@@ -581,7 +603,9 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
                 >
                   <span title={path}>{path}</span>
                   {typeof change.from === "string" && (
-                    <Metadata>From {change.from}</Metadata>
+                    <Metadata>
+                      {t("changes.from", { from: change.from })}
+                    </Metadata>
                   )}
                 </td>
               </tr>
@@ -590,12 +614,14 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
         </tbody>
       </table>
     );
-  if (content.kind === "output") return <RecordedOutput text={content.text} />;
+  if (content.kind === "output")
+    return <RecordedOutput text={content.text} t={t} />;
   return (
     <RecordedRows
       label={content.label}
       source={tool!.result!}
       recorded={content.rows}
+      t={t}
     />
   );
 }

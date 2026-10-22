@@ -36,6 +36,8 @@ import { templates } from "./templates";
 import { useSchedules, selection, enabled, hasTime } from "./useSchedules";
 export function Schedules({ context }: { context: ComponentContext }) {
   const {
+    t,
+    dateTime,
     notice,
     command,
     reconcile,
@@ -79,19 +81,21 @@ export function Schedules({ context }: { context: ComponentContext }) {
     <>
       {notice && <p role="status">{notice}</p>}
       {command && (
-        <section aria-label="Schedule command status">
+        <section aria-label={t("command.status.label")}>
           <p role={command.uncertain ? "alert" : "status"}>
             {command.uncertain
-              ? "The original outcome is not confirmed. Reconcile it before issuing another command."
-              : `${command.label}…`}
+              ? t("command.uncertain")
+              : t("command.progress", { label: command.label })}
           </p>
           {command.error && <RecordBody>{command.error}</RecordBody>}
           {command.uncertain && (
             <>
               <Metadata>
-                Original command: {command.promise.idempotencyKey}
+                {t("command.original", {
+                  key: command.promise.idempotencyKey,
+                })}
               </Metadata>
-              <Button onClick={reconcile}>Reconcile original command</Button>
+              <Button onClick={reconcile}>{t("command.reconcile")}</Button>
             </>
           )}
         </section>
@@ -100,43 +104,44 @@ export function Schedules({ context }: { context: ComponentContext }) {
   );
   return (
     <Panel
-      label="Schedules"
-      header={<PanelHeader title="Schedules" />}
+      label={t("panel.title")}
+      header={<PanelHeader title={t("panel.title")} />}
       controls={
         <FilterBar
-          label="Schedule controls"
+          label={t("controls.label")}
           search={
             <SearchField
               ref={searchElement}
               size="lg"
-              aria-label="Search this page"
-              placeholder="Title or instructions"
+              aria-label={t("search.label")}
+              placeholder={t("search.placeholder")}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               onClear={() => setSearch("")}
-              clearLabel="Clear search"
+              clearLabel={t("search.clear")}
             />
           }
           actions={
-            <Toolbar label="Schedule actions">
+            <Toolbar label={t("actions.label")}>
               <Button
                 variant={editorOpen ? "outline" : "primary"}
                 size="lg"
                 disabled={actionsDisabled}
                 onClick={(event) => add(event.currentTarget)}
               >
-                <Icon glyph={Plus} size="sm" /> Add schedule
+                <Icon glyph={Plus} size="sm" /> {t("add")}
               </Button>
               <ActionMenu
-                label="Schedule templates"
+                label={t("templates.label")}
                 disabled={actionsDisabled}
                 triggerContent={
                   <>
-                    Templates <Icon glyph={ChevronDown} size="sm" />
+                    {t("templates.trigger")}{" "}
+                    <Icon glyph={ChevronDown} size="sm" />
                   </>
                 }
                 items={templates.map((template) => ({
-                  label: template.title,
+                  label: t(`template.${template.id}.title`),
                   onSelect: (opener) => add(opener, template),
                 }))}
               />
@@ -145,18 +150,18 @@ export function Schedules({ context }: { context: ComponentContext }) {
         >
           <Select
             size="lg"
-            label="Schedule status"
+            label={t("status.label")}
             value={status}
             onValueChange={setStatus}
             options={[
-              { value: "all", label: "All statuses" },
-              { value: "enabled", label: "Enabled" },
-              { value: "disabled", label: "Disabled" },
+              { value: "all", label: t("status.all") },
+              { value: "enabled", label: t("status.enabled") },
+              { value: "disabled", label: t("status.disabled") },
             ]}
           />
           <IconButton
             icon={Refresh}
-            aria-label="Refresh"
+            aria-label={t("refresh")}
             size="md"
             pending={read.loading}
             disabled={busy}
@@ -165,35 +170,34 @@ export function Schedules({ context }: { context: ComponentContext }) {
         </FilterBar>
       }
     >
-      {read.loading && <p role="status">Reading schedules…</p>}
+      {read.loading && <p role="status">{t("reading")}</p>}
       {read.error && (
         <p role="alert">
-          Schedules could not be read: {read.error}.{" "}
-          {read.accepted && "The last accepted page is retained. "}
-          Use Refresh to try again.
+          {read.accepted
+            ? t("read.errorRetained", { error: read.error })
+            : t("read.error", { error: read.error })}
         </p>
       )}
-      {liveError && (
-        <p role="alert">
-          Live refresh is unavailable: {liveError}. Use Refresh to read the
-          current schedules.
-        </p>
-      )}
+      {liveError && <p role="alert">{t("live.error", { error: liveError })}</p>}
       {!editorOpen && feedback}
       {edit && (
         <ModalDialog
           open
           title={
             edit.basis
-              ? `Edit ${edit.basis.Title || "schedule"}`
-              : "New schedule"
+              ? t("editor.edit.title", {
+                  title: edit.basis.Title || t("editor.edit.untitled"),
+                })
+              : t("editor.new.title")
           }
           description={
             edit.basis
-              ? `Captured revision: ${String(edit.basis.Revision)}`
-              : "Configure the task and when it should run."
+              ? t("editor.edit.description", {
+                  revision: String(edit.basis.Revision),
+                })
+              : t("editor.new.description")
           }
-          closeLabel="Close schedule editor"
+          closeLabel={t("editor.close")}
           size="lg"
           initialFocus={titleElement}
           finalFocus={resolveOpener}
@@ -209,31 +213,31 @@ export function Schedules({ context }: { context: ComponentContext }) {
           footer={
             <>
               <Button variant="ghost" disabled={busy} onClick={cancelTask}>
-                Cancel
+                {t("cancel")}
               </Button>
               <Button variant="primary" type="submit" disabled={!canSave}>
-                Save schedule
+                {t("command.save")}
               </Button>
             </>
           }
         >
           <FormSection
-            title="Task"
-            description="What the agent should do when this schedule runs."
+            title={t("editor.section.task.title")}
+            description={t("editor.section.task.description")}
           >
-            <FormField label="Title">
+            <FormField label={t("field.title")}>
               <TextField
                 ref={titleElement}
                 size="lg"
-                aria-label="Title"
+                aria-label={t("field.title")}
                 value={edit.draft.Title}
                 disabled={busy}
                 onChange={(event) => patch("Title", event.target.value)}
               />
             </FormField>
-            <FormField label="Instructions">
+            <FormField label={t("field.instructions")}>
               <TextArea
-                aria-label="Instructions"
+                aria-label={t("field.instructions")}
                 value={edit.draft.Instructions}
                 disabled={busy}
                 rows={4}
@@ -241,23 +245,23 @@ export function Schedules({ context }: { context: ComponentContext }) {
               />
             </FormField>
           </FormSection>
-          <FormSection title="Timing and workspace">
+          <FormSection title={t("editor.section.timing.title")}>
             <FormRow>
-              <FormField label="Cron expression">
+              <FormField label={t("field.cron")}>
                 <TextField
                   size="lg"
-                  aria-label="Cron expression"
+                  aria-label={t("field.cron")}
                   placeholder="0 9 * * 1"
                   value={edit.draft.Cron}
                   disabled={busy}
                   onChange={(event) => patch("Cron", event.target.value)}
                 />
               </FormField>
-              <FormField label="Workspace path">
+              <FormField label={t("field.workspace")}>
                 <TextField
                   size="lg"
-                  aria-label="Workspace path"
-                  placeholder="Empty uses the Runtime default"
+                  aria-label={t("field.workspace")}
+                  placeholder={t("field.workspace.placeholder")}
                   value={edit.draft.CWD}
                   disabled={busy}
                   onChange={(event) => patch("CWD", event.target.value)}
@@ -265,25 +269,25 @@ export function Schedules({ context }: { context: ComponentContext }) {
               </FormField>
             </FormRow>
             <Checkbox
-              label="Enabled"
+              label={t("status.enabled")}
               checked={edit.draft.Enabled}
               disabled={busy}
               onCheckedChange={(value) => patch("Enabled", value)}
             />
           </FormSection>
           <FormSection
-            title="Execution"
-            description="Choose the model and reasoning used for future runs."
+            title={t("editor.section.execution.title")}
+            description={t("editor.section.execution.description")}
           >
             <FormRow>
-              <FormField label="Model">
+              <FormField label={t("field.model")}>
                 <Select
                   size="lg"
-                  label="Model"
+                  label={t("field.model")}
                   value={selectedKey}
                   disabled={busy}
                   options={[
-                    { value: "default", label: "Runtime default model" },
+                    { value: "default", label: t("model.default") },
                     ...models
                       .filter((model) => !model.deprecated)
                       .map((model) => ({
@@ -295,7 +299,13 @@ export function Schedules({ context }: { context: ComponentContext }) {
                       ? [
                           {
                             value: selectedKey,
-                            label: `${edit.draft.ModelSelection.provider} / ${edit.draft.ModelSelection.model} (${selectedModel?.deprecated ? "deprecated" : "unavailable"})`,
+                            label: t("model.existing", {
+                              provider: edit.draft.ModelSelection.provider,
+                              model: edit.draft.ModelSelection.model,
+                              state: selectedModel?.deprecated
+                                ? t("model.deprecated")
+                                : t("model.unavailable"),
+                            }),
                           },
                         ]
                       : []),
@@ -313,14 +323,14 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   }
                 />
               </FormField>
-              <FormField label="Reasoning effort">
+              <FormField label={t("field.reasoning")}>
                 <Select
                   size="lg"
-                  label="Reasoning effort"
+                  label={t("field.reasoning")}
                   value={edit.draft.ModelSelection.reasoningEffort || "default"}
                   disabled={busy || !edit.draft.ModelSelection.model}
                   options={[
-                    { value: "default", label: "Provider default" },
+                    { value: "default", label: t("reasoning.default") },
                     ...(selectedModel?.capabilities?.reasoningLevels ?? []).map(
                       (value) => ({
                         value,
@@ -334,7 +344,9 @@ export function Schedules({ context }: { context: ComponentContext }) {
                       ? [
                           {
                             value: edit.draft.ModelSelection.reasoningEffort,
-                            label: `${edit.draft.ModelSelection.reasoningEffort} (unavailable)`,
+                            label: t("reasoning.unavailable", {
+                              effort: edit.draft.ModelSelection.reasoningEffort,
+                            }),
                           },
                         ]
                       : []),
@@ -350,14 +362,14 @@ export function Schedules({ context }: { context: ComponentContext }) {
             </FormRow>
             {currentModels?.error && (
               <p role="alert">
-                Model choices could not be read: {currentModels.error}
+                {t("models.error", { error: currentModels.error })}
               </p>
             )}
             <Button
               disabled={busy || currentModels?.loading}
               onClick={() => setModelRefresh((value) => value + 1)}
             >
-              Refresh model choices
+              {t("models.refresh")}
             </Button>
           </FormSection>
         </ModalDialog>
@@ -366,9 +378,11 @@ export function Schedules({ context }: { context: ComponentContext }) {
         <ModalDialog
           open
           role="alertdialog"
-          title={`Delete ${deleting.item.Title || deleting.item.ID}?`}
-          description="Future firings will stop. Captured work and accepted Runs are retained."
-          closeLabel="Close deletion confirmation"
+          title={t("delete.title", {
+            name: deleting.item.Title || deleting.item.ID,
+          })}
+          description={t("delete.description")}
+          closeLabel={t("delete.close")}
           size="sm"
           initialFocus={deleteCancel}
           finalFocus={resolveOpener}
@@ -385,7 +399,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
                 disabled={busy}
                 onClick={cancelTask}
               >
-                Cancel
+                {t("cancel")}
               </Button>
               <Button
                 variant="tonal"
@@ -395,65 +409,60 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   submit(
                     "flame.schedules/delete.v1",
                     { ID: deleting.item.ID },
-                    "Delete schedule",
+                    t("command.delete"),
                   )
                 }
               >
-                Confirm deletion
+                {t("delete.confirm")}
               </Button>
             </>
           }
         />
       )}
       <PanelSection
-        title="Saved schedules"
+        title={t("catalog.title")}
         description={
-          page ? (
-            <>
-              {rows.filter(enabled).length} enabled ·{" "}
-              {rows.filter((item) => !enabled(item)).length} disabled on this
-              page
-            </>
-          ) : undefined
+          page
+            ? t("catalog.summary", {
+                enabled: rows.filter(enabled).length,
+                disabled: rows.filter((item) => !enabled(item)).length,
+              })
+            : undefined
         }
       >
-        <RecordGroup variant="list" id="items" aria-label="Saved schedules">
+        <RecordGroup variant="list" id="items" aria-label={t("catalog.title")}>
           {page && !matching.length && (
             <EmptyState
               icon={CalendarClock}
               size="compact"
               title={
-                rows.length
-                  ? "No matching schedules on this page."
-                  : "No schedules saved."
+                rows.length ? t("empty.filtered.title") : t("empty.none.title")
               }
-              sub={
-                rows.length
-                  ? "Clear the search and filters."
-                  : "Use Add schedule to save recurring work."
-              }
+              sub={rows.length ? t("empty.filtered.sub") : t("empty.none.sub")}
             />
           )}
           {matching.map((item) => (
             <ListRow key={item.ID}>
               <RecordHeading
-                title={item.Title || "Untitled schedule"}
+                title={item.Title || t("untitled")}
                 actions={
                   <ActionMenu
-                    label={`More actions for ${item.Title || "Untitled schedule"}`}
+                    label={t("actions.more", {
+                      name: item.Title || t("untitled"),
+                    })}
                     disabled={disabled}
                     items={[
                       {
-                        label: "Run now",
+                        label: t("action.runNow"),
                         onSelect: () =>
                           submit(
                             "flame.schedules/runNow.v1",
                             { ID: item.ID },
-                            "Run schedule now",
+                            t("command.runNow"),
                           ),
                       },
                       {
-                        label: "Edit",
+                        label: t("action.edit"),
                         onSelect: (opener) => {
                           taskOpener.current = opener;
                           setNotice(undefined);
@@ -474,7 +483,9 @@ export function Schedules({ context }: { context: ComponentContext }) {
                         },
                       },
                       {
-                        label: enabled(item) ? "Disable" : "Enable",
+                        label: enabled(item)
+                          ? t("action.disable")
+                          : t("action.enable"),
                         onSelect: () =>
                           submit(
                             "flame.schedules/update.v1",
@@ -485,12 +496,12 @@ export function Schedules({ context }: { context: ComponentContext }) {
                               ModelSelection: {},
                             },
                             enabled(item)
-                              ? "Disable schedule"
-                              : "Enable schedule",
+                              ? t("command.disable")
+                              : t("command.enable"),
                           ),
                       },
                       {
-                        label: "Delete",
+                        label: t("action.delete"),
                         tone: "negative",
                         onSelect: (opener) => {
                           taskOpener.current = opener;
@@ -504,46 +515,45 @@ export function Schedules({ context }: { context: ComponentContext }) {
                 }
                 status={
                   <Badge tone={enabled(item) ? "success" : "neutral"}>
-                    {enabled(item) ? "Enabled" : "Disabled"}
+                    {enabled(item) ? t("status.enabled") : t("status.disabled")}
                   </Badge>
                 }
               />
               <RecordBody>{item.Instructions}</RecordBody>
               <Metadata>
-                Next firing ·{" "}
+                {t("nextFiring.label")} ·{" "}
                 {hasTime(item.NextRunAt) ? (
                   <time dateTime={item.NextRunAt}>
-                    {new Intl.DateTimeFormat(navigator.language, {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    }).format(new Date(item.NextRunAt))}
+                    {dateTime.format(new Date(item.NextRunAt))}
                   </time>
                 ) : (
-                  "Not scheduled"
+                  t("nextFiring.none")
                 )}
               </Metadata>
-              <Disclosure title="Schedule details">
+              <Disclosure title={t("details.title")}>
                 <Facts
                   values={[
-                    ["Cron", item.Cron],
-                    ["Schedule", item.ID],
-                    ["Revision", String(item.Revision)],
-                    ["Workspace", item.CWD || "Runtime default"],
+                    [t("fact.cron"), item.Cron],
+                    [t("fact.schedule"), item.ID],
+                    [t("fact.revision"), String(item.Revision)],
+                    [t("fact.workspace"), item.CWD || t("runtimeDefault")],
                     [
-                      "Model",
+                      t("field.model"),
                       item.ModelSelection.provider && item.ModelSelection.model
                         ? `${item.ModelSelection.provider}/${item.ModelSelection.model}`
-                        : "Runtime default",
+                        : t("runtimeDefault"),
                     ],
                     [
-                      "Reasoning effort",
+                      t("field.reasoning"),
                       item.ModelSelection.reasoningEffort || undefined,
                     ],
                     [
-                      "Last firing",
-                      hasTime(item.LastRunAt) ? item.LastRunAt : "Never fired",
+                      t("fact.lastFiring"),
+                      hasTime(item.LastRunAt)
+                        ? item.LastRunAt
+                        : t("fact.neverFired"),
                     ],
-                    ["Created", item.CreatedAt],
+                    [t("fact.created"), item.CreatedAt],
                   ]}
                 />
               </Disclosure>
@@ -553,7 +563,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
         {(Boolean(read.accepted?.history.length) ||
           Boolean(page?.NextCursor)) && (
           <PanelFooter>
-            <Toolbar label="Schedule pages">
+            <Toolbar label={t("pages.label")}>
               <Button
                 disabled={
                   read.loading || busy || !read.accepted?.history.length
@@ -562,7 +572,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   void refresh(read.accepted!.history.slice(0, -1))
                 }
               >
-                Previous
+                {t("pages.previous")}
               </Button>
               <Button
                 disabled={read.loading || busy || !page?.NextCursor}
@@ -573,7 +583,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   ])
                 }
               >
-                Next
+                {t("pages.next")}
               </Button>
             </Toolbar>
           </PanelFooter>

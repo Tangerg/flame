@@ -174,10 +174,16 @@ function workspaceDataPlugin(
           }),
       });
       const galleryLifetime = ctx.lifetime("visual-icon-gallery");
+      const gallerySources = visualComponentProps(runtimeClient(), galleryLifetime, "icon-gallery");
       galleryLifetime.contribute(WORKSPACE_VIEW, {
         id: "package:visual:icon-gallery",
         title: "Icon gallery",
-        component: Gallery,
+        component: () =>
+          createElement(InstalledComponent, {
+            ...gallerySources,
+            scope: "installation",
+            entry: Gallery,
+          }),
       });
       const lifetime = ctx.lifetime("visual-trajectory");
       const trajectorySources = visualComponentProps(runtimeClient(), lifetime, "trajectory");

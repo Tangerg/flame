@@ -6,6 +6,7 @@ import {
   type RefObject,
 } from "react";
 import { BookOpen } from "@flame/icons/react";
+import { type Translate } from "@flame/component-sdk";
 
 import {
   Badge,
@@ -25,12 +26,14 @@ export function SkillRow({
   focusAfterRemoval,
   read,
   children,
+  t,
 }: {
   item: SkillRecord;
   review: boolean;
   focusAfterRemoval: RefObject<HTMLElement | null>;
   read?: { disabled: boolean; onOpen: (origin: HTMLElement) => void };
   children?: ReactNode;
+  t: Translate;
 }) {
   const element = useRef<HTMLElement>(null);
   const ownedFocus = useRef(false);
@@ -64,12 +67,12 @@ export function SkillRow({
       status={
         <Badge tone={review ? "warning" : "neutral"}>
           {review
-            ? "Proposal"
+            ? t("badge.proposal")
             : "lifecycle" in item
               ? item.lifecycle
               : "scope" in item
                 ? item.scope
-                : "Available"}
+                : t("badge.available")}
         </Badge>
       }
     />
@@ -100,31 +103,31 @@ export function SkillRow({
   return (
     <Disclosure ref={element} variant="row" actions={children} title={summary}>
       {"instructions" in item && (
-        <FormSection title="Instructions">
+        <FormSection title={t("instructions.heading")}>
           <RecordBody>{item.instructions}</RecordBody>
         </FormSection>
       )}
       <Facts
         values={[
-          ["Scope", "scope" in item ? item.scope : undefined],
-          ["Revision", "revision" in item ? item.revision : undefined],
+          [t("fact.scope"), "scope" in item ? item.scope : undefined],
+          [t("fact.revision"), "revision" in item ? item.revision : undefined],
           [
-            "Installation",
+            t("fact.installation"),
             "installation" in item
               ? item.installation?.installationId
               : undefined,
           ],
           [
-            "Release",
+            t("fact.release"),
             "installation" in item ? item.installation?.digest : undefined,
           ],
-          ["Origin", "origin" in item ? item.origin : undefined],
+          [t("fact.origin"), "origin" in item ? item.origin : undefined],
           [
-            "Source Session",
+            t("fact.sourceSession"),
             "sourceSession" in item ? item.sourceSession : undefined,
           ],
           [
-            "Revises an existing Skill",
+            t("fact.revises"),
             review
               ? String("revises" in item && item.revises === true)
               : undefined,

@@ -22,6 +22,7 @@ import {
   type CodeActionLabels,
 } from "@flame/ui";
 import { ansiText, renderAnsi } from "./ansi";
+import type { Translate } from "@flame/component-sdk";
 
 const PREVIEW_LINES = 9;
 const OVERSCAN = 6;
@@ -38,12 +39,12 @@ export const findBar: CSSProperties = {
   lineHeight: "var(--leading-body)",
 };
 
-export function resultActions(copy: string): CodeActionLabels {
+export function resultActions(t: Translate, copy: string): CodeActionLabels {
   return {
     copy,
-    copied: "Copied",
-    wrap: "Enable word wrap",
-    unwrap: "Disable word wrap",
+    copied: t("action.copied"),
+    wrap: t("action.wrap"),
+    unwrap: t("action.unwrap"),
   };
 }
 
@@ -52,6 +53,7 @@ export function isFindShortcut(event: KeyboardEvent) {
 }
 
 export function FindField({
+  t,
   label,
   fieldLabel,
   value,
@@ -61,6 +63,7 @@ export function FindField({
   onClose,
   onEnter,
 }: {
+  t: Translate;
   label: string;
   fieldLabel: string;
   value: string;
@@ -103,7 +106,7 @@ export function FindField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onClear={() => onChange("")}
-          clearLabel="Clear search"
+          clearLabel={t("find.clear")}
           onKeyDown={(event) => {
             if (
               event.key === "Enter" &&
@@ -121,14 +124,14 @@ export function FindField({
         icon={X}
         size="xs"
         quiet
-        aria-label="Close find"
+        aria-label={t("find.close")}
         onClick={onClose}
       />
     </div>
   );
 }
 
-export function RecordedOutput({ text }: { text: string }) {
+export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   const lines = useMemo(() => text.replace(/\n$/, "").split("\n"), [text]);
   const [expanded, setExpanded] = useState(false);
   const [finding, setFinding] = useState(false);
@@ -253,7 +256,7 @@ export function RecordedOutput({ text }: { text: string }) {
       <CodeCaption
         language="output"
         code={copied}
-        labels={resultActions("Copy output")}
+        labels={resultActions(t, t("output.copy"))}
         wrappable={false}
       >
         {earlier > 0 && (
@@ -277,14 +280,12 @@ export function RecordedOutput({ text }: { text: string }) {
               }
             }}
           >
-            {expanded ? (
-              "Collapse"
-            ) : (
-              <>
-                Show {earlier} earlier {earlier === 1 ? "line" : "lines"} ·{" "}
-                {lines.length} total
-              </>
-            )}
+            {expanded
+              ? t("output.collapse")
+              : t("output.showEarlier", {
+                  count: earlier,
+                  total: lines.length,
+                })}
           </Button>
         )}
         {expanded && !atLatest && (
@@ -292,7 +293,7 @@ export function RecordedOutput({ text }: { text: string }) {
             icon={ArrowDownToLine}
             size="xs"
             quiet
-            aria-label="Jump to latest"
+            aria-label={t("output.jumpToLatest")}
             onClick={() => {
               jumpToLatest();
               viewport.current?.focus();
@@ -304,7 +305,7 @@ export function RecordedOutput({ text }: { text: string }) {
             icon={Search}
             size="xs"
             quiet
-            aria-label="Find"
+            aria-label={t("find.open")}
             onClick={() => setFinding(true)}
           />
         )}
@@ -312,8 +313,9 @@ export function RecordedOutput({ text }: { text: string }) {
       {expanded && finding && (
         <div data-slot="output-controls" style={findBar}>
           <FindField
-            label="Output search"
-            fieldLabel="Find in output"
+            t={t}
+            label={t("output.search")}
+            fieldLabel={t("output.field")}
             value={query}
             fieldRef={search}
             status={
@@ -327,8 +329,11 @@ export function RecordedOutput({ text }: { text: string }) {
                   }}
                 >
                   {matches.length
-                    ? `${(match % matches.length) + 1} of ${matches.length}`
-                    : "No matches"}
+                    ? t("output.matchCount", {
+                        current: (match % matches.length) + 1,
+                        total: matches.length,
+                      })
+                    : t("output.noMatches")}
                 </span>
               )
             }
@@ -373,7 +378,7 @@ export function RecordedOutput({ text }: { text: string }) {
           <div
             ref={viewport}
             role="region"
-            aria-label="Tool output"
+            aria-label={t("output.region")}
             tabIndex={0}
             data-focus-inset=""
             style={{
@@ -405,7 +410,7 @@ export function RecordedOutput({ text }: { text: string }) {
         ) : (
           <div
             role="region"
-            aria-label="Tool output preview"
+            aria-label={t("output.preview")}
             tabIndex={0}
             data-focus-inset=""
             style={{ overflowX: "auto" }}

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { icons } from "@flame/icons/catalog";
 import * as Drawings from "@flame/icons/react";
+import { createTranslator, type ComponentContext } from "@flame/component-sdk";
 import {
   Metadata,
   EmptyState,
@@ -13,6 +14,16 @@ import {
   TileGrid,
   FilterBar,
 } from "@flame/ui";
+import { en } from "./locales/en";
+import { zh } from "./locales/zh";
+import { zhTW } from "./locales/zh-TW";
+import { ja } from "./locales/ja";
+import { ko } from "./locales/ko";
+import { es } from "./locales/es";
+import { fr } from "./locales/fr";
+import { de } from "./locales/de";
+
+const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
 const catalog = icons.map((icon) => {
   const Drawing = Drawings[icon.component as keyof typeof Drawings];
@@ -29,7 +40,11 @@ const catalog = icons.map((icon) => {
 
 const groups = [...new Set(catalog.map((icon) => icon.group))];
 
-export function Gallery() {
+export function Gallery({ context }: { context: ComponentContext }) {
+  const t = useMemo(
+    () => createTranslator(CATALOGS, context.locale),
+    [context.locale],
+  );
   const [filter, setFilter] = useState("");
   const [group, setGroup] = useState("");
   const query = filter.trim().toLocaleLowerCase();
@@ -38,35 +53,35 @@ export function Gallery() {
   );
   return (
     <Panel
-      label="Flame icon gallery"
+      label={t("panel.title")}
       header={
         <PanelHeader
-          title="Flame icon gallery"
-          description="Original drawings, shown at their canonical 24 px optical size."
+          title={t("panel.title")}
+          description={t("panel.description")}
         />
       }
       controls={
         <FilterBar
-          label="Icon filters"
+          label={t("filters.label")}
           search={
             <SearchField
               size="lg"
-              aria-label="Filter icons"
-              placeholder="Name or category"
+              aria-label={t("filter.label")}
+              placeholder={t("filter.placeholder")}
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
               onClear={() => setFilter("")}
-              clearLabel="Clear filter"
+              clearLabel={t("filter.clear")}
             />
           }
         >
           <Select
             size="lg"
-            label="Icon category"
+            label={t("category.label")}
             value={group}
             onValueChange={setGroup}
             options={[
-              { value: "", label: "All categories" },
+              { value: "", label: t("category.all") },
               ...groups.map((value) => ({ value, label: value })),
             ]}
           />
@@ -74,7 +89,7 @@ export function Gallery() {
       }
     >
       <Metadata role="status">
-        {visible.length} of {catalog.length} icons
+        {t("counts", { visible: visible.length, total: catalog.length })}
       </Metadata>
       {groups.map((category) => {
         const items = visible.filter((icon) => icon.group === category);
@@ -83,9 +98,9 @@ export function Gallery() {
           <PanelSection
             key={category}
             title={category}
-            description={`${items.length} icons`}
+            description={t("section.count", { n: items.length })}
           >
-            <TileGrid aria-label={`${category} icon drawings`}>
+            <TileGrid aria-label={t("section.aria", { category })}>
               {items.map(({ Drawing, ...icon }) => (
                 <Tile
                   key={icon.name}
@@ -105,10 +120,7 @@ export function Gallery() {
         );
       })}
       {!visible.length && (
-        <EmptyState
-          title="No matching icons"
-          sub="Try another name or category."
-        />
+        <EmptyState title={t("empty.title")} sub={t("empty.sub")} />
       )}
     </Panel>
   );

@@ -29,9 +29,10 @@ import {
 } from "@flame/ui";
 import { type Target } from "./types";
 import { SkillRow } from "./SkillRow";
-import { useSkills, sections } from "./useSkills";
+import { useSkills, SECTION_VALUES } from "./useSkills";
 export function Skills({ context }: { context: ComponentContext }) {
   const {
+    t,
     panel,
     opened,
     review,
@@ -63,7 +64,7 @@ export function Skills({ context }: { context: ComponentContext }) {
   return (
     <Panel
       ref={panel}
-      label="Skills"
+      label={t("panel.title")}
       onKeyDown={(event) => {
         if (
           event.key !== "Escape" ||
@@ -79,13 +80,13 @@ export function Skills({ context }: { context: ComponentContext }) {
       }}
       header={
         <PanelHeader
-          title="Skills"
+          title={t("panel.title")}
           description={
             opened
               ? undefined
               : target === "library"
-                ? "Reusable instructions you manage."
-                : "Instructions and proposals for this workspace."
+                ? t("header.library")
+                : t("header.workspace")
           }
         />
       }
@@ -93,11 +94,11 @@ export function Skills({ context }: { context: ComponentContext }) {
         opened ? (
           <>
             <Toolbar
-              label="Skill document"
+              label={t("document.toolbar")}
               actions={
                 <IconButton
                   icon={Refresh}
-                  aria-label="Refresh document"
+                  aria-label={t("document.refresh")}
                   size="md"
                   pending={opened.loading}
                   onClick={() => void readDocument(opened.name)}
@@ -107,11 +108,11 @@ export function Skills({ context }: { context: ComponentContext }) {
               <Button
                 variant="ghost"
                 size="sm"
-                aria-label="Back to available Skills"
+                aria-label={t("document.back")}
                 onClick={closeDocument}
               >
                 <Icon glyph={ArrowLeft} size="sm" />
-                Available Skills
+                {t("section.available")}
               </Button>
               <PanelTitle ref={heading} tabIndex={-1} size="sm" aria-level={2}>
                 {opened.name}
@@ -121,34 +122,37 @@ export function Skills({ context }: { context: ComponentContext }) {
           </>
         ) : (
           <>
-            <Toolbar label="Skill navigation">
+            <Toolbar label={t("nav.label")}>
               <Segmented
-                ariaLabel="Catalog"
+                ariaLabel={t("nav.catalog")}
                 value={target}
-                options={sections}
+                options={SECTION_VALUES.map((value) => ({
+                  value,
+                  label: t(`section.${value}`),
+                }))}
                 disabled={Boolean(command)}
                 onChange={(value) => navigate(value as Target)}
               />
             </Toolbar>
             <FilterBar
-              label="Skill controls"
+              label={t("controls.label")}
               search={
                 <SearchField
                   ref={searchField}
                   size="lg"
                   id="search"
-                  aria-label="Search this catalog"
-                  placeholder="Name or description"
+                  aria-label={t("search.label")}
+                  placeholder={t("search.placeholder")}
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   onClear={() => setSearch("")}
-                  clearLabel="Clear search"
+                  clearLabel={t("search.clear")}
                 />
               }
               actions={
                 <IconButton
                   icon={Refresh}
-                  aria-label="Refresh"
+                  aria-label={t("refresh")}
                   size="md"
                   disabled={Boolean(command)}
                   pending={read.loading}
@@ -160,74 +164,84 @@ export function Skills({ context }: { context: ComponentContext }) {
         )
       }
     >
-      {!opened && read.loading && <p role="status">Reading Skills…</p>}
+      {!opened && read.loading && <p role="status">{t("reading")}</p>}
       {!opened && read.error && (
         <p role="alert">
-          Could not read {title.toLocaleLowerCase()}: {read.error}
-          {snapshot && " The last accepted read is retained."}
+          {t("read.error", {
+            catalog: title.toLocaleLowerCase(),
+            error: read.error,
+          })}
+          {snapshot && ` ${t("read.retained")}`}
         </p>
       )}
-      {opened?.loading && <p role="status">Reading {opened.name}…</p>}
+      {opened?.loading && (
+        <p role="status">{t("document.reading", { name: opened.name })}</p>
+      )}
       {opened?.error && (
         <p role="alert">
           {skillDocument
-            ? `Could not refresh ${opened.name}: ${opened.error}`
-            : `Could not read ${opened.name}: ${opened.error}`}
+            ? t("document.error.refresh", {
+                name: opened.name,
+                error: opened.error,
+              })
+            : t("document.error.read", {
+                name: opened.name,
+                error: opened.error,
+              })}
         </p>
       )}
       {opened?.error && skillDocument && (
         <Metadata role="status">
-          Showing the last accepted read of {opened.name}.
+          {t("document.retained", { name: opened.name })}
         </Metadata>
       )}
       {observationError && (
         <p role="alert">
-          Live refresh is unavailable: {observationError}. Use Refresh to read
-          the current owner.
+          {t("observation.error", { error: observationError })}
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
       {command && (
-        <section aria-label="Skill command status">
+        <section aria-label={t("command.status.label")}>
           <p role={command.uncertain ? "alert" : "status"}>
             {command.uncertain
-              ? "The original command outcome is not confirmed. Reconcile it before issuing another command or changing catalogs."
-              : `${command.label}…`}
+              ? t("command.uncertain")
+              : t("command.pending", { label: command.label })}
           </p>
           {command.error && <RecordBody>{command.error}</RecordBody>}
           {command.uncertain && (
             <>
               <Metadata>
-                Original command: {command.promise.idempotencyKey}
+                {t("command.original", {
+                  key: command.promise.idempotencyKey,
+                })}
               </Metadata>
-              <Button onClick={reconcile}>Reconcile original command</Button>
+              <Button onClick={reconcile}>{t("command.reconcile")}</Button>
             </>
           )}
         </section>
       )}
       {review && (
-        <RecordForm
-          aria-label="Confirm proposal decision"
-          opener={review.opener}
-        >
+        <RecordForm aria-label={t("review.label")} opener={review.opener}>
           <RecordTitle>
-            {review.decision === "approve" ? "Approve" : "Reject"} ·{" "}
-            {review.proposal.name}
+            {t(`review.title.${review.decision}`, {
+              name: review.proposal.name,
+            })}
           </RecordTitle>
-          <FormSection title="Proposed skill">
+          <FormSection title={t("review.proposed")}>
             <RecordBody>{review.proposal.description}</RecordBody>
             <RecordBody>{review.proposal.instructions}</RecordBody>
           </FormSection>
-          <Disclosure title="Review target">
+          <Disclosure title={t("review.target")}>
             <Facts
               values={[
-                ["Workspace", workspace!.ref.path],
-                ["Scope", review.proposal.scope],
-                ["Revision", review.proposal.revision],
+                [t("fact.workspace"), workspace!.ref.path],
+                [t("fact.scope"), review.proposal.scope],
+                [t("fact.revision"), review.proposal.revision],
               ]}
             />
           </Disclosure>
-          <FormActions label="Proposal confirmation">
+          <FormActions label={t("review.confirmation")}>
             <Button
               variant="ghost"
               disabled={Boolean(command)}
@@ -235,7 +249,7 @@ export function Skills({ context }: { context: ComponentContext }) {
               autoFocus
               onClick={() => setReview(undefined)}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               variant={review.decision === "approve" ? "primary" : "tonal"}
@@ -256,11 +270,11 @@ export function Skills({ context }: { context: ComponentContext }) {
                           name,
                           revision,
                         }),
-                  `${review.decision === "approve" ? "Approve" : "Reject"} ${name}`,
+                  t(`command.${review.decision}`, { name }),
                 );
               }}
             >
-              Confirm {review.decision}
+              {t(`confirm.${review.decision}`)}
             </Button>
           </FormActions>
         </RecordForm>
@@ -270,18 +284,23 @@ export function Skills({ context }: { context: ComponentContext }) {
           {skillDocument.description && (
             <RecordBody>{skillDocument.description}</RecordBody>
           )}
-          <section aria-label={`Instructions for ${skillDocument.name}`}>
+          <section
+            aria-label={t("instructions.for", { name: skillDocument.name })}
+          >
             <DocumentBody>
               <RecordBody>{skillDocument.instructions}</RecordBody>
             </DocumentBody>
           </section>
-          <Disclosure title="Source and revision">
+          <Disclosure title={t("document.source")}>
             <Facts
               values={[
-                ["Source path", skillDocument.path],
-                ["Revision", skillDocument.revision],
-                ["Installation", skillDocument.installation?.installationId],
-                ["Release", skillDocument.installation?.digest],
+                [t("fact.sourcePath"), skillDocument.path],
+                [t("fact.revision"), skillDocument.revision],
+                [
+                  t("fact.installation"),
+                  skillDocument.installation?.installationId,
+                ],
+                [t("fact.release"), skillDocument.installation?.digest],
               ]}
             />
           </Disclosure>
@@ -297,17 +316,17 @@ export function Skills({ context }: { context: ComponentContext }) {
           description={
             <>
               {target === "library"
-                ? "User-managed Skills. Installation-provided Skills are managed with their package."
+                ? t("section.library.description")
                 : workspace
-                  ? `Workspace: ${workspace.ref.path}`
-                  : "Select a workspace to inspect available Skills and proposals."}
+                  ? t("section.workspace.path", { path: workspace.ref.path })
+                  : t("section.selectWorkspace")}
             </>
           }
         >
           <Metadata role="status" className="sr-only">
             {snapshot
-              ? `${rows.length} ${snapshot.type === "review" ? "pending proposals" : snapshot.type === "library" ? "user-managed Skills" : "available Skills"}`
-              : "No accepted read."}
+              ? t(`summary.${snapshot.type}`, { count: rows.length })
+              : t("summary.none")}
           </Metadata>
 
           {snapshot?.type === "available" &&
@@ -323,6 +342,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                 item={item}
                 review={snapshot!.type === "review"}
                 focusAfterRemoval={searchField}
+                t={t}
                 read={
                   snapshot!.type === "available"
                     ? {
@@ -343,15 +363,24 @@ export function Skills({ context }: { context: ComponentContext }) {
                           item.lifecycle === "archived"
                             ? context.runtime.skills.restore(item.name)
                             : context.runtime.skills.archive(item.name),
-                        `${item.lifecycle === "archived" ? "Restore" : "Archive"} ${item.name}`,
+                        t(
+                          item.lifecycle === "archived"
+                            ? "command.restore"
+                            : "command.archive",
+                          { name: item.name },
+                        ),
                       )
                     }
                   >
-                    {item.lifecycle === "archived" ? "Restore" : "Archive"}
+                    {t(
+                      item.lifecycle === "archived"
+                        ? "action.restore"
+                        : "action.archive",
+                    )}
                   </Button>
                 )}
                 {snapshot!.type === "review" && "origin" in item && (
-                  <Toolbar label={`Proposal actions for ${item.name}`}>
+                  <Toolbar label={t("proposal.actions", { name: item.name })}>
                     {(["reject", "approve"] as const).map((decision) => (
                       <Button
                         variant={decision === "approve" ? "outline" : "wash"}
@@ -367,7 +396,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                           })
                         }
                       >
-                        {decision === "approve" ? "Approve" : "Reject"}
+                        {t(`action.${decision}`)}
                       </Button>
                     ))}
                   </Toolbar>
@@ -380,13 +409,11 @@ export function Skills({ context }: { context: ComponentContext }) {
                 size="compact"
                 title={
                   rows.length
-                    ? "No matching Skills in this catalog."
-                    : "No Skills in this catalog."
+                    ? t("empty.filtered.title")
+                    : t("empty.none.title")
                 }
                 sub={
-                  rows.length
-                    ? "Clear the search to show Skills."
-                    : "Choose another catalog or refresh after adding a Skill."
+                  rows.length ? t("empty.filtered.sub") : t("empty.none.sub")
                 }
               />
             )}
