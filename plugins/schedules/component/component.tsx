@@ -1,10 +1,4 @@
-import {
-  CalendarClock,
-  Refresh,
-  Plus,
-  Play,
-  ChevronDown,
-} from "@flame/icons/react";
+import { CalendarClock, Refresh, Plus, ChevronDown } from "@flame/icons/react";
 import { type ComponentContext } from "@flame/component-sdk";
 
 import {
@@ -107,12 +101,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
   return (
     <Panel
       label="Schedules"
-      header={
-        <PanelHeader
-          title="Schedules"
-          description="Recurring work and the next time it will run."
-        />
-      }
+      header={<PanelHeader title="Schedules" />}
       controls={
         <FilterBar
           label="Schedule controls"
@@ -457,6 +446,15 @@ export function Schedules({ context }: { context: ComponentContext }) {
                     disabled={disabled}
                     items={[
                       {
+                        label: "Run now",
+                        onSelect: () =>
+                          submit(
+                            "flame.schedules/runNow.v1",
+                            { ID: item.ID },
+                            "Run schedule now",
+                          ),
+                      },
+                      {
                         label: "Edit",
                         onSelect: (opener) => {
                           taskOpener.current = opener;
@@ -514,9 +512,6 @@ export function Schedules({ context }: { context: ComponentContext }) {
               />
               <RecordBody>{item.Instructions}</RecordBody>
               <Metadata>
-                Cron · <code>{item.Cron}</code>
-              </Metadata>
-              <Metadata>
                 Next firing ·{" "}
                 {hasTime(item.NextRunAt) ? (
                   <time dateTime={item.NextRunAt}>
@@ -529,27 +524,10 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   "Not scheduled"
                 )}
               </Metadata>
-              <Disclosure
-                title="Schedule details"
-                actions={
-                  <Button
-                    variant="soft"
-                    size="md"
-                    disabled={disabled}
-                    onClick={() =>
-                      submit(
-                        "flame.schedules/runNow.v1",
-                        { ID: item.ID },
-                        "Run schedule now",
-                      )
-                    }
-                  >
-                    <Icon glyph={Play} size="sm" /> Run now
-                  </Button>
-                }
-              >
+              <Disclosure title="Schedule details">
                 <Facts
                   values={[
+                    ["Cron", item.Cron],
                     ["Schedule", item.ID],
                     ["Revision", String(item.Revision)],
                     ["Workspace", item.CWD || "Runtime default"],
@@ -562,12 +540,6 @@ export function Schedules({ context }: { context: ComponentContext }) {
                     [
                       "Reasoning effort",
                       item.ModelSelection.reasoningEffort || undefined,
-                    ],
-                    [
-                      "Next firing",
-                      hasTime(item.NextRunAt)
-                        ? item.NextRunAt
-                        : "Not scheduled",
                     ],
                     [
                       "Last firing",
