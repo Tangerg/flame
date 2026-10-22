@@ -2843,6 +2843,37 @@ theme single-owner, plugins operations-generation ownership. The index-containin
 keys in `HooksPane`/`PackageManager` combine the index with stable ids on
 stateless rows — no reachable corruption.
 
+## Command palette / shortcuts audit
+
+A deep audit of the command palette + shortcuts surface found its core clean —
+`SearchOverlay` focus/return/retire, active-index clamping, stable option keys,
+combobox/listbox ARIA, IME guarding, and global-listener cleanup are all correct
+and test-pinned. Three defects were fixed:
+
+- **Bare-key overrides hijacked typing (`ShortcutsProvider.tsx`).** Every command
+  shortcut is registered `allowInInputs: true` (so Mod+K works from the composer),
+  and the recorder lets a user bind a bare printable key. A command bound to bare
+  `j`/Space then fired — and `preventDefault`ed — on that keystroke inside every
+  input/textarea, so the character could never be typed again. Dispatch now fires
+  a command inside an editable target only when the combo is input-safe (has a
+  command modifier mod/ctrl/alt/meta, or is a non-typing key like Escape/arrows);
+  a bare printable key or Space no longer fires there. Bare-key recording is
+  unchanged (it still works outside fields; the tests that pin it dispatch to
+  `window`). Regression test added.
+- **Recorder froze on the first conflict (`ShortcutsPane.tsx`).** After a combo
+  collided with an existing binding, every further keypress was swallowed, so a
+  user who then pressed a different, free combo got no response and had to cancel
+  and restart. A fresh combo now re-evaluates (binds if free, re-points the
+  conflict otherwise); the Replace button still handles the swap. Regression added.
+- **Start-of-recording state not announced (`ShortcutsPane.tsx`).** The
+  "Recording…" `role="status"` was inserted already-populated (unreliably spoken);
+  the recorder field now has `aria-describedby` to the status/conflict text, so it
+  is announced when focus lands and the conflict path keeps its `role="alert"`.
+
+Left as correct, not a defect: the palette input does not take Home/End for
+first/last option — for an editable combobox the ARIA APG assigns Home/End to the
+text cursor, which is the current behavior; list navigation stays on the arrows.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.

@@ -58,6 +58,37 @@ describe("shortcuts provider", () => {
     expect(command).not.toHaveBeenCalled();
   });
 
+  it("keeps a bare-key command from firing inside a text field but runs a modified one", async () => {
+    const bare = vi.fn();
+    const modified = vi.fn();
+    await loadPluginsForTest(
+      definePlugin({
+        name: "test.command.inputsafe",
+        setup: (ctx) => {
+          ctx.contribute(COMMAND, { id: "test.bare", label: "Bare", combo: "j", run: bare });
+          ctx.contribute(COMMAND, { id: "test.mod", label: "Mod", combo: "Alt+K", run: modified });
+        },
+      }),
+    );
+    const view = render(<ShortcutsProvider />);
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "j", code: "KeyJ", bubbles: true }));
+    expect(bare).not.toHaveBeenCalled();
+
+    press({ key: "j", code: "KeyJ", altKey: false });
+    expect(bare).toHaveBeenCalledOnce();
+
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "k", code: "KeyK", altKey: true, bubbles: true }),
+    );
+    expect(modified).toHaveBeenCalledOnce();
+
+    input.remove();
+    view.unmount();
+  });
+
   it("follows a user's rebinding and does not run anything while one is being recorded", async () => {
     const run = vi.fn();
     useShortcutOverrides.setState({ overrides: { "test.rebound": "alt+j" }, recording: false });

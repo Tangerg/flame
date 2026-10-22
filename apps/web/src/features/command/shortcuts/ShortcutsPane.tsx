@@ -1,6 +1,6 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type KeyboardEvent } from "react";
 import { Kbd } from "@/ui/index";
 import { TextButton } from "@/ui/index";
@@ -72,6 +72,7 @@ function ShortcutRow({
 }) {
   const t = useT();
   const change = useRef<HTMLButtonElement>(null);
+  const statusId = useId();
   const { rebind, reset } = useShortcutOverrides.getState();
   const mine = recording?.commandId === row.id ? recording : null;
   const conflict = mine?.conflict;
@@ -89,7 +90,8 @@ function ShortcutRow({
     if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) return;
     event.preventDefault();
     event.stopPropagation();
-    if (mine.conflict) return;
+    // A fresh combo re-evaluates even after a conflict, so the recorder is not
+    // stuck on the first collision — press another free key to bind it.
     const combo = comboFromEvent(event);
     if (!combo) return;
     const holder = rows.find(
@@ -108,11 +110,13 @@ function ShortcutRow({
       label={row.label}
       sub={
         conflict ? (
-          <span role="alert" {...stylex.props(sc.warn)}>
+          <span role="alert" id={statusId} {...stylex.props(sc.warn)}>
             {t("shortcuts.conflict", { action: conflict.with.label })}
           </span>
         ) : mine ? (
-          <span role="status">{t("shortcuts.recording")}</span>
+          <span role="status" id={statusId}>
+            {t("shortcuts.recording")}
+          </span>
         ) : row.combo ? (
           <Keys combo={row.combo} />
         ) : (
@@ -138,6 +142,7 @@ function ShortcutRow({
               // oxlint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               aria-label={t("shortcuts.editAria", { action: row.label })}
+              aria-describedby={statusId}
               value={comboGlyph(conflict?.combo ?? row.combo ?? "")}
               onKeyDown={capture}
               styles={sc.recorder}

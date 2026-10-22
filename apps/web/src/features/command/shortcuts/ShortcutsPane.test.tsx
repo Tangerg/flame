@@ -57,6 +57,18 @@ describe("ShortcutsPane", () => {
     expect(useShortcutOverrides.getState().recording).toBe(false);
   });
 
+  it("re-evaluates a fresh combo after a conflict instead of freezing", () => {
+    render(<ShortcutsPane />);
+    fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
+    press({ key: "k", code: "KeyK", ctrlKey: true, metaKey: true });
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(useShortcutOverrides.getState().overrides.open).toBeUndefined();
+
+    press({ key: "j", code: "KeyJ", ctrlKey: true, metaKey: true });
+    expect(useShortcutOverrides.getState().overrides.open).toMatch(/j$/);
+    expect(useShortcutOverrides.getState().recording).toBe(false);
+  });
+
   it("explains a conflict and only takes the keys over when asked", () => {
     render(<ShortcutsPane />);
     fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
