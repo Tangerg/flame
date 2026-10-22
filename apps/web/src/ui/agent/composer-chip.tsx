@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
 import { color } from "@flame/ui/tokens.stylex";
-import { Button, type ButtonProps } from "@flame/ui";
+import { Button, type ButtonProps, vocab } from "@flame/ui";
 import { Icon } from "@/ui/icons/index";
 interface Props extends Omit<ButtonProps, "children" | "size"> {
   leading: ReactNode;
@@ -13,7 +13,6 @@ interface Props extends Omit<ButtonProps, "children" | "size"> {
 const chipStyles = stylex.create({
   grid: { display: "grid", gridTemplateColumns: "auto minmax(0, auto) auto" },
   leading: { display: "flex", alignItems: "center" },
-  label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   chevron: { color: color.fgFaint },
   holds: { flexShrink: 0 },
   gives: { flexShrink: 1, minWidth: 0 },
@@ -43,7 +42,7 @@ export function AgentComposerChip({
       <span {...stylex.props(chipStyles.leading)}>{leading}</span>
       <span
         data-slot="composer-chip-label"
-        {...stylex.props(chipStyles.label, labelVisibility === "wide" && chipStyles.wide)}
+        {...stylex.props(vocab.truncate, labelVisibility === "wide" && chipStyles.wide)}
       >
         {label}
       </span>

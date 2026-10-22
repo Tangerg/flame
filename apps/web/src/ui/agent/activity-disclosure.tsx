@@ -4,6 +4,7 @@ import { type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { Children, useId, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/classNames";
 import { color, leading, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
+import { vocab } from "@flame/ui";
 import { Collapsible, useDisclosedContent } from "@/ui/atoms/collapsible";
 import { Pressable } from "@/ui/atoms/pressable";
 import { ProgressBar } from "@/ui/atoms/progress-bar";
@@ -68,9 +69,6 @@ const styles = stylex.create({
     minWidth: 0,
     flexShrink: 1,
     alignItems: "center",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
     color: "var(--row-ink)",
   },
   detail: {
@@ -78,9 +76,6 @@ const styles = stylex.create({
     minWidth: 0,
     flex: 1,
     alignItems: "center",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
     lineHeight: leading.snug,
     color: "var(--row-detail-ink)",
   },
@@ -253,7 +248,7 @@ export function AgentActivityDisclosure({
           </span>
           <span
             data-slot="agent-activity-label"
-            {...stylex.props(styles.label, line ? type.uiSm : type.uiMd)}
+            {...stylex.props(styles.label, vocab.truncate, line ? type.uiSm : type.uiMd)}
           >
             {label}
           </span>
@@ -268,7 +263,9 @@ export function AgentActivityDisclosure({
             </span>
           )}
           {detail != null ? (
-            <span {...stylex.props(styles.detail, line ? type.uiSm : type.uiMd)}>{detail}</span>
+            <span {...stylex.props(styles.detail, vocab.truncate, line ? type.uiSm : type.uiMd)}>
+              {detail}
+            </span>
           ) : (
             <span aria-hidden {...stylex.props(styles.spacer)} />
           )}

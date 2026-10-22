@@ -13,7 +13,7 @@ import {
 import { useT } from "@/lib/i18n/index";
 import { useCommandAction } from "@/features/command/public/commandAction";
 import { LightboxDialog } from "@/ui/index";
-import { IconButton, ScrollRegion } from "@flame/ui";
+import { IconButton, ScrollRegion, vocab } from "@flame/ui";
 import { saveInlineImage } from "@/features/chat/message/application/imageSave";
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/message/ui/messageContent";
 import { color, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -48,9 +48,6 @@ const ig = stylex.create({
   },
   name: {
     minWidth: 0,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
   },
   position: { flexShrink: 0, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" },
   actions: {
@@ -453,7 +450,7 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
       <div {...stylex.props(ig.frame)}>
         <div {...stylex.props(ig.toolbar)}>
           <div {...stylex.props(ig.identity, typeStep.uiSm)}>
-            <span aria-hidden="true" title={activeLabel} {...stylex.props(ig.name)}>
+            <span aria-hidden="true" title={activeLabel} {...stylex.props(ig.name, vocab.truncate)}>
               {activeLabel}
             </span>
             {hasGallery && (

@@ -4,7 +4,7 @@ import { formatRelative } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n/index";
 import { Icon } from "@/ui/index";
 import { SearchOverlay } from "@/ui/index";
-import { EmptyState } from "@flame/ui";
+import { EmptyState, vocab } from "@flame/ui";
 import { selectAgentSession } from "@/features/agent/public/session";
 import { useAgentSessions } from "@/features/agent/public/session";
 import { matchSessions } from "@/features/navigation/session-search/application/sessionMatches";
@@ -15,9 +15,6 @@ const cmd = stylex.create({
   label: {
     minWidth: 0,
     flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
   },
   stamp: { flexShrink: 0, color: color.fgFaint },
 });
@@ -49,7 +46,7 @@ export function SessionSearch() {
           children: (
             <>
               <Icon name="chat" size="sm" className={stylex.props(cmd.glyph).className} />
-              <span {...stylex.props(cmd.label)}>{session.title}</span>
+              <span {...stylex.props(cmd.label, vocab.truncate)}>{session.title}</span>
               <span {...stylex.props(cmd.stamp, typeStep.uiSm)}>
                 {formatRelative(session.time)}
               </span>

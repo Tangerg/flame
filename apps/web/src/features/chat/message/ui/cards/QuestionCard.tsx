@@ -55,9 +55,6 @@ const qc = stylex.create({
     minWidth: 0,
     alignItems: "center",
     gap: space.s1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
   },
   settledList: { display: "flex", flexDirection: "column", gap: space.s3 },
   settledItem: { display: "flex", flexDirection: "column", gap: space.s1 },
@@ -212,7 +209,7 @@ export function QuestionCard({ status, resumeRunId, itemId, questions, answered,
         open={settledOpen}
         onToggle={() => setSettledOpen((open) => !open)}
         label={
-          <span {...stylex.props(qc.settledLine)}>
+          <span {...stylex.props(qc.settledLine, vocab.truncate)}>
             <span {...stylex.props(vocab.muted)}>{t("question.settled.asked")}</span>
             <span {...stylex.props(vocab.faint)}>{countLabel}</span>
           </span>

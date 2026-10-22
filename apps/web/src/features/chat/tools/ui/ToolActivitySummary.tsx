@@ -7,7 +7,6 @@ import { toneInk, vocab } from "@flame/ui";
 import { space, type } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   summary: { display: "grid", minWidth: 0, gap: space.s0_5, paddingBlock: space.s0_5 },
-  label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   statuses: { display: "flex", flexWrap: "wrap", gap: space.s2, whiteSpace: "normal" },
   status: { display: "inline-flex", alignItems: "center", gap: space.s1, whiteSpace: "nowrap" },
 });
@@ -23,7 +22,7 @@ export function ToolActivitySummary({
   const status = toolActivityStatus(tools);
   return (
     <span {...stylex.props(styles.summary)}>
-      <span {...stylex.props(styles.label)}>{label}</span>
+      <span {...stylex.props(vocab.truncate)}>{label}</span>
       {(status.running > 0 || status.issues > 0 || status.denied > 0) && (
         <span {...stylex.props(styles.statuses, type.uiXs)}>
           {status.running > 0 && (

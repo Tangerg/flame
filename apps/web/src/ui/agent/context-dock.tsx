@@ -14,7 +14,7 @@ import { color, motion, space, surface, type, weight } from "@flame/ui/tokens.st
 import { Icon, type IconName } from "@/ui/icons/index";
 import { ContextMenu } from "@/ui/atoms/menu";
 import { IconButton } from "@flame/ui/icon-button";
-import { isImeKey } from "@flame/ui";
+import { isImeKey, vocab } from "@flame/ui";
 import { reveal } from "@/ui/atoms/reveal";
 import { ResizeHandle, type ResizeHandleProps } from "@/ui/atoms/resize-handle";
 import { TabsPrimitive } from "@/ui/primitives/index";
@@ -86,7 +86,6 @@ const styles = stylex.create({
   labelClosable: { paddingLeft: space.s2, paddingRight: space.s1 },
   glyph: { flexShrink: 0, opacity: "var(--glyph-step)" },
   tabClose: { marginRight: space.s0_5 },
-  title: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   badge: { flexShrink: 0, fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
   contents: { display: "contents" },
 });
@@ -295,7 +294,7 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
                 {...stylex.props(styles.label, type.uiMd, styles.labelClosable)}
               >
                 {tab.icon && <Icon name={tab.icon} size="sm" {...stylex.props(styles.glyph)} />}
-                <span {...stylex.props(styles.title)}>{tab.title}</span>
+                <span {...stylex.props(vocab.truncate)}>{tab.title}</span>
                 {tab.badge != null && (
                   <span {...stylex.props(styles.badge, type.ui2xs)}>{tab.badge}</span>
                 )}

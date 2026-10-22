@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
+import { vocab } from "@flame/ui";
 import { color, space, type } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   row: {
@@ -13,7 +14,7 @@ const styles = stylex.create({
     lineHeight: "var(--leading-tight)",
     color: color.fgFaint,
   },
-  label: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  label: { minWidth: 0 },
   trailing: {
     marginInlineStart: "auto",
     display: "flex",
@@ -37,7 +38,7 @@ export function SectionLabel({
   const row = stylex.props(styles.row, type.uiXs);
   return (
     <div {...row} className={cn(row.className, className)}>
-      <span {...stylex.props(styles.label)}>{children}</span>
+      <span {...stylex.props(styles.label, vocab.truncate)}>{children}</span>
       {trailing != null && <span {...stylex.props(styles.trailing)}>{trailing}</span>}
     </div>
   );

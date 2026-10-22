@@ -10,6 +10,7 @@ import {
   type,
   weight,
 } from "@flame/ui/tokens.stylex";
+import { vocab } from "@flame/ui";
 import { reveal } from "@/ui/atoms/reveal";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
@@ -34,9 +35,6 @@ const chipStyles = stylex.create({
   attached: { backgroundColor: surface.surface2, color: color.fgMuted },
   value: {
     maxWidth: "220px",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
     fontFamily: "var(--font-mono)",
   },
   closeBox: {
@@ -90,7 +88,7 @@ export function Chip({
   const face = (
     <>
       {icon && <Icon name={icon} size="xs" />}
-      <span {...stylex.props(chipStyles.value)}>{children}</span>
+      <span {...stylex.props(chipStyles.value, vocab.truncate)}>{children}</span>
     </>
   );
   return (

@@ -4,6 +4,7 @@ import { basename } from "@/lib/path";
 import { ContextMenu } from "@/ui/index";
 import { useT } from "@/lib/i18n/index";
 import { writeToClipboard } from "@/lib/clipboard";
+import { vocab } from "@flame/ui";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 const si = stylex.create({
   bar: { display: "flex", minWidth: 0, flexShrink: 1, alignItems: "center", gap: space.s2 },
@@ -12,9 +13,6 @@ const si = stylex.create({
     minWidth: 0,
     maxWidth: "160px",
     flexShrink: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
     fontFamily: "var(--font-mono)",
     color: color.fgFaint,
   },
@@ -27,9 +25,6 @@ const si = stylex.create({
     margin: 0,
     minWidth: 0,
     maxWidth: "420px",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
     fontWeight: weight.medium,
     color: color.fg,
   },
@@ -53,7 +48,7 @@ export function SessionIdentity({ sessionId, title, workspacePath }: Props): Rea
               <>
                 <span
                   title={workspacePath}
-                  className={stylex.props(si.cwd, typeStep.uiSm).className}
+                  className={stylex.props(si.cwd, vocab.truncate, typeStep.uiSm).className}
                 >
                   {basename(workspacePath)}
                 </span>
@@ -62,7 +57,10 @@ export function SessionIdentity({ sessionId, title, workspacePath }: Props): Rea
                 </span>
               </>
             )}
-            <h1 title={title} className={stylex.props(si.title, typeStep.uiMd).className}>
+            <h1
+              title={title}
+              className={stylex.props(si.title, vocab.truncate, typeStep.uiMd).className}
+            >
               {title}
             </h1>
           </div>

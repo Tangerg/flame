@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type StyleXArray, type StyleXStyles } from "@stylexjs/stylex";
 import { type ReactNode } from "react";
-import { FIELD_SIZE, FIELD_SURFACE } from "@flame/ui";
+import { FIELD_SIZE, FIELD_SURFACE, vocab } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { color, space, type, weight } from "@flame/ui/tokens.stylex";
 import { Icon } from "@/ui/icons/index";
@@ -21,9 +21,6 @@ const styles = stylex.create({
   label: {
     minWidth: 0,
     flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
   },
   chevronInk: { flexShrink: 0, color: color.fgFaint },
 });
@@ -58,7 +55,10 @@ export function SelectTrigger({
       className={cn(styled.className, className)}
     >
       {lead}
-      <span title={typeof label === "string" ? label : undefined} {...stylex.props(styles.label)}>
+      <span
+        title={typeof label === "string" ? label : undefined}
+        {...stylex.props(styles.label, vocab.truncate)}
+      >
         {label}
       </span>
       <Icon name="chevron-down" size="xs" {...stylex.props(styles.chevronInk)} />

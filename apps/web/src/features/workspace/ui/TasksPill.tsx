@@ -27,9 +27,6 @@ const p = stylex.create({
   row: { paddingInline: space.s3, paddingBlock: space.s2 },
   label: {
     flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
     color: color.fg,
     fontWeight: weight.semibold,
   },
@@ -97,7 +94,7 @@ function TaskRow({ task }: { task: TaskReadoutTask }) {
             ).className
           }
         />
-        <span {...stylex.props(p.label, typeStep.uiMd)}>{task.label}</span>
+        <span {...stylex.props(p.label, vocab.truncate, typeStep.uiMd)}>{task.label}</span>
         {percent !== null && <span {...stylex.props(p.percent, typeStep.uiSm)}>{percent}%</span>}
       </div>
       {task.message && <div {...stylex.props(p.detail, typeStep.uiSm)}>{task.message}</div>}

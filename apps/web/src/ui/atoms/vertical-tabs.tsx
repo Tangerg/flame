@@ -13,7 +13,7 @@ import {
 } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { TabsPrimitive } from "@/ui/primitives/index";
-import { ItemHighlight, HoverTrack, useHoverTrackItem } from "@flame/ui";
+import { ItemHighlight, HoverTrack, useHoverTrackItem, vocab } from "@flame/ui";
 import { SectionLabel } from "@/ui/atoms/section-label";
 interface VerticalTabItem {
   id: string;
@@ -91,7 +91,6 @@ const styles = stylex.create({
   },
   highlight: { borderRadius: radius.row },
   glyph: { flexShrink: 0 },
-  label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   page: {
     minHeight: 0,
     minWidth: 0,
@@ -113,7 +112,7 @@ function RailTab({ item }: { item: VerticalTabItem }) {
     >
       {track?.hovered && <ItemHighlight layoutId={track.layoutId} styles={styles.highlight} />}
       {item.icon && <Icon name={item.icon} size="sm" {...stylex.props(styles.glyph)} />}
-      <span {...stylex.props(styles.label)}>{item.label}</span>
+      <span {...stylex.props(vocab.truncate)}>{item.label}</span>
     </TabsPrimitive.Tab>
   );
 }

@@ -5,7 +5,7 @@ import { splitCombo } from "@/lib/combo";
 import { Icon } from "@/ui/index";
 import { Kbd } from "@/ui/index";
 import { SearchOverlay } from "@/ui/index";
-import { EmptyState } from "@flame/ui";
+import { EmptyState, vocab } from "@flame/ui";
 import { knownIconName } from "@/ui/icons/index";
 import { useEffectiveCommands } from "@/features/command/public/shortcutOverrides";
 import { useWorkspaceViews } from "@/features/workspace/public/views";
@@ -27,9 +27,6 @@ const cmd = stylex.create({
   label: {
     minWidth: 0,
     flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
   },
   keys: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1 },
 });
@@ -93,7 +90,7 @@ export function CommandMenu() {
               ) : (
                 <span aria-hidden {...stylex.props(cmd.glyphSlot)} />
               )}
-              <span {...stylex.props(cmd.label)}>{choice.label}</span>
+              <span {...stylex.props(cmd.label, vocab.truncate)}>{choice.label}</span>
               {choice.combo && (
                 <span {...stylex.props(cmd.keys)}>
                   {splitCombo(choice.combo).map((part, index) => (

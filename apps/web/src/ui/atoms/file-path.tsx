@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
+import { vocab } from "@flame/ui";
 import { color } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   root: { display: "flex", minWidth: 0, alignItems: "baseline" },
@@ -7,9 +8,6 @@ const styles = stylex.create({
     minWidth: 0,
     maxWidth: "max-content",
     flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
     textAlign: "left",
     color: color.fgFaint,
   },
@@ -17,9 +15,6 @@ const styles = stylex.create({
   filename: {
     minWidth: 0,
     flexShrink: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
   },
 });
 
@@ -32,12 +27,12 @@ export function FilePath({ path, className }: { path: string; className?: string
   return (
     <span {...root} className={cn(root.className, className)} title={path}>
       {directory !== "" && (
-        <span dir="rtl" {...stylex.props(styles.directory)}>
+        <span dir="rtl" {...stylex.props(styles.directory, vocab.truncate)}>
           <span dir="ltr">{directory}</span>
         </span>
       )}
       {cut >= 0 && <span {...stylex.props(styles.separator)}>/</span>}
-      <span {...stylex.props(styles.filename)}>{filename}</span>
+      <span {...stylex.props(styles.filename, vocab.truncate)}>{filename}</span>
     </span>
   );
 }
