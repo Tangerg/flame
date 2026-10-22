@@ -275,8 +275,6 @@ export const zh: Record<string, string> = {
   "welcome.title": "我们应该构建什么？",
   "welcome.projectTitle": "我们应该在 <projectSelect>{{project}}</projectSelect> 中构建什么？",
   "composer.project.choose": "选择项目",
-  "composer.project.select": "选择你的项目",
-  "composer.project.tooltip": "选择本次对话要使用的项目",
   "composer.project.change": "更改项目：{{project}}",
   "composer.project.add": "新建项目",
   "composer.project.required": "选择项目后继续",

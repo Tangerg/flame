@@ -9,7 +9,7 @@ import { DropdownMenu } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { Button, vocab } from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent/index";
-import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 interface ProjectMenuContentProps {
   groups: readonly WorkGroup[] | undefined;
   activeCwd: string | undefined;
@@ -22,13 +22,6 @@ interface ProjectMenuContentProps {
 
 const pl = stylex.create({
   menu: { width: "min(320px, calc(100vw - 32px))" },
-  heading: {
-    paddingInline: space.s2,
-    paddingTop: space.s1,
-    paddingBottom: space.s1_5,
-    color: color.fgFaint,
-    fontWeight: weight.medium,
-  },
   tray: { display: "flex", minWidth: 0, alignItems: "center" },
   traySurface: {
     position: "relative",
@@ -65,7 +58,6 @@ function ProjectMenuContent({
       sideOffset={8}
       className={stylex.props(pl.menu).className}
     >
-      <div {...stylex.props(pl.heading, typeStep.uiXs)}>{t("composer.project.select")}</div>
       {loading && !groups ? (
         <DropdownMenu.Item disabled layout="glyph">
           <Icon name="folder" size="sm" className={stylex.props(vocab.faint).className} />
@@ -123,7 +115,6 @@ export function ComposerProjectTray() {
                 press="none"
                 disabled={!actions.canCreateSessionInFolder}
                 aria-label={t("composer.project.choose")}
-                title={t("composer.project.tooltip")}
                 className={stylex.props(vocab.min).className}
               >
                 <Icon name="folder" size="sm" className={stylex.props(vocab.hold).className} />

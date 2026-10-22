@@ -270,8 +270,6 @@ export const ko: Record<string, string> = {
   "welcome.title": "오늘은 무엇을 만들까요?",
   "welcome.projectTitle": "<projectSelect>{{project}}</projectSelect>에서 무엇을 만들까요?",
   "composer.project.choose": "프로젝트 선택",
-  "composer.project.select": "프로젝트를 선택하세요",
-  "composer.project.tooltip": "이 채팅을 실행할 프로젝트 선택",
   "composer.project.change": "프로젝트 변경: {{project}}",
   "composer.project.add": "새 프로젝트",
   "composer.project.required": "계속하려면 프로젝트를 선택하세요",

@@ -272,8 +272,6 @@ export const ja: Record<string, string> = {
   "welcome.title": "今日は何を作りましょうか？",
   "welcome.projectTitle": "<projectSelect>{{project}}</projectSelect> で何を作りましょうか？",
   "composer.project.choose": "プロジェクトを選択",
-  "composer.project.select": "プロジェクトを選択してください",
-  "composer.project.tooltip": "このチャットを実行するプロジェクトを選択",
   "composer.project.change": "プロジェクトを変更: {{project}}",
   "composer.project.add": "新規プロジェクト",
   "composer.project.required": "続行するにはプロジェクトを選択してください",

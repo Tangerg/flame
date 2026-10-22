@@ -289,8 +289,6 @@ export const fr: Record<string, string> = {
   "welcome.projectTitle":
     "Que voulez-vous construire dans <projectSelect>{{project}}</projectSelect> ?",
   "composer.project.choose": "Choisir un projet",
-  "composer.project.select": "Sélectionnez votre projet",
-  "composer.project.tooltip": "Sélectionnez un projet pour exécuter cette discussion",
   "composer.project.change": "Changer de projet : {{project}}",
   "composer.project.add": "Nouveau projet",
   "composer.project.required": "Sélectionnez un projet pour continuer",
