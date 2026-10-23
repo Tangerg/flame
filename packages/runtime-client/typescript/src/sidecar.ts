@@ -30,12 +30,6 @@ export interface SidecarClient {
   readiness(signal?: AbortSignal): Promise<ReadinessStatus>;
 }
 
-const SIDECAR_METHODS = {
-  info: "info",
-  liveness: "liveness",
-  readiness: "readiness",
-} as const satisfies Record<HTTPSidecarEndpointName, keyof SidecarClient>;
-
 export function createSidecarClient(config: SidecarClientConfig): SidecarClient {
   const baseUrl = requireRuntimeEndpoint(config.baseUrl);
   const fetchImpl = config.fetch ?? globalThis.fetch.bind(globalThis);
@@ -108,8 +102,8 @@ export function createSidecarClient(config: SidecarClientConfig): SidecarClient 
   }
 
   return {
-    info: (signal) => getJson(SIDECAR_METHODS.info, signal),
-    liveness: (signal) => getJson(SIDECAR_METHODS.liveness, signal),
-    readiness: (signal) => getJson(SIDECAR_METHODS.readiness, signal),
+    info: (signal) => getJson("info", signal),
+    liveness: (signal) => getJson("liveness", signal),
+    readiness: (signal) => getJson("readiness", signal),
   };
 }
