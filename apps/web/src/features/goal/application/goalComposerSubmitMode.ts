@@ -4,6 +4,7 @@ import {
   type ComposerSubmitModeSpec,
 } from "@/features/composer/public/types";
 import { type GoalReadModel, type GoalState } from "@/features/goal/application/goalReadModel";
+import { goalCanResume } from "@/features/goal/application/goalStatusPresentation";
 import { type StartGoalInput } from "@/features/goal/application/ports/goalCommandsGateway";
 import { GoalComposerModeOwner } from "@/features/goal/application/goalComposerMode";
 export interface GoalComposerSubmitDependencies {
@@ -102,5 +103,5 @@ async function startGoal(
 }
 
 export function goalCanEnterComposerMode(goal: GoalReadModel | null): boolean {
-  return !goal || goal.status === "paused" || goal.status === "blocked";
+  return !goal || goalCanResume(goal);
 }

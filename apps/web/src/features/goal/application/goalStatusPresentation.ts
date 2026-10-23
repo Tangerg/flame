@@ -19,3 +19,20 @@ export const GOAL_REASON_I18N = {
 export function goalCanResume(goal: GoalReadModel): boolean {
   return goal.status === "paused" || goal.status === "blocked";
 }
+
+export function goalIsActive(goal: GoalReadModel): boolean {
+  return goal.status === "active";
+}
+
+export function goalCanEdit(goal: GoalReadModel): boolean {
+  return goal.status !== "completing";
+}
+
+export function goalCanChangeStatus(goal: GoalReadModel): boolean {
+  return goalIsActive(goal) || goalCanResume(goal);
+}
+
+export function goalCreatedAtMillis(createdAt: string): number | null {
+  const millis = Date.parse(createdAt);
+  return Number.isNaN(millis) ? null : millis;
+}

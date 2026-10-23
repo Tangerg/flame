@@ -1,3 +1,4 @@
+import { tupleKey } from "@/lib/tupleKey";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
@@ -21,7 +22,10 @@ import {
 import {
   GOAL_STATUS_I18N,
   GOAL_REASON_I18N,
-  goalCanResume,
+  goalCanChangeStatus,
+  goalCanEdit,
+  goalCreatedAtMillis,
+  goalIsActive,
 } from "@/features/goal/application/goalStatusPresentation";
 import { type GoalReadModel, useGoalMaterial } from "@/features/goal/application/goalReadModel";
 import {
@@ -101,7 +105,7 @@ export function GoalStatusSurface() {
   if (!goal) return null;
   return (
     <AgentComposerTopTraySurface
-      key={JSON.stringify([goal.sessionId, material.generation.toString(), goal.createdAt])}
+      key={tupleKey(goal.sessionId, material.generation.toString(), goal.createdAt)}
       className={stylex.props(goalTray.material).className}
     >
       <GoalRow goal={goal} />
@@ -114,15 +118,16 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(goal.objective);
   const runtimeAvailable = useRuntimeCommandsAvailable();
-  const canChangeStatus = goal.status === "active" || goalCanResume(goal);
-  const canEdit = goal.status !== "completing";
+  const active = goalIsActive(goal);
+  const canChangeStatus = goalCanChangeStatus(goal);
+  const canEdit = goalCanEdit(goal);
   const nextObjective = draft.trim();
   const canSave = canEdit && nextObjective.length > 0 && nextObjective !== goal.objective;
   const clearAction = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("goal.error.clear"),
   });
-  const statusFallback = t(goal.status === "active" ? "goal.error.pause" : "goal.error.resume");
+  const statusFallback = t(active ? "goal.error.pause" : "goal.error.resume");
   const statusAction = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: statusFallback,
@@ -142,9 +147,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
 
   const changeStatus = () => {
     if (!canChangeStatus || !admitted(statusFallback)) return;
-    statusAction.run(() =>
-      goal.status === "active" ? stopGoal(goal.sessionId) : resumeGoal(goal.sessionId),
-    );
+    statusAction.run(() => (active ? stopGoal(goal.sessionId) : resumeGoal(goal.sessionId)));
   };
 
   const clear = () => {
@@ -211,9 +214,9 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             <IconButton
               type="button"
               size="xs"
-              icon={iconGlyph(goal.status === "active" ? "circle-pause" : "circle-play")}
+              icon={iconGlyph(active ? "circle-pause" : "circle-play")}
               quiet
-              aria-label={t(goal.status === "active" ? "goal.action.pause" : "goal.action.resume")}
+              aria-label={t(active ? "goal.action.pause" : "goal.action.resume")}
               disabled={controlsDisabled}
               aria-busy={statusAction.busy}
               onClick={changeStatus}
@@ -263,11 +266,6 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
       />
     </>
   );
-}
-
-function goalCreatedAtMillis(createdAt: string): number | null {
-  const millis = Date.parse(createdAt);
-  return Number.isNaN(millis) ? null : millis;
 }
 
 function GoalElapsed({ createdAt }: { createdAt: number }) {
