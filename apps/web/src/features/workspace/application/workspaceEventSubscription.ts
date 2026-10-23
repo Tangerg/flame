@@ -4,6 +4,7 @@ import {
 } from "@/features/workspace/application/workspaceEventLoop";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import { delayUntilAborted } from "@/lib/abortableDelay";
+import { cappedExponentialBackoffMs } from "@/lib/backoff";
 export type WorkspaceCwdResolution =
   { status: "resolved"; cwd?: string } | { status: "unavailable" };
 
@@ -96,7 +97,7 @@ export function startWorkspaceEventSubscription(
             return;
           ports.reportResolutionError(error);
           await delayUntilAborted(
-            Math.min(RESOLVE_RETRY_BASE_MS * 2 ** attempt, RESOLVE_RETRY_CAP_MS),
+            cappedExponentialBackoffMs(attempt, RESOLVE_RETRY_BASE_MS, RESOLVE_RETRY_CAP_MS),
             attemptAbort.signal,
           );
           attempt += 1;

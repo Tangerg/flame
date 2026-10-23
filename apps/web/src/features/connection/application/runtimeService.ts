@@ -1,3 +1,4 @@
+import { cappedExponentialBackoffMs } from "@/lib/backoff";
 export type RuntimeServiceHealth = "ready" | "degraded" | "unhealthy";
 
 export interface RuntimeServiceObservation {
@@ -68,8 +69,9 @@ export function createRuntimeServiceController<Capabilities>(
     const delay =
       kind === "poll"
         ? RUNTIME_SERVICE_HEALTHY_POLL_MS
-        : Math.min(
-            RUNTIME_SERVICE_RETRY_BASE_MS * 2 ** Math.max(0, failures - 1),
+        : cappedExponentialBackoffMs(
+            Math.max(0, failures - 1),
+            RUNTIME_SERVICE_RETRY_BASE_MS,
             RUNTIME_SERVICE_RETRY_CAP_MS,
           );
     scheduled = setTimeout(() => {
