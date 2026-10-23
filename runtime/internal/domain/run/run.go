@@ -410,7 +410,6 @@ func (r Run) CancelWaiting(detail string, finishedAt time.Time, messageMark Mess
 	return r.finish(Canceled, Termination{Outcome: OutcomeCanceled, Detail: detail, FinishedAt: finishedAt, MessageMark: messageMark})
 }
 
-// RecoverLost finishes a non-terminal Run whose executor state cannot be recovered.
 // LostFailure returns the failure a Run that ended lost must carry. Recovery
 // and replacement both need it by value, and nothing can stand in for it, so a
 // lost Run without one is a broken record rather than a recoverable state.
@@ -422,6 +421,7 @@ func (r Run) LostFailure() (Failure, error) {
 	return failure, nil
 }
 
+// RecoverLost finishes a non-terminal Run whose executor state cannot be recovered.
 func (r Run) RecoverLost(failure Failure, finishedAt time.Time, messageMark MessageMark) (Run, error) {
 	next, ok := r.state.RecoverLost()
 	if !ok {
