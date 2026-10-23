@@ -213,7 +213,9 @@ Prose color comes only from the host's accent roles: headings and inline code us
 the same heading role.
 `Callout` owns the GitHub alert presentation for every Markdown adapter: the
 marker grammar (`readCalloutMarker`), the natural-case title and icon per kind,
-and the status rule, wash and on-tint ink. `ImageNotice` is the one inert image
+and each kind's title and icon ink. A callout stays on the surrounding reading
+plane without its own fill, rule or corners: its content keeps the paragraph
+reading edge and the shared block rhythm. `ImageNotice` is the one inert image
 description: an alternative text and a muted detail, used for unavailable
 transcript images and for captured file images that are never loaded.
 Quotes and loose lists retain paragraph boundaries around nested blocks; quote

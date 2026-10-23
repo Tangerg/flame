@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. Popup anchoring/native zoom painting, rapid Select dismissal, object-menu names, shared modal keyboard release and bounded message reading are published on remote main; their receipts remain below. MCP server rows now expose their tools directly, visible connection states and a real reconnect action through the existing command generation. Native English and Chinese 200% recovery/reading/return paths pass. Current complete Web testing passed 391 files and 3,094 tests, and every Web gate now passes, including the formerly missing reconnect consumer. The supported native check passed. Portable Skills/Schedules preserve Runtime failure detail, and retained read frames preserve recovery continuity. The user's latest visual constraint rejects decorative thick edge stripes on rounded cards with heavy shadows. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. Shared Markdown notes now stay on the surrounding reading plane: the Callout owner removes its stripe, fill, padding and asymmetric corners while preserving each kind's title, icon and semantic ink. Native English/light/14 px and Chinese/dark/18 px reading, source switching and draft-preserving returns pass, including a 320 px Dock and native 200% full-pane retreat. The complete Web check passed 391 files / 3,094 tests and every gate; shared UI and the supported native check also passed. MCP tool visibility and reconnect, popup anchoring, neutral canvases and retained reading/recovery work remain integrated. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -53,9 +53,9 @@ An open `ModalDialog` now establishes its own visible task scope above the retai
 The user's latest reference rejects decorative thick edge stripes attached to
 rounded cards with heavy shadows. Use typography, spacing and necessary
 boundaries to organize content; accent color communicates meaningful states
-and actions. Preserve the approved radius and theme owners. The current MCP
-change adds no decorative edge stripe. The next shared-surface review must
-inspect the existing callout edge treatment against this explicit constraint.
+and actions. The shared Callout review now applies this constraint to both
+transcript and captured-file Markdown. Preserve the approved global radius,
+theme owners and meaningful quotation, selection and focus treatments.
 
 ## Integrated brand and authoring work
 
@@ -1358,6 +1358,74 @@ user content within its local boundary. The inspected Markdown exporter is
 excluded from interface evidence. Verification and remaining limits are shared
 with the reading-band repair below; this composition no longer has pending
 widened-Dock/full-pane native acceptance.
+
+## Shared Markdown note reading
+
+The user's rejected card reference prompted an actual Wails baseline of the
+shared GFM Callout. Both transcript and captured-file Markdown added colored
+leading rules, washed surfaces, padding and asymmetric corners to the same
+five note kinds. Those blocks interrupted the surrounding answer's reading
+edge. The original Callout had no shadow; no shadow removal is claimed.
+
+`packages/ui/src/globals.css` now gives those notes the surrounding reading
+plane and paragraph edge. It retains their existing block rhythm, natural-case
+title, icon, semantic ink, body paragraphs and list markers. All five kinds
+share this owner across the live and captured adapters. The parser, inert note
+semantics, ordinary quotation rule, inline code, selection and theme/radius
+owners remain unchanged. The UI README records this presentation contract.
+Bounded Claude Code CLI supplied the two-file candidate in **22.55 seconds**;
+primary review confirmed the CSS's **16 deletions** and the documentation change.
+
+Better-layout's grouping by space and shared edges, and better-ui's respect for
+the project's surface language, guide this choice. Read-only ZCode
+`markdown-blockquote.tsx` and `alert.tsx`, and HeroUI's actual alert stories,
+separate content grouping from title/icon identity. Their skins and alert roles
+were not copied. The inspected ChatGPT Markdown entry begins with text
+conversion; it is excluded from Callout interface evidence.
+
+Actual Wails acceptance used the same isolated 31-line canonical Markdown in
+English/light/**14 px**/Flame Orange and Chinese/dark/**18 px**/custom blue.
+Transcript text selection, separate reading scrolls, Files entry, keyboard
+Preview/Source switching and Back to files preserved content and source focus.
+The Chinese scene checked the **320 px** Dock, complete long-path wrapping,
+Chinese lists and an Arabic paragraph. A pointer-resized **2632 × 1798** native
+capture and **20 native Zoom In actions from Actual Size** qualified 200%
+full-pane reading, return through Files/catalog and explicit Close to the
+conversation. Exact drafts survived and accepted further input. Native zoom
+was restored before quitting. WebKit-computed color samples, converted through
+its sRGB canvas on the observed neutral planes, gave five title-ink pairs of
+**7.33–7.45:1** light and **10.85–11.48:1** dark; these samples do not certify
+every theme or page. Passive observers measured styles, focus and selection
+without changing product layout or behavior.
+
+Serial verification passed shared UI build/type/lint/format, **5 files / 79
+tests** and its independent packed consumer (**8.64 seconds**); both Markdown
+reading suites passed **2 files / 54 tests**. The full Web check passed **391
+files / 3,094 tests** and every later gate (**323.07 seconds**).
+`make check-native` passed Desktop test/vet/build and the supported Wails build
+(**31.21 seconds**); the binary is arm64, minimum macOS **13.0**, SDK **26.5**.
+All **13** reviewed product inputs, **11** portable resources, **5** harness
+inputs and the compiled shared stylesheet stayed unchanged through acceptance.
+Non-failing loopback, fixture chunk-size and duplicate `-lobjc` diagnostics remain
+separate. No cosmetic source-mirroring test was added.
+
+The first Chinese launch used unregistered `zh-CN` and was excluded; the accepted
+scene uses the existing `zh` registration. One CUA scroll timed out and reset its
+kernel; re-observation found the catalog, and a fresh Files reading/return path
+passed. That interrupted attempt is not behavior evidence. Native typing first
+emitted only the English prefix; ordinary paste supplied the verified Chinese
+draft. No live Send, Runtime mutation, credential/OAuth action, authored relative
+link activation, browser suite, performance benchmark, VoiceOver, OS IME,
+full RTL navigation or other-platform GUI coverage is claimed.
+
+Cleanup completed after all four native processes and the bounded CLI exited.
+The bundle was unregistered; its exact private root/pointer, ten newly created
+worktree output/cache locations and two bundle-specific Library paths were
+removed after ownership, birth-time and containment checks. The pre-existing
+shared UI Vite cache, installed dependencies, compiler caches, references, user
+data, unrelated processes and the primary checkout remain. Continue another
+observed workspace task on current main; do not broaden this note treatment into
+a mechanical redesign of meaningful state indicators.
 
 ## Empty, error and unsupported state ownership
 
