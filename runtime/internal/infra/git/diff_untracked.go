@@ -9,9 +9,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/fileinput"
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 )
+
+const readBufferBytes = 64 << 10
 
 const maxUntrackedDiffPaths = 10_000
 
@@ -61,7 +63,7 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (lines int, binary 
 	}
 	defer func() { err = errors.Join(err, file.Close()) }()
 	source := cancellation.Reader(ctx, file)
-	buffer := make([]byte, 64<<10)
+	buffer := make([]byte, readBufferBytes)
 	var last byte
 	nonempty := false
 	for {

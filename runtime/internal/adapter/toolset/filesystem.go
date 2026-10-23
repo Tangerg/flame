@@ -15,6 +15,10 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 )
 
+// maxSymlinkDepth bounds symlink resolution the way the kernel MAXSYMLINKS does,
+// turning an unbounded or cyclic chain into a clear error instead of a hang.
+const maxSymlinkDepth = 40
+
 // Name retains Scope's absolute-input namespace. identity captures the physical
 // workspace name once for shared lock/stamp keys and protected-root policy;
 // neither projection can reopen or replace the retained directory authority.
@@ -112,7 +116,7 @@ func resolveRootPath(root *filesystemRoot, path string) (string, error) {
 			continue
 		}
 		links++
-		if links > 40 {
+		if links > maxSymlinkDepth {
 			return "", errors.New("too many symbolic links")
 		}
 		target, err := root.Readlink(candidate)

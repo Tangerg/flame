@@ -12,12 +12,14 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
-	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/scope/tools/fs"
 )
+
+const readBufferBytes = 64 << 10
 
 // These decorators enforce the readTracker invariant at the model boundary.
 // They resolve tool paths against the Run working directory, scope stamps to
@@ -183,7 +185,7 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 		err = errors.Join(err, file.Close())
 	}()
 	hash := sha256.New()
-	buffer := make([]byte, 64<<10)
+	buffer := make([]byte, readBufferBytes)
 	var source io.Reader = cancellation.Reader(ctx, file)
 	if maxBytes > 0 {
 		source = io.LimitReader(source, maxBytes+1)

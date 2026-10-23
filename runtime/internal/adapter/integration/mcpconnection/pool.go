@@ -30,6 +30,9 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
+// callbackPayloadLimits caps a plugin callback's request and response bodies at 4 MiB.
+var callbackPayloadLimits = pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}
+
 // Pool owns connection lifetime. Every new connection obtains its configuration
 // from the source owner; retained configurations describe only existing sessions.
 type Pool struct {
@@ -182,7 +185,7 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*mcp.La
 					return err
 				}
 				calling := operation.WithActor(activationCtx, actor.WithBindings(connection.Requirements))
-				limits := pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}
+				limits := callbackPayloadLimits
 				var ref pluginsdk.CallbackRef
 				var closeRPC func()
 				if background {
@@ -387,7 +390,7 @@ func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.Client
 	if err != nil {
 		return sdk.ParamsBase{}, nil, err
 	}
-	ref, release, err := p.callbacks.OpenRPC(operation.WithActor(ctx, actor), session, pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}, callbacks...)
+	ref, release, err := p.callbacks.OpenRPC(operation.WithActor(ctx, actor), session, callbackPayloadLimits, callbacks...)
 	if err != nil {
 		return sdk.ParamsBase{}, nil, err
 	}
@@ -417,7 +420,7 @@ func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientS
 			yield(pluginsdk.StreamValue[jsontext.Value, jsontext.Value]{}, err)
 			return
 		}
-		for value, err := range binding.StreamWithMetadata(ctx, p.callbacks, pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}, command, input, metadata) {
+		for value, err := range binding.StreamWithMetadata(ctx, p.callbacks, callbackPayloadLimits, command, input, metadata) {
 			if !yield(value, err) {
 				return
 			}
