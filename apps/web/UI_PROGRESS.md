@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. Plugin Retry now hands owned focus to its existing host before removing the error tree, and workspace failures use the current view's name. Native English/light/14 px and Chinese/dark/18 px recovery, continued reading and draft-preserving returns pass, including 320 px Dock and native 200%. All 12 relevant tests pass. The initial Web run passed 3,107 of 3,108 tests; an MCP-readiness deadline failed once, then the complete isolated 49-test Runtime HTTP file passed unchanged. All 22 later Web gates and the supported native check pass. Engaged ToolGroup reading, shared Markdown notes, neutral canvases and prior task/recovery work remain integrated. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. Settings failures now use their existing translated pane title while diagnostics retain the internal ID. Native English/light/14 px and Chinese/dark/18 px search, recovery, control access, neighboring-pane return and continued conversation pass, including native 200% and a narrow window. Three relevant suites pass 20 tests, all 25 non-test Web gates pass, and the supported native check passes. The shared Plugin Retry focus handoff, engaged ToolGroup reading, Markdown notes, neutral canvases and prior task/recovery work remain integrated. The preceding broad Web run's one MCP-readiness timeout and subsequent complete isolated pass remain recorded below; it is not relabeled as a clean first run. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -33,6 +33,15 @@ the supported native check. The initial failure remains recorded below. Owned
 resources are cleaned. Implementation `9773c7cf5b14dbea2958789b4117edc7ebd54da4`
 is pushed to remote `main`, verified by exact remote hash, unchanged accepted
 sources/resources and a clean owned checkout with zero unpushed commits.
+
+Settings pane failures now use `t(p.label)` through the existing boundary label
+instead of exposing `settings:<id>` as the visible object name. The internal
+identity still names diagnostics. Native confirms the already-published Retry
+handoff focuses the current Settings tabpanel, and the named recovery/search/
+control/return flow passes in English and Chinese, including 200% and a narrow
+window. The one-prop change and its behavior regression pass 20 relevant tests,
+all 25 non-test Web gates and the supported native check. Owned resources are
+cleaned; delivery is being recorded for this verified settings change.
 
 The captured-image inset is integrated at `d25b4ef72` and settings width at
 `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
@@ -1559,9 +1568,8 @@ authored-link activation, clipboard-denial, VoiceOver speech, OS IME,
 other-platform GUI, browser visual suite or performance benchmark is claimed.
 Existing hidden-zoom and reverse-traversal qualifications remain separate.
 Approve for the inspected workspace retry path; screen-reader speech and other
-placements remain not verified. A useful next comparison is Settings pane error
-identity and its own existing focus scope, rather than generalizing this host's
-layout into other surfaces.
+placements remain not verified. The Settings pane comparison is now qualified
+separately below; its existing tabpanel keeps its own scope and layout.
 
 Cleanup confirms all three owned native processes and the bounded CLI exited.
 The exact app was unregistered and its root/pointer, ten newly generated worktree
@@ -1575,6 +1583,80 @@ Delivery: implementation `9773c7cf5b14dbea2958789b4117edc7ebd54da4` is pushed
 to remote `main`. Fresh `ls-remote` matched that commit, all **21** accepted
 product/resource inputs matched, and the owned checkout was clean with zero
 unpushed commits. This in-place receipt adds no product change.
+
+### Settings pane error identity
+
+Actual Wails showed the Appearance heading and selected tab beside a failure
+naming the internal `settings:appearance`. The shared Retry handoff already
+focused the surviving Appearance tabpanel on a repeated failure. This separate
+repair adds only `label={t(p.label)}` to SettingsPage's existing PluginBoundary.
+The tab, frame and error now project the same translated name; diagnostics retain
+`settings:${p.id}`. There is no new string, state, focus policy, wrapper, style,
+preference mutation, navigation rule or migration.
+
+Better-writing's single vocabulary principle guides this bounded identity fix;
+the existing English Appearance and Chinese 外观 locale keys remain authoritative.
+Better-accessibility guides the verification of the previously repaired handoff.
+Read-only HeroUI's actual vertical Tabs story separates internal account/security
+IDs from human tab and panel titles. Its component system and copy are not copied.
+
+| Severity | Location                                           | Before                                           | After                                                | Why                                                          |
+| -------- | -------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------ |
+| MEDIUM   | `src/features/settings/public/SettingsPage.tsx:67` | A pane failure showed its internal namespace/ID. | The error uses the pane's existing translated title. | Keep one vocabulary for the selected object during recovery. |
+
+Bounded Claude Code CLI supplied the two-file edit in **57.46 s**, with no denials
+or subagents. Primary reviewed the one-prop diff and scoped the new visible-name
+assertion to the alert instead of counting repeated text. The regression uses a
+real registered pane whose ID differs from its translated label, verifies the
+unchanged diagnostic identity and retains query/focus through actual boundary
+recovery. Its original-source proof fails that one case while the seven existing
+SettingsPage cases pass; the candidate is restored byte-for-byte (**1.80 s**).
+SettingsPage, PluginBoundary and WorkspaceViewBody pass **3 files / 20 tests**
+(**2.56 s**). The actual Web check's three pre-test gates pass (**7.31 s**) and all
+22 post-test gates pass in their original order (**24.80 s**), including locales,
+contracts, resources and bundle/modules. `make check-native` passes (**23.56 s**);
+arm64, minimum macOS **13.0**, SDK **26.5**. Unchanged broad Web, Runtime, CLI and
+independent shared UI suites were not rerun for this display-only projection.
+The preceding batch's broad-run timeout and isolated 49-test pass retain their
+separate qualification above.
+
+Final actual Wails English/light/**14 px**/Flame Orange retains `appear` while
+reading details and retrying. The recovered Appearance tabpanel holds focus,
+actual preference controls render and Clear search returns to the search field.
+Personalization → Appearance works; Interface size opens with 14 selected and
+Escape returns to that control without selecting a value. Close returns to the
+prior Workspace diff material, then Composer accepts `Settings return draft 保留`.
+
+Chinese/dark/**18 px**/custom blue retains `外观` and names the failure 外观.
+Twenty native Zoom In actions from Actual Size and a pointer-resized
+**2632 × 1798** capture qualify the 200%/**659 px** settings viewport. Diagnostics
+are reachable by keyboard; Tab reveals Retry and its full focus ring. Recovery
+focuses the 外观 tabpanel and preserves the query. A native AX-targeted scroll
+could not route to the window; that attempt is excluded. Re-observation of the
+same live app and a coordinate scroll visibly reach typography. After Actual
+Size, Code size opens with 跟随界面 selected and Escape returns to 代码字号, preserving
+the value. Neighboring-pane return and Close again enter the prior workspace;
+Composer accepts `设置返回后继续 保留`. These final input checks establish continued
+conversation, not preservation of a draft entered before these settings scenes.
+
+All **10** accepted product inputs, **11** portable resources, **6** harness
+inputs and compiled UI CSS match after acceptance. This uses a private render
+fault around the actual contributed Appearance component; it does not qualify a
+real provider/plugin failure, Runtime operation, preference save, every settings
+pane, new popup anchoring behavior, clipboard denial, VoiceOver speech, OS IME,
+other-platform GUI, browser visual suite or performance benchmark. No Send,
+credential or permission action was invoked. Approve for the inspected named
+settings recovery and return path; the unexercised boundaries remain not verified.
+
+Cleanup confirms all three owned native processes and the bounded CLI exited.
+The app was unregistered; its private root/pointer, ten newly created worktree
+output/cache paths and two bundle-specific Library paths were removed after
+ownership, birth-time, containment and copied-asset checks. A private compressed
+archive retains **94** flat UTF-8 evidence files and **16** capture hashes outside
+the repository. Pre-existing shared UI Vite cache, dependencies, compiler caches,
+references, user data, unrelated processes and the primary checkout remain.
+Continue another observed task rather than mechanically extending this name
+projection or replacing settings' existing navigation and field components.
 
 ### Approval-mode read recovery
 

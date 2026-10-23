@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { definePlugin } from "@/extensions/definePlugin";
+import { usePluginErrorStore } from "@/extensions/errors";
 import { SETTINGS_PANE } from "@/features/settings/public/panes";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { SettingsPage } from "@/features/settings/public/SettingsPage";
@@ -103,5 +104,52 @@ describe("settingsPage", () => {
     render(<SettingsPage />);
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "hot reload" } });
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Plugins"]);
+  });
+
+  it("names a failed pane by its title and recovers it in place", async () => {
+    let failing = true;
+    await loadPluginsForTest(
+      definePlugin({
+        name: "test.settings.failing",
+        setup: (ctx) => {
+          ctx.contribute(SETTINGS_PANE, {
+            id: "broken-look",
+            label: "settings.pane.appearance",
+            component: () => {
+              if (failing) throw new Error("appearance exploded");
+              return <div>recovered body</div>;
+            },
+          });
+        },
+      }),
+    );
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      render(<SettingsPage />);
+      const search = screen.getByRole("searchbox");
+      fireEvent.change(search, { target: { value: "appear" } });
+      expect(screen.getByRole("tab", { name: "Appearance" })).toBeTruthy();
+      const panel = screen.getByRole("tabpanel", { name: "Appearance" });
+      expect(within(panel).getByRole("heading", { name: "Appearance" })).toBeTruthy();
+      expect(within(panel).getByText("appearance exploded")).toBeTruthy();
+      const alert = within(panel).getByRole("alert");
+      expect(within(alert).getByText("Appearance")).toBeTruthy();
+      expect(within(alert).queryByText("settings:broken-look")).toBeNull();
+      expect(usePluginErrorStore.getState().log).toContainEqual(
+        expect.objectContaining({ plugin: "settings:broken-look", source: "render" }),
+      );
+
+      failing = false;
+      const retry = within(panel).getByRole("button", { name: /retry/i });
+      retry.focus();
+      fireEvent.click(retry);
+
+      expect(await within(panel).findByText("recovered body")).toBeTruthy();
+      expect(within(panel).queryByText("appearance exploded")).toBeNull();
+      expect(document.activeElement).toBe(panel);
+      expect((search as HTMLInputElement).value).toBe("appear");
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });
