@@ -20,6 +20,7 @@ interface ComposerRequest {
   readonly origin: Element | null;
   readonly inspection: WorkspaceInspection | null;
   readonly dockViewId: string | null;
+  readonly focus: () => void;
 }
 
 export function useInspectionFocus({
@@ -75,7 +76,7 @@ export function useInspectionFocus({
       return;
     const doc = conversation.ownerDocument;
     if (doc.activeElement === request.origin || doc.activeElement === doc.body) {
-      focusComposerTarget();
+      request.focus();
     }
   }, [composerRender, sessionId, inspection, fullPaneViewId, dockViewId]);
 
@@ -195,14 +196,14 @@ export function useInspectionFocus({
     const presentation = dockAvailable || inspection.previous ? "dock" : "main";
     if (!returnFromWorkspaceInspection(inspection, presentation)) returningRef.current = null;
   };
-  const requestComposerFocus = () => {
+  const requestComposerFocus = (focus = focusComposerTarget) => {
     const conversation = conversationRef.current;
     if (!conversation) return;
     const doc = conversation.ownerDocument;
     if (doc.activeElement?.closest('[role="dialog"], [role="alertdialog"]')) return;
     if (fullPaneViewId === null) {
       composerRequest.current = null;
-      focusComposerTarget();
+      focus();
       return;
     }
     const hideDock = !dockAvailable && inspection !== null && inspection.viewId === dockViewId;
@@ -212,6 +213,7 @@ export function useInspectionFocus({
       origin: doc.activeElement,
       inspection,
       dockViewId: hideDock ? null : dockViewId,
+      focus,
     };
     composerRequest.current = request;
     selectWorkspaceChat(hideDock ? "hide-dock" : "preserve-dock");

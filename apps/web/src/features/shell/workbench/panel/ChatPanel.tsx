@@ -4,6 +4,7 @@ import {
   Fragment,
   useCallback,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -23,6 +24,7 @@ import { AgentDockCatalog } from "@/ui/agent/index";
 import { AgentDockToggle, AgentSurfaceHeader } from "@/ui/agent/index";
 import { useActiveSession, useActiveSessionId } from "@/features/agent/public/session";
 import { useAgentSessions } from "@/features/agent/public/session";
+import { registerComposerFocusPresentation } from "@/features/composer/public/focus";
 import {
   closeAllWorkspaceDockViews,
   closeOtherWorkspaceDockViews,
@@ -229,6 +231,10 @@ export function ChatPanel({ onSend, ref }: Props) {
     dockAvailable,
     dockVisible,
   });
+  useLayoutEffect(
+    () => registerComposerFocusPresentation(requestComposerFocus),
+    [requestComposerFocus],
+  );
   useImperativeHandle(ref, () => ({ focusComposer: requestComposerFocus }));
 
   const dockRowRef = useCallback((row: HTMLDivElement | null) => {

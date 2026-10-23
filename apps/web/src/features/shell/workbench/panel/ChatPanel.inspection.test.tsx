@@ -11,6 +11,8 @@ import { createRef, useEffect, useRef, useState } from "react";
 import { ActionMenu, ModalDialog, SearchField, Select } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type WorkspaceViewSpec } from "@/features/workspace/public/views";
+import { type Message } from "@/features/agent/public/sessionView";
+import { selectAgentSession } from "@/features/agent/public/session";
 import { navigator } from "@/lib/navigation";
 import { FileRefLink } from "@/features/workspace/public/FileRefLink";
 import { MessageTranscript } from "@/features/chat/public/message/rendering";
@@ -29,13 +31,69 @@ import { t } from "@/lib/i18n/index";
 import { useDockWidth } from "@/features/workspace/public/sidebarDrawer";
 import { ChatPanel, type ChatPanelHandle } from "@/features/shell/workbench/panel/ChatPanel";
 import { registerComposerFocusTarget } from "@/features/composer/public/focus";
+import {
+  appendToComposerDraft,
+  beginComposerDraftReplacement,
+  captureComposerSubmission,
+  replaceComposerDraft,
+  useComposerText,
+  useSetComposerText,
+} from "@/features/composer/public/draft";
+import { writeToClipboard } from "@/lib/clipboard";
+import { drainBrowserTasks } from "@/test/browserTasks";
 import { ContextMenu, Popover } from "@/ui/index";
 const TABLE = "| File | Note |\n|---|---|\n| app/ui/resizer.ts:6 | README.md:4 |";
+const INITIAL_DRAFT = "Keep this draft — 保留";
+const CHILD_TEXT =
+  "Inspect the complete module graph and explain where persistence belongs. Trace the public entry points, their callers, and the existing regression coverage before proposing a change. Preserve the full task instructions when returning to the composer, including this final sentence about ownership and failure behavior.";
+const rootPrompt: Message = {
+  id: "root-prompt",
+  runId: "root-run",
+  role: "user",
+  blocks: [{ kind: "text", text: "Revise the root task input.", status: "complete" }],
+};
+const childPrompt: Message = {
+  id: "child-prompt",
+  runId: "child-run",
+  role: "user",
+  blocks: [{ kind: "text", text: CHILD_TEXT, status: "complete" }],
+};
 
 function DraftInput() {
   const input = useRef<HTMLTextAreaElement>(null);
+  const value = useComposerText();
+  const setValue = useSetComposerText();
   useEffect(() => registerComposerFocusTarget(input.current), []);
-  return <textarea ref={input} aria-label="Composer draft" defaultValue="Keep this draft — 保留" />;
+  return (
+    <textarea
+      ref={input}
+      aria-label="Composer draft"
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+    />
+  );
+}
+
+function PromptTurn({ message }: { message: Message }) {
+  return (
+    <MessageTranscript
+      rows={[
+        {
+          message,
+          runOwner: { kind: "owned", runId: message.runId!, status: "finished" },
+          facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map<string, string>() },
+        },
+      ]}
+      ctx={{
+        sessionId: "ses_first",
+        expandedIds: new Set(),
+        onToggleExpand: () => {},
+        textReveal: "instant",
+      }}
+      sessionId="ses_first"
+      isRunning={false}
+    />
+  );
 }
 
 function AnswerTurn({ text }: { text: string }) {
@@ -65,13 +123,28 @@ function AnswerTurn({ text }: { text: string }) {
   );
 }
 
-const model = vi.hoisted(() => ({ sessionId: "ses_first", views: [] as WorkspaceViewSpec[] }));
+const model = vi.hoisted(() => ({
+  sessionId: "ses_first",
+  views: [] as WorkspaceViewSpec[],
+  messages: [] as Message[],
+  rollback: vi.fn(),
+}));
 
-vi.mock("@/features/agent/public/session", () => ({
+vi.mock("@/features/agent/public/session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
   useActiveSession: () => null,
   useActiveSessionId: () => model.sessionId,
   useAgentSessions: () => ({ isLoading: false }),
+  activeAgentConversation: () => ({ sessionId: model.sessionId, messages: model.messages }),
+  rollbackSessionToBeforeRun: model.rollback,
 }));
+
+vi.mock("@/features/agent/public/conversation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/agent/public/conversation")>()),
+  useActiveConversationMessages: () => model.messages,
+}));
+
+vi.mock("@/lib/clipboard", () => ({ writeToClipboard: vi.fn().mockResolvedValue(true) }));
 
 vi.mock("@/features/workspace/public/contextDockCatalog", () => ({
   useContextDockCatalog: () => [
@@ -106,6 +179,7 @@ vi.mock("@/features/shell/workbench/panel/ChatStream", async () => {
     ChatStream: () => (
       <>
         <FileRefLink path="src/main.ts" line={4} />
+        <PromptTurn message={rootPrompt} />
         <AnswerTurn text={"| Path |\n|---|\n| src/stream.ts:2 |\n| docs/selected.md:9 |"} />
         <button onClick={(event) => openWorkspaceSubagentRun("child", event.currentTarget)}>
           Inspect task
@@ -125,6 +199,7 @@ function ChildReader() {
       <button onClick={() => setCount(count + 1)}>Evidence {count}</button>
       <span>Selected task: {runId}</span>
       <button key={runId}>Read {runId}</button>
+      <PromptTurn message={childPrompt} />
       <button onClick={(event) => openWorkspaceSubagentRun("nested", event.currentTarget)}>
         Inspect nested task
       </button>
@@ -191,6 +266,14 @@ function observeRowWidth(initial: number) {
 beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
   model.sessionId = "ses_first";
+  model.messages = [rootPrompt];
+  model.rollback.mockReset().mockResolvedValue({
+    status: "committed",
+    userInput: { parts: [{ kind: "text", text: "Canonical root input" }] },
+  });
+  vi.mocked(writeToClipboard).mockClear();
+  selectAgentSession(model.sessionId);
+  replaceComposerDraft({ text: INITIAL_DRAFT });
   activateWorkspaceSessionScope(model.sessionId);
   model.views = [
     {
@@ -203,8 +286,9 @@ beforeEach(() => {
   ];
 });
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+  await drainBrowserTasks();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -416,6 +500,250 @@ describe("explicit Composer focus", () => {
 
     expect(document.activeElement).toBe(control);
     expect(navigator().get()).toBe(previous);
+  });
+});
+
+describe("draft intents in workspace presentations", () => {
+  function mount(width = 700) {
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(width);
+    const content = (
+      <>
+        <button>Later draft control</button>
+        <ChatPanel onSend={() => true} />
+      </>
+    );
+    const view = render(content);
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" });
+    return { view, draft };
+  }
+
+  function inspectChild() {
+    const origin = screen.getByRole("button", { name: "Inspect task" });
+    act(() => origin.focus());
+    fireEvent.click(origin);
+    const evidence = screen.getByRole("button", { name: "Evidence 0" });
+    fireEvent.click(evidence);
+    act(() => evidence.focus());
+    return evidence;
+  }
+
+  async function openMessageMenu(text: string) {
+    fireEvent.contextMenu(await screen.findByText(text));
+    await act(async () => drainBrowserTasks());
+    return screen.getByRole("menu", { name: "You" });
+  }
+
+  async function chooseMessageAction(label: string) {
+    fireEvent.click(screen.getByRole("menuitem", { name: label }));
+    await act(async () => drainBrowserTasks());
+  }
+
+  function visibleDraft(original: HTMLTextAreaElement, value: string) {
+    const conversation = screen.getByRole("region", { name: "Conversation" });
+    const draft = within(conversation).getByRole<HTMLTextAreaElement>("textbox", {
+      name: "Composer draft",
+    });
+    expect(draft).toBe(original);
+    expect(draft.value).toBe(value);
+    expect(document.activeElement).toBe(draft);
+    expect(draft.selectionStart).toBe(value.length);
+    expect(draft.selectionEnd).toBe(value.length);
+  }
+
+  async function editChild(width: number) {
+    const { draft } = mount(width);
+    const evidence = inspectChild();
+    const previous = navigator().get();
+    await openMessageMenu(CHILD_TEXT);
+
+    await chooseMessageAction("Edit in composer");
+
+    expect(screen.queryByRole("menu")).toBeNull();
+    visibleDraft(draft, CHILD_TEXT);
+    expect(evidence.isConnected).toBe(true);
+    expect(model.rollback).not.toHaveBeenCalled();
+    fireEvent.change(draft, { target: { value: `${CHILD_TEXT} Continue here.` } });
+    expect(captureComposerSubmission().value).toBe(`${CHILD_TEXT} Continue here.`);
+    expect(document.activeElement).toBe(draft);
+    return { draft, evidence, previous };
+  }
+
+  it("edits a child through the shared menu into the narrow Composer and retains its material history", async () => {
+    const { draft, evidence, previous } = await editChild(700);
+
+    expect(navigator().get()).toMatchObject({ view: null, dock: null });
+    act(() => navigator().back());
+    expect(navigator().get()).toEqual(previous);
+    expect(screen.getByRole("region", { name: "Subagents" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(evidence);
+    expect(screen.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
+    expect(draft.value).toBe(`${CHILD_TEXT} Continue here.`);
+  });
+
+  it("edits a child through the shared menu into the wide Composer without hiding its Dock", async () => {
+    const { draft, evidence, previous } = await editChild(1200);
+
+    expect(navigator().get()).toBe(previous);
+    expect(screen.getByRole("complementary", { name: "Subagents" }).contains(evidence)).toBe(true);
+    expect(draft.value).toBe(`${CHILD_TEXT} Continue here.`);
+  });
+
+  it.each(["Copy plain text", "Escape"])(
+    "keeps a narrow inspection and draft when the shared menu closes with %s",
+    async (action) => {
+      const { draft } = mount();
+      const evidence = inspectChild();
+      const previous = navigator().get();
+      const menu = await openMessageMenu(CHILD_TEXT);
+
+      if (action === "Escape") {
+        fireEvent.keyDown(menu, { key: "Escape" });
+        await act(async () => drainBrowserTasks());
+      } else {
+        await chooseMessageAction(action);
+      }
+
+      expect(navigator().get()).toBe(previous);
+      expect(screen.queryByRole("region", { name: "Conversation" })).toBeNull();
+      expect(screen.queryByRole("textbox", { name: "Composer draft" })).toBeNull();
+      expect(draft.value).toBe(INITIAL_DRAFT);
+      expect(document.activeElement).toBe(evidence);
+      expect(writeToClipboard).toHaveBeenCalledTimes(action === "Escape" ? 0 : 1);
+      expect(model.rollback).not.toHaveBeenCalled();
+    },
+  );
+
+  it("reveals the narrow Composer when quoted text is appended", () => {
+    const { draft } = mount();
+    const evidence = inspectChild();
+
+    act(() => appendToComposerDraft("> Evidence selected from the child task."));
+
+    visibleDraft(draft, `${INITIAL_DRAFT}\n\n> Evidence selected from the child task.`);
+    expect(evidence.isConnected).toBe(true);
+    expect(navigator().get()).toMatchObject({ view: null, dock: null });
+  });
+
+  it("delivers the accepted input's caret when a history edit completes before reveal", () => {
+    const { draft } = mount();
+    inspectChild();
+    let accepted = false;
+
+    act(() => {
+      const replace = beginComposerDraftReplacement();
+      accepted = replace({ text: "Canonical input committed before presentation" });
+    });
+
+    expect(accepted).toBe(true);
+    visibleDraft(draft, "Canonical input committed before presentation");
+  });
+
+  it("does not leave later material or reclaim its focus when a root history edit completes", async () => {
+    const rollback = Promise.withResolvers<{
+      status: "committed";
+      userInput: { parts: [{ kind: "text"; text: string }] };
+    }>();
+    model.rollback.mockReturnValue(rollback.promise);
+    const { draft } = mount();
+    await openMessageMenu("Revise the root task input.");
+    await chooseMessageAction("Edit & rerun from here");
+    expect(document.activeElement).toBe(draft);
+    const file = screen.getByRole("button", { name: "src/main.ts:4" });
+    act(() => file.focus());
+    fireEvent.click(file);
+    const control = screen.getByRole("button", { name: "File controls" });
+    act(() => control.focus());
+    const previous = navigator().get();
+
+    await act(async () => {
+      rollback.resolve({
+        status: "committed",
+        userInput: { parts: [{ kind: "text", text: "Delayed canonical input" }] },
+      });
+      await rollback.promise;
+    });
+
+    expect(navigator().get()).toBe(previous);
+    expect(screen.getByRole("region", { name: "Files" })).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Composer draft" })).toBeNull();
+    expect(screen.getByLabelText("Composer draft")).toBe(draft);
+    expect(draft.value).toBe("Delayed canonical input");
+    expect(document.activeElement).toBe(control);
+    expect(model.rollback.mock.calls).toEqual([["ses_first", "root-run", "history"]]);
+  });
+
+  it("keeps focus moved after a draft intent but before its reveal", () => {
+    const { draft } = mount();
+    inspectChild();
+    const later = screen.getByRole("button", { name: "Later draft control" });
+
+    act(() => {
+      replaceComposerDraft({ text: "Edited child task" });
+      later.focus();
+    });
+
+    expect(screen.getByRole("region", { name: "Conversation" })).toBeTruthy();
+    expect(draft.value).toBe("Edited child task");
+    expect(document.activeElement).toBe(later);
+  });
+
+  it("keeps modal focus and presentation when a draft intent reaches the reveal owner", () => {
+    const { draft } = mount();
+    inspectChild();
+    render(
+      <div role="dialog" aria-label="Editing task">
+        <button>Modal draft control</button>
+      </div>,
+    );
+    const control = screen.getByRole("button", { name: "Modal draft control" });
+    act(() => control.focus());
+    const previous = navigator().get();
+
+    act(() => replaceComposerDraft({ text: "Edited draft beneath the modal" }));
+
+    expect(navigator().get()).toBe(previous);
+    expect(screen.queryByRole("textbox", { name: "Composer draft" })).toBeNull();
+    expect(draft.value).toBe("Edited draft beneath the modal");
+    expect(document.activeElement).toBe(control);
+  });
+
+  it("retires draft focus when the Session changes before reveal", () => {
+    const { view, draft } = mount();
+    inspectChild();
+
+    act(() => {
+      replaceComposerDraft({ text: "Edited first Session" });
+      model.sessionId = "ses_second";
+      selectAgentSession(model.sessionId);
+      view.rerender(
+        <>
+          <button>Later draft control</button>
+          <ChatPanel onSend={() => true} />
+        </>,
+      );
+    });
+
+    expect(screen.getByLabelText("Composer draft")).toBe(draft);
+    expect(document.activeElement).not.toBe(draft);
+    expect(captureComposerSubmission().value).not.toBe("Edited first Session");
+  });
+
+  it("retires draft focus when later navigation supersedes reveal", () => {
+    const { draft } = mount();
+    inspectChild();
+
+    act(() => {
+      replaceComposerDraft({ text: "Edited child task" });
+      openWorkspaceView("file");
+    });
+
+    expect(screen.getByRole("region", { name: "Files" })).toBeTruthy();
+    expect(document.activeElement).not.toBe(draft);
+    const close = within(windowHeader()!).getByRole("button", { name: "Close" });
+    act(() => close.focus());
+    fireEvent.click(close);
+    expect(screen.getByRole("region", { name: "Conversation" })).toBeTruthy();
+    expect(document.activeElement).not.toBe(draft);
   });
 });
 

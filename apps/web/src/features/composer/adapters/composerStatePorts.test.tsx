@@ -8,7 +8,12 @@ import {
   useComposerText,
   useSetComposerText,
 } from "@/features/composer/public/draft";
-import { registerComposerFocusTarget } from "@/features/composer/public/focus";
+import {
+  captureComposerFocus,
+  focusComposer,
+  registerComposerFocusPresentation,
+  registerComposerFocusTarget,
+} from "@/features/composer/public/focus";
 
 function ComposerField() {
   const value = useComposerText();
@@ -140,5 +145,101 @@ describe("draft replacement focus", () => {
     expect(document.activeElement).toBe(field);
     expect(field.selectionStart).toBe(field.value.length);
     expect(field.selectionEnd).toBe(field.value.length);
+  });
+});
+
+describe("draft focus presentation", () => {
+  it("does not unregister a newer presentation when an older owner cleans up", () => {
+    render(<Harness />);
+    const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+    const previous = vi.fn();
+    const current = vi.fn();
+    const unregisterPrevious = registerComposerFocusPresentation(previous);
+    const unregisterCurrent = registerComposerFocusPresentation(current);
+    unregisterPrevious();
+    act(() => screen.getByRole("button", { name: "Other task" }).focus());
+
+    act(() => replaceComposerDraft({ text: "Current presentation's draft" }));
+
+    expect(previous).not.toHaveBeenCalled();
+    expect(current).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).not.toBe(field);
+    unregisterCurrent();
+    act(() => replaceComposerDraft({ text: "Locally presented draft" }));
+    expect(current).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionEnd).toBe(field.value.length);
+  });
+
+  it("delivers the captured target and caret after presentation", () => {
+    render(<Harness />);
+    const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+    const other = screen.getByRole("button", { name: "Other task" });
+    act(() => other.focus());
+    let deliver!: () => void;
+    const present = vi.fn((focus: () => void) => {
+      deliver = focus;
+    });
+    const unregister = registerComposerFocusPresentation(present);
+
+    act(() => replaceComposerDraft({ text: "Edited input awaiting presentation" }));
+
+    expect(present).toHaveBeenCalledTimes(1);
+    expect(field.value).toBe("Edited input awaiting presentation");
+    expect(document.activeElement).toBe(other);
+    act(() => deliver());
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionStart).toBe(field.value.length);
+    expect(field.selectionEnd).toBe(field.value.length);
+    unregister();
+  });
+
+  it.each(["remounted", "unregistered"])(
+    "retires the captured delivery when its input is %s",
+    (retirement) => {
+      const view = render(<Harness />);
+      const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+      const unregisterTarget = registerComposerFocusTarget(field);
+      let deliver!: () => void;
+      const unregisterPresentation = registerComposerFocusPresentation((focus) => {
+        deliver = focus;
+      });
+      act(() => replaceComposerDraft({ text: "Edited input" }));
+
+      if (retirement === "remounted") view.rerender(<Harness fieldKey="successor" />);
+      else unregisterTarget();
+      const currentField = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+      currentField.setSelectionRange(2, 2);
+      const other = screen.getByRole("button", { name: "Other task" });
+      act(() => other.focus());
+      act(() => deliver());
+
+      expect(document.activeElement).toBe(other);
+      expect(currentField.selectionStart).toBe(2);
+      expect(currentField.selectionEnd).toBe(2);
+      unregisterTarget();
+      unregisterPresentation();
+    },
+  );
+
+  it("keeps low-level and captured focus local when presentation is registered", () => {
+    render(<Harness />);
+    const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+    const other = screen.getByRole("button", { name: "Other task" });
+    const present = vi.fn();
+    const unregister = registerComposerFocusPresentation(present);
+    act(() => other.focus());
+
+    act(() => focusComposer(1));
+
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionEnd).toBe(1);
+    act(() => other.focus());
+    const restore = captureComposerFocus();
+    act(() => restore());
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionEnd).toBe(1);
+    expect(present).not.toHaveBeenCalled();
+    unregister();
   });
 });

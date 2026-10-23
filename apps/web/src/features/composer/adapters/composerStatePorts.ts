@@ -16,11 +16,20 @@ export function installComposerStatePorts(
 ): () => void {
   activateComposerStorage(endpoint());
   let focusTarget: { element: HTMLTextAreaElement | null } | null = null;
+  let focusPresentation: { present: (focus: () => void) => void } | null = null;
   const focus = (selectionEnd?: number) => {
     const element = focusTarget?.element;
     if (!element) return;
     element.focus();
     if (selectionEnd !== undefined) element.setSelectionRange(selectionEnd, selectionEnd);
+  };
+  const presentFocus = (deliver: () => void) => {
+    const target = focusTarget;
+    const focusOriginalTarget = () => {
+      if (focusTarget === target) deliver();
+    };
+    if (focusPresentation) focusPresentation.present(focusOriginalTarget);
+    else focusOriginalTarget();
   };
   const disposePort = configureComposerStatePort({
     focus,
@@ -38,22 +47,32 @@ export function installComposerStatePorts(
         if (focusTarget === target) focusTarget = null;
       };
     },
+    registerFocusPresentation: (present) => {
+      const presentation = { present };
+      focusPresentation = presentation;
+      return () => {
+        if (focusPresentation === presentation) focusPresentation = null;
+      };
+    },
     useText: () => useComposerStore((state) => state.composer.draft.value),
     useSetText: () => useComposerStore((state) => state.setValue),
     captureSubmission: () => useComposerStore.getState().captureSubmission(),
     replaceDraft: (input) => {
       useComposerStore.getState().replaceDraft(input);
-      focus(input.text.length);
+      presentFocus(() => focus(input.text.length));
     },
     beginDraftReplacement: () => {
       const replace = useComposerStore.getState().captureDraftReplacement();
       const target = focusTarget;
-      target?.element?.focus();
+      let selectionEnd: number | undefined;
+      presentFocus(() => focus(selectionEnd));
       return (input) => {
         if (!replace(input)) return false;
+        // A fast rollback can settle before the original presentation request.
+        selectionEnd = input.text.length;
         const element = target?.element;
         if (element && focusTarget === target && document.activeElement === element) {
-          element.setSelectionRange(input.text.length, input.text.length);
+          element.setSelectionRange(selectionEnd, selectionEnd);
         }
         return true;
       };
@@ -62,7 +81,7 @@ export function installComposerStatePorts(
       const store = useComposerStore.getState();
       const value = joinDraftParts([store.composer.draft.value.trimEnd(), text]);
       store.setValue(value);
-      focus(value.length);
+      presentFocus(() => focus(value.length));
     },
     useImages: () => useComposerStore((state) => state.composer.draft.images),
     usePastes: () => useComposerStore((state) => state.composer.draft.pastes),
@@ -83,6 +102,7 @@ export function installComposerStatePorts(
   const disposeSessionSync = installComposerSessionSync(sessions, endpoint, scope);
   return () => {
     focusTarget = null;
+    focusPresentation = null;
     disposeSessionSync();
     disposePort();
   };

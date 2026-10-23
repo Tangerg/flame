@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI batches remain active. Historical message actions now distinguish root conversation rollback from child Run forking. Child menus retain copy, ordinary editing and fork without offering ineffective root-history commands; direct actions enforce the same scope before changing focus or drafts. All 396 test files / 3,192 tests, 20 of 22 post-test Web gates and the supported native check pass. The other two guards fail identically on the clean baseline, so the aggregate Web command remains nonzero. English/light/14 px and Chinese/dark/18 px/blue native acceptance qualifies the menu scope, keyboard dismissal, ordinary editing and 200% layout. It also identifies the next independent defect: editing from a full-width inspection writes the draft but does not reveal Conversation. Native resources and new build/cache outputs are cleaned; publication retains exact-source verification and guarded cleanup.
+Updated: 2026-10-23. Continuous UI batches remain active. Editing or quoting from a full-width inspection now reveals Conversation and focuses the retained Composer at the intended caret. Workspace presentation and draft ownership remain separate; delayed history completion preserves later navigation and focus. All 396 test files / 3,208 tests, 20 of 22 post-test Web gates and the supported native check pass. The other two guards fail identically on the clean baseline, so the aggregate Web command remains nonzero. English/light/14 px and Chinese/dark/18 px/blue native acceptance covers ordinary editing, actual selection quoting, 200% full-pane return and a delayed history edit while reading a file. Native resources and new build/cache outputs are cleaned; publication retains exact-source verification and guarded cleanup. The next observed issue is the selection-quote button wrapping vertically near the right edge.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `095f9599e` and changes message-action availability, the menu model and direct action guards, with five regression files and this record. Shared transcript rendering, retained draft ownership and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. Continue with the natively reproduced full-width-inspection edit return issue; the earlier milestone pause is superseded by the explicit resume.
+The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `04bd66c78` and connects draft-edit intents to the workspace's existing Composer reveal owner, with two regression files and this record. Shared transcript rendering, retained draft ownership and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. Continue with the natively reproduced selection-quote placement issue; the earlier milestone pause is superseded by the explicit resume.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -1411,15 +1411,105 @@ Verification and limits:
   trees, user data and primary checkout are preserved. The private fixture,
   logs, receipts and publication clone belong to the final guarded cleanup.
 
-Next observed defect: in the full-width child inspection, Edit in composer
-replaces the draft with all **323** characters but keeps Conversation hidden and
-leaves focus on the page root. Manual Return to conversation reveals the exact
-draft and focuses the original child trigger; keyboard navigation reaches the
-Composer and appending Chinese text yields **335** characters. At ordinary side
-by side width the same edit already focuses the input correctly. Revisit the
-existing Composer focus registration and the workspace's explicit reveal path,
-preserving retained content, Session identity and later-focus protection. Do not
-change Runtime or add a second navigation/focus owner to mask this gap.
+The full-width edit-return defect found during that acceptance is resolved below.
+The original path wrote all **323** characters while Conversation remained hidden
+and focus fell to the page root. Manual Return revealed the draft and restored
+the child trigger; ordinary side-by-side editing already worked.
+
+### Composer editing reveals the conversation
+
+Explicit draft replacement, quoted-text append and the start of an asynchronous
+history edit now request presentation through the existing `useInspectionFocus`
+owner. `ChatPanel` registers that owner for its lifetime. The Composer state port
+retains the textarea registration and intended caret; the workspace retains
+Session, inspection, Dock, modal and later-focus guards. A narrow inspection
+returns to Conversation, while a visible side-by-side Dock stays open. The same
+input and material instances survive. Low-level and captured focus stay local,
+and asynchronous completion updates an accepted draft without requesting another
+presentation or reclaiming later focus. A fast completion before reveal carries
+its final caret into the original request. No Runtime, protocol, stored-data,
+dependency or localization migration is needed.
+
+Read-only research compared ZCode's actual `SessionPane.tsx` root Composer and
+captured-session edit path with ChatGPT's real `app-primary-44ec…js` queued-edit
+flow, which checks its original context before committing focus. These are UI
+implementations, not exporters. Better-accessibility's focus, modal-boundary and
+zoom guidance supports one visible editing destination while preserving a later
+user task. Flame reuses its existing workspace navigation and Composer owners.
+
+Verification and limits:
+
+- The focused six-file set passes **153 tests**. Primary independently restored
+  all five original production files under the final complete ChatPanel suite:
+  **6 failures / 78 passes** expose missing Conversation presentation and modal
+  focus theft. These are behavior failures, not missing-export errors. All seven
+  candidate source/test files were restored byte for byte. The final tests also
+  cover shared-menu Copy/Escape, unchanged wide Dock, retained history, quoted
+  append, fast completion, later focus/navigation, Session changes and retired
+  input registrations.
+- `npm run check --workspace @flame/web` under Node **22.22.1** and
+  `VITEST_MAX_WORKERS=2` passes type, lint, format and **396 files / 3,208 tests**
+  (**161.71 seconds** for tests). The aggregate exits nonzero at API-consumer
+  checking after **185.41 seconds**. That guard's 16 unit tests pass, while its
+  stale `SIDECAR_METHODS` object-literal assumption fails. Later gates ran
+  serially: **20 of 22** post-test gates pass, including production bundling;
+  exact plugin resources also fail on the existing Diagnostics ESM mismatch.
+  Both full guards fail identically with all seven changes temporarily removed
+  and the owned checkout verified clean at `04bd66c78`. No guard or assertion was
+  weakened. Non-failing loopback connection diagnostics remain unclassified.
+- `make check-native` passes Desktop test/vet/build and supported Wails arm64
+  production building in **25.72 seconds**. `vtool` reports minimum macOS **13.0**
+  and SDK **26.5**. Final isolated fixture assets and the private native host
+  build pass serially. The host uses private data, production components and
+  canonical in-memory transport. Its fixture installs the actual production
+  selection-quote plugin and delays only the test gateway response; passive
+  observation reads input identity, visibility, caret, draft and request state.
+- English/light/**14 px**/Flame Orange/full motion: child-menu Edit loads the
+  complete **323-character** request into the same visible input, keeps the
+  expanded child in its **523 px** Dock, and accepts continuation to **356**
+  characters. Tab reaches Add to message. The direct Edit message control also
+  works. Selecting the assistant paragraph and activating the real Quote in
+  message button appends the complete quotation to **502** characters and
+  places the caret at the end. Its right-edge label defect is recorded below.
+- Chinese/dark/**18 px**/custom **#007BFF**/motion off: native Window → Move &
+  Resize → Left, keyboard Dock sizing to **320 px**, sidebar collapse and twenty
+  observed native zoom increments from Actual Size reach **200%**. Escape and
+  plain copy retain the full-width inspection, expanded request and exact
+  **17-character** draft. Edit now reveals the same input with the full **323**
+  characters and a visible caret; continuation reaches **335**. Reopening retains
+  the expanded child; ordinary Return to conversation still restores its trigger.
+  Selecting an assistant list item and activating the actual Quote button returns
+  to the same input at **400** characters; continuation reaches **410**.
+- In that Chinese **200%** scene, root Edit & rerun starts one isolated rollback
+  request. During its **45-second** delay, native navigation enters the child,
+  then its file; Tab focuses Return to file list. Completion replaces the accepted
+  draft with the **92-character** root prompt while the file stays presented and
+  that button keeps focus. Return to task restores the source file reference;
+  Return to conversation restores the child trigger and reveals the same input.
+  Explicit keyboard continuation reaches **102** characters. Actual Size restores
+  the **320 px** Dock and retains the draft/caret before quitting. This qualifies
+  UI and request-boundary behavior, not durable Runtime rollback.
+- A pointer attempt to focus the splitter did not move focus and is excluded;
+  keyboard sizing was separately observed. No browser visual suite, performance
+  baseline, Send, live provider, native image picker, VoiceOver speech, OS IME
+  composition or other-platform GUI was exercised. Session and modal races are
+  regression coverage, not claims of native execution of every race.
+- All seven reviewed source/test hashes remain unchanged through acceptance.
+  Six generated plugin resources were restored only after matching their native
+  build receipt; all eleven resources match their original hashes. The app is
+  quit and unregistered. Its unique Library caches and newly created staged,
+  build and cache outputs are removed after ownership/preexistence checks. The
+  preexisting shared UI cache, dependencies, reference trees, user data and
+  primary checkout are preserved. The private fixture, logs, receipts, agent
+  scratch directory and publication clone belong to final guarded cleanup.
+
+Next observed issue: the real English Quote in message button near the right
+edge wraps its label into a tall narrow column. The selection popup's automatic
+width is constrained by space to the right before its negative translation.
+Revisit selection-popup sizing and collision placement through existing UI
+capabilities, preserving shared Button wrapping, nonmodal semantics, selection
+ownership and the now-qualified append/reveal path. Do not change global button
+styles or add another Composer focus owner.
 
 ### Native short-paste continuation qualification
 

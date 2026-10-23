@@ -10,3 +10,9 @@ export function captureComposerFocus(): () => void {
 export function registerComposerFocusTarget(element: HTMLTextAreaElement | null): () => void {
   return composerState().registerFocusTarget(element);
 }
+
+export function registerComposerFocusPresentation(
+  present: (focus: () => void) => void,
+): () => void {
+  return composerState().registerFocusPresentation(present);
+}
