@@ -4,7 +4,10 @@ import { type Message } from "@/features/agent/public/sessionView";
 import { selectAgentSession } from "@/features/agent/public/session";
 import {
   editAndRerunMessage,
+  editMessageInComposer,
+  forkFromMessage,
   regenerateMessage,
+  restoreCheckpoint,
 } from "@/features/chat/message-actions/application/messageActions";
 import { notifyInfo } from "@/features/notifications/public/notifications";
 import * as imageInput from "@/features/composer/public/input";
@@ -17,16 +20,18 @@ import {
   useAddComposerImageFiles,
   useAddComposerPaste,
 } from "@/features/composer/public/attachments";
+import { registerComposerFocusTarget } from "@/features/composer/public/focus";
 const model = vi.hoisted(() => ({
   conversation: null as { sessionId: string; messages: Message[] } | null,
   rollback: vi.fn(),
+  fork: vi.fn(),
   send: vi.fn(),
 }));
 
 vi.mock("@/features/agent/public/session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
   activeAgentConversation: () => model.conversation,
-  forkAgentSessionAtRun: vi.fn(),
+  forkAgentSessionAtRun: model.fork,
   rollbackSessionToBeforeRun: model.rollback,
   sendToAgentSession: model.send,
 }));
@@ -43,6 +48,7 @@ vi.mock("@/lib/rpcErrors", () => ({ describeRpcError: () => undefined }));
 
 beforeEach(() => {
   model.rollback.mockReset();
+  model.fork.mockReset().mockResolvedValue(undefined);
   model.send.mockReset();
   model.send.mockReturnValue(true);
   vi.mocked(notifyInfo).mockClear();
@@ -71,6 +77,100 @@ function readDraft() {
 }
 
 describe("message history actions", () => {
+  it.each([
+    { label: "a child user message", id: "child-user", role: "user", runId: "child-run" },
+    { label: "a missing message", id: "missing-user", role: "user", runId: "run_1" },
+    { label: "a stale run", id: "user_1", role: "user", runId: "retired-run" },
+    { label: "a user message without a run", id: "user_1", role: "user", runId: null },
+    { label: "an assistant message", id: "assistant_1", role: "assistant", runId: "run_1" },
+  ] as const)(
+    "refuses history actions for $label before changing draft or focus",
+    async ({ id, role, runId }) => {
+      const msg = message({
+        id,
+        role,
+        runId,
+        blocks: [{ kind: "text", status: "complete", text: "do not load this prompt" }],
+      });
+      const input = document.createElement("textarea");
+      const origin = document.createElement("button");
+      document.body.append(input, origin);
+      const unregister = registerComposerFocusTarget(input);
+      model.rollback.mockResolvedValue({ status: "unavailable" });
+      replaceComposerDraft({
+        text: "keep the current draft",
+        images: [{ mime: "image/png", data: "retained-image" }],
+      });
+      const before = readDraft();
+      origin.focus();
+      expect(document.activeElement).toBe(origin);
+      try {
+        editAndRerunMessage(msg);
+        editAndRerunMessage(msg, { restoreFiles: true });
+        restoreCheckpoint(msg, "history");
+        restoreCheckpoint(msg, "files");
+        restoreCheckpoint(msg, "both");
+        await Promise.resolve();
+
+        expect(readDraft()).toEqual(before);
+        expect(document.activeElement).toBe(origin);
+        expect(model.rollback).not.toHaveBeenCalled();
+        expect(notifyInfo).not.toHaveBeenCalled();
+      } finally {
+        unregister();
+        input.remove();
+        origin.remove();
+      }
+    },
+  );
+
+  it("keeps ordinary editing available for a user message without a run", () => {
+    editMessageInComposer(
+      message({
+        role: "user",
+        blocks: [
+          { kind: "text", status: "complete", text: "local prompt" },
+          { kind: "image", mime: "image/png", data: "local-image" },
+        ],
+      }),
+    );
+
+    expect(readDraft().value).toBe("local prompt");
+    expect(readDraft().images).toMatchObject([{ mime: "image/png", data: "local-image" }]);
+    expect(model.rollback).not.toHaveBeenCalled();
+  });
+
+  it.each(["run_1", "child-run"])("keeps forking available at user run %s", (runId) => {
+    const before = readDraft();
+
+    forkFromMessage(message({ id: "fork-target", role: "user", runId }));
+
+    expect(model.fork).toHaveBeenCalledWith("ses_1", runId);
+    expect(model.rollback).not.toHaveBeenCalled();
+    expect(readDraft()).toEqual(before);
+  });
+
+  it.each(["history", "files", "both"] as const)(
+    "restores %s before an earlier root prompt",
+    async (restoreType) => {
+      const prompt = model.conversation!.messages[0]!;
+      model.conversation!.messages.push(
+        message({ id: "later-user", role: "user", runId: "run_2" }),
+      );
+      model.rollback.mockResolvedValue({ status: "committed" });
+      const before = readDraft();
+
+      restoreCheckpoint(prompt, restoreType);
+      await model.rollback.mock.results[0]!.value;
+
+      expect(model.rollback).toHaveBeenCalledWith("ses_1", "run_1", restoreType);
+      expect(readDraft()).toEqual(before);
+      expect(notifyInfo).toHaveBeenCalledWith(`session.restore.${restoreType}`, {
+        source: "session",
+      });
+    },
+  );
+
   it("regenerates from the Runtime-authored dropped input", async () => {
     model.rollback.mockResolvedValue({
       status: "committed",
@@ -103,7 +203,8 @@ describe("message history actions", () => {
     expect(model.send).not.toHaveBeenCalled();
   });
 
-  it("prefills edit-and-rerun from the Runtime-authored dropped input", async () => {
+  it("prefills an earlier root edit-and-rerun from the Runtime-authored dropped input", async () => {
+    model.conversation!.messages.push(message({ id: "later-user", role: "user", runId: "run_2" }));
     model.rollback.mockResolvedValue({
       status: "committed",
       userInput: {
@@ -118,6 +219,7 @@ describe("message history actions", () => {
 
     await vi.waitFor(() => expect(readDraft().value).toBe("canonical edit"));
     expect(readDraft().images).toMatchObject([{ mime: "image/jpeg", data: "anBlZw==" }]);
+    expect(model.rollback).toHaveBeenCalledWith("ses_1", "run_1", "history");
     expect(notifyInfo).not.toHaveBeenCalled();
   });
 

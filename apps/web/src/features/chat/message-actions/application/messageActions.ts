@@ -20,6 +20,11 @@ import {
   messageHasDraftContent,
   regenerationPromptBefore,
 } from "@/features/chat/message-actions/application/messageActionContent";
+import {
+  canEditMessage,
+  canForkMessage,
+  canRollbackMessage,
+} from "@/features/chat/message-actions/application/messageActionAvailability";
 export type { RestoreType };
 
 function prefillComposer(msg: Message): void {
@@ -69,9 +74,7 @@ export function editMessageInComposer(msg: Message): void {
 
 export function editAndRerunMessage(msg: Message, opts?: RollbackActionOptions): void {
   const conversation = activeAgentConversation();
-  if (!conversation || !messageHasDraftContent(msg)) return;
-  if (msg.role !== "user" || !msg.runId) {
-    prefillComposer(msg);
+  if (!conversation || !canEditMessage(msg) || !canRollbackMessage(msg, conversation.messages)) {
     return;
   }
   const replaceDraft = beginComposerDraftReplacement();
@@ -94,7 +97,7 @@ export function editAndRerunMessage(msg: Message, opts?: RollbackActionOptions):
 
 export function restoreCheckpoint(msg: Message, restoreType: RestoreType): void {
   const conversation = activeAgentConversation();
-  if (!conversation || msg.role !== "user" || !msg.runId) return;
+  if (!conversation || !canRollbackMessage(msg, conversation.messages)) return;
   void rollbackSessionToBeforeRun(conversation.sessionId, msg.runId, restoreType)
     .then((rollback) => {
       if (rollback.status === "committed") {
@@ -117,6 +120,6 @@ function restoreCopy(restoreType: RestoreType): string {
 
 export function forkFromMessage(msg: Message): void {
   const conversation = activeAgentConversation();
-  if (!conversation || !msg.runId) return;
+  if (!conversation || !canForkMessage(msg)) return;
   void forkAgentSessionAtRun(conversation.sessionId, msg.runId);
 }

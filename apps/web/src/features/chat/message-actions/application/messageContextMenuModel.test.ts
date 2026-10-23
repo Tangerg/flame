@@ -50,25 +50,55 @@ describe("messageContextMenuModel", () => {
     expect(model.copyPlain).toBe(false);
   });
 
-  it("enables run-scoped user actions from a user run id", () => {
-    const model = messageContextMenuModel({
-      msg: message({
+  it.each([false, true])(
+    "enables historical root actions with file restore capability %s",
+    (canRestoreFiles) => {
+      const prompt = message({
         role: "user",
         runId: "run_1",
         blocks: [{ kind: "text", status: "complete", text: "fix this" }],
+      });
+      const model = messageContextMenuModel({
+        msg: prompt,
+        copy: copy({ plain: "fix this", canCopy: true }),
+        canRestoreFiles,
+        conversation: [prompt, message({ id: "later-user", role: "user", runId: "run_2" })],
+      });
+
+      expect(model.user).toMatchObject({
+        visible: true,
+        editRerun: true,
+        editRerunRestore: canRestoreFiles,
+        restore: true,
+        restoreFiles: canRestoreFiles,
+        restoreBoth: canRestoreFiles,
+        fork: true,
+      });
+    },
+  );
+
+  it("keeps child user copy, editing, and fork separate from root history actions", () => {
+    const model = messageContextMenuModel({
+      msg: message({
+        id: "child-user",
+        runId: "child",
+        blocks: [{ kind: "text", status: "complete", text: "child prompt" }],
       }),
-      copy: copy({ plain: "fix this", canCopy: true }),
+      copy: copy({ plain: "child prompt", canCopy: true }),
       canRestoreFiles: true,
-      conversation: [],
+      conversation: [message({ id: "root-user", runId: "root" })],
     });
 
-    expect(model.user).toMatchObject({
+    expect(model.copyMarkdown).toBe(true);
+    expect(model.copyPlain).toBe(true);
+    expect(model.user).toEqual({
       visible: true,
-      editRerun: true,
-      editRerunRestore: true,
-      restore: true,
-      restoreFiles: true,
-      restoreBoth: true,
+      editInComposer: true,
+      editRerun: false,
+      editRerunRestore: false,
+      restore: false,
+      restoreFiles: false,
+      restoreBoth: false,
       fork: true,
     });
   });

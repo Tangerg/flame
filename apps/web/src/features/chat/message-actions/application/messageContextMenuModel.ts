@@ -2,8 +2,9 @@ import { type Message } from "@/features/agent/public/sessionView";
 import {
   canCopyMessage,
   canEditMessage,
+  canForkMessage,
   canRegenerateMessage,
-  canUseMessageRunCheckpoint,
+  canRollbackMessage,
 } from "@/features/chat/message-actions/application/messageActionAvailability";
 export interface MessageContextMenuCopyState {
   canCopy: boolean;
@@ -41,23 +42,23 @@ export function messageContextMenuModel({
   canRestoreFiles: boolean;
   conversation: readonly Message[];
 }): MessageContextMenuModel {
-  const hasRun = Boolean(msg.runId);
   const canEdit = canEditMessage(msg);
-  const canUseRunCheckpoint = canUseMessageRunCheckpoint(msg);
+  const canRollback = canRollbackMessage(msg, conversation);
+  const canFork = canForkMessage(msg);
   const canRegenerate = canRegenerateMessage(msg, conversation);
 
   return {
     copyMarkdown: canCopyMessage(copy),
     copyPlain: Boolean(copy.plain),
     user: {
-      visible: canEdit || canUseRunCheckpoint,
+      visible: canEdit || canRollback || canFork,
       editInComposer: canEdit,
-      editRerun: canEdit && hasRun,
-      editRerunRestore: canEdit && hasRun && canRestoreFiles,
-      restore: canUseRunCheckpoint,
-      restoreFiles: canUseRunCheckpoint && canRestoreFiles,
-      restoreBoth: canUseRunCheckpoint && canRestoreFiles,
-      fork: canUseRunCheckpoint,
+      editRerun: canEdit && canRollback,
+      editRerunRestore: canEdit && canRollback && canRestoreFiles,
+      restore: canRollback,
+      restoreFiles: canRollback && canRestoreFiles,
+      restoreBoth: canRollback && canRestoreFiles,
+      fork: canFork,
     },
     assistant: {
       visible: canRegenerate,

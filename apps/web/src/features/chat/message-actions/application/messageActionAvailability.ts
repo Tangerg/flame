@@ -8,7 +8,18 @@ export function canEditMessage(message: Message): boolean {
   return message.role === "user" && messageHasDraftContent(message);
 }
 
-export function canUseMessageRunCheckpoint(message: Message): boolean {
+export function canRollbackMessage(
+  message: Message,
+  rootMessages: readonly Message[],
+): message is Message & { runId: string } {
+  return (
+    message.role === "user" &&
+    Boolean(message.runId) &&
+    rootMessages.some(({ id, runId }) => id === message.id && runId === message.runId)
+  );
+}
+
+export function canForkMessage(message: Message): message is Message & { runId: string } {
   return message.role === "user" && Boolean(message.runId);
 }
 

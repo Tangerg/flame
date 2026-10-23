@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI batches remain active. Historical Edit & rerun now preserves later drafts, attachments and conversation choices. The Composer retains its input and open attachment task when history becomes empty, and edit menus deliver focus after closing. Original native failures and independent regression comparisons establish the causes; final English/light/14 px and Chinese/dark/18 px/blue native flows pass, including 320 px Dock sizing, 200% zoom, delayed completion, a second conversation and a retained paste editor. All 396 test files / 3,175 tests, 20 of 22 post-test Web gates and the supported native check pass. The other two guards fail identically on the clean baseline, so the aggregate Web command remains nonzero. The native app/data and newly created build/cache outputs are removed; main delivery retains exact-source verification and guarded publication cleanup.
+Updated: 2026-10-23. Continuous UI batches remain active. Historical message actions now distinguish root conversation rollback from child Run forking. Child menus retain copy, ordinary editing and fork without offering ineffective root-history commands; direct actions enforce the same scope before changing focus or drafts. All 396 test files / 3,192 tests, 20 of 22 post-test Web gates and the supported native check pass. The other two guards fail identically on the clean baseline, so the aggregate Web command remains nonzero. English/light/14 px and Chinese/dark/18 px/blue native acceptance qualifies the menu scope, keyboard dismissal, ordinary editing and 200% layout. It also identifies the next independent defect: editing from a full-width inspection writes the draft but does not reveal Conversation. Native resources and new build/cache outputs are cleaned; publication retains exact-source verification and guarded cleanup.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `7cc5719c7` and changes the existing Composer draft owner, historical message actions, their menu exit and workbench input placement, regressions, localized feedback and this record. Shared transcript rendering and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. The previous milestone pause is superseded by the explicit resume; continue with fresh source and native evidence after this batch.
+The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `095f9599e` and changes message-action availability, the menu model and direct action guards, with five regression files and this record. Shared transcript rendering, retained draft ownership and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. Continue with the natively reproduced full-width-inspection edit return issue; the earlier milestone pause is superseded by the explicit resume.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -1324,6 +1324,102 @@ Pre-existing UI Vite cache, dependencies, global compiler caches, read-only
 references and the user's independently changing checkout remain. The temporary
 main publisher and verification receipts are removed after exact remote-main
 verification; no second repository progress record is retained.
+
+### Message actions respect root history scope
+
+The shared delegated transcript exposed a scope mismatch: a child user message
+had a Run ID, so its menu offered Edit & rerun and Restore, although the existing
+rollback owner only admits root narrative boundaries. Original Wails acceptance
+on `095f9599e` selected both actions in the finished child detail: snapshot reads
+advanced, but no rollback request ran and the original draft remained unchanged.
+Edit & rerun still moved focus away from the selected child. This was an
+ineffective command and focus defect, not observed history or draft loss.
+
+`messageActionAvailability.ts` now derives rollback availability from the existing
+active root narrative, matching both message ID and Run ID. The menu model and
+direct action entry points use that same predicate. Unavailable, stale, local and
+assistant targets stop before capturing or focusing the Composer or admitting a
+history command. Earlier root prompts remain valid, including history, files and
+combined restore when the existing capability allows them. Ordinary editing
+still accepts draft-bearing user content without a Run. Fork retains its separate
+user/Run predicate: a completed child can be a portable Runtime boundary, so root
+rollback membership must not remove that action. Runtime remains the authority
+for command admission and completion; no protocol, stored-data or dependency
+migration is needed.
+
+Reference research compared ZCode's real `SessionPane.tsx` row action capabilities
+and `ConversationRowView.tsx` fork target with ChatGPT's actual
+`local-conversation-subagents-panel-tab-62d7…js` child interaction scope. These
+references are read-only UI implementations, not export code. The applicable
+better-accessibility and better-writing guidance supports offering actions in
+their actual object scope and retaining the source after dismissal. Flame keeps
+its shared transcript, Base UI menu and existing command boundaries.
+
+Verification and limits:
+
+- Primary independently restored the three original production files under the
+  final two complete action/menu regression files: **6 failures / 29 passes**
+  expose the wrong offered actions, changed draft and lost source focus. All
+  eight candidate source/test files were then restored byte for byte. The final
+  focused set passes **59 tests**, including the agent history contract that
+  refuses child rollback without issuing the RPC.
+- `npm run check --workspace @flame/web` under Node **22.22.1** and
+  `VITEST_MAX_WORKERS=2` passes type, lint, format and **396 files / 3,192 tests**
+  (**240.64 seconds** for tests). The aggregate exits nonzero at API-consumer
+  checking after **264.68 seconds**. Its 16 unit tests pass, but its stale
+  `SIDECAR_METHODS` object-literal assumption fails. Later gates ran serially:
+  **20 of 22** post-test gates pass, including production bundling; exact plugin
+  resources also fail on the existing Diagnostics ESM mismatch. Both full guards
+  fail identically with all eight changes temporarily removed and the owned
+  checkout verified clean at `095f9599e`. No guard or assertion was weakened.
+  Non-failing loopback connection diagnostics remain unclassified.
+- `make check-native` passes Desktop test/vet/build and supported Wails arm64
+  production building in **24.88 seconds**. `vtool` reports minimum macOS **13.0**
+  and SDK **26.5**. Final private fixture assets were built serially from the
+  same production components and Vite configuration. No product Go source
+  changed; the isolated host and canonical in-memory transport supply acceptance
+  data, with passive observation of focus, drafts and gateway requests.
+- English/light/**14 px**/Flame Orange/full motion: the child menu has Copy
+  markdown, Copy plain text, Edit in composer and Fork. Escape returns to Show
+  full message and retains the exact **38-character** draft. Plain copy reports
+  success without a history request or draft change. Editing loads all **323**
+  characters, focuses the visible Composer at the end, accepts continuation to
+  **361** characters and sends the next Tab to Add to message. Root Edit & rerun
+  still issues the root Session rollback request and prefills the root prompt.
+  Child Fork passes `fromRunId: run_fan_ok`. Those last two observations qualify
+  the UI/request boundary only: the fixture does not execute durable rollback
+  or provide a valid completed-tree fork lifecycle.
+- Chinese/dark/**18 px**/custom **#007BFF**/motion off: native Window → Move &
+  Resize → Left, keyboard Dock sizing to **320 px**, sidebar collapse and twenty
+  observed native zoom increments from Actual Size reach **200%**. The complete
+  four-item menu remains inside the full-width child reader. Escape restores
+  Show full message; the original **17-character** Chinese draft remains intact.
+  An initial native typing attempt produced no draft and is excluded; the
+  verified text used native paste, not an OS IME claim. The edit return problem
+  below is explicitly not a passing complete flow. Actual Size was restored
+  before quitting.
+- No browser visual suite, performance baseline, Send, live provider, durable
+  Runtime mutation, native image picker, VoiceOver speech, OS IME composition or
+  other-platform GUI was exercised. The earlier asynchronous draft preservation
+  and menu-close qualifications remain intact in the passing regressions.
+- All eight reviewed source/test hashes remain unchanged through acceptance.
+  Six generated plugin resources were restored only after matching the native
+  build receipt; all eleven original resources match their pre-build hashes.
+  The private app is quit and unregistered. Its unique Library caches and the
+  newly created staged/build/cache outputs are removed with ownership and
+  preexistence checks; the preexisting shared UI cache, dependencies, reference
+  trees, user data and primary checkout are preserved. The private fixture,
+  logs, receipts and publication clone belong to the final guarded cleanup.
+
+Next observed defect: in the full-width child inspection, Edit in composer
+replaces the draft with all **323** characters but keeps Conversation hidden and
+leaves focus on the page root. Manual Return to conversation reveals the exact
+draft and focuses the original child trigger; keyboard navigation reaches the
+Composer and appending Chinese text yields **335** characters. At ordinary side
+by side width the same edit already focuses the input correctly. Revisit the
+existing Composer focus registration and the workspace's explicit reveal path,
+preserving retained content, Session identity and later-focus protection. Do not
+change Runtime or add a second navigation/focus owner to mask this gap.
 
 ### Native short-paste continuation qualification
 

@@ -13,7 +13,11 @@ import { selectAgentSession } from "@/features/agent/public/session";
 import { writeToClipboard } from "@/lib/clipboard";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { MessageContextMenu } from "@/features/chat/message/ui/MessageContextMenu";
-const material = vi.hoisted(() => ({ messages: [] as Message[], rollback: vi.fn() }));
+const material = vi.hoisted(() => ({
+  messages: [] as Message[],
+  rollback: vi.fn(),
+  fork: vi.fn(),
+}));
 
 vi.mock("@/features/agent/public/conversation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/conversation")>()),
@@ -24,6 +28,7 @@ vi.mock("@/features/agent/public/session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
   activeAgentConversation: () => ({ sessionId: "menu-session", messages: material.messages }),
   rollbackSessionToBeforeRun: material.rollback,
+  forkAgentSessionAtRun: material.fork,
 }));
 
 vi.mock("@/features/connection/public/capabilities", async (importOriginal) => ({
@@ -63,9 +68,8 @@ function DraftInput() {
   );
 }
 
-function mountFocusMenu() {
-  const msg = buildMessage({ runId: "run-1" });
-  material.messages = [msg];
+function mountFocusMenu(msg = buildMessage({ runId: "run-1" }), conversation: Message[] = [msg]) {
+  material.messages = conversation;
   render(
     <>
       <button>Copy message</button>
@@ -96,6 +100,7 @@ async function openFocusMenu() {
 describe("messageContextMenu", () => {
   beforeEach(() => {
     material.messages = [];
+    material.fork.mockReset().mockResolvedValue(undefined);
     material.rollback.mockReset().mockResolvedValue({
       status: "committed",
       userInput: { parts: [{ kind: "text", text: "history edit" }] },
@@ -197,6 +202,41 @@ describe("messageContextMenu", () => {
     fireEvent.click(screen.getByText("Edit in composer"));
     await settleMenu();
     expect(captureComposerSubmission().value).toBe("draft me again");
+  });
+
+  it("keeps child copy, edit, and fork actions without offering root history changes", async () => {
+    const root = buildMessage({ id: "root-user", runId: "root-run" });
+    const child = buildMessage({
+      id: "child-user",
+      runId: "child-run",
+      blocks: [{ kind: "text", text: "inspect this child task", status: "complete" }],
+    });
+    const draft = mountFocusMenu(child, [root]);
+    await openFocusMenu();
+
+    expect(screen.getByRole("menuitem", { name: "Copy markdown" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Edit in composer" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Fork up to here" })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Edit & rerun from here" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Edit & rerun, restore files" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Restore to here" })).toBeNull();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Copy plain text" }));
+    await settleMenu();
+    expect(writeToClipboard).toHaveBeenCalledWith("inspect this child task", {
+      successLabel: "Copied as plain text",
+    });
+
+    await openFocusMenu();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Edit in composer" }));
+    await settleMenu();
+    expect(draft.value).toBe("inspect this child task");
+    expect(document.activeElement).toBe(draft);
+
+    await openFocusMenu();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Fork up to here" }));
+    await settleMenu();
+    expect(material.fork).toHaveBeenCalledWith("menu-session", "child-run");
+    expect(material.rollback).not.toHaveBeenCalled();
   });
 
   it.each([

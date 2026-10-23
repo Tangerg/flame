@@ -53,6 +53,27 @@ describe("rollbackSessionToBeforeRun", () => {
     expect(rollbackSession).not.toHaveBeenCalled();
   });
 
+  it("does not issue a rollback for a child in the requested Session", async () => {
+    const child = {
+      ...run("run_child", "2026-08-12T00:00:01.000Z"),
+      parentRunId: "run_1",
+      rootRunId: "run_1",
+      spawnedByItemId: "item_delegate",
+    };
+    const rollbackSession = vi.fn();
+    restoreRuntime = configureAgentRuntimeGateway({
+      loadSessionSnapshot: vi
+        .fn()
+        .mockResolvedValue(material({ ...snapshot(), runs: [...snapshot().runs, child] })),
+      rollbackSession,
+    } as unknown as AgentRuntimeGateway);
+
+    await expect(rollbackSessionToBeforeRun("ses_1", child.id)).resolves.toEqual({
+      status: "unavailable",
+    });
+    expect(rollbackSession).not.toHaveBeenCalled();
+  });
+
   it("returns the Runtime-authored input dropped by the committed rollback", async () => {
     const synchronize = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true);
     restoreView = configureAgentSessionViewPort({

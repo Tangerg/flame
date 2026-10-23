@@ -3,9 +3,10 @@ import { type Message } from "@/features/agent/public/sessionView";
 import {
   canCopyMessage,
   canEditMessage,
+  canForkMessage,
   canRateMessage,
   canRegenerateMessage,
-  canUseMessageRunCheckpoint,
+  canRollbackMessage,
 } from "@/features/chat/message-actions/application/messageActionAvailability";
 const message = ({ runId = null, ...overrides }: Partial<Message>): Message => ({
   blocks: [],
@@ -34,9 +35,35 @@ describe("message action availability", () => {
     expect(canEditMessage(message({ role: "assistant", blocks: [] }))).toBe(false);
   });
 
-  it("uses user run ids for checkpoint actions", () => {
-    expect(canUseMessageRunCheckpoint(message({ role: "user", runId: "run_1" }))).toBe(true);
-    expect(canUseMessageRunCheckpoint(message({ role: "assistant", runId: "run_1" }))).toBe(false);
+  it("allows rollback at every root user prompt, while excluding child and local messages", () => {
+    const earlier = message({ id: "earlier", role: "user", runId: "run_1" });
+    const latest = message({ id: "latest", role: "user", runId: "run_2" });
+    const local = message({ id: "local", role: "user" });
+    const assistant = message({ id: "answer", role: "assistant", runId: "run_2" });
+    const roots = [earlier, latest, local, assistant];
+
+    expect(canRollbackMessage(earlier, roots)).toBe(true);
+    expect(canRollbackMessage(latest, roots)).toBe(true);
+    expect(canRollbackMessage(local, roots)).toBe(false);
+    expect(canRollbackMessage(assistant, roots)).toBe(false);
+    expect(canRollbackMessage(message({ id: "child", role: "user", runId: "child" }), roots)).toBe(
+      false,
+    );
+  });
+
+  it("requires both the message and its run to match the root narrative", () => {
+    const prompt = message({ role: "user", runId: "root" });
+
+    expect(canRollbackMessage(prompt, [])).toBe(false);
+    expect(canRollbackMessage({ ...prompt, id: "missing" }, [prompt])).toBe(false);
+    expect(canRollbackMessage({ ...prompt, runId: "stale" }, [prompt])).toBe(false);
+  });
+
+  it("allows a child user run to fork independently of root rollback eligibility", () => {
+    expect(canForkMessage(message({ role: "user", runId: "root" }))).toBe(true);
+    expect(canForkMessage(message({ role: "user", runId: "child" }))).toBe(true);
+    expect(canForkMessage(message({ role: "user" }))).toBe(false);
+    expect(canForkMessage(message({ role: "assistant", runId: "root" }))).toBe(false);
   });
 
   it("regenerates only an assistant in the main conversation, while child feedback stays available", () => {
