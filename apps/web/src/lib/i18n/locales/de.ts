@@ -684,6 +684,7 @@ export const de: Record<string, string> = {
   "reasoning.thought": "Gedacht",
   "reasoning.thoughtFor": "{{duration}} nachgedacht",
   "reasoning.interrupted": "unterbrochen",
+  "reasoning.text": "Gedankengang",
 
   "composer.placeholder.steer": "Nachricht senden, um den laufenden Zug zu steuern…",
   "composer.action.steer": "Laufenden Zug steuern",

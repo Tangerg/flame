@@ -862,6 +862,7 @@ export const en: Record<string, string> = {
   "reasoning.thought": "Thought",
   "reasoning.thoughtFor": "Thought for {{duration}}",
   "reasoning.interrupted": "interrupted",
+  "reasoning.text": "Reasoning text",
 
   "rpcError.session_has_active_run":
     "This session already has a run in flight — steer it, answer it, or cancel it first.",

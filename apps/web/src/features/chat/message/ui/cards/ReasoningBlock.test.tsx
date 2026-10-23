@@ -138,22 +138,56 @@ describe("ReasoningBlock disclosure policy", () => {
     expect(trigger.querySelector(".animate-pulse-dot")).toBeNull();
   });
 
-  it("keeps an overflowing rationale keyboard-scrollable", () => {
+  it("keeps an overflowing rationale keyboard-scrollable under its own name", () => {
     const overflow = stubScrollGeometry(400, 192);
     try {
       const { container } = renderReasoning("running", "Inspect the protocol boundary");
       fireEvent.click(screen.getByRole("button", { name: /Thinking/ }));
-      expect(scrollportOf(container).tabIndex).toBe(0);
+
+      const reader = screen.getByRole("group", { name: "Reasoning text" });
+      expect(reader, "the named target is the element that scrolls").toBe(scrollportOf(container));
+      expect(reader.tabIndex).toBe(0);
+      reader.focus();
+      expect(document.activeElement).toBe(reader);
+      expect(
+        screen.getAllByRole("region"),
+        "the disclosure body is the only landmark; the reader nests as a group",
+      ).toHaveLength(1);
     } finally {
       overflow();
     }
   });
 
-  it("leaves a rationale that fits out of the tab order", () => {
+  it("leaves a rationale that fits out of the tab order and unnamed", () => {
     const { container } = renderReasoning("running", "Inspect the protocol boundary");
     fireEvent.click(screen.getByRole("button", { name: /Thinking/ }));
 
     expect(scrollportOf(container).tabIndex).toBe(-1);
+    expect(screen.queryByRole("group", { name: "Reasoning text" })).toBeNull();
+  });
+
+  it("retains the reader node and paused-follow state across disclosure toggles", () => {
+    const overflow = stubScrollGeometry(400, 192);
+    try {
+      const { container } = renderReasoning("running", "Inspect the protocol boundary");
+      const trigger = screen.getByRole("button", { name: /Thinking/ });
+      fireEvent.click(trigger);
+
+      const reader = scrollportOf(container);
+      reader.scrollTop = 100;
+      fireEvent.scroll(reader);
+
+      fireEvent.click(trigger);
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      expect(scrollportOf(container), "collapsing keeps the reader mounted").toBe(reader);
+
+      fireEvent.click(trigger);
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
+      expect(scrollportOf(container)).toBe(reader);
+      expect(reader.scrollTop, "reopening does not pull a paused reader to the end").toBe(100);
+    } finally {
+      overflow();
+    }
   });
 
   it("does not disguise Run cancellation as an Answer now activity action", () => {

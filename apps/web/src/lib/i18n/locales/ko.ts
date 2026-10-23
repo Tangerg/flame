@@ -655,6 +655,7 @@ export const ko: Record<string, string> = {
   "reasoning.thought": "생각",
   "reasoning.thoughtFor": "{{duration}} 동안 생각",
   "reasoning.interrupted": "중단됨",
+  "reasoning.text": "생각 내용",
 
   "composer.placeholder.steer": "실행 중인 턴을 조정할 메시지 보내기…",
   "composer.action.steer": "실행 중인 턴 조정",

@@ -696,6 +696,7 @@ export const fr: Record<string, string> = {
   "reasoning.thought": "Réflexion",
   "reasoning.thoughtFor": "Réflexion de {{duration}}",
   "reasoning.interrupted": "interrompu",
+  "reasoning.text": "Texte de la réflexion",
 
   "composer.placeholder.steer": "Envoyer un message pour orienter le tour en cours…",
   "composer.action.steer": "Orienter le tour en cours",

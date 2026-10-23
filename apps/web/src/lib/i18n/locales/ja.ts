@@ -658,6 +658,7 @@ export const ja: Record<string, string> = {
   "reasoning.thought": "思考",
   "reasoning.thoughtFor": "{{duration}} 思考",
   "reasoning.interrupted": "中断",
+  "reasoning.text": "思考の内容",
 
   "composer.placeholder.steer": "実行中のターンを誘導するメッセージを送信…",
   "composer.action.steer": "実行中のターンを誘導",

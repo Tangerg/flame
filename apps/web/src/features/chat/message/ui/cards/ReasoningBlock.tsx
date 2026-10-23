@@ -39,13 +39,14 @@ const rb = stylex.create({
     marginTop: space.s3,
     paddingBottom: space.s1_5,
   },
+  // Kept while shut: Collapsible retains this node, so dropping the window loses the scroll position.
   scroller: {
     position: "relative",
+    maxHeight: "calc(var(--spacing) * 60)",
     overflowX: "hidden",
-    overflowY: "hidden",
+    overflowY: "auto",
     paddingRight: space.s2,
   },
-  windowed: { maxHeight: "calc(var(--spacing) * 60)", overflowY: "auto" },
 });
 
 interface Props {
@@ -156,9 +157,11 @@ export function ReasoningBlock({ text, status }: Props) {
         data-slot="reasoning-scroller"
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={overflowing ? 0 : undefined}
+        role={overflowing ? "group" : undefined}
+        aria-label={overflowing ? t("reasoning.text") : undefined}
         onScroll={onScroll}
         style={edgeStyle}
-        {...stylex.props(rb.scroller, scrollEdges.fade, isOpen && rb.windowed)}
+        {...stylex.props(rb.scroller, scrollEdges.fade)}
       >
         <div ref={content} className={stylex.props(ms.quote, typeStep.uiMd).className}>
           <MarkdownMessage text={text} streaming={streaming} reveal="smooth" />

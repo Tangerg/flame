@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Paused at the user's request after this round and latest-main integration. Native image save/cancel, current gallery identity, original-source return and continued drafts are qualified below; both saved SVGs match their original bytes. The 61 related tests and supported native check pass. Pinned Session names, earlier reading-color and component repairs remain integrated. The earlier broad Web MCP-readiness failure and isolated 49-test pass remain separate qualifications. Owned acceptance resources are cleaned. Start no new batch until the user explicitly resumes.
+Updated: 2026-10-23. The user explicitly resumed continuous UI batches. The reasoning reader now preserves its viewport and gives its overflowing keyboard target a localized name. The original native collapse loses its reading position; the candidate retains it in the qualified English/light/14 px, narrow-window and 200% paths. The complete Web check passes 392 files / 3,112 tests and every gate; the supported native module check also passes. Chinese/dark/18 px acceptance, exact continued drafts and completed short reasoning pass after the temporary lock-screen interruption. Owned acceptance resources have been removed. Prior native image-save, gallery identity and original-source return qualifications remain integrated.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user requested a milestone pause after the current round and latest-main integration. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`; the primary checkout `/Users/tangerg/Desktop/flame` contains the user's parallel work and remains untouched. The integration checkpoint's `git fetch origin main` and `git merge --ff-only origin/main` reported Already up to date at `d85ebc68cf2a2b231fca7f36c10a04cf28172abb`. The native qualification below adds no product source change; its delivery record extends that main revision. Keep the Goal paused at this milestone. Do not start another batch until the user resumes, or sweep the user's local main commits or uncommitted files into this checkout.
+The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch extends remote `main` at `b61a2fbe6`; delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame` still contains the user's parallel local main history and untracked documentation; it remains untouched. Do not sweep those commits or files into the UI batch. The previous milestone pause is superseded by the explicit resume. Continue with fresh source and native evidence for the next complete task path.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -523,8 +523,8 @@ browser download behavior.
   containment and copied-asset checks. The preexisting UI Vite cache, dependencies,
   references, user data, unrelated processes and primary checkout remain intact.
   The private archive retains 67 UTF-8 evidence files and 21 capture hashes outside
-  the repository. No migration is needed. This checkpoint ends at the user's
-  requested pause after delivery; do not start the next candidate automatically.
+  the repository. No migration is needed. That earlier checkpoint ended at the user's
+  requested pause; the current explicit resume governs subsequent work.
 
 ### Retained component behavior
 
@@ -2562,6 +2562,118 @@ Verification for this surface (2026-10-21):
 - An erroneous formatter invocation used pnpm instead of the installed repository tool. All six moved original dependencies and eight npm bin links were restored; its lock, local installation metadata and newly created cache entries were removed. The retained dependency versions and source hashes are unchanged; the installed Prettier check passes after recovery.
 - One first pointer activation after resizing only revealed/scrolled the action and is excluded; the next observed invocation produced its notice. A later pointer-origin reverse-Tab sequence repeated Copy rather than closing details; no close or focus-return guarantee is claimed from that sequence. The existing bare-WebKit reverse-traversal qualification remains unchanged. Native OS-denial, VoiceOver speech, OS IME, other-platform GUIs, browser visual suites and performance benchmarks are not newly qualified.
 
+## Reasoning reader continuity and keyboard identity
+
+The inline reasoning disclosure is supporting material for the answer. It keeps
+its existing dim hierarchy and bounded scroll window rather than taking over the
+Dock or opening a separate modal. The existing disclosure owns expansion, the
+retained DOM scrollport owns its position, and the existing follow ref owns
+whether new reasoning follows the end. No second position cache or restoration
+effect is added.
+
+Actual Wails reproduced the original failure in `ReasoningBlock.tsx`: after the
+reader stopped at **96 px**, closing the disclosure removed its **240 px** viewport
+bound. Its height expanded to **440 px**, which clamped `scrollTop` to **0** and
+re-enabled following; reopening jumped to the **200 px** end. The scrollable Tab
+target also had no accessible name.
+
+`rb.scroller` now retains `maxHeight` and `overflowY: auto` while its already
+mounted disclosure is closed. The existing overflow measurement gives only a
+scrollable reader `role="group"` and localized `reasoning.text`; the outer
+AgentActivityDisclosure remains the single named region. All eight shipped
+locales carry the new name. A rationale that fits adds no extra Tab stop or group.
+Default closed state, explicit toggles, streaming follow policy, reduced motion,
+quote styling, shared disclosure behavior and Runtime facts are unchanged.
+
+The bounded Claude Code CLI supplied the component, tests and locale candidate.
+Primary review checked its actual diff and renamed the retained-node test to
+state its real scope. Against the original component, the final focused tests
+fail **1 case and pass 18**: the new name is absent. Happy DOM does not perform
+layout, so its retained-node/paused-follow test is not evidence of the geometric
+bug; the original and candidate Wails readings above and below provide that
+comparison. The candidate passes the complete Web check: **392 files / 3,112
+tests**, including all later gates (**174.93 s**, tests **143.26 s**). Type, lint,
+format, locale, design-system, dependency, stylesheet, bundle and installed-plugin
+checks pass without exceptions. The subsequent `make check-native` passes
+Desktop test/vet/build and the supported Wails macOS build (**23.76 s**); the
+non-failing duplicate `-lobjc` linker warning remains separate.
+
+Read-only references retain distinct purposes. ZCode's actual
+`packages/ui/src/ToolCallBlocks/ToolCallBody.tsx` keeps supporting tool material
+inline. ChatGPT's actual local-conversation subagent panel uses selected-object
+and back navigation rather than an exporter-inferred interaction. HeroUI's
+Disclosure and ScrollShadow implementations separate expansion and scroll
+presentation; Arc's ScrollArea and ExpandableText keep those visual concerns
+local. Radix's [Dialog](https://www.radix-ui.com/primitives/docs/components/dialog)
+and [Tabs](https://www.radix-ui.com/primitives/docs/components/tabs) guidance
+reinforces bounded focus scopes; an inline reading disclosure does not need a
+modal boundary. Better-accessibility informs a named keyboard scroll target,
+better-layout and better-typography preserve the answer's reading hierarchy, and
+better-ui, better-colors and better-writing preserve existing motion, semantic
+color roles and concise localized names. The expired Ace caches were replaced by
+read-only source views of the 5160×3000 [Alpaca](https://acedesign.io/work/alpaca)
+and [Marketer](https://acedesign.io/work/marketer) images: subdued surrounding
+workspace, grouped supporting details and a clear primary action inform visual
+hierarchy only. Static images do not qualify keyboard behavior.
+
+Native acceptance uses the production Wails v3 host and production React
+components with canonical in-memory fixture facts. A private build-only
+composition uses the production window-chrome projection; a passive, hidden
+observer reports scroll geometry and focus through native accessibility. It
+does not drive interaction. Mouse, keyboard, window sizing and menu zoom actions
+are performed through native UI controls. No live provider, user data directory
+or external business command participates.
+
+- **English / light / 14 px / Flame Orange / full motion:** the candidate retains
+  **96 → 96 → 96 px** through close/reopen, with **240 px** viewport and **440 px**
+  content. Tab reaches `Reasoning text`, Home reaches the start, and the visible
+  Orange ring identifies the focused reader. Closing/reopening the parent tool
+  group retains its expanded child and reading position. Tool-result inspection,
+  Diff next-file selection, return to the original eight-line file and continued
+  input retain the exact draft `Review the boundary after reading. Continue with
+the same context.`
+- **Native narrow window and zoom:** Window → Move & Resize → Left produces a
+  1120 px window. Pointer resizing reaches the existing **320 px** Dock minimum.
+  Twenty confirmed native Zoom In menu actions after Actual Size produce **200%**.
+  At that scale, **121 → 121 → 121 px** is retained through reasoning close/reopen
+  (**240 px** viewport, **473 px** content). Keyboard focus, wheel reading and the
+  full-width file entry remain reachable. Returning from the file restores the
+  conversation, **121 px** reader position and original draft. Actual Size is
+  restored before quitting.
+- **Chinese / dark / 18 px / custom blue / motion off:** the actual `思考内容`
+  group retains **180 → 180 → 180 px** through close/reopen, with a **240 px**
+  viewport and **696 px** content. Home reaches **0 px**; End reaches **456 px**,
+  and reopening at the end retains **456 px**. The custom blue focus ring remains
+  visible. File Go to line → `4` → Enter returns focus to its trigger, and returning
+  to Composer continues the exact draft as `阅读草稿 保留 继续编辑`. The earlier Mac
+  lock-screen interruption and one interrupted key attempt are excluded; fresh
+  native actions verify the final path after the system becomes available and
+  the user confirms unlocking it.
+- **Completed short reasoning:** the canonical `waves` scenario in the same
+  Chinese/dark/18 px theme shows its completed rationale at its natural **29 px**
+  height. It adds no named scrolling group; Tab from its expanded trigger reaches
+  the next Read action. The existing terse supporting hierarchy is retained.
+- Early key/menu attempts and a timed-out menu loop do not establish zoom; the
+  later reset and four counted five-action batches do. A coordinate attempt
+  reached the tool group rather than the splitter; only the later observed
+  splitter movements qualify resizing. A Chinese native typing attempt did not
+  enter the requested characters and is excluded; the selected, verified paste
+  is the input baseline. VoiceOver speech, OS IME composition, live streaming
+  providers, unrelated Runtime/CLI suites and other-platform GUIs are not newly
+  qualified. No browser visual suite or performance benchmark was started.
+
+All native acceptance windows have been quit and the exact acceptance bundle
+unregistered. The private application, fixture assets, isolated data, observer,
+prompts, logs and temporary build files have been removed, together with the eight
+newly created checkout output/cache directories and the unique WebKit/cache
+directories. Cleanup checks ownership, containment, initial absence and tracked
+files; the preexisting UI Vite cache, dependencies, read-only references, user data
+and unrelated processes remain intact. The supported gates and final native paths
+pass. Main delivery uses only the eleven reviewed files; the primary checkout's
+parallel main history remains outside this batch. The temporary delivery checkout
+is removed after remote confirmation. No protocol, persisted-data or
+external-consumer migration is needed.
+
 ## Tool group reading continuity
 
 Actual Wails reproduced a running sibling's completion collapsing an automatically
@@ -3859,9 +3971,10 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 ## Future review candidates
 
-This checkpoint is paused at the user's explicit request. The candidates below
-are inactive until the user resumes; then require current source and native
-evidence before selecting each next batch.
+The user has explicitly resumed continuous batches. Reasoning-reader continuity
+and keyboard identity are implemented and qualified above. Select the next
+candidate only from current source and native evidence. The candidates are not
+confirmed defects.
 
 Full-pane entry and explicit global Composer focus are implemented and natively
 qualified above. Keep presentation and focus under the host's existing owners.
@@ -3953,7 +4066,7 @@ Remembered-rule action descriptions are now implemented and qualified above. Pre
 
 Hooks scope and source provenance are now implemented and qualified above. Preserve the read-only list and Runtime-owned trust/active facts; source display does not authorize new Hook authoring or local-path actions. Continue with other existing task paths from fresh source and native evidence.
 
-These remaining items are review candidates, not defects or required rewrites. The narrow/full-pane host gap is now implemented and natively qualified above. The latest request pauses work after this checkpoint; resume only when explicitly requested. Separate reproduced defects from design judgments and unverified hypotheses before each batch. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
+These remaining items are review candidates, not defects or required rewrites. The narrow/full-pane host gap is now implemented and natively qualified above. The latest request resumes continuous batches with complete validation and delivery. Separate reproduced defects from design judgments and unverified hypotheses before each batch. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 
 A repo-wide quality pass (recorded in commits, not duplicated here) cleared the
 remaining non-visual bad smells across the web UI, `packages/ui` and the plugin

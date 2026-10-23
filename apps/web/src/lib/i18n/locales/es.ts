@@ -694,6 +694,7 @@ export const es: Record<string, string> = {
   "reasoning.thought": "Pensamiento",
   "reasoning.thoughtFor": "Pensamiento de {{duration}}",
   "reasoning.interrupted": "interrumpido",
+  "reasoning.text": "Texto del razonamiento",
 
   "composer.placeholder.steer": "Envía un mensaje para guiar el turno en curso…",
   "composer.action.steer": "Guiar el turno en curso",

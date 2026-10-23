@@ -651,6 +651,7 @@ export const zhTW: Record<string, string> = {
   "reasoning.thought": "思考",
   "reasoning.thoughtFor": "思考了 {{duration}}",
   "reasoning.interrupted": "已中斷",
+  "reasoning.text": "思考內容",
 
   "composer.placeholder.steer": "傳送訊息以引導進行中的回合…",
   "composer.action.steer": "引導進行中的回合",

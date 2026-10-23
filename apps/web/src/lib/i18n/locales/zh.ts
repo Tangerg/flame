@@ -801,6 +801,7 @@ export const zh: Record<string, string> = {
   "reasoning.thought": "思考",
   "reasoning.thoughtFor": "思考了 {{duration}}",
   "reasoning.interrupted": "已中断",
+  "reasoning.text": "思考内容",
 
   "composer.drop.images": "拖入图片以附加",
   "rpcError.session_has_active_run": "该会话已有一个运行中的任务 —— 请先介入、回应或取消它。",
