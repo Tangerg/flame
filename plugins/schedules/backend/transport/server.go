@@ -94,7 +94,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 	); err != nil {
 		return nil, err
 	}
-	if err := backend.BindCapability("schedules", contracts.Capability); err != nil {
+	if err := backend.BindCapability(rpc.CapabilityReference, contracts.Capability); err != nil {
 		return nil, err
 	}
 	if err := backend.OnSetup(func(ctx context.Context, setup pluginsdk.Setup) (io.Closer, error) {
@@ -103,7 +103,7 @@ func RegisterServer(server *sdk.Server, db *sql.DB, store Store, paths app.CWDRe
 			return nil, err
 		}
 		for _, value := range values {
-			if value.Export != "schedules" || value.Background == nil {
+			if value.Export != rpc.CapabilityReference || value.Background == nil {
 				continue
 			}
 			ref, err := pluginsdk.CallbackFromContext(ctx)

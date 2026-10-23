@@ -9,6 +9,10 @@ import (
 	"github.com/Tangerg/flame/runtime/capability"
 )
 
+// CapabilityReference is the exact reference the Runtime binds this feature under;
+// the background-command gate matches on it, so it has one owner.
+const CapabilityReference = "schedules"
+
 type Contracts struct {
 	Capability *capability.Contract
 	List       *pluginsdk.Method[ListInput, Page]
@@ -41,7 +45,7 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Capability, err = capability.New(capability.Config{Reference: "schedules", Composition: capability.Selection, Scope: "installation"}, contracts.List.Descriptor(), contracts.Create.Descriptor(), contracts.Update.Descriptor(), contracts.Delete.Descriptor(), contracts.RunNow.Descriptor())
+	contracts.Capability, err = capability.New(capability.Config{Reference: CapabilityReference, Composition: capability.Selection, Scope: capability.ScopeInstallation}, contracts.List.Descriptor(), contracts.Create.Descriptor(), contracts.Update.Descriptor(), contracts.Delete.Descriptor(), contracts.RunNow.Descriptor())
 	if err != nil {
 		return Contracts{}, err
 	}

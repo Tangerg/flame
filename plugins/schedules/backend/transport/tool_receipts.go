@@ -17,7 +17,7 @@ import (
 
 func toolReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	remote := input.Method
-	if remote != "create_schedule" {
+	if remote != tools.CreateScheduleTool {
 		return pluginsdk.ToolReceipt{}, nil
 	}
 	input.Method = rpc.Create

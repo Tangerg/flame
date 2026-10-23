@@ -89,7 +89,7 @@ func BuildSchedules(coordinator ScheduleManagement) ([]toolcontract.Tool, error)
 	}
 	create, err := toolcontract.NewFunc[createScheduleArgs, scheduleResponse](
 		toolcontract.FuncConfig{
-			Name: "create_schedule",
+			Name: CreateScheduleTool,
 			Description: "Create an enabled recurring schedule that starts a new Agent Run from self-contained instructions at each five-field cron occurrence. " +
 				"Use only when the user explicitly asks for recurring automated work; do not use for the current request, a one-off future action, or an autonomous Goal.",
 		},
@@ -130,7 +130,7 @@ func (s *scheduleManagementTools) create(ctx context.Context, in createScheduleA
 	}
 	created, err := s.coordinator.Create(ctx, draft)
 	if err != nil {
-		return scheduleResponse{}, CommandFailure("create_schedule", err)
+		return scheduleResponse{}, CommandFailure(CreateScheduleTool, err)
 	}
 	return scheduleResponse{Schedule: viewSchedule(created)}, nil
 }
@@ -167,6 +167,9 @@ func (s *scheduleManagementTools) delete(ctx context.Context, in deleteScheduleA
 }
 
 // CommandFailure preserves receipted refusals while storage failures stay unknown.
+// CreateScheduleTool names the create tool; the receipt-replay gate matches on it.
+const CreateScheduleTool = "create_schedule"
+
 func CommandFailure(name string, cause error) error {
 	err := fmt.Errorf("%s: %w", name, cause)
 	_, receipted := errors.AsType[*capability.Refusal](err)
