@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI batches. The reasoning reader now preserves its viewport and gives its overflowing keyboard target a localized name. The original native collapse loses its reading position; the candidate retains it in the qualified English/light/14 px, narrow-window and 200% paths. The complete Web check passes 392 files / 3,112 tests and every gate; the supported native module check also passes. Chinese/dark/18 px acceptance, exact continued drafts and completed short reasoning pass after the temporary lock-screen interruption. Owned acceptance resources have been removed. Prior native image-save, gallery identity and original-source return qualifications remain integrated.
+Updated: 2026-10-23. Continuous UI batches remain active. Long-file navigation now waits for its accepted content before placing a target line, and a superseded prepend cannot change the next request's scroll position. Original-source regressions and actual Wails reproduce both failures; the candidate passes English/light/14 px, Chinese/dark/18 px, custom blue, a 320 px Dock and 200% full-width reading/return paths. The complete Web check passes 392 files / 3,117 tests and every gate; the supported native module check also passes. Owned acceptance resources are removed. Earlier reasoning-reader, image-save, gallery and original-source return qualifications remain integrated.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch extends remote `main` at `b61a2fbe6`; delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame` still contains the user's parallel local main history and untracked documentation; it remains untouched. Do not sweep those commits or files into the UI batch. The previous milestone pause is superseded by the explicit resume. Continue with fresh source and native evidence for the next complete task path.
+The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch extends remote `main` at `b34eae3c3`; delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame` still contains the user's parallel local main history and untracked documentation; it remains untouched. Do not sweep those commits or files into the UI batch. The previous milestone pause is superseded by the explicit resume. Continue with fresh source and native evidence for the next complete task path.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -1492,6 +1492,91 @@ inform persistent identity, task grouping and quiet supporting detail. Static
 artwork supplies no keyboard evidence. The six better-series domains apply to
 this file-browse/read/return flow; unchanged colors, typography and control
 surfaces retain their existing owners.
+
+### Long-file targets and prepend ownership
+
+The persistent file reader keeps the file's identity, line range and navigation
+beside the conversation. Loading another range of the same file preserves the
+previous content, but that placeholder cannot settle the new navigation request.
+`FileWorkspace.tsx` passes a null placement intent to `FileView.tsx` until the
+current query has accepted content. `FileView` then places that intent once.
+Prepending captures the exact requested `LineWindow` with its height anchor; a
+later window or navigation retires the anchor. The existing viewer, query and DOM
+scrollport remain the owners. No per-file position cache, retry, delayed focus,
+new state machine or shared-component override is added.
+
+Actual Wails reproduced both original failures with a private 1,000-line source:
+after line 450, requesting line 300 placed it against the old 250–650 range;
+the accepted 100–500 range then showed **131–169**, leaving line 300 offscreen.
+Separately, a pending prepend followed by a new line-100 request let the old
+height adjustment force the accepted reader to **0 px**, showing **1–39**.
+Requesting line 100 again placed it normally, confirming the stale adjustment.
+
+The bounded Claude Code CLI supplied the four-file candidate. Primary review
+checked the actual diff, original-source failures and native behavior, and fixed
+one test setter that failed the first complete check's lint stage. Against the
+original two production files, the focused suite fails **4 cases and passes 27**;
+the candidate passes all **31**. Tests cover placeholder acceptance, ordinary
+prepend continuity and retirement by a later jump or append. Controlled test
+geometry proves adjustment ownership; actual WebKit supplies the layout evidence.
+The final complete Web check passes **392 files / 3,117 tests** and every gate
+(**380.98 s**, tests **253.14 s**). The subsequent serial `make check-native`
+passes Desktop test/vet/build and the supported Wails macOS build (**55.05 s**).
+The non-failing duplicate `-lobjc` warning is unchanged.
+
+Read-only research inspected ZCode's actual Read renderer and code viewer's
+file/request/first-line handling, and ChatGPT's actual file-preview interface
+with named content and close behavior. HeroUI ScrollShadow and Arc ScrollArea
+keep scroll presentation separate from content identity. The linked Radix
+focus guidance and better-accessibility/layout review support the existing
+named reader and source return; the remaining better-series domains preserve
+the established reading scale, semantic colors, control states and concise copy.
+The already-reviewed full-size Ace workspace images inform hierarchy only.
+None of those references supplies Flame's request or scroll ownership.
+
+Native acceptance uses the production Wails host and production React views with
+canonical fixture transport. A private build transform supplies delayed line
+ranges and a deliberately held prepend; it does not alter production behavior.
+A passive observer reports geometry/focus through native accessibility. All
+navigation, typing, scrolling, resizing and zoom actions use native UI controls.
+
+- **English / light / 14 px / Flame Orange / full motion:** line 450 → 300 keeps
+  the old reading position during loading, then shows **281–319** around the new
+  target. Loading 200 earlier lines retains the previously visible 250–286 rows
+  while the scroll offset becomes **3,800 px**. Appending 200 lines keeps
+  **10,763 px** and the original first visible line **614**.
+- **Native narrow window and zoom:** the system window menu produces a 1120 px
+  window; pointer resizing reaches the existing **320 px** Dock minimum. The
+  wrapped long path, actions and line-700 target remain readable. Twenty confirmed
+  Zoom In actions after Actual Size reach **200%**. Full-width file entry,
+  line-600 placement (**592–608** visible), Escape from Go to line, Tab into the
+  named reader and Page Down work. Close returns to the conversation and the
+  exact continued draft `Keep this file review draft. Continue after checking line 600.`
+- **Chinese / dark / 18 px / custom blue / motion off:** enter `apps/web/package.json`
+  from the reply, go to 450, request earlier lines, then supersede the held read
+  with line 100. The accepted 1–300 range shows **85–115** at **2,035 px**. Focus
+  moved to Composer before acceptance stays there. Return to conversation focuses
+  the original package reference; switching to `README.md:15:2`, returning to the
+  file list and then the source restores the README reference. The exact draft
+  continues as `阅读长文件后继续讨论，第 100 行已核对。`
+
+One combined open/type attempt entered 50 instead of 450 and is excluded; the
+later observed input value 450 establishes the actual target before submission.
+Earlier interrupted or combined key attempts do not qualify the baseline; fresh
+separated actions do. Supersession by append is covered by the deterministic
+regression, not a separate native race. VoiceOver speech, OS IME composition,
+live filesystem/provider traffic, unrelated Runtime/CLI suites and other-platform
+GUIs are not newly qualified. No browser visual suite or performance benchmark
+was started. No protocol, persisted-data or external-consumer migration is needed.
+
+The acceptance app is quit and its exact bundle is unregistered. The private
+bundle, source overlays, fixture assets, observer, prompts, logs and temporary
+root are removed, together with seven newly created checkout output/cache
+directories and the unique WebKit/cache directories. Cleanup checks initial
+absence, ownership, containment and tracked files. Existing dependencies, the
+preexisting UI Vite cache, references, user data and unrelated processes remain
+intact. Main delivery contains only the four reviewed source/test files and this
+record; the independent delivery checkout is removed after remote confirmation.
 
 ## Dock tab task continuity
 
@@ -3971,8 +4056,9 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 ## Future review candidates
 
-The user has explicitly resumed continuous batches. Reasoning-reader continuity
-and keyboard identity are implemented and qualified above. Select the next
+The user has explicitly resumed continuous batches. Reasoning-reader continuity,
+keyboard identity and long-file request/scroll ownership are implemented and
+qualified above. Select the next
 candidate only from current source and native evidence. The candidates are not
 confirmed defects.
 
@@ -4825,11 +4911,11 @@ text cursor, which is the current behavior; list navigation stays on the arrows.
 
 ## Workspace file browser audit
 
-A deep audit of the file browser (tree, viewer, workspace layout) found its core
-clean — tree/list keys are path-based, file reads abort on path change and never
-land stale, window/mode state is render-computed with an intent guard, the
-active-path/viewer/tree-highlight have one owner, and focus management on
-open/close is robust and test-pinned. Three defects were fixed:
+The earlier file-browser audit established path-based tree/list keys, read
+cancellation on path changes, intent-scoped window/mode projections and one
+active-path/viewer/tree-highlight owner. It fixed the three defects below.
+The later long-file review above separately repairs placement against placeholder
+content and scroll anchors surviving their own request; retain both qualifications.
 
 - **"Load earlier/later" lost the reader's place (`dataQuery.ts` +
   `workspaceQueries.ts`).** Widening the line window changed the react-query key;

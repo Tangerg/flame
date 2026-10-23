@@ -118,6 +118,27 @@ describe("FileView syntax ownership", () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
   });
 
+  it("leaves placeholder content unplaced and places the line once its own content arrives", () => {
+    const placed: (string | null)[] = [];
+    HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
+      placed.push(this.getAttribute("data-quote-line"));
+    };
+    const view = render(
+      <FileView path="a.go" content={"a\nb\nc"} startLine={1} targetLine={3} intent={{}} />,
+    );
+    expect(placed).toEqual(["3"]);
+
+    view.rerender(
+      <FileView path="a.go" content={"a\nb\nc"} startLine={1} targetLine={2} intent={null} />,
+    );
+    expect(placed).toEqual(["3"]);
+
+    view.rerender(
+      <FileView path="a.go" content={"x\ny\nz"} startLine={2} targetLine={2} intent={{}} />,
+    );
+    expect(placed).toEqual(["3", "2"]);
+  });
+
   it("places the line again when the same line is asked for again", () => {
     const scrollIntoView = vi.fn();
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
