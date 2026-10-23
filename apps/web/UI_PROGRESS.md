@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI batches remain active. Main and delegated Agent content now use one `MessageTranscript`, including turn ordering, date separators, reading gutters and individual render recovery. A failed child turn preserves its task and healthy messages; Retry retains the surviving reader's focus. Original-source regressions and actual Wails reproduce the previous failures. English/light/14 px and Chinese/dark/18 px flows pass, including custom blue, 320 px Dock and 200% source return. Focused tests, isolated reruns, 20 of 22 later Web gates and the supported native check pass. The first full test run and two independently reproduced upstream guard failures remain qualified below. Owned native and build resources are removed; continue from fresh evidence for the next complete task path.
+Updated: 2026-10-23. Continuous UI batches remain active. A focused long-message fold control now returns focus to its existing message when reflow makes the control unnecessary. Main and delegated messages share this owner. Both original failure paths reproduce in actual Wails; English/light/14 px and Chinese/dark/18 px flows pass, including a 320 px Dock, custom blue, native 200% reflow, file/source return and continued drafts. All 394 test files / 3,135 tests, 20 of 22 post-test Web gates and the supported native check pass. The two remaining guards also fail on the clean pre-change baseline; the aggregate Web command is not green. Native app/data and newly created build/cache outputs are removed. Continue from fresh evidence for another complete task path.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch includes the user's latest merged main changes through `5ffec35b2`; its updated Session context, Run status helpers and shared error-reporting policy are preserved. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, including its untracked documentation, remains untouched. Read current remote state again before delivery. The previous milestone pause is superseded by the explicit resume. Continue with fresh source and native evidence for the next complete task path.
+The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `86a9cb45d` and changes only the shared fold owner, its regression tests and this record. The shared transcript and the user's upstream Session, Run and error-reporting contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, including its untracked documentation, remains untouched. Read current remote state again before delivery. The previous milestone pause is superseded by the explicit resume. Continue with fresh source and native evidence for the next complete task path.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -661,8 +661,8 @@ The acceptance app exited and was unregistered. Its named WebKit/cache data,
 private fixture builds, newly created repository build outputs and the full-run
 timeout's late plugin-build residue were removed. Pre-existing UI test cache,
 dependencies, user data, reference resources and unrelated processes are kept.
-The disposable delivery checkout and verification logs are retained only until
-the non-forced main push and exact remote-hash verification, then removed.
+The disposable delivery checkout and verification logs were removed after
+the non-forced main push and exact remote-hash verification.
 
 Tool groups and narrative waves now use the same `ToolActivitySummary` in the
 shared message renderer. Their compact secondary line retains ongoing calls,
@@ -1933,6 +1933,93 @@ user content within its local boundary. The inspected Markdown exporter is
 excluded from interface evidence. Verification and remaining limits are shared
 with the reading-band repair below; this composition no longer has pending
 widened-Dock/full-pane native acceptance.
+
+### Long user-message focus during reflow
+
+Actual Wails reproduced two local focus losses: widening a folded message until
+it fits removes a focused Show full message button; expanding while narrow,
+widening and then activating Show less does the same. Both left active focus on
+`BODY`. WebKit still placed the next Tab on that message's Copy action, so no
+page-level navigation reset or blocked keyboard task is claimed.
+
+`UserMessageFold.tsx` now hands focus to the nearest existing focusable message
+container immediately before its own measurement retires the toggle. It acts
+only while that toggle owns focus and uses `preventScroll`. The parent message's
+render effect cannot guarantee this handoff because a child's local measurement
+does not require a parent render. The existing `MessageBlock` column supplies the
+destination outside the fold frame, so the handoff does not trigger automatic
+expansion. There is no added wrapper, focus stop, state, listener or second
+overflow owner. Normal expand/collapse keeps the same button; later outside
+focus, content identity and the existing fold-to-start behavior are preserved.
+Main and delegated messages use this same component through `MessageTranscript`.
+
+Better-accessibility's focus continuity and better-layout's reflow guidance
+informed this boundary. Read-only Arc's actual `expandable-text` component shows
+measured overflow and a conditional toggle; it does not establish a focus-retirement
+guarantee. HeroUI's actual Disclosure and ChatGPT's actual response-artifact list
+separate content from its expansion control. The latter is interface code, not
+the Markdown exporter, and is not evidence of ChatGPT user-message reflow.
+
+The native comparison used production React in an isolated Wails v3 host. A
+private data-only fixture transform retained the first two original paragraphs
+of the canonical third fanout input: at a 320 px Dock its body measured
+256 px wide and 198 px high against the 182 px folded budget; at 660 px it fit
+at 480 × 120 px. The unchanged three-paragraph input remains taller than the
+budget even at the wide cap; that is expected behavior, not a second defect.
+No canonical repository fixture or Runtime state was changed.
+
+English/light/14 px/Flame Orange qualified both retirement paths, the surviving
+message's visible focus outline, unchanged reader position and the next Copy
+action. Keyboard Home/End on the resize handle qualified 320→1000 px as well.
+Focusing Composer before widening kept its focus and draft. Message → file →
+message → original task source → Composer restored each source and continued the
+exact draft `Keep this reading draft. Continue after resizing. Returned.`.
+
+Chinese/dark/18 px/custom blue with motion disabled qualified the same collapse
+handoff in a system-resized approximately 1121 px window. Twenty separately
+observed native Zoom In actions from Actual Size reached 200%; the geometry
+retreated into the full pane and retired the no-longer-needed focused toggle
+into the same message, with a visible outline and reading position retained.
+The file/source return and continued draft
+`保留阅读草稿。 已返回，继续阅读。` passed. Actual Size was restored before exit.
+Two later English pointer drags did not change width and are excluded from
+behavior claims; the separately observed keyboard resize path passed.
+
+The original source fails exactly two of the 24 focused tests; the accepted
+source passes all 24 across UserMessageFold, MessageBlock and MessageTranscript.
+Four added cases cover both retirement paths and both later-outside-focus paths
+without an incidental parent rerender. The first full Web command passed types
+then stopped on a conditional assertion in the new test. Moving that unchanged
+identity assertion outside its setup branch repaired lint; all seven fold tests,
+targeted lint and formatting then passed. No assertion, timeout or guard was
+disabled.
+
+The final full Web invocation used CI Node 22.22.1 and two Vitest workers. All
+394 files and 3,135 tests passed, followed by the first six post-test gates. It
+then stopped at `check:api-consumers`, which still requires the removed
+`SIDECAR_METHODS` object. The remaining fifteen gates were run serially; fourteen
+passed and `check:plugin-resources` rejected stale installed component output.
+Both failures reproduced on the completely clean `86a9cb45d` baseline after
+temporarily restoring this batch's three paths, then restoring their exact
+accepted bytes. The aggregate is not green; neither failure is hidden by the
+20 passing gates. Non-failing loopback connection diagnostics remain unclassified.
+
+`make check-native` passed Desktop test/vet/build and the supported Wails arm64
+production build in 44.58 seconds. `vtool` confirms macOS 13.0 / SDK 26.5.
+Staging regenerated the same six upstream plugin resources; their original
+bytes were restored and excluded from this UI change. Accepted product-source
+hashes remained unchanged after native acceptance and all checks. VoiceOver
+speech, native IME composition, live provider execution, durable Runtime
+mutation and unrelated pages remain outside this qualification. No browser
+visual suite or performance benchmark was run.
+
+The native app exited and was unregistered. Its bundle, data and fixture build,
+new bundle-specific Cache/WebKit data and newly created worktree build/cache
+outputs are removed. No current Runtime-fixture residue remains. The pre-existing
+UI test cache, installed dependencies, shared compiler caches, user data,
+read-only references and unrelated work are preserved. The temporary publication
+checkout and remaining verification files are removed after the non-forced main
+push and exact remote-hash verification.
 
 ## Shared Markdown note reading
 
@@ -4244,6 +4331,12 @@ implemented and qualified above. Main and delegated Agent content now also share
 the complete transcript assembly and per-turn recovery, as explicitly requested.
 Preserve that shared entry and the independent host reading/follow contexts.
 Further candidates still require current source and native evidence.
+
+Long user-message fold retirement is implemented and natively qualified above.
+Preserve the shared local measurement owner, same-message focus destination and
+later-outside-focus guard. Continue with other reading/material tasks instead of
+repeating the completed resize/collapse investigation or adding a second focus
+recovery mechanism.
 
 Full-pane entry and explicit global Composer focus are implemented and natively
 qualified above. Keep presentation and focus under the host's existing owners.

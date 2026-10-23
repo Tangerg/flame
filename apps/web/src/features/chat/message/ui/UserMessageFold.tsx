@@ -22,13 +22,22 @@ const styles = stylex.create({
 export function UserMessageFold({ children }: { children: ReactNode }) {
   const t = useT();
   const frame = useRef<HTMLDivElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
   const [overflows, setOverflows] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   useLayoutEffect(() => {
     const element = frame.current;
     if (!element || expanded) return;
-    const measure = () => setOverflows(element.scrollHeight > element.clientHeight + 1);
+    const measure = () => {
+      const nextOverflows = element.scrollHeight > element.clientHeight + 1;
+      const retiring = toggle.current;
+      if (!nextOverflows && retiring && retiring === retiring.ownerDocument.activeElement) {
+        // This local measurement can retire the focused toggle without a parent message render.
+        retiring.parentElement?.closest<HTMLElement>("[tabindex]")?.focus({ preventScroll: true });
+      }
+      setOverflows(nextOverflows);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
@@ -63,6 +72,7 @@ export function UserMessageFold({ children }: { children: ReactNode }) {
       </div>
       {(overflows || expanded) && (
         <TextButton
+          ref={toggle}
           tone="muted"
           size="sm"
           aria-expanded={expanded}

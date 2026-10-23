@@ -2,11 +2,57 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UserMessageFold } from "@/features/chat/message/ui/UserMessageFold";
 function stubHeights(scrollHeight: number, clientHeight: number) {
-  vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(scrollHeight);
-  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(clientHeight);
+  return {
+    scrollHeight: vi
+      .spyOn(HTMLElement.prototype, "scrollHeight", "get")
+      .mockReturnValue(scrollHeight),
+    clientHeight: vi
+      .spyOn(HTMLElement.prototype, "clientHeight", "get")
+      .mockReturnValue(clientHeight),
+  };
 }
 
-afterEach(() => vi.restoreAllMocks());
+function stubResizeObserver() {
+  const callbacks = new Set<ResizeObserverCallback>();
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      readonly callback: ResizeObserverCallback;
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+      observe() {
+        callbacks.add(this.callback);
+      }
+      unobserve() {}
+      disconnect() {
+        callbacks.delete(this.callback);
+      }
+    },
+  );
+  return () => {
+    for (const callback of [...callbacks]) callback([], {} as ResizeObserver);
+  };
+}
+
+function renderRetainedMessage() {
+  return render(
+    <div role="region" aria-label="Conversation" tabIndex={-1}>
+      <div role="group" aria-label="User message" tabIndex={-1}>
+        <UserMessageFold>
+          <p>A retained paragraph</p>
+          <a href="https://example.com/guide">Read the guide</a>
+        </UserMessageFold>
+      </div>
+      <button type="button">Elsewhere</button>
+    </div>,
+  );
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("UserMessageFold", () => {
   it("leaves a message that fits exactly as it was", () => {
@@ -61,4 +107,60 @@ describe("UserMessageFold", () => {
     expect(document.activeElement).toBe(toggle);
     expect(frame.scrollTop).toBe(0);
   });
+
+  it.each(["folded resize", "expanded collapse"] as const)(
+    "returns disappearing toggle focus to the nearest message container after %s",
+    (transition) => {
+      const heights = stubHeights(198, 182);
+      const resize = stubResizeObserver();
+      const { container } = renderRetainedMessage();
+      const message = screen.getByRole("group", { name: "User message" });
+      const focus = vi.spyOn(message, "focus");
+      const frame = container.querySelector<HTMLDivElement>('[data-slot="user-message-fold"]')!;
+      const link = screen.getByRole("link", { name: "Read the guide" });
+      const toggle = screen.getByRole("button", { name: "Show full message" });
+      if (transition === "expanded collapse") {
+        fireEvent.click(toggle);
+        frame.scrollTop = 75;
+      }
+      const toggleName = transition === "expanded collapse" ? "Show less" : "Show full message";
+      expect(screen.getByRole("button", { name: toggleName })).toBe(toggle);
+      act(() => toggle.focus());
+      heights.scrollHeight.mockReturnValue(120);
+      heights.clientHeight.mockReturnValue(120);
+
+      if (transition === "expanded collapse") fireEvent.click(toggle);
+      else act(resize);
+
+      expect(screen.queryByRole("button", { name: /show full message|show less/i })).toBeNull();
+      expect(document.activeElement).toBe(message);
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+      expect(container.querySelector('[data-slot="user-message-fold"]')).toBe(frame);
+      expect(screen.getByRole("link", { name: "Read the guide" })).toBe(link);
+      expect(frame.hasAttribute("data-folded")).toBe(false);
+      expect(frame.scrollTop).toBe(0);
+    },
+  );
+
+  it.each(["folded resize", "expanded collapse"] as const)(
+    "preserves later outside focus when the toggle disappears after %s",
+    (transition) => {
+      const heights = stubHeights(198, 182);
+      const resize = stubResizeObserver();
+      renderRetainedMessage();
+      const toggle = screen.getByRole("button", { name: "Show full message" });
+      if (transition === "expanded collapse") fireEvent.click(toggle);
+      act(() => toggle.focus());
+      const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+      act(() => elsewhere.focus());
+      heights.scrollHeight.mockReturnValue(120);
+      heights.clientHeight.mockReturnValue(120);
+
+      if (transition === "expanded collapse") fireEvent.click(toggle);
+      else act(resize);
+
+      expect(screen.queryByRole("button", { name: /show full message|show less/i })).toBeNull();
+      expect(document.activeElement).toBe(elsewhere);
+    },
+  );
 });
