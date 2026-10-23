@@ -1,83 +1,113 @@
 package bootstrap
 
 import (
+	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
+	"testing/synctest"
 
-	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
+	"github.com/Tangerg/flame/runtime/storage/directories"
 )
 
-func TestAssemblySharesDataDirectoryOwnershipForRunsGoalsAndRecovery(t *testing.T) {
-	cfg := runtimeConfigWithRequiredDeps(t)
-	host, api := buildProtocolRuntime(t, cfg, cfg.DefaultWorkspacePath)
-	t.Cleanup(func() {
-		if err := host.Close(); err != nil {
-			t.Errorf("close Runtime: %v", err)
+func TestWorkingTreeAdmissionUsesTheWorkspacePhysicalIdentity(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		root := t.TempDir()
+		alias := filepath.Join(t.TempDir(), "workspace")
+		if err := os.Symlink(root, alias); err != nil {
+			t.Fatal(err)
+		}
+		gate, err := ownership.NewGate(directories.Canonical)
+		if err != nil {
+			t.Fatal(err)
+		}
+		first, acquired, err := gate.AcquireRun(t.Context(), "ses_1", root)
+		if !acquired || err != nil || !first.Admit("run_1") {
+			t.Fatalf("first Run admission = %t, %v", acquired, err)
+		}
+		second, acquired, err := gate.AcquireRun(t.Context(), "ses_2", alias)
+		if !acquired || err != nil {
+			t.Fatalf("shared working-tree admission = %t, %v", acquired, err)
+		}
+		maintenance, ok := gate.BeginMaintenance("run_1")
+		if !ok {
+			t.Fatal("Run did not enter maintenance")
+		}
+		second.Release()
+		if release, acquired, err := gate.AcquireWorkingTreeMutation(alias); release != nil || acquired || err != nil {
+			t.Fatalf("alias crossed terminal maintenance: acquired=%t err=%v", acquired, err)
+		}
+		maintenance()
+		release, acquired, err := gate.AcquireWorkingTreeMutation(alias)
+		if !acquired || err != nil {
+			t.Fatalf("mutation after maintenance = %t, %v", acquired, err)
+		}
+		defer release()
+		if admission, acquired, err := gate.AcquireRun(t.Context(), "ses_3", root); acquired || err != nil {
+			admission.Release()
+			t.Fatalf("Run crossed aliased mutation = %t, %v", acquired, err)
+		}
+		ctx, cancel := context.WithCancelCause(t.Context())
+		defer cancel(nil)
+		waiting := make(chan error, 1)
+		go func() { waiting <- gate.WaitRunStartable(ctx, "ses_3", root) }()
+		synctest.Wait()
+		select {
+		case err := <-waiting:
+			t.Fatalf("startability ignored aliased mutation: %v", err)
+		default:
+		}
+		cause := errors.New("waiting Run withdrawn")
+		cancel(cause)
+		if err := <-waiting; !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+			t.Fatalf("startability cancellation = %v", err)
+		}
+		release()
+		if err := gate.WaitRunStartable(t.Context(), "ses_3", root); err != nil {
+			t.Fatal(err)
+		}
+		admission, acquired, err := gate.AcquireRun(t.Context(), "ses_3", root)
+		admission.Release()
+		if !acquired || err != nil {
+			t.Fatalf("Run after aliased mutation = %t, %v", acquired, err)
 		}
 	})
-	leases, err := ownershipadapter.New(cfg.Stores.DataDirectory)
+}
+
+func TestWorkingTreeIdentityFailureRemainsAnError(t *testing.T) {
+	gate, err := ownership.NewGate(directories.Canonical)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := protocolLifecycleContext(t.Context())
-	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
-		Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}, Title: "shared ownership",
-	})
+	loop := filepath.Join(t.TempDir(), "loop")
+	if err := os.Symlink("loop", loop); err != nil {
+		t.Fatal(err)
+	}
+	admission, acquired, err := gate.AcquireRun(t.Context(), "ses_1", loop)
+	admission.Release()
+	if acquired || err == nil {
+		t.Fatalf("cyclic path acquisition = (%t, %v), want identity failure", acquired, err)
+	}
+}
+
+func TestMissingWorkingTreeRetainsOnePhysicalAdmissionIdentity(t *testing.T) {
+	root := t.TempDir()
+	alias := filepath.Join(t.TempDir(), "workspace")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Fatal(err)
+	}
+	gate, err := ownership.NewGate(directories.Canonical)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	sessionLease, acquired, err := leases.TrySession(session.ID)
-	if err != nil || !acquired {
-		t.Fatalf("acquire Session lease: acquired=%t err=%v", acquired, err)
+	admission, acquired, err := gate.AcquireRun(t.Context(), "ses_1", filepath.Join(root, "removed"))
+	if !acquired || err != nil {
+		t.Fatalf("missing working-tree admission = %t, %v", acquired, err)
 	}
-	t.Cleanup(sessionLease.Release)
-	request := protocol.StartRunRequest{
-		SessionID: session.ID,
-		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "check admission"}},
-	}
-	if started, _, err := api.StartRun(ctx, request); started != nil || !errors.Is(err, protocol.ErrSessionBusy) {
-		t.Fatalf("start under Session lease = (%+v, %v), want busy", started, err)
-	}
-	sessionLease.Release()
-
-	goalLease, acquired, err := leases.TryGoalDrive(session.ID)
-	if err != nil || !acquired {
-		t.Fatalf("acquire Goal lease: acquired=%t err=%v", acquired, err)
-	}
-	t.Cleanup(goalLease.Release)
-	if started, err := api.StartGoal(ctx, protocol.StartGoalRequest{
-		SessionID: session.ID, Objective: "check Goal ownership", Provider: "anthropic", Model: "claude-test",
-	}); started != nil || !errors.Is(err, protocol.ErrSessionBusy) {
-		t.Fatalf("start under Goal lease = (%+v, %v), want busy", started, err)
-	}
-	if current, err := api.GetGoal(ctx, protocol.GoalRequest{SessionID: session.ID}); err != nil || current != nil {
-		t.Fatalf("Goal after denied drive = (%+v, %v), want absent", current, err)
-	}
-	goalLease.Release()
-
-	recoveryLease, acquired, err := leases.TryRecoverySweep()
-	if err != nil || !acquired {
-		t.Fatalf("acquire recovery lease: acquired=%t err=%v", acquired, err)
-	}
-	t.Cleanup(recoveryLease.Release)
-	if acquired, err := host.application.workers.recovery.Reconcile(t.Context()); err != nil || acquired {
-		t.Fatalf("recovery under held lease = (%t, %v), want contention", acquired, err)
-	}
-	recoveryLease.Release()
-	if acquired, err := host.application.workers.recovery.Reconcile(t.Context()); err != nil || !acquired {
-		t.Fatalf("recovery after release = (%t, %v), want acquired", acquired, err)
-	}
-
-	started, events, err := api.StartRun(ctx, request)
-	if err != nil {
-		t.Fatalf("start after release: %v", err)
-	}
-	waitForRunEvents(t, collectRunEvents(events), "Run after ownership release")
-	completed, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: started.RunID})
-	if err != nil || completed == nil || completed.Status != protocol.RunStatusFinished ||
-		completed.Outcome == nil || completed.Outcome.Type != protocol.OutcomeCompleted {
-		t.Fatalf("Run after ownership release = (%+v, %v)", completed, err)
+	defer admission.Release()
+	if release, acquired, err := gate.AcquireWorkingTreeMutation(filepath.Join(alias, "removed")); release != nil || acquired || err != nil {
+		t.Fatalf("missing alias crossed Run admission = %t, %v", acquired, err)
 	}
 }

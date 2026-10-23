@@ -143,6 +143,15 @@ select their directory. Moving or replacing a live data root is unsupported and
 fails directory validation. Startup removes abandoned unpublished release staging;
 ordinary reclamation preserves live candidates.
 
+Inside that lifetime, the admission Gate owns Session writers and physical
+working-tree reservations. The shared Session mutation coordinator owns Goal
+drive lifetimes; recovery reads that registry under the same command lock.
+Ordered recovery has one process-local sweep slot. Internal Session, working-tree,
+Goal and recovery lock files are no longer created or consulted; old empty lock
+files carry no product state and may remain on disk. No stored product data changes.
+The unused `advisorylock.TryFile` and `TrySharedFile` APIs are removed. Plugin
+backend processes continue to own their directories through `AcquireDirectory`.
+
 Stop the original binary before this breaking cut. Retain its directory separately
 and complete unresolved work using that binary; an older process does not honor
 the new lifetime lease. Opening does not migrate or discard unknown commands.
@@ -811,8 +820,8 @@ canceled caller even when a reservation just released. Durable Run reads
 retain both their own failure and concurrent cancellation before permitting
 a continuation. Observation cleanup retires only that waiter's subscription;
 the next Start still acquires its own admission.
-Startup and survivor recovery share one coordinator that acquires the sweep
-lease, then reconciles Runs before Goals. It checks its lifetime before taking
+Startup and periodic recovery share one coordinator that serializes each sweep,
+then reconciles Runs before Goals. It checks its lifetime before taking
 ownership and before starting each phase, releases acquired ownership on every
 exit, and retains a failed phase's cause alongside concurrent cancellation.
 Cancellation stops unstarted phases; an already completed recovery retains its
@@ -821,11 +830,9 @@ Before abandoned Running Runs are classified, startup acquires the ordinary
 Run admission for each accepted Resume handoff and attempts its bounded revival.
 An inconclusive storage or dependency failure stops startup with the binding
 retained; an incompatible head follows the existing Run-lost policy.
-File advisory leases consume their opened descriptor. Acquisition failure or
+Unix directory leases consume their opened descriptor. Acquisition failure or
 contention closes it immediately; an acquired lease owns both unlock and close,
 retains their combined diagnostic, and never retries a retired descriptor.
-Application ownership reports cleanup failures without discarding them or
-replacing a completed use case's result.
 
 ## Attach without owning the Runtime
 

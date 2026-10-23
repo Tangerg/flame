@@ -7,7 +7,6 @@ import (
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
@@ -29,6 +28,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/model/catalog"
 	"github.com/Tangerg/flame/runtime/sandbox"
+	"github.com/Tangerg/flame/runtime/storage/directories"
 )
 
 // assemble transfers acquired resources directly to the Runtime lifecycle.
@@ -83,15 +83,11 @@ func buildAssemblyCore(
 	execution executionComposition,
 ) (*Instance, error) {
 	fileChanges := newNotificationRelay[workspace.FileChangeNotice]()
-	ownershipLeases, err := ownershipadapter.New(cfg.Stores.DataDirectory)
-	if err != nil {
-		return nil, err
-	}
 	goalRuns, err := goals.NewRunRecorder(cfg.Stores.Goals)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: Goal Run recorder: %w", err)
 	}
-	admissionGate, err := ownership.NewGate(ownershipLeases)
+	admissionGate, err := ownership.NewGate(directories.Canonical)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session admission: %w", err)
 	}
@@ -312,7 +308,6 @@ func buildAssemblyCore(
 		runCoordinator,
 		cfg.Stores.Sessions,
 		goalMutations,
-		ownershipLeases,
 		builtin.RunInstructions,
 	)
 	if err != nil {
@@ -357,7 +352,7 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: boot recovery: %w", err)
 	}
 
-	ownershipRecovery, err := ownership.NewRecovery(bootRecovery, goalDriver, ownershipLeases)
+	ownershipRecovery, err := ownership.NewRecovery(bootRecovery, goalDriver)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: ownership recovery: %w", err)
 	}

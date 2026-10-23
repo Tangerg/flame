@@ -3,46 +3,23 @@ package ownership
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
 )
 
-type admissionBackendStub struct {
-	sessionErr, treeErr error
-	released            int
-}
-
-func (s *admissionBackendStub) TrySession(string) (Lease, bool, error) {
-	if s.sessionErr != nil {
-		return nil, false, s.sessionErr
-	}
-	return admissionLeaseFunc(func() { s.released++ }), true, nil
-}
-
-func (s *admissionBackendStub) TryWorkingTree(string, bool) (Lease, bool, error) {
-	if s.treeErr != nil {
-		return nil, false, s.treeErr
-	}
-	return admissionLeaseFunc(func() {}), true, nil
-}
-
 func newTestGate(t *testing.T) *Gate {
 	t.Helper()
-	gate, err := NewGate(&admissionBackendStub{})
+	gate, err := NewGate(func(path string) (string, error) { return path, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
 	return gate
 }
 
-func TestNewGateRequiresOwnership(t *testing.T) {
-	var typedNil *admissionBackendStub
-	for _, backend := range []AdmissionBackend{nil, typedNil} {
-		if gate, err := NewGate(backend); err == nil || gate != nil {
-			t.Fatalf("NewGate(%T) = %#v, %v", backend, gate, err)
-		}
+func TestNewGateRequiresPhysicalIdentityResolver(t *testing.T) {
+	if gate, err := NewGate(nil); err == nil || gate != nil {
+		t.Fatalf("NewGate(nil) = %#v, %v", gate, err)
 	}
 }
 
@@ -245,32 +222,26 @@ func TestWaitRunStartableIsContextBounded(t *testing.T) {
 	}
 }
 
-type admissionLeaseFunc func()
-
-func (f admissionLeaseFunc) Release() { f() }
-
-func TestFailedOwnershipDoesNotLeaveAdmissionHeld(t *testing.T) {
+func TestFailedIdentityResolutionDoesNotLeaveAdmissionHeld(t *testing.T) {
 	cause := errors.New("filesystem failed")
-	backend := &admissionBackendStub{sessionErr: cause}
-	gate, err := NewGate(backend)
+	var resolveErr error = cause
+	gate, err := NewGate(func(path string) (string, error) { return path, resolveErr })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if release, acquired, err := gate.AcquireSession(t.Context(), "ses_1"); release != nil || acquired || !errors.Is(err, cause) {
-		t.Fatalf("Session acquisition = (%v, %t, %v)", release == nil, acquired, err)
-	}
-	backend.sessionErr = nil
-	backend.treeErr = cause
 	if _, acquired, err := gate.AcquireRun(t.Context(), "ses_1", "/repo"); acquired || !errors.Is(err, cause) {
 		t.Fatalf("Run acquisition = (%t, %v)", acquired, err)
 	}
-	if backend.released != 1 || len(gate.ActiveSessions()) != 0 {
-		t.Fatal("failed working-tree acquisition retained Session ownership")
+	if len(gate.ActiveSessions()) != 0 {
+		t.Fatal("failed working-tree resolution retained Session ownership")
 	}
 	if release, acquired, err := gate.AcquireWorkingTreeMutation("/repo"); release != nil || acquired || !errors.Is(err, cause) {
 		t.Fatalf("mutation acquisition = (%v, %t, %v)", release == nil, acquired, err)
 	}
-	backend.treeErr = nil
+	if err := gate.WaitRunStartable(t.Context(), "ses_1", "/repo"); !errors.Is(err, cause) {
+		t.Fatalf("startability = %v, want filesystem cause", err)
+	}
+	resolveErr = nil
 	admission, acquired, err := gate.AcquireRun(t.Context(), "ses_1", "/repo")
 	if err != nil || !acquired {
 		t.Fatalf("acquire after repair: %t, %v", acquired, err)
@@ -326,51 +297,24 @@ func TestForegroundAdmissionCanCancelWhileRecoveryHoldsSession(t *testing.T) {
 	})
 }
 
-type gatedReleaseBackend struct {
-	admissionBackendStub
-	entered chan struct{}
-	allow   chan struct{}
-	once    sync.Once
-}
-
-func (b *gatedReleaseBackend) TrySession(string) (Lease, bool, error) {
-	return admissionLeaseFunc(func() { b.once.Do(func() { close(b.entered); <-b.allow }) }), true, nil
-}
-
-func TestRecoveryDoesNotPublishAvailabilityBeforeKernelLeaseRelease(t *testing.T) {
-	backend := &gatedReleaseBackend{entered: make(chan struct{}), allow: make(chan struct{})}
-	unblock := sync.OnceFunc(func() { close(backend.allow) })
-	defer unblock()
-	gate, err := NewGate(backend)
-	if err != nil {
-		t.Fatal(err)
+func TestRepeatedSessionReleaseCannotRetireItsSuccessor(t *testing.T) {
+	gate := newTestGate(t)
+	first, acquired, err := gate.AcquireSession(t.Context(), "ses_1")
+	if err != nil || !acquired {
+		t.Fatalf("first acquisition = %t, %v", acquired, err)
 	}
-	release, ok, err := gate.AcquireRecoverySession("ses_1")
-	if !ok || err != nil {
-		t.Fatalf("recovery admission = %t, %v", ok, err)
+	first()
+	second, acquired, err := gate.AcquireSession(t.Context(), "ses_1")
+	if err != nil || !acquired {
+		t.Fatalf("second acquisition = %t, %v", acquired, err)
 	}
-	done := make(chan struct{})
-	go func() { release(); close(done) }()
-	<-backend.entered
-	admitted := make(chan bool, 1)
-	go func() {
-		slot, ok, err := gate.AcquireRun(t.Context(), "ses_1", "/repo")
-		admitted <- ok && err == nil
-		slot.Release()
-	}()
-	select {
-	case ok := <-admitted:
-		t.Fatalf("availability published while kernel lease held: %t", ok)
-	case <-time.After(20 * time.Millisecond):
+	defer second()
+	first()
+	if release, acquired, err := gate.AcquireRecoverySession("ses_1"); release != nil || acquired || err != nil {
+		t.Fatalf("repeated release retired the successor = %t, %v", acquired, err)
 	}
-	unblock()
-	<-done
-	select {
-	case ok := <-admitted:
-		if !ok {
-			t.Fatal("run rejected after kernel lease release")
-		}
-	case <-time.After(time.Second):
-		t.Fatal("run not woken after release")
+	second()
+	if gate.ActiveSessions()["ses_1"] {
+		t.Fatal("finished owner retained the Session")
 	}
 }
