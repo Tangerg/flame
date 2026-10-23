@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. Shared Markdown notes now stay on the surrounding reading plane: the Callout owner removes its stripe, fill, padding and asymmetric corners while preserving each kind's title, icon and semantic ink. Native English/light/14 px and Chinese/dark/18 px reading, source switching and draft-preserving returns pass, including a 320 px Dock and native 200% full-pane retreat. The complete Web check passed 391 files / 3,094 tests and every gate; shared UI and the supported native check also passed. MCP tool visibility and reconnect, popup anchoring, neutral canvases and retained reading/recovery work remain integrated. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. Engaged ToolGroup results now remain open through sibling completion and later replies, with manual closure and untouched auto-collapse preserved. Final native English/light/14 px and Chinese/dark/18 px flows pass, including 320 px Dock, 200% full-pane material returns and continued drafts. The complete Web check passed 391 files / 3,100 tests and every gate; the supported native check passed. Shared Markdown notes retain the surrounding reading plane without decorative stripes or fills. MCP tool visibility and reconnect, popup anchoring, neutral canvases and retained reading/recovery work remain integrated. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -9,6 +9,16 @@ This user-requested file is the maintained progress and handoff record for the d
 The current goal explicitly resumes the earlier milestone pause. Work in `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`; the primary checkout `/Users/tangerg/Desktop/flame` contains the user's parallel work and must remain untouched. The UI branch fast-forwarded 158 commits to remote main `8b9b403ff` before the current component pass, and integrated the later dependency/Scope updates through `75fea673d` before publishing object-menu names. That integration received renewed frontend and native acceptance. Verify current Git state before integration, commit explicit owned paths and push to remote `main`, clean owned resources, then continue the next evidence-backed batch. Do not sweep the user's local main commits or uncommitted files into this work.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
+
+ToolGroup now preserves its existing parent presentation when the user enters
+member rows or their result readers. Completing a sibling or receiving a later
+reply no longer hides that engaged content; explicit parent closure still wins,
+and untouched/header-only groups retain automatic collapse. The focused checks,
+complete Web check (391 files / 3,100 tests), supported native check and final
+English/light/14 px and Chinese/dark/18 px native flows pass. The latter includes
+a 320 px Dock, 200% full-pane return and exact continued drafts. Owned native and
+build resources are cleaned. Delivery is being recorded for this verified change;
+the earlier Markdown-note and MCP receipts remain integrated.
 
 The captured-image inset is integrated at `d25b4ef72` and settings width at
 `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
@@ -2082,6 +2092,81 @@ Verification for this surface (2026-10-21):
 - An erroneous formatter invocation used pnpm instead of the installed repository tool. All six moved original dependencies and eight npm bin links were restored; its lock, local installation metadata and newly created cache entries were removed. The retained dependency versions and source hashes are unchanged; the installed Prettier check passes after recovery.
 - One first pointer activation after resizing only revealed/scrolled the action and is excluded; the next observed invocation produced its notice. A later pointer-origin reverse-Tab sequence repeated Copy rather than closing details; no close or focus-return guarantee is claimed from that sequence. The existing bare-WebKit reverse-traversal qualification remains unchanged. Native OS-denial, VoiceOver speech, OS IME, other-platform GUIs, browser visual suites and performance benchmarks are not newly qualified.
 
+## Tool group reading continuity
+
+Actual Wails reproduced a running sibling's completion collapsing an automatically
+opened group while its recorded Result held keyboard focus. The reader vanished
+and focus fell to HTML. `ToolGroup.tsx` now forwards native focus capture through
+`ToolGroupRows`' existing root and pins the parent's current expanded value with
+its existing `pinned` owner. Member rows and nested readers count as engagement;
+the parent header alone does not. A later focus move stays where the user put it,
+manual parent closure wins, and closing the last child keeps sibling rows reachable.
+`NarrativeWave` retains its separate explicit presentation. No new state, effect,
+focus restoration, timer, wrapper, skin, Runtime transition or migration is added.
+
+Better-accessibility's keyboard continuity and visible-focus guidance inform this
+repair. Read-only ZCode `ToolCallBlocks/ToolLayout.tsx` separates manual disclosure
+from automatic lifecycle policy, and HeroUI's actual Accordion stories retain
+trigger/panel semantics. Flame keeps its existing ActivityDisclosure/Collapsible
+composition; those references' caches, timers and completion rules are not copied.
+
+Bounded Claude Code CLI first reached its turn limit without edits (49.90 s),
+then supplied the two-file candidate (83.58 s, no denials). Primary reviewed the
+actual diff and separated completion from supersession in the regressions, adding
+an assertion that later outside focus stays intact. Six added behavior tests cover
+reader focus, row-only engagement, later outside focus, closing the last child,
+manual parent close/reopen and untouched/header-only automatic collapse. The
+pinned original fails four of the seven ToolGroup tests; the candidate is restored
+byte-for-byte and all 11 relevant tests pass. The original baseline had passed
+five tests without covering this failure.
+
+Serial verification passes the complete Web check: **391 files / 3,100 tests**
+and every gate (**331.58 s**). `make check-native` passes Desktop test/vet/build
+and the supported Wails build (**30.02 s**); arm64, minimum macOS **13.0**, SDK
+**26.5**. All **10** accepted product inputs, **11** portable resources, **6**
+clean harness inputs and the compiled UI stylesheet match after native acceptance.
+Non-failing loopback, fixture chunk-size and duplicate `-lobjc` diagnostics remain
+separate. Unchanged Runtime, CLI and independent shared UI suites were not rerun.
+
+Final actual Wails acceptance uses the production fold and `applyRunEvents` with
+an isolated canonical two-tool snapshot. English/light/**14 px**/Flame Orange
+retains Result focus when the sibling completes. Moving to Composer before the
+later reply keeps that input's focus and exact draft. Manual parent close and
+keyboard reopen, last-child closure, switching to the other result, Files entry,
+Preview/Source switching and Back to files all pass. Chinese/dark/**18 px**/custom
+blue repeats focused completion with a **320 px** Dock. Twenty native Zoom In
+commands from Actual Size and a pointer-resized **2632 × 1798** capture qualify
+200% reading, later-reply focus retention, full-pane Files/detail/list/Close return
+and the unchanged draft. Actual Size returns to the 320 px Dock, and Composer
+accepts continued text: `工具阅读草稿 保留 · continued · ready`.
+
+The first candidate observation also collapsed, with focus on the summary; its
+cause is not established and it is excluded from acceptance. A subsequent passive
+input/render probe records the same DOM and turn identity, `pinned: true` and
+unmoved Result focus through both canonical updates. The two final clean artifacts
+restore the original harness and independently pass the paths above without the
+render probe. One stale native index opened Approval mode; Escape dismissed it
+without choosing a mode, and a freshly observed full-pane entry passed. No cache
+cause, automatic focus repair or unexplained first-attempt success is claimed.
+
+These are isolated rendering/event-projection flows, not live tool execution or
+Run lifecycle tests. The fixture's generic captured Result reader is qualified;
+a specialized Read renderer is not. No Send/Stop/Steer, credentials, authored link
+activation, VoiceOver speech, OS IME, other-platform GUI, browser visual suite or
+performance benchmark is claimed. Mac lock blocked earlier CUA access; acceptance
+resumed only after the user's explicit unlock confirmation. Existing native
+hidden-zoom/reverse-traversal limits retain their earlier qualifications.
+
+Cleanup confirms all five owned native processes and both CLI processes exited.
+The exact bundle was unregistered and its private root/pointer, ten new worktree
+output/cache paths and two bundle-specific Library paths were removed after
+ownership, birth-time, containment and copied-asset checks. A private compressed
+archive retains 83 flat UTF-8 evidence files and 21 capture hashes outside the
+repository. Pre-existing shared UI Vite cache, dependencies, compiler caches,
+read-only references, unrelated processes, user data and the primary checkout
+remain preserved. Continue with a new observed task rather than extending this
+bounded focus-engagement repair without evidence.
+
 ## Tool row action context
 
 Single and grouped Tool row actions now reference their existing visible summary.
@@ -3608,11 +3693,10 @@ defects; each needs a Wails look and an explicit choice before implementing:
   return. Physical horizontal wheel delivery and broader typography/zoom remain
   outside that qualification; do not infer a component defect from offset alone.
 - **Standalone ToolCard open-state (reviewed — keep).** A standalone card keeps its
-  promoted write/exec result visible via a manual toggle ("meaningful results stay"),
-  while the grouped `ToolGroup` auto-collapses on completion. This is a justified
-  per-context difference (one promoted result stays legible; a wave of grouped tools
-  collapses to cut clutter), not drift — SRP across the two owners — so it is kept
-  rather than forced to one behavior.
+  promoted write/exec result visible through its manual toggle. Untouched grouped
+  tools retain automatic collapse; entering grouped rows now pins their existing
+  presentation so completion cannot hide engaged reading. These separate owners
+  retain their appropriate defaults.
 - **Light-theme text ladder collapse (muted ≈ faint) — fixed, native acceptance
   pending.** A color-semantics audit found the role usage consistent, but one real
   value defect: in the light theme `--color-text-muted` (#656565) and `--color-text-faint`
@@ -3995,15 +4079,11 @@ clean up, run-status facets have one owner). Three genuine defects were fixed:
   no `aria-controls`/`id` link; now wired to match the `AgentActivityDisclosure`
   contract the sibling `ToolCard` uses.
 
-Recorded, not changed — a genuine product tradeoff needing a call: an unpinned
-`ToolGroup`'s open state is `pinned ?? (needsAttention && !superseded)`, so a
-group that auto-opened because a tool was running **collapses the instant the
-last tool settles**, which can hide content mid-read. This auto-tidy-on-settle is
-deliberate and test-pinned (`toolGroupModel.test.ts:24-26`). Fixing the read-
-stability flaw means changing that tested UX — either dropping auto-tidy (groups
-stay open until clicked, cluttering the transcript) or moving the collapse
-trigger from settle to a turn boundary (superseded), which needs a history latch.
-The auto-tidy vs read-stability choice is a product decision; left for the user.
+The previously recorded ToolGroup mid-read collapse is repaired at the existing
+presentation owner, as qualified in Tool group reading continuity above. Focus
+engagement pins the current parent state; untouched and header-only groups keep
+their automatic policy. No turn-history latch or replacement collapse rule was
+needed.
 
 ## Sidebar / navigation surface audit
 
