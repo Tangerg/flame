@@ -362,6 +362,7 @@ export const fr: Record<string, string> = {
   "approvals.forget": "Oublier {{tool}}",
   "approvals.unavailable": "Contrôles d'approbation indisponibles",
   "approvals.unavailable.sub": "Ce runtime n'expose pas le contrôle du mode d'approbation.",
+  "approvals.error.loadMode": "Impossible de charger le mode d'approbation",
   "approvals.error.mode": "Impossible de changer le mode d'approbation.",
   "approvals.error.forget": "Impossible d'effacer la décision.",
 
@@ -548,6 +549,7 @@ export const fr: Record<string, string> = {
   "runError.action.diagnostics": "Diagnostics",
   "runError.action.dismiss": "Fermer",
 
+  "session.status.pinned": "Épinglée",
   "session.status.running": "En cours",
 
   "session.identity.copyCwd": "Copier le répertoire de travail",
@@ -694,6 +696,7 @@ export const fr: Record<string, string> = {
   "reasoning.thought": "Réflexion",
   "reasoning.thoughtFor": "Réflexion de {{duration}}",
   "reasoning.interrupted": "interrompu",
+  "reasoning.text": "Texte de la réflexion",
 
   "composer.placeholder.steer": "Envoyer un message pour orienter le tour en cours…",
   "composer.action.steer": "Orienter le tour en cours",
@@ -791,6 +794,16 @@ export const fr: Record<string, string> = {
   "mcp.transport.http": "Streamable HTTP",
   "mcp.signIn": "Se connecter",
   "mcp.signingIn": "Connexion…",
+  "mcp.signIn.aria": "Se connecter à {{server}}",
+  "mcp.signingIn.aria": "Connexion à {{server}}…",
+  "mcp.reconnect": "Reconnecter",
+  "mcp.reconnect.aria": "Reconnecter {{server}}",
+  "mcp.status.disabled": "Désactivé",
+  "mcp.status.disconnected": "Déconnecté",
+  "mcp.status.connecting": "Connexion en cours…",
+  "mcp.status.connected": "Connecté",
+  "mcp.status.failed": "Échec de la connexion",
+  "mcp.status.needsAuth": "Connexion requise",
   "mcp.form.name.placeholder": "Nom du serveur",
   "mcp.form.name.aria": "Nom du serveur",
   "mcp.form.transport.aria": "Transport",
@@ -837,7 +850,7 @@ export const fr: Record<string, string> = {
   "mcp.import.error": "Impossible d'importer cette configuration.",
   "mcp.import.nameCollision":
     "Les serveurs « <first/> » et « <second/> » deviennent tous deux « <canonical/> » ; donnez-leur des noms distincts",
-  "mcp.tools.manage": "Gérer les outils",
+  "mcp.tools.title": "Outils de {{server}}",
   "mcp.tools.enabled": "Activé",
   "mcp.tools.autoApprove": "Approbation automatique",
   "mcp.tools.empty": "Ce serveur n'expose aucun outil",
@@ -847,7 +860,11 @@ export const fr: Record<string, string> = {
   "mcp.error.remove": "Impossible de supprimer le serveur.",
   "mcp.error.toggle": "Impossible de modifier le serveur.",
   "mcp.error.signIn": "Échec de la connexion.",
+  "mcp.error.reconnect": "Impossible de reconnecter le serveur.",
   "mcp.error.test": "Échec du test",
+  "mcp.error.loadTools": "Impossible de charger les outils",
+  "mcp.error.loadToolVisibility": "Impossible de charger la visibilité des outils",
+  "mcp.error.loadAutoApproveRules": "Impossible de charger les règles d'approbation automatique",
   "mcp.testOutcome.timedOut":
     "Le serveur n'a pas répondu à temps — vérifiez la commande ou l'URL et réessayez.",
   "mcp.testOutcome.failed":

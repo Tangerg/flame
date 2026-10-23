@@ -145,7 +145,7 @@ function FilePreview({
   const lineWindow = windowFor.intent === viewer ? windowFor.window : initialWindow(targetLine);
   const setLineWindow = (next: LineWindow) => setWindowFor({ intent: viewer, window: next });
 
-  const { data, isLoading, error, refetch } = useWorkspaceReadFile(
+  const { data, isPlaceholderData, isLoading, error, refetch } = useWorkspaceReadFile(
     !isWorkspaceResolving(workspace)
       ? {
           cwd,
@@ -174,18 +174,25 @@ function FilePreview({
   const showRendered = renderer !== undefined && wholeFile && mode === "rendered";
 
   const scrollPort = useRef<HTMLDivElement>(null);
-  const anchor = useRef<{ height: number } | null>(null);
+  // Bound to the window it requested; any later window or navigation retires it.
+  const anchor = useRef<{ height: number; window: LineWindow } | null>(null);
   useLayoutEffect(() => {
     const host = scrollPort.current;
     if (!anchor.current || !host) return;
+    if (anchor.current.window !== lineWindow) {
+      anchor.current = null;
+      return;
+    }
+    if (isPlaceholderData) return;
     host.scrollTop += host.scrollHeight - anchor.current.height;
     anchor.current = null;
-  }, [data]);
+  }, [data, isPlaceholderData, lineWindow]);
 
   const loadEarlier = () => {
     const host = scrollPort.current;
-    anchor.current = host ? { height: host.scrollHeight } : null;
-    setLineWindow({ start: Math.max(1, firstShown - WINDOW_RADIUS), end: lastShown });
+    const next = { start: Math.max(1, firstShown - WINDOW_RADIUS), end: lastShown };
+    anchor.current = host ? { height: host.scrollHeight, window: next } : null;
+    setLineWindow(next);
   };
   const loadLater = () => setLineWindow({ start: firstShown, end: lastShown + WINDOW_RADIUS });
 
@@ -304,7 +311,7 @@ function FilePreview({
                       content={items[0]!.content}
                       startLine={items[0]!.startLine}
                       targetLine={targetLine}
-                      intent={viewer}
+                      intent={isPlaceholderData ? null : viewer}
                     />
                   );
                   return (
@@ -324,7 +331,7 @@ function FilePreview({
                   content={items[0]!.content}
                   startLine={items[0]!.startLine}
                   targetLine={targetLine}
-                  intent={viewer}
+                  intent={isPlaceholderData ? null : viewer}
                 />
               )}
               {moreAfter && !showRendered && (

@@ -222,7 +222,13 @@ export function SessionRow({
           ref={rowRef}
           onClick={() => onSelect(session.id)}
           aria-current={active ? "page" : undefined}
-          aria-label={`${title} — ${accessibleStatus}`}
+          aria-label={[
+            title,
+            session.favorite ? t("session.status.pinned") : undefined,
+            accessibleStatus,
+          ]
+            .filter((part) => part !== undefined)
+            .join(" — ")}
           active={active}
           indent={indented ? "nested" : "none"}
           revealOverflow
@@ -256,7 +262,7 @@ export function SessionRow({
     <>
       <ContextMenu.Root>
         <ContextMenu.Trigger render={row} />
-        <ContextMenu.Content>
+        <ContextMenu.Content aria-label={title}>
           {menu.map((item) => (
             <ContextMenu.IconItem
               key={item.id}

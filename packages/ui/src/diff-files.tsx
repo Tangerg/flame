@@ -97,7 +97,12 @@ export function DiffFileList({
   ref?: Ref<HTMLElement>;
 }) {
   return (
-    <RecordGroup ref={ref} variant="list" aria-label={label}>
+    <RecordGroup
+      ref={ref}
+      variant="list"
+      aria-label={label}
+      hidden={!files.length}
+    >
       {files.map((file) => {
         const cut = file.path.lastIndexOf("/") + 1;
         return (

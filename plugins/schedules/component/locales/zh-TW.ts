@@ -14,11 +14,10 @@ export const zhTW: Record<string, string> = {
   "status.disabled": "已停用",
   refresh: "重新整理",
   reading: "正在讀取排程…",
-  "read.error": "無法讀取排程：{{error}}。請使用「重新整理」再試一次。",
+  "read.error": "無法讀取排程。請使用「重新整理」再試一次。",
   "read.errorRetained":
-    "無法讀取排程：{{error}}。已保留上次接受的頁面。請使用「重新整理」再試一次。",
-  "live.error":
-    "即時更新無法使用：{{error}}。請使用「重新整理」讀取目前的排程。",
+    "無法讀取排程。已保留上次接受的頁面。請使用「重新整理」再試一次。",
+  "live.error": "即時更新無法使用。請使用「重新整理」讀取目前的排程。",
   "command.status.label": "排程命令狀態",
   "command.uncertain": "原始結果尚未確認。請先核對，再發出其他命令。",
   "command.progress": "{{label}}…",

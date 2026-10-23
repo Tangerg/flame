@@ -190,6 +190,12 @@ class identity is part of the Runtime client's typed failure contract. Business
 operation refusals use the shared Runtime client's OperationFailure and code/message,
 which the SDK exports as the same class.
 
+`failureText(error, fallback)` presents a typed Runtime problem by its nonempty
+published `detail`, falling back to the RPC message when the detail is absent or
+empty. Other errors keep their own message, and unknown thrown values use the
+caller's fallback. Error classification and command recovery still use the
+original shared error object.
+
 Generated streaming methods publish a distinct chunk schema and final result.
 Supply the generated MethodChunks as bindOperations' third type map to use its
 stream(intent, method, input, consume, signal) function. The captured target/binding

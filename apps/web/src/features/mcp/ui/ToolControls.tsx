@@ -73,19 +73,25 @@ export function ToolControls({ server }: Props) {
   return (
     <div {...stylex.props(tc.panel)}>
       <p {...stylex.props(typeStep.uiSm, vocab.muted)}>{t("mcp.tools.policyHint")}</p>
-      {exposure.error != null && <DataError onRetry={() => exposure.refetch()} />}
-      {rules.error != null && <DataError onRetry={() => rules.refetch()} />}
-      <DataView
-        items={tools.data}
-        isLoading={tools.isLoading}
-        failure={tools.error}
-        onRetry={tools.refetch}
-        skeletonCount={3}
-        empty={{ icon: "tool", title: t("mcp.tools.empty") }}
-      >
-        {(tools) => (
-          <SettingsGroup>
-            {tools.map((tool) => {
+      {exposure.error != null && (
+        <DataError title={t("mcp.error.loadToolVisibility")} onRetry={() => exposure.refetch()} />
+      )}
+      {rules.error != null && (
+        <DataError title={t("mcp.error.loadAutoApproveRules")} onRetry={() => rules.refetch()} />
+      )}
+      {/* Keep the query boundary mounted through loading, error and accepted states. */}
+      <SettingsGroup>
+        <DataView
+          items={tools.data}
+          isLoading={tools.isLoading}
+          failure={tools.error}
+          onRetry={tools.refetch}
+          skeletonCount={3}
+          empty={{ icon: "tool", title: t("mcp.tools.empty") }}
+          error={{ title: t("mcp.error.loadTools") }}
+        >
+          {(tools) =>
+            tools.map((tool) => {
               const isDisabled = disabled.has(tool.name);
               return (
                 <SettingRow
@@ -139,10 +145,10 @@ export function ToolControls({ server }: Props) {
                   </div>
                 </SettingRow>
               );
-            })}
-          </SettingsGroup>
-        )}
-      </DataView>
+            })
+          }
+        </DataView>
+      </SettingsGroup>
     </div>
   );
 }

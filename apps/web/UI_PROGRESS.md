@@ -1,14 +1,86 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. The user explicitly resumed continuous UI work and requested a shared-component root-cause pass. Appearance size selectors track their triggers, and the shared floating surface avoids a native page-zoom painting failure; that repair is published on remote main at `f4a535440`. Shared Select dismissal now finishes before rapid keyboard navigation, published at `346c1c07e` after native acceptance and owned-resource cleanup. Aggregate test timeouts and the existing MCP API-consumer guard failure are qualified below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI batches remain active. Long-file navigation now waits for its accepted content before placing a target line, and a superseded prepend cannot change the next request's scroll position. Original-source regressions and actual Wails reproduce both failures; the candidate passes English/light/14 px, Chinese/dark/18 px, custom blue, a 320 px Dock and 200% full-width reading/return paths. The complete Web check passes 392 files / 3,117 tests and every gate; the supported native module check also passes. Owned acceptance resources are removed. Earlier reasoning-reader, image-save, gallery and original-source return qualifications remain integrated.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The current goal explicitly resumes the earlier milestone pause. Work in `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`; the primary checkout `/Users/tangerg/Desktop/flame` contains the user's parallel work and must remain untouched. The UI branch fast-forwarded 158 commits to remote main `8b9b403ff` before the current component pass. Verify current Git state before integration, commit explicit owned paths and push to remote `main`, clean owned resources, then continue the next evidence-backed batch. Do not sweep the user's local main commits or uncommitted files into this work.
+The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch extends remote `main` at `b34eae3c3`; delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame` still contains the user's parallel local main history and untracked documentation; it remains untouched. Do not sweep those commits or files into the UI batch. The previous milestone pause is superseded by the explicit resume. Continue with fresh source and native evidence for the next complete task path.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
+
+Pinned Session row names now include their localized state while retaining title,
+attention/time, current-page and menu identities. The two original-source failures
+and final 13 focused tests qualify the canonical projection and command contract.
+Actual EN/light/14 px/Orange and ZH/dark/18 px/blue native menu/edit/cancel flows
+pass, including system resize, 200%, scrolling and source return. The full Web run
+retains one MCP-readiness failure; the complete isolated 49-test file, all 22 later
+gates and supported native check pass. Owned resources are cleaned. Implementation
+`a601b991fcc04f150025a8637c698fec681c7d28` is pushed to remote `main` and its
+exact remote hash was verified with a clean owned checkout and zero unpushed
+commits. The 29 retained accepted sources remain unchanged; the accepted compiled
+stylesheet was separately verified before its owned output cleanup. Detailed
+coverage and exclusions are recorded under Sidebar / navigation.
+
+ToolGroup now preserves its existing parent presentation when the user enters
+member rows or their result readers. Completing a sibling or receiving a later
+reply no longer hides that engaged content; explicit parent closure still wins,
+and untouched/header-only groups retain automatic collapse. The focused checks,
+complete Web check (391 files / 3,100 tests), supported native check and final
+English/light/14 px and Chinese/dark/18 px native flows pass. The latter includes
+a 320 px Dock, 200% full-pane return and exact continued drafts. Owned native and
+build resources are cleaned. Implementation `2d96c7a37699e0ef83489689ceda61e52a891871`
+is pushed to remote `main`; its exact remote hash was verified with a clean owned
+checkout and zero unpushed commits. The earlier Markdown-note and MCP receipts
+remain integrated.
+
+Plugin render recovery now retires focused error controls into their nearest
+existing focusable host before retrying. A repeated failure or successful recovery
+keeps a stable reading destination; later outside or child-owned focus is not
+reclaimed. Workspace errors use the same localized view title as their region.
+The focused 12 tests and English/light/14 px and Chinese/dark/18 px native flows
+pass. The initial full Web command stopped on one Runtime MCP-readiness timeout;
+the complete isolated 49-test file then passed, followed by all 22 later gates and
+the supported native check. The initial failure remains recorded below. Owned
+resources are cleaned. Implementation `9773c7cf5b14dbea2958789b4117edc7ebd54da4`
+is pushed to remote `main`, verified by exact remote hash, unchanged accepted
+sources/resources and a clean owned checkout with zero unpushed commits.
+
+Settings pane failures now use `t(p.label)` through the existing boundary label
+instead of exposing `settings:<id>` as the visible object name. The internal
+identity still names diagnostics. Native confirms the already-published Retry
+handoff focuses the current Settings tabpanel, and the named recovery/search/
+control/return flow passes in English and Chinese, including 200% and a narrow
+window. The one-prop change and its behavior regression pass 20 relevant tests,
+all 25 non-test Web gates and the supported native check. Owned resources are
+cleaned. Implementation `dd0a21fbffe13425c4a64913144a4221670dc868` is pushed
+to remote `main`, verified by exact remote hash, all 21 unchanged accepted
+product/resource inputs and a clean owned checkout with zero unpushed commits.
+
+The remaining light-theme text-ladder acceptance is now complete for the inspected
+reading task. Built-in light, custom warm light and a dark control preserve their
+existing palette and task owners; no product source changed. Tool summaries and
+step counts remain distinct, selected Dock tabs identify the active material,
+Diff list/detail/row return works, and the final original drafts can continue.
+The warm-light path includes 18 px, native 200% and a pointer-resized narrow
+window. Three theme suites pass 121 tests; `make check-native` passes. The exact
+qualifications, excluded input attempts and subsequent native caret qualification
+are recorded with the color evidence below. Owned resources are cleaned;
+acceptance record `a35b04856c74459ebc72f51661d6f6edd55a6d53` is pushed to
+remote `main`, verified by exact remote hash, all 24 unchanged accepted
+product/resource inputs and a clean owned checkout with zero unpushed commits.
+
+The native short-paste follow-up isolates no product defect: a passive trace
+keeps the same textarea and `10..10` caret through material hiding, file switching,
+return, Tab and input activation; `insertFromPaste` then appends to `18..18` with
+DOM and the sole draft owner agreeing. The original combined activation/paste
+attempt remains unexplained. Preserve the existing native input and focus owners;
+these separated observations do not establish the original timing or selection.
+The 42 focused tests and supported native check pass. Owned resources are cleaned;
+qualification record `6530cdd8ea413b36b85a55bbb5022e8935ab83b4` is pushed
+to remote `main`, verified by exact remote hash, all 30 unchanged accepted
+product/resource inputs and a clean owned checkout with zero unpushed commits.
 
 The captured-image inset is integrated at `d25b4ef72` and settings width at
 `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
@@ -49,6 +121,13 @@ The primary checkout is `/Users/tangerg/Desktop/flame`, on `main`; the resumed U
 Shared `Select` and `ActionMenu` in installed views now use the same inherited visibility fact as product popups. Their open popup retires only when its retained content becomes hidden; moving a visible inspection into a full pane keeps its menu. Revealing content preserves the control, selected value, search and drafts without reopening the retired popup. `packages/ui` owns the one context and retirement mechanism, and the obsolete application copies are removed. Native acceptance covers ordinary collapse, narrow zoom, source/history return and visible Escape, as detailed below.
 
 An open `ModalDialog` now establishes its own visible task scope above the retained material. Backing Dock collapse, width retreat and history navigation no longer retire its nested Select or ActionMenu or send focus behind the task. On dismissal over a hidden owner, explicit no-focus policies and visible caller targets remain authoritative; otherwise the host's current presented-region ref supplies the return destination. Schedules keeps its existing draft, command and reconciliation owners. This does not make Memory's independently operable authoring flow modal.
+
+The user's latest reference rejects decorative thick edge stripes attached to
+rounded cards with heavy shadows. Use typography, spacing and necessary
+boundaries to organize content; accent color communicates meaningful states
+and actions. The shared Callout review now applies this constraint to both
+transcript and captured-file Markdown. Preserve the approved global radius,
+theme owners and meaningful quotation, selection and focus treatments.
 
 ## Integrated brand and authoring work
 
@@ -292,6 +371,163 @@ at the user's request, but `d345239c4` later restored it in `neutralScale` and
 asserted that behavior in a test. Later main integrations retained it. The
 regression is repaired at the scale owner rather than hidden by a page override.
 
+### Native reading color qualification
+
+No actionable color findings in the inspected task. Approve the existing ladder
+for this scoped native reading flow. The previously shipped light neutral step
+11 anchor of 74 and its stylesheet mirror remain unchanged. This batch adds no
+product source, token, style override, focus rule or preference mutation.
+
+Better-colors guides measurement of effective text/background pairs rather than
+declared colors alone. Read-only ZCode's actual `packages/ui/src/styles.css`
+separates foreground, subtle and subtlest roles; its alpha values are not Flame
+contrast evidence. [Radix's scale guidance](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale)
+separates backgrounds, interaction states and text roles. Flame keeps its own
+semantic tokens, theme owner and AA text requirement. A private passive observer
+resolves native WebKit colors and their painted ancestor backgrounds; inspected
+resting summary/count/tab text has opacity 1. Fully revealed screenshots provide
+the visual reading context; the scroller's edge fade is not measured as resting
+text contrast.
+
+| Native scene                                   | Canvas    | Muted summary | Faint step count | Summary / canvas | Count / canvas | Inactive Dock tab / its surface |
+| ---------------------------------------------- | --------- | ------------- | ---------------- | ---------------- | -------------- | ------------------------------- |
+| English, built-in light, 14 px, Flame Orange   | `#f5f5f5` | `#4c4c4c`     | `#696969`        | 7.877:1          | 5.035:1        | 7.138:1 on `#eaeaea`            |
+| Chinese, custom warm light, 18 px, custom blue | `#fdf6e3` | `#476469`     | `#556f73`        | 5.909:1          | 4.982:1        | 5.391:1 on `#f1ecdb`            |
+| English, built-in dark, 18 px, custom blue     | `#0f0f0f` | `#a3a3a3`     | `#8c8c8c`        | 7.599:1          | 5.700:1        | 6.154:1 on `#242424`            |
+
+Native light body/soft/muted/faint OKLCH L is **0.2221 / 0.3092 / 0.4165 /
+0.5208**. Custom warm light is **0.3092 / 0.3861 / 0.4824 / 0.5226**; its exact
+declared canvas and body ink `#073642` remain. Dark is **0.9491 / 0.8452 / 0.7155 /
+0.6401**. Selected tabs use the body tier, with measured ratios **15.250:1**,
+**11.619:1** and **15.001:1** on their actual active surfaces. Built-in canvases
+remain achromatic while the chosen accent retains action/state roles.
+
+Actual Wails light acceptance reads the reply and six-step summary, expands the
+group and result, closes and reopens Read with Return, then enters Diff's file
+list, reads `session.go` and returns to that original row. Home on the native
+Dock splitter reaches **320 px**. Collapsing the Dock and returning to Composer
+retains and continues `Light reading draft 保留 — continued`.
+
+Warm light repeats tool/result reading and scrolls the summary fully into view.
+Twenty native Zoom In actions from Actual Size establish **200%**. A native
+edge drag yields a **2632 × 1798** capture and **658 × 450 CSS px** viewport.
+The current material opens full width, keeps file identity, exposes the second
+file's complete short diff through scrolling and returns to the original row.
+Explicit Close focuses Conversation; the next Tab reaches Review changed files.
+The final repeated full-view round trip retains the exact original draft; an
+explicit line-end caret then continues `暖浅色阅读草稿 保留 — 返回后继续`.
+Actual Size restores a **1317 × 900 CSS px** viewport and the retained Dock.
+Ordinary full-view Escape did not close it; this flow uses its existing Close
+contract and adds no keyboard behavior.
+
+Dark acceptance reads the same group/result, reaches Find by Tab with its visible
+focus ring, scrolls the conversation, switches Diff list → second file → original
+row, collapses the Dock and continues `Dark reading draft 保留 — continued`.
+No Send or actual provider/Runtime command was invoked. These are production
+components and ordinary portable resources over deterministic memory providers.
+
+The first private observer exceeded native AX text bounds; it was split into
+passive sections and all final scenes used the reviewed replacement. An initial
+warm scene used the unregistered `zh-CN` and did not compose the product; it is
+excluded, corrected to the repository's registered `zh` and rebuilt. CUA rejected
+several app-state-stale actions; fresh observations and subsequent successful
+actions supply the evidence. Direct typing initially omitted CJK, so the exact
+light draft was pasted and verified before its return flow. One warm continuation
+paste replaced the draft despite the original being present immediately before
+it; the cause was not isolated. That attempt is excluded from continuation
+acceptance. The original was re-established and verified through the repeated
+round trip before the final explicit-caret input. The subsequent Native short-paste
+continuation qualification below records input/selection events without
+reproducing that replacement. Its original cause remains unestablished.
+
+`make stage-web` passes (**7.12 s**). Palette, stylesheet-mirror and custom-theme
+suites pass **3 files / 121 tests** (**1.80 s**). The supported
+`make check-native` passes (**17.70 s**), arm64, minimum macOS **13.0**, SDK **26.5**.
+All **13** accepted product inputs, **11** portable resources, **5** harness inputs
+and compiled UI CSS match after the final scenes. The unchanged broad Web,
+Runtime, CLI and independent shared UI suites were not rerun for this native
+qualification/documentation batch. Every consumer/theme/contrast combination,
+actual preference save, clipboard denial, VoiceOver speech, OS IME, other-platform
+GUI, browser visual suites and performance benchmarks remain not verified.
+The earlier broad-run timeout remains qualified in its own batch.
+
+All five owned native processes exited, including the two excluded preparations;
+no CLI detail implementation was needed for this acceptance-only batch. The app
+was unregistered and its private root/pointer, ten newly created worktree output/
+cache paths and two bundle-specific Library paths were removed after ownership,
+birth-time, containment and copied-asset checks. A private compressed archive
+preserves **55** flat UTF-8 evidence files and **15** capture hashes outside the
+repository. Pre-existing shared UI Vite cache, installed dependencies, compiler
+caches, read-only references, user data, unrelated processes and the primary
+checkout remain.
+
+Delivery: acceptance record `a35b04856c74459ebc72f51661d6f6edd55a6d53` is
+pushed to remote `main`. Fresh `ls-remote` matched that commit, the owned checkout
+was clean with zero unpushed commits, and all **24** accepted product/resource
+inputs matched. This in-place receipt adds no product change.
+
+### Native image save qualification
+
+The previously unqualified native export path is now checked through the actual
+Wails beta.34 Save panel. No product source, schema, image policy, focus handler
+or style changed. `ImagePreviewGallery` still calls the existing image-save port;
+`createClientHost` selects the native bridge, and `DesktopHost.SaveImage` plus
+`wailsImageSaver` own validation, the attached sheet, cancellation and writing.
+The existing captured-image reference research and better-accessibility focus
+guidance apply; Wails/Go source confirms the native ownership rather than assuming
+browser download behavior.
+
+- The private composition adds the production `createMessageImagesPlugin` with
+  the real host's save function after the canonical workspace fixture installs.
+  Its observer delegates immediately and preserves outcomes/errors. The first
+  inert SVG retains the fixture's base64 source; the second uses distinct inert
+  UTF-8 SVG bytes in a percent-encoded data URL with charset metadata. No remote
+  image fetch, provider, Runtime write or user image is involved.
+- Actual EN/light/14 px/Flame Orange: original draft → first image → keyboard
+  Download → native Escape returns to that image and focused Download. Return
+  immediately reopens the native sheet. Go to Folder selects the owned temporary
+  directory before Save; `accepted-first.svg` matches all **193 source bytes**.
+  Gallery Escape returns to Inline architecture, and the retained draft continues
+  as `Native image save draft 保留 — continued` after explicit caret-to-end.
+- Actual ZH/dark/18 px/custom blue: system Move & Resize → Left, collapsed Dock
+  and fixture sidebar, and twenty native Zoom In commands qualify **200%** at a
+  **2242 × 1898** capture. First image → Right selects Inline detail **2 / 2**.
+  The real native sheet saves `accepted-second.svg` into the same owned directory;
+  all **243 source bytes**, including the plus sign and Chinese UTF-8, match.
+  Save returns to that current image and focused Download. A separately observed
+  first-image → second-image → native Cancel → gallery → Escape route restores
+  the original Inline architecture opener. The exact draft continues as
+  `原生保存草稿 保留 — 返回后继续`; Actual Size was restored before Quit.
+- Some CUA state guards refused actions. After the second image's successful
+  write and byte verification, a guarded Return was not accepted and a fresh
+  observation found the gallery closed. That interval does not qualify a reopen,
+  close destination or cause. No actor or product defect is inferred; the clean
+  separately reobserved cancellation/return route above supplies its evidence.
+  AX also truncates the cumulative observer JSON, so it is not a complete callback
+  trace. Native sheets, current-object/focus captures and exact saved-file bytes
+  establish the stated acceptance. Native filesystem rejection, VoiceOver, OS IME,
+  browser export and other-platform GUIs remain outside this pass. The recorded
+  fullscreen visibility discrepancy is unchanged.
+- **3 files / 61 tests** pass for image/gallery, Markdown and native IPC contracts.
+  `make stage-web` passes in 8.07 seconds; the supported `make check-native` passes
+  in **25.80 seconds** after latest-main integration. The binary is arm64, minimum
+  macOS 13.0, SDK 26.5. Broader unchanged Web/Runtime/CLI suites were not rerun;
+  the preceding aggregate MCP timeout and isolated pass remain recorded above.
+  A bounded read-only Claude CLI stopped at its turn limit after 42.24 seconds
+  (13 reported turns, no denials); primary completed source review and acceptance.
+- All **40** accepted product/resource/compiled inputs and five private harness
+  inputs match through final acceptance. Both native PIDs and the CLI exited.
+  The exact bundle was unregistered; ten new worktree outputs/caches, three new
+  bundle Library paths including its native-dialog preferences, both saved test
+  images, and the private root/pointer were removed after ownership, birth-time,
+  containment and copied-asset checks. The preexisting UI Vite cache, dependencies,
+  references, user data, unrelated processes and primary checkout remain intact.
+  The private archive retains 67 UTF-8 evidence files and 21 capture hashes outside
+  the repository. No migration is needed. That earlier checkpoint ended at the user's
+  requested pause; the current explicit resume governs subsequent work.
+
+### Retained component behavior
+
 | Product area                  | Current behavior and ownership                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Shared presentation           | Panels, persistent controls, resource groups, disclosures, forms, modal geometry, metric summaries and semantic badges share presentation owners. The host owns appearance values; `/Users/tangerg/Desktop/flame/ui` owns reusable presentation rules. Pages compose those rules.                                                                              |
@@ -481,6 +717,154 @@ An open Tooltip consumes its own Escape first. The catalog's independent
 `disabled={Boolean(command)}` remains native disablement: an unresolved command
 is still governed by its original command and recovery contract. This is a local
 read-control repair, with no global Button behavior change or new focus state.
+
+Native recovery qualification on `3847ac61c` now covers the actual first-failure,
+retained-refresh and changing-catalog boundaries without a product-code change.
+English/light/14 px/Flame Orange used a 523 px Dock and a pre-existing mixed-language
+Composer draft. A held canonical catalog refresh accepted an empty catalog while
+the named document remained open. Initial document failures claimed no accepted
+instructions; explicit keyboard Refresh recovered the document. Later failures
+named the same document and labelled its last accepted instructions. Escape from
+a held document refresh aborted that read and returned to the retained
+`runtime` query with search focus because the original row was gone. A new
+catalog refresh restored the row; keyboard entry, source/revision reading and
+local Escape returned to that new row. Ordinary initial-catalog Escape left the
+catalog in place; the existing collapse action ended the task. Continuing the
+original Composer produced exactly
+`Skills recovery source draft · 保留 · continued`.
+
+Chinese/dark/18 px/custom blue used a full-pane Skills task, an actual edge-resized
+2632×1798 window, sidebar collapse and twenty native Zoom In commands. At 200%,
+the same first/retained failure distinctions remained readable. Native wheel
+reading reached the final mixed-language verification passage and source facts;
+Back, the document identity and Refresh remained available. The complete path
+and 64-character revision were present in accessibility output and wrapped in
+their existing fields. The diagnostic HUD is excluded fixture chrome; its overlap
+in individual captures is not a product clipping claim. Repeated native Return
+during the sixth, held document read kept the request count at six. Escape
+aborted it and restored the retained query/search focus over the accepted empty
+catalog. Search Escape cleared locally; reverse navigation through the selected
+catalog tab and named panel region reached Close. Closing returned to
+Conversation, and new native Composer input at 200% was exactly
+`技能恢复后继续输入 保留`. This scene does not claim a pre-existing Chinese draft.
+Actual Size was restored before Quit.
+
+All read retries above were explicit user actions; no automatic retry is claimed.
+The private transport refused and recorded zero Skill mutations. Returning
+cancelled the held transport, so native late-result delivery is not newly
+qualified. These are production component/SDK reads through the real Wails
+asset/IPC host, not a live installed-package, archive, proposal or filesystem
+acceptance. At that revision the RPC message `internal_error` remained literal;
+the subsequent shared-detail repair and its separate acceptance are recorded below.
+Every error category was outside this earlier qualification. VoiceOver,
+OS IME, measured contrast and other native locales/platforms were not run.
+
+The better-writing, better-layout and better-accessibility guidance informs
+object identity, explicit retained-result copy, persistent task controls and
+return focus. ZCode's actual read-only `settings/SkillsSection.tsx` keeps refresh
+with the resource header and renders failure from its read owner; its modal
+detail policy is not copied into Flame's persistent document reader. Source
+review preserved Flame's existing catalog/document lifetimes and command owner.
+There was no bounded implementation to delegate to Claude Code CLI.
+
+All 88 product/source/test inputs, 11 resources, four compiled shared-UI inputs
+and four reviewed harness inputs stayed unchanged. `make stage-web` passed
+(5.66 s), followed by the reviewed native English and Chinese builds
+(2.79 / 5.73 s). The prior complete 390-file / 3,077-test Web result and supported
+native check still cover this unchanged implementation; neither full check was
+rerun for this qualification. The unchanged API-consumer inventory failure
+remains recorded below. No browser visual suite or benchmark ran. An initial
+observer configuration read whole-page text including its own HUD; it was
+replaced with bounded labels before product interaction and excluded from
+acceptance.
+
+All three private native PIDs exited. Ownership, birth-time and copied-source
+guards removed the unregistered bundle, root, data, logs, captures, pointer, six
+new outputs/caches and two bundle-specific Library directories. The pre-existing
+shared-UI cache, user data, read-only references, primary checkout and unrelated
+processes remained intact. Remote main was refetched at `3847ac61c` before the
+documentation-only publication.
+
+Portable read failures now preserve the Runtime owner's readable explanation.
+`packages/component-sdk/src/errorText.ts` recognizes the shared public `RpcError`
+and presents its nonempty published `data.detail`, falling back to the original
+RPC message when absent or empty. Plain errors, transport failures, operation
+refusals and explicit caller fallbacks retain their existing behavior. The typed
+error object still owns classification and command recovery; the helper projects
+text only. Skills and Schedules share this boundary without a new mapping table,
+error class, dependency or recovery state. Unknown thrown values still use the
+existing English default; that separate localization debt remains recorded.
+
+Actual baseline Wails showed Schedules' machine symbol `internal_error` despite
+a complete published recovery explanation. Strengthened public-RPC inputs in
+the existing Skills/Schedules tests plus four SDK contract cases failed four
+tests on unchanged production code (32 passed). After the SDK repair, native
+Chinese Schedules exposed a second boundary: interpolating the complete detail
+into localized prose produced `刷新。。`. The module now puts a whole localized
+status/recovery summary and a separate literal `RecordBody` in one alert.
+First-read, retained-page and live-subscription summaries changed together in all
+eight catalogs. Punctuation and line breaks belong to the published detail;
+no stripping or translation is applied. The existing read, subscription, command,
+accepted-page, focus and theme owners remain unchanged.
+
+Better-writing's whole messages and actionable recovery, better-layout and
+better-accessibility informed this composition. HeroUI's actual local
+`components/alert/alert.stories.tsx` separates scope/status from descriptive
+recovery content; ZCode's Skills/Schedules read-owner findings above remain the
+navigation reference. Flame reuses its existing `RecordBody` and semantic roles.
+Four bounded Claude Code CLI invocations edited the specified tests, SDK contract,
+Schedules composition/catalogs and module documentation only; primary reviewed
+their actual diffs and ran every check. CLI reported no permission denials.
+Primary also updated three old machine-message expectations in two existing
+installed-Schedules model-catalog tests to require the actual published details,
+preserving catalog, model-choice and draft assertions.
+
+Before the Schedules composition repair, its four new/updated assertions failed
+with 34 tests passing. Final focused validation passed 4 files / 51 tests,
+including exact multiline read/live detail, accepted empty/retained pages,
+independent model catalogs and editable draft retention. The first complete Web
+run found only the two old integration expectations (3,081 passed); the follow-up
+changed those expectations only. SDK check passed. Portable build/check passed
+all eleven resources and eight locale catalogs; only Schedules' generated ESM
+changed, with the other ten byte-identical. The final serial Web run passed type/lint/format, all 390 files / 3,083 tests and the six gates through port-surface. The unchanged API-consumer inventory still fails because `mcp.servers.reconnect` has no non-test frontend consumer; the full check is not green. All fifteen later independent Web gates passed, including production bundle/module linkage. `make check-native` passed Desktop tests/vet/build and the supported Wails build (30.12 s). Non-failing loopback diagnostics and duplicate `-lobjc` warnings remain separate.
+
+Native SDK/Skills acceptance used English/light/14 px/Flame Orange and a 523 px
+Dock. First and retained document failures showed the published explanation.
+Keyboard retries refused duplicate activation; a later Composer edit retained
+focus through accepted reading. Escape aborted the held document read and
+returned to the same source/query. Collapsing the catalog and continuing produced
+`Failure detail draft · 保留 · reading · continued`.
+
+Final English Schedules used a 660 px Dock in the light/14 px/Orange workspace.
+The summary and published detail read as separate paragraphs, without false
+empty or retained-page claims on first failure. A held retry accepted the filtered
+page while preserving the later Composer focus and draft. A later failure kept
+the expanded `sch_nightly` details and query. Collapse followed by continued
+input produced `Schedules failure draft · 保留 · reading · continued`.
+
+Final Chinese/dark/18 px/custom blue used a full pane, an actual 2632×1798
+edge-resized window and twenty native Zoom In commands to 200%. First and retained
+errors had complete, separately readable text without duplicate punctuation.
+Add → mixed-language title → Escape returned to Add and retained `nightly`.
+Native wheel reading reached the complete task/workspace/model/time facts beneath
+persistent controls. Repeated Return kept the held fifth read at one request;
+its acceptance preserved the query's later focus and expanded details. Search
+Escape cleared locally; reverse Tab reached Close, which returned to Conversation.
+New input there was exactly `定时任务恢复后继续输入 · 保留`. Actual Size was reset
+before Quit. The third read was already accepted when its query-focus capture
+was taken; only the fifth read establishes that Chinese later-focus qualification.
+
+These are production components through the actual Wails asset/IPC host with
+private in-memory reads, passive hidden diagnostics and zero Skill/Schedule
+mutations. Live-subscription rejection and model-catalog failure remain
+component/public-client regressions, not newly injected native cases. Live
+installed-package/store, filesystem, archive/proposal, successful/unknown mutation
+and background-firing paths are not qualified. VoiceOver, OS IME, measured
+contrast, other native locales/platforms, browser visual suites and benchmarks
+were not run. The SDK/Skills implementation stayed fixed after its native scene;
+Schedules received fresh final acceptance after its own repair. All five owned native PIDs and four CLI PIDs exited. UID/birth-time and copied-source guards removed the unregistered bundle, private data/overlays/logs/captures, root/pointer, ten new outputs/caches and two bundle-specific Library directories. The pre-existing shared-UI cache, primary checkout, user data, read-only references and unrelated processes remained intact. Remote main was refetched at `e5b051b814dff61b224e070e196d6828958b001e` before publication.
+
+Implementation `c1947e107532680362e89979af095b313b9957ba` was pushed to remote `main`; `ls-remote` confirmed that exact tip. Normal formatting/lint/commit hooks passed, the worktree was clean and no implementation commit remained unpushed. The 120 reviewed tracked source/resource blobs matched the accepted snapshot. Continue from this repair without recreating its failure/detail or read-lifetime mechanisms.
 
 Provider rows retain one credential draft owner and one canonical mutation owner. `providers/ui/ProviderRow.tsx` now runs Save & Test through one existing `useAsyncFeedback` lease that starts at activation. The mutation latch and saving state remain local to the admitted update; `saveDraft` still settles only the submitted URL/key values. Ordinary Save/Clear keep their existing feedback policy. A retired Runtime generation remains ignored, current save failure prevents testing, and test failure uses its existing message. Editing does not submit the successor draft or cancel an already accepted canonical update. No new draft, generation cache, protocol or persisted representation was added.
 
@@ -727,6 +1111,85 @@ Flame's actual navigation/history, registered input target and retained-view
 lifetimes supply the implementation contracts. Existing Base UI modal semantics
 and better-series focus/layout guidance preserve bounded tasks, source returns,
 typography, semantic colors and the approved visual system.
+
+### Native short-paste continuation qualification
+
+No actionable focus/caret finding in the inspected trace. Approve the observed
+continuity; the earlier single replacement is not a diagnosed or fixed defect.
+No product source, test, preference, Runtime contract or focus policy changed.
+
+The real `TextAreaPrimitive` is a native textarea. Shared `TextArea` owns geometry;
+Composer's focus callback clears only its composition guard, and short plain text
+keeps `composerPasteIntent`'s native path. The draft store remains the value owner.
+Better-accessibility guides the distinction between focus, selection and an edit.
+Read-only HeroUI's actual textarea forwards consumer props to its primitive;
+ZCode's actual prompt-input textarea keeps controlled values and leaves ordinary
+text paste native while separately handling image attachments. Neither reference
+establishes Flame's native caret behavior.
+
+Bounded Claude Code CLI supplied a private read-only observer in **53.54 s**,
+**8 turns**, with no denials or subagents. Primary verified its real Composer
+selector and sole read-only store access, then added trusted-event and pointer
+coordinates/detail observations. Passive capture and an offscreen bounded log
+record the input identity, draft/DOM values, selection, focus and event order.
+The observer never dispatches input, writes selection/value, focuses a product
+node or reads clipboard/system data. All private code stays outside the repo.
+
+Actual Wails first qualifies a normal small paste at Actual Size: the ten-character
+draft's `10..10` caret appends eleven characters and settles at `21..21`, with
+DOM and draft agreeing. The exact original `暖浅色阅读草稿 保留` is then restored.
+The production tool group/result remains open while twenty native Zoom In actions,
+a native edge resize to **2632 × 1798** and fixture-sidebar collapse reproduce the
+warm custom light, Chinese, **18 px**, **200%**, **658 CSS px** setting.
+
+Opening the current material full width retains textarea identity **2** with
+`10..10` and the exact draft, behind a hidden parent. Diff list → `session.go` →
+original row → explicit Close returns to Conversation with that same input,
+selection and value. Tab reaches Review changed files. Native input activation
+records a trusted single pointer click and ends at `10..10`. The later paste
+records `beforeinput` **insertFromPaste**, eight characters and `10..10`; the
+settled DOM/draft is `暖浅色阅读草稿 保留 — 返回后继续` at `18..18`. No explicit
+caret adjustment precedes this paste. Actual Size retains that input, value and
+`18..18` while the Dock reappears.
+
+Capture-phase `input` briefly sees the edited DOM before React's value callback;
+the following selection-change/current-state observations agree with the store.
+That event order is not a competing draft transition. The original replacement
+does not reproduce under this passive trace. These separated click/observation/
+paste actions do not establish the original combined action timing, its prior
+selection, or the observer's timing effect. Its cause remains unestablished;
+revisit on a repeat with corresponding event evidence, without forcing the caret
+or adding a paste/focus workaround. A stale-app-state CUA rejection required
+fresh observation. A native paragraph pointer/focus interval was observed;
+no actor/cause attribution is made, and the final controlled snapshots supply
+the evidence. No bare-HTML/platform isolation or broad native-input claim follows.
+
+`make stage-web` passes (**5.88 s**); Composer, input-controller and paste-intent
+suites pass **3 files / 42 tests** (**2.14 s**). The supported native check passes
+(**61.39 s**), arm64, minimum macOS **13.0**, SDK **26.5**. An early binary
+inspection preceded build completion and had no output binary; only the final
+post-check inspection establishes those facts. All **19** accepted product
+inputs, **11** portable resources, **5** private harness inputs and compiled UI
+CSS match after acceptance. Unchanged broad Web, Runtime, CLI and independent
+shared UI suites were not rerun. No Send, live provider/Runtime command,
+preference save, credential or permission action was invoked. VoiceOver speech,
+OS IME, clipboard denial, other-platform GUI, browser visual suites and performance
+benchmarks remain not verified.
+
+The owned native process and read-only CLI exited. After ownership, birth-time,
+containment and copied-asset checks, the app was unregistered and its private
+root/pointer, ten new worktree output/cache paths and two bundle-specific Library
+paths were removed. A private archive preserves **41** flat UTF-8 evidence files
+and **6** capture hashes outside the repository. Pre-existing UI Vite cache,
+dependencies, compiler caches, references, user data, unrelated processes and the
+primary checkout remain. Continue with another observed task; this bounded
+negative result does not authorize rewriting Composer or repeating the completed
+oversized-editor investigation.
+
+Delivery: qualification record `6530cdd8ea413b36b85a55bbb5022e8935ab83b4`
+is pushed to remote `main`. Fresh `ls-remote` matched that commit, all **30**
+accepted product/resource inputs matched, and the owned checkout was clean with
+zero unpushed commits. This in-place receipt adds no product change.
 
 ## Search selection and task handoff
 
@@ -1030,6 +1493,91 @@ artwork supplies no keyboard evidence. The six better-series domains apply to
 this file-browse/read/return flow; unchanged colors, typography and control
 surfaces retain their existing owners.
 
+### Long-file targets and prepend ownership
+
+The persistent file reader keeps the file's identity, line range and navigation
+beside the conversation. Loading another range of the same file preserves the
+previous content, but that placeholder cannot settle the new navigation request.
+`FileWorkspace.tsx` passes a null placement intent to `FileView.tsx` until the
+current query has accepted content. `FileView` then places that intent once.
+Prepending captures the exact requested `LineWindow` with its height anchor; a
+later window or navigation retires the anchor. The existing viewer, query and DOM
+scrollport remain the owners. No per-file position cache, retry, delayed focus,
+new state machine or shared-component override is added.
+
+Actual Wails reproduced both original failures with a private 1,000-line source:
+after line 450, requesting line 300 placed it against the old 250–650 range;
+the accepted 100–500 range then showed **131–169**, leaving line 300 offscreen.
+Separately, a pending prepend followed by a new line-100 request let the old
+height adjustment force the accepted reader to **0 px**, showing **1–39**.
+Requesting line 100 again placed it normally, confirming the stale adjustment.
+
+The bounded Claude Code CLI supplied the four-file candidate. Primary review
+checked the actual diff, original-source failures and native behavior, and fixed
+one test setter that failed the first complete check's lint stage. Against the
+original two production files, the focused suite fails **4 cases and passes 27**;
+the candidate passes all **31**. Tests cover placeholder acceptance, ordinary
+prepend continuity and retirement by a later jump or append. Controlled test
+geometry proves adjustment ownership; actual WebKit supplies the layout evidence.
+The final complete Web check passes **392 files / 3,117 tests** and every gate
+(**380.98 s**, tests **253.14 s**). The subsequent serial `make check-native`
+passes Desktop test/vet/build and the supported Wails macOS build (**55.05 s**).
+The non-failing duplicate `-lobjc` warning is unchanged.
+
+Read-only research inspected ZCode's actual Read renderer and code viewer's
+file/request/first-line handling, and ChatGPT's actual file-preview interface
+with named content and close behavior. HeroUI ScrollShadow and Arc ScrollArea
+keep scroll presentation separate from content identity. The linked Radix
+focus guidance and better-accessibility/layout review support the existing
+named reader and source return; the remaining better-series domains preserve
+the established reading scale, semantic colors, control states and concise copy.
+The already-reviewed full-size Ace workspace images inform hierarchy only.
+None of those references supplies Flame's request or scroll ownership.
+
+Native acceptance uses the production Wails host and production React views with
+canonical fixture transport. A private build transform supplies delayed line
+ranges and a deliberately held prepend; it does not alter production behavior.
+A passive observer reports geometry/focus through native accessibility. All
+navigation, typing, scrolling, resizing and zoom actions use native UI controls.
+
+- **English / light / 14 px / Flame Orange / full motion:** line 450 → 300 keeps
+  the old reading position during loading, then shows **281–319** around the new
+  target. Loading 200 earlier lines retains the previously visible 250–286 rows
+  while the scroll offset becomes **3,800 px**. Appending 200 lines keeps
+  **10,763 px** and the original first visible line **614**.
+- **Native narrow window and zoom:** the system window menu produces a 1120 px
+  window; pointer resizing reaches the existing **320 px** Dock minimum. The
+  wrapped long path, actions and line-700 target remain readable. Twenty confirmed
+  Zoom In actions after Actual Size reach **200%**. Full-width file entry,
+  line-600 placement (**592–608** visible), Escape from Go to line, Tab into the
+  named reader and Page Down work. Close returns to the conversation and the
+  exact continued draft `Keep this file review draft. Continue after checking line 600.`
+- **Chinese / dark / 18 px / custom blue / motion off:** enter `apps/web/package.json`
+  from the reply, go to 450, request earlier lines, then supersede the held read
+  with line 100. The accepted 1–300 range shows **85–115** at **2,035 px**. Focus
+  moved to Composer before acceptance stays there. Return to conversation focuses
+  the original package reference; switching to `README.md:15:2`, returning to the
+  file list and then the source restores the README reference. The exact draft
+  continues as `阅读长文件后继续讨论，第 100 行已核对。`
+
+One combined open/type attempt entered 50 instead of 450 and is excluded; the
+later observed input value 450 establishes the actual target before submission.
+Earlier interrupted or combined key attempts do not qualify the baseline; fresh
+separated actions do. Supersession by append is covered by the deterministic
+regression, not a separate native race. VoiceOver speech, OS IME composition,
+live filesystem/provider traffic, unrelated Runtime/CLI suites and other-platform
+GUIs are not newly qualified. No browser visual suite or performance benchmark
+was started. No protocol, persisted-data or external-consumer migration is needed.
+
+The acceptance app is quit and its exact bundle is unregistered. The private
+bundle, source overlays, fixture assets, observer, prompts, logs and temporary
+root are removed, together with seven newly created checkout output/cache
+directories and the unique WebKit/cache directories. Cleanup checks initial
+absence, ownership, containment and tracked files. Existing dependencies, the
+preexisting UI Vite cache, references, user data and unrelated processes remain
+intact. Main delivery contains only the four reviewed source/test files and this
+record; the independent delivery checkout is removed after remote confirmation.
+
 ## Dock tab task continuity
 
 `apps/web/src/ui/agent/context-dock.tsx` keeps tab selection and close/reorder
@@ -1176,22 +1724,106 @@ rendering. Shell consumers (`MessageStream`, `ChatStream`, `FloatingComposer`)
 import the axis through the chat public surface — the same direction by which the
 shell already consumes `MessageTurn`.
 
-The root cause this fixes: the delegated-run (subagent) transcript lives in the
-`chat` context and could not reach the shell-housed measure without a backward
-dependency, so `SubagentsPanel` rendered its transcript with no column cap —
-edge-to-edge in a widened Dock or full pane while the main transcript capped.
-`SubagentsPanel` now wraps its transcript content in `readingColumn.box`, so a
-delegated run caps and centers on the same axis as the primary conversation. The
-narrow Dock is unchanged because its content already sits below the cap; the
-existing scroller gutter is retained. Reference basis: ChatGPT/Codex drive the
-whole reading column from one measure variable (real-UI CSS), and ZCode centers a
-capped reading column in detail panes.
+The earlier move repaired the dependency direction but left an incomplete
+composition: `SubagentsPanel` used the capped box without its gutter. Actual
+Wails showed an 808 px inner body where the main reader had 768 px; padding on
+the outside scroller did not repair that contract. The existing transcript div
+now composes both `readingColumn.box` and `readingColumn.gutter`. Its local
+`--reading-gutter` projects the existing `--layout-compact-gutter`, preserving the
+narrow Dock's inset. The overview list keeps that same token on its scroller;
+the transcript no longer adds a second outer inset. Shared reading tokens and
+the existing 640 px gutter breakpoint remain authoritative.
 
-Verification: `typecheck`, `check:layers`/`contexts`/`published-boundaries`/`circular`,
-`lint` and `knip` pass; the full web unit suite is green (388 files / 3069 tests).
-Native Wails interaction acceptance for the widened-Dock and full-pane subagent
-reading is pending and not claimed here. Next reading work is controlled
-wide-content breakout (code/tables/media exceeding the prose measure).
+Final Wails acceptance qualified the complete composition in English/light/14 px/
+Flame Orange and Chinese/dark/18 px/custom blue. The full-pane body uses the
+shared 768 px inner cap at Actual Size, and a native window resize enters the
+existing wide-content band without losing its right gutter. Moving the selected
+third fanout task into a 473 px Dock retains identity and the compact inset.
+A separate 523→725 px Dock drag, 200% native zoom, actual narrow window and
+task → file → task → conversation path retain the original source focus and
+exact Chinese Composer draft. The fixture sidebar was explicitly collapsed for
+zoomed reading; its static layout is not production navigation evidence.
+
+Reference basis: ChatGPT's actual
+`deob/webview/assets/subagent-panel-3efa108a843d.js` centers a full-width body on
+the shared thread cap. ZCode's actual conversation/message components keep
+user content within its local boundary. The inspected Markdown exporter is
+excluded from interface evidence. Verification and remaining limits are shared
+with the reading-band repair below; this composition no longer has pending
+widened-Dock/full-pane native acceptance.
+
+## Shared Markdown note reading
+
+The user's rejected card reference prompted an actual Wails baseline of the
+shared GFM Callout. Both transcript and captured-file Markdown added colored
+leading rules, washed surfaces, padding and asymmetric corners to the same
+five note kinds. Those blocks interrupted the surrounding answer's reading
+edge. The original Callout had no shadow; no shadow removal is claimed.
+
+`packages/ui/src/globals.css` now gives those notes the surrounding reading
+plane and paragraph edge. It retains their existing block rhythm, natural-case
+title, icon, semantic ink, body paragraphs and list markers. All five kinds
+share this owner across the live and captured adapters. The parser, inert note
+semantics, ordinary quotation rule, inline code, selection and theme/radius
+owners remain unchanged. The UI README records this presentation contract.
+Bounded Claude Code CLI supplied the two-file candidate in **22.55 seconds**;
+primary review confirmed the CSS's **16 deletions** and the documentation change.
+
+Better-layout's grouping by space and shared edges, and better-ui's respect for
+the project's surface language, guide this choice. Read-only ZCode
+`markdown-blockquote.tsx` and `alert.tsx`, and HeroUI's actual alert stories,
+separate content grouping from title/icon identity. Their skins and alert roles
+were not copied. The inspected ChatGPT Markdown entry begins with text
+conversion; it is excluded from Callout interface evidence.
+
+Actual Wails acceptance used the same isolated 31-line canonical Markdown in
+English/light/**14 px**/Flame Orange and Chinese/dark/**18 px**/custom blue.
+Transcript text selection, separate reading scrolls, Files entry, keyboard
+Preview/Source switching and Back to files preserved content and source focus.
+The Chinese scene checked the **320 px** Dock, complete long-path wrapping,
+Chinese lists and an Arabic paragraph. A pointer-resized **2632 × 1798** native
+capture and **20 native Zoom In actions from Actual Size** qualified 200%
+full-pane reading, return through Files/catalog and explicit Close to the
+conversation. Exact drafts survived and accepted further input. Native zoom
+was restored before quitting. WebKit-computed color samples, converted through
+its sRGB canvas on the observed neutral planes, gave five title-ink pairs of
+**7.33–7.45:1** light and **10.85–11.48:1** dark; these samples do not certify
+every theme or page. Passive observers measured styles, focus and selection
+without changing product layout or behavior.
+
+Serial verification passed shared UI build/type/lint/format, **5 files / 79
+tests** and its independent packed consumer (**8.64 seconds**); both Markdown
+reading suites passed **2 files / 54 tests**. The full Web check passed **391
+files / 3,094 tests** and every later gate (**323.07 seconds**).
+`make check-native` passed Desktop test/vet/build and the supported Wails build
+(**31.21 seconds**); the binary is arm64, minimum macOS **13.0**, SDK **26.5**.
+All **13** reviewed product inputs, **11** portable resources, **5** harness
+inputs and the compiled shared stylesheet stayed unchanged through acceptance.
+Non-failing loopback, fixture chunk-size and duplicate `-lobjc` diagnostics remain
+separate. No cosmetic source-mirroring test was added.
+
+The first Chinese launch used unregistered `zh-CN` and was excluded; the accepted
+scene uses the existing `zh` registration. One CUA scroll timed out and reset its
+kernel; re-observation found the catalog, and a fresh Files reading/return path
+passed. That interrupted attempt is not behavior evidence. Native typing first
+emitted only the English prefix; ordinary paste supplied the verified Chinese
+draft. No live Send, Runtime mutation, credential/OAuth action, authored relative
+link activation, browser suite, performance benchmark, VoiceOver, OS IME,
+full RTL navigation or other-platform GUI coverage is claimed.
+
+Cleanup completed after all four native processes and the bounded CLI exited.
+The bundle was unregistered; its exact private root/pointer, ten newly created
+worktree output/cache locations and two bundle-specific Library paths were
+removed after ownership, birth-time and containment checks. The pre-existing
+shared UI Vite cache, installed dependencies, compiler caches, references, user
+data, unrelated processes and the primary checkout remain. Continue another
+observed workspace task on current main; do not broaden this note treatment into
+a mechanical redesign of meaningful state indicators.
+
+Delivery: implementation `98949b36233c4550d7177790d93c53575523b79c` is pushed
+to remote `main`. A fresh `ls-remote` matched that exact commit, the **24**
+reviewed product/resource inputs matched acceptance, and the owned checkout was
+clean with zero unpushed commits. This in-place receipt adds no product change.
 
 ## Empty, error and unsupported state ownership
 
@@ -1209,53 +1841,770 @@ rendering an error as a neutral empty — the same icon as "nothing here" and no
 retry — and now use the alert glyph with the negative tone, with Approvals
 offering a retry. `HooksPane` dropped its hand-rolled unsupported branch and
 routes that state through `DataView`'s `unsupported` config, removing the
-duplicate. The two `ToolControls` auxiliary-query failures stopped using a
-section label as the error title and share the one error title and tone.
+duplicate. `ToolControls` uses the shared recovery surface; its local titles now
+name tool visibility, auto-approve rules and the tools list so their independent
+retries remain understandable.
 
-Verification: `@flame/ui` rebuilt; its and the web `typecheck`/`lint` pass,
-`knip` clean, `@flame/ui` tests (74) and the web suite (3069) green. The shared
-`EmptyState`/`IconMark` default is unchanged, so this is additive for existing
-empties; native Wails acceptance of the new error tones is pending.
+The original shared-tone verification rebuilt `@flame/ui`, passed its 74 tests
+and the then-current 3,069-test Web suite. Current native acceptance below
+qualifies negative failure, warning unsupported and ordinary empty presentation
+in the Approvals page. The MCP follow-up below qualifies its named recovery
+states. The earlier subagent-unavailable path is not newly qualified here.
+
+### Plugin render recovery
+
+Native baseline reproduced focused Retry disappearing on both a repeated render
+failure and successful recovery. Focus fell to HTML. Its next Tab still reached
+the recovered Diff reader's first action; no navigation restart or keyboard trap
+is claimed. The known workspace view was also named only "main view" in the
+failure, despite its existing region carrying the actual title.
+
+`extensions/host/PluginBoundary.tsx` now references the existing SystemMessage
+root. Its explicit Retry handler hands off only focus currently inside that
+retiring error tree, using the root's owner document and nearest existing
+`[tabindex]` ancestor. The handoff occurs before the boundary retries, so recovered
+children may claim their own focus during mounting. It adds no destination when
+none exists and leaves outside focus untouched. There is no new DOM wrapper,
+state, effect, timer, listener or automatic retry. `WorkspaceViewBody.tsx` derives
+one localized current-view label for its region and failure; plugin identity,
+missing-view fallback, suspense and scrolling retain their owners.
+
+Better-accessibility guides the bounded focus-continuity recommendation. Read-only
+ZCode `ErrorBoundary.tsx` separates localized failure summary, explicit recovery
+and capped diagnostic reading; its skin, telemetry and reset contracts are not
+copied. That reference is not evidence of Flame's focus behavior. The established
+SystemMessage presentation remains unchanged and is now natively qualified for
+this workspace failure.
+
+| Severity | Location                                                      | Before                                                  | After                                               | Why                                                                                                                        |
+| -------- | ------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| MEDIUM   | `src/extensions/host/PluginBoundary.tsx:57`                   | Retry removed the focused error tree.                   | Owned focus enters its surviving host before retry. | Preserve a perceivable reading destination during explicit recovery; a continuity recommendation, not a conformance claim. |
+| LOW      | `src/features/shell/workbench/panel/WorkspaceViewBody.tsx:44` | A known view's failure used the generic main-view name. | Region and failure share the current view title.    | Keep the affected object understandable while recovering.                                                                  |
+
+Bounded Claude Code CLI supplied four scoped files in **112.18 s**, with no
+denials or subagents. Primary reviewed the actual diff, selected the root's owner
+document, shortened the lifetime comment and removed a tag-specific assertion.
+Six added boundary tests exercise success, repeated failure, nearest nested host,
+outside focus, child-owned focus and absent-host behavior; two workspace tests
+cover named recovery and the missing-view region. All **2 files / 12 tests** pass
+(**2.42 s**). The unchanged originals fail four cases while eight pass; both
+candidate sources were restored byte-for-byte (**2.08 s**).
+
+The initial complete Web command passes typecheck/lint/format and **391 of 392
+files / 3,107 of 3,108 tests**, then stops at the Runtime HTTP fixture's first
+managed-Memory MCP tool-readiness deadline (**244.58 s**). This is a headless
+Runtime/HTTP/SDK setup path which imports no changed UI source. The complete
+isolated file subsequently passes **49 tests** (**41.05 s**) without edits,
+assertion changes or a longer deadline. The cause of the first delay is not
+established. Every remaining command from the actual `check` script then passes
+in order: **22 gates, 22.63 s**, including contracts, architecture, resources and
+bundle/modules. This is qualified aggregate verification, not a claim that the
+first full command passed. `make check-native` passes Desktop test/vet/build and
+the supported Wails build (**23.16 s**); arm64, minimum macOS **13.0**, SDK **26.5**.
+
+Actual Wails uses a private deterministic render fault inside the real workspace
+view. Enabling recovery changes only the injected condition; the original Retry
+remains the action that remounts the installed Diff body. English/light/**14 px**/
+Flame Orange checks expanded diagnostics and keyboard retry both while failing
+and after recovery is enabled. Both retain the named Workspace diff region and
+its visible keyboard ring. Tab enters Show changed files; opening the second
+file, reading and returning focuses that same file row. Composer retains and
+continues exactly `Pane recovery draft 保留 · continued`.
+
+Chinese/dark/**18 px**/custom blue repeats the failure at **320 px** Dock width;
+the long error wraps with equal 320 px client/scroll widths, and keyboard Retry
+returns focus to that view. Twenty native Zoom In actions from Actual Size,
+a pointer-resized **2632 × 1798** capture and full-pane presentation qualify
+200% diagnostic reading. Native Page Down moves through the capped stack;
+Tab reveals the complete Retry and its ring. Successful keyboard retry focuses
+the surviving workspace region, then actual Diff list/detail/back and Close
+return to the conversation. Actual Size restores the 320 px Dock and the exact
+continued draft `面板恢复草稿 保留 · continued`. All **10** accepted product inputs,
+**11** portable resources, **6** harness inputs and compiled UI CSS match afterward.
+
+These isolated presentation/recovery flows do not qualify a real installed-plugin
+crash, Runtime mutation or every boundary placement. No Send, credentials,
+authored-link activation, clipboard-denial, VoiceOver speech, OS IME,
+other-platform GUI, browser visual suite or performance benchmark is claimed.
+Existing hidden-zoom and reverse-traversal qualifications remain separate.
+Approve for the inspected workspace retry path; screen-reader speech and other
+placements remain not verified. The Settings pane comparison is now qualified
+separately below; its existing tabpanel keeps its own scope and layout.
+
+Cleanup confirms all three owned native processes and the bounded CLI exited.
+The exact app was unregistered and its root/pointer, ten newly generated worktree
+output/cache locations and two bundle-specific Library paths were removed after
+ownership, birth-time, containment and copied-asset checks. A private compressed
+archive retains **98** flat UTF-8 evidence files and **23** capture hashes outside
+the repository. Pre-existing shared UI Vite cache, dependencies, compiler caches,
+references, user data, unrelated processes and the primary checkout remain.
+
+Delivery: implementation `9773c7cf5b14dbea2958789b4117edc7ebd54da4` is pushed
+to remote `main`. Fresh `ls-remote` matched that commit, all **21** accepted
+product/resource inputs matched, and the owned checkout was clean with zero
+unpushed commits. This in-place receipt adds no product change.
+
+### Settings pane error identity
+
+Actual Wails showed the Appearance heading and selected tab beside a failure
+naming the internal `settings:appearance`. The shared Retry handoff already
+focused the surviving Appearance tabpanel on a repeated failure. This separate
+repair adds only `label={t(p.label)}` to SettingsPage's existing PluginBoundary.
+The tab, frame and error now project the same translated name; diagnostics retain
+`settings:${p.id}`. There is no new string, state, focus policy, wrapper, style,
+preference mutation, navigation rule or migration.
+
+Better-writing's single vocabulary principle guides this bounded identity fix;
+the existing English Appearance and Chinese 外观 locale keys remain authoritative.
+Better-accessibility guides the verification of the previously repaired handoff.
+Read-only HeroUI's actual vertical Tabs story separates internal account/security
+IDs from human tab and panel titles. Its component system and copy are not copied.
+
+| Severity | Location                                           | Before                                           | After                                                | Why                                                          |
+| -------- | -------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------ |
+| MEDIUM   | `src/features/settings/public/SettingsPage.tsx:67` | A pane failure showed its internal namespace/ID. | The error uses the pane's existing translated title. | Keep one vocabulary for the selected object during recovery. |
+
+Bounded Claude Code CLI supplied the two-file edit in **57.46 s**, with no denials
+or subagents. Primary reviewed the one-prop diff and scoped the new visible-name
+assertion to the alert instead of counting repeated text. The regression uses a
+real registered pane whose ID differs from its translated label, verifies the
+unchanged diagnostic identity and retains query/focus through actual boundary
+recovery. Its original-source proof fails that one case while the seven existing
+SettingsPage cases pass; the candidate is restored byte-for-byte (**1.80 s**).
+SettingsPage, PluginBoundary and WorkspaceViewBody pass **3 files / 20 tests**
+(**2.56 s**). The actual Web check's three pre-test gates pass (**7.31 s**) and all
+22 post-test gates pass in their original order (**24.80 s**), including locales,
+contracts, resources and bundle/modules. `make check-native` passes (**23.56 s**);
+arm64, minimum macOS **13.0**, SDK **26.5**. Unchanged broad Web, Runtime, CLI and
+independent shared UI suites were not rerun for this display-only projection.
+The preceding batch's broad-run timeout and isolated 49-test pass retain their
+separate qualification above.
+
+Final actual Wails English/light/**14 px**/Flame Orange retains `appear` while
+reading details and retrying. The recovered Appearance tabpanel holds focus,
+actual preference controls render and Clear search returns to the search field.
+Personalization → Appearance works; Interface size opens with 14 selected and
+Escape returns to that control without selecting a value. Close returns to the
+prior Workspace diff material, then Composer accepts `Settings return draft 保留`.
+
+Chinese/dark/**18 px**/custom blue retains `外观` and names the failure 外观.
+Twenty native Zoom In actions from Actual Size and a pointer-resized
+**2632 × 1798** capture qualify the 200%/**659 px** settings viewport. Diagnostics
+are reachable by keyboard; Tab reveals Retry and its full focus ring. Recovery
+focuses the 外观 tabpanel and preserves the query. A native AX-targeted scroll
+could not route to the window; that attempt is excluded. Re-observation of the
+same live app and a coordinate scroll visibly reach typography. After Actual
+Size, Code size opens with 跟随界面 selected and Escape returns to 代码字号, preserving
+the value. Neighboring-pane return and Close again enter the prior workspace;
+Composer accepts `设置返回后继续 保留`. These final input checks establish continued
+conversation, not preservation of a draft entered before these settings scenes.
+
+All **10** accepted product inputs, **11** portable resources, **6** harness
+inputs and compiled UI CSS match after acceptance. This uses a private render
+fault around the actual contributed Appearance component; it does not qualify a
+real provider/plugin failure, Runtime operation, preference save, every settings
+pane, new popup anchoring behavior, clipboard denial, VoiceOver speech, OS IME,
+other-platform GUI, browser visual suite or performance benchmark. No Send,
+credential or permission action was invoked. Approve for the inspected named
+settings recovery and return path; the unexercised boundaries remain not verified.
+
+Cleanup confirms all three owned native processes and the bounded CLI exited.
+The app was unregistered; its private root/pointer, ten newly created worktree
+output/cache paths and two bundle-specific Library paths were removed after
+ownership, birth-time, containment and copied-asset checks. A private compressed
+archive retains **94** flat UTF-8 evidence files and **16** capture hashes outside
+the repository. Pre-existing shared UI Vite cache, dependencies, compiler caches,
+references, user data, unrelated processes and the primary checkout remain.
+Continue another observed task rather than mechanically extending this name
+projection or replacing settings' existing navigation and field components.
+
+Delivery: implementation `dd0a21fbffe13425c4a64913144a4221670dc868` is pushed
+to remote `main`. Fresh `ls-remote` matched that commit, all **21** accepted
+product/resource inputs matched, and the owned checkout was clean with zero
+unpushed commits. This in-place receipt adds no product change.
+
+### Approval-mode read recovery
+
+Actual Wails on `8e567257a` exposed a classification defect in `ApprovalsPane`:
+a canonical `internal_error` from `approval.getMode` displayed "This runtime
+doesn't expose approval-mode control," followed by Retry successfully revealing
+Safe/Balanced/Auto. An actual typed `method_not_found` displayed the same claim
+and offered the same futile mode Retry. The adjacent Rules list already used
+the shared error distinction correctly. This was local selection of a status
+surface, not evidence that Runtime lacked approval control or that the shared
+query owner needed a new state.
+
+`ApprovalsPane` now uses the existing `isUnsupportedMethod(error)` predicate.
+Only typed `method_not_found` renders the shared warning `EmptyState`, shield
+glyph and existing approval-specific unavailable explanation, with no mode
+Retry or choices. Other read failures render `DataError` with the localized
+`approvals.error.loadMode` title and the real refetch callback. Its negative
+tone and recovery description remain shared. The new title is present in all
+eight locales. `ModeRow` still owns the pending skeleton, accepted selection
+and write intent; the loading Mode label, Rules row, query retry/retirement,
+commands, focus, theme and geometry owners are unchanged. HTTP 404 is not used
+as a missing-method discriminator.
+
+Reference basis: the actual HeroUI `alert.stories.tsx` separates warning
+information from a recoverable connection error with Retry. ZCode's actual
+`settings/model-provider-section/StatusCards.tsx` distinguishes explicit
+availability reasons from recoverable unavailability instead of treating
+display text as status authority. Flame keeps its existing shared primitives
+and semantic tones. The better-writing/accessibility guidance informs a named
+failed object, an actionable recovery path and preservation of native keyboard
+behavior; static reference code is not native focus evidence.
+
+Five new presentation regressions use actual SDK error values and test the
+observable explanation/action boundary, HTTP 404 recovery, accepted-mode return
+and the existing Mode/loading state. Against original production source,
+four failed and loading passed (1.94 s). Final focused coverage passed five
+files / 27 tests (2.41 s), including all 22 existing query/mode/rule/DataView
+cases. The test assertions remained unchanged through implementation and
+acceptance. The first bounded Claude Code CLI attempt supplied the test proposal
+but its Write was denied by its own dontAsk policy (104.61 s, no edits);
+primary review applied the proposal and ran the failing baseline. A second
+Read/Edit-only invocation changed the one component and eight locales
+(67.63 s, no denials). Primary reviewed the actual diff and ran all validation.
+
+Native acceptance used canonical isolated Runtime responses through the real
+SDK and production components/host. It retained the repository's one automatic
+query retry. The fixture's direct bootstrap mode read was allowed, then only
+its seeded cache entry was removed before React mounted so the real query
+could receive the two failed attempts. An earlier private composition that
+failed bootstrap before mounting the interface is excluded as setup evidence.
+No approval mutation was admitted; the fixture recorded zero such requests.
+
+English/light/14 px/Orange qualified the new failure title, shared recovery
+copy, negative glyph, visible keyboard focus and Search → Approvals tab →
+pane → mode Retry. Enter admitted the real refetch, and the pending Mode
+label/skeleton remained. Subsequent Tab stayed at the independent Rules Retry;
+the accepted mode was Balanced. Retrying Rules produced the actual "No rules
+yet" state, followed by keyboard Close to the workspace and exact native
+Composer input `Approval recovery draft 保留`. Chinese/dark/18 px/blue
+qualified the warning shield/explanation with no mode Retry or choices; its
+remaining Rules Retry recovered independently while mode reads stayed at two.
+
+A separate Chinese/dark/18 px failure scene retained "无法加载审批模式" after
+the explicit retry and its existing automatic retry both failed. Twenty native
+Zoom In commands qualified 200%; an actual window resize changed the capture
+from 2878×1798 to 2632×1798. Real body scrolling exposed the recovery description
+and focused Retry with a visible blue ring. The passive private HUD obscured
+part of the lower viewport at this zoom; that fixture chrome is excluded from
+product layout evidence. Actual Size was restored. A two-Tab attempt after the
+native menu left the document before Close and did not close Settings; that
+keyboard-close path is not qualified and no component cause is inferred.
+Pointer Close returned to the workspace, where native Composer input exactly
+matched `恢复检查草稿 保留`. Pre-existing-draft preservation, VoiceOver, OS IME,
+measured contrast, the other six locales' native layout and other platforms
+are not newly qualified by these scenes.
+
+The full Web aggregate failed (149.27 s): 389 files / 3,073 tests passed and
+the unchanged Runtime file failed its shipped Memory MCP source-readiness
+case. That complete file passed separately with one worker (49 tests,
+41.89 s); its non-failing loopback diagnostics remain separate. This does not
+establish the readiness cause or make the aggregate green. Typecheck, lint and
+format passed before the test phase. All 22 later checks then ran independently:
+21 passed, including locale closure, production bundle and all 11 portable
+resources; only the existing `mcp.servers.reconnect has no non-test frontend
+consumer` inventory failed, with its 16 tests passing. The supported
+`make check-native` passed (22.65 s). Existing guards, assertions and timeouts
+were not weakened; Runtime, SDK and dependency sources stayed unchanged.
+No browser visual suite or benchmark was run, and no data/protocol migration
+is required.
+
+All 51 reviewed product/test/host/fixture/manifest inputs and four private
+harness inputs stayed frozen through native acceptance and checks. All six
+owned native PIDs and two CLI PIDs exited; the exact app was unregistered and
+its private root, data, logs, pointer, ten new build/cache outputs and two
+bundle-specific Library directories were removed with ownership and copied
+source-hash guards. The pre-existing UI test cache, dependencies/compiler caches,
+user data, unrelated processes, references and primary checkout were preserved.
+Remote main was refetched at `8e567257a` before publication. The batch was
+committed with normal hooks at `c6a3c10cc2e1894cb4a531d8c81be37b8593a5a2`
+and pushed to remote main; `ls-remote` confirmed that exact commit. All ten
+accepted source/test hashes match its blobs, with a clean owned worktree and
+zero unpushed commits at that checkpoint. The auxiliary MCP tool-data recovery
+follow-up is now qualified below. Do not repeat this resolved classification
+defect or infer a focus failure solely from pending body focus.
+
+### MCP tool read identity and scoped recovery
+
+Actual Wails on `eae9c91ad` showed two identical "Couldn't load" explanations
+inside Edit docs → Manage tools when `mcp.tools.exposure` and
+`approval.listRules` failed. Both exposed Retry while the tools themselves
+remained readable. Activating the first Retry accepted visibility alone: its
+read count became three, rules stayed failed at two, and the long tool's actual
+disabled value became visible. The remaining generic explanation did not name
+the failed object. A tool-list failure used the same generic title. Independent
+query and switch guards were already correct; missing presentation context was
+the defect.
+
+`features/mcp/ui/ToolControls.tsx` now supplies the existing `DataError` title
+for tool visibility and auto-approve rules, and `DataView.error.title` for the
+tool list. Three complete messages are present in all eight locales, using the
+existing Tool visibility and Auto-approve vocabulary. The negative surface,
+recovery description, Retry label, actual refetch callbacks, independent
+loading/error/disabled state, accepted values, stale-rule/source matching,
+commands and geometry remain with their existing owners. No new component,
+state, effect, focus handler, dependency or protocol/data migration was needed.
+
+The better-writing guidance grounds the named failed object and recoverable
+action; better-accessibility informs native keyboard and visible-focus checks.
+HeroUI's actual `alert.stories.tsx` pairs a named connection failure with Retry.
+ZCode's actual `settings/model-provider-section/StatusCards.tsx` derives
+availability and recovery from explicit facts. These are read-only references,
+not evidence of Flame's native behavior. Flame retains its shared primitives,
+Base UI, StyleX and semantic tokens.
+
+A Read/Edit-only Claude Code CLI invocation added three regressions to the
+existing test file (56.09 s); primary reviewed the diff and removed one
+unnecessary explanatory comment. All four old cases passed and the three new
+cases failed against unchanged production source (2.15 s). A second bounded
+Read/Edit invocation changed only the component and eight locales (90.73 s,
+no permission denials). Primary reviewed every actual source/locale diff.
+Final focused verification passed four files / 32 tests (3.07 s), covering
+distinct failures, each retry callback, independent accepted visibility,
+retained material, no automatic writes and the existing command/source guards.
+The 59 reviewed inputs and four private harness inputs then stayed frozen
+through native acceptance and final checks.
+
+The native fixture enabled the canonical MCP capability and supplied validated
+server/tool/exposure/rule responses through the real SDK, production components
+and Wails beta.34 host. The ordinary fixture's initially unnegotiated MCP feature
+correctly yielded an empty catalog; that first setup is excluded from product
+failure evidence. All scenes refused and recorded zero MCP/approval mutations.
+
+English/light/14 px/Orange qualified keyboard entry from Settings to Edit docs,
+the three named failures, and successive real visibility → rules → tools
+retries. Each accepted at three reads; unrelated failed reads stayed at two
+until explicitly retried. The exact command draft `fixture-docs --draft 保留`
+survived all recoveries, accepted enabled/off values appeared, and focus stayed
+on the user's later Cancel. After real body scrolling exposed that control,
+Enter cancelled and restored Edit docs. Seven Shift-Tabs reached Close; Enter
+returned to the original Workspace diff, followed by exact native Composer
+input `Tool recovery draft 保留`.
+
+Chinese/dark/18 px/custom blue qualified all three titles and retained
+`fixture-docs --草稿 保留` after a visibility retry and the unchanged automatic
+retry both failed. Visibility reached four reads while rules/tools stayed at
+two. Twenty actual View → Zoom In commands reached 200%; a native edge drag
+changed the capture from 2878×1798 to 2632×1798. Shift-Tab/Tab reached each Retry,
+and body wheel reading exposed each complete title, description and blue ring.
+The left diagnostic HUD is excluded fixture chrome. Actual Size was restored;
+pointer Cancel returned to Edit docs, then seven Shift-Tabs and Enter closed
+Settings. Exact native Composer input was `工具恢复后继续输入 保留`. Both Composer
+strings were entered after returning; preservation of a pre-existing Composer
+draft is not newly claimed. VoiceOver, OS IME, measured contrast, the other six
+locales' native layouts and other-platform GUIs were not run.
+
+The full Web command reached the existing API-consumer guard (176.21 s):
+typecheck, lint, formatting and all 390 files / 3,077 tests passed, followed by
+unused-code, circular/context, published-boundary, layer and port checks.
+The inventory still rejects `mcp.servers.reconnect has no non-test frontend
+consumer`; its 16 tests passed. The remaining 15 checks ran separately and
+passed, including locale closure, production bundle and all 11 portable
+resources. `make check-native` passed (22.70 s). The former Memory MCP readiness
+failure did not reproduce in this complete run; no readiness repair is claimed,
+and the non-failing loopback diagnostics remain separate. The full check is
+still failed at the inventory. No assertion, timeout or guard was weakened,
+and no browser visual suite or benchmark ran.
+
+All five owned native PIDs and two CLI PIDs exited. One post-Quit accessibility
+read reopened the exact private bundle; that extra PID is recorded and excluded,
+then exited without another dead-app query. The app was unregistered and its
+private root/data/logs/pointer, ten newly generated outputs/caches and two
+bundle-specific Library directories were removed with ownership/source-hash
+guards. Pre-existing caches, user data, references, unrelated processes and the
+primary checkout were preserved. Remote main was refetched at `eae9c91ad`
+before publication. Normal hooks committed the batch at
+`4d3b00510d893de5afb7e761fd9bfac24bc6f012`; push and `ls-remote` confirmed that
+exact commit on remote main. All ten accepted source/test hashes match its
+blobs, with a clean owned worktree and zero unpushed commits at that checkpoint.
+
+### Direct MCP tool reading and connection recovery
+
+Actual Wails on `2b8cd16b6` confirmed the user's report: a connected row exposed
+only its tool count. Names and descriptions required Edit → Manage tools, and
+installation-owned servers had no Edit entry. A failed installation row told
+the reader to retry without supplying an action. These gaps prevented direct
+reading and recovery.
+
+`ServerRow.tsx` now exposes one shared, source-named Disclosure containing the
+existing `ToolControls` for the exact server ID. It stays outside configuration
+editing and canonical status conditions; the old form section and
+`mcp.tools.manage` key are removed. Tool descriptions, independent read recovery,
+exposure/approval guards and mutation owners remain authoritative. The six
+canonical connection states have visible text alongside the decorative status
+dot. Every enabled row keeps one connection Button: Reconnect ordinarily,
+the existing Sign in task when authorization is required. Its shared pending
+behavior retains focus and refuses duplicate activation while the command is
+held or the canonical status is Connecting. Disabled rows have no reconnect.
+
+Reconnect passes the complete user/installation identity through the existing
+per-server serial generation to `client.mcp.reconnect`. The acknowledgement
+admits background work; a no-op commit and existing cache repair reread Runtime
+facts instead of synthesizing Connected. Generation replacement retires pending
+and queued work without dispatching it through a successor. Eight locale
+catalogs supply whole status, action, scoped-name and tools-title messages.
+No Runtime, SDK, protocol, persisted schema, shared control, theme or dependency
+source changed.
+
+The read-only ZCode MCP list supplied canonical failure reasons and
+source-dependent configuration evidence; its own count-only presentation was
+not used as a direct-tools reference. HeroUI's actual Accordion Trigger/Panel
+composition supports inline progressive reading with retained list identity.
+Better-writing, better-layout and better-accessibility guided object names,
+redundant status text, translated wrapping, task continuity and native focus.
+
+Two bounded Claude Code CLI invocations authored the regression cases
+(172.92 s) and implementation (219.81 s), with no permission denials. Primary
+reviewed every actual diff. On unchanged production, the eleven new cases
+failed while forty-one old cases passed; a missing-method cleanup also rejected
+one held test task. Primary corrected the new cache-identity assertion to
+capture TanStack's accepted projection after structural sharing, completed two
+existing gateway doubles for the required port and typed the generic test
+provider input correctly, preserving the production behavior assertions. Final
+focused verification passed all fourteen
+MCP files / eighty-nine tests, and typechecking passed. Fifty-two product/test/
+host inputs, eleven portable resources and six private harness inputs then
+stayed frozen through native acceptance.
+
+English/light/14 px/Orange qualified direct tool names and complete descriptions
+before Edit, independent keyboard expansion while editing, and exactly one
+tools instance per source. The exact unsaved
+`private-fixture-notes --draft 保留` survived both installation recovery and its
+own server's reconnect. Repeated Enter admitted one first command; ACK still
+showed Connecting, then canonical failure restored the same focused trigger.
+Retry accepted the installation's exact ID and preserved later Command focus;
+the user's own row recovery retained later Cancel focus. Keyboard Cancel
+returned Edit. Closing Settings restored the original Workspace diff; pointer
+entry then accepted `MCP tools reviewed 保留` in Composer without sending.
+
+Chinese/dark/18 px/custom blue qualified twenty actual View → Zoom In commands
+(200%) and a native edge resize from 2878×1798 to 2632×1798. Long tool names and
+complete descriptions wrapped; switches retreated beneath reading content and
+remained keyboard-reachable without activation. Repeated Enter again admitted
+only one connection command, with visible Connecting/failure and blue Button
+focus. Successful retry retained the expanded installation tools and the
+reader's later Disclosure focus. Seven Shift-Tabs reached Close; Enter returned
+Conversation at 200%. Exact Composer input
+`工具明细看完继续输入 保留` survived Actual Size, which also restored the Dock.
+
+The private composition used validated wire records, the real SDK, production
+query invalidation/components and Wails beta.34. Its `mcp.changed` facts enter
+the existing invalidator directly; it does not certify live SSE delivery,
+real MCP executables/network dials, OAuth, policy writes or unknown-result
+reconciliation. Final English and Chinese scenes recorded three/two in-memory
+reconnects, ten/seven canonical reads and zero forbidden command attempts.
+An initial invalid server-name setup and later user-interrupted actions are
+excluded. The valid baseline captures recorded zero attempts; its subsequent
+interrupted state had four refused auth/config attempts, without live writes.
+A final English combined draft action was interrupted and excluded with zero
+attempts. Mod-L did not move focus in this isolated composition, so only the
+observed pointer Composer entry is claimed. VoiceOver, OS IME, measured contrast,
+six other native locale layouts and other-platform GUIs were not run. No browser
+visual suite or performance benchmark ran.
+
+Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web`
+passed in 368.47 s: all 391 files / 3,094 tests and every compiler, lint,
+format, dependency/contract, style, locale, resource, bundle and module gate.
+The reconnect API-consumer inventory now passes with its real UI consumer;
+no guard or assertion changed. All eleven portable ESM resources are byte
+identical to the baseline. `make check-native` passed tests/vet/build and the
+supported Wails build in 25.17 s. Non-failing loopback diagnostics and duplicate
+`-lobjc` warnings remain separate; this run does not claim their cause was
+repaired.
+
+All four owned native PIDs and both CLI PIDs exited. After retaining ninety-four
+UTF-8 evidence files and twenty capture hashes, guarded cleanup unregistered
+the exact bundle and removed the private root/data/logs/pointer, ten newly
+generated outputs/caches and two bundle-specific Library directories. The
+pre-existing UI test cache, user data, references, compiler/dependency caches,
+unrelated processes and primary checkout were preserved. Remote main was
+refreshed at `2b8cd16b6` before publication. Normal hooks committed the change at
+`747e2e81ae7570996439fb45bb683ad664fba088`; push and `ls-remote` confirmed that exact
+revision on remote main. All fifty-two accepted product/test/host hashes match
+its blobs. The owned worktree was clean with zero unpushed commits at that
+checkpoint. Continue with the user's explicit surface-style constraint; do not
+repeat the completed count-only tool-entry investigation.
+
+### Retained read frames and connection task actions
+
+Actual Wails reproduced the previously unclassified visibility observation on
+`e7b82c04b`. During a held tool retry, Cancel remained focused and visible at
+806–834 with body height 944 and scrollTop 210. On acceptance, the body grew only
+8 px, but scrollTop fell to 60 and Cancel moved to 964–992, below the viewport.
+The passive diagnostic froze the first accepted sample before subsequent
+observations. There was no focus loss, hidden window or paused frame delivery;
+content shrink alone was not the cause.
+
+Plain HTML controls through the same Wails host isolated the boundary. Replacing
+material with a new inline-size query container reset scroll; an ordinary block
+or retained query container did not. A retained grid/query frame reproduced the
+reset when its `:empty` rule hid it during child replacement. Grid and clipping
+alone did not. Moving the query boundary to an outer wrapper passed the first
+focused-Cancel scene but still failed the later-Search-focus scene. A temporary
+diagnostic that disabled the shared `:empty` visibility rule preserved the
+user's chosen scroll. That override and the trial wrapper were removed.
+
+`packages/ui/src/records.tsx` now keeps its frame visible through transient DOM
+emptiness. The actual read/empty-state owner supplies native `hidden` for a
+truly empty group. Seven consumers migrate together: changed-file navigation,
+pending commands, installed packages, loaded plugins, Skills, Schedules and the
+Usage report breakdown. Shared globals already implement native hidden;
+`packages/ui/README.md` records that ownership. `ToolControls` retains the same
+`SettingsGroup` around loading, failure, empty and accepted material, preserving
+its local width/query contract without another wrapper.
+
+A second actual native scene exposed a different cause after that repair:
+Chinese/dark/18 px/custom blue at 200% kept scrollTop 1148, while wrapping tool
+details grew 192.5 px above the connection actions and moved Cancel below the
+viewport. `ServerForm` now puts its existing actions and connection feedback
+immediately after the connection fields, followed by Manage tools. Tool policies
+already save independently; their existing block was relocated without changing
+handlers, form ownership or tab order within either task. Connection actions
+remain stable while tool results grow. No Panel observer, refocus, timer,
+sentinel, minimum height, new state or effect is retained.
+
+The better-layout and better-accessibility guidance grounds task grouping,
+content growth and preserving later user choices. The read-only ZCode
+`packages/ui/src/settings/McpServerForm.tsx`, `McpSettingsSection.tsx` and
+`SettingsFormActions.tsx` keep connection completion with its bounded draft.
+Their actual composition informed the task boundary; Flame keeps its existing
+components, Cancel/Save order, Base UI, StyleX and semantic tokens.
+
+Four bounded Read/Edit-only Claude Code CLI invocations implemented the initial
+retainer, trial wrapper, shared-owner migration and exact task-order move
+(40.50, 19.03, 43.56 and 22.39 s; no permission denials). Primary reviewed the
+actual source and generated diffs, rejected the incomplete candidates through
+native evidence, and verified that the final task-order edit is the exact
+existing block relocation. Eleven portable resources were rebuilt and checked:
+only Skills, Schedules and Usage changed; the other eight remained byte-identical.
+The generated Skills diff includes local minifier renaming, separately reviewed.
+No Runtime, SDK, protocol, dependency, theme or persisted-data change is involved.
+
+Native acceptance used the real Wails beta.34 asset/IPC host, current production
+components and validated in-memory SDK responses. Private transport held one
+retry; passive frame/focus geometry recorded first acceptance. Final 80
+source/test/host/document inputs, 11 resources, four compiled shared-UI inputs
+and four harness inputs remained frozen through acceptance and checks. The
+harness contained no focus, scroll or geometry intervention.
+
+- Explicit English/light/14 px/Flame Orange kept Cancel at 569–597 and scrollTop
+  212 through acceptance; the body changed 946 → 952. The exact connection
+  draft survived, the enabled/off values and Orange focus ring were visible,
+  Enter restored Edit docs, and keyboard Close returned to Workspace diff.
+  Composer then accepted exactly `Continue from Orange settings · 保留`.
+- English/light/14 px/custom blue moved focus to Search and deliberately
+  scrolled to 122 while the read was still held. First acceptance retained that
+  focus, scroll and Cancel geometry, as well as the exact connection draft.
+  Keyboard cancellation/Close and new Composer input also passed. An earlier
+  attempt reached Search only after acceptance and is excluded from this
+  asynchronous-focus evidence. Omitting an accent preserved the prior private
+  bundle preference, so that scene is correctly classified blue.
+- Chinese/dark/18 px/custom blue used an actual edge-resized 2632×1798 window
+  and twenty native Zoom In commands. At 200%, held/first-accepted Cancel stayed
+  at 70.2–100.2 with scrollTop 1131 while body height grew 1422.7 → 1615.2.
+  The transition capture was already accepted and contains frozen prior-held
+  and first-accepted diagnostics; it is not claimed as a separate held screenshot.
+  Wheel reading exposed the complete long tool name/descriptions and switches.
+  Keyboard reentry reached Cancel, cancellation restored Edit docs, Close
+  returned to Conversation in the narrow layout, and continued input was exact.
+- A separate native Reload scene at the same 200% intentionally scrolled upward
+  during the held read: 1131 → 681. Acceptance kept 681 and the intentionally
+  offscreen Cancel at 519.7–549.7. No automatic focus chasing occurred. Keyboard
+  reentry exposed the action normally. Actual Size was restored before exit.
+  The unchanged shared owner also qualified changed-file search → no matches →
+  Escape clear → second-file selection with its exact Composer draft retained.
+
+All scenes refused and recorded zero MCP/approval mutations; accepted read counts
+were exposure 1, rules 1 and tools 3. These are isolated presentation/recovery
+paths, not live server connection, Save/Test, policy-write or installed-package
+migration acceptance. Existing installations keep their selected resource digest;
+a source/resource rebuild does not automatically reinstall them. VoiceOver,
+native OS IME, measured pixel contrast, the other six native locale layouts,
+other-platform GUIs and the three unrelated leaf `:empty` sites are unqualified.
+The original failure depends on native style/layout timing and was not exposed
+by happy-dom; no mirror-only DOM assertion was added.
+
+Final shared-UI checking passed build, types, lint, formatting, 5 files / 79
+tests and an independent packed UI/icons consumer (8.58 s). Portable build and
+checking passed (0.53 / 2.07 s), including all 11 resources and eight-locale
+closure. Focused Web coverage passed 11 files / 69 tests (6.44 s); after the
+exact form relocation, ServerForm/ToolControls passed 2 files / 19 tests (2.66 s).
+The final complete Web command passed types, lint, formatting, all 390 files /
+3,077 tests and the six checks through port-surface, then failed at the unchanged
+API-consumer inventory (175.89 s). Its 16 guard tests passed; it still rejects
+`mcp.servers.reconnect has no non-test frontend consumer`. The remaining 15
+checks passed independently, including the production bundle and all portable
+resources. `make check-native` passed (22.99 s). Memory MCP readiness did not fail
+in this complete run; no readiness repair is claimed. Non-failing loopback
+diagnostics remain separate. No guard, assertion or timeout was weakened; no
+browser visual suite or performance benchmark ran.
+
+All 21 recorded native PIDs and four CLI PIDs exited. No dead-app accessibility
+query was used after Quit in this batch. The exact bundle was unregistered, and
+ownership/birth-time/source-hash guards removed its private root, homes, logs,
+captures, pointer, ten newly generated outputs/caches and two bundle-specific
+Library directories. The pre-existing shared-UI cache, user data, read-only
+references, primary checkout and unrelated processes were preserved. Remote
+main was refetched at `e7b82c04bdce5eee848509e425d487564bdf3e01` before publication.
+Normal hooks committed the repair at
+`148a64158a2f2ccdeeb852392757cbf57de52da3`; push and `ls-remote` confirmed that exact
+commit on remote main. All 92 accepted source, test, resource and document
+hashes match its blobs. The owned worktree was clean with zero unpushed
+commits at that checkpoint; this publication receipt is a documentation update.
+
+Continue with observed complete-task defects, especially retained resource
+catalog reading and return paths across their actual read/empty/error boundaries.
+Do not restart this resolved scroll-clamping investigation or add a generic
+body-resize focus policy. Preserve deliberate scrolling and later outside focus.
 
 ## Wide-content breakout in the reading band
 
-Code, wide media, Mermaid diagrams and tables now extend past the prose measure in
-the window-width band where the per-turn navigation rail is hidden, so dense
-content gets room without colliding with the rail. The breakout lives only in
-`markdown.css`, gated to `@container conversation (min-width: 640px) and
-(max-width: 1151.98px)`: below 640px (narrow Dock) and in the rail's `>=1152px`
-band it is inert, so those presentations are unchanged.
+Actual Wails on `955cfb690` exposed the missing boundary in the original broad
+`.md` descendant rule. Expanded user code and images escaped the narrower user
+bubble; quote, list and Callout code borrowed the conversation pane's width and
+put actions behind the Dock or outside their local surface. The width formula
+was not the owner of eligibility.
 
-Wide blocks are left-anchored — their left edge stays on the prose's left edge and
-they grow rightward — matching the conversation's left-aligned prose (`65ch` with
-`margin-inline-end: auto`) rather than centering against it. Width is
-`max(100%, min(var(--wide-column-max), 100cqi - max(0px, (100cqi - var(--reading-column-max)) / 2) - 2 * var(--reading-gutter-wide)))`:
-never narrower than the column (no regression), and bounded so the right edge keeps
-two gutters of clearance from the pane — no horizontal scrollbar by construction
-across the whole band, including the narrow end where the column already fills the
-pane. `--wide-column-max` (56rem) is the single tunable owner.
+`BlockRenderer` now marks its existing text wrapper with
+`data-slot="message-text"`. `markdown.css` grants breakout only through the
+observed outer assistant text chain:
+`.msg-content:not([data-user-message-bubble]) > [data-block-anchor] > [data-slot="message-text"] > .md`.
+Only direct code, media, Mermaid frames and display math inside a direct paragraph
+take the wide width. Direct table containers take only `max-width`, preserving
+intrinsic narrow tables. User bubbles, nested Markdown, list/quote/Callout content,
+reasoning and NarrativeWave text keep their local boundary. No wrapper, clipping,
+measurement, new state or event workaround was added.
 
-Scope: full-width blocks take the width directly — code (`.md .shiki-block`),
-media (`.md p.md-media-wide-block`), Mermaid (its `data-wide-markdown-block` frame)
-and math (`.md .katex-display`); `.md .md-table-container` takes it as a `max-width`
-so a narrow table stays fit-content and only a wide one grows. The whole `@container`
-rule sits after every base rule and defines `--md-wide-width` once on `.md`, so each
-selector wins its cascade by order and a future base rule cannot silently outrank it
-(the hazard that had left media unwidened behind its own base rule). The bounded
-table height, code/text selection and lightbox escapes are width-independent and
-untouched. Verification: lint, every CSS check
-(variables/dead-tokens/styles/shorthand/classes) and the markdown render suite (12
-files / 118 tests) pass. NATIVE ACCEPTANCE PENDING AND REQUIRED: the
-`--wide-column-max` value, the look across the band, the 1152px rail transition, and
-that the `.md`-scoped rules win over the StyleX/base frames all need real Wails
-verification and tuning; this environment cannot judge the geometry.
+The existing 640–1151.98 px `conversation` container band, left-anchored growth,
+56rem cap and width formula remain:
+`max(100%, min(var(--wide-column-max), 100cqi - max(0px, (100cqi - var(--reading-column-max)) / 2) - 2 * var(--reading-gutter-wide)))`.
+The complete subagent column composition above makes that geometry apply to the
+same owned axis in a full pane and a widened Dock. Ordinary code, table and media
+scrolling, selection, typography, radius, theme and Runtime owners are unchanged.
+The better-layout, better-typography and better-accessibility guidance informs
+stable grouping, reading measure and reachable local operations; it does not
+justify a second component system or global theme change.
 
-The delegated-run (subagent) transcript now establishes the same `conversation`
-container on its reader, so its wide content breaks out on the identical rule in a
-wide pane and stays inert in the narrow Dock. This closes the gap where only the
-main transcript, not a full-pane subagent view, widened its code and tables. The
-container mirrors the conversation pane's own; the subagent reader already owned
-its relative position and gutters, so nothing else changes.
+Native acceptance used the production Wails v3 host with isolated data and
+canonical captured messages augmented only with code, table, wide SVG and nested
+evidence. Before the subagent gutter correction, English/light/14 px/Orange
+qualified bounded expanded user code/image (including the image's END), nested
+evidence, wrap and keyboard Copy acknowledgement, file/source return and the
+exact mixed-language draft. An actual window resize qualified outer code growing
+beyond prose. After the final composition, renewed English full-pane acceptance
+showed the shared 768 px inner cap; resizing the native capture from 2878×1798 to
+2678×1798 grew the outer code to its 896 px cap with a 20 px right gutter.
+Selected-task → file → task restores the exact source link; moving that task
+into the 473 px Dock keeps the same task and local inset. Final Chinese/dark/
+18 px/blue acceptance qualified 523→725 px pointer resizing, 20 successful
+native Zoom In commands (200%), a 2632×1798 window, local code wrapping,
+Tab → Copy with visible focus/acknowledgement, file → task → original third
+fanout return, and the exact `子任务阅读草稿 保留` draft. Actual Size was restored
+before exit. These observations qualify the exercised layouts; a visibly present
+turn-navigation rail, all possible transitions and other native platforms were
+not qualified.
+
+Final checks: 14 focused files / 143 tests passed (4.89 s); frontend project
+388 files / 3,020 tests passed (113.01 s). Typecheck, lint, format and all eleven
+initial style/design checks passed. The later 22 checks were run independently:
+21 passed, including the production bundle and all 11 portable resources; the
+existing API-consumer inventory still rejects
+`mcp.servers.reconnect has no non-test frontend consumer`. Its 16 tests passed.
+The final `make check-native` passed (28.51 s). The preceding full Web aggregate
+failed (167.06 s, 388 files passed / 1 failed, 3,068 tests passed / 1 failed):
+the shipped Memory MCP source did not become ready in
+`runtime-http.e2e.test.ts`. That complete Runtime file passed separately with
+one worker (49 tests, 42.48 s); this does not establish the readiness cause or
+make the failed aggregate green. No Runtime, SDK, resource, timeout, assertion or
+guard was changed. No browser visual suite or benchmark was started.
+
+Claude Code CLI was used for bounded implementation: the first attempt reached
+its turn limit without edits (65.41 s); the second proposed the selector but both
+edits were denied by its own dontAsk file patterns (34.72 s). Primary review
+included the actual block-anchor wrapper and applied the two-file repair. A
+third attempt successfully composed the subagent gutter (18.18 s, no denials);
+primary review corrected the brief's assumed compact pixel value by projecting
+the actual existing token. All actual diffs, gates and native results were
+reviewed independently. The 34 frozen product/host/fixture/manifest inputs and
+three private harness inputs matched the reviewed versions through final native
+acceptance.
+
+Cleanup verified all 11 owned native PIDs and three CLI PIDs had exited,
+unregistered the exact app bundle and removed its temporary root, data, logs,
+pointer, ten newly created build/cache outputs and two bundle-specific Library
+directories. Pre-existing UI test cache, dependency/compiler caches, user data,
+read-only references, unrelated processes and the primary checkout were retained.
+Copied static assets with inherited creation times were accepted only after
+exact source-hash, current write-time, UID and non-link checks. Remote main was
+refetched at `955cfb690` before publication. Commit `a6f63253e` passed normal
+format/workspace-lint hooks and was pushed to remote `main`; `ls-remote` confirmed
+the exact tip. Its three committed product-source hashes match final native
+acceptance, and the owned worktree was clean with no unpublished work at that
+checkpoint. The native math-input follow-up below uses this delivered product
+base without reopening the completed reading-boundary repair.
+
+### Native math reading and input qualification
+
+The earlier repeated-Right probe showed offset zero in both the changed band
+(659 px viewport) and the unchanged outside-band control (768 px viewport),
+despite a focused 870 px expression and trusted, unprevented input. Its missing
+fact was the document selection. A follow-up on delivered base `c6e37ee16`
+compared plain HTML div/span, a table and the canonical KaTeX objective inside
+the same production Wails host. Passive text receipts recorded focus, selection,
+offsets and input, without changing selection, scrolling or event defaults.
+
+In the native control, Tab focused the plain scroller at offset zero with no
+selection. Right then placed a collapsed document caret at its trailing END and
+revealed it at offset 566; Left moved that caret by a character, retaining the
+same offset until it crossed back to the leading text. Four further Left keys
+returned offset zero. Span, table and KaTeX controls also exposed their trailing
+content through native text navigation. The initial width-only div/span controls
+had all their text in the visible half and showed no offset change; these were
+not representative evidence of an inaccessible trailing text result. Advancing
+frame callbacks, visible/focused document state and a separate text-field caret
+check exclude the earlier hidden/fullscreen initialization condition in these
+specific observations. This is an observation of native selection behavior,
+not a claim about a particular platform preference or every scroll input.
+
+The real production math fixture then received the same selection observations,
+with its canonical messages unchanged. English/light/14 px/Orange at Actual Size
+showed the first term, matrix and tall fraction. From the exact Composer draft
+`Formula reading draft 保留`, five Shift+Tab keys reached Poor → Good →
+Regenerate → Copy message → Mathematical expression without activating actions.
+The first Right placed a caret at offset zero in the following explanatory
+paragraph; it did not pan the focused math. One Left returned the caret into
+the rendered expression's final `)`, producing a trusted scroll event and
+offset 268 in the 602 px viewport over 870 px content. The actual final `(1)`
+tag was visible within the reader. Five Tab keys returned through the existing
+actions to Composer, retaining the exact draft. This closes the earlier
+unqualified final-tag/task-return path for this scenario. It does not qualify
+continuous arrow panning, a faster reverse path to the first term, different
+typography/zoom or physical horizontal wheel input. CUA horizontal scrolling
+still produced no observed DOM wheel event, including in the bare control;
+absence of that delivery is not a product wheel-failure verdict.
+
+No product source, native preference, ARIA, selection owner or keyboard/scroll
+fallback changed. The shared `useScrollReach`, `MarkdownMath` and browser default
+remain the owners. The better-accessibility guidance favors preserving native
+text interaction until a complete task demonstrates a defect. Thirty-five
+product/host/fixture/manifest inputs and the private production harness inputs
+remained frozen through acceptance. The native control builds passed, Web staging
+passed (5.81 s), the production-fixture Wails build passed (5.24 s), math rendering/
+trust tests passed (4 tests, 2.23 s) and scroll-reach contracts passed (9 tests,
+1.15 s). Full Web/native aggregate checks were not repeated for this documentation
+qualification; the unchanged product revision retains the preceding batch's
+explicit pass/failure limits above. No browser suite or benchmark was run.
+
+All six follow-up native PIDs exited. The exact app was unregistered; its private
+root, data, logs, pointer, seven newly created build/test outputs and two
+bundle-specific Library directories were removed with the same ownership and
+source-copy guards. Dependencies, compiler caches, the pre-existing UI test cache,
+user data and primary checkout were retained. This research required no detail
+implementation task for Claude Code CLI. Continue with another observed complete
+workspace task; do not add a math handler from the retired offset-only inference.
 
 ## Tool argument copy outcomes
 
@@ -1297,6 +2646,197 @@ Verification for this surface (2026-10-21):
 - Cleanup confirms all three native processes and the bounded CLI have exited. The exact private app was unregistered; its bundle, isolated homes, logs, overlay, captures, pointer, ten newly generated output/cache paths and its two unique Library caches were removed. Dependencies, pre-existing caches, reference resources and user work remain outside that cleanup.
 - An erroneous formatter invocation used pnpm instead of the installed repository tool. All six moved original dependencies and eight npm bin links were restored; its lock, local installation metadata and newly created cache entries were removed. The retained dependency versions and source hashes are unchanged; the installed Prettier check passes after recovery.
 - One first pointer activation after resizing only revealed/scrolled the action and is excluded; the next observed invocation produced its notice. A later pointer-origin reverse-Tab sequence repeated Copy rather than closing details; no close or focus-return guarantee is claimed from that sequence. The existing bare-WebKit reverse-traversal qualification remains unchanged. Native OS-denial, VoiceOver speech, OS IME, other-platform GUIs, browser visual suites and performance benchmarks are not newly qualified.
+
+## Reasoning reader continuity and keyboard identity
+
+The inline reasoning disclosure is supporting material for the answer. It keeps
+its existing dim hierarchy and bounded scroll window rather than taking over the
+Dock or opening a separate modal. The existing disclosure owns expansion, the
+retained DOM scrollport owns its position, and the existing follow ref owns
+whether new reasoning follows the end. No second position cache or restoration
+effect is added.
+
+Actual Wails reproduced the original failure in `ReasoningBlock.tsx`: after the
+reader stopped at **96 px**, closing the disclosure removed its **240 px** viewport
+bound. Its height expanded to **440 px**, which clamped `scrollTop` to **0** and
+re-enabled following; reopening jumped to the **200 px** end. The scrollable Tab
+target also had no accessible name.
+
+`rb.scroller` now retains `maxHeight` and `overflowY: auto` while its already
+mounted disclosure is closed. The existing overflow measurement gives only a
+scrollable reader `role="group"` and localized `reasoning.text`; the outer
+AgentActivityDisclosure remains the single named region. All eight shipped
+locales carry the new name. A rationale that fits adds no extra Tab stop or group.
+Default closed state, explicit toggles, streaming follow policy, reduced motion,
+quote styling, shared disclosure behavior and Runtime facts are unchanged.
+
+The bounded Claude Code CLI supplied the component, tests and locale candidate.
+Primary review checked its actual diff and renamed the retained-node test to
+state its real scope. Against the original component, the final focused tests
+fail **1 case and pass 18**: the new name is absent. Happy DOM does not perform
+layout, so its retained-node/paused-follow test is not evidence of the geometric
+bug; the original and candidate Wails readings above and below provide that
+comparison. The candidate passes the complete Web check: **392 files / 3,112
+tests**, including all later gates (**174.93 s**, tests **143.26 s**). Type, lint,
+format, locale, design-system, dependency, stylesheet, bundle and installed-plugin
+checks pass without exceptions. The subsequent `make check-native` passes
+Desktop test/vet/build and the supported Wails macOS build (**23.76 s**); the
+non-failing duplicate `-lobjc` linker warning remains separate.
+
+Read-only references retain distinct purposes. ZCode's actual
+`packages/ui/src/ToolCallBlocks/ToolCallBody.tsx` keeps supporting tool material
+inline. ChatGPT's actual local-conversation subagent panel uses selected-object
+and back navigation rather than an exporter-inferred interaction. HeroUI's
+Disclosure and ScrollShadow implementations separate expansion and scroll
+presentation; Arc's ScrollArea and ExpandableText keep those visual concerns
+local. Radix's [Dialog](https://www.radix-ui.com/primitives/docs/components/dialog)
+and [Tabs](https://www.radix-ui.com/primitives/docs/components/tabs) guidance
+reinforces bounded focus scopes; an inline reading disclosure does not need a
+modal boundary. Better-accessibility informs a named keyboard scroll target,
+better-layout and better-typography preserve the answer's reading hierarchy, and
+better-ui, better-colors and better-writing preserve existing motion, semantic
+color roles and concise localized names. The expired Ace caches were replaced by
+read-only source views of the 5160×3000 [Alpaca](https://acedesign.io/work/alpaca)
+and [Marketer](https://acedesign.io/work/marketer) images: subdued surrounding
+workspace, grouped supporting details and a clear primary action inform visual
+hierarchy only. Static images do not qualify keyboard behavior.
+
+Native acceptance uses the production Wails v3 host and production React
+components with canonical in-memory fixture facts. A private build-only
+composition uses the production window-chrome projection; a passive, hidden
+observer reports scroll geometry and focus through native accessibility. It
+does not drive interaction. Mouse, keyboard, window sizing and menu zoom actions
+are performed through native UI controls. No live provider, user data directory
+or external business command participates.
+
+- **English / light / 14 px / Flame Orange / full motion:** the candidate retains
+  **96 → 96 → 96 px** through close/reopen, with **240 px** viewport and **440 px**
+  content. Tab reaches `Reasoning text`, Home reaches the start, and the visible
+  Orange ring identifies the focused reader. Closing/reopening the parent tool
+  group retains its expanded child and reading position. Tool-result inspection,
+  Diff next-file selection, return to the original eight-line file and continued
+  input retain the exact draft `Review the boundary after reading. Continue with
+the same context.`
+- **Native narrow window and zoom:** Window → Move & Resize → Left produces a
+  1120 px window. Pointer resizing reaches the existing **320 px** Dock minimum.
+  Twenty confirmed native Zoom In menu actions after Actual Size produce **200%**.
+  At that scale, **121 → 121 → 121 px** is retained through reasoning close/reopen
+  (**240 px** viewport, **473 px** content). Keyboard focus, wheel reading and the
+  full-width file entry remain reachable. Returning from the file restores the
+  conversation, **121 px** reader position and original draft. Actual Size is
+  restored before quitting.
+- **Chinese / dark / 18 px / custom blue / motion off:** the actual `思考内容`
+  group retains **180 → 180 → 180 px** through close/reopen, with a **240 px**
+  viewport and **696 px** content. Home reaches **0 px**; End reaches **456 px**,
+  and reopening at the end retains **456 px**. The custom blue focus ring remains
+  visible. File Go to line → `4` → Enter returns focus to its trigger, and returning
+  to Composer continues the exact draft as `阅读草稿 保留 继续编辑`. The earlier Mac
+  lock-screen interruption and one interrupted key attempt are excluded; fresh
+  native actions verify the final path after the system becomes available and
+  the user confirms unlocking it.
+- **Completed short reasoning:** the canonical `waves` scenario in the same
+  Chinese/dark/18 px theme shows its completed rationale at its natural **29 px**
+  height. It adds no named scrolling group; Tab from its expanded trigger reaches
+  the next Read action. The existing terse supporting hierarchy is retained.
+- Early key/menu attempts and a timed-out menu loop do not establish zoom; the
+  later reset and four counted five-action batches do. A coordinate attempt
+  reached the tool group rather than the splitter; only the later observed
+  splitter movements qualify resizing. A Chinese native typing attempt did not
+  enter the requested characters and is excluded; the selected, verified paste
+  is the input baseline. VoiceOver speech, OS IME composition, live streaming
+  providers, unrelated Runtime/CLI suites and other-platform GUIs are not newly
+  qualified. No browser visual suite or performance benchmark was started.
+
+All native acceptance windows have been quit and the exact acceptance bundle
+unregistered. The private application, fixture assets, isolated data, observer,
+prompts, logs and temporary build files have been removed, together with the eight
+newly created checkout output/cache directories and the unique WebKit/cache
+directories. Cleanup checks ownership, containment, initial absence and tracked
+files; the preexisting UI Vite cache, dependencies, read-only references, user data
+and unrelated processes remain intact. The supported gates and final native paths
+pass. Main delivery uses only the eleven reviewed files; the primary checkout's
+parallel main history remains outside this batch. The temporary delivery checkout
+is removed after remote confirmation. No protocol, persisted-data or
+external-consumer migration is needed.
+
+## Tool group reading continuity
+
+Actual Wails reproduced a running sibling's completion collapsing an automatically
+opened group while its recorded Result held keyboard focus. The reader vanished
+and focus fell to HTML. `ToolGroup.tsx` now forwards native focus capture through
+`ToolGroupRows`' existing root and pins the parent's current expanded value with
+its existing `pinned` owner. Member rows and nested readers count as engagement;
+the parent header alone does not. A later focus move stays where the user put it,
+manual parent closure wins, and closing the last child keeps sibling rows reachable.
+`NarrativeWave` retains its separate explicit presentation. No new state, effect,
+focus restoration, timer, wrapper, skin, Runtime transition or migration is added.
+
+Better-accessibility's keyboard continuity and visible-focus guidance inform this
+repair. Read-only ZCode `ToolCallBlocks/ToolLayout.tsx` separates manual disclosure
+from automatic lifecycle policy, and HeroUI's actual Accordion stories retain
+trigger/panel semantics. Flame keeps its existing ActivityDisclosure/Collapsible
+composition; those references' caches, timers and completion rules are not copied.
+
+Bounded Claude Code CLI first reached its turn limit without edits (49.90 s),
+then supplied the two-file candidate (83.58 s, no denials). Primary reviewed the
+actual diff and separated completion from supersession in the regressions, adding
+an assertion that later outside focus stays intact. Six added behavior tests cover
+reader focus, row-only engagement, later outside focus, closing the last child,
+manual parent close/reopen and untouched/header-only automatic collapse. The
+pinned original fails four of the seven ToolGroup tests; the candidate is restored
+byte-for-byte and all 11 relevant tests pass. The original baseline had passed
+five tests without covering this failure.
+
+Serial verification passes the complete Web check: **391 files / 3,100 tests**
+and every gate (**331.58 s**). `make check-native` passes Desktop test/vet/build
+and the supported Wails build (**30.02 s**); arm64, minimum macOS **13.0**, SDK
+**26.5**. All **10** accepted product inputs, **11** portable resources, **6**
+clean harness inputs and the compiled UI stylesheet match after native acceptance.
+Non-failing loopback, fixture chunk-size and duplicate `-lobjc` diagnostics remain
+separate. Unchanged Runtime, CLI and independent shared UI suites were not rerun.
+
+Final actual Wails acceptance uses the production fold and `applyRunEvents` with
+an isolated canonical two-tool snapshot. English/light/**14 px**/Flame Orange
+retains Result focus when the sibling completes. Moving to Composer before the
+later reply keeps that input's focus and exact draft. Manual parent close and
+keyboard reopen, last-child closure, switching to the other result, Files entry,
+Preview/Source switching and Back to files all pass. Chinese/dark/**18 px**/custom
+blue repeats focused completion with a **320 px** Dock. Twenty native Zoom In
+commands from Actual Size and a pointer-resized **2632 × 1798** capture qualify
+200% reading, later-reply focus retention, full-pane Files/detail/list/Close return
+and the unchanged draft. Actual Size returns to the 320 px Dock, and Composer
+accepts continued text: `工具阅读草稿 保留 · continued · ready`.
+
+The first candidate observation also collapsed, with focus on the summary; its
+cause is not established and it is excluded from acceptance. A subsequent passive
+input/render probe records the same DOM and turn identity, `pinned: true` and
+unmoved Result focus through both canonical updates. The two final clean artifacts
+restore the original harness and independently pass the paths above without the
+render probe. One stale native index opened Approval mode; Escape dismissed it
+without choosing a mode, and a freshly observed full-pane entry passed. No cache
+cause, automatic focus repair or unexplained first-attempt success is claimed.
+
+These are isolated rendering/event-projection flows, not live tool execution or
+Run lifecycle tests. The fixture's generic captured Result reader is qualified;
+a specialized Read renderer is not. No Send/Stop/Steer, credentials, authored link
+activation, VoiceOver speech, OS IME, other-platform GUI, browser visual suite or
+performance benchmark is claimed. Mac lock blocked earlier CUA access; acceptance
+resumed only after the user's explicit unlock confirmation. Existing native
+hidden-zoom/reverse-traversal limits retain their earlier qualifications.
+
+Cleanup confirms all five owned native processes and both CLI processes exited.
+The exact bundle was unregistered and its private root/pointer, ten new worktree
+output/cache paths and two bundle-specific Library paths were removed after
+ownership, birth-time, containment and copied-asset checks. A private compressed
+archive retains 83 flat UTF-8 evidence files and 21 capture hashes outside the
+repository. Pre-existing shared UI Vite cache, dependencies, compiler caches,
+read-only references, unrelated processes, user data and the primary checkout
+remain preserved. Continue with a new observed task rather than extending this
+bounded focus-engagement repair without evidence.
+
+Delivery: implementation `2d96c7a37699e0ef83489689ceda61e52a891871` is pushed
+to remote `main`. A fresh `ls-remote` matched that exact commit; the owned checkout
+was clean with zero unpushed commits. This in-place receipt adds no product change.
 
 ## Tool row action context
 
@@ -1522,8 +3062,9 @@ Verification and coverage for this repair:
   closes the task and returns to Add. Refresh Tooltip is visible on keyboard
   focus and dismisses with Escape. Dock ContextMenu opens by right-click and
   Shift+F10, supports arrow navigation and closes without changing panel order.
-  Context-menu focus return and very rapid consecutive Escape/Tab still need
-  targeted qualification; do not infer those from stepped dismissal.
+  Context-menu focus return and very rapid consecutive Escape/Tab were not
+  qualified at that checkpoint. The object-menu follow-up below now covers
+  true keyboard entry and consecutive navigation in the actual host.
 - Layout, typography and accessibility observations above cover these concrete
   paths in the existing token system. Existing localized EN/ZH labels and action
   meanings were checked without copy changes. Color roles and neutral canvas
@@ -1684,8 +3225,224 @@ Verification and delivery boundary:
   `346c1c07e` with normal formatting, workspace-lint and commit-message hooks,
   then pushed to remote `main`; `git ls-remote` confirmed the exact revision.
   The committed Select hash still matches native acceptance. Continue native
-  context-menu focus continuity and retained-content popup boundaries; neither
-  whole-product VoiceOver coverage nor untested focus paths are claimed.
+  retained-content popup boundaries; neither whole-product VoiceOver coverage
+  nor untested focus paths are claimed. The context-menu qualification follows.
+
+### Shared modal dismissal
+
+Exact main `66e66c6de` exposed the remaining contract difference in the real
+sidebar SearchOverlay: an ordinary Escape returned to Search sessions and the
+next Tab reached New session, but all **three** consecutive 35 ms Escape/Tab
+trials stayed on Search sessions. The same product inputs with Motion Off passed
+**three of three**. Base UI 1.9 Dialog keeps its focus manager enabled until the
+retiring popup unmounts, and its `data-closed` signal does not use Menu's instant
+dismiss attribute. The common 80 ms exit therefore consumed the next action.
+CatalogPicker is a Popover, not a Dialog; its existing instant dismissal passed
+all three baseline trials. Schedules conditionally unmounts its edit dialog and
+also passed all three. Those controls were not defective or redesigned.
+
+`packages/ui/src/floating-surface.tsx` now ends panel and scrim transitions when
+Base UI marks a modal `data-closed`. `modalPanel()` merges that modal policy after
+the common motion group. One property list and one easing constant own the
+unchanged entry declarations. Base UI retains open state, guards, unmount and
+return focus; callers retain their initial/final-focus and hidden-owner policies.
+SearchOverlay, ModalDialog and transcript LightboxDialog use this same boundary.
+Select, Menu, ordinary floating panels and tips keep their existing policies.
+No state, timer, event handler, focus callback, observer or dependency was added.
+
+[Radix Dialog's keyboard model](https://www.radix-ui.com/primitives/docs/components/dialog#keyboard-interactions)
+and the installed [Base UI Dialog contract](https://base-ui.com/react/components/dialog)
+anchor return and modal isolation. Better-accessibility's focus order and
+better-ui's information-free exit guidance support making the next action
+available immediately. The read-only Arc Dialog implementation uses a different
+Radix/Motion presence owner; its lifecycle was not copied. HeroUI's real modal
+form and dismissal examples informed the bounded-task comparison.
+
+Verification and delivery boundary:
+
+- Bounded Claude Code CLI used configured `claude-opus-5-5`, completing nine turns
+  in **28.76 seconds** without subagents or permission denials. It edited only
+  the shared surface and its existing README paragraph. Primary reviewed the
+  actual diff, primitive lifecycle, callers, compiled classes and native results.
+  The unchanged chrome guard caught a real missing adjacent easing declaration
+  in the first patch; primary made the shared easing explicit and the guard now
+  passes. No guard, assertion or timeout was weakened.
+- The first candidate passed shared UI **79 tests** plus the packed consumer and
+  the focused popup **3 files / 24 tests**. The full Web test run passed **389
+  files / 3,069 tests** in **100.41 seconds**; its **123.99-second aggregate failed**
+  only at the existing `mcp.servers.reconnect` non-test consumer inventory. Its
+  16 guard tests passed. Types, lint, formatting, dependency and architecture
+  checks passed before that stop. Runtime, SDK and the inventory are unchanged.
+- That full run and the first EN native search pass precede the explicit easing
+  repair. The five effective surface class sets and emitted CSS bytes were
+  identical after that metadata repair; exact class ordering changed. The final
+  source then passed shared UI **79 tests plus packed consumer** in **8.25
+  seconds**, focused **24 tests** in **2.79 seconds**, typecheck, and all fifteen
+  later gates serially, including chrome, all **11** portable resource rebuild
+  comparisons, production bundle and plugin modules. Final `make check-native`
+  passed in **22.27 seconds** with Go 1.27.3 and Wails host/JS beta.34. The full
+  Web suite was not repeated after the CSS-equivalent metadata repair. No browser
+  visual suite, benchmark or simulated native-transition test ran.
+- Actual Wails EN/light/14 px/Flame Orange passed three Default-motion rapid
+  Escape/Tab trials to New session, reverse navigation to Hide sidebar, immediate
+  reopen, pointer scrim dismissal and real result selection. The mixed query
+  `Native query 保留` retired on reopen according to the existing query policy.
+  Selecting Align desktop shell and Work Index updated the actual sidebar
+  selection and returned to Search; the fixture's static main panel is not a
+  real conversation execution.
+- On the final source, actual EN Schedules nested Model Select closed to Refresh
+  model choices while preserving `Modal task 保留`; outer Escape/Tab reached
+  Schedule templates in three trials. Three CatalogPicker trials reached Search
+  this page with the exact `Modal continuity draft 保留` Composer draft retained.
+  The file reader's reading-guide.md was also visited, but that renderer owns
+  static images/tables and does not qualify the transcript Lightbox.
+- The actual long-content transcript supplied the real MarkdownTable and image
+  Lightboxes on final source. Pointer wheel revealed the table and its visible
+  Expand control. The bounded table preview had readable content and initial
+  Table content focus. Stepped Escape returned to Expand table; all three rapid
+  keyboard trials reached the same ordinary next control, Copy table. The
+  adjacent Inline architecture image opened its actual viewer with identity
+  1/2; ordinary and rapid dismissal reached Inline detail. No image download or
+  real task submission was performed, and this plain-text fixture does not
+  requalify file navigation inside an expanded table.
+- Final Wails ZH/dark/18 px/custom blue passed three Actual Size and three 200%
+  rapid trials. Twenty successful native Zoom In commands were recorded in four
+  bounded chunks. Actual list wheel scrolling and arrow navigation exposed the
+  last result, Draft a release note, within the popup. The real native window
+  shrank from **2878×1798 to 2632×1798 screenshot pixels**; the popup stayed bounded
+  and readable, and three further rapid trials reached 新建会话. Actual Size was
+  restored before Quit. Native accessibility and screenshots were inspected;
+  VoiceOver speech, IME composition and other platforms are not newly qualified.
+- All **28** reviewed product/host/fixture/manifest inputs and **two** private
+  harness inputs stayed identical through final acceptance. All seven owned
+  native PIDs and the CLI PID exited. The exact bundle was unregistered. Its
+  bundle, homes, overlays, captures, prompts, reports, logs, root and pointer were
+  removed together with ten newly created worktree outputs/caches and two unique
+  bundle Library paths, using preexistence, canonical-path, UID, birth-time,
+  symlink and tracked-file guards. Existing dependencies, shared UI Vite cache,
+  compiler/package caches, read-only references and the user's primary checkout
+  remain. Remote main was fetched again and remained at the accepted base.
+  The three explicit paths were committed at `1e4887e5e` with normal formatter,
+  workspace-lint and commit-message hooks and pushed to remote `main`.
+  `git ls-remote` confirmed the exact revision, and the committed shared-surface
+  hash still matches final native acceptance. The owned working tree was clean
+  with no unpublished commit at that delivery checkpoint. Continue the actual
+  result → detail → source workflow; the resumed goal remains active.
+
+## Object identity in context menus
+
+Native inspection of exact main `a1ca0566e` found unnamed root menus for Dock
+views, Session identity, messages and file entries. These pointer context menus
+have no ordinary Menu controlling-button name relationship. Their product owners
+already hold the displayed identity, so each root now uses that identity as its
+accessible name: view/session titles, message authors and complete file paths.
+`SessionRow` reuses its existing trimmed title or localized Untitled session
+fallback. `MessageBlock` supplies the same role label used by its visible heading.
+`AgentDockTab.title` now states the actual string contract supplied by ChatPanel;
+icons and badges keep their separate slots. All real callers were checked before
+narrowing the previously unused ReactNode possibility. No second identity state,
+generic required-name API, focus handler or translation was added. Nested Restore
+keeps the primitive's controlling-item relationship.
+
+The [W3C menu pattern](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/)
+recommends an author-provided label or a relationship to the controlling element.
+The generic menu role does not universally require an accessible name; this
+change makes the current object explicit within Flame's task model. Better
+accessibility's meaningful-name and focus-order guidance informed the review.
+[Radix Context Menu](https://www.radix-ui.com/primitives/docs/components/context-menu)
+and the installed Base UI lifecycle supplied the keyboard comparison. Native
+baseline already passed true Shift+F10 entry, arrow navigation, stepped Escape
+return and three 35 ms Escape/Tab/Space trials from a focused Dock tab. Its Tab
+control reached Browse panels. This batch improves naming and qualifies that
+existing focus behavior; it does not claim to repair a ContextMenu focus defect.
+
+Verification and delivery boundary:
+
+- Bounded Claude Code CLI used its configured `claude-opus-5-5`. The first pass
+  reached its 12-turn limit after 89.86 seconds with partial edits, rather than a
+  completed result. The narrower second pass completed in 67.85 seconds. Neither
+  used subagents or had permission denials. Primary reviewed the diff, traced
+  every Dock title producer, completed the string contract and owned all checks
+  and native acceptance.
+- With the six original product files temporarily restored, the four new naming
+  cases failed and 21 existing cases passed. The candidate passed the focused
+  **7 files / 127 tests** and typecheck. Tests query real menus, including an
+  inactive tab's target, message author, normal session and blank-title fallback.
+  The inactive-tab synthetic context event does not qualify native pointer
+  selection policy. No existing assertion or primitive was mocked or weakened.
+- The initial full Web test run passed **389 files / 3,069 tests** in 194.51
+  seconds, and `make check-native` passed in 28.16 seconds. Before publication,
+  remote main advanced by two dependency/Scope commits through `75fea673d`.
+  They fast-forwarded without touching the six product edits. Root `npm ci`
+  installed the current lock; React is now 19.3.1, Motion 14.6.0 and both Wails
+  host and JS Runtime are beta.34. Renewed shared UI checks passed **79 tests**
+  plus the independent packed consumer in 8.72 seconds. Renewed full Web tests
+  passed **389 files / 3,069 tests** in 107.97 seconds. The aggregate remains
+  **failed** solely at the known non-test consumer inventory for
+  `mcp.servers.reconnect`; its 16 guard tests pass. Every later gate ran serially
+  and passed again, including all **11** portable resource rebuild comparisons,
+  production bundle and plugin modules. Native check initially selected the
+  machine's Go 1.27.0 under the coordinator's local-toolchain rule and failed the
+  new manifest requirement. A command-scoped PATH to the already available
+  Go 1.27.3 corrected that environment; `make check-native` passed in 33.81
+  seconds. No global configuration changed. No Runtime, SDK, guard, timeout or
+  business-semantic edit is part of this UI diff. Prior aggregate timeouts remain
+  historical failures; these passes do not establish their cause. No browser
+  visual suite or benchmark ran.
+- Actual Wails EN/light/14 px/Flame Orange exposed Workspace diff, Files, the
+  current Session title and You as the corresponding native menu names. Three
+  candidate 35 ms Escape/Tab/Space trials reached Browse panels with the exact
+  pasted mixed CJK/English Composer draft and panel order retained. Stepped
+  dismissal returned to the source tab. The visible file alias `resizer.ts`
+  exposed its full `apps/web/src/features/shell/workbench/panel/DockResizer.tsx`
+  identity. A verified native right-edge resize kept that menu readable. One
+  rejected drag based on incorrectly parsed JPEG dimensions made no resize and
+  is excluded; the corrected screenshot measurement verifies the actual change.
+- Actual Wails ZH/dark/18 px/custom blue used the production sidebar with private
+  business-data seeds for a long bilingual title and a blank title. The first
+  native menu retained the complete title behind visible ellipsis; the second
+  used the existing localized Untitled session fallback. Escape returned to the
+  real row; true Shift+F10 and 35 ms Escape/Tab reached its adjacent More trigger,
+  and Space opened that ordinary labelled action menu. At native **200%**, the
+  actual list scrolled to the last row, all five actions remained readable, and
+  the same source return and rapid next-focus path passed. Actual Size was
+  restored before Quit. Native accessibility names were inspected; VoiceOver
+  speech, IME composition and mutating menu commands were not newly qualified.
+- Native acceptance was repeated on the merged dependency graph using Wails
+  beta.34. EN/light/14 px/Orange passed three renewed rapid keyboard trials with
+  the same draft and order retained. Session, message, Dock and full file-path
+  menu identities passed, and a measured native resize from 2878×1798 to
+  2632×1798 screenshot pixels retained the readable file menu. ZH/dark/18 px/
+  custom blue again passed the full long/blank title identities, ordinary next
+  focus, true Shift+F10, rapid Escape/Tab and the following action-menu opening.
+  At 200%, the actual sidebar scrolled to the last row; all five menu actions,
+  original-row return and the rapid next-focus/open path passed. A 20-command CUA
+  batch hit the tool's 30-second limit; that partial count is excluded. Actual
+  Size was restored, then twenty successful native Zoom In commands were
+  recorded individually in four bounded chunks before the final checks. A
+  setup click on the screen-reader-only message heading opened WebKit's own
+  menu; it is excluded and the visible message body supplied the verified target.
+  Actual Size was restored again before Quit.
+- The first native pass froze **17** product/host/fixture inputs and three private
+  harness inputs. The merged pass froze **24** product/host/fixture/manifest
+  inputs and three private harness inputs; all remained identical through their
+  respective final acceptance. All five owned native PIDs across the two passes
+  and both CLI PIDs exited. Both exact bundles were unregistered and both private
+  roots and pointers removed, including bundles, homes, overlays, captures,
+  reference HTML, CLI prompts/reports/logs and recheck logs. Each pass removed its
+  ten newly created worktree outputs/caches and two unique bundle Library paths
+  after preexistence, canonical-path, UID, birth-time, symlink and tracked-file
+  guards. Existing dependencies, the shared UI Vite cache, compiler/package
+  caches, references, shared application state and the user's parallel primary
+  checkout remain.
+  The eleven explicit paths were committed at `57d54301e` with normal formatter,
+  workspace-lint and commit-message hooks and pushed to remote `main`.
+  `git ls-remote` confirmed the exact published revision. All six committed
+  product hashes still match final native acceptance, and the owned working tree
+  is clean at that delivery checkpoint. The subsequent catalog, bounded Dialog
+  and shared-modal dismissal qualification is recorded above. Continue the
+  result → detail → source workflow from current production behavior; do not
+  repeat the completed popup checks or assume an unobserved defect.
 
 ## Native workspace zoom and Dock geometry
 
@@ -2299,8 +4056,11 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 ## Future review candidates
 
-Continuous work is explicitly resumed. The candidates below require current
-source and native evidence before selecting each next batch.
+The user has explicitly resumed continuous batches. Reasoning-reader continuity,
+keyboard identity and long-file request/scroll ownership are implemented and
+qualified above. Select the next
+candidate only from current source and native evidence. The candidates are not
+confirmed defects.
 
 Full-pane entry and explicit global Composer focus are implemented and natively
 qualified above. Keep presentation and focus under the host's existing owners.
@@ -2392,7 +4152,7 @@ Remembered-rule action descriptions are now implemented and qualified above. Pre
 
 Hooks scope and source provenance are now implemented and qualified above. Preserve the read-only list and Runtime-owned trust/active facts; source display does not authorize new Hook authoring or local-path actions. Continue with other existing task paths from fresh source and native evidence.
 
-These remaining items are review candidates, not defects or required rewrites. The narrow/full-pane host gap is now implemented and natively qualified above. The current request resumes continuous work. Separate reproduced defects from design judgments and unverified hypotheses before each batch. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
+These remaining items are review candidates, not defects or required rewrites. The narrow/full-pane host gap is now implemented and natively qualified above. The latest request resumes continuous batches with complete validation and delivery. Separate reproduced defects from design judgments and unverified hypotheses before each batch. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 
 A repo-wide quality pass (recorded in commits, not duplicated here) cleared the
 remaining non-visual bad smells across the web UI, `packages/ui` and the plugin
@@ -2435,11 +4195,11 @@ aria-checked instead of a decorative check; routed the project row's "working
 directory missing" state into the row's own aria-label (the state had been passed to
 an Icon that drops aria-label and forces aria-hidden); and gave the plugin error
 disclosure the aria-expanded every other disclosure has. The @flame/ui primitive
-layer and the dialog/combobox/live-region wiring were verified clean. One low-
-severity gap is left: the session row's favorite star is visual-only in the row's
-accessible name — folding it in needs a new "favorited" state string across eight
-locales and the state is already reachable from the row menu, so it is deferred
-rather than guessed.
+layer and the dialog/combobox/live-region wiring were verified clean. The former
+visual-only Session star gap is now resolved by the localized pinned state in the
+row name, using the existing Pin/Unpin vocabulary across all eight locales. Its
+canonical projection, menu/edit/cancel return and native qualifications are
+recorded under Sidebar / navigation; do not repeat that completed naming repair.
 
 A cross-feature consistency pass (the orthogonal view to the per-surface audits)
 confirmed empty-state, loading-skeleton, pending-button and master-detail return
@@ -2599,17 +4359,20 @@ defects; each needs a Wails look and an explicit choice before implementing:
   windowed reader toward a stable-document model first. A matching both-panels Esc/Backspace "return to
   this panel's list" (distinct from the conversation-return) is a shared gap in Flame and
   ZCode alike, not a ZCode advantage; if added later, do it symmetrically in both panels.
-- **Wide-content breakout geometry.** Tune `--wide-column-max` (56rem), confirm the
-  left-anchored growth reads well across the 640–1151px band, and judge the 1152px
-  breakout↔navigation-rail transition. Implemented; native acceptance pending.
+- **Wide-content boundaries and native math input (qualified within scope).** User/nested boundaries,
+  left-anchored outer growth, the shared subagent cap/gutter and exercised
+  full-pane/Dock/200% return paths are now qualified above; do not repeat them as
+  pending work. A visibly present turn rail was not qualified. The native math
+  follow-up now records text-caret navigation, visible final tag and exact draft
+  return. Physical horizontal wheel delivery and broader typography/zoom remain
+  outside that qualification; do not infer a component defect from offset alone.
 - **Standalone ToolCard open-state (reviewed — keep).** A standalone card keeps its
-  promoted write/exec result visible via a manual toggle ("meaningful results stay"),
-  while the grouped `ToolGroup` auto-collapses on completion. This is a justified
-  per-context difference (one promoted result stays legible; a wave of grouped tools
-  collapses to cut clutter), not drift — SRP across the two owners — so it is kept
-  rather than forced to one behavior.
-- **Light-theme text ladder collapse (muted ≈ faint) — fixed, native acceptance
-  pending.** A color-semantics audit found the role usage consistent, but one real
+  promoted write/exec result visible through its manual toggle. Untouched grouped
+  tools retain automatic collapse; entering grouped rows now pins their existing
+  presentation so completion cannot hide engaged reading. These separate owners
+  retain their appropriate defaults.
+- **Light-theme text ladder collapse (muted ≈ faint) — implemented and natively
+  qualified within scope.** A color-semantics audit found the role usage consistent, but one real
   value defect: in the light theme `--color-text-muted` (#656565) and `--color-text-faint`
   (#696969) differed by ~4/255, so the two-tier metadata hierarchy (muted label over
   faint detail) that reads clearly in dark was lost in light across
@@ -2626,7 +4389,10 @@ defects; each needs a Wails look and an explicit choice before implementing:
   custom light muted/faint separate, faint keeps its floor value, and the dark ladder
   is untouched. `soft` tracks muted through its 55% anchor, so the `:root` mirror moved
   with it (`stylesheetMirror.test.ts` and the 111 `palette.test.ts` AA cases pass).
-  Confirm the muted weight across both light canvases in Wails.
+  Both light canvases and a dark control are now qualified through actual Wails
+  reading, detail/return and continued-draft flows, including warm-light 200% and
+  a narrow window. See Native reading color qualification above; retain this
+  ladder rather than reopening the completed token adjustment.
 - **Reasoning while streaming.** Today a quiet one-line glimpse; ChatGPT shows the
   full capped auto-following panel inline, but the newer ZCode reference explicitly
   reverted from that panel back to a default-collapsed glimpse (an expanded
@@ -2701,18 +4467,13 @@ defects; each needs a Wails look and an explicit choice before implementing:
   provider row's ≤440px masked-key reflow are deliberate layouts — unifying is a UX
   decision plus a native look, not a blind swap.
 
-- **Plugin render-crash fallback → SystemMessage (implemented; native acceptance
-  pending).** The `PluginBoundary` fallback used to hand-roll a negative-toned inline
-  card (`overlays.css` `.plugin-boundary-error`: own border, wash, radius, tone) holding
-  the `plugins.renderFailed` Trans, a `<code>`, a retry `TextButton` and `FailureDetails`,
-  where the consistency pass had already routed form and config alerts onto
-  `SystemMessage`. It now renders through `SystemMessage` (`variant="error"`,
-  `shape="form"`, retry in the `action` slot); the plugin name, the error `<code>` and
-  the `FailureDetails` disclosure are the banner's children, `.plugin-boundary-error`
-  keeps only the stacking column, and `.plugin-boundary-actions` is deleted. The
-  boundary's `role="alert"`, code tag and retry contract are unchanged
-  (`PluginBoundary.test.tsx` 4/4). The crash banner now carries the shared error icon
-  and tone instead of its bespoke border — confirm the in-pane look in Wails.
+- **Plugin render-crash fallback (implemented and natively qualified within scope).**
+  The SystemMessage form, named workspace failure, diagnostics and explicit Retry
+  are qualified in Plugin render recovery above. Retry now retires owned focus to
+  its existing enclosing focus scope before the error tree unmounts; it leaves
+  outside and later child-owned focus alone. Preserve the shared presentation,
+  reporting and Runtime boundaries. Other placements still require their own
+  task-specific inspection; this is not blanket native coverage.
 
 - **Streaming-text animation timings.** The markdown word-reveal (`overlays.css`
   `.fade-in`, `700ms ease-in-out`) and the stream caret (`.type-caret`, `1050ms`
@@ -2990,15 +4751,11 @@ clean up, run-status facets have one owner). Three genuine defects were fixed:
   no `aria-controls`/`id` link; now wired to match the `AgentActivityDisclosure`
   contract the sibling `ToolCard` uses.
 
-Recorded, not changed — a genuine product tradeoff needing a call: an unpinned
-`ToolGroup`'s open state is `pinned ?? (needsAttention && !superseded)`, so a
-group that auto-opened because a tool was running **collapses the instant the
-last tool settles**, which can hide content mid-read. This auto-tidy-on-settle is
-deliberate and test-pinned (`toolGroupModel.test.ts:24-26`). Fixing the read-
-stability flaw means changing that tested UX — either dropping auto-tidy (groups
-stay open until clicked, cluttering the transcript) or moving the collapse
-trigger from settle to a turn boundary (superseded), which needs a history latch.
-The auto-tidy vs read-stability choice is a product decision; left for the user.
+The previously recorded ToolGroup mid-read collapse is repaired at the existing
+presentation owner, as qualified in Tool group reading continuity above. Focus
+engagement pins the current parent state; untouched and header-only groups keep
+their automatic policy. No turn-history latch or replacement collapse rule was
+needed.
 
 ## Sidebar / navigation surface audit
 
@@ -3021,6 +4778,65 @@ no effects/timers/listeners leak. One real mental-model gap was fixed:
   the title). The dialog now shows the session title as its `description`
   (`session.title.trim() || t("session.untitled")`), so the target object is
   unambiguous — directly serving the brief's "which object does this act on" axis.
+
+### Pinned Session row identity
+
+`SessionRow` previously displayed the pin star and Unpin action while omitting
+that state from its accessible navigation name. The row now includes localized
+`session.status.pinned` between its displayed title and existing attention/time.
+All eight locales use the existing Pin/Unpin vocabulary. The unpinned name,
+including an empty formatted time, remains unchanged; current-page semantics,
+status-dot name, menu object identity and visible styling retain their owners.
+`WorkSession.favorite` remains the sole pin projection. A requested Pin/Unpin
+passes its current ID, revision and boolean and does not advance that projection.
+
+This follows the existing better-accessibility names/states guidance and
+better-writing vocabulary guidance. The read-only ZCode
+`project-sidebar/grouped/task-row.tsx` reference separates task metadata from
+adjacent actions; it is not evidence for Flame's native focus policy. No reference
+implementation or new component system was copied. Bounded Claude Code CLI
+(`claude-opus-5-5`, 104.96 seconds, 30 reported turns, no permission denials)
+changed only the row, its tests and eight dictionaries. Primary reviewed the full
+diff and preserved the prior empty-time label by filtering only `undefined`.
+
+- Both new regressions fail on the unchanged row while all four original title
+  editing tests pass. The restored candidate passes **4 files / 13 tests**,
+  covering canonical false/true/false updates, exact command arguments,
+  non-optimistic names, current marker, selection and More/status identity.
+- Actual Wails EN/light/14 px/Flame Orange exposes Pinned while retaining the
+  star, title and time. Tab/Space opens the named More menu; Shift+F10 opens the
+  title-named context menu. Editing `Renamed draft 保留` then Escape restores the
+  original title, pinned name and row focus. A running-row focus/return also
+  preserves the separate attention name.
+- Actual ZH/dark/18 px/custom blue exposes 已置顶. System Move & Resize → Left
+  settled at a **2242 × 1898** capture; twenty native Zoom In commands qualified
+  **200%**. Wheel scrolling and the real Tab sequence reveal the pinned row.
+  Context-menu Rename, the exact `取消标题草稿 保留` draft and Escape return to
+  that row; the next Tab/Space opens its fully readable five-action More menu.
+  Wheel scrolling reaches the last Recent rows. Actual Size was restored.
+- The initial complete Web command passed **391 files / 3,110 tests** and failed
+  one MCP memory-source readiness case in the 49-test HTTP integration file.
+  The complete isolated file then passed **49 tests** unchanged in 46.54 seconds.
+  All **22** later Web gates passed serially, including locale completeness,
+  portable resource consistency and the production bundle. `make check-native`
+  passed in **27.26 seconds**; the binary is arm64, minimum macOS 13.0, SDK 26.5.
+  The aggregate remains failed; these results do not establish its timeout cause.
+- An initial focused filter omitted the reference suite; the corrected four-file
+  run above supplies that coverage. An incorrect isolated HTTP filter ran no
+  tests and is excluded. One stale native action was refused; fresh observation
+  and retry passed without attributing its cause. The first resize capture was
+  transient and is excluded from settled geometry. The shell fixture uses the
+  actual SidebarPanel with isolated data and a static main card; it does not
+  qualify a conversation/Composer round trip, live Pin/Unpin persistence,
+  VoiceOver speech, OS IME, other locale GUIs or other platforms. No browser
+  visual suite, benchmark, live Runtime write or message submission ran.
+- All **30** accepted product/resource inputs and four private harness inputs
+  remained unchanged through final native/check acceptance. All three native
+  PIDs and the CLI exited. The exact bundle was unregistered; ten new worktree
+  outputs, two bundle-specific Library paths, the private root and pointer were
+  removed after preexistence, UID, birth-time, containment and copied-asset checks.
+  The preexisting UI Vite cache, dependencies, references, user data, primary
+  checkout and unrelated processes remain intact. No migration is required.
 
 Left as an acceptable pattern, not a defect (recorded for completeness): the
 session rows are a flat set of `<button>`s with `aria-current="page"` rather than
@@ -3095,11 +4911,11 @@ text cursor, which is the current behavior; list navigation stays on the arrows.
 
 ## Workspace file browser audit
 
-A deep audit of the file browser (tree, viewer, workspace layout) found its core
-clean — tree/list keys are path-based, file reads abort on path change and never
-land stale, window/mode state is render-computed with an intent guard, the
-active-path/viewer/tree-highlight have one owner, and focus management on
-open/close is robust and test-pinned. Three defects were fixed:
+The earlier file-browser audit established path-based tree/list keys, read
+cancellation on path changes, intent-scoped window/mode projections and one
+active-path/viewer/tree-highlight owner. It fixed the three defects below.
+The later long-file review above separately repairs placement against placeholder
+content and scroll anchors surviving their own request; retain both qualifications.
 
 - **"Load earlier/later" lost the reader's place (`dataQuery.ts` +
   `workspaceQueries.ts`).** Widening the line window changed the react-query key;

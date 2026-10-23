@@ -1,7 +1,12 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type ComponentContext } from "@flame/component-sdk";
-import { createFlameClient, RpcProtocolError, type MutationPromise } from "@flame/runtime-client";
+import {
+  createFlameClient,
+  RpcError,
+  RpcProtocolError,
+  type MutationPromise,
+} from "@flame/runtime-client";
 import { type SkillDetail, type SkillDiscovery } from "@flame/runtime-client/wire";
 import { Skills } from "../../../plugins/skills/component/component";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
@@ -84,6 +89,13 @@ async function mountSkills() {
 const catalog = () => screen.getByRole("region", { name: "Available Skills" });
 
 const readButtons = () => within(catalog()).getAllByRole<HTMLElement>("button");
+
+const internalError = (detail: string) =>
+  new RpcError({
+    code: -32603,
+    message: "internal_error",
+    data: { type: "internal_error", detail },
+  });
 
 const instructions = (name: string) =>
   screen.queryByRole("region", { name: `Instructions for ${name}` });
@@ -173,7 +185,7 @@ it("consumes Escape to leave a document and leaves catalog Escape to the host", 
 
 it("names a first document failure without a retained claim, retries it and labels a retained refresh", async () => {
   const { getDiscovered } = await mountSkills();
-  getDiscovered.mockRejectedValueOnce(new Error("document unavailable"));
+  getDiscovered.mockRejectedValueOnce(internalError("document unavailable"));
   fireEvent.click(readButtons()[1]!);
   expect((await screen.findByRole("alert")).textContent).toBe(
     "Could not read runtime-boundaries: document unavailable",
@@ -189,7 +201,7 @@ it("names a first document failure without a retained claim, retries it and labe
   expect(screen.queryByRole("alert")).toBeNull();
   expect(getDiscovered).toHaveBeenLastCalledWith("runtime-boundaries", expect.any(AbortSignal));
 
-  getDiscovered.mockRejectedValueOnce(new Error("owner offline"));
+  getDiscovered.mockRejectedValueOnce(internalError("owner offline"));
   fireEvent.click(screen.getByRole("button", { name: "Refresh document" }));
   expect((await screen.findByRole("alert")).textContent).toBe(
     "Could not refresh runtime-boundaries: owner offline",

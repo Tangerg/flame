@@ -673,7 +673,7 @@ function SavedReport({
             ]}
           />
           <Disclosure title={t("report.breakdown.title")}>
-            <RecordGroup variant="list">
+            <RecordGroup variant="list" hidden={!summary.byDay.length}>
               {summary.byDay.map((day) => (
                 <ListRow key={day.key}>
                   <RecordHeading

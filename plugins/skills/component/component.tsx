@@ -337,7 +337,12 @@ export function Skills({ context }: { context: ComponentContext }) {
                 {diagnostic.name}: {diagnostic.detail}
               </RecordBody>
             ))}
-          <RecordGroup variant="list" id="items" aria-label={title}>
+          <RecordGroup
+            variant="list"
+            id="items"
+            aria-label={title}
+            hidden={!matching.length && (read.loading || !snapshot)}
+          >
             {matching.map((item) => (
               <SkillRow
                 key={`${snapshot!.type}:${"scope" in item ? `${item.scope}:${item.name}` : item.name}`}

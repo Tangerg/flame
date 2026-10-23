@@ -57,3 +57,7 @@ export function setMCPToolExposure(
 ): Promise<void> {
   return MCPServerMutationOwner.current().setToolExposure(server, name, disabled);
 }
+
+export function reconnectMCPServer(server: MCPServerID): Promise<void> {
+  return MCPServerMutationOwner.current().reconnect(server);
+}

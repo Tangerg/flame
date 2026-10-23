@@ -1,6 +1,6 @@
 import { Trans, useT } from "@/lib/i18n/index";
 import { type ErrorInfo, type ReactNode } from "react";
-import { Component } from "react";
+import { Component, useRef } from "react";
 import { FailureDetails, SystemMessage } from "@/ui/index";
 import { failureDiagnostics } from "@/lib/diagnostics";
 import { reportPluginError } from "@/extensions/errors";
@@ -55,12 +55,23 @@ function PluginFailure({
   onRetry: () => void;
 }) {
   const t = useT();
+  const root = useRef<HTMLDivElement>(null);
+  const retry = () => {
+    // The error tree unmounts on retry. Hand off to its surviving host before
+    // recovered children can claim their own focus.
+    const retiring = root.current;
+    if (retiring?.contains(retiring.ownerDocument.activeElement)) {
+      retiring.parentElement?.closest<HTMLElement>("[tabindex]")?.focus({ preventScroll: true });
+    }
+    onRetry();
+  };
   return (
     <SystemMessage
+      ref={root}
       variant="error"
       shape="form"
       icon="alert"
-      action={{ label: t("common.retry"), onClick: onRetry }}
+      action={{ label: t("common.retry"), onClick: retry }}
     >
       <div className="plugin-boundary-error">
         <Trans

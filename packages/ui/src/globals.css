@@ -427,35 +427,19 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
 }
 [data-slot="callout"] {
   --callout-ink: var(--color-info-badge-text);
-  --callout-tone: var(--tone-info);
-  --callout-wash: var(--color-info-wash);
   margin-block: calc(var(--prose-space) * 5);
-  padding-block: calc(var(--spacing) * 2.5);
-  padding-inline: calc(var(--spacing) * 4) calc(var(--spacing) * 3.5);
-  border-inline-start: 2px solid var(--callout-tone);
-  border-start-end-radius: var(--shape-md);
-  border-end-end-radius: var(--shape-md);
-  background: var(--callout-wash);
 }
 [data-callout="tip"] {
   --callout-ink: var(--color-success-badge-text);
-  --callout-tone: var(--tone-success);
-  --callout-wash: var(--color-success-wash);
 }
 [data-callout="important"] {
   --callout-ink: var(--color-accent-badge-text);
-  --callout-tone: var(--tone-accent);
-  --callout-wash: var(--color-accent-wash);
 }
 [data-callout="warning"] {
   --callout-ink: var(--color-warning-badge-text);
-  --callout-tone: var(--tone-warning);
-  --callout-wash: var(--color-warning-wash);
 }
 [data-callout="caution"] {
   --callout-ink: var(--color-negative-badge-text);
-  --callout-tone: var(--tone-negative);
-  --callout-wash: var(--color-negative-wash);
 }
 [data-slot="callout-title"] {
   display: flex;

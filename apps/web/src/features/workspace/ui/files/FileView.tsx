@@ -22,7 +22,8 @@ export function FileView({
   content: string;
   startLine: number;
   targetLine: number;
-  intent: object;
+  // Null while the content is a placeholder for another request, so it cannot consume the intent.
+  intent: object | null;
 }) {
   const { highlighter, theme: shikiTheme } = useCodeHighlighter();
 
@@ -36,7 +37,7 @@ export function FileView({
   const targetRef = useRef<HTMLDivElement>(null);
   const placedIntent = useRef<object | null>(null);
   useLayoutEffect(() => {
-    if (placedIntent.current === intent || targetLine <= 0 || !targetRef.current) return;
+    if (!intent || placedIntent.current === intent || targetLine <= 0 || !targetRef.current) return;
     placedIntent.current = intent;
     targetRef.current.scrollIntoView({ block: "center" });
   }, [intent, content, targetLine]);

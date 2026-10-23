@@ -131,7 +131,7 @@ it("preserves independent catalogs and known choices during failed refreshes", a
     respondSuccess(transport, requests[0]!.id, { data: [{ id: "known", provider: "healthy" }] });
     refuse(requests[1]!.id);
   });
-  expect((await screen.findByRole("alert")).textContent).toContain("failed: internal_error");
+  expect((await screen.findByRole("alert")).textContent).toContain("failed: catalog unavailable");
   fireEvent.click(screen.getByRole("combobox", { name: "Model" }));
   expect(await screen.findByRole("option", { name: "healthy / known" })).toBeTruthy();
   expect(screen.getByRole("option", { name: "Runtime default model" })).toBeTruthy();
@@ -163,7 +163,7 @@ it("preserves independent catalogs and known choices during failed refreshes", a
     });
   });
   await waitFor(() =>
-    expect(screen.getByRole("alert").textContent).toContain("healthy: internal_error"),
+    expect(screen.getByRole("alert").textContent).toContain("healthy: catalog unavailable"),
   );
   fireEvent.click(screen.getByRole("combobox", { name: "Model" }));
   expect(await screen.findByRole("option", { name: "healthy / known" })).toBeTruthy();
@@ -321,7 +321,7 @@ it("shows a catalog refusal without discarding the editor", async () => {
     }),
   );
   expect((await screen.findByRole("alert")).textContent).toBe(
-    "Model choices could not be read: internal_error",
+    "Model choices could not be read: provider catalog unavailable",
   );
   expect((screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement).value).toBe(
     "Retained draft",

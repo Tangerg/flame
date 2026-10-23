@@ -125,6 +125,15 @@ afterEach(() => {
   client.clear();
 });
 
+function lineWindow(start: number, end: number, totalLines: number): WorkspaceFileContent {
+  const lines = Array.from({ length: end - start + 1 }, (_, i) => `line ${start + i}`);
+  return { content: lines.join("\n"), startLine: start, totalLines };
+}
+
+function row(line: number) {
+  return document.querySelector(`[data-quote-line="${line}"]`);
+}
+
 function mount(children: React.ReactNode) {
   return render(<QueryClientProvider client={client}>{children}</QueryClientProvider>);
 }
@@ -167,6 +176,96 @@ describe("workspace files panel", () => {
 
     pending.resolve({ content: "earlier\nmiddle chunk", startLine: 1100, totalLines: 3000 });
     await screen.findByText("earlier");
+  });
+
+  it("keeps old content shown without letting it settle a pending line navigation", async () => {
+    const placed: (string | null)[] = [];
+    vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      placed.push(this.getAttribute("data-quote-line"));
+    });
+    readFile.mockResolvedValueOnce(lineWindow(250, 650, 1000));
+    openWorkspaceFile("src/big.go", 450);
+    mount(<FileWorkspace />);
+    await vi.waitFor(() => expect(row(450)).toBeTruthy());
+    expect(placed).toEqual(["450"]);
+
+    const pending = Promise.withResolvers<WorkspaceFileContent>();
+    readFile.mockReturnValueOnce(pending.promise);
+    act(() => openWorkspaceFile("src/big.go", 300));
+    expect(row(450)).toBeTruthy();
+    expect(placed).toEqual(["450"]);
+
+    await act(async () => pending.resolve(lineWindow(100, 500, 1000)));
+    await vi.waitFor(() => expect(row(100)).toBeTruthy());
+    expect(placed).toEqual(["450", "300"]);
+  });
+
+  describe("prepend scroll continuity", () => {
+    const ROW = 20;
+
+    // Happy DOM has no layout: the host's height is derived from rendered rows and
+    // scrollTop is a plain stored value, so these tests prove which height delta is
+    // applied, not how WebKit paints it.
+    function controlGeometry(host: HTMLElement) {
+      let top = 0;
+      Object.defineProperty(host, "scrollHeight", {
+        configurable: true,
+        get: () => host.querySelectorAll("[data-quote-line]").length * ROW,
+      });
+      Object.defineProperty(host, "scrollTop", {
+        configurable: true,
+        get: () => top,
+        set: (value: number) => {
+          top = value;
+        },
+      });
+      return host;
+    }
+
+    async function openMiddle() {
+      vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(() => {});
+      readFile.mockResolvedValueOnce(lineWindow(1300, 1302, 3000));
+      openWorkspaceFile("src/big.go");
+      mount(<FileWorkspace />);
+      await vi.waitFor(() => expect(row(1300)).toBeTruthy());
+      const host = controlGeometry(screen.getByRole("region", { name: "src/big.go" }));
+      host.scrollTop = 10;
+      const earlier = Promise.withResolvers<WorkspaceFileContent>();
+      readFile.mockReturnValueOnce(earlier.promise);
+      fireEvent.click(screen.getByRole("button", { name: /earlier/i }));
+      return { host, earlier };
+    }
+
+    it("keeps the reader's rows in place when earlier lines arrive", async () => {
+      const { host, earlier } = await openMiddle();
+      await act(async () => earlier.resolve(lineWindow(1100, 1302, 3000)));
+      await vi.waitFor(() => expect(row(1100)).toBeTruthy());
+      expect(host.scrollTop).toBe(10 + 200 * ROW);
+    });
+
+    it("drops a superseded prepend when a line navigation replaces the window", async () => {
+      const { host, earlier } = await openMiddle();
+      const navigation = Promise.withResolvers<WorkspaceFileContent>();
+      readFile.mockReturnValueOnce(navigation.promise);
+      act(() => openWorkspaceFile("src/big.go", 2000));
+      await act(async () => earlier.resolve(lineWindow(1100, 1302, 3000)));
+      await act(async () => navigation.resolve(lineWindow(1800, 2200, 3000)));
+      await vi.waitFor(() => expect(row(2200)).toBeTruthy());
+      expect(host.scrollTop).toBe(10);
+    });
+
+    it("drops a superseded prepend when later lines replace the window", async () => {
+      const { host, earlier } = await openMiddle();
+      const later = Promise.withResolvers<WorkspaceFileContent>();
+      readFile.mockReturnValueOnce(later.promise);
+      fireEvent.click(screen.getByRole("button", { name: /more/i }));
+      await act(async () => earlier.resolve(lineWindow(1100, 1302, 3000)));
+      await act(async () => later.resolve(lineWindow(1300, 1502, 3000)));
+      await vi.waitFor(() => expect(row(1502)).toBeTruthy());
+      expect(host.scrollTop).toBe(10);
+    });
   });
 
   it("renders a whole file through the renderer registered for its extension", async () => {

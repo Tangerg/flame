@@ -359,6 +359,7 @@ export const es: Record<string, string> = {
   "approvals.forget": "Olvidar {{tool}}",
   "approvals.unavailable": "Controles de aprobación no disponibles",
   "approvals.unavailable.sub": "Este runtime no expone el control del modo de aprobación.",
+  "approvals.error.loadMode": "No se pudo cargar el modo de aprobación",
   "approvals.error.mode": "No se pudo cambiar el modo de aprobación.",
   "approvals.error.forget": "No se pudo borrar la decisión.",
 
@@ -547,6 +548,7 @@ export const es: Record<string, string> = {
   "runError.action.diagnostics": "Diagnóstico",
   "runError.action.dismiss": "Descartar",
 
+  "session.status.pinned": "Fijada",
   "session.status.running": "Ejecutando",
 
   "session.identity.copyCwd": "Copiar directorio de trabajo",
@@ -692,6 +694,7 @@ export const es: Record<string, string> = {
   "reasoning.thought": "Pensamiento",
   "reasoning.thoughtFor": "Pensamiento de {{duration}}",
   "reasoning.interrupted": "interrumpido",
+  "reasoning.text": "Texto del razonamiento",
 
   "composer.placeholder.steer": "Envía un mensaje para guiar el turno en curso…",
   "composer.action.steer": "Guiar el turno en curso",
@@ -788,6 +791,16 @@ export const es: Record<string, string> = {
   "mcp.transport.http": "Streamable HTTP",
   "mcp.signIn": "Iniciar sesión",
   "mcp.signingIn": "Iniciando sesión…",
+  "mcp.signIn.aria": "Iniciar sesión en {{server}}",
+  "mcp.signingIn.aria": "Iniciando sesión en {{server}}…",
+  "mcp.reconnect": "Reconectar",
+  "mcp.reconnect.aria": "Reconectar {{server}}",
+  "mcp.status.disabled": "Desactivado",
+  "mcp.status.disconnected": "Desconectado",
+  "mcp.status.connecting": "Conectando…",
+  "mcp.status.connected": "Conectado",
+  "mcp.status.failed": "Error de conexión",
+  "mcp.status.needsAuth": "Inicio de sesión necesario",
   "mcp.form.name.placeholder": "Nombre del servidor",
   "mcp.form.name.aria": "Nombre del servidor",
   "mcp.form.transport.aria": "Transporte",
@@ -834,7 +847,7 @@ export const es: Record<string, string> = {
   "mcp.import.error": "No se pudo importar esa configuración.",
   "mcp.import.nameCollision":
     'Los servidores "<first/>" y "<second/>" se convierten ambos en "<canonical/>"; dales nombres distintos',
-  "mcp.tools.manage": "Gestionar herramientas",
+  "mcp.tools.title": "Herramientas de {{server}}",
   "mcp.tools.enabled": "Activada",
   "mcp.tools.autoApprove": "Aprobar automáticamente",
   "mcp.tools.empty": "Este servidor no expone herramientas",
@@ -844,7 +857,11 @@ export const es: Record<string, string> = {
   "mcp.error.remove": "No se pudo eliminar el servidor.",
   "mcp.error.toggle": "No se pudo modificar el servidor.",
   "mcp.error.signIn": "Error al iniciar sesión.",
+  "mcp.error.reconnect": "No se pudo reconectar el servidor.",
   "mcp.error.test": "La prueba falló",
+  "mcp.error.loadTools": "No se pudieron cargar las herramientas",
+  "mcp.error.loadToolVisibility": "No se pudo cargar la visibilidad de las herramientas",
+  "mcp.error.loadAutoApproveRules": "No se pudieron cargar las reglas de aprobación automática",
   "mcp.testOutcome.timedOut":
     "El servidor no respondió a tiempo: revisa el comando o la URL y vuelve a intentarlo.",
   "mcp.testOutcome.failed":

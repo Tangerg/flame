@@ -20,6 +20,7 @@ export interface MCPServerGateway {
   delete(server: MCPServerID): Promise<void>;
   setEnabled(server: MCPServerID, enabled: boolean): Promise<MCPServerSettings>;
   setToolExposure(server: MCPServerID, name: string, disabled: boolean): Promise<void>;
+  reconnect(server: MCPServerID): Promise<void>;
   createAuthorizationAttempt(
     server: MCPServerID,
     signal?: AbortSignal,

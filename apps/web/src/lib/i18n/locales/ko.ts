@@ -340,6 +340,7 @@ export const ko: Record<string, string> = {
   "approvals.forget": "{{tool}} 잊기",
   "approvals.unavailable": "승인 컨트롤을 사용할 수 없음",
   "approvals.unavailable.sub": "이 런타임은 승인 모드 제어를 제공하지 않습니다.",
+  "approvals.error.loadMode": "승인 모드를 불러올 수 없습니다",
   "approvals.error.mode": "승인 모드를 변경할 수 없습니다.",
   "approvals.error.forget": "결정을 지울 수 없습니다.",
 
@@ -518,6 +519,7 @@ export const ko: Record<string, string> = {
   "runError.action.diagnostics": "진단",
   "runError.action.dismiss": "닫기",
 
+  "session.status.pinned": "고정됨",
   "session.status.running": "실행 중",
 
   "session.identity.copyCwd": "작업 디렉터리 복사",
@@ -653,6 +655,7 @@ export const ko: Record<string, string> = {
   "reasoning.thought": "생각",
   "reasoning.thoughtFor": "{{duration}} 동안 생각",
   "reasoning.interrupted": "중단됨",
+  "reasoning.text": "생각 내용",
 
   "composer.placeholder.steer": "실행 중인 턴을 조정할 메시지 보내기…",
   "composer.action.steer": "실행 중인 턴 조정",
@@ -741,6 +744,16 @@ export const ko: Record<string, string> = {
   "mcp.transport.http": "Streamable HTTP",
   "mcp.signIn": "로그인",
   "mcp.signingIn": "로그인 중…",
+  "mcp.signIn.aria": "{{server}}에 로그인",
+  "mcp.signingIn.aria": "{{server}}에 로그인 중…",
+  "mcp.reconnect": "다시 연결",
+  "mcp.reconnect.aria": "{{server}} 다시 연결",
+  "mcp.status.disabled": "사용 안 함",
+  "mcp.status.disconnected": "연결 안 됨",
+  "mcp.status.connecting": "연결 중…",
+  "mcp.status.connected": "연결됨",
+  "mcp.status.failed": "연결 실패",
+  "mcp.status.needsAuth": "로그인 필요",
   "mcp.form.name.placeholder": "서버 이름",
   "mcp.form.name.aria": "서버 이름",
   "mcp.form.transport.aria": "전송 방식",
@@ -785,7 +798,7 @@ export const ko: Record<string, string> = {
   "mcp.import.error": "해당 설정을 가져올 수 없습니다.",
   "mcp.import.nameCollision":
     '서버 "<first/>" 및 "<second/>"의 이름이 모두 "<canonical/>"(으)로 바뀝니다. 서로 다른 이름을 지정하세요',
-  "mcp.tools.manage": "도구 관리",
+  "mcp.tools.title": "{{server}} 도구",
   "mcp.tools.enabled": "사용",
   "mcp.tools.autoApprove": "자동 승인",
   "mcp.tools.empty": "이 서버는 도구를 제공하지 않습니다",
@@ -795,7 +808,11 @@ export const ko: Record<string, string> = {
   "mcp.error.remove": "서버를 삭제할 수 없습니다.",
   "mcp.error.toggle": "서버를 변경할 수 없습니다.",
   "mcp.error.signIn": "로그인에 실패했습니다.",
+  "mcp.error.reconnect": "서버에 다시 연결할 수 없습니다.",
   "mcp.error.test": "테스트 실패",
+  "mcp.error.loadTools": "도구를 불러올 수 없습니다",
+  "mcp.error.loadToolVisibility": "도구 표시 설정을 불러올 수 없습니다",
+  "mcp.error.loadAutoApproveRules": "자동 승인 규칙을 불러올 수 없습니다",
   "mcp.testOutcome.timedOut":
     "서버가 제때 응답하지 않았습니다. 명령 또는 URL을 확인하고 다시 시도하세요.",
   "mcp.testOutcome.failed":

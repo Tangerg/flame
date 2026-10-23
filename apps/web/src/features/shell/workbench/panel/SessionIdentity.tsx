@@ -66,7 +66,7 @@ export function SessionIdentity({ sessionId, title, workspacePath }: Props): Rea
           </div>
         }
       />
-      <ContextMenu.Content>
+      <ContextMenu.Content aria-label={title}>
         {workspacePath && (
           <ContextMenu.IconItem
             icon="copy"

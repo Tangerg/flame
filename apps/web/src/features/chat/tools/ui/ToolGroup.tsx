@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useState } from "react";
+import { type ComponentPropsWithoutRef, useState } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { toolGroupIconFor } from "@/features/agent/public/toolIcon";
 import { AgentActivityDisclosure } from "@/ui/agent/index";
@@ -46,14 +46,26 @@ export function ToolGroup({ tools, expandedIds, onToggleExpand, superseded }: Pr
       onToggle={() => setPinned(model.nextPinned)}
       stickyHeader
     >
-      <ToolGroupRows tools={tools} expandedIds={expandedIds} onToggleExpand={onToggleExpand} />
+      {/* Focus inside the rows is explicit engagement: pinning keeps settling
+          calls from collapsing the body out from under the user's focus. */}
+      <ToolGroupRows
+        tools={tools}
+        expandedIds={expandedIds}
+        onToggleExpand={onToggleExpand}
+        onFocusCapture={() => setPinned(model.expanded)}
+      />
     </AgentActivityDisclosure>
   );
 }
 
-export function ToolGroupRows({ tools, expandedIds, onToggleExpand }: ToolGroupRowsProps) {
+export function ToolGroupRows({
+  tools,
+  expandedIds,
+  onToggleExpand,
+  onFocusCapture,
+}: ToolGroupRowsProps & Pick<ComponentPropsWithoutRef<"div">, "onFocusCapture">) {
   return (
-    <div {...stylex.props(tg.members)}>
+    <div onFocusCapture={onFocusCapture} {...stylex.props(tg.members)}>
       {tools.map((tool) => (
         <ToolGroupMember
           key={tool.id}

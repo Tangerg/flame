@@ -106,7 +106,7 @@ export function PluginsPane() {
     <>
       <PackageManager />
       <PanelSection title={t("plugins.loadedTitle")}>
-        <SettingsGroup>
+        <SettingsGroup hidden={!rows.length}>
           {rows.map((name) => {
             const errors = errorsByPlugin.get(name) ?? [];
             const errCount = errors.length;

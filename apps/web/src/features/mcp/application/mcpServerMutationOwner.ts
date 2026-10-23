@@ -99,6 +99,13 @@ class MCPServerMutationGeneration {
     });
   }
 
+  reconnect(server: MCPServerID): Promise<void> {
+    return this.#run(server, {
+      execute: () => this.#gateway.reconnect(server),
+      commit: () => undefined,
+    });
+  }
+
   test(input: MCPServerInput): Promise<MCPServerTestOutcome> {
     return this.#cohort.run(() => this.#gateway.test(input));
   }
@@ -186,6 +193,10 @@ export class MCPServerMutationOwner {
 
   setToolExposure(server: MCPServerID, name: string, disabled: boolean): Promise<void> {
     return this.#generation.setToolExposure(server, name, disabled);
+  }
+
+  reconnect(server: MCPServerID): Promise<void> {
+    return this.#generation.reconnect(server);
   }
 
   authorize(server: MCPServerID, signal?: AbortSignal): Promise<void> {

@@ -52,7 +52,9 @@ Its title size can use the smaller existing display roles for workbench views.
 Page actions belong to the persistent `Panel.controls` zone, alongside filters.
 `PanelSection` groups one heading, supporting context, filters and content;
 `PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface, corners
-and separators. Its `cards` variant provides the responsive schedule grid;
+and separators. Callers own read and empty state: a truly empty group uses the
+native `hidden` attribute, and the group never infers visibility from transient
+DOM emptiness while its children are replaced. Its `cards` variant provides the responsive schedule grid;
 `ListRow variant="card"` owns each independent card surface.
 `Disclosure variant="row"` owns resource summaries that expand directly. Hover
 feedback belongs to its summary trigger; the expanded reading body remains
@@ -211,7 +213,9 @@ Prose color comes only from the host's accent roles: headings and inline code us
 the same heading role.
 `Callout` owns the GitHub alert presentation for every Markdown adapter: the
 marker grammar (`readCalloutMarker`), the natural-case title and icon per kind,
-and the status rule, wash and on-tint ink. `ImageNotice` is the one inert image
+and each kind's title and icon ink. A callout stays on the surrounding reading
+plane without its own fill, rule or corners: its content keeps the paragraph
+reading edge and the shared block rhythm. `ImageNotice` is the one inert image
 description: an alternative text and a muted detail, used for unavailable
 transcript images and for captured file images that are never loaded.
 Quotes and loose lists retain paragraph boundaries around nested blocks; quote
@@ -319,8 +323,11 @@ cancellation precedes the primary action. Both groups wrap within the available
 width, using the shared control gap internally and content gap between groups.
 The parent form or record composition owns spacing before the actions;
 `FormActions` adds no outer inset or separator.
-`modalPanel()` owns the elevated modal face, corners, shadow and motion. Document
-lightboxes own their close control and reserve its space alongside their content;
+`modalPanel()` owns the elevated modal face, corners, shadow and motion. Modal
+panels and `MODAL_SCRIM` keep the shared entry motion but have no transition once
+Base UI marks them `data-closed`: a dialog holds its focus isolation until the
+exit finishes, so an animated exit would swallow a Tab pressed right after Escape.
+Document lightboxes own their close control and reserve its space alongside their content;
 callers supply the localized close label. Top-aligned overlays derive their
 available height from the same inset that positions them, preserving the compact
 bottom gutter. Search overlays keep the query row fixed while their results scroll.

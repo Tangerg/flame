@@ -20,7 +20,7 @@ import { ResizeHandle, type ResizeHandleProps } from "@/ui/atoms/resize-handle";
 import { TabsPrimitive } from "@/ui/primitives/index";
 export interface AgentDockTab {
   id: string;
-  title: ReactNode;
+  title: string;
   icon?: IconName;
   badge?: ReactNode;
   active?: boolean;
@@ -313,7 +313,7 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
           return (
             <ContextMenu.Root key={tab.id}>
               <ContextMenu.Trigger render={row} />
-              <ContextMenu.Content data-dock-tab-menu={tab.id}>
+              <ContextMenu.Content data-dock-tab-menu={tab.id} aria-label={tab.title}>
                 {reorder && (
                   <>
                     <ContextMenu.IconItem

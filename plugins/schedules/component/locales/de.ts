@@ -15,11 +15,11 @@ export const de: Record<string, string> = {
   refresh: "Aktualisieren",
   reading: "Zeitpläne werden gelesen…",
   "read.error":
-    "Zeitpläne konnten nicht gelesen werden: {{error}}. Verwende Aktualisieren, um es erneut zu versuchen.",
+    "Zeitpläne konnten nicht gelesen werden. Verwende Aktualisieren, um es erneut zu versuchen.",
   "read.errorRetained":
-    "Zeitpläne konnten nicht gelesen werden: {{error}}. Die zuletzt akzeptierte Seite bleibt erhalten. Verwende Aktualisieren, um es erneut zu versuchen.",
+    "Zeitpläne konnten nicht gelesen werden. Die zuletzt akzeptierte Seite bleibt erhalten. Verwende Aktualisieren, um es erneut zu versuchen.",
   "live.error":
-    "Live-Aktualisierung ist nicht verfügbar: {{error}}. Verwende Aktualisieren, um die aktuellen Zeitpläne zu lesen.",
+    "Live-Aktualisierung ist nicht verfügbar. Verwende Aktualisieren, um die aktuellen Zeitpläne zu lesen.",
   "command.status.label": "Status des Zeitplanbefehls",
   "command.uncertain":
     "Das ursprüngliche Ergebnis ist nicht bestätigt. Gleiche es ab, bevor du einen weiteren Befehl ausführst.",

@@ -9,6 +9,7 @@ import { Switch } from "@flame/ui";
 import { Tag } from "@/ui/index";
 import {
   Button,
+  Disclosure,
   IconButton,
   ListRow,
   RecordBody,
@@ -19,6 +20,7 @@ import {
 import { type MCPServerSettings } from "@/features/mcp/application/mcpServerConfig";
 import {
   type MCPTransport,
+  reconnectMCPServer,
   useAuthorizeMCPServer,
   useSetMCPServerEnabled,
 } from "@/features/mcp/application/mcpServerConfig";
@@ -26,6 +28,7 @@ import { notifyError } from "@/features/notifications/public/notifications";
 import { type DotTone } from "@/lib/tone";
 import { useT } from "@/lib/i18n/index";
 import { ServerForm } from "@/features/mcp/ui/ServerForm";
+import { ToolControls } from "@/features/mcp/ui/ToolControls";
 import { face, layout, type as typeStep } from "@flame/ui/tokens.stylex";
 const STATUS_TONE: Record<MCPServerSettings["status"], DotTone> = {
   disabled: "idle",
@@ -34,6 +37,15 @@ const STATUS_TONE: Record<MCPServerSettings["status"], DotTone> = {
   needsAuth: "waiting",
   failed: "err",
   disconnected: "idle",
+};
+
+const STATUS_TEXT: Record<MCPServerSettings["status"], string> = {
+  disabled: "mcp.status.disabled",
+  connected: "mcp.status.connected",
+  connecting: "mcp.status.connecting",
+  needsAuth: "mcp.status.needsAuth",
+  failed: "mcp.status.failed",
+  disconnected: "mcp.status.disconnected",
 };
 
 function TransportBadge({ transport }: { transport: MCPTransport }) {
@@ -79,6 +91,12 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
   });
   const onToggle = (enabled: boolean) => toggleAction.run(() => setEnabled(server.id, enabled));
 
+  const reconnectAction = useCommandAction({
+    wasRetired: wasGenerationRetired,
+    fallback: t("mcp.error.reconnect"),
+    source: "mcp",
+  });
+
   const onSignIn = async () => {
     const controller = new AbortController();
     authorizationController.current?.abort();
@@ -99,6 +117,12 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
 
   const tone = STATUS_TONE[server.status];
   const active = server.status === "connected";
+  const authorizing = server.status === "needsAuth" || signingIn;
+  const connectionPending = reconnectAction.busy || server.status === "connecting" || signingIn;
+  const onConnection = () => {
+    if (authorizing) void onSignIn();
+    else reconnectAction.run(() => reconnectMCPServer(server.id));
+  };
 
   return (
     <ListRow>
@@ -113,6 +137,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
         }
         description={
           <RecordMeta>
+            <span>{t(STATUS_TEXT[server.status])}</span>
             <TransportBadge transport={server.type} />
             {active && (
               <span {...stylex.props(face.mono)}>
@@ -123,14 +148,22 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
         }
         actions={
           <>
-            {(server.status === "needsAuth" || signingIn) && (
+            {(server.enabled || signingIn) && (
               <Button
-                variant="primary"
+                variant={authorizing ? "primary" : "outline"}
                 size="sm"
-                pending={signingIn}
-                onClick={() => void onSignIn()}
+                pending={connectionPending}
+                aria-label={t(
+                  authorizing
+                    ? signingIn
+                      ? "mcp.signingIn.aria"
+                      : "mcp.signIn.aria"
+                    : "mcp.reconnect.aria",
+                  { server: server.id.name },
+                )}
+                onClick={onConnection}
               >
-                {t(signingIn ? "mcp.signingIn" : "mcp.signIn")}
+                {t(authorizing ? (signingIn ? "mcp.signingIn" : "mcp.signIn") : "mcp.reconnect")}
               </Button>
             )}
             {server.id.origin.type === "user" && (
@@ -161,6 +194,10 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
           <span {...stylex.props(vocab.negative, typeStep.uiMd)}>{server.errorDetail}</span>
         </RecordBody>
       )}
+
+      <Disclosure title={t("mcp.tools.title", { server: server.id.name })}>
+        <ToolControls server={server.id} />
+      </Disclosure>
 
       {editing && (
         <div id={panelId}>

@@ -340,6 +340,7 @@ export const ja: Record<string, string> = {
   "approvals.forget": "{{tool}} を忘れる",
   "approvals.unavailable": "承認コントロールを利用できません",
   "approvals.unavailable.sub": "このランタイムは承認モードの制御を提供していません。",
+  "approvals.error.loadMode": "承認モードを読み込めませんでした",
   "approvals.error.mode": "承認モードを変更できませんでした。",
   "approvals.error.forget": "決定をクリアできませんでした。",
 
@@ -519,6 +520,7 @@ export const ja: Record<string, string> = {
   "runError.action.diagnostics": "診断",
   "runError.action.dismiss": "閉じる",
 
+  "session.status.pinned": "ピン留め済み",
   "session.status.running": "実行中",
 
   "session.identity.copyCwd": "作業ディレクトリをコピー",
@@ -656,6 +658,7 @@ export const ja: Record<string, string> = {
   "reasoning.thought": "思考",
   "reasoning.thoughtFor": "{{duration}} 思考",
   "reasoning.interrupted": "中断",
+  "reasoning.text": "思考の内容",
 
   "composer.placeholder.steer": "実行中のターンを誘導するメッセージを送信…",
   "composer.action.steer": "実行中のターンを誘導",
@@ -745,6 +748,16 @@ export const ja: Record<string, string> = {
   "mcp.transport.http": "Streamable HTTP",
   "mcp.signIn": "サインイン",
   "mcp.signingIn": "サインイン中…",
+  "mcp.signIn.aria": "{{server}} にサインイン",
+  "mcp.signingIn.aria": "{{server}} にサインイン中…",
+  "mcp.reconnect": "再接続",
+  "mcp.reconnect.aria": "{{server}} に再接続",
+  "mcp.status.disabled": "無効",
+  "mcp.status.disconnected": "未接続",
+  "mcp.status.connecting": "接続中…",
+  "mcp.status.connected": "接続済み",
+  "mcp.status.failed": "接続に失敗しました",
+  "mcp.status.needsAuth": "サインインが必要です",
   "mcp.form.name.placeholder": "サーバー名",
   "mcp.form.name.aria": "サーバー名",
   "mcp.form.transport.aria": "トランスポート",
@@ -789,7 +802,7 @@ export const ja: Record<string, string> = {
   "mcp.import.error": "その設定をインポートできませんでした。",
   "mcp.import.nameCollision":
     "サーバー「<first/>」と「<second/>」はどちらも「<canonical/>」になります。別々の名前を付けてください",
-  "mcp.tools.manage": "ツールを管理",
+  "mcp.tools.title": "{{server}} のツール",
   "mcp.tools.enabled": "有効",
   "mcp.tools.autoApprove": "自動承認",
   "mcp.tools.empty": "このサーバーはツールを公開していません",
@@ -799,7 +812,11 @@ export const ja: Record<string, string> = {
   "mcp.error.remove": "サーバーを削除できませんでした。",
   "mcp.error.toggle": "サーバーを変更できませんでした。",
   "mcp.error.signIn": "サインインに失敗しました。",
+  "mcp.error.reconnect": "サーバーに再接続できませんでした。",
   "mcp.error.test": "テストに失敗しました",
+  "mcp.error.loadTools": "ツールを読み込めませんでした",
+  "mcp.error.loadToolVisibility": "ツールの表示設定を読み込めませんでした",
+  "mcp.error.loadAutoApproveRules": "自動承認ルールを読み込めませんでした",
   "mcp.testOutcome.timedOut":
     "サーバーが時間内に応答しませんでした。コマンドまたは URL を確認して再試行してください。",
   "mcp.testOutcome.failed":

@@ -122,7 +122,7 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
           {!empty && !current?.checking && !read.commands.length && (
             <Metadata>{t("packages.commands.none")}</Metadata>
           )}
-          <RecordGroup variant="list">
+          <RecordGroup variant="list" hidden={!read.commands.length}>
             {read.commands.map((command) => (
               <ListRow
                 key={command.idempotencyKey}

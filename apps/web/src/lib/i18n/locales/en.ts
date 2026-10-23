@@ -385,6 +385,7 @@ export const en: Record<string, string> = {
   "approvals.forget": "Forget {{tool}}",
   "approvals.unavailable": "Approval controls unavailable",
   "approvals.unavailable.sub": "This runtime doesn't expose approval-mode control.",
+  "approvals.error.loadMode": "Couldn't load approval mode",
   "approvals.error.mode": "Couldn't change the approval mode.",
   "approvals.error.forget": "Couldn't clear the decision.",
 
@@ -464,6 +465,16 @@ export const en: Record<string, string> = {
   "mcp.transport.http": "Streamable HTTP",
   "mcp.signIn": "Sign in",
   "mcp.signingIn": "Signing in…",
+  "mcp.signIn.aria": "Sign in to {{server}}",
+  "mcp.signingIn.aria": "Signing in to {{server}}…",
+  "mcp.reconnect": "Reconnect",
+  "mcp.reconnect.aria": "Reconnect {{server}}",
+  "mcp.status.disabled": "Disabled",
+  "mcp.status.disconnected": "Disconnected",
+  "mcp.status.connecting": "Connecting…",
+  "mcp.status.connected": "Connected",
+  "mcp.status.failed": "Connection failed",
+  "mcp.status.needsAuth": "Sign in required",
   "mcp.form.name.placeholder": "Server name",
   "mcp.form.name.aria": "Server name",
   "mcp.form.transport.aria": "Transport",
@@ -511,7 +522,7 @@ export const en: Record<string, string> = {
   "mcp.import.error": "Couldn't import that config.",
   "mcp.import.nameCollision":
     'Servers "<first/>" and "<second/>" both become "<canonical/>"; give them distinct names',
-  "mcp.tools.manage": "Manage tools",
+  "mcp.tools.title": "Tools for {{server}}",
   "mcp.tools.enabled": "Enabled",
   "mcp.tools.autoApprove": "Auto-approve",
   "mcp.tools.empty": "This server exposes no tools",
@@ -521,7 +532,11 @@ export const en: Record<string, string> = {
   "mcp.error.remove": "Couldn't remove the server.",
   "mcp.error.toggle": "Couldn't change the server.",
   "mcp.error.signIn": "Sign-in failed.",
+  "mcp.error.reconnect": "Couldn't reconnect the server.",
   "mcp.error.test": "Test failed",
+  "mcp.error.loadTools": "Couldn't load tools",
+  "mcp.error.loadToolVisibility": "Couldn't load tool visibility",
+  "mcp.error.loadAutoApproveRules": "Couldn't load auto-approve rules",
   "mcp.testOutcome.timedOut":
     "The server didn't respond in time — check the command or URL and retry.",
   "mcp.testOutcome.failed":
@@ -687,6 +702,7 @@ export const en: Record<string, string> = {
   "runError.action.diagnostics": "Diagnostics",
   "runError.action.dismiss": "Dismiss",
 
+  "session.status.pinned": "Pinned",
   "session.status.running": "Running",
 
   "session.identity.copyCwd": "Copy working directory",
@@ -846,6 +862,7 @@ export const en: Record<string, string> = {
   "reasoning.thought": "Thought",
   "reasoning.thoughtFor": "Thought for {{duration}}",
   "reasoning.interrupted": "interrupted",
+  "reasoning.text": "Reasoning text",
 
   "rpcError.session_has_active_run":
     "This session already has a run in flight — steer it, answer it, or cancel it first.",

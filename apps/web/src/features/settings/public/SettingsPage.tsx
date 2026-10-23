@@ -64,7 +64,7 @@ export function SettingsPage() {
             title={t(p.label)}
             description={p.description ? t(p.description) : undefined}
           >
-            <PluginBoundary plugin={`settings:${p.id}`}>
+            <PluginBoundary plugin={`settings:${p.id}`} label={t(p.label)}>
               <Suspense fallback={<SkeletonList count={4} label={t("common.loading")} />}>
                 <p.component />
               </Suspense>

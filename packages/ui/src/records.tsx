@@ -35,7 +35,9 @@ const styles = stylex.create({
   },
   recordChevron: { color: color.fgMuted, marginBlockStart: space.s0_5 },
   group: {
-    display: { default: "grid", ":empty": "none" },
+    // Callers hide a truly empty group from their read state; hiding on
+    // :empty would collapse the frame while React replaces its children.
+    display: "grid",
     gridTemplateColumns: "minmax(0,1fr)",
     gap: layout.contentGap,
   },
