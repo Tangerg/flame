@@ -1,12 +1,10 @@
 package runs
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // ProjectInterrupts joins each open interrupt with the Item that owns it, in
@@ -114,39 +112,4 @@ func pendingItemIDs(pending Pending) []string {
 		}
 	}
 	return ids
-}
-
-// validateInterrupt checks one projected interrupt an event carries.
-func validateInterrupt(request transcript.Interrupt) error {
-	if err := resourceid.ValidateItem(request.ItemID); err != nil {
-		return fmt.Errorf("pending interrupt: %w", err)
-	}
-	if request.ItemOccurredAt.IsZero() {
-		return errors.New("item occurrence time is required")
-	}
-	if err := resourceid.ValidateRun(request.RunID); err != nil {
-		return fmt.Errorf("pending interrupt: %w", err)
-	}
-	switch request.Kind {
-	case interrupt.Approval:
-		if request.Approval == nil || request.Question != nil {
-			return errors.New("approval interrupt requires only an approval payload")
-		}
-		if err := request.Approval.Validate(); err != nil {
-			return err
-		}
-	case interrupt.Question:
-		if request.Question == nil || request.Approval != nil {
-			return errors.New("question interrupt requires only a question payload")
-		}
-		if err := request.Question.Validate(); err != nil {
-			return err
-		}
-		if request.Question.Answered() {
-			return errors.New("open question interrupt already carries an accepted answer")
-		}
-	default:
-		return fmt.Errorf("unknown interrupt kind %q", request.Kind)
-	}
-	return nil
 }

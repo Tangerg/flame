@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // ErrIdentityConflict reports an attempt to reuse a durable transcript identity
@@ -229,6 +230,41 @@ type Interrupt struct {
 	Kind     interrupt.Kind
 	Approval *Approval
 	Question *Question
+}
+
+// Validate reports whether an interrupt carries exactly the one payload its Kind
+// names, with a valid item and run identity. An open question that already holds
+// an accepted answer is no longer open, so it is rejected here rather than resumed.
+func (i Interrupt) Validate() error {
+	if err := resourceid.ValidateItem(i.ItemID); err != nil {
+		return fmt.Errorf("pending interrupt: %w", err)
+	}
+	if i.ItemOccurredAt.IsZero() {
+		return errors.New("item occurrence time is required")
+	}
+	if err := resourceid.ValidateRun(i.RunID); err != nil {
+		return fmt.Errorf("pending interrupt: %w", err)
+	}
+	switch i.Kind {
+	case interrupt.Approval:
+		if i.Approval == nil || i.Question != nil {
+			return errors.New("approval interrupt requires only an approval payload")
+		}
+		return i.Approval.Validate()
+	case interrupt.Question:
+		if i.Question == nil || i.Approval != nil {
+			return errors.New("question interrupt requires only a question payload")
+		}
+		if err := i.Question.Validate(); err != nil {
+			return err
+		}
+		if i.Question.Answered() {
+			return errors.New("open question interrupt already carries an accepted answer")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown interrupt kind %q", i.Kind)
+	}
 }
 
 type Approval struct {

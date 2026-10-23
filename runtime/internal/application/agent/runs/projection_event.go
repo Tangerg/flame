@@ -139,7 +139,7 @@ func (s SegmentFinished) validate() error {
 	}
 	seen := make(map[string]struct{}, len(s.Interrupts))
 	for index, pending := range s.Interrupts {
-		if err := validateInterrupt(pending); err != nil {
+		if err := pending.Validate(); err != nil {
 			return fmt.Errorf("runs: finished Segment interrupt %d: %w", index, err)
 		}
 		if _, duplicate := seen[pending.ItemID]; duplicate {
