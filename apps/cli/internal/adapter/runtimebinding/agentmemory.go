@@ -65,7 +65,7 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 		}
 		for _, row := range result.Rows {
 			item := memoryProjection(memory.UpdateV1Output(row))
-			if err := conversation.ValidateMemoryItem(item); err != nil {
+			if err := item.Validate(); err != nil {
 				return nil, runtimeContractViolation("list agent memory item %d is invalid: %v", len(items)+1, err)
 			}
 			if item.Scope != validated.Scope {
@@ -205,7 +205,7 @@ func agentMemoryResult(
 		return memory.Item{}, runtimeContractViolation("%s returned nil", operation)
 	}
 	item := *result
-	if err := conversation.ValidateMemoryItem(item); err != nil {
+	if err := item.Validate(); err != nil {
 		return memory.Item{}, runtimeContractViolation("%s returned an invalid item: %v", operation, err)
 	}
 	if err := requireIdentity(operation, item.ID, expectedID); err != nil {

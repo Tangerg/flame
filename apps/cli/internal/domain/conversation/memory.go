@@ -49,25 +49,3 @@ func (t MemoryTarget) Validate() error {
 	}
 	return nil
 }
-
-func ValidateMemoryItem(item memory.Item) error {
-	if item.ID == "" || strings.TrimSpace(item.Content) == "" {
-		return fmt.Errorf("agent memory item requires identity and content")
-	}
-	if item.Scope != memory.ScopeProject && item.Scope != memory.ScopeUser {
-		return fmt.Errorf("agent memory item has unknown scope %q", item.Scope)
-	}
-	if item.Origin != memory.OriginAuto && item.Origin != memory.OriginUser {
-		return fmt.Errorf("agent memory item has unknown origin %q", item.Origin)
-	}
-	if item.Status != memory.StatusActive && item.Status != memory.StatusPending || item.Origin == memory.OriginUser && item.Status != memory.StatusActive {
-		return fmt.Errorf("agent memory item has an invalid visible status %q", item.Status)
-	}
-	if item.CreatedAt.IsZero() || item.UpdatedAt.IsZero() {
-		return fmt.Errorf("agent memory item requires timestamps")
-	}
-	if item.UpdatedAt.Before(item.CreatedAt) {
-		return fmt.Errorf("agent memory item %s was updated before creation", item.ID)
-	}
-	return nil
-}

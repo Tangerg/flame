@@ -39,12 +39,12 @@ func TestMemoryItemRejectsReversedTimestamps(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
 	valid := memory.Item{ID: testMemoryID, Scope: memory.ScopeProject, Content: "fact", Origin: memory.OriginAuto, Status: memory.StatusPending, CreatedAt: now, UpdatedAt: now}
-	if err := ValidateMemoryItem(valid); err != nil {
+	if err := valid.Validate(); err != nil {
 		t.Fatal(err)
 	}
 	invalid := valid
 	invalid.UpdatedAt = now.Add(-time.Second)
-	if err := ValidateMemoryItem(invalid); err == nil || !strings.Contains(err.Error(), "before creation") {
+	if err := invalid.Validate(); err == nil || !strings.Contains(err.Error(), "before creation") {
 		t.Fatalf("ValidateMemoryItem() = %v", err)
 	}
 }
@@ -64,12 +64,12 @@ func TestMemoryProjectionRequiresVisiblePublisherState(t *testing.T) {
 	} {
 		row := valid
 		mutate(&row)
-		if err := ValidateMemoryItem(row); err == nil {
+		if err := row.Validate(); err == nil {
 			t.Fatalf("invalid visible projection accepted: %+v", row)
 		}
 	}
 	valid.Origin, valid.Status = memory.OriginAuto, memory.StatusPending
-	if err := ValidateMemoryItem(valid); err != nil {
+	if err := valid.Validate(); err != nil {
 		t.Fatal(err)
 	}
 }
