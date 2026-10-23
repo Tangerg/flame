@@ -37,10 +37,12 @@ import {
   PROVIDERS_KEY,
   usePackageRealization,
 } from "@/features/plugins/adapters/packages";
-const packageThemePrefix = "package:";
+// A package-scoped id namespaces a contribution or theme by its installation so
+// two packages cannot collide on one extension-point or selection id.
+const packageIdPrefix = "package:";
 
-function packageThemeId(installation: string, theme: string): string {
-  return `${packageThemePrefix}${installation}:${theme}`;
+function packageScopedId(installationId: string, localId: string): string {
+  return `${packageIdPrefix}${installationId}:${localId}`;
 }
 
 function createPackageReconciler(
@@ -63,9 +65,9 @@ function createPackageReconciler(
     const admitted = installations.filter((item) => item.presentation === "admitted");
     retainThemeSelection(
       admitted.flatMap((item) =>
-        item.selected.themes.map((theme) => packageThemeId(item.id, theme.id)),
+        item.selected.themes.map((theme) => packageScopedId(item.id, theme.id)),
       ),
-      packageThemePrefix,
+      packageIdPrefix,
     );
     const ids = new Set(admitted.map((item) => item.id));
     for (const [id, resource] of resources) {
@@ -136,7 +138,7 @@ function createPackageReconciler(
               ),
             };
           });
-          const id = `package:${installation.id}:${entry.id}`;
+          const id = packageScopedId(installation.id, entry.id);
           lifetime.contribute(
             WORKSPACE_FILE_RENDERER,
             {
@@ -193,7 +195,7 @@ function createPackageReconciler(
               ),
             };
           });
-          const id = `package:${installation.id}:${entry.id}`;
+          const id = packageScopedId(installation.id, entry.id);
           lifetime.contribute(
             TOOL_RESULT_RENDERER,
             {
@@ -241,7 +243,7 @@ function createPackageReconciler(
               ),
             };
           });
-          const id = `package:${installation.id}:${entry.id}`;
+          const id = packageScopedId(installation.id, entry.id);
           lifetime.contribute(
             SESSION_ACTION,
             {
@@ -278,7 +280,7 @@ function createPackageReconciler(
             ),
           };
         });
-        const id = `package:${installation.id}:${entry.id}`;
+        const id = packageScopedId(installation.id, entry.id);
         lifetime.contribute(
           WORKSPACE_VIEW,
           {
@@ -300,7 +302,7 @@ function createPackageReconciler(
       for (const theme of release.themes) {
         const { background, foreground, accent, muted, border } = theme.colors;
         contributePaletteTheme(lifetime, {
-          id: packageThemeId(installation.id, theme.id),
+          id: packageScopedId(installation.id, theme.id),
           label: `${release.name} · ${theme.title}`,
           scheme: theme.scheme,
           palette: { background, foreground, accent, muted, border },
