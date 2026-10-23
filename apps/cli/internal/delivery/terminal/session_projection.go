@@ -12,6 +12,10 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+// statusWaitingForAnswers is the status every projection shows while a Run waits on
+// the operator's interrupt answers.
+const statusWaitingForAnswers = "waiting for your answers"
+
 func (a *app) restore(snapshot conversation.SessionSnapshot) {
 	if err := a.execution.conversation.RestoreSnapshot(snapshot); err != nil {
 		a.fail(err)
@@ -131,7 +135,7 @@ func (a *app) reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream
 			a.openInterrupts(projection.conversation.Interrupts())
 		}
 		a.observeCurrentRunStatus()
-		a.status.note("waiting for your answers")
+		a.status.note(statusWaitingForAnswers)
 	case conversation.Idle:
 		a.execution.following = false
 		if projection.conversation.Outcome().Status != "" {
@@ -163,7 +167,7 @@ func (a *app) restoreActivity(snapshot conversation.SessionSnapshot) {
 			a.openInterrupts(a.execution.conversation.Interrupts())
 		}
 		a.observeCurrentRunStatus()
-		a.status.note("waiting for your answers")
+		a.status.note(statusWaitingForAnswers)
 	case conversation.Running:
 		active, ok := snapshot.ActiveRun()
 		if !ok {

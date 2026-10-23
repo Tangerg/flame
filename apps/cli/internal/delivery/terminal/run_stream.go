@@ -324,7 +324,7 @@ func (a *app) applyPresentationEvent(envelope conversation.RunEvent) {
 			a.openInterrupts(a.execution.conversation.Interrupts())
 			a.header.SetUsage(a.execution.conversation.Usage())
 			a.observeCurrentRunStatus()
-			a.status.note("waiting for your answers")
+			a.status.note(statusWaitingForAnswers)
 		}
 	case conversation.BlockDelta, conversation.ToolArgumentsDelta, conversation.CustomEvent:
 	default:
