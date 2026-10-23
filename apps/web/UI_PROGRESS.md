@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. Pinned Sessions now include localized state in their accessible row names. Focused regressions and English/light/14 px plus Chinese/dark/18 px native menu/edit/cancel flows pass, including narrow-window 200% zoom. The broad Web run retains one MCP-readiness failure; the complete isolated HTTP file, all later gates and the supported native check pass. Earlier reading-color, Settings, Plugin Retry, ToolGroup, Markdown and neutral-canvas work remains integrated. The earlier single whole-draft replacement remains unexplained and has no product workaround. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Paused at the user's request after this round and latest-main integration. Native image save/cancel, current gallery identity, original-source return and continued drafts are qualified below; both saved SVGs match their original bytes. The 61 related tests and supported native check pass. Pinned Session names, earlier reading-color and component repairs remain integrated. The earlier broad Web MCP-readiness failure and isolated 49-test pass remain separate qualifications. Owned acceptance resources are cleaned. Start no new batch until the user explicitly resumes.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The current goal explicitly resumes the earlier milestone pause. Work in `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`; the primary checkout `/Users/tangerg/Desktop/flame` contains the user's parallel work and must remain untouched. The UI branch fast-forwarded 158 commits to remote main `8b9b403ff` before the current component pass, and integrated the later dependency/Scope updates through `75fea673d` before publishing object-menu names. That integration received renewed frontend and native acceptance. Verify current Git state before integration, commit explicit owned paths and push to remote `main`, clean owned resources, then continue the next evidence-backed batch. Do not sweep the user's local main commits or uncommitted files into this work.
+The user requested a milestone pause after the current round and latest-main integration. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`; the primary checkout `/Users/tangerg/Desktop/flame` contains the user's parallel work and remains untouched. The integration checkpoint's `git fetch origin main` and `git merge --ff-only origin/main` reported Already up to date at `d85ebc68cf2a2b231fca7f36c10a04cf28172abb`. The native qualification below adds no product source change; its delivery record extends that main revision. Keep the Goal paused at this milestone. Do not start another batch until the user resumes, or sweep the user's local main commits or uncommitted files into this checkout.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -465,6 +465,66 @@ Delivery: acceptance record `a35b04856c74459ebc72f51661d6f6edd55a6d53` is
 pushed to remote `main`. Fresh `ls-remote` matched that commit, the owned checkout
 was clean with zero unpushed commits, and all **24** accepted product/resource
 inputs matched. This in-place receipt adds no product change.
+
+### Native image save qualification
+
+The previously unqualified native export path is now checked through the actual
+Wails beta.34 Save panel. No product source, schema, image policy, focus handler
+or style changed. `ImagePreviewGallery` still calls the existing image-save port;
+`createClientHost` selects the native bridge, and `DesktopHost.SaveImage` plus
+`wailsImageSaver` own validation, the attached sheet, cancellation and writing.
+The existing captured-image reference research and better-accessibility focus
+guidance apply; Wails/Go source confirms the native ownership rather than assuming
+browser download behavior.
+
+- The private composition adds the production `createMessageImagesPlugin` with
+  the real host's save function after the canonical workspace fixture installs.
+  Its observer delegates immediately and preserves outcomes/errors. The first
+  inert SVG retains the fixture's base64 source; the second uses distinct inert
+  UTF-8 SVG bytes in a percent-encoded data URL with charset metadata. No remote
+  image fetch, provider, Runtime write or user image is involved.
+- Actual EN/light/14 px/Flame Orange: original draft → first image → keyboard
+  Download → native Escape returns to that image and focused Download. Return
+  immediately reopens the native sheet. Go to Folder selects the owned temporary
+  directory before Save; `accepted-first.svg` matches all **193 source bytes**.
+  Gallery Escape returns to Inline architecture, and the retained draft continues
+  as `Native image save draft 保留 — continued` after explicit caret-to-end.
+- Actual ZH/dark/18 px/custom blue: system Move & Resize → Left, collapsed Dock
+  and fixture sidebar, and twenty native Zoom In commands qualify **200%** at a
+  **2242 × 1898** capture. First image → Right selects Inline detail **2 / 2**.
+  The real native sheet saves `accepted-second.svg` into the same owned directory;
+  all **243 source bytes**, including the plus sign and Chinese UTF-8, match.
+  Save returns to that current image and focused Download. A separately observed
+  first-image → second-image → native Cancel → gallery → Escape route restores
+  the original Inline architecture opener. The exact draft continues as
+  `原生保存草稿 保留 — 返回后继续`; Actual Size was restored before Quit.
+- Some CUA state guards refused actions. After the second image's successful
+  write and byte verification, a guarded Return was not accepted and a fresh
+  observation found the gallery closed. That interval does not qualify a reopen,
+  close destination or cause. No actor or product defect is inferred; the clean
+  separately reobserved cancellation/return route above supplies its evidence.
+  AX also truncates the cumulative observer JSON, so it is not a complete callback
+  trace. Native sheets, current-object/focus captures and exact saved-file bytes
+  establish the stated acceptance. Native filesystem rejection, VoiceOver, OS IME,
+  browser export and other-platform GUIs remain outside this pass. The recorded
+  fullscreen visibility discrepancy is unchanged.
+- **3 files / 61 tests** pass for image/gallery, Markdown and native IPC contracts.
+  `make stage-web` passes in 8.07 seconds; the supported `make check-native` passes
+  in **25.80 seconds** after latest-main integration. The binary is arm64, minimum
+  macOS 13.0, SDK 26.5. Broader unchanged Web/Runtime/CLI suites were not rerun;
+  the preceding aggregate MCP timeout and isolated pass remain recorded above.
+  A bounded read-only Claude CLI stopped at its turn limit after 42.24 seconds
+  (13 reported turns, no denials); primary completed source review and acceptance.
+- All **40** accepted product/resource/compiled inputs and five private harness
+  inputs match through final acceptance. Both native PIDs and the CLI exited.
+  The exact bundle was unregistered; ten new worktree outputs/caches, three new
+  bundle Library paths including its native-dialog preferences, both saved test
+  images, and the private root/pointer were removed after ownership, birth-time,
+  containment and copied-asset checks. The preexisting UI Vite cache, dependencies,
+  references, user data, unrelated processes and primary checkout remain intact.
+  The private archive retains 67 UTF-8 evidence files and 21 capture hashes outside
+  the repository. No migration is needed. This checkpoint ends at the user's
+  requested pause after delivery; do not start the next candidate automatically.
 
 ### Retained component behavior
 
@@ -3799,8 +3859,9 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 ## Future review candidates
 
-Continuous work is explicitly resumed. The candidates below require current
-source and native evidence before selecting each next batch.
+This checkpoint is paused at the user's explicit request. The candidates below
+are inactive until the user resumes; then require current source and native
+evidence before selecting each next batch.
 
 Full-pane entry and explicit global Composer focus are implemented and natively
 qualified above. Keep presentation and focus under the host's existing owners.
@@ -3892,7 +3953,7 @@ Remembered-rule action descriptions are now implemented and qualified above. Pre
 
 Hooks scope and source provenance are now implemented and qualified above. Preserve the read-only list and Runtime-owned trust/active facts; source display does not authorize new Hook authoring or local-path actions. Continue with other existing task paths from fresh source and native evidence.
 
-These remaining items are review candidates, not defects or required rewrites. The narrow/full-pane host gap is now implemented and natively qualified above. The current request resumes continuous work. Separate reproduced defects from design judgments and unverified hypotheses before each batch. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
+These remaining items are review candidates, not defects or required rewrites. The narrow/full-pane host gap is now implemented and natively qualified above. The latest request pauses work after this checkpoint; resume only when explicitly requested. Separate reproduced defects from design judgments and unverified hypotheses before each batch. Do not invent a defect to justify another small change, or substitute isolated icon, color and radius adjustments for a better page and task flow.
 
 A repo-wide quality pass (recorded in commits, not duplicated here) cleared the
 remaining non-visual bad smells across the web UI, `packages/ui` and the plugin
