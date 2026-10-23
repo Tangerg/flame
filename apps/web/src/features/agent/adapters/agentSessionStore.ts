@@ -21,7 +21,11 @@ interface AgentSessionActions {
   rememberSession: (id: string) => void;
 }
 
-const persistence = new ScopedPersistence<AgentSessionState>("flame.agent-session");
+// One owner for the persisted store key: the ScopedPersistence slot and persist's
+// name must agree, or a reload reads from a different slot than it wrote.
+const PERSISTENCE_KEY = "flame.agent-session";
+
+const persistence = new ScopedPersistence<AgentSessionState>(PERSISTENCE_KEY);
 
 function emptySessionState(): AgentSessionState {
   return {
@@ -42,7 +46,7 @@ export const useAgentSessionStore = create<AgentSessionState & AgentSessionActio
       rememberSession: (id) => set({ lastSessionId: id }),
     }),
     {
-      name: "flame.agent-session",
+      name: PERSISTENCE_KEY,
       storage: createJSONStorage(() => persistence.storage),
       skipHydration: true,
       partialize: (s) => ({
@@ -58,7 +62,7 @@ export const useAgentSessionStore = create<AgentSessionState & AgentSessionActio
         const parsed = sessionPersistSchema.safeParse(persisted);
         if (!parsed.success) {
           console.warn(
-            "[agentSessionStore] discarding corrupted flame.agent-session:",
+            `[agentSessionStore] discarding corrupted ${PERSISTENCE_KEY}:`,
             parsed.error.issues,
           );
           return defaults;
