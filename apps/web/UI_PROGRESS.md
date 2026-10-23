@@ -54,7 +54,9 @@ The warm-light path includes 18 px, native 200% and a pointer-resized narrow
 window. Three theme suites pass 121 tests; `make check-native` passes. The exact
 qualifications, excluded input attempts and new native continuation candidate
 are recorded with the color evidence below. Owned resources are cleaned;
-delivery is being recorded for this acceptance-only update.
+acceptance record `a35b04856c74459ebc72f51661d6f6edd55a6d53` is pushed to
+remote `main`, verified by exact remote hash, all 24 unchanged accepted
+product/resource inputs and a clean owned checkout with zero unpushed commits.
 
 The captured-image inset is integrated at `d25b4ef72` and settings width at
 `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
@@ -433,6 +435,11 @@ preserves **55** flat UTF-8 evidence files and **15** capture hashes outside the
 repository. Pre-existing shared UI Vite cache, installed dependencies, compiler
 caches, read-only references, user data, unrelated processes and the primary
 checkout remain.
+
+Delivery: acceptance record `a35b04856c74459ebc72f51661d6f6edd55a6d53` is
+pushed to remote `main`. Fresh `ls-remote` matched that commit, the owned checkout
+was clean with zero unpushed commits, and all **24** accepted product/resource
+inputs matched. This in-place receipt adds no product change.
 
 ### Retained component behavior
 
