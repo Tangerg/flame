@@ -19,6 +19,7 @@ describe("activePlanState", () => {
       done: 1,
       percent: 33,
       current: plan[1],
+      currentIndex: 1,
     });
   });
 
@@ -33,6 +34,7 @@ describe("activePlanState", () => {
       done: 1,
       percent: 100,
       current: undefined,
+      currentIndex: -1,
     });
   });
 

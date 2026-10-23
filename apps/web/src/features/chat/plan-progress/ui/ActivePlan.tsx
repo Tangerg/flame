@@ -108,15 +108,10 @@ function PlanPill({ steps, progress }: { steps: readonly PlanStep[]; progress: A
     done: progress.done,
     total: progress.total,
   });
-  // A plan with no step in flight is either finished or not started; its standing
-  // is the completion count, not a position nothing currently occupies.
-  const currentIndex = progress.current
-    ? steps.findIndex((step) => step.id === progress.current?.id)
-    : -1;
   const progressLabel =
-    currentIndex < 0
+    progress.currentIndex < 0
       ? completionLabel
-      : t("plan.progress", { current: currentIndex + 1, total: progress.total });
+      : t("plan.progress", { current: progress.currentIndex + 1, total: progress.total });
 
   return (
     <motion.div
