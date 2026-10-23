@@ -49,15 +49,19 @@ function Harness({ onBack = () => {}, children }: { onBack?: () => void; childre
         >
           Back to conversation
         </button>
-        <div data-quote-source="message">
-          <p>{message}</p>
+        <div role="region" aria-label="Message reader" tabIndex={-1}>
+          <div data-quote-source="message">
+            <p>{message}</p>
+          </div>
         </div>
         <div data-quote-source="message">
           <p>Another message</p>
         </div>
-        <div data-quote-source="file" data-quote-path="src/complete source.ts">
-          <span data-quote-line="4">{"const a = 1;\n"}</span>
-          <span data-quote-line="5">return a;</span>
+        <div role="region" aria-label="File reader" tabIndex={-1}>
+          <div data-quote-source="file" data-quote-path="src/complete source.ts">
+            <span data-quote-line="4">{"const a = 1;\n"}</span>
+            <span data-quote-line="5">return a;</span>
+          </div>
         </div>
       </section>
       <ComposerField />
@@ -85,6 +89,26 @@ function selectMessage() {
     selection.addRange(range);
     document.dispatchEvent(new Event("selectionchange"));
   });
+}
+
+function selectRange(range: Range) {
+  act(() => {
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    document.dispatchEvent(new Event("selectionchange"));
+  });
+}
+
+async function enterQuote() {
+  const reader = screen.getByRole("region", { name: "Message reader" });
+  act(() => reader.focus());
+  const button = await showQuote();
+  const event = createEvent.keyDown(reader, { key: "Tab" });
+  fireEvent(reader, event);
+  expect(event.defaultPrevented).toBe(true);
+  expect(document.activeElement).toBe(button);
+  return { reader, button };
 }
 
 async function showQuote() {
@@ -121,6 +145,13 @@ beforeEach(() => {
   vi.spyOn(Range.prototype, "getBoundingClientRect").mockReturnValue(
     new DOMRect(933, 442, 451, 70),
   );
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    return this.closest("[hidden], [inert]")
+      ? ([] as unknown as DOMRectList)
+      : ([new DOMRect(900, 400, 480, 140)] as unknown as DOMRectList);
+  });
   selectAgentSession("selection-quote");
   replaceComposerDraft({ text: "Existing draft" });
 });
@@ -433,6 +464,292 @@ describe("SelectionQuote", () => {
     fireEvent(document, new Event("selectionchange"));
 
     pressOutside(screen.getByRole("button", { name: "Other task" }));
+    flushFrame();
+
+    expect(screen.queryByRole("button", { name: "Quote in message" })).toBeNull();
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" }).value).toBe(
+      "Existing draft",
+    );
+  });
+
+  it("uses the current full selection when Tab precedes its queued refresh", async () => {
+    render(<Harness />);
+    const reader = screen.getByRole("region", { name: "Message reader" });
+    act(() => reader.focus());
+    const text = screen.getByText("Complete selected evidence", { exact: false }).firstChild!;
+    const word = document.createRange();
+    word.setStart(text, 0);
+    word.setEnd(text, "Complete".length);
+    selectRange(word);
+    flushFrame();
+    const button = await screen.findByRole("button", { name: "Quote in message" });
+    selectMessage();
+
+    const event = createEvent.keyDown(reader, { key: "Tab" });
+    fireEvent(reader, event);
+    flushFrame();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(button);
+    fireEvent.click(button, { detail: 0 });
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" }).value).toBe(
+      `Existing draft\n\n${quote}`,
+    );
+  });
+
+  it("keeps rendered selection separators distinct from DOM range material", async () => {
+    render(<Harness />);
+    const rendered = message.replace("\n", "\n\n");
+    vi.spyOn(window.getSelection()!, "toString").mockReturnValue(rendered);
+    const { button } = await enterQuote();
+    expect(window.getSelection()!.getRangeAt(0).toString()).toBe(message);
+    expect(window.getSelection()!.toString()).toBe(rendered);
+
+    fireEvent.click(button, { detail: 0 });
+
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" }).value).toBe(
+      "Existing draft\n\n> Complete selected evidence — 保留全部内容.\n>\n> A second line with its final words.",
+    );
+  });
+
+  it.each([
+    ["Enter", false],
+    ["Enter", true],
+    [" ", false],
+    [" ", true],
+  ])("activates the Tab-entered Quote with %j after collapsed=%j", async (key, collapsed) => {
+    render(<Harness />);
+    const present = vi.fn((focus: () => void) => focus());
+    const unregister = registerComposerFocusPresentation(present);
+    const { reader, button } = await enterQuote();
+    const readerFocus = vi.spyOn(reader, "focus");
+    act(() => {
+      if (collapsed) window.getSelection()!.removeAllRanges();
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    flushFrame();
+
+    expect(screen.getByRole("button", { name: "Quote in message" })).toBe(button);
+    expect(document.activeElement).toBe(button);
+    fireEvent.keyDown(button, { key });
+    fireEvent.keyUp(button, { key });
+    fireEvent.click(button, { detail: 0 });
+    flushFrame();
+
+    const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" });
+    expect(field.value).toBe(`Existing draft\n\n${quote}`);
+    expect(present).toHaveBeenCalledOnce();
+    expect(readerFocus).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionEnd).toBe(field.value.length);
+    expect(screen.queryByRole("button", { name: "Quote in message" })).toBeNull();
+    unregister();
+  });
+
+  it.each([
+    { key: "Tab", shiftKey: false },
+    { key: "Tab", shiftKey: true },
+    { key: "Escape", shiftKey: false },
+  ])("returns to the reader on $key shift=$shiftKey and releases the next Tab", async (keys) => {
+    render(<Harness />);
+    const { reader, button } = await enterQuote();
+    const readerFocus = vi.spyOn(reader, "focus");
+    fireEvent(document, new Event("selectionchange"));
+
+    const event = createEvent.keyDown(button, keys);
+    fireEvent(button, event);
+    fireEvent(document, new Event("selectionchange"));
+    flushFrame();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(reader);
+    expect(readerFocus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(window.getSelection()?.isCollapsed).toBe(true);
+    expect(screen.queryByRole("button", { name: "Quote in message" })).toBeNull();
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" }).value).toBe(
+      "Existing draft",
+    );
+    const next = createEvent.keyDown(reader, { key: "Tab" });
+    fireEvent(reader, next);
+    expect(next.defaultPrevented).toBe(false);
+    expect(screen.queryByRole("button", { name: "Quote in message" })).toBeNull();
+  });
+
+  it("leaves modified, composing, handled, and later controls' Tab to their owners", async () => {
+    render(<Harness />);
+    const reader = screen.getByRole("region", { name: "Message reader" });
+    act(() => reader.focus());
+    await showQuote();
+    for (const extra of [
+      { shiftKey: true },
+      { ctrlKey: true },
+      { altKey: true },
+      { metaKey: true },
+      { isComposing: true },
+      { keyCode: 229 },
+    ]) {
+      const event = createEvent.keyDown(reader, { key: "Tab", ...extra });
+      fireEvent(reader, event);
+      expect(event.defaultPrevented).toBe(false);
+      expect(document.activeElement).toBe(reader);
+    }
+    const handled = createEvent.keyDown(reader, { key: "Tab" });
+    handled.preventDefault();
+    fireEvent(reader, handled);
+    expect(document.activeElement).toBe(reader);
+
+    selectMessage();
+    const other = screen.getByRole("button", { name: "Other task" });
+    act(() => other.focus());
+    flushFrame();
+    const later = createEvent.keyDown(other, { key: "Tab" });
+    fireEvent(other, later);
+    expect(later.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(other);
+    fireEvent(document, new Event("selectionchange"));
+    flushFrame();
+    const refreshed = createEvent.keyDown(other, { key: "Tab" });
+    fireEvent(other, refreshed);
+    expect(refreshed.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(other);
+  });
+
+  it("retires the keyboard task when a later modal takes focus without reclaiming it", async () => {
+    const view = render(<Harness />);
+    const { reader } = await enterQuote();
+    const readerFocus = vi.spyOn(reader, "focus");
+    fireEvent(document, new Event("selectionchange"));
+    view.rerender(
+      <Harness>
+        <div role="dialog" aria-label="Later task">
+          <input aria-label="Later task input" />
+        </div>
+      </Harness>,
+    );
+    const field = screen.getByRole("textbox", { name: "Later task input" });
+    act(() => field.focus());
+    flushFrame();
+
+    expect(screen.queryByRole("button", { name: "Quote in message" })).toBeNull();
+    expect(document.activeElement).toBe(field);
+    expect(readerFocus).not.toHaveBeenCalled();
+    const event = createEvent.keyDown(field, { key: "Tab" });
+    fireEvent(field, event);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it.each(["Tab", "click", "refresh"])(
+    "does not clear or quote a new equal-text range on %s",
+    async (action) => {
+      render(<Harness />);
+      const reader = screen.getByRole("region", { name: "Message reader" });
+      act(() => reader.focus());
+      const text = screen.getByText("Complete selected evidence", { exact: false }).firstChild!;
+      const firstOffset = message.indexOf("e");
+      const secondOffset = message.indexOf("e", firstOffset + 1);
+      const first = document.createRange();
+      first.setStart(text, firstOffset);
+      first.setEnd(text, firstOffset + 1);
+      selectRange(first);
+      flushFrame();
+      const button = await screen.findByRole("button", { name: "Quote in message" });
+      fireEvent.keyDown(reader, { key: "Tab" });
+      expect(document.activeElement).toBe(button);
+      const replacement = document.createRange();
+      replacement.setStart(text, secondOffset);
+      replacement.setEnd(text, secondOffset + 1);
+      selectRange(replacement);
+
+      if (action === "click") fireEvent.click(button, { detail: 0 });
+      else if (action === "Tab") fireEvent.keyDown(button, { key: "Tab" });
+      flushFrame();
+
+      const remaining = window.getSelection()!.getRangeAt(0);
+      expect(remaining.startContainer).toBe(text);
+      expect(remaining.startOffset).toBe(secondOffset);
+      expect(remaining.endOffset).toBe(secondOffset + 1);
+      expect(window.getSelection()?.toString()).toBe("e");
+      expect(screen.queryByRole("button", { name: "Quote in message" })).toBeNull();
+      expect(
+        screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" }).value,
+      ).toBe("Existing draft");
+    },
+  );
+
+  it.each(["hidden", "replaced", "changed"])(
+    "retires the keyboard snapshot on selectionchange after its source is %s",
+    async (change) => {
+      render(<Harness />);
+      const { reader } = await enterQuote();
+      const host = screen.getByText("Complete selected evidence", { exact: false }).parentElement!;
+      const readerFocus = vi.spyOn(reader, "focus");
+
+      await act(async () => {
+        if (change === "hidden") reader.hidden = true;
+        else if (change === "replaced") host.replaceWith(host.cloneNode(true));
+        else host.firstChild!.textContent = "Replaced source content";
+        document.dispatchEvent(new Event("selectionchange"));
+      });
+      flushFrame();
+
+      expect(screen.queryByRole("button", { name: "Quote in message" })).toBeNull();
+      expect(readerFocus).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" }).value,
+      ).toBe("Existing draft");
+    },
+  );
+
+  it("preserves file boundaries through keyboard entry and rejects a changed file identity", async () => {
+    render(<Harness />);
+    const reader = screen.getByRole("region", { name: "File reader" });
+    act(() => reader.focus());
+    const first = screen.getByText("const a = 1;").firstChild!;
+    const last = screen.getByText("return a;").firstChild!;
+    const range = document.createRange();
+    range.setStart(first, 0);
+    range.setEnd(last, last.textContent!.length);
+    selectRange(range);
+    flushFrame();
+    const button = await screen.findByRole("button", { name: "Quote in message" });
+    fireEvent.keyDown(reader, { key: "Tab" });
+    expect(document.activeElement).toBe(button);
+
+    await act(async () => {
+      fireEvent.click(button, { detail: 0 });
+    });
+
+    const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" });
+    const expected =
+      "Existing draft\n\n`src/complete source.ts:4-5`\n```\nconst a = 1;\nreturn a;\n```";
+    expect(field.value).toBe(expected);
+    act(() => reader.focus());
+    selectRange(range);
+    flushFrame();
+    const second = await screen.findByRole("button", { name: "Quote in message" });
+    expect(window.getSelection()?.toString()).toBe("const a = 1;\nreturn a;");
+    expect(document.activeElement).toBe(reader);
+    expect(second.isConnected).toBe(true);
+    const entering = createEvent.keyDown(reader, { key: "Tab" });
+    fireEvent(reader, entering);
+    expect(entering.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(second);
+    first.parentElement!.parentElement!.dataset.quotePath = "src/another source.ts";
+
+    fireEvent.click(second, { detail: 0 });
+    flushFrame();
+
+    expect(field.value).toBe(expected);
+    expect(screen.queryByRole("button", { name: "Quote in message" })).toBeNull();
+    expect(window.getSelection()?.toString()).toBe("const a = 1;\nreturn a;");
+  });
+
+  it.each(["scroll", "resize"])("retires an entered keyboard task on %s", async (event) => {
+    render(<Harness />);
+    await enterQuote();
+    fireEvent(document, new Event("selectionchange"));
+
+    fireEvent(window, new Event(event));
     flushFrame();
 
     expect(screen.queryByRole("button", { name: "Quote in message" })).toBeNull();

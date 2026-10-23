@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI batches remain active. Selection quoting now uses the existing Popover positioner, keeps the action label readable near viewport edges, preserves native multi-click selection and dismisses within its own task scope. English/light/14 px and Chinese/dark/18 px/blue native acceptance covers paragraph and file-line quotes, source return and continued drafts at 200% zoom. All 397 test files / 3,226 tests, 20 of 22 post-test Web gates and the supported native check pass. The other two guards fail identically on the clean baseline, so the aggregate Web command remains nonzero. Native resources and new build/cache outputs are cleaned; publication retains exact-source verification and guarded cleanup. Native Tab clearing the selection before reaching Quote is the next observed issue and still needs original-version comparison.
+Updated: 2026-10-24. Continuous UI batches remain active. Selection quoting now supports an explicit Tab entry, visible keyboard focus, Enter/Space activation and local return without losing the draft or reclaiming later focus. Existing Popover placement and native multi-click selection are retained. English/light/14 px and Chinese/dark/18 px/blue native acceptance covers paragraph and file-line quotes, source return and 200% zoom. All 397 test files / 3,246 tests, 20 of 22 post-test Web gates and the supported native check pass. The two other guards fail identically on the clean baseline, so the aggregate Web command remains nonzero. Delivery retains exact-source verification and guarded resource cleanup. The next observed issue is continuation text joining a quoted Markdown block; compare the existing formatting owner before choosing that follow-up.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `05efd8213` and repairs selection-action placement through the existing Popover atom, with one adjacent regression file and this record. Shared Button wrapping, retained draft ownership and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. Continue with the observed native keyboard route to Quote; compare the original implementation before attributing that behavior to this batch. The earlier milestone pause is superseded by the explicit resume.
+The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `32a3e4fd3` and repairs the verified native keyboard gap in SelectionQuote, its adjacent regression file and this record. The earlier `05efd8213` implementation reproduces the same gap; it was not introduced by the Popover placement repair. Shared Button behavior, existing reader focus targets, retained draft ownership and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. Continue by comparing the observed quote-to-continuation Markdown boundary with the unmodified formatter and Composer append owner. The earlier milestone pause is superseded by the explicit resume.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -1503,99 +1503,132 @@ Verification and limits:
   primary checkout are preserved. The private fixture, logs, receipts, agent
   scratch directory and publication clone belong to final guarded cleanup.
 
-### Selection quote placement and dismissal
+### Selection quote placement, keyboard access and dismissal
 
-The original English action near the right edge measured **55.4 × 106 px** and
-wrapped its label into a vertical column. Its automatic width used the remaining
-right-side space before negative translation. At an upper paragraph position the
-same button began at **y = -10 px** and was clipped. `SelectionQuote.tsx` now
-supplies the complete native range rectangle to the existing Popover positioner,
-with fixed placement, a 6 px gap, viewport collision handling and content-driven
-width. `ui/atoms/popover.tsx` forwards those existing positioning capabilities and
-allows a surface-free container; ordinary Popovers retain their default panel.
-The raised Button remains the sole visible surface and keeps shared wrapping,
-theme, radius and focus behavior. The action is a nonmodal group with no automatic
-focus entry or return, preserving the existing Composer append/reveal owner.
+The placement repair remains intact. The original English action measured
+**55.4 × 106 px** near the right edge and began at **y = -10 px** above an upper
+paragraph. `SelectionQuote.tsx` now supplies the complete native range rectangle
+to the existing Popover positioner: fixed placement, a 6 px gap, viewport
+collisions and content-driven width. `ui/atoms/popover.tsx` forwards these existing
+capabilities and permits a surface-free container; ordinary Popovers retain their
+panel. The raised Button remains the sole visible surface. Native multi-click
+extension in the same source remains valid, while scroll, resize, outside
+activation and completion retire the local action and queued selection refresh.
 
-SelectionQuote retains one captured source/text/rectangle. Scroll, resize,
-outside dismissal and completion cancel queued selection refreshes. Its first
-Escape retires the action only while its original selection/focus or its own
-popup owns the key; later controls, modal tasks, handled keys and composition
-retain their existing behavior. Extending a native selection in the same source
-does not count as an outside dismissal. Collapsed selection and another source
-still close normally. No Runtime, protocol, stored-data, dependency or locale
-migration is needed.
+The keyboard gap was independently reproduced in actual Wails on both the
+original `05efd8213` source and placement baseline `32a3e4fd3`: native Tab from the
+selected paragraph focused its next file link, collapsed the selection and
+removed Quote. A virtual positioning anchor is not a real Popover trigger or a
+focus-order bridge. SelectionQuote now handles only explicit, unmodified forward
+Tab from the active source's reader scope and focuses its real button. The
+captured quote can survive WebKit collapsing selection only while that keyboard
+task owns button focus and its original source remains valid.
 
-Read-only ZCode `SelectionActionMenu.tsx` provides content-width and viewport
-placement evidence; Flame uses its installed positioner rather than duplicating
-ZCode's measurement loop. HeroUI's actual Popover separates placement from dialog
-semantics, and Arc's Popover demonstrates compact offsets and collision insets.
-ChatGPT's actual selected-text overlay preserves native selection on pointer
-activation; that UI code does not establish geometry. The official
-[Base UI Popover](https://base-ui.com/react/components/popover) and
-[Radix Popover](https://www.radix-ui.com/primitives/docs/components/popover)
-contracts inform nonmodal placement and explicit focus policy. Better-layout and
-better-accessibility guide viewport containment and local dismissal.
+The same pending task retains exact range boundaries and DOM material for
+validation, plus the existing reader element for local return. The rendered
+Selection text remains the quote payload: native paragraph selection measured
+**176 characters**, while its DOM Range serialized **175**. Those different
+separator contracts are not interchangeable. A changed range, file identity,
+hidden/disconnected source, later focus or modal task retires the old operation
+without quoting stale material or clearing somebody else's selection. Source
+validity is checked on subsequent selection, key and activation events; this does
+not promise immediate eventless-unmount notification.
+
+Tab, Shift+Tab or Escape from the keyboard-entered action returns to the existing
+reader with `preventScroll`, retires only its own remaining selection and leaves
+the next Tab to normal document order. Ordinary selection Escape keeps its
+previous scope and preserves the selected text. Activation clears the quote task
+before using the existing Composer append/reveal owner; it adds no competing
+Composer focus policy. Native WebKit focused the button without matching
+`:focus-visible`, so the button uses the established `data-focus-proxy` contract
+only during this keyboard task. The shared keyboard-modality gate, semantic focus
+color, radius and outline remain authoritative. No shared CSS, dependency,
+Runtime, protocol, persisted-data or locale migration is required.
+
+Read-only ZCode `SelectionActionMenu.tsx` and `ConversationSelectionTooltip.tsx`
+provide placement and source-scope evidence, but their collapsed-selection
+behavior does not establish a working keyboard entry path. HeroUI's actual
+Popover separates placement from dialog semantics; Arc's Popover supplies compact
+offsets and collision insets. ChatGPT's actual selected-text overlay preserves
+pointer selection and does not establish keyboard reachability. The installed
+Base UI focus manager confirms that its virtual anchor supplies geometry without
+a real trigger focus target. The official
+[Base UI Popover](https://base-ui.com/react/components/popover),
+[Radix Popover](https://www.radix-ui.com/primitives/docs/components/popover) and
+[WCAG keyboard guidance](https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html)
+inform the explicit local focus task. Better-accessibility and better-layout guide
+visible focus, normal exit and retained reading geometry.
 
 Verification and limits:
 
-- The original focused baseline passes **110 tests**; the final five-file set
-  passes **128**, including **18** SelectionQuote cases. Restoring both original
-  production files under the final component suite yields **7 behavior failures /
-  11 passes**, with all three candidate files restored byte for byte. Native
-  acceptance caught an intermediate multi-click regression; its two event-order
-  cases fail that intermediate implementation and pass the final one. Tests cover
-  full quote content, file path/line identity, cross-source rejection, queued
-  refresh retirement, scoped Escape, composition, later focus and modal ownership.
-- `npm run check --workspace @flame/web` under Node **22.22.1** and
-  `VITEST_MAX_WORKERS=2` passes type, lint, format and **397 files / 3,226 tests**
-  (**159.29 seconds** for tests). The aggregate exits nonzero after **183.35
+- The five-file focused behavior run passes **148 tests**, including **38**
+  SelectionQuote cases. Restoring the original `32a3e4fd3` production component
+  under the final regression file produces **19 behavior failures / 19 passes**;
+  candidate hashes are restored exactly. The later focus-proxy attribute is
+  covered by the final full suite and native visual check. Regressions cover
+  current selection before a queued refresh, rendered/DOM separator differences,
+  retained/collapsed selection, repeated file quoting, all local exits, new
+  equal-text ranges, changed source identity, later controls/modal focus,
+  composition and scroll/resize retirement. Existing pointer and multi-click
+  cases remain included. Generated component clicks alone do not prove native
+  keyboard activation; the native paths below supply that evidence.
+- `npm run check --workspace @flame/web`, Node **22.22.1** and
+  `VITEST_MAX_WORKERS=2`, passes type, lint, format and **397 files / 3,246 tests**
+  (**159.84 seconds** for tests). The aggregate exits nonzero after **183.32
   seconds** at the API guard's stale `SIDECAR_METHODS` object-literal assumption;
-  its 16 unit tests pass. Later gates ran serially: **20 of 22** post-test gates
-  pass, including bundling. Exact plugin resources also fail on the Diagnostics
-  ESM mismatch (**20,349 / 20,318 bytes**). Removing all three changes and verifying
-  a clean `05efd8213` reproduces both complete guards; the plugin failure output
-  is identical. No check was weakened. Non-failing loopback connection diagnostics
-  remain unclassified.
-- `make check-native` passes Desktop test/vet/build and the supported production
-  Wails arm64 build in **25.22 seconds**. The resulting binary reports minimum
-  macOS **13.0** and SDK **26.5**. Private fixture assets and a native host use
-  production components and the actual quote plugin, canonical in-memory
-  transport and private data. Passive observation reads geometry, native
-  selection, input identity, visibility, caret and draft; it does not operate UI.
-- English/light/**14 px**/Orange/full motion, **1440 × 900 px** with a **523 px**
-  Dock: repeated native triple-click selects the complete child paragraph and
-  keeps a **143.1 × 24 px** single-line action visible. At the upper paragraph
-  position it begins at **y = 72 px**. First Escape preserves the inspection and
-  selection; the second returns to its main child trigger. Actual quote activation
-  appends to the original **24-character** draft and continuation reaches **225**
-  in the same input. Selecting file lines **4–5** produces the complete
-  `runtime/internal/session/store.go:4-5` reference and literal content;
-  continuation reaches **362**. Return to task restores the source file link.
+  its 16 unit tests pass. Later gates run serially: **20 of 22** post-test gates
+  pass, including bundling. Exact plugin resources fail on the Diagnostics ESM
+  mismatch (**20,349 / 20,318 bytes**). Removing both source/test changes and
+  confirming clean `32a3e4fd3` reproduces both complete guards; the plugin failure
+  output is identical. No check was weakened. Non-failing loopback connection
+  diagnostics remain unclassified.
+- `make check-native` passes Desktop test/vet/build and the production Wails arm64
+  build in **26.26 seconds**. The binary reports minimum macOS **13.0** and SDK
+  **26.5**. Private fixture assets use production components and the actual quote
+  plugin, canonical in-memory transport, loopback-only services and private data.
+  Passive observation reads native event order, focus, selection, geometry and
+  input identity; it does not operate UI.
+- English/light/**14 px**/Orange/full motion, **1440 × 900 px**, **523 px** Dock:
+  native paragraph selection then Tab retains the **143.1 × 24 px** action at
+  **[1241.5, 109]**, preserves source geometry and shows the shared orange
+  **1.5 px** focus outline. Native Enter and Space append successive complete
+  quotes and continue the original **20-character** draft to **215**, then **410**,
+  in the same input with its caret at the end. Each Tab, Shift+Tab and Escape exit
+  returns to the reader; the next Tab reaches the source file link without a
+  loop. Enter opens that file. Selecting lines **4–5**, Tab and Enter produce the
+  `runtime/internal/session/store.go:4-5` reference and complete literal code
+  without gutter numbers; continuation reaches **537**. Back to task restores the
+  original child reading position and file-link focus. A separate final-version
+  native pointer activation preserves a **19-character** draft and continues it
+  to **217** in the same input.
 - Chinese/dark/**18 px**/custom **#007BFF**/motion off: native half-screen sizing,
-  sidebar collapse, keyboard Dock sizing to **320 px** and twenty observed native
-  zoom increments produce a **561 × 525 CSS px** viewport at **200%**. A complete
-  paragraph and short left-edge word both retain a **119.4 × 26.5 px** action
-  inside the viewport. Precisely selecting the Chinese paragraph and quoting it
-  returns from full-width material to the same input; the original **13-character**
-  draft survives and continuation reaches **61**. Actual Size is restored before
-  quitting. A final-paragraph triple-click that also included footer controls was
-  correctly rejected; the subsequent text-only drag is the accepted quote path.
-- Native Tab clears a selected noneditable paragraph and closes Quote while
-  moving to the next source file link. Native keyboard access is **not passed**;
-  Enter/Space-generated click tests establish activation only after focus has
-  arrived. Compare the unmodified implementation before choosing the follow-up.
-  Pointer splitter focus was excluded; keyboard sizing was separately observed.
-  No browser visual suite, performance baseline, Send, live provider, durable
-  Runtime write, OS IME, VoiceOver, image picker or other-platform GUI was exercised.
-- All three reviewed source/test hashes remain unchanged through final checks
-  and acceptance. Six generated resources were restored after matching the build
-  receipt, and all eleven original resource hashes agree. The private app is quit
-  and unregistered; unique Library caches and new staged/build/cache outputs are
-  removed with ownership and preexistence checks. The preexisting shared UI cache,
-  dependencies, references, user data and primary checkout are preserved. Private
-  fixture files, logs, receipts, agent scratch and the publication checkout belong
-  to the final guarded cleanup.
+  sidebar collapse, keyboard Dock sizing to **320 px** and native **200%** zoom
+  yield **561 × 525 CSS px**. Full-width material hides but retains the original
+  **12-character** draft. Selecting 24 Chinese characters then Tab keeps the
+  **119.4 × 26.5 px** action at **[393.3, 334.8]**, with a visible blue **1.5 px**
+  outline. Escape retains the same material and source rectangle. Reselecting,
+  Tab and native Space reveal and focus the same input; continuation reaches
+  **46 characters**. Restoring Actual Size to **1122 × 1051** preserves that draft.
+- These native cases begin with pointer text selection, then real keyboard
+  navigation and activation. They do not qualify keyboard-only selection
+  construction, OS IME, VoiceOver or other-platform GUI. No browser visual suite,
+  performance baseline, Send, live provider, durable Runtime write or native file
+  picker was exercised. The fixture's Go-named source contains canonical
+  TypeScript text; it establishes literal/path/line quoting, not Go semantics.
+- Both reviewed source/test hashes remain unchanged through final checks and
+  acceptance. Six generated resources are restored after matching the build
+  receipt; all eleven original resource hashes agree. The private app is stopped.
+  Final delivery unregisters it and removes its unique Library state, new
+  staged/build/cache outputs, private fixture/log/receipt directory, agent scratch
+  and publication clone after ownership/preexistence checks. The preexisting
+  shared UI cache, dependencies, references, user data and primary checkout remain
+  preserved.
+
+The next observed continuation issue is separate from keyboard ownership: typing
+immediately after a file quote joins the closing fence line, while prose
+continuation joins the final blockquote line. The current formatter and append
+owner were unchanged by this batch. Compare that existing formatting contract and
+rendered result before selecting the next repair; do not add another focus owner.
 
 ### Native short-paste continuation qualification
 
