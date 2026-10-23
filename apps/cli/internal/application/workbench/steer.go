@@ -33,7 +33,10 @@ type pendingSteerRecord struct {
 	Replay      replay.Guard    `json:"replay"`
 }
 
-const steerSourcePrefix = "/steer "
+// SteerSourcePrefix marks a draft as a steer command. The terminal builds the draft
+// with it and StagePendingSteer validates the exact command against it, so the two
+// must share one owner.
+const SteerSourcePrefix = "/steer "
 
 // NewPendingSteer constructs one complete durable steer ownership fact. The
 // instruction must already be canonical so the Runtime command, prompt
@@ -156,7 +159,7 @@ func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft prompt.Messa
 	}
 	pending.command.Input, pending.inputDigest = blocks, digest
 	sourceDraft = sourceDraft.Clone()
-	wantCommand := steerSourcePrefix + pending.command.Message.Text
+	wantCommand := SteerSourcePrefix + pending.command.Message.Text
 	if strings.TrimSpace(sourceDraft.Text) != wantCommand {
 		return PendingSteer{}, errors.New("pending steer source draft does not contain the exact command")
 	}

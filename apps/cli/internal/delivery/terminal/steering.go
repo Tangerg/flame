@@ -41,7 +41,7 @@ func (a *app) steerRun(instruction string) error {
 	// process stops before staging, restart restores the command for retry. The
 	// following aggregate replacement then transfers it and its attachments into
 	// the steer journal atomically.
-	sourceDraft := prompt.Message{Text: "/steer " + instruction, Attachments: slices.Clone(draft.Attachments)}
+	sourceDraft := prompt.Message{Text: workbench.SteerSourcePrefix + instruction, Attachments: slices.Clone(draft.Attachments)}
 	if saveDraftErr := a.saveDraft(sourceDraft); saveDraftErr != nil {
 		a.reportWorkbenchIssue(workbenchDraft, saveDraftErr)
 		return fmt.Errorf("steer blocked: save command draft: %w", saveDraftErr)
