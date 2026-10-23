@@ -11,6 +11,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// The operations a completion prompt may name. Complete validates against these,
+// so the maintenance callers and this gate share one owner.
+const (
+	OperationExtract = "memory.extract"
+	OperationCurate  = "memory.curate"
+)
+
 type Prompt struct {
 	Operation, SystemPrompt, UserPrompt string
 	MaxInputBytes                       int
@@ -23,7 +30,7 @@ type RemoteModels struct {
 }
 
 func (r RemoteModels) Complete(ctx context.Context, prompt Prompt) (string, error) {
-	if prompt.Operation != "memory.extract" && prompt.Operation != "memory.curate" || prompt.MaxInputBytes <= 0 || prompt.MaxInputBytes > MaximumModelInput || prompt.MaxOutputTokens <= 0 || prompt.MaxOutputTokens > MaximumModelOutput || len(prompt.SystemPrompt)+len(prompt.UserPrompt) > prompt.MaxInputBytes {
+	if prompt.Operation != OperationExtract && prompt.Operation != OperationCurate || prompt.MaxInputBytes <= 0 || prompt.MaxInputBytes > MaximumModelInput || prompt.MaxOutputTokens <= 0 || prompt.MaxOutputTokens > MaximumModelOutput || len(prompt.SystemPrompt)+len(prompt.UserPrompt) > prompt.MaxInputBytes {
 		return "", errors.New("memory: completion prompt refused")
 	}
 	client, err := chatclient.New(chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
