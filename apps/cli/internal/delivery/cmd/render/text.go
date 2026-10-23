@@ -388,27 +388,15 @@ func (t *Text) toolVerdict(call *conversation.ToolCall) {
 }
 
 func textToolName(call *conversation.ToolCall) string {
-	switch call.Kind {
-	case conversation.ToolShell:
-		return "shell"
-	case conversation.ToolEdit:
-		return "edit"
-	case conversation.ToolRead:
-		return "read"
-	case conversation.ToolSearch:
-		return "search"
-	case conversation.ToolWeb:
-		return "web"
-	case conversation.ToolTask:
-		return "task"
-	case conversation.ToolUnknown:
+	// A known kind IS its own label; only an unknown kind falls back to the
+	// provider name, so the labels are never re-spelled out of sync with ToolKind.
+	if call.Kind == conversation.ToolUnknown {
 		if call.Name != "" {
 			return call.Name
 		}
 		return "tool"
-	default:
-		return "tool"
 	}
+	return string(call.Kind)
 }
 
 func textToolPrimary(call *conversation.ToolCall) string {
