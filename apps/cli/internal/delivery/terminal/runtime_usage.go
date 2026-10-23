@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -90,20 +91,20 @@ func appendUsageBreakdown(sections []ToolSection, title string, buckets []protoc
 
 func usageTotalsText(totals protocol.ModelUsage) string {
 	parts := []string{
-		"input " + formatThousands(totals.InputTokens),
-		"output " + formatThousands(totals.OutputTokens),
+		"input " + format.Thousands(totals.InputTokens),
+		"output " + format.Thousands(totals.OutputTokens),
 	}
 	if totals.CacheReadTokens > 0 {
-		parts = append(parts, "cache read "+formatThousands(totals.CacheReadTokens))
+		parts = append(parts, "cache read "+format.Thousands(totals.CacheReadTokens))
 	}
 	if totals.CacheWriteTokens > 0 {
-		parts = append(parts, "cache write "+formatThousands(totals.CacheWriteTokens))
+		parts = append(parts, "cache write "+format.Thousands(totals.CacheWriteTokens))
 	}
 	if totals.ReasoningTokens > 0 {
-		parts = append(parts, "reasoning "+formatThousands(totals.ReasoningTokens))
+		parts = append(parts, "reasoning "+format.Thousands(totals.ReasoningTokens))
 	}
 	if totals.CostUSD != nil {
-		parts = append(parts, "$"+strconv.FormatFloat(*totals.CostUSD, 'f', 4, 64))
+		parts = append(parts, format.USD(*totals.CostUSD))
 	} else {
 		parts = append(parts, "cost unavailable")
 	}
@@ -113,7 +114,7 @@ func usageTotalsText(totals protocol.ModelUsage) string {
 func usageReportText(total protocol.ModelUsage, cost *float64, coverage protocol.UsageCoverage) string {
 	text := "known " + usageTotalsText(total)
 	if cost != nil {
-		text += "  · recorded price subtotal $" + strconv.FormatFloat(*cost, 'f', 4, 64)
+		text += "  · recorded price subtotal " + format.USD(*cost)
 	}
 	return text + fmt.Sprintf("  · usage recorded %d/%d  · priced %d/%d  · started %d  · unknown %d", coverage.ReportedCalls, coverage.Calls, coverage.PricedCalls, coverage.Calls, coverage.StartedCalls, coverage.UnknownCalls)
 }

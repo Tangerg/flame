@@ -12,9 +12,9 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"time"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -382,7 +382,7 @@ func (t *Text) toolVerdict(call *conversation.ToolCall) {
 		status += " exit " + strconv.Itoa(*call.ExitCode)
 	}
 	if call.Duration > 0 {
-		status += " " + formatDuration(call.Duration)
+		status += " " + format.Duration(call.Duration)
 	}
 	t.line(status)
 }
@@ -502,18 +502,18 @@ func (t *Text) finished(run conversation.Run) {
 }
 
 func (t *Text) showUsage(u conversation.Usage) {
-	parts := []string{"↑ " + formatThousands(u.InputTokens), "↓ " + formatThousands(u.OutputTokens)}
+	parts := []string{"↑ " + format.Thousands(u.InputTokens), "↓ " + format.Thousands(u.OutputTokens)}
 	if u.CacheReadTokens > 0 {
-		parts = append(parts, "cached "+formatThousands(u.CacheReadTokens))
+		parts = append(parts, "cached "+format.Thousands(u.CacheReadTokens))
 	}
 	if u.CostUSD != nil {
-		parts = append(parts, "$"+strconv.FormatFloat(*u.CostUSD, 'f', 4, 64))
+		parts = append(parts, format.USD(*u.CostUSD))
 	}
 	if u.Steps > 0 {
 		parts = append(parts, "steps "+strconv.Itoa(u.Steps))
 	}
 	if u.Duration > 0 {
-		parts = append(parts, formatDuration(u.Duration))
+		parts = append(parts, format.Duration(u.Duration))
 	}
 	t.line(strings.Join(parts, "  "))
 }
@@ -571,28 +571,3 @@ func (t *Text) write(s string) {
 
 // formatDuration prints a span the way a person reads one: sub-second in
 // milliseconds, otherwise seconds with one decimal.
-func formatDuration(d time.Duration) string {
-	if d < time.Second {
-		return strconv.FormatInt(d.Milliseconds(), 10) + "ms"
-	}
-	return strconv.FormatFloat(d.Seconds(), 'f', 1, 64) + "s"
-}
-
-// formatThousands groups an integer for reading.
-func formatThousands(n int64) string {
-	s := strconv.FormatInt(n, 10)
-	first := 0
-	if s[0] == '-' {
-		first = 1
-	}
-	var b strings.Builder
-	b.Grow(len(s) + (len(s)-first-1)/3)
-	b.WriteString(s[:first])
-	for i := first; i < len(s); i++ {
-		if i > first && (len(s)-i)%3 == 0 {
-			b.WriteByte(',')
-		}
-		b.WriteByte(s[i])
-	}
-	return b.String()
-}

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -90,7 +91,7 @@ func modelTokenLimits(model protocol.Model) string {
 		{name: "output", value: model.TokenLimits.MaxOutputTokens},
 	} {
 		if limit.value != nil {
-			limits = append(limits, limit.name+" "+formatThousands(*limit.value))
+			limits = append(limits, limit.name+" "+format.Thousands(*limit.value))
 		}
 	}
 	return strings.Join(limits, " · ")

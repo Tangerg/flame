@@ -20,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
@@ -3207,8 +3208,8 @@ func TestPrepareSessionDistinguishesDefaultsFromExplicitFalseValues(t *testing.T
 }
 
 func TestFormatThousandsHandlesMinimumInt64(t *testing.T) {
-	if got := formatThousands(-1 << 63); got != "-9,223,372,036,854,775,808" {
-		t.Fatalf("formatThousands(MinInt64) = %q", got)
+	if got := format.Thousands(-1 << 63); got != "-9,223,372,036,854,775,808" {
+		t.Fatalf("format.Thousands(MinInt64) = %q", got)
 	}
 }
 

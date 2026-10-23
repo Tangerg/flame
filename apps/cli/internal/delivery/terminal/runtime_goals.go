@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -60,7 +61,7 @@ func goalDocument(current protocol.Goal, exists bool) readerDocument {
 
 func goalCostLabel(used protocol.GoalUsage) string {
 	if used.CostUSD != nil {
-		return fmt.Sprintf("$%.4f", *used.CostUSD)
+		return format.USD(*used.CostUSD)
 	}
 	if used.Runs == 0 {
 		return "no cost yet"

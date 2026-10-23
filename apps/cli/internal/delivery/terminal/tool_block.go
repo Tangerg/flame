@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -211,7 +212,7 @@ func (t *toolBlock) header() (toggle, label, status string, statusStyle grid.Sty
 		status += " exit " + strconv.Itoa(*t.call.ExitCode)
 	}
 	if t.call.Duration > 0 {
-		status += " " + formatCompactDuration(t.call.Duration)
+		status += " " + format.Duration(t.call.Duration)
 	}
 	return toggle, label, strings.TrimSpace(status), statusStyle
 }

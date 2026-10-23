@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
@@ -132,7 +133,7 @@ func goalUsageLabel(used protocol.GoalUsage) string {
 	}
 	if used.CostUSD != nil {
 		if *used.CostUSD > 0 {
-			parts = append(parts, "$"+strconv.FormatFloat(*used.CostUSD, 'f', 4, 64))
+			parts = append(parts, format.USD(*used.CostUSD))
 		}
 	} else if used.Runs > 0 {
 		parts = append(parts, "cost unavailable")
@@ -402,7 +403,7 @@ func contextLabel(contextTokens int64) string {
 	if contextTokens <= 0 {
 		return ""
 	}
-	return "ctx " + formatThousands(contextTokens)
+	return "ctx " + format.Thousands(contextTokens)
 }
 
 func modelLabel(options prompt.RunOptions) string {
@@ -509,37 +510,18 @@ func usageLabel(usage conversation.Usage) string {
 	if usage.Empty() {
 		return ""
 	}
-	parts := []string{"↑" + formatThousands(usage.InputTokens), "↓" + formatThousands(usage.OutputTokens)}
+	parts := []string{"↑" + format.Thousands(usage.InputTokens), "↓" + format.Thousands(usage.OutputTokens)}
 	if usage.CacheReadTokens > 0 {
-		parts = append(parts, "cached "+formatThousands(usage.CacheReadTokens))
+		parts = append(parts, "cached "+format.Thousands(usage.CacheReadTokens))
 	}
 	if usage.CostUSD != nil {
-		parts = append(parts, "$"+strconv.FormatFloat(*usage.CostUSD, 'f', 4, 64))
+		parts = append(parts, format.USD(*usage.CostUSD))
 	}
 	if usage.Steps > 0 {
 		parts = append(parts, "steps "+strconv.Itoa(usage.Steps))
 	}
 	if usage.Duration > 0 {
-		parts = append(parts, formatCompactDuration(usage.Duration))
+		parts = append(parts, format.Duration(usage.Duration))
 	}
 	return strings.Join(parts, "  ")
-}
-
-func formatThousands(value int64) string {
-	digits := strconv.FormatInt(value, 10)
-	first := 0
-	if digits[0] == '-' {
-		first = 1
-	}
-	for i := len(digits) - 3; i > first; i -= 3 {
-		digits = digits[:i] + "," + digits[i:]
-	}
-	return digits
-}
-
-func formatCompactDuration(duration time.Duration) string {
-	if duration < time.Second {
-		return strconv.FormatInt(duration.Milliseconds(), 10) + "ms"
-	}
-	return strconv.FormatFloat(duration.Seconds(), 'f', 1, 64) + "s"
 }
