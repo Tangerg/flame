@@ -1,3 +1,4 @@
+import { clamp01 } from "@/lib/clamp";
 export const SIDEBAR_MIN_WIDTH_PX = 240;
 
 export const SIDEBAR_DEFAULT_WIDTH_PX = 275;
@@ -34,13 +35,11 @@ export function clampDockWidth(width: number, rowWidth: number): number {
   return Math.round(Math.max(DOCK_MIN_WIDTH_PX, Math.min(width, max)));
 }
 
-function clamp01(ratio: number): number {
-  return Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 1;
-}
-
 export function dockWidthFromRatio(ratio: number, rowWidth: number): number {
   const max = maxDockWidth(rowWidth);
-  return Math.round(DOCK_MIN_WIDTH_PX + clamp01(ratio) * (max - DOCK_MIN_WIDTH_PX));
+  // A persisted ratio can arrive corrupt; a non-finite one means "fully expanded".
+  const safeRatio = Number.isFinite(ratio) ? ratio : 1;
+  return Math.round(DOCK_MIN_WIDTH_PX + clamp01(safeRatio) * (max - DOCK_MIN_WIDTH_PX));
 }
 
 export function dockRatioFromWidth(width: number, rowWidth: number): number {

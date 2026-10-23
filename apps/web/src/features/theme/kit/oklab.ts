@@ -1,4 +1,5 @@
 import { colord } from "colord";
+import { clamp01 } from "@/lib/clamp";
 type Oklab = [number, number, number];
 
 export interface Oklch {
@@ -38,7 +39,7 @@ function linearRgb([L, a, b]: Oklab): [number, number, number] {
 
 function fromOklab(lab: Oklab): string {
   const [r, g, b] = linearRgb(lab).map((value) => {
-    const clamped = Math.min(1, Math.max(0, value));
+    const clamped = clamp01(value);
     const encoded = clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * clamped ** (1 / 2.4) - 0.055;
     return Math.round(encoded * 255);
   }) as [number, number, number];

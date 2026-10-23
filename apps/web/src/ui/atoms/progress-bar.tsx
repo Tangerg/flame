@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { clamp } from "@/lib/clamp";
 import { cn } from "@/lib/classNames";
 import { color, corner, motion, space, surface } from "@flame/ui/tokens.stylex";
 import { ProgressPrimitive } from "@/ui/primitives/index";
@@ -29,7 +30,7 @@ const styles = stylex.create({
 const CORNER = { bar: corner.pill, row: corner.pill, seam: styles.square } as const;
 
 export function ProgressBar({ value, label, weight = "bar", className }: ProgressBarProps) {
-  const bounded = Math.max(0, Math.min(100, value));
+  const bounded = clamp(value, 0, 100);
   const track = stylex.props(styles.track, styles[weight], CORNER[weight]);
   return (
     <ProgressPrimitive.Root

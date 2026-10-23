@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { clamp01 } from "@/lib/clamp";
 import { type Translate } from "@/lib/i18n/index";
 import { useT } from "@/lib/i18n/index";
 import { type TaskReadoutTask } from "@/features/workspace/application/ports/taskReadoutPort";
@@ -39,5 +40,5 @@ export function taskReadout(t: Translate, tasks: Map<string, TaskReadoutTask>): 
 
 export function taskProgressPercent(task: TaskReadoutTask): number | null {
   if (task.progress === null || task.status === "failed") return null;
-  return Math.round(Math.max(0, Math.min(1, task.progress)) * 100);
+  return Math.round(clamp01(task.progress) * 100);
 }

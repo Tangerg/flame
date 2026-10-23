@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { clamp01 } from "@/lib/clamp";
 import { cn } from "@/lib/classNames";
 const CIRCUMFERENCE = 2 * Math.PI * 6;
 
@@ -20,7 +21,7 @@ export function Gauge({
   label: string;
   className?: string;
 }) {
-  const ratio = Math.min(1, Math.max(0, value));
+  const ratio = clamp01(value);
   const dial = stylex.props(styles.dial);
   return (
     <svg
