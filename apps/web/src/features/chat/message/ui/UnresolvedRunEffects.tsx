@@ -1,3 +1,4 @@
+import { tupleKey } from "@/lib/tupleKey";
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n/index";
 import { useCodeActionLabels } from "@/ui/index";
@@ -33,7 +34,7 @@ export function UnresolvedRunEffects({ effects }: { effects?: AgentUnresolvedEff
       </p>
       <Disclosure title={t("agent.runOutcome.unresolvedEffects")}>
         {effects.map((effect, index) => (
-          <RecordGroup key={JSON.stringify([effect.processId, effect.effectId])}>
+          <RecordGroup key={tupleKey(effect.processId, effect.effectId)}>
             <RecordTitle>{t("agent.unresolved.operation", { index: index + 1 })}</RecordTitle>
             <Facts
               values={[

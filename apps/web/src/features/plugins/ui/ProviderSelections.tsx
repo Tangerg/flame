@@ -1,3 +1,4 @@
+import { tupleKey } from "@/lib/tupleKey";
 import { pluginContract } from "@flame/runtime-client";
 import { useLayoutEffect, useRef, useState } from "react";
 import { type MutationPromise } from "@flame/runtime-client";
@@ -13,7 +14,7 @@ import { usePluginProviders, type PackageOperations } from "@/features/plugins/a
 type Candidate = { installation: PluginInstallation; contribution: string; server: string };
 
 const candidateKey = (candidate: Candidate) =>
-  JSON.stringify([candidate.installation.id, candidate.contribution]);
+  tupleKey(candidate.installation.id, candidate.contribution);
 
 export function ProviderSelections({
   installations,

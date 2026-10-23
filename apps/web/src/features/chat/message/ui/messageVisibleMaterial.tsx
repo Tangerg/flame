@@ -1,3 +1,4 @@
+import { tupleKey } from "@/lib/tupleKey";
 import {
   createContext,
   type ReactNode,
@@ -24,7 +25,7 @@ export class MessageVisibleMaterialOwner {
   #revision: object = {};
 
   constructor(sessionId: string, messageId: string) {
-    this.identity = JSON.stringify([sessionId, messageId]);
+    this.identity = tupleKey(sessionId, messageId);
   }
 
   observe(

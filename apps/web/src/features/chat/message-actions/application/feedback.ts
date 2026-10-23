@@ -1,3 +1,4 @@
+import { tupleKey } from "@/lib/tupleKey";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
@@ -221,5 +222,5 @@ export function submitMessageFeedback(
 }
 
 function messageFeedbackIdentity(target: MessageFeedbackTarget): string {
-  return JSON.stringify([target.sessionId, target.messageId]);
+  return tupleKey(target.sessionId, target.messageId);
 }

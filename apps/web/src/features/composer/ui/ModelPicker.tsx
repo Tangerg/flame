@@ -1,3 +1,4 @@
+import { tupleKey } from "@/lib/tupleKey";
 import { useMemo } from "react";
 import { fmtTokens } from "@/lib/format";
 import { type Translate, useT } from "@/lib/i18n/index";
@@ -15,7 +16,7 @@ import { useSelectedModelSelection } from "@/features/composer/public/selectedMo
 type Selection = NonNullable<ReturnType<typeof useSelectedModelSelection>>;
 
 function modelItemId(model: SelectableModel): string {
-  return JSON.stringify([model.provider, model.id]);
+  return tupleKey(model.provider, model.id);
 }
 
 const RECENT_GROUP_ID = "__recent";
