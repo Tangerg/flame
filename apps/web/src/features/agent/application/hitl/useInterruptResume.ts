@@ -1,7 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { type InterruptResumePayload } from "@/features/agent/domain/hitl";
-import { agentSessionState } from "@/features/agent/application/ports/sessionState";
-import { stageInterruptResponse } from "@/features/agent/application/hitl/interruptResponseCoordinator";
+import {
+  interruptResponseIsStaged,
+  stageInterruptResponse,
+} from "@/features/agent/application/hitl/interruptResponseCoordinator";
 export function resumeInterrupt(
   sessionId: string,
   runId: string,
@@ -12,35 +14,29 @@ export function resumeInterrupt(
   return stageInterruptResponse({ sessionId, rootRunId: runId, itemId }, response, hooks);
 }
 
-export function useInterruptResume<P>(runId?: string, itemId?: string) {
+export function useInterruptResume<P>(sessionId: string, runId?: string, itemId?: string) {
   const [pending, setPending] = useState<P | null>(null);
-  // `pending` clears on settle so a spinner stops; `done` stays so the controls
-  // remain disabled until the card unmounts, matching the submit latch.
-  const [done, setDone] = useState(false);
-  const [sessionId] = useState(() => agentSessionState().getActiveSessionId());
-  const submitted = useRef(false);
 
   const resume = useCallback(
     (marker: P, response: InterruptResumePayload) => {
-      if (!runId || !itemId || submitted.current) return;
-      submitted.current = true;
-      setDone(true);
+      if (!runId || !itemId || pending !== null) return;
       setPending(marker);
-      const rollback = () => {
-        submitted.current = false;
-        setDone(false);
-        setPending(null);
-      };
+      const clear = () => setPending(null);
       if (
-        !resumeInterrupt(sessionId, runId, itemId, response, {
-          onSettled: () => setPending(null),
-          onError: rollback,
-        })
+        !resumeInterrupt(sessionId, runId, itemId, response, { onSettled: clear, onError: clear })
       )
-        rollback();
+        clear();
     },
-    [runId, itemId, sessionId],
+    [sessionId, runId, itemId, pending],
   );
 
-  return { pending, done, resume, sessionId };
+  // The coordinator is the sole owner of whether this interrupt already carries a
+  // response in flight or accepted; the card observes that fact instead of latching
+  // its own copy, so a remount can never resurrect a settled submission.
+  const submitted =
+    runId !== undefined && itemId !== undefined
+      ? interruptResponseIsStaged({ sessionId, rootRunId: runId, itemId })
+      : false;
+
+  return { pending, submitted, resume };
 }

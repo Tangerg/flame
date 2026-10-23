@@ -53,7 +53,7 @@ describe("useQuestionAnswer", () => {
   it("resumes with an answer InterruptResponse and latches pending", () => {
     const resume = bindResume();
     seedPending("item_q");
-    const { result } = renderHook(() => useQuestionAnswer("run_1", "item_q"));
+    const { result } = renderHook(() => useQuestionAnswer(SID, "run_1", "item_q"));
     const answers = [["Postgres"], ["tools", "vision"]];
     act(() => result.current.submit(answers));
     expect(resume).toHaveBeenCalledWith(
@@ -72,12 +72,12 @@ describe("useQuestionAnswer", () => {
 
   it("no-ops without a runId/itemId, and never double-submits", () => {
     const resume = bindResume();
-    const { result } = renderHook(() => useQuestionAnswer(undefined, undefined));
+    const { result } = renderHook(() => useQuestionAnswer(SID, undefined, undefined));
     act(() => result.current.submit([["x"]]));
     expect(resume).not.toHaveBeenCalled();
 
     seedPending("item_q2");
-    const { result: r2 } = renderHook(() => useQuestionAnswer("run_1", "item_q2"));
+    const { result: r2 } = renderHook(() => useQuestionAnswer(SID, "run_1", "item_q2"));
     act(() => r2.current.submit([["first"]]));
     act(() => r2.current.submit([["second"]]));
     expect(resume).toHaveBeenCalledTimes(1);
@@ -93,7 +93,7 @@ describe("useQuestionAnswer", () => {
     const onStarted = bindResume((_r, _resp, onSettled) => (onSettled as () => void)());
     seedPending("q_ok");
     const before = useAgentStore.getState().sessions[SID]!.view;
-    const { result } = renderHook(() => useQuestionAnswer("run_1", "q_ok"));
+    const { result } = renderHook(() => useQuestionAnswer(SID, "run_1", "q_ok"));
     act(() => result.current.submit([["x"]]));
     expect(useAgentStore.getState().sessions[SID]!.view).toBe(before);
     expect(onStarted).toHaveBeenCalledTimes(1);
@@ -103,8 +103,17 @@ describe("useQuestionAnswer", () => {
 
     bindResume((_r, _resp, _s, onStartError) => (onStartError as () => void)());
     seedPending("q_fail");
-    const { result: r2 } = renderHook(() => useQuestionAnswer("run_1", "q_fail"));
+    const { result: r2 } = renderHook(() => useQuestionAnswer(SID, "run_1", "q_fail"));
     act(() => r2.current.submit([["x"]]));
     expect(r2.current.pending).toBe(false);
+  });
+
+  it("targets the passed session identity, not the active navigation", () => {
+    const resume = bindResume();
+    seedPending("item_explicit");
+    navigator().go({ session: "ses_other" });
+    const { result } = renderHook(() => useQuestionAnswer(SID, "run_1", "item_explicit"));
+    act(() => result.current.submit([["x"]]));
+    expect(resume).toHaveBeenCalledOnce();
   });
 });

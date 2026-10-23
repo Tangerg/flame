@@ -25,6 +25,7 @@ const ac = stylex.create({
 });
 
 interface Props {
+  sessionId: string;
   /** The Run to resume; present only while this approval awaits an answer. */
   resumeRunId?: string;
   decision?: ApprovalDecision;
@@ -47,6 +48,7 @@ const REMEMBER_ACTIONS: readonly {
 ];
 
 export function ApprovalCard({
+  sessionId,
   resumeRunId,
   decision,
   toolName,
@@ -65,6 +67,7 @@ export function ApprovalCard({
     originalArgs: hasArgs ? JSON.stringify(args, null, 2) : "",
   });
   const { disabled, approve, decline } = useApprovalCardActions({
+    sessionId,
     resumeRunId,
     itemId,
     argsEditor: hasArgs ? argsEditor : undefined,

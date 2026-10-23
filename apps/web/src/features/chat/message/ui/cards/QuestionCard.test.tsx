@@ -4,7 +4,7 @@ import { QuestionCard } from "@/features/chat/message/ui/cards/QuestionCard";
 const submitQuestion = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/agent/public/hitl", () => ({
-  useQuestionAnswer: () => ({ submit: submitQuestion, pending: false }),
+  useQuestionAnswer: () => ({ submit: submitQuestion, pending: false, submitted: false }),
 }));
 
 vi.mock("@/features/connection/public/serviceStatus", () => ({
@@ -19,6 +19,7 @@ describe("QuestionCard choice semantics", () => {
   it("exposes single-choice answers as a labeled radio group", () => {
     render(
       <QuestionCard
+        sessionId="ses-1"
         status="complete"
         resumeRunId="run-1"
         itemId="question-1"
@@ -47,6 +48,7 @@ describe("QuestionCard choice semantics", () => {
   it("exposes multi-choice answers as checkboxes", () => {
     render(
       <QuestionCard
+        sessionId="ses-1"
         status="complete"
         resumeRunId="run-1"
         itemId="question-2"
@@ -79,6 +81,7 @@ describe("QuestionCard choice semantics", () => {
     ];
     render(
       <QuestionCard
+        sessionId="ses-1"
         status="complete"
         resumeRunId="run-1"
         itemId="question-long-labels"
@@ -102,6 +105,7 @@ describe("QuestionCard choice semantics", () => {
   it("moves and selects within a radio group with the arrow keys", async () => {
     render(
       <QuestionCard
+        sessionId="ses-1"
         status="complete"
         resumeRunId="run-1"
         itemId="question-3"
@@ -141,6 +145,7 @@ describe("QuestionCard choice semantics", () => {
   it("uses the question as the only request heading and keeps option detail with its choice", () => {
     const { container } = render(
       <QuestionCard
+        sessionId="ses-1"
         status="complete"
         resumeRunId="run-1"
         itemId="question-4"
@@ -186,6 +191,7 @@ describe("QuestionCard choice semantics", () => {
   it("gives a freeform question a multiline answer surface", () => {
     render(
       <QuestionCard
+        sessionId="ses-1"
         status="complete"
         resumeRunId="run-1"
         itemId="question-5"
@@ -209,6 +215,7 @@ describe("QuestionCard choice semantics", () => {
   it("folds settled answers into Codex's compact question disclosure", () => {
     const { container } = render(
       <QuestionCard
+        sessionId="ses-1"
         status="complete"
         itemId="question-6"
         answered
@@ -245,6 +252,7 @@ describe("QuestionCard choice semantics", () => {
   it("presents multiple questions one at a time and advances without losing the draft", () => {
     render(
       <QuestionCard
+        sessionId="ses-1"
         status="complete"
         resumeRunId="run-1"
         itemId="question-7"
@@ -286,6 +294,7 @@ describe("QuestionCard choice semantics", () => {
   it("keeps an unmarked Chinese-IME commit Enter inside the freeform answer", () => {
     render(
       <QuestionCard
+        sessionId="ses-1"
         status="complete"
         resumeRunId="run-1"
         itemId="question-ime"

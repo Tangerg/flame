@@ -16,6 +16,7 @@ interface StagedResponse {
 class InterruptResponseBatch {
   readonly #responses = new Map<string, StagedResponse>();
   #submitted = false;
+  #settled = false;
 
   constructor(
     readonly sessionId: string,
@@ -26,6 +27,10 @@ class InterruptResponseBatch {
     return this.#submitted;
   }
 
+  get settled(): boolean {
+    return this.#settled;
+  }
+
   stage(itemId: string, response: StagedResponse): void {
     this.#responses.get(itemId)?.onError?.();
     this.#responses.set(itemId, response);
@@ -33,6 +38,10 @@ class InterruptResponseBatch {
 
   contains(itemId: string): boolean {
     return this.#responses.has(itemId);
+  }
+
+  items(): string[] {
+    return [...this.#responses.keys()];
   }
 
   covers(itemIds: readonly string[]): boolean {
@@ -47,14 +56,12 @@ class InterruptResponseBatch {
     this.#submitted = true;
   }
 
-  responses(): IterableIterator<StagedResponse> {
-    return this.#responses.values();
+  settle(): void {
+    this.#settled = true;
   }
 
-  reconcile(entry: AgentSessionViewEntry | undefined): boolean {
-    if (this.#submitted) return false;
-    const open = entry ? new Set(openResponseIds(entry, this.rootRunId)) : new Set<string>();
-    return [...this.#responses.keys()].some((itemId) => !open.has(itemId));
+  responses(): IterableIterator<StagedResponse> {
+    return this.#responses.values();
   }
 }
 
@@ -109,7 +116,7 @@ class InterruptResponseCoordinator {
       ordered.map(({ input }) => input),
       () => {
         if (this.#batches.get(key) !== batch) return;
-        this.#batches.delete(key);
+        batch.settle();
         for (const response of batch.responses()) response.onSettled?.();
       },
       () => this.#reject(batch),
@@ -123,7 +130,10 @@ class InterruptResponseCoordinator {
   }
 
   discard(): void {
-    for (const batch of [...this.#batches.values()]) this.#reject(batch);
+    for (const batch of [...this.#batches.values()]) {
+      if (batch.settled) this.#drop(batch);
+      else this.#reject(batch);
+    }
   }
 
   retire(): void {
@@ -136,17 +146,32 @@ class InterruptResponseCoordinator {
   #reject(batch: InterruptResponseBatch): void {
     const key = batchKey(batch.sessionId, batch.rootRunId);
     if (this.#batches.get(key) !== batch) return;
+    // A settled response is final; a reject arriving afterwards is stale and must
+    // not roll the card back as if the answer never reached the Runtime.
+    if (batch.settled) return;
     this.#batches.delete(key);
     for (const response of batch.responses()) {
       response.onError?.();
     }
   }
 
+  #drop(batch: InterruptResponseBatch): void {
+    const key = batchKey(batch.sessionId, batch.rootRunId);
+    if (this.#batches.get(key) === batch) this.#batches.delete(key);
+  }
+
   #reconcile(sessions: Record<string, AgentSessionViewEntry>): void {
     if (this.#retired) return;
     for (const batch of [...this.#batches.values()]) {
       const entry = sessions[batch.sessionId];
-      if (batch.reconcile(entry)) this.#reject(batch);
+      const open = entry ? new Set(openResponseIds(entry, batch.rootRunId)) : new Set<string>();
+      if (batch.settled) {
+        // Retain the accepted response until the view stops listing its items, so
+        // the window between acceptance and refresh cannot admit a duplicate resume.
+        if (!batch.items().some((itemId) => open.has(itemId))) this.#drop(batch);
+      } else if (!batch.submitting && batch.items().some((itemId) => !open.has(itemId))) {
+        this.#reject(batch);
+      }
     }
   }
 }
@@ -168,7 +193,9 @@ export function stageInterruptResponse(
 }
 
 export function interruptResponseIsStaged(ref: InterruptRef): boolean {
-  return coordinator().isStaged(ref);
+  // A read with no coordinator installed means nothing is staged; only the mutation
+  // path requires the owner to exist.
+  return interruptResponsePublication.current()?.isStaged(ref) ?? false;
 }
 
 export function installInterruptResponseCoordinator(): () => void {

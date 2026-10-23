@@ -51,7 +51,12 @@ function AnswerTurn({ text }: { text: string }) {
         runOwner: { kind: "owned", runId: "run-answer", status: "finished" },
         facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map<string, string>() },
       }}
-      ctx={{ expandedIds: new Set(), onToggleExpand: () => {}, textReveal: "instant" }}
+      ctx={{
+        sessionId: "ses-1",
+        expandedIds: new Set(),
+        onToggleExpand: () => {},
+        textReveal: "instant",
+      }}
       sessionId="ses_first"
       isLast
       isRunning={false}

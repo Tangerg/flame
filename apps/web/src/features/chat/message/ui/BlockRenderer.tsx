@@ -87,6 +87,7 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
       return (
         <ApprovalCard
           key={block.itemId ?? key}
+          sessionId={ctx.sessionId}
           resumeRunId={block.itemId === undefined ? undefined : facts.awaiting.get(block.itemId)}
           decision={
             block.itemId === undefined ? undefined : facts.toolCalls[block.itemId]?.approvalDecision
@@ -105,6 +106,7 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
       return (
         <QuestionCard
           key={block.itemId ?? key}
+          sessionId={ctx.sessionId}
           status={block.status}
           resumeRunId={block.itemId === undefined ? undefined : facts.awaiting.get(block.itemId)}
           itemId={block.itemId}

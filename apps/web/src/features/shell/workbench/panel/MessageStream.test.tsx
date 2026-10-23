@@ -61,6 +61,7 @@ vi.mock("use-stick-to-bottom", () => {
 });
 
 const CTX: BlockCtx = {
+  sessionId: "ses-1",
   expandedIds: new Set(),
   onToggleExpand: vi.fn(),
   textReveal: "smooth",

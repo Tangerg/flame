@@ -115,6 +115,28 @@ describe("interrupt response coordinator", () => {
     expect(useAgentStore.getState().sessions[SESSION_ID]!.view.pendingInterrupts).toEqual([]);
   });
 
+  it("keeps an accepted response owned until the view drops its item, blocking a duplicate resume", () => {
+    seedPending([{ runId: ROOT_RUN_ID, interrupts: [{ itemId: "solo", kind: "approval" }] }]);
+    let accept: (() => void) | undefined;
+    const resume = vi.fn((_runId, _responses, onSettled?: () => void) => {
+      accept = onSettled;
+      return true;
+    });
+    useAgentStore.getState().setResume(SESSION_ID, resume);
+    const ref = { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "solo" };
+
+    expect(stageInterruptResponse(ref, { type: "approval", decision: "approve" })).toBe(true);
+    expect(resume).toHaveBeenCalledOnce();
+
+    accept?.();
+    expect(interruptResponseIsStaged(ref)).toBe(true);
+    expect(stageInterruptResponse(ref, { type: "approval", decision: "deny" })).toBe(false);
+    expect(resume).toHaveBeenCalledOnce();
+
+    seedPending([]);
+    expect(interruptResponseIsStaged(ref)).toBe(false);
+  });
+
   it("rolls the whole staged barrier back when run opening is rejected", () => {
     seedPending(groups());
     const approvalError = vi.fn();

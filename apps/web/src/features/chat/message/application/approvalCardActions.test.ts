@@ -13,13 +13,13 @@ type RegisteredApprovalActions = {
 const hitl = vi.hoisted(() => ({
   registerActions: vi.fn<(actions: RegisteredApprovalActions) => () => void>(() => () => undefined),
   submit: vi.fn(),
-  done: false,
+  submitted: false,
 }));
 
 vi.mock("@/features/agent/public/hitl", () => ({
   useApprovalSubmit: () => ({
     pending: null,
-    done: hitl.done,
+    submitted: hitl.submitted,
     registerActions: hitl.registerActions,
     submit: hitl.submit,
   }),
@@ -31,7 +31,7 @@ vi.mock("@/features/agent/public/messagePresentation", () => ({
 
 afterEach(() => {
   vi.clearAllMocks();
-  hitl.done = false;
+  hitl.submitted = false;
 });
 
 describe("approvalSubmitOptions", () => {
@@ -62,6 +62,7 @@ describe("useApprovalCardActions", () => {
     const argsEditor = { commit: vi.fn(() => ({ path: "/safe" })) };
     const { result } = renderHook(() =>
       useApprovalCardActions({
+        sessionId: "ses-1",
         resumeRunId: "run",
         itemId: "item",
         argsEditor,
@@ -80,9 +81,14 @@ describe("useApprovalCardActions", () => {
   });
 
   it("stays disabled once a decision is submitted, even after pending clears", () => {
-    hitl.done = true;
+    hitl.submitted = true;
     const { result } = renderHook(() =>
-      useApprovalCardActions({ resumeRunId: "run", itemId: "item", runtimeAvailable: true }),
+      useApprovalCardActions({
+        sessionId: "ses-1",
+        resumeRunId: "run",
+        itemId: "item",
+        runtimeAvailable: true,
+      }),
     );
     expect(result.current.disabled).toBe(true);
   });
@@ -90,6 +96,7 @@ describe("useApprovalCardActions", () => {
   it("keeps the registered keyboard approval one-shot", () => {
     renderHook(() =>
       useApprovalCardActions({
+        sessionId: "ses-1",
         resumeRunId: "run",
         itemId: "item",
         runtimeAvailable: true,

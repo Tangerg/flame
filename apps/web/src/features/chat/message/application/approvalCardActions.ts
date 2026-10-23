@@ -39,17 +39,23 @@ export function canRegisterApprovalActions({
 }
 
 export function useApprovalCardActions({
+  sessionId,
   resumeRunId,
   itemId,
   argsEditor,
   runtimeAvailable,
 }: {
+  sessionId: string;
   resumeRunId?: string;
   itemId?: string;
   argsEditor?: ApprovalArgsCommitter;
   runtimeAvailable: boolean;
 }): ApprovalCardActionState {
-  const { submit, pending, done, registerActions } = useApprovalSubmit(resumeRunId, itemId);
+  const { submit, pending, submitted, registerActions } = useApprovalSubmit(
+    sessionId,
+    resumeRunId,
+    itemId,
+  );
 
   const approve = useCallback(
     (rememberScope?: RememberScope) => {
@@ -74,7 +80,8 @@ export function useApprovalCardActions({
   }, [approve, decline, registerable, registerActions]);
 
   return {
-    disabled: !runtimeAvailable || done || !canSubmitApproval({ resumeRunId, itemId, pending }),
+    disabled:
+      !runtimeAvailable || submitted || !canSubmitApproval({ resumeRunId, itemId, pending }),
     approve,
     decline,
   };

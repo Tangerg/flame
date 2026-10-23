@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
+import { tupleKey } from "@/lib/tupleKey";
 import { type AgentInput } from "@/features/agent/public/input";
 import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import { useActiveConversationRows } from "@/features/agent/public/conversation";
@@ -95,19 +96,25 @@ export function ChatStream({ onSend }: Props) {
 
   const ctx = useMemo(
     () => ({
+      sessionId,
       expandedIds: expandedToolIds,
       onToggleExpand: toggleExpandedTool,
       textReveal,
       questionInComposer: pendingQuestion?.block,
     }),
-    [expandedToolIds, toggleExpandedTool, textReveal, pendingQuestion],
+    [sessionId, expandedToolIds, toggleExpandedTool, textReveal, pendingQuestion],
   );
 
   const composer = pendingQuestion ? (
     <QuestionCard
+      // The composer card lives outside the session-keyed transcript, so its own
+      // identity key is what resets draft/submit state when the awaiting question
+      // changes; without it a prior question's state would bleed into the next.
+      key={tupleKey(sessionId, pendingQuestion.resumeRunId, pendingQuestion.itemId)}
+      sessionId={sessionId}
       status={pendingQuestion.block.status}
       resumeRunId={pendingQuestion.resumeRunId}
-      itemId={pendingQuestion.block.itemId}
+      itemId={pendingQuestion.itemId}
       questions={pendingQuestion.block.questions}
       answered={pendingQuestion.block.answered}
       answers={pendingQuestion.block.answers}

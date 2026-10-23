@@ -5,10 +5,15 @@ type QuestionAnswers = string[][];
 export interface QuestionAnswerSubmit {
   submit: (answers: QuestionAnswers) => void;
   pending: boolean;
+  submitted: boolean;
 }
 
-export function useQuestionAnswer(runId?: string, itemId?: string): QuestionAnswerSubmit {
-  const { pending, resume } = useInterruptResume<true>(runId, itemId);
+export function useQuestionAnswer(
+  sessionId: string,
+  runId?: string,
+  itemId?: string,
+): QuestionAnswerSubmit {
+  const { pending, submitted, resume } = useInterruptResume<true>(sessionId, runId, itemId);
 
   const submit = useCallback(
     (answers: QuestionAnswers) => {
@@ -17,5 +22,5 @@ export function useQuestionAnswer(runId?: string, itemId?: string): QuestionAnsw
     [resume],
   );
 
-  return { submit, pending: pending !== null };
+  return { submit, pending: pending !== null, submitted };
 }

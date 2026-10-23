@@ -24,6 +24,7 @@ type QuestionBlock = Extract<ContentBlock, { kind: "question" }>;
 export interface PendingQuestionRequest {
   block: QuestionBlock;
   resumeRunId: string;
+  itemId: string;
 }
 
 export function pendingQuestionRequest(
@@ -34,8 +35,10 @@ export function pendingQuestionRequest(
     for (let blockIndex = message.blocks.length - 1; blockIndex >= 0; blockIndex -= 1) {
       const block = message.blocks[blockIndex]!;
       if (block.kind !== "question" || block.answered || block.questions.length === 0) continue;
-      const resumeRunId = block.itemId === undefined ? undefined : facts.awaiting.get(block.itemId);
-      if (resumeRunId !== undefined) return { block, resumeRunId };
+      const { itemId } = block;
+      if (itemId === undefined) continue;
+      const resumeRunId = facts.awaiting.get(itemId);
+      if (resumeRunId !== undefined) return { block, resumeRunId, itemId };
     }
   }
   return null;
@@ -74,17 +77,19 @@ export function canSubmitQuestionCard({
 }
 
 export function useQuestionCardActions({
+  sessionId,
   resumeRunId,
   itemId,
   questions,
   draft,
 }: {
+  sessionId: string;
   resumeRunId?: string;
   itemId?: string;
   questions: readonly QuestionItem[];
   draft: QuestionDraft;
 }) {
-  const { submit, pending } = useQuestionAnswer(resumeRunId, itemId);
+  const { submit, pending, submitted } = useQuestionAnswer(sessionId, resumeRunId, itemId);
   const complete = useMemo(() => questionDraftComplete(questions, draft), [questions, draft]);
 
   const submitAnswer = useCallback(
@@ -97,7 +102,7 @@ export function useQuestionCardActions({
   return {
     pending,
     complete,
-    disabled: !canSubmitQuestionCard({ resumeRunId, itemId, pending }),
+    disabled: submitted || !canSubmitQuestionCard({ resumeRunId, itemId, pending }),
     submit: submitAnswer,
   };
 }

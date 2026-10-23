@@ -21,6 +21,7 @@ vi.mock("@/features/chat/message/application/approvalArgsEditor", () => ({
 vi.mock("@/features/agent/public/hitl", () => ({
   useApprovalSubmit: () => ({
     pending: submission.pending,
+    submitted: false,
     submit: submission.submit,
     registerActions: () => () => undefined,
   }),
@@ -42,6 +43,7 @@ describe("ApprovalCard actions", () => {
       submission.pending = decision;
       render(
         <ApprovalCard
+          sessionId="ses-1"
           resumeRunId="run-1"
           itemId="approval-1"
           toolName="shell"
@@ -60,6 +62,7 @@ describe("ApprovalCard actions", () => {
   it("orders the deny action before the primary approval action", () => {
     render(
       <ApprovalCard
+        sessionId="ses-1"
         resumeRunId="run-1"
         itemId="approval-1"
         toolName="shell"
@@ -77,6 +80,7 @@ describe("ApprovalCard actions", () => {
   it("uses the Codex request hierarchy without local danger chrome", () => {
     const { container } = render(
       <ApprovalCard
+        sessionId="ses-1"
         resumeRunId="run-1"
         itemId="approval-1"
         toolName="shell"
@@ -99,6 +103,7 @@ describe("ApprovalCard actions", () => {
   it("keeps remembered approval scopes behind the primary split action", () => {
     render(
       <ApprovalCard
+        sessionId="ses-1"
         resumeRunId="run-1"
         itemId="approval-1"
         toolName="shell"
@@ -118,6 +123,7 @@ describe("ApprovalCard actions", () => {
     (name) => {
       render(
         <ApprovalCard
+          sessionId="ses-1"
           resumeRunId="run-1"
           itemId="approval-1"
           toolName={name}

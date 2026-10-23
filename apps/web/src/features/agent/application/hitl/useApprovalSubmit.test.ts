@@ -53,7 +53,7 @@ describe("useApprovalSubmit", () => {
   it("maps approved → approve and latches pending", () => {
     const resume = bindResume();
     seedPending("item_1");
-    const { result } = renderHook(() => useApprovalSubmit("run_1", "item_1"));
+    const { result } = renderHook(() => useApprovalSubmit(SID, "run_1", "item_1"));
     act(() => result.current.submit("approve"));
     expect(resume).toHaveBeenCalledWith(
       "run_1",
@@ -67,7 +67,7 @@ describe("useApprovalSubmit", () => {
   it("maps declined → deny", () => {
     const resume = bindResume();
     seedPending("item_2");
-    const { result } = renderHook(() => useApprovalSubmit("run_1", "item_2"));
+    const { result } = renderHook(() => useApprovalSubmit(SID, "run_1", "item_2"));
     act(() => result.current.submit("deny"));
     expect(resume).toHaveBeenCalledWith(
       "run_1",
@@ -80,7 +80,7 @@ describe("useApprovalSubmit", () => {
   it("forwards editedArgs only when provided (approve-with-modified-args)", () => {
     const resume = bindResume();
     seedPending("item_e");
-    const { result } = renderHook(() => useApprovalSubmit("run_1", "item_e"));
+    const { result } = renderHook(() => useApprovalSubmit(SID, "run_1", "item_e"));
     act(() => result.current.submit("approve", { editedArgs: { path: "/safe" } }));
     expect(resume).toHaveBeenCalledWith(
       "run_1",
@@ -98,7 +98,7 @@ describe("useApprovalSubmit", () => {
   it("forwards remember{scope} when rememberScope is set (AUX_API §6)", () => {
     const resume = bindResume();
     seedPending("item_r");
-    const { result } = renderHook(() => useApprovalSubmit("run_1", "item_r"));
+    const { result } = renderHook(() => useApprovalSubmit(SID, "run_1", "item_r"));
     act(() => result.current.submit("deny", { rememberScope: "project" }));
     expect(resume).toHaveBeenCalledWith(
       "run_1",
@@ -115,12 +115,12 @@ describe("useApprovalSubmit", () => {
 
   it("no-ops without a runId/itemId, and never double-submits", () => {
     const resume = bindResume();
-    const { result } = renderHook(() => useApprovalSubmit(undefined, undefined));
+    const { result } = renderHook(() => useApprovalSubmit(SID, undefined, undefined));
     act(() => result.current.submit("approve"));
     expect(resume).not.toHaveBeenCalled();
 
     seedPending("item_3");
-    const { result: r2 } = renderHook(() => useApprovalSubmit("run_1", "item_3"));
+    const { result: r2 } = renderHook(() => useApprovalSubmit(SID, "run_1", "item_3"));
     act(() => r2.current.submit("approve"));
     act(() => r2.current.submit("deny"));
     expect(r2.current.pending).toBe("approve");
@@ -131,7 +131,7 @@ describe("useApprovalSubmit", () => {
     bindResume((_run, _resp, onSettled) => (onSettled as () => void)());
     seedPending("item_ok");
     const before = useAgentStore.getState().sessions[SID]!.view;
-    const { result } = renderHook(() => useApprovalSubmit("run_1", "item_ok"));
+    const { result } = renderHook(() => useApprovalSubmit(SID, "run_1", "item_ok"));
     act(() => result.current.submit("approve"));
     expect(useAgentStore.getState().sessions[SID]!.view).toBe(before);
     expect(result.current.pending).toBeNull();
@@ -141,7 +141,7 @@ describe("useApprovalSubmit", () => {
     bindResume((_run, _resp, _onSettled, onStartError) => (onStartError as () => void)());
     seedPending("item_fail");
     const before = useAgentStore.getState().sessions[SID]!.view;
-    const { result } = renderHook(() => useApprovalSubmit("run_1", "item_fail"));
+    const { result } = renderHook(() => useApprovalSubmit(SID, "run_1", "item_fail"));
     act(() => result.current.submit("approve"));
     expect(useAgentStore.getState().sessions[SID]!.view).toBe(before);
     expect(result.current.pending).toBeNull();

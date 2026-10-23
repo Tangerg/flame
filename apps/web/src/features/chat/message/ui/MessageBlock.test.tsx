@@ -17,6 +17,7 @@ vi.mock("@/extensions/host/Slot", () => ({
 }));
 
 const CTX: BlockCtx = {
+  sessionId: "ses-1",
   expandedIds: new Set(),
   onToggleExpand: vi.fn(),
   textReveal: "smooth",

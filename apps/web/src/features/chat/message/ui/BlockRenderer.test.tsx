@@ -15,6 +15,7 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { TOOL_STANDING_SURFACE } from "@/features/chat/public/tools/types";
 import { loadPluginsForTest } from "@/test/kernel";
 const CTX: BlockCtx = {
+  sessionId: "ses-1",
   expandedIds: new Set(),
   onToggleExpand: vi.fn(),
   textReveal: "smooth",

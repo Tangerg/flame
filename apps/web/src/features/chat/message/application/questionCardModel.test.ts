@@ -113,7 +113,11 @@ describe("pendingQuestionRequest", () => {
       facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map([["item", "run_root"]]) },
     } as TranscriptRow;
 
-    expect(pendingQuestionRequest([row])).toEqual({ block, resumeRunId: "run_root" });
+    expect(pendingQuestionRequest([row])).toEqual({
+      block,
+      resumeRunId: "run_root",
+      itemId: "item",
+    });
     expect(
       pendingQuestionRequest([
         { ...row, facts: { ...row.facts, awaiting: new Map<string, string>() } },

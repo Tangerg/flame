@@ -54,12 +54,17 @@ export function getApprovalActions(ref: InterruptRef): ApprovalActions | undefin
 export interface ApprovalSubmit {
   submit: (decision: ApprovalDecision, opts?: ApprovalSubmitOptions) => void;
   pending: ApprovalDecision | null;
-  done: boolean;
+  submitted: boolean;
   registerActions: (actions: ApprovalActions) => () => void;
 }
 
-export function useApprovalSubmit(rootRunId?: string, itemId?: string): ApprovalSubmit {
-  const { pending, done, resume, sessionId } = useInterruptResume<ApprovalDecision>(
+export function useApprovalSubmit(
+  sessionId: string,
+  rootRunId?: string,
+  itemId?: string,
+): ApprovalSubmit {
+  const { pending, submitted, resume } = useInterruptResume<ApprovalDecision>(
+    sessionId,
     rootRunId,
     itemId,
   );
@@ -84,5 +89,5 @@ export function useApprovalSubmit(rootRunId?: string, itemId?: string): Approval
     [itemId, rootRunId, sessionId],
   );
 
-  return { submit, pending, done, registerActions };
+  return { submit, pending, submitted, registerActions };
 }
