@@ -10,6 +10,19 @@ The current goal explicitly resumes the earlier milestone pause. Work in `/Users
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
+Pinned Session row names now include their localized state while retaining title,
+attention/time, current-page and menu identities. The two original-source failures
+and final 13 focused tests qualify the canonical projection and command contract.
+Actual EN/light/14 px/Orange and ZH/dark/18 px/blue native menu/edit/cancel flows
+pass, including system resize, 200%, scrolling and source return. The full Web run
+retains one MCP-readiness failure; the complete isolated 49-test file, all 22 later
+gates and supported native check pass. Owned resources are cleaned. Implementation
+`a601b991fcc04f150025a8637c698fec681c7d28` is pushed to remote `main` and its
+exact remote hash was verified with a clean owned checkout and zero unpushed
+commits. The 29 retained accepted sources remain unchanged; the accepted compiled
+stylesheet was separately verified before its owned output cleanup. Detailed
+coverage and exclusions are recorded under Sidebar / navigation.
+
 ToolGroup now preserves its existing parent presentation when the user enters
 member rows or their result readers. Completing a sibling or receiving a later
 reply no longer hides that engaged content; explicit parent closure still wins,
