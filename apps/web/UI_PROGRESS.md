@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Continuous UI batches remain active. Selection quotes now end at a blank paragraph, so immediate writing stays outside the quoted prose or fenced code. Consecutive quotes, the retained draft and the existing keyboard/focus path remain intact. English/light/14 px and Chinese/dark/18 px/blue native acceptance covers prose, file lines, repeated quotes, source return and 200% zoom. The focused 147-test run, 20 of 22 post-test Web gates and the supported native check pass. The full Web run records 3,249 passes and one Runtime MCP-readiness failure, also reproduced on the clean baseline; the complete 49-test file then passes on the candidate. Both other guards still fail on the baseline. Delivery retains exact-source verification and guarded cleanup. Continue with evidence from the next complete reading-to-conversation path.
+Updated: 2026-10-24. Continuous UI batches remain active. File and tool-output quotes now choose an outer fence longer than every backtick run in the selected body. Quoting a Markdown example preserves its literal markers and keeps immediate continuation outside the code. The existing blank paragraph, source identity, retained draft and keyboard/focus path remain intact. English/light/14 px and Chinese/dark/18 px/blue native acceptance covers the actual README source, repeated quotes, source return and 200% zoom. The focused 151-test run, all 3,254 Web tests, 20 of 22 post-test gates and the supported native check pass. Both remaining guards fail on the clean baseline as well. Delivery retains exact-source verification and guarded cleanup. Continue with evidence from the next complete reading-to-conversation path.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `475555981` and repairs the verified quote-to-continuation Markdown boundary in `quoteText`, with its formatter/component regressions and this record. SelectionQuote itself, shared Button behavior, existing reader focus targets, retained draft ownership and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. Continue investigating actual task continuity; a native source selection that includes the message footer is excluded from this acceptance and needs a separate reproduction before any follow-up change. The earlier milestone pause is superseded by the explicit resume.
+The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `8322a31fd` and repairs literal Markdown file quoting in `quoteText`, with formatter/component regressions and this record. SelectionQuote itself, shared Button behavior, existing reader focus targets, retained draft ownership and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. The reviewed message boundary contains content only; actions and the terminal footer are outside it. A selection crossing that boundary is correctly retired and does not establish another defect. Continue investigating actual task continuity. The earlier milestone pause is superseded by the explicit resume.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -1716,9 +1716,95 @@ Verification and limits:
   The preexisting shared UI cache, dependencies, references, user data and primary
   checkout remain preserved.
 
-Continue with actual reading and return paths. The selection boundary near the
-message footer needs reproducible source-local evidence before deciding whether
-there is another product defect; do not infer a repair from an unqualified gesture.
+### Preserve Markdown fences inside quoted files
+
+The canonical README source contains a fenced TypeScript example on lines
+**17–19**. On unchanged `8322a31fd`, actual native selection and quote activation
+wrap that example in another three-backtick fence. Rendering the resulting
+fragment with the installed Markdown parser produces two code blocks and consumes
+the user's continuation as code. The formatter now chooses at least three
+backticks and one more than the longest contiguous backtick run in the body.
+File and tool-output fragments share that framing rule in `quoteText`; message
+quoting, file path/line labels, trailing-body trimming and the final blank
+paragraph retain their contracts. No selection, focus, draft, Runtime, protocol,
+persisted-data or dependency change is required.
+
+The official CommonMark
+[fenced-code rule](https://spec.commonmark.org/0.31.2/#fenced-code-blocks)
+requires a closing fence to be at least as long as its opener. A longer outer
+delimiter therefore keeps the selected markers literal. The read-only ZCode
+reference above supports separating source material from the user's writing;
+it does not supply this Markdown implementation. Better-writing and
+better-typography guide that distinction, and better-accessibility guides the
+unchanged keyboard and return path. The separate message-footer review confirms
+that `MessageBlock` places actions and its terminal footer outside the quote
+source. Cross-boundary retirement is expected; no footer repair is justified.
+
+Verification and limits:
+
+- The focused baseline passes **46 tests**. Four added regressions against the
+  original formatter fail at the intended behavior while all **46** existing
+  cases pass. The final five-file run passes **151 tests**; the formatter/component
+  pair contains **50**. Parser assertions require one code block, exact literal
+  source, the file label and an independent following paragraph for the README
+  example and mixed one/two/three/five-backtick runs in file and tool output.
+  The real append regression retains one Composer, focus/caret, line identity
+  and quote-only/continued body/history projections. No assertions are weakened.
+- `npm run check --workspace @flame/web`, Node **22.22.1** and
+  `VITEST_MAX_WORKERS=2`, passes type, lint, format and **397 files / 3,254 tests**
+  in **159.15 seconds**. The aggregate exits nonzero after **182.95 seconds** at
+  the existing API guard's `SIDECAR_METHODS` object-literal expectation; its own
+  **16** tests pass. All **22** post-test gates run serially and **20 pass**,
+  including bundling. The other failure is Diagnostics ESM resource drift,
+  **20,349 / 20,318 bytes**. Restoring all three changed files and confirming
+  clean `8322a31fd` reproduces both complete guard failures; the full plugin
+  output is identical. The candidate is restored by exact hash. Non-failing
+  loopback connection diagnostics remain unclassified.
+- `make check-native` passes Desktop test/vet/build and the supported production
+  Wails arm64 build in **25.71 seconds**. Final private fixture assets build in
+  **2.90 seconds**. The unchanged private host built in **3.49 seconds** serves
+  those final assets. Production components and the actual quote plugin use
+  canonical in-memory transport, loopback services and private data; passive
+  observation reads selection, geometry, focus, draft and input identity.
+- English/light/**14 px**/Orange/full motion, **1440 × 900 px**, **523 px** Dock:
+  Files → README → Preview → Source exposes the canonical example. Native drag
+  selects lines **17–19**; Tab reaches the real quote button with its orange
+  **1.5 px** outline. Enter preserves the original **21-character** draft and
+  appends the full `README.md:17-19` label, literal inner triple backticks and
+  outer quadruple backticks, without gutter numbers. Immediate writing reaches
+  **118** characters in the same focused input. A second observed selection and
+  actual pointer activation followed by writing reach **212**, with the caret
+  at the end. Back to files restores the selected README row and its focus.
+- Chinese/dark/**18 px**/custom **#007BFF**/motion off: native half-screen sizing,
+  sidebar collapse and **200%** zoom yield **561 × 525 CSS px**. The full-width
+  Files → README → Source → Go to line 17 path retains the hidden
+  **12-character** draft. The selected three lines occupy **[0, 333.5, 561, 71.5]**;
+  the **119.4 × 26.5 px** quote action stays above them at **[433, 300.5]**.
+  Tab shows the blue **1.5 px** outline; Escape returns to the same README reader
+  and geometry. Reselecting, Tab and native Space reveal the same focused input
+  with **81** characters. Immediate native paste continues on its own paragraph
+  to **90** characters. Actual Size restores **1122 × 1051** and preserves the
+  complete draft and caret.
+- Native coverage begins with pointer selection, followed by keyboard or pointer
+  activation. An AX activation without a current frame is excluded; the later
+  visible coordinate activation supplies the pointer evidence. Tool-output
+  quoting has formatter/rendering coverage; no current native DOM producer was
+  found for that source kind. No Send, live provider, durable Runtime write,
+  native picker, OS IME, VoiceOver, keyboard-only selection construction or
+  other-platform GUI was exercised. No browser visual suite or performance
+  baseline was started. Path delimiter escaping and existing trailing-whitespace
+  policy are separate contracts, outside this body-framing repair.
+- All three reviewed source/test hashes remain unchanged through checks and
+  native acceptance. Six generated resources are restored only after matching
+  build receipts; all eleven original hashes agree. The private app is stopped.
+  Final delivery unregisters it and removes its unique Library state, newly
+  created staged/build/cache outputs, private fixture/log/receipt directory,
+  agent scratch and publication clone after ownership/preexistence checks.
+  The preexisting shared UI cache, dependencies, references, user data and primary
+  checkout remain preserved.
+
+Continue with evidence from complete reading and return paths. Revisit any
+selection concern only after reproducing a valid source-local interaction.
 
 ### Native short-paste continuation qualification
 

@@ -386,6 +386,61 @@ describe("SelectionQuote", () => {
     });
   });
 
+  it("quotes Markdown file fences literally and continues in the same Composer", async () => {
+    render(
+      <Harness>
+        <div role="region" aria-label="README source" tabIndex={-1}>
+          <div data-quote-source="file" data-quote-path="README.md">
+            <span data-quote-line="17">{"```ts\n"}</span>
+            <span data-quote-line="18">{'const outcome = "recorded";\n'}</span>
+            <span data-quote-line="19">{"```"}</span>
+          </div>
+        </div>
+      </Harness>,
+    );
+    const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" });
+    const reader = screen.getByRole("region", { name: "README source" });
+    act(() => reader.focus());
+    const first = reader.querySelector('[data-quote-line="17"]')!.firstChild!;
+    const last = reader.querySelector('[data-quote-line="19"]')!.firstChild!;
+    const range = document.createRange();
+    range.setStart(first, 0);
+    range.setEnd(last, last.textContent!.length);
+    selectRange(range);
+    flushFrame();
+    expect(window.getSelection()?.toString()).toBe('```ts\nconst outcome = "recorded";\n```');
+    const button = await screen.findByRole("button", { name: "Quote in message" });
+    fireEvent.keyDown(reader, { key: "Tab" });
+    expect(document.activeElement).toBe(button);
+
+    await act(async () => {
+      fireEvent.click(button, { detail: 0 });
+    });
+    flushFrame();
+
+    const quoted =
+      'Existing draft\n\n`README.md:17-19`\n````\n```ts\nconst outcome = "recorded";\n```\n````';
+    expect(field.value).toBe(`${quoted}\n\n`);
+    expect(screen.getByRole("textbox", { name: "Composer draft" })).toBe(field);
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionStart).toBe(field.value.length);
+    expect(field.selectionEnd).toBe(field.value.length);
+    expect(createComposerSendIntent(captureComposerSubmission())).toMatchObject({
+      body: quoted,
+      historyText: quoted,
+    });
+
+    fireEvent.change(field, { target: { value: `${field.value}Explain this setup.` } });
+
+    expect(field.value).toBe(`${quoted}\n\nExplain this setup.`);
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionEnd).toBe(field.value.length);
+    expect(createComposerSendIntent(captureComposerSubmission())).toMatchObject({
+      body: `${quoted}\n\nExplain this setup.`,
+      historyText: `${quoted}\n\nExplain this setup.`,
+    });
+  });
+
   it("does not quote a selection spanning separate sources", () => {
     render(<Harness />);
     const range = document.createRange();

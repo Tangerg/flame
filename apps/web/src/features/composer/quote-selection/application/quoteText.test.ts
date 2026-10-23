@@ -51,4 +51,51 @@ describe("quoteText", () => {
       "Please explain this.",
     );
   });
+
+  const mixedSource = [
+    "Use `inline` and ``literal`` markers.",
+    "`````md",
+    "```ts",
+    'const outcome = "recorded";',
+    "```",
+    "`````",
+    "Keep the existing draft.",
+  ].join("\n");
+
+  it.each<{ name: string; source: QuoteSource; text: string; label: string | null }>([
+    {
+      name: "the README code example",
+      source: { kind: "file", path: "README.md", lines: [17, 19] },
+      text: '```ts\nconst outcome = "recorded";\n```',
+      label: "README.md:17-19",
+    },
+    {
+      name: "mixed backtick runs in a file",
+      source: { kind: "file", path: "docs/fences.md", lines: [1, 7] },
+      text: mixedSource,
+      label: "docs/fences.md:1-7",
+    },
+    {
+      name: "mixed backtick runs in tool output",
+      source: { kind: "tool-output" },
+      text: mixedSource,
+      label: null,
+    },
+  ])("keeps $name literal in one code block before continuation", ({ source, text, label }) => {
+    const rendered = document.createElement("div");
+    rendered.innerHTML = renderToStaticMarkup(
+      createElement(
+        ReactMarkdown,
+        { remarkPlugins: [remarkGfm, remarkBreaks] },
+        `${quoteText(source, text)}Explain this setup.`,
+      ),
+    );
+
+    expect(rendered.querySelectorAll("pre")).toHaveLength(1);
+    expect(rendered.querySelector("pre > code")?.textContent).toBe(`${text}\n`);
+    expect(rendered.querySelector("p > code")?.textContent ?? null).toBe(label);
+    expect(rendered.lastElementChild?.tagName).toBe("P");
+    expect(rendered.lastElementChild?.textContent).toBe("Explain this setup.");
+    expect(rendered.lastElementChild?.previousElementSibling?.tagName).toBe("PRE");
+  });
 });
