@@ -41,10 +41,11 @@ export function WorkspaceViewBody({ viewId, ref }: Props) {
   const workspaceViews = useWorkspaceViews();
   const view = workspaceViews.find((v) => v.id === viewId);
   const Body = view?.component;
+  const label = t(view?.title ?? "plugins.mainView");
   return (
     <div
       role="region"
-      aria-label={t(view?.title ?? "plugins.mainView")}
+      aria-label={label}
       {...scroll}
       ref={attach}
       tabIndex={scroll.tabIndex ?? -1}
@@ -52,7 +53,7 @@ export function WorkspaceViewBody({ viewId, ref }: Props) {
       data-slot="workspace-view-body"
       {...stylex.props(styles.viewport)}
     >
-      <PluginBoundary plugin={`workspace:${viewId}`} label={t("plugins.mainView")}>
+      <PluginBoundary plugin={`workspace:${viewId}`} label={label}>
         <Suspense
           fallback={
             <div data-surface-pending="">

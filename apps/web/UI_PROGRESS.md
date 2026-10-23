@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. Engaged ToolGroup results now remain open through sibling completion and later replies, with manual closure and untouched auto-collapse preserved. Final native English/light/14 px and Chinese/dark/18 px flows pass, including 320 px Dock, 200% full-pane material returns and continued drafts. The complete Web check passed 391 files / 3,100 tests and every gate; the supported native check passed. Shared Markdown notes retain the surrounding reading plane without decorative stripes or fills. MCP tool visibility and reconnect, popup anchoring, neutral canvases and retained reading/recovery work remain integrated. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. Plugin Retry now hands owned focus to its existing host before removing the error tree, and workspace failures use the current view's name. Native English/light/14 px and Chinese/dark/18 px recovery, continued reading and draft-preserving returns pass, including 320 px Dock and native 200%. All 12 relevant tests pass. The initial Web run passed 3,107 of 3,108 tests; an MCP-readiness deadline failed once, then the complete isolated 49-test Runtime HTTP file passed unchanged. All 22 later Web gates and the supported native check pass. Engaged ToolGroup reading, shared Markdown notes, neutral canvases and prior task/recovery work remain integrated. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -21,6 +21,16 @@ build resources are cleaned. Implementation `2d96c7a37699e0ef83489689ceda61e52a8
 is pushed to remote `main`; its exact remote hash was verified with a clean owned
 checkout and zero unpushed commits. The earlier Markdown-note and MCP receipts
 remain integrated.
+
+Plugin render recovery now retires focused error controls into their nearest
+existing focusable host before retrying. A repeated failure or successful recovery
+keeps a stable reading destination; later outside or child-owned focus is not
+reclaimed. Workspace errors use the same localized view title as their region.
+The focused 12 tests and English/light/14 px and Chinese/dark/18 px native flows
+pass. The initial full Web command stopped on one Runtime MCP-readiness timeout;
+the complete isolated 49-test file then passed, followed by all 22 later gates and
+the supported native check. The initial failure remains recorded below. Owned
+resources are cleaned; remote delivery is being recorded for this verified batch.
 
 The captured-image inset is integrated at `d25b4ef72` and settings width at
 `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
@@ -1469,6 +1479,95 @@ and the then-current 3,069-test Web suite. Current native acceptance below
 qualifies negative failure, warning unsupported and ordinary empty presentation
 in the Approvals page. The MCP follow-up below qualifies its named recovery
 states. The earlier subagent-unavailable path is not newly qualified here.
+
+### Plugin render recovery
+
+Native baseline reproduced focused Retry disappearing on both a repeated render
+failure and successful recovery. Focus fell to HTML. Its next Tab still reached
+the recovered Diff reader's first action; no navigation restart or keyboard trap
+is claimed. The known workspace view was also named only "main view" in the
+failure, despite its existing region carrying the actual title.
+
+`extensions/host/PluginBoundary.tsx` now references the existing SystemMessage
+root. Its explicit Retry handler hands off only focus currently inside that
+retiring error tree, using the root's owner document and nearest existing
+`[tabindex]` ancestor. The handoff occurs before the boundary retries, so recovered
+children may claim their own focus during mounting. It adds no destination when
+none exists and leaves outside focus untouched. There is no new DOM wrapper,
+state, effect, timer, listener or automatic retry. `WorkspaceViewBody.tsx` derives
+one localized current-view label for its region and failure; plugin identity,
+missing-view fallback, suspense and scrolling retain their owners.
+
+Better-accessibility guides the bounded focus-continuity recommendation. Read-only
+ZCode `ErrorBoundary.tsx` separates localized failure summary, explicit recovery
+and capped diagnostic reading; its skin, telemetry and reset contracts are not
+copied. That reference is not evidence of Flame's focus behavior. The established
+SystemMessage presentation remains unchanged and is now natively qualified for
+this workspace failure.
+
+| Severity | Location                                                      | Before                                                  | After                                               | Why                                                                                                                        |
+| -------- | ------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| MEDIUM   | `src/extensions/host/PluginBoundary.tsx:57`                   | Retry removed the focused error tree.                   | Owned focus enters its surviving host before retry. | Preserve a perceivable reading destination during explicit recovery; a continuity recommendation, not a conformance claim. |
+| LOW      | `src/features/shell/workbench/panel/WorkspaceViewBody.tsx:44` | A known view's failure used the generic main-view name. | Region and failure share the current view title.    | Keep the affected object understandable while recovering.                                                                  |
+
+Bounded Claude Code CLI supplied four scoped files in **112.18 s**, with no
+denials or subagents. Primary reviewed the actual diff, selected the root's owner
+document, shortened the lifetime comment and removed a tag-specific assertion.
+Six added boundary tests exercise success, repeated failure, nearest nested host,
+outside focus, child-owned focus and absent-host behavior; two workspace tests
+cover named recovery and the missing-view region. All **2 files / 12 tests** pass
+(**2.42 s**). The unchanged originals fail four cases while eight pass; both
+candidate sources were restored byte-for-byte (**2.08 s**).
+
+The initial complete Web command passes typecheck/lint/format and **391 of 392
+files / 3,107 of 3,108 tests**, then stops at the Runtime HTTP fixture's first
+managed-Memory MCP tool-readiness deadline (**244.58 s**). This is a headless
+Runtime/HTTP/SDK setup path which imports no changed UI source. The complete
+isolated file subsequently passes **49 tests** (**41.05 s**) without edits,
+assertion changes or a longer deadline. The cause of the first delay is not
+established. Every remaining command from the actual `check` script then passes
+in order: **22 gates, 22.63 s**, including contracts, architecture, resources and
+bundle/modules. This is qualified aggregate verification, not a claim that the
+first full command passed. `make check-native` passes Desktop test/vet/build and
+the supported Wails build (**23.16 s**); arm64, minimum macOS **13.0**, SDK **26.5**.
+
+Actual Wails uses a private deterministic render fault inside the real workspace
+view. Enabling recovery changes only the injected condition; the original Retry
+remains the action that remounts the installed Diff body. English/light/**14 px**/
+Flame Orange checks expanded diagnostics and keyboard retry both while failing
+and after recovery is enabled. Both retain the named Workspace diff region and
+its visible keyboard ring. Tab enters Show changed files; opening the second
+file, reading and returning focuses that same file row. Composer retains and
+continues exactly `Pane recovery draft 保留 · continued`.
+
+Chinese/dark/**18 px**/custom blue repeats the failure at **320 px** Dock width;
+the long error wraps with equal 320 px client/scroll widths, and keyboard Retry
+returns focus to that view. Twenty native Zoom In actions from Actual Size,
+a pointer-resized **2632 × 1798** capture and full-pane presentation qualify
+200% diagnostic reading. Native Page Down moves through the capped stack;
+Tab reveals the complete Retry and its ring. Successful keyboard retry focuses
+the surviving workspace region, then actual Diff list/detail/back and Close
+return to the conversation. Actual Size restores the 320 px Dock and the exact
+continued draft `面板恢复草稿 保留 · continued`. All **10** accepted product inputs,
+**11** portable resources, **6** harness inputs and compiled UI CSS match afterward.
+
+These isolated presentation/recovery flows do not qualify a real installed-plugin
+crash, Runtime mutation or every boundary placement. No Send, credentials,
+authored-link activation, clipboard-denial, VoiceOver speech, OS IME,
+other-platform GUI, browser visual suite or performance benchmark is claimed.
+Existing hidden-zoom and reverse-traversal qualifications remain separate.
+Approve for the inspected workspace retry path; screen-reader speech and other
+placements remain not verified. A useful next comparison is Settings pane error
+identity and its own existing focus scope, rather than generalizing this host's
+layout into other surfaces.
+
+Cleanup confirms all three owned native processes and the bounded CLI exited.
+The exact app was unregistered and its root/pointer, ten newly generated worktree
+output/cache locations and two bundle-specific Library paths were removed after
+ownership, birth-time, containment and copied-asset checks. A private compressed
+archive retains **98** flat UTF-8 evidence files and **23** capture hashes outside
+the repository. Pre-existing shared UI Vite cache, dependencies, compiler caches,
+references, user data, unrelated processes and the primary checkout remain.
 
 ### Approval-mode read recovery
 
@@ -3796,18 +3895,13 @@ defects; each needs a Wails look and an explicit choice before implementing:
   provider row's ≤440px masked-key reflow are deliberate layouts — unifying is a UX
   decision plus a native look, not a blind swap.
 
-- **Plugin render-crash fallback → SystemMessage (implemented; native acceptance
-  pending).** The `PluginBoundary` fallback used to hand-roll a negative-toned inline
-  card (`overlays.css` `.plugin-boundary-error`: own border, wash, radius, tone) holding
-  the `plugins.renderFailed` Trans, a `<code>`, a retry `TextButton` and `FailureDetails`,
-  where the consistency pass had already routed form and config alerts onto
-  `SystemMessage`. It now renders through `SystemMessage` (`variant="error"`,
-  `shape="form"`, retry in the `action` slot); the plugin name, the error `<code>` and
-  the `FailureDetails` disclosure are the banner's children, `.plugin-boundary-error`
-  keeps only the stacking column, and `.plugin-boundary-actions` is deleted. The
-  boundary's `role="alert"`, code tag and retry contract are unchanged
-  (`PluginBoundary.test.tsx` 4/4). The crash banner now carries the shared error icon
-  and tone instead of its bespoke border — confirm the in-pane look in Wails.
+- **Plugin render-crash fallback (implemented and natively qualified within scope).**
+  The SystemMessage form, named workspace failure, diagnostics and explicit Retry
+  are qualified in Plugin render recovery above. Retry now retires owned focus to
+  its existing enclosing focus scope before the error tree unmounts; it leaves
+  outside and later child-owned focus alone. Preserve the shared presentation,
+  reporting and Runtime boundaries. Other placements still require their own
+  task-specific inspection; this is not blanket native coverage.
 
 - **Streaming-text animation timings.** The markdown word-reveal (`overlays.css`
   `.fade-in`, `700ms ease-in-out`) and the stream caret (`.type-caret`, `1050ms`

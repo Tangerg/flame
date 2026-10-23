@@ -1,4 +1,5 @@
 import type React from "react";
+import { useLayoutEffect, useRef } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
@@ -68,5 +69,156 @@ describe("pluginBoundary", () => {
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     expect(screen.getByText("pane body")).toBeTruthy();
     spy.mockRestore();
+  });
+
+  describe("retry focus", () => {
+    let fail: boolean;
+    function Flaky(): React.ReactNode {
+      if (fail) throw new Error("view exploded");
+      return <p>recovered view</p>;
+    }
+
+    function focusRetry(): HTMLElement {
+      const retry = screen.getByRole("button", { name: /retry/i });
+      retry.focus();
+      expect(document.activeElement).toBe(retry);
+      return retry;
+    }
+
+    it("hands a focused Retry to its focusable host when the view recovers", () => {
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      fail = true;
+      render(
+        <div role="region" aria-label="Diff" tabIndex={-1}>
+          <PluginBoundary plugin="workspace:diff" label="Diff">
+            <Flaky />
+          </PluginBoundary>
+        </div>,
+      );
+
+      const retry = focusRetry();
+      fail = false;
+      fireEvent.click(retry);
+
+      expect(screen.getByText("recovered view")).toBeTruthy();
+      expect(document.activeElement).toBe(screen.getByRole("region", { name: "Diff" }));
+      spy.mockRestore();
+    });
+
+    it("keeps the host focused and the failure usable when retry fails again", () => {
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      fail = true;
+      render(
+        <div role="region" aria-label="Diff" tabIndex={-1}>
+          <PluginBoundary plugin="workspace:diff" label="Diff">
+            <Flaky />
+          </PluginBoundary>
+        </div>,
+      );
+
+      fireEvent.click(focusRetry());
+
+      expect(screen.getByRole("alert").textContent).toContain("view exploded");
+      expect(document.activeElement).toBe(screen.getByRole("region", { name: "Diff" }));
+      expect(usePluginErrorStore.getState().log).toHaveLength(2);
+
+      const again = focusRetry();
+      fail = false;
+      fireEvent.click(again);
+      expect(screen.getByText("recovered view")).toBeTruthy();
+      spy.mockRestore();
+    });
+
+    it("chooses the nearest focusable host rather than an outer scope", () => {
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      fail = true;
+      render(
+        <div role="region" aria-label="Workbench" tabIndex={-1}>
+          <div role="region" aria-label="Diff" tabIndex={-1}>
+            <PluginBoundary plugin="workspace:diff" label="Diff">
+              <Flaky />
+            </PluginBoundary>
+          </div>
+        </div>,
+      );
+
+      const retry = focusRetry();
+      fail = false;
+      fireEvent.click(retry);
+
+      expect(document.activeElement).toBe(screen.getByRole("region", { name: "Diff" }));
+      spy.mockRestore();
+    });
+
+    it("leaves focus that is already outside the failure untouched", () => {
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      fail = true;
+      render(
+        <>
+          <div role="region" aria-label="Diff" tabIndex={-1}>
+            <PluginBoundary plugin="workspace:diff" label="Diff">
+              <Flaky />
+            </PluginBoundary>
+          </div>
+          <button type="button">Elsewhere</button>
+        </>,
+      );
+
+      const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+      elsewhere.focus();
+      fail = false;
+      fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+
+      expect(screen.getByText("recovered view")).toBeTruthy();
+      expect(document.activeElement).toBe(elsewhere);
+      spy.mockRestore();
+    });
+
+    it("lets recovered content claim focus for itself", () => {
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      fail = true;
+      function SelfFocusing(): React.ReactNode {
+        const own = useRef<HTMLButtonElement>(null);
+        useLayoutEffect(() => own.current?.focus(), []);
+        if (fail) throw new Error("view exploded");
+        return (
+          <button ref={own} type="button">
+            Recovered action
+          </button>
+        );
+      }
+      render(
+        <div role="region" aria-label="Diff" tabIndex={-1}>
+          <PluginBoundary plugin="workspace:diff" label="Diff">
+            <SelfFocusing />
+          </PluginBoundary>
+        </div>,
+      );
+
+      const retry = focusRetry();
+      fail = false;
+      fireEvent.click(retry);
+
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Recovered action" }));
+      spy.mockRestore();
+    });
+
+    it("still retries without inventing a destination when no focusable host exists", () => {
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      fail = true;
+      const { container } = render(
+        <PluginBoundary plugin="workspace:diff" label="Diff">
+          <Flaky />
+        </PluginBoundary>,
+      );
+
+      const retry = focusRetry();
+      fail = false;
+      fireEvent.click(retry);
+
+      expect(screen.getByText("recovered view")).toBeTruthy();
+      expect(container.contains(document.activeElement)).toBe(false);
+      spy.mockRestore();
+    });
   });
 });
