@@ -127,11 +127,7 @@ func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error
 		}
 	}
 	selection.path = cursor.Rest()
-	_, explicit, err := selection.limit.Rows()
-	if err != nil {
-		return workspaceDiffSelection{}, err
-	}
-	if explicit && selection.format != protocol.DiffFormatRows {
+	if selection.limit.Rows() > 0 && selection.format != protocol.DiffFormatRows {
 		return workspaceDiffSelection{}, errors.New("workspace diff --limit requires --rows")
 	}
 	return selection, nil

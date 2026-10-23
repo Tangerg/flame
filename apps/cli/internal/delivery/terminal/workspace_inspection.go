@@ -132,10 +132,6 @@ func (a *app) SearchWorkspace(argument string) error {
 	if err != nil {
 		return err
 	}
-	matchLimit, err := selection.limit.Matches()
-	if err != nil {
-		return err
-	}
 	request := workspace.SearchRequest{
 		Workspace: a.session.current.Workspace.Path, Query: selection.query, Path: selection.path, Limit: selection.limit,
 	}
@@ -153,7 +149,6 @@ func (a *app) SearchWorkspace(argument string) error {
 			if request.Path != "" {
 				detail += " · " + request.Path
 			}
-			detail += fmt.Sprintf(" · limit %d", matchLimit)
 			return paragraphDocument("Workspace search · "+request.Query, detail, lines), nil
 		}, workspaceReaderNone)
 	return nil

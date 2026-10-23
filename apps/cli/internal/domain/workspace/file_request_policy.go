@@ -2,130 +2,57 @@ package workspace
 
 import "errors"
 
-const (
-	DefaultSearchMatches = 200
-	DefaultReadBytes     = 2 << 20
-)
+// SearchResultLimit preserves an explicit positive request. Zero leaves the
+// default and material limits with Runtime.
+type SearchResultLimit struct{ matches int }
 
-type requestLimitKind uint8
-
-const (
-	defaultRequestLimit requestLimitKind = iota + 1
-	explicitRequestLimit
-)
-
-type SearchResultLimit struct {
-	kind    requestLimitKind
-	matches int
-}
-
-func DefaultSearchResultLimit() SearchResultLimit {
-	return SearchResultLimit{kind: defaultRequestLimit}
-}
+func DefaultSearchResultLimit() SearchResultLimit { return SearchResultLimit{} }
 
 func NewSearchResultLimit(matches int) (SearchResultLimit, error) {
 	if matches <= 0 {
 		return SearchResultLimit{}, errors.New("workspace search result limit must be positive")
 	}
-	return SearchResultLimit{kind: explicitRequestLimit, matches: matches}, nil
+	return SearchResultLimit{matches: matches}, nil
 }
 
-func (l SearchResultLimit) Matches() (int, error) {
-	switch l.kind {
-	case defaultRequestLimit:
-		if l.matches != 0 {
-			return 0, errors.New("default workspace search result limit carries a value")
-		}
-		return DefaultSearchMatches, nil
-	case explicitRequestLimit:
-		if l.matches <= 0 {
-			return 0, errors.New("workspace search result limit must be positive")
-		}
-		return l.matches, nil
-	default:
-		return 0, errors.New("workspace search result limit kind is unknown")
-	}
-}
+func (l SearchResultLimit) Matches() int { return l.matches }
 
-type ReadByteLimit struct {
-	kind  requestLimitKind
-	bytes int
-}
+// ReadByteLimit preserves an explicit positive request. Zero leaves the byte
+// budget with Runtime, including when a preview selects a line window.
+type ReadByteLimit struct{ bytes int }
 
-func DefaultReadByteLimit() ReadByteLimit { return ReadByteLimit{kind: defaultRequestLimit} }
+func DefaultReadByteLimit() ReadByteLimit { return ReadByteLimit{} }
 
 func NewReadByteLimit(bytes int) (ReadByteLimit, error) {
 	if bytes <= 0 {
 		return ReadByteLimit{}, errors.New("workspace read byte limit must be positive")
 	}
-	return ReadByteLimit{kind: explicitRequestLimit, bytes: bytes}, nil
+	return ReadByteLimit{bytes: bytes}, nil
 }
 
-func (l ReadByteLimit) Bytes() (int, error) {
-	switch l.kind {
-	case defaultRequestLimit:
-		if l.bytes != 0 {
-			return 0, errors.New("default workspace read byte limit carries a value")
-		}
-		return DefaultReadBytes, nil
-	case explicitRequestLimit:
-		if l.bytes <= 0 {
-			return 0, errors.New("workspace read byte limit must be positive")
-		}
-		return l.bytes, nil
-	default:
-		return 0, errors.New("workspace read byte limit kind is unknown")
-	}
-}
+func (l ReadByteLimit) Bytes() int { return l.bytes }
 
+// ReadLineRange is whole-file when zero. A positive start selects a tail;
+// a positive end bounds that window. Constructors own the ordering invariant.
 type ReadLineRange struct {
-	kind  readLineRangeKind
 	start int
 	end   int
 }
 
-type readLineRangeKind uint8
-
-const (
-	readLineRangeWhole readLineRangeKind = iota + 1
-	readLineRangeTail
-	readLineRangeBounded
-)
-
-func WholeFileReadRange() ReadLineRange { return ReadLineRange{kind: readLineRangeWhole} }
+func WholeFileReadRange() ReadLineRange { return ReadLineRange{} }
 
 func NewReadTailRange(start int) (ReadLineRange, error) {
 	if start <= 0 {
 		return ReadLineRange{}, errors.New("workspace read start line must be positive")
 	}
-	return ReadLineRange{kind: readLineRangeTail, start: start}, nil
+	return ReadLineRange{start: start}, nil
 }
 
 func NewReadLineRange(start, end int) (ReadLineRange, error) {
 	if start <= 0 || end < start {
 		return ReadLineRange{}, errors.New("workspace read line range is invalid")
 	}
-	return ReadLineRange{kind: readLineRangeBounded, start: start, end: end}, nil
+	return ReadLineRange{start: start, end: end}, nil
 }
 
-func (r ReadLineRange) Bounds() (start, end int, err error) {
-	switch r.kind {
-	case readLineRangeWhole:
-		if r.start != 0 || r.end != 0 {
-			return 0, 0, errors.New("whole-file read range carries bounds")
-		}
-		return 0, 0, nil
-	case readLineRangeTail:
-		if r.start <= 0 || r.end != 0 {
-			return 0, 0, errors.New("workspace read tail range is invalid")
-		}
-		return r.start, 0, nil
-	case readLineRangeBounded:
-		if r.start <= 0 || r.end < r.start {
-			return 0, 0, errors.New("workspace read line range is invalid")
-		}
-		return r.start, r.end, nil
-	default:
-		return 0, 0, errors.New("workspace read line range kind is unknown")
-	}
-}
+func (r ReadLineRange) Bounds() (start, end int) { return r.start, r.end }

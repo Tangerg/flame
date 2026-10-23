@@ -62,11 +62,7 @@ func (r ReadRequest) Validate() error {
 	case strings.TrimSpace(r.Path) == "":
 		return errors.New("file read path is empty")
 	default:
-		if _, _, err := r.Range.Bounds(); err != nil {
-			return err
-		}
-		_, err := r.ByteLimit.Bytes()
-		return err
+		return nil
 	}
 }
 
@@ -109,8 +105,7 @@ func (s SearchRequest) Validate() error {
 	if strings.TrimSpace(s.Workspace) == "" || strings.TrimSpace(s.Query) == "" {
 		return errors.New("workspace search requires workspace and query")
 	}
-	_, err := s.Limit.Matches()
-	return err
+	return nil
 }
 
 type SearchResult struct {

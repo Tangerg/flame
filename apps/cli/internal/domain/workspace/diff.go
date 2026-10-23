@@ -39,57 +39,27 @@ type DiffRequest struct {
 	RowLimit  DiffRowLimit
 }
 
-// DiffRowLimit is the optional positive row budget for a structured diff. Its
-// zero value is invalid; callers explicitly choose an absent default or a
-// present positive budget.
-type DiffRowLimit struct {
-	kind requestLimitKind
-	rows int
-}
+// DiffRowLimit is an optional positive row budget. Zero leaves the default
+// with Runtime; construction validates an explicit request once.
+type DiffRowLimit struct{ rows int }
 
-func DefaultDiffRowLimit() DiffRowLimit { return DiffRowLimit{kind: defaultRequestLimit} }
+func DefaultDiffRowLimit() DiffRowLimit { return DiffRowLimit{} }
 
 func NewDiffRowLimit(rows int) (DiffRowLimit, error) {
 	if rows <= 0 {
 		return DiffRowLimit{}, errors.New("workspace diff row limit must be positive")
 	}
-	return DiffRowLimit{kind: explicitRequestLimit, rows: rows}, nil
+	return DiffRowLimit{rows: rows}, nil
 }
 
-func (l DiffRowLimit) Rows() (int, bool, error) {
-	if err := l.Validate(); err != nil {
-		return 0, false, err
-	}
-	return l.rows, l.kind == explicitRequestLimit, nil
-}
-
-func (l DiffRowLimit) Validate() error {
-	switch l.kind {
-	case explicitRequestLimit:
-		if l.rows <= 0 {
-			return errors.New("workspace diff row limit must be positive")
-		}
-		return nil
-	case defaultRequestLimit:
-		if l.rows != 0 {
-			return errors.New("workspace diff default row limit carries a value")
-		}
-		return nil
-	default:
-		return errors.New("workspace diff row limit kind is unknown")
-	}
-}
+func (l DiffRowLimit) Rows() int { return l.rows }
 
 func (d DiffRequest) Validate() error {
 	if strings.TrimSpace(d.Workspace) == "" {
 		return errors.New("workspace diff workspace is empty")
 	}
-	if err := d.RowLimit.Validate(); err != nil {
-		return err
-	}
-	rows, explicit, _ := d.RowLimit.Rows()
 	var limit *int
-	if explicit {
+	if rows := d.RowLimit.Rows(); rows > 0 {
 		limit = &rows
 	}
 	if err := (protocol.GetDiffRequest{

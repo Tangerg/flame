@@ -231,9 +231,9 @@ func TestWorkspaceDiffConsumesModeFormatLimitAndPath(t *testing.T) {
 	host.Shows(t, "base · rows · dir with spaces/main.go")
 	host.Shows(t, "Merge base "+strings.Repeat("1", 40))
 	request := service.lastDiffRequest()
-	rows, explicit, err := request.RowLimit.Rows()
+	rows := request.RowLimit.Rows()
 	if request.Mode != protocol.DiffModeBase || request.Format != protocol.DiffFormatRows ||
-		err != nil || !explicit || rows != 50 || request.Path != "dir with spaces/main.go" {
+		rows != 50 || request.Path != "dir with spaces/main.go" {
 		t.Fatalf("diff request = %+v", request)
 	}
 	stop()
@@ -288,20 +288,20 @@ func TestWorkspaceCommandsConsumeEveryPublishedQueryOption(t *testing.T) {
 		t.Fatalf("file reads = %v, want preview and explicit read", reads)
 	}
 	preview, read := reads[0], reads[1]
-	previewStart, previewEnd, previewErr := preview.Range.Bounds()
-	if previewErr != nil || preview.Path != "dir with spaces/main.go" || previewStart != 1 || previewEnd != 25 {
+	previewStart, previewEnd := preview.Range.Bounds()
+	if preview.Path != "dir with spaces/main.go" || previewStart != 1 || previewEnd != 25 {
 		t.Errorf("preview request = %+v", preview)
 	}
-	searchLimit, searchErr := search.Limit.Matches()
-	if searchErr != nil || search.Path != "internal" || searchLimit != 75 || search.Query != "transition conflict" {
+	searchLimit := search.Limit.Matches()
+	if search.Path != "internal" || searchLimit != 75 || search.Query != "transition conflict" {
 		t.Errorf("search request = %+v", search)
 	}
 	if files.Path != "dir with spaces" || files.Glob != "*.go" || !files.Recursive || !files.IncludeIgnored {
 		t.Errorf("files request = %+v", files)
 	}
-	start, end, rangeErr := read.Range.Bounds()
-	bytes, byteErr := read.ByteLimit.Bytes()
-	if rangeErr != nil || byteErr != nil || read.Path != "dir with spaces/main.go" || start != 10 || end != 20 || bytes != 4096 {
+	start, end := read.Range.Bounds()
+	bytes := read.ByteLimit.Bytes()
+	if read.Path != "dir with spaces/main.go" || start != 10 || end != 20 || bytes != 4096 {
 		t.Errorf("read request = %+v", read)
 	}
 	stop()
@@ -323,9 +323,9 @@ func TestWorkspacePreviewRendersTheAcceptedWindowAndTruncation(t *testing.T) {
 	if len(reads) != 1 {
 		t.Fatalf("reads = %v, want one preview read", reads)
 	}
-	start, end, err := reads[0].Range.Bounds()
-	if err != nil || start != 1 || end != 1000 {
-		t.Fatalf("preview range = (%d, %d, %v), want requested range without a second clamp", start, end, err)
+	start, end := reads[0].Range.Bounds()
+	if start != 1 || end != 1000 {
+		t.Fatalf("preview range = (%d, %d), want requested range without a second clamp", start, end)
 	}
 	stop()
 }

@@ -26,18 +26,16 @@ func TestDiffRequestRequiresStructuredFormatForRowLimit(t *testing.T) {
 func TestDiffRowLimitSeparatesDefaultFromExplicitRows(t *testing.T) {
 	t.Parallel()
 
-	if rows, explicit, err := DefaultDiffRowLimit().Rows(); err != nil || explicit || rows != 0 {
-		t.Fatalf("default Rows = (%d, %t, %v), want absent", rows, explicit, err)
+	if rows := DefaultDiffRowLimit().Rows(); rows != 0 {
+		t.Fatalf("default Rows = %d, want absent", rows)
 	}
 	for _, rows := range []int{0, -1} {
 		if _, err := NewDiffRowLimit(rows); err == nil {
 			t.Fatalf("NewDiffRowLimit(%d) returned no error", rows)
 		}
 	}
-	if err := (DiffRowLimit{}).Validate(); err == nil {
-		t.Fatal("zero DiffRowLimit was accepted")
-	}
-	if err := (DiffRowLimit{kind: defaultRequestLimit, rows: 1}).Validate(); err == nil {
-		t.Fatal("default DiffRowLimit carrying rows was accepted")
+	limit, err := NewDiffRowLimit(42)
+	if err != nil || limit.Rows() != 42 {
+		t.Fatalf("explicit row limit = %d, %v", limit.Rows(), err)
 	}
 }

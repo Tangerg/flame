@@ -156,3 +156,10 @@ func protocolPositiveInt(value int) *int {
 	}
 	return &value
 }
+
+func protocolOptionalPositiveInt(value int) *int {
+	if value == 0 {
+		return nil
+	}
+	return protocolPositiveInt(value)
+}
