@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI batches remain active. A focused long-message fold control now returns focus to its existing message when reflow makes the control unnecessary. Main and delegated messages share this owner. Both original failure paths reproduce in actual Wails; English/light/14 px and Chinese/dark/18 px flows pass, including a 320 px Dock, custom blue, native 200% reflow, file/source return and continued drafts. All 394 test files / 3,135 tests, 20 of 22 post-test Web gates and the supported native check pass. The two remaining guards also fail on the clean pre-change baseline; the aggregate Web command is not green. Native app/data and newly created build/cache outputs are removed. Continue from fresh evidence for another complete task path.
+Updated: 2026-10-23. Continuous UI batches remain active. Historical Edit & rerun now preserves later drafts, attachments and conversation choices. The Composer retains its input and open attachment task when history becomes empty, and edit menus deliver focus after closing. Original native failures and independent regression comparisons establish the causes; final English/light/14 px and Chinese/dark/18 px/blue native flows pass, including 320 px Dock sizing, 200% zoom, delayed completion, a second conversation and a retained paste editor. All 396 test files / 3,175 tests, 20 of 22 post-test Web gates and the supported native check pass. The other two guards fail identically on the clean baseline, so the aggregate Web command remains nonzero. The native app/data and newly created build/cache outputs are removed; main delivery retains exact-source verification and guarded publication cleanup.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `86a9cb45d` and changes only the shared fold owner, its regression tests and this record. The shared transcript and the user's upstream Session, Run and error-reporting contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, including its untracked documentation, remains untouched. Read current remote state again before delivery. The previous milestone pause is superseded by the explicit resume. Continue with fresh source and native evidence for the next complete task path.
+The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `7cc5719c7` and changes the existing Composer draft owner, historical message actions, their menu exit and workbench input placement, regressions, localized feedback and this record. Shared transcript rendering and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. The previous milestone pause is superseded by the explicit resume; continue with fresh source and native evidence after this batch.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -116,7 +116,7 @@ Recent integrated milestones are `c59e7f470` (scope-first Diff and Usage), `863e
 
 Schedules now uses a bounded Add/Edit dialog and a separate deletion decision over the retained catalog. The existing command, captured revision, provider/model catalogs and original-key reconciliation remain authoritative. Focus retirement accounts for catalog reads temporarily disabling record actions, while Add/Templates remain available. Actual Wails acceptance qualified both the shared modal stacking repair and persistent command feedback after scrolling the fields. Detailed coverage and its limits are below.
 
-The primary checkout is `/Users/tangerg/Desktop/flame`, on `main`; the resumed UI batch uses the isolated worktree named above. At the earlier branch-consolidation checkpoint, former local and remote tips were checked for ancestry and retained in `main`. Additional worktrees and their processes are outside this UI batch. Read current Git state before resuming; this document cannot overwrite newer work. Historical paused or blocked states in other chats do not describe the current checkout.
+The primary checkout is `/Users/tangerg/Desktop/flame`; its branch and user-owned changes may advance independently. The resumed UI batch uses the isolated worktree named above. At the earlier branch-consolidation checkpoint, former local and remote tips were checked for ancestry and retained in `main`. Additional worktrees and their processes are outside this UI batch. Read current Git state before resuming; this document cannot overwrite newer work. Historical paused or blocked states in other chats do not describe the current checkout.
 
 Shared `Select` and `ActionMenu` in installed views now use the same inherited visibility fact as product popups. Their open popup retires only when its retained content becomes hidden; moving a visible inspection into a full pane keeps its menu. Revealing content preserves the control, selected value, search and drafts without reopening the retired popup. `packages/ui` owns the one context and retirement mechanism, and the obsolete application copies are removed. Native acceptance covers ordinary collapse, narrow zoom, source/history return and visible Escape, as detailed below.
 
@@ -1202,6 +1202,128 @@ Flame's actual navigation/history, registered input target and retained-view
 lifetimes supply the implementation contracts. Existing Base UI modal semantics
 and better-series focus/layout guidance preserve bounded tasks, source returns,
 typography, semantic colors and the approved visual system.
+
+### Historical editing preserves current authoring
+
+The original Edit & rerun callback replaced whichever draft was current after
+rollback, including later input or another conversation. An unavailable rollback
+also fell through to prefill. Actual Wails reproduced both later-input loss and
+writing the original historical prompt into a subsequently selected conversation.
+A separate native trace found that the first-root rollback replaced the input
+node and left focus on the document body. Menu dismissal could also restore focus
+to Copy message after an edit had entered the Composer.
+
+`composer/adapters/composerStore.ts` now captures its existing storage generation,
+Session, immutable draft and image-intake identity. A completion replaces text
+and attachments atomically only while that captured authoring remains current.
+An image selected while its bytes are pending already retires replacement;
+concurrent image reads still accumulate under their existing lease. Clear and
+successful consume create a distinct empty draft, so later authoring cannot
+revalidate an older capture by returning to the shared empty value. No competing
+draft store, Session epoch or command state was added.
+
+`message-actions/application/messageActions.ts` applies only committed rollback
+results, preferring Runtime's dropped input. A committed result without that
+input retains the existing message-content fallback. A refused replacement keeps
+both conversations' drafts and explains that history was restored while the
+current draft was kept, in all eight locales. In-flight and unavailable results
+leave authoring unchanged. Runtime remains responsible for execution, rollback,
+file restoration, receipts and recovery; this batch changes no protocol or
+persisted format.
+
+`composerStatePorts.ts` enters the existing Composer on explicit intent. Later
+acceptance never focuses it; it adjusts the caret only if that same registered
+input still owns focus. `MessageContextMenu.tsx` delivers its three edit choices
+once after the existing modal menu finishes closing. Its local selection marker
+suppresses only that edit's default final focus and resets on reopening. Copy and
+Escape retain their default return. No timer or extra document listener was added.
+
+`ChatStream.tsx` keeps one Composer subtree in both empty and populated layouts.
+`FloatingComposer.tsx` switches placement while retaining its content, existing
+reading gutters, connection notice and local attachment task. The transcript's
+jump control remains conditional, obsolete overlay measurement is removed on
+retirement, and request identity still resets a new question's answer. This fixes
+the input lifetime instead of adding a later focus recovery effect.
+
+Read-only references: ZCode's actual `packages/ui/src/v4/SessionPane.tsx` keeps one
+keyed ConversationComposer and rechecks its captured Session after asynchronous
+preparation. Its row editing has a separate inline contract. ChatGPT's actual
+`deob/webview/assets/app-primary-44ec287874b7.js` queued-message editor captures
+prompt/context before awaiting and refuses a changed target; this is interface
+code, not an exporter, and is a queue-specific analogy. Flame's immutable draft,
+public Session actions, Base UI modal lifecycle and existing CatalogPicker exit
+pattern supply the implementation. Better-accessibility and better-layout guide
+focus continuity, modal boundaries and the bounded layout.
+
+The authorized subagent supplied the bounded implementation and **7 files / 79
+focused tests** pass. Primary independently restored original sources and then
+restored candidate bytes exactly: the original action path fails **6 of 11**
+cases on actual draft values; the original empty-draft owner fails **4 of 40**;
+the original menu/layout owners fail **10 of 23**. The last group includes six
+menu focus cases, three input-lifetime cases and one new placement contract; the
+placement test is not evidence of an old empty-state jump button. Tests retain
+public feature boundaries, real Composer inputs, question identity and valid
+assertions/deadlines.
+
+Actual Wails production React acceptance uses canonical memory fixtures and a
+controlled **18-second**, then **60-second** rollback response. English/light/
+14 px/Orange qualifies unchanged-draft replacement, later text and caret,
+second-conversation authoring, original-conversation return, direct editing,
+menu Escape, and a later file Go-to-line input that survives completion and
+returns to its own trigger. The unchanged-input path retains the same textarea,
+places the canonical prompt's caret at its end and permits continued input.
+
+Chinese/dark/18 px/custom blue `#007BFF`, motion off, qualifies native window
+resize, keyboard **320 px** Dock sizing and **200%** native zoom. A later 15-line
+paste remains attached; its open editor keeps focus, end scrolling and unsaved
+text while history becomes empty. Escape returns to the original chip, reopening
+confirms cancellation, and Tab returns to the same Composer for continued Chinese
+input. The empty layout and modal controls remain visible and bounded. An initial
+batched UI-automation timeout is excluded; Actual Size and twenty separately
+observed Zoom In actions establish the final 200% result, followed by Actual Size.
+
+These are isolated native interaction results, not a live Runtime/provider or
+durable rollback exercise. Image-read races, storage replacement and clear/send
+identity are covered by regression tests, not native file pickers or Send. Menu
+selection uses keyboard navigation after pointer entry; Shift-F10 at Copy message
+did not open this context menu, so full keyboard entry remains unqualified.
+VoiceOver speech, OS IME, other-platform GUIs, browser visual suites and performance
+benchmarks were not run. Existing child-Run rollback eligibility is a separate
+follow-up: first confirm the actual target and root-only contract, preserving the
+Runtime's valid child-Run fork behavior.
+
+The full Web command passes typechecking, lint, formatting and **396 files /
+3,175 tests** (**207.24 s** for tests), then stops at API-consumer validation
+(**230.65 s** total). That guard's **16** own tests pass, but its removed
+`SIDECAR_METHODS` assumption fails. Running all fifteen remaining gates serially
+passes fourteen; installed Diagnostics ESM drift fails the resource guard. In
+total **20/22** post-test gates pass, including architecture, locales and the
+production bundle. Non-failing loopback connection diagnostics appeared during
+tests; they do not change the test result and their cause was not attributed.
+
+Both exact guard failures reproduce after explicitly restoring all twenty-five
+owned source/document paths to a clean `7cc5719c7` checkout. Candidate bytes were
+restored exactly in a finally block. An earlier disposable clone attempt reached
+a different API source-resolution error through linked workspaces; it is not the
+baseline evidence. No assertion, timeout or guard was weakened. The supported
+`make check-native` passes (**59.44 s**), including Desktop test/vet/build and the
+production Wails arm64 build; the binary reports minimum macOS **13.0**, SDK
+**26.5**. The final documentation is formatted separately after validation.
+
+All twenty-four accepted source hashes remain unchanged across native acceptance,
+module checks and baseline comparison. Staging regenerates six pre-existing
+installed-component differences; their original and generated hashes were
+checked, and only those six owned outputs were restored. They are excluded from
+this UI change. No new dependency, data migration or Runtime plugin reinstallation is
+introduced by the authoring fix.
+
+All owned native/test/build processes exited. The unique app was unregistered;
+its fixture/data, newly created worktree output/cache paths and bundle-specific
+WebKit/cache paths were removed against the pre-launch ownership/birth manifest.
+Pre-existing UI Vite cache, dependencies, global compiler caches, read-only
+references and the user's independently changing checkout remain. The temporary
+main publisher and verification receipts are removed after exact remote-main
+verification; no second repository progress record is retained.
 
 ### Native short-paste continuation qualification
 
@@ -5311,7 +5433,7 @@ beside a visible value.
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
-- The latest goal asks the primary agent to own the overall task model and prefer Claude Code CLI for bounded implementation details. This supersedes the earlier no-Claude preference. The primary agent still owns reference research, implementation review, real Wails acceptance, verification, commits, pushes and cleanup; CLI output is evidence to inspect, not approval to skip those responsibilities.
+- The latest goal asks the primary agent to own the overall task model and prefer a `gpt-6-astra` subagent with `max` reasoning for bounded implementation details. Historical CLI reports in this file describe earlier work. The primary agent owns reference research, decisions, diff review, real Wails acceptance, verification, commits, pushes and cleanup; a subagent report does not replace that acceptance.
 - Apply relevant better-series skills and inspect the references in depth. Preserve StyleX, Base UI, semantic tokens and one fact/one owner. Runtime owns durable product semantics; layout work does not authorize rebuilding those state machines in the client.
 - Batch meaningful changes, then review their combined visual and interaction result. Prioritize development and actual native computer use. The user explicitly asked not to run visual/browser suites and to avoid meaningless tests; retain necessary regression coverage and module checks, and reuse valid results when source and dependencies have not changed.
 - A `plugins/*/component` change is not verified by `cd plugins && npm run check` alone: `apps/web/visual/*.test.tsx` imports several plugin sources directly (`../../../plugins/<name>/component/component`) and encodes their behavioural contracts (diff, schedules, memory, usage, …). Run `vitest run visual` (or the affected `visual/*.test.tsx`) for any dock plugin edit before committing; treat a broken contract as a signal to reconsider the change, not just to update the test.

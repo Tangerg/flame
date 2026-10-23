@@ -71,6 +71,8 @@ export const ja: Record<string, string> = {
   "approval.what.subagent": "サブエージェントに委任",
   "approval.what.generic": "{{tool}} を実行",
   "session.regenerate.switchedAway": "再生成の完了前に切り替えたため、何も再送信されませんでした。",
+  "session.editRerun.draftRetained":
+    "元の会話の履歴を復元しました。現在の下書きは保持されています。",
   "session.restore.files": "作業ツリーをこのチェックポイントに復元しました。",
   "session.restore.both": "会話とファイルをこのチェックポイントに復元しました。",
   "session.restore.history": "会話をこのチェックポイントまで巻き戻しました。",

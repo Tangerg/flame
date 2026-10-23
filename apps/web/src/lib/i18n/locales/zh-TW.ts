@@ -68,6 +68,7 @@ export const zhTW: Record<string, string> = {
   "approval.what.subagent": "委派給子代理",
   "approval.what.generic": "執行 {{tool}}",
   "session.regenerate.switchedAway": "重新產生完成前已切換工作階段 —— 沒有重新送出任何內容。",
+  "session.editRerun.draftRetained": "原對話的歷史記錄已還原，目前的草稿保持不變。",
   "session.restore.files": "工作目錄檔案已還原至此檢查點。",
   "session.restore.both": "對話與檔案已還原至此檢查點。",
   "session.restore.history": "對話已回復至此檢查點。",

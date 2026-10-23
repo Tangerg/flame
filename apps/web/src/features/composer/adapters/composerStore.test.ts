@@ -102,3 +102,155 @@ describe("captured authoring lifetime", () => {
     expect(composer().composer.draft.images[0]?.data).toBe("successor-image");
   });
 });
+
+describe("captured draft replacement", () => {
+  beforeEach(() => {
+    composer().loadSession("replace-draft");
+    composer().replaceDraft({ text: "original draft" });
+  });
+
+  it("replaces the unchanged draft and its attachments in one publication", () => {
+    composer().addPaste("old paste");
+    composer().addImages([{ mime: "image/png", data: "old-image" }]);
+    const replace = composer().captureDraftReplacement();
+    const observed = vi.fn();
+    const unsubscribe = useComposerStore.subscribe((state) => observed(state.composer.draft));
+
+    try {
+      expect(
+        replace({ text: "canonical input", images: [{ mime: "image/jpeg", data: "new-image" }] }),
+      ).toBe(true);
+      expect(observed).toHaveBeenCalledOnce();
+      expect(composer().composer.draft).toMatchObject({
+        value: "canonical input",
+        images: [{ mime: "image/jpeg", data: "new-image" }],
+        pastes: [],
+      });
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it("retains a later text revision even if it returns to the captured text", () => {
+    const replace = composer().captureDraftReplacement();
+    composer().setValue("later draft");
+    composer().setValue("original draft");
+    const later = composer().composer.draft;
+
+    expect(replace({ text: "history input" })).toBe(false);
+    expect(composer().composer.draft).toBe(later);
+  });
+
+  it("retires an empty draft replacement after later authoring is cleared", () => {
+    composer().loadSession("empty-replacement-clear");
+    const replace = composer().captureDraftReplacement();
+    composer().setValue("authored later");
+    composer().clear();
+
+    expect(replace({ text: "history input" })).toBe(false);
+    expect(composer().composer.draft.value).toBe("");
+  });
+
+  it("retires an empty draft replacement after later authoring is consumed", () => {
+    composer().loadSession("empty-replacement-consume");
+    const replace = composer().captureDraftReplacement();
+    composer().setValue("submitted later");
+    const submission = composer().captureSubmission();
+
+    expect(submission.consume("submitted later")).toBe(true);
+    expect(replace({ text: "history input" })).toBe(false);
+    expect(composer().composer.draft.value).toBe("");
+  });
+
+  it.each(["paste", "image"])("retains a later %s attachment", (kind) => {
+    const replace = composer().captureDraftReplacement();
+    if (kind === "paste") composer().addPaste("later paste");
+    else composer().addImages([{ mime: "image/png", data: "later-image" }]);
+    const later = composer().composer.draft;
+
+    expect(replace({ text: "history input" })).toBe(false);
+    expect(composer().composer.draft).toBe(later);
+  });
+
+  it("leaves both Session drafts unchanged after switching away", () => {
+    const original = composer().composer.draft;
+    const replace = composer().captureDraftReplacement();
+    composer().loadSession("another-session");
+    composer().replaceDraft({ text: "another draft" });
+    const current = composer().composer.draft;
+
+    expect(replace({ text: "history input" })).toBe(false);
+    expect(composer().composer.draft).toBe(current);
+    composer().loadSession("replace-draft");
+    expect(composer().composer.draft).toBe(original);
+  });
+
+  it("retires replacement after the storage target changes away and back", () => {
+    activateComposerStorage("https://replace-draft-a.test");
+    composer().loadSession("same-session");
+    composer().setValue("original target");
+    const replace = composer().captureDraftReplacement();
+    activateComposerStorage("https://replace-draft-b.test");
+    composer().loadSession("same-session");
+    composer().setValue("successor target");
+    activateComposerStorage("https://replace-draft-a.test");
+    composer().loadSession("same-session");
+
+    expect(replace({ text: "history input" })).toBe(false);
+    expect(composer().composer.draft.value).toBe("original target");
+  });
+
+  it("retains an image selected after capture while its bytes are still pending", async () => {
+    const reading =
+      Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
+    const replace = composer().captureDraftReplacement();
+    composer().addImageFiles([new File([""], "later.png")]);
+
+    expect(replace({ text: "history input" })).toBe(false);
+    expect(composer().composer.draft.value).toBe("original draft");
+    reading.resolve({ mime: "image/png", data: "later-image", name: "later.png" });
+    await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(1));
+    expect(composer().composer.draft.images[0]?.data).toBe("later-image");
+  });
+
+  it("detects a newer intake while an earlier image is already pending", async () => {
+    const first = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    const second = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    vi.spyOn(imageInput, "fileToInputImage")
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    composer().addImageFiles([new File([""], "first.png")]);
+    const replace = composer().captureDraftReplacement();
+    composer().addImageFiles([new File([""], "second.png")]);
+
+    expect(replace({ text: "history input" })).toBe(false);
+    second.resolve({ mime: "image/png", data: "second-image", name: "second.png" });
+    first.resolve({ mime: "image/png", data: "first-image", name: "first.png" });
+    await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(2));
+    expect(composer().composer.draft.value).toBe("original draft");
+    expect(composer().composer.draft.images.map((image) => image.data)).toEqual([
+      "second-image",
+      "first-image",
+    ]);
+  });
+
+  it("accumulates ordinary image imports that settle in reverse order", async () => {
+    const first = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    const second = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    vi.spyOn(imageInput, "fileToInputImage")
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    composer().addImageFiles([new File([""], "first.png")]);
+    composer().addImageFiles([new File([""], "second.png")]);
+
+    second.resolve({ mime: "image/png", data: "second-image", name: "second.png" });
+    await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(1));
+    first.resolve({ mime: "image/png", data: "first-image", name: "first.png" });
+    await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(2));
+    expect(composer().composer.draft.images.map((image) => image.data)).toEqual([
+      "second-image",
+      "first-image",
+    ]);
+  });
+});

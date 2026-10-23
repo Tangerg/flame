@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type Message } from "@/features/agent/public/sessionView";
-import { type ReactElement, type ReactNode } from "react";
+import { type ReactElement, type ReactNode, useRef } from "react";
 import { ContextMenu } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { vocab } from "@flame/ui";
@@ -25,15 +25,27 @@ interface Props {
 
 export function MessageContextMenu({ msg, label, children }: Props) {
   const t = useT();
+  const selection = useRef<{ edit: (() => void) | undefined } | null>(null);
   const copy = messageCopyPayloads(msg);
   const canRestoreFiles = runtimeCapability("checkpoints");
   const conversation = useActiveConversationMessages();
   const menu = messageContextMenuModel({ msg, copy, canRestoreFiles, conversation });
 
   return (
-    <ContextMenu.Root>
+    <ContextMenu.Root
+      onOpenChange={(open) => {
+        if (open) selection.current = null;
+      }}
+      onOpenChangeComplete={(open) => {
+        if (open) return;
+        // Keep the selection marker until the menu has settled final focus.
+        const edit = selection.current?.edit;
+        if (selection.current) selection.current.edit = undefined;
+        edit?.();
+      }}
+    >
       <ContextMenu.Trigger render={children as ReactElement} />
-      <ContextMenu.Content aria-label={label}>
+      <ContextMenu.Content aria-label={label} finalFocus={() => selection.current === null}>
         {menu.copyMarkdown && (
           <ContextMenu.IconItem
             icon="copy"
@@ -60,19 +72,33 @@ export function MessageContextMenu({ msg, label, children }: Props) {
           <>
             <Separator />
             {menu.user.editInComposer && (
-              <ContextMenu.IconItem icon="edit" onSelect={() => editMessageInComposer(msg)}>
+              <ContextMenu.IconItem
+                icon="edit"
+                onSelect={() => {
+                  selection.current = { edit: () => editMessageInComposer(msg) };
+                }}
+              >
                 {t("msgActions.editInComposer")}
               </ContextMenu.IconItem>
             )}
             {menu.user.editRerun && (
-              <ContextMenu.IconItem icon="loop" onSelect={() => editAndRerunMessage(msg)}>
+              <ContextMenu.IconItem
+                icon="loop"
+                onSelect={() => {
+                  selection.current = { edit: () => editAndRerunMessage(msg) };
+                }}
+              >
                 {t("msgActions.editRerun")}
               </ContextMenu.IconItem>
             )}
             {menu.user.editRerunRestore && (
               <ContextMenu.IconItem
                 icon="history"
-                onSelect={() => editAndRerunMessage(msg, { restoreFiles: true })}
+                onSelect={() => {
+                  selection.current = {
+                    edit: () => editAndRerunMessage(msg, { restoreFiles: true }),
+                  };
+                }}
               >
                 {t("msgActions.editRerunRestore")}
               </ContextMenu.IconItem>

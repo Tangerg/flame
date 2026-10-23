@@ -15,6 +15,8 @@ export interface ComposerSubmission {
   consume(historyText?: string): boolean;
 }
 
+export type ComposerDraftReplacement = (input: ComposerDraftInput) => boolean;
+
 interface ComposerStatePort {
   focus(selectionEnd?: number): void;
   captureFocus(): () => void;
@@ -23,6 +25,7 @@ interface ComposerStatePort {
   useSetText(): (value: string) => void;
   captureSubmission(): ComposerSubmission;
   replaceDraft(input: ComposerDraftInput): void;
+  beginDraftReplacement(): ComposerDraftReplacement;
   appendText(text: string): void;
   useImages(): readonly ComposerImage[];
   usePastes(): readonly PastedText[];

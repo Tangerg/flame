@@ -71,6 +71,7 @@ export const ko: Record<string, string> = {
   "approval.what.generic": "{{tool}} 실행",
   "session.regenerate.switchedAway":
     "재생성이 끝나기 전에 이동했습니다 — 아무것도 다시 전송되지 않았습니다.",
+  "session.editRerun.draftRetained": "원래 대화의 기록을 복원했습니다. 현재 초안은 유지되었습니다.",
   "session.restore.files": "작업 트리를 이 체크포인트로 복원했습니다.",
   "session.restore.both": "대화와 파일을 이 체크포인트로 복원했습니다.",
   "session.restore.history": "대화를 이 체크포인트로 되돌렸습니다.",

@@ -1,5 +1,4 @@
 import * as stylex from "@stylexjs/stylex";
-import { cn } from "@/lib/classNames";
 import { tupleKey } from "@/lib/tupleKey";
 import { type AgentInput } from "@/features/agent/public/input";
 import { memo, useLayoutEffect, useMemo, useRef } from "react";
@@ -13,7 +12,7 @@ import {
 import { useStreamRevealStore } from "@/features/chat/public/message/streamReveal";
 import { ChatErrorBoundary } from "@/features/shell/workbench/panel/ChatErrorBoundary";
 import { ComposerSurface } from "@/features/shell/workbench/panel/ComposerSurface";
-import { ComposerStack, FloatingComposer } from "@/features/shell/workbench/panel/FloatingComposer";
+import { FloatingComposer } from "@/features/shell/workbench/panel/FloatingComposer";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import { COMPOSER_OVERLAY_PROPERTY } from "@/features/shell/workbench/panel/composerOverlay";
 import { CwdMissingBanner } from "@/features/shell/workbench/panel/CwdMissingBanner";
@@ -147,54 +146,41 @@ export function ChatStream({ onSend }: Props) {
     observer.observe(overlay);
     return () => {
       observer.disconnect();
+      pane.style.removeProperty(COMPOSER_OVERLAY_PROPERTY);
     };
   }, [started, visible]);
 
-  if (!started) {
-    const emptyPane = stylex.props(cst.empty);
-    const readingBox = stylex.props(rc.box, rc.gutter);
-    return (
-      <>
-        <ChatBanners sessionId={sessionId} />
-        <div {...emptyPane}>
+  return (
+    <div ref={paneRef} {...stylex.props(sh.paneAnchored, cst.queryable)}>
+      <ChatBanners sessionId={sessionId} />
+      <div {...stylex.props(sh.paneAnchored, !started && cst.empty)}>
+        {started && (
+          <>
+            <div data-slot="chat-rail" {...stylex.props(cst.rail)}>
+              <Slot name="chat.rail.start" />
+            </div>
+            <div {...stylex.props(sh.paneAnchored)}>
+              <ChatErrorBoundary resetKey={sessionId} label={`session:${sessionId}`}>
+                <MessageStream rows={rows} ctx={ctx} sessionId={sessionId} />
+              </ChatErrorBoundary>
+            </div>
+          </>
+        )}
+        {!started && (
           <div {...stylex.props(rc.box, rc.gutter)}>
             <h2 {...stylex.props(cst.heading, typeStep.displayMd)}>
               <EmptyChatHeading />
             </h2>
           </div>
-          <div {...stylex.props(rc.box, rc.gutter)}>
-            <ComposerStack>{composer}</ComposerStack>
-          </div>
-          <div
-            {...readingBox}
-            className={cn(stylex.props(cst.hideWhenEmpty).className, readingBox.className)}
-          >
+        )}
+        <FloatingComposer overlayRef={composerOverlayRef} floating={started}>
+          {composer}
+        </FloatingComposer>
+        {!started && (
+          <div {...stylex.props(rc.box, rc.gutter, cst.hideWhenEmpty)}>
             <Slot name="chat.empty" />
           </div>
-        </div>
-      </>
-    );
-  }
-
-  const pane = stylex.props(sh.paneAnchored);
-  return (
-    <div
-      ref={paneRef}
-      {...pane}
-      className={cn(stylex.props(cst.queryable).className, pane.className)}
-    >
-      <ChatBanners sessionId={sessionId} />
-      <div {...stylex.props(sh.paneAnchored)}>
-        <div data-slot="chat-rail" {...stylex.props(cst.rail)}>
-          <Slot name="chat.rail.start" />
-        </div>
-        <div {...stylex.props(sh.paneAnchored)}>
-          <ChatErrorBoundary resetKey={sessionId} label={`session:${sessionId}`}>
-            <MessageStream rows={rows} ctx={ctx} sessionId={sessionId} />
-          </ChatErrorBoundary>
-        </div>
-
-        <FloatingComposer overlayRef={composerOverlayRef}>{composer}</FloatingComposer>
+        )}
       </div>
     </div>
   );

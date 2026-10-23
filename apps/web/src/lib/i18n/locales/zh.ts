@@ -68,6 +68,7 @@ export const zh: Record<string, string> = {
   "approval.what.subagent": "委派给子智能体",
   "approval.what.generic": "执行 {{tool}}",
   "session.regenerate.switchedAway": "重新生成完成前已切换会话 —— 没有重新发送任何内容。",
+  "session.editRerun.draftRetained": "原会话的历史已恢复，当前草稿保持不变。",
   "session.restore.files": "工作区文件已恢复到该检查点。",
   "session.restore.both": "对话与文件已恢复到该检查点。",
   "session.restore.history": "对话已回退到该检查点。",

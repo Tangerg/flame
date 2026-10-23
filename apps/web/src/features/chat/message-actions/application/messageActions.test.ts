@@ -1,25 +1,34 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Message } from "@/features/agent/public/sessionView";
+import { selectAgentSession } from "@/features/agent/public/session";
 import {
   editAndRerunMessage,
   regenerateMessage,
 } from "@/features/chat/message-actions/application/messageActions";
+import { notifyInfo } from "@/features/notifications/public/notifications";
+import * as imageInput from "@/features/composer/public/input";
+import {
+  appendToComposerDraft,
+  captureComposerSubmission,
+  replaceComposerDraft,
+} from "@/features/composer/public/draft";
+import {
+  useAddComposerImageFiles,
+  useAddComposerPaste,
+} from "@/features/composer/public/attachments";
 const model = vi.hoisted(() => ({
   conversation: null as { sessionId: string; messages: Message[] } | null,
   rollback: vi.fn(),
   send: vi.fn(),
-  replaceDraft: vi.fn(),
 }));
 
-vi.mock("@/features/agent/public/session", () => ({
+vi.mock("@/features/agent/public/session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
   activeAgentConversation: () => model.conversation,
   forkAgentSessionAtRun: vi.fn(),
   rollbackSessionToBeforeRun: model.rollback,
   sendToAgentSession: model.send,
-}));
-
-vi.mock("@/features/composer/public/draft", () => ({
-  replaceComposerDraft: model.replaceDraft,
 }));
 
 vi.mock("@/features/notifications/public/notifications", async (importOriginal) => {
@@ -35,8 +44,10 @@ vi.mock("@/lib/rpcErrors", () => ({ describeRpcError: () => undefined }));
 beforeEach(() => {
   model.rollback.mockReset();
   model.send.mockReset();
-  model.replaceDraft.mockReset();
   model.send.mockReturnValue(true);
+  vi.mocked(notifyInfo).mockClear();
+  selectAgentSession("ses_1");
+  replaceComposerDraft({ text: "waiting draft" });
   const prompt = message({
     id: "user_1",
     role: "user",
@@ -48,6 +59,16 @@ beforeEach(() => {
     messages: [prompt, message({ id: "assistant_1", runId: "run_1" })],
   };
 });
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+function readDraft() {
+  const { value, images, pastes } = captureComposerSubmission();
+  return { value, images, pastes };
+}
 
 describe("message history actions", () => {
   it("regenerates from the Runtime-authored dropped input", async () => {
@@ -95,12 +116,103 @@ describe("message history actions", () => {
 
     editAndRerunMessage(model.conversation!.messages[0]!);
 
-    await vi.waitFor(() =>
-      expect(model.replaceDraft).toHaveBeenCalledWith({
-        text: "canonical edit",
-        images: [{ mime: "image/jpeg", data: "anBlZw==" }],
-      }),
-    );
+    await vi.waitFor(() => expect(readDraft().value).toBe("canonical edit"));
+    expect(readDraft().images).toMatchObject([{ mime: "image/jpeg", data: "anBlZw==" }]);
+    expect(notifyInfo).not.toHaveBeenCalled();
+  });
+
+  it("uses the message content when a committed rollback has no dropped input", async () => {
+    model.rollback.mockResolvedValue({ status: "committed" });
+
+    editAndRerunMessage(model.conversation!.messages[0]!);
+
+    await vi.waitFor(() => expect(readDraft().value).toBe("stale projection"));
+  });
+
+  it.each(["unavailable", "inFlight"])("does not prefill an %s rollback", async (status) => {
+    model.rollback.mockResolvedValue({ status });
+    const before = readDraft();
+
+    editAndRerunMessage(model.conversation!.messages[0]!);
+    await model.rollback.mock.results[0]!.value;
+
+    expect(readDraft()).toEqual(before);
+    expect(notifyInfo).not.toHaveBeenCalled();
+  });
+
+  it.each(["text", "paste", "image"])(
+    "preserves later %s authoring when rollback finishes",
+    async (kind) => {
+      const rollback = Promise.withResolvers<{ status: "committed" }>();
+      const { result } = renderHook(() => ({
+        addPaste: useAddComposerPaste(),
+        addImageFiles: useAddComposerImageFiles(),
+      }));
+      vi.spyOn(imageInput, "fileToInputImage").mockResolvedValue({
+        mime: "image/png",
+        data: "later-image",
+        name: "later.png",
+      });
+      model.rollback.mockReturnValue(rollback.promise);
+      editAndRerunMessage(model.conversation!.messages[0]!);
+      await act(async () => {
+        if (kind === "text") appendToComposerDraft("later draft");
+        else if (kind === "paste") result.current.addPaste("later source text");
+        else result.current.addImageFiles([new File([""], "later.png")]);
+      });
+      const later = readDraft();
+      expect(later.images).toHaveLength(kind === "image" ? 1 : 0);
+      expect(later.pastes).toHaveLength(kind === "paste" ? 1 : 0);
+
+      rollback.resolve({ status: "committed" });
+      await rollback.promise;
+
+      expect(readDraft()).toEqual(later);
+      expect(notifyInfo).toHaveBeenCalledWith("session.editRerun.draftRetained", {
+        source: "session",
+      });
+    },
+  );
+
+  it("does not replace either Session's draft after switching away", async () => {
+    const rollback = Promise.withResolvers<{ status: "committed" }>();
+    model.rollback.mockReturnValue(rollback.promise);
+    const original = readDraft();
+    editAndRerunMessage(model.conversation!.messages[0]!);
+    selectAgentSession("ses_2");
+    replaceComposerDraft({ text: "keep this second draft" });
+    const current = readDraft();
+
+    rollback.resolve({ status: "committed" });
+    await rollback.promise;
+
+    expect(readDraft()).toEqual(current);
+    selectAgentSession("ses_1");
+    expect(readDraft()).toEqual(original);
+    expect(notifyInfo).toHaveBeenCalledOnce();
+  });
+
+  it("preserves an image selected while rollback is pending", async () => {
+    const rollback = Promise.withResolvers<{ status: "committed" }>();
+    const reading =
+      Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
+    const { result } = renderHook(useAddComposerImageFiles);
+    model.rollback.mockReturnValue(rollback.promise);
+    editAndRerunMessage(model.conversation!.messages[0]!);
+    act(() => result.current([new File([""], "later.png")]));
+    const waiting = readDraft();
+
+    rollback.resolve({ status: "committed" });
+    await rollback.promise;
+
+    expect(readDraft()).toEqual(waiting);
+    expect(notifyInfo).toHaveBeenCalledOnce();
+    reading.resolve({ mime: "image/png", data: "later-image", name: "later.png" });
+    await vi.waitFor(() => expect(readDraft().images).toHaveLength(1));
+
+    expect(readDraft().value).toBe("waiting draft");
+    expect(readDraft().images[0]?.data).toBe("later-image");
   });
 });
 

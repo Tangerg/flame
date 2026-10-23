@@ -44,6 +44,8 @@ const fc = stylex.create({
     display: "flex",
     minHeight: 0,
     flexDirection: "column",
+  },
+  floatingFloor: {
     paddingBottom: { default: space.s3, "@container conversation (min-width: 640px)": space.s4 },
   },
 });
@@ -92,7 +94,7 @@ function ComposerOverlayTop() {
   return <Slot name="composer.overlay.top" wrapper className={stylex.props(fc.tray).className} />;
 }
 
-export function ComposerStack({ children }: { children: ReactNode }) {
+function ComposerStack({ children }: { children: ReactNode }) {
   return (
     <>
       <RuntimeConnectionNotice />
@@ -104,16 +106,18 @@ export function ComposerStack({ children }: { children: ReactNode }) {
 
 export function FloatingComposer({
   overlayRef,
+  floating,
   children,
 }: {
   overlayRef: RefObject<HTMLDivElement | null>;
+  floating: boolean;
   children: ReactNode;
 }) {
   return (
-    <div ref={overlayRef} {...stylex.props(fc.overlay, rc.box)}>
-      <div {...stylex.props(rc.gutter, fc.floor)}>
+    <div ref={overlayRef} {...stylex.props(rc.box, floating && fc.overlay)}>
+      <div {...stylex.props(rc.gutter, fc.floor, floating && fc.floatingFloor)}>
         <div {...stylex.props(fc.holder)}>
-          <JumpToBottomButton />
+          {floating && <JumpToBottomButton />}
           <ComposerStack>{children}</ComposerStack>
         </div>
       </div>

@@ -66,6 +66,16 @@ describe("Composer", () => {
     expect(active.activate("s1")).toBe(active);
   });
 
+  it("gives each explicit clear a new empty draft", () => {
+    const original = Composer.empty().activate("s1");
+    const cleared = original.clear();
+    const clearedAgain = cleared.clear();
+
+    expect(cleared.draft.value).toBe("");
+    expect(cleared.draft).not.toBe(original.draft);
+    expect(clearedAgain.draft).not.toBe(cleared.draft);
+  });
+
   it("persists only non-empty draft text", () => {
     const composer = typed(Composer.empty().activate("s1"), "kept").activate("s2");
     expect([...composer.durableDraftTexts()]).toEqual([["s1", { value: "kept", pastes: [] }]]);
@@ -123,6 +133,16 @@ describe("ComposerDraft pastes", () => {
 });
 
 describe("captured composer consumption", () => {
+  it("does not reuse an earlier empty draft after consuming later authoring", () => {
+    const original = Composer.empty().activate("s1");
+    const authored = typed(original, "submitted later");
+    const accepted = authored.consumeDraft("s1", authored.draft, "submitted later");
+
+    expect(accepted.draft.value).toBe("");
+    expect(accepted.draft).not.toBe(original.draft);
+    expect(accepted.recallOlder()?.draft.value).toBe("submitted later");
+  });
+
   it("clears only the submitted revision and records its history", () => {
     const original = typed(Composer.empty().activate("s1"), "original");
     const accepted = original.consumeDraft("s1", original.draft, "original");

@@ -71,6 +71,8 @@ export const en: Record<string, string> = {
   "approval.what.generic": "Run {{tool}}",
   "session.regenerate.switchedAway":
     "Switched away before regenerate finished — nothing was resent.",
+  "session.editRerun.draftRetained":
+    "History was restored in the original conversation. Your current draft was kept.",
   "session.restore.files": "Working tree restored to this checkpoint.",
   "session.restore.both": "Conversation and files restored to this checkpoint.",
   "session.restore.history": "Conversation rewound to this checkpoint.",

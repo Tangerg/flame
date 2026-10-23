@@ -39,14 +39,14 @@ vi.mock("motion/react", () => ({
 }));
 
 vi.mock("@/features/shell/workbench/panel/JumpToBottomButton", () => ({
-  JumpToBottomButton: () => null,
+  JumpToBottomButton: () => <button>Jump to latest message</button>,
 }));
 
 vi.mock("@/features/workspace/public/navigation", () => ({
   openWorkspaceSettingsPane: navigation.openSettings,
 }));
 
-describe("FloatingComposer Runtime connection material", () => {
+describe.each([true, false])("Composer Runtime connection material (floating=%s)", (floating) => {
   beforeEach(() => {
     runtime.snapshot.phase = "reconnecting";
     runtime.snapshot.failure = null;
@@ -55,7 +55,7 @@ describe("FloatingComposer Runtime connection material", () => {
 
   it("explains withdrawn command rights while the exact connection recovers", () => {
     render(
-      <FloatingComposer overlayRef={createRef<HTMLDivElement>()}>
+      <FloatingComposer overlayRef={createRef<HTMLDivElement>()} floating={floating}>
         <div>Composer</div>
       </FloatingComposer>,
     );
@@ -67,7 +67,7 @@ describe("FloatingComposer Runtime connection material", () => {
     runtime.snapshot.phase = "checking";
 
     render(
-      <FloatingComposer overlayRef={createRef<HTMLDivElement>()}>
+      <FloatingComposer overlayRef={createRef<HTMLDivElement>()} floating={floating}>
         <div>Composer</div>
       </FloatingComposer>,
     );
@@ -81,7 +81,7 @@ describe("FloatingComposer Runtime connection material", () => {
     runtime.snapshot.failure = { reason: "failed", detail: "connection refused" };
 
     render(
-      <FloatingComposer overlayRef={createRef<HTMLDivElement>()}>
+      <FloatingComposer overlayRef={createRef<HTMLDivElement>()} floating={floating}>
         <div>Composer</div>
       </FloatingComposer>,
     );
@@ -90,4 +90,26 @@ describe("FloatingComposer Runtime connection material", () => {
     fireEvent.click(screen.getByRole("button", { name: "Connection settings" }));
     expect(navigation.openSettings).toHaveBeenCalledWith("connection");
   });
+});
+
+it("shows the jump control only while floating without replacing its content", () => {
+  const overlay = createRef<HTMLDivElement>();
+  const view = render(
+    <FloatingComposer overlayRef={overlay} floating>
+      <input aria-label="Authoring input" defaultValue="Keep this input" />
+    </FloatingComposer>,
+  );
+  const input = screen.getByRole("textbox", { name: "Authoring input" });
+  const originalOverlay = overlay.current;
+  expect(screen.getByRole("button", { name: "Jump to latest message" })).toBeTruthy();
+
+  view.rerender(
+    <FloatingComposer overlayRef={overlay} floating={false}>
+      <input aria-label="Authoring input" defaultValue="Keep this input" />
+    </FloatingComposer>,
+  );
+
+  expect(screen.queryByRole("button", { name: "Jump to latest message" })).toBeNull();
+  expect(screen.getByRole("textbox", { name: "Authoring input" })).toBe(input);
+  expect(overlay.current).toBe(originalOverlay);
 });

@@ -6,12 +6,13 @@ import { countLines } from "@/features/composer/public/largePaste";
 import { t } from "@/lib/i18n/index";
 import { ScopedPersistence } from "@/lib/persistedStore";
 import { notifyError } from "@/features/notifications/public/notifications";
-import { type ComposerImage } from "@/features/composer/domain/draft";
+import { type ComposerDraftInput, type ComposerImage } from "@/features/composer/domain/draft";
 import {
+  type ComposerDraftReplacement,
   type ComposerModelPreference,
   type ComposerSubmission,
 } from "@/features/composer/application/ports/state";
-import { Composer } from "@/features/composer/domain/composer";
+import { Composer, ComposerDraft } from "@/features/composer/domain/composer";
 import {
   parsePersistedComposer,
   persistedComposerDrafts,
@@ -28,6 +29,8 @@ interface ComposerActions {
   setModel: (preference: ComposerModelPreference) => void;
   clear: () => void;
   captureSubmission: () => ComposerSubmission;
+  replaceDraft: (input: ComposerDraftInput) => void;
+  captureDraftReplacement: () => ComposerDraftReplacement;
   addImages: (images: readonly Omit<ComposerImage, "id">[]) => void;
   addImageFiles: (files: File[]) => void;
   removeImage: (id: string) => void;
@@ -43,7 +46,7 @@ interface ComposerActions {
 
 const persistence = new ScopedPersistence<ComposerState>(STORAGE_KEY);
 
-const imageStaging = new Map<string, object>();
+const imageStaging = new Map<string, { latestIntake: object }>();
 
 let storageGeneration: object = {};
 
@@ -83,6 +86,29 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
             },
           };
         },
+        replaceDraft: (input) => {
+          imageStaging.delete(get().composer.activeSessionId);
+          const images = (input.images ?? []).map((image) => ({ id: nanoid(), ...image }));
+          edit(() => ComposerDraft.restoreText(input.text).withImages(images));
+        },
+        captureDraftReplacement: () => {
+          const generation = storageGeneration;
+          const { activeSessionId: sessionId, draft } = get().composer;
+          const imageIntake = imageStaging.get(sessionId)?.latestIntake;
+          return (input) => {
+            if (generation !== storageGeneration) return false;
+            const current = get();
+            if (
+              current.composer.activeSessionId !== sessionId ||
+              current.composer.draft !== draft ||
+              imageStaging.get(sessionId)?.latestIntake !== imageIntake
+            ) {
+              return false;
+            }
+            current.replaceDraft(input);
+            return true;
+          };
+        },
         addImages: (images) =>
           edit((draft) =>
             draft.withImages([
@@ -91,8 +117,11 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
             ]),
           ),
         addImageFiles: (files) => {
+          if (files.length === 0) return;
           const sessionId = get().composer.activeSessionId;
-          const lease = imageStaging.get(sessionId) ?? {};
+          const intake = {};
+          const lease = imageStaging.get(sessionId) ?? { latestIntake: intake };
+          lease.latestIntake = intake;
           imageStaging.set(sessionId, lease);
           void Promise.allSettled(files.map(fileToInputImage)).then((results) => {
             if (

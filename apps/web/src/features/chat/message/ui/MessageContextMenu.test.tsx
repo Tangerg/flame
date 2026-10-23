@@ -1,15 +1,37 @@
 import { type Message } from "@/features/agent/public/sessionView";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useEffect, useRef } from "react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { captureComposerSubmission, replaceComposerDraft } from "@/features/composer/public/draft";
+import {
+  captureComposerSubmission,
+  replaceComposerDraft,
+  useComposerText,
+  useSetComposerText,
+} from "@/features/composer/public/draft";
+import { registerComposerFocusTarget } from "@/features/composer/public/focus";
+import { selectAgentSession } from "@/features/agent/public/session";
+import { writeToClipboard } from "@/lib/clipboard";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { MessageContextMenu } from "@/features/chat/message/ui/MessageContextMenu";
-const material = vi.hoisted(() => ({ messages: [] as Message[] }));
+const material = vi.hoisted(() => ({ messages: [] as Message[], rollback: vi.fn() }));
 
 vi.mock("@/features/agent/public/conversation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/conversation")>()),
   useActiveConversationMessages: () => material.messages,
 }));
+
+vi.mock("@/features/agent/public/session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
+  activeAgentConversation: () => ({ sessionId: "menu-session", messages: material.messages }),
+  rollbackSessionToBeforeRun: material.rollback,
+}));
+
+vi.mock("@/features/connection/public/capabilities", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/connection/public/capabilities")>()),
+  runtimeCapability: () => true,
+}));
+
+vi.mock("@/lib/clipboard", () => ({ writeToClipboard: vi.fn().mockResolvedValue(true) }));
 
 function buildMessage({ runId = null, ...overrides }: Partial<Message> = {}): Message {
   return {
@@ -26,9 +48,61 @@ function openMenu(triggerLabel: string): void {
   fireEvent.contextMenu(screen.getByText(triggerLabel));
 }
 
+function DraftInput() {
+  const input = useRef<HTMLTextAreaElement>(null);
+  const value = useComposerText();
+  const setValue = useSetComposerText();
+  useEffect(() => registerComposerFocusTarget(input.current), []);
+  return (
+    <textarea
+      ref={input}
+      aria-label="Composer draft"
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+    />
+  );
+}
+
+function mountFocusMenu() {
+  const msg = buildMessage({ runId: "run-1" });
+  material.messages = [msg];
+  render(
+    <>
+      <button>Copy message</button>
+      <MessageContextMenu msg={msg} label="You">
+        <div>message body</div>
+      </MessageContextMenu>
+      <DraftInput />
+      <button>Later control</button>
+    </>,
+  );
+  return screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" });
+}
+
+async function settleMenu() {
+  await act(async () => {
+    await drainBrowserTasks();
+  });
+}
+
+async function openFocusMenu() {
+  const origin = screen.getByRole("button", { name: "Copy message" });
+  act(() => origin.focus());
+  openMenu("message body");
+  await settleMenu();
+  return origin;
+}
+
 describe("messageContextMenu", () => {
   beforeEach(() => {
     material.messages = [];
+    material.rollback.mockReset().mockResolvedValue({
+      status: "committed",
+      userInput: { parts: [{ kind: "text", text: "history edit" }] },
+    });
+    vi.mocked(writeToClipboard).mockClear();
+    selectAgentSession("menu-session");
+    replaceComposerDraft({ text: "waiting draft" });
   });
   afterEach(async () => {
     cleanup();
@@ -106,7 +180,7 @@ describe("messageContextMenu", () => {
     expect(screen.queryByText("Copy plain text")).toBeNull();
   });
 
-  it("Edit in composer loads the message text into composerStore", () => {
+  it("Edit in composer loads the message text into composerStore", async () => {
     replaceComposerDraft({ text: "", images: [] });
     render(
       <MessageContextMenu
@@ -121,6 +195,78 @@ describe("messageContextMenu", () => {
     );
     openMenu("user msg");
     fireEvent.click(screen.getByText("Edit in composer"));
+    await settleMenu();
     expect(captureComposerSubmission().value).toBe("draft me again");
+  });
+
+  it.each([
+    { label: "Edit in composer", text: "hello world", rollback: [] },
+    {
+      label: "Edit & rerun from here",
+      text: "history edit",
+      rollback: [["menu-session", "run-1", "history"]],
+    },
+    {
+      label: "Edit & rerun, restore files",
+      text: "history edit",
+      rollback: [["menu-session", "run-1", "both"]],
+    },
+  ])("leaves focus in the composer after $label closes the menu", async (action) => {
+    const draft = mountFocusMenu();
+    await openFocusMenu();
+
+    fireEvent.click(screen.getByRole("menuitem", { name: action.label }));
+    await settleMenu();
+
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(draft.value).toBe(action.text);
+    expect(document.activeElement).toBe(draft);
+    expect(material.rollback.mock.calls).toEqual(action.rollback);
+  });
+
+  it.each(["Escape", "Copy plain text"])(
+    "restores ordinary close focus after reopening and choosing %s",
+    async (action) => {
+      const draft = mountFocusMenu();
+      await openFocusMenu();
+      fireEvent.click(screen.getByRole("menuitem", { name: "Edit in composer" }));
+      await settleMenu();
+      expect(document.activeElement).toBe(draft);
+      const origin = await openFocusMenu();
+
+      if (action === "Escape") fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+      else fireEvent.click(screen.getByRole("menuitem", { name: action }));
+      await settleMenu();
+
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(document.activeElement).toBe(origin);
+      expect(writeToClipboard).toHaveBeenCalledTimes(action === "Escape" ? 0 : 1);
+    },
+  );
+
+  it("keeps later outside focus when a delayed edit-and-rerun succeeds", async () => {
+    const rollback = Promise.withResolvers<{
+      status: "committed";
+      userInput: { parts: [{ kind: "text"; text: string }] };
+    }>();
+    material.rollback.mockReturnValue(rollback.promise);
+    const draft = mountFocusMenu();
+    await openFocusMenu();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Edit & rerun from here" }));
+    await settleMenu();
+    expect(document.activeElement).toBe(draft);
+    const outside = screen.getByRole("button", { name: "Later control" });
+    act(() => outside.focus());
+
+    await act(async () => {
+      rollback.resolve({
+        status: "committed",
+        userInput: { parts: [{ kind: "text", text: "delayed history input" }] },
+      });
+      await rollback.promise;
+    });
+
+    expect(draft.value).toBe("delayed history input");
+    expect(document.activeElement).toBe(outside);
   });
 });

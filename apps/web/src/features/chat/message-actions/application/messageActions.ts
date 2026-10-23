@@ -11,7 +11,10 @@ import {
   sendToAgentSession,
 } from "@/features/agent/public/session";
 import { type RestoreType } from "@/features/agent/public/session";
-import { replaceComposerDraft } from "@/features/composer/public/draft";
+import {
+  beginComposerDraftReplacement,
+  replaceComposerDraft,
+} from "@/features/composer/public/draft";
 import {
   messageDraftContent,
   messageHasDraftContent,
@@ -71,18 +74,20 @@ export function editAndRerunMessage(msg: Message, opts?: RollbackActionOptions):
     prefillComposer(msg);
     return;
   }
+  const replaceDraft = beginComposerDraftReplacement();
   void rollbackSessionToBeforeRun(
     conversation.sessionId,
     msg.runId,
     opts?.restoreFiles ? "both" : "history",
   )
     .then((rollback) => {
-      if (rollback.status === "inFlight") return;
-      if (rollback.status === "committed" && rollback.userInput) {
-        replaceComposerDraft(agentInputToComposerDraft(rollback.userInput));
-        return;
+      if (rollback.status !== "committed") return;
+      const draft = rollback.userInput
+        ? agentInputToComposerDraft(rollback.userInput)
+        : messageDraftContent(msg);
+      if (!replaceDraft(draft)) {
+        notifyInfo(t("session.editRerun.draftRetained"), { source: "session" });
       }
-      prefillComposer(msg);
     })
     .catch(reportRollbackError);
 }

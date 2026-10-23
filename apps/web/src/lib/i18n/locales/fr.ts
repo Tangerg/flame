@@ -73,6 +73,8 @@ export const fr: Record<string, string> = {
   "approval.what.generic": "Exécuter {{tool}}",
   "session.regenerate.switchedAway":
     "Vous avez changé de session avant la fin de la régénération — rien n'a été renvoyé.",
+  "session.editRerun.draftRetained":
+    "L'historique de la conversation d'origine a été restauré. Votre brouillon actuel a été conservé.",
   "session.restore.files": "Arbre de travail restauré à ce point de contrôle.",
   "session.restore.both": "Conversation et fichiers restaurés à ce point de contrôle.",
   "session.restore.history": "Conversation ramenée à ce point de contrôle.",

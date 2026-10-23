@@ -114,7 +114,7 @@ export class Composer {
   }
 
   clear(): Composer {
-    return this.replaceDraft(ComposerDraft.empty(), NOT_RECALLING);
+    return this.replaceDraft(ComposerDraft.restoreText(""), NOT_RECALLING);
   }
 
   consumeDraft(sessionId: string, draft: ComposerDraft, historyText?: string): Composer {
@@ -122,7 +122,7 @@ export class Composer {
     const recorded = historyText ? this.record(historyText, sessionId) : this;
     if (this.drafts.get(sessionId) !== draft) return recorded;
     return new Composer(
-      new Map(this.drafts).set(sessionId, ComposerDraft.empty()),
+      new Map(this.drafts).set(sessionId, ComposerDraft.restoreText("")),
       recorded.rings,
       this.activeSessionId,
       sessionId === this.activeSessionId ? NOT_RECALLING : this.recall,

@@ -73,6 +73,8 @@ export const de: Record<string, string> = {
   "approval.what.generic": "{{tool}} ausführen",
   "session.regenerate.switchedAway":
     "Vor Abschluss der Neugenerierung gewechselt — es wurde nichts erneut gesendet.",
+  "session.editRerun.draftRetained":
+    "Der Verlauf des ursprünglichen Chats wurde wiederhergestellt. Dein aktueller Entwurf wurde beibehalten.",
   "session.restore.files": "Arbeitsverzeichnis auf diesen Checkpoint zurückgesetzt.",
   "session.restore.both": "Unterhaltung und Dateien auf diesen Checkpoint zurückgesetzt.",
   "session.restore.history": "Unterhaltung auf diesen Checkpoint zurückgespult.",

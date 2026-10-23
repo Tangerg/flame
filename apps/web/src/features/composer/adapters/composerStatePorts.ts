@@ -42,11 +42,21 @@ export function installComposerStatePorts(
     useSetText: () => useComposerStore((state) => state.setValue),
     captureSubmission: () => useComposerStore.getState().captureSubmission(),
     replaceDraft: (input) => {
-      const store = useComposerStore.getState();
-      store.clear();
-      store.setValue(input.text);
-      if (input.images?.length) store.addImages(input.images);
+      useComposerStore.getState().replaceDraft(input);
       focus(input.text.length);
+    },
+    beginDraftReplacement: () => {
+      const replace = useComposerStore.getState().captureDraftReplacement();
+      const target = focusTarget;
+      target?.element?.focus();
+      return (input) => {
+        if (!replace(input)) return false;
+        const element = target?.element;
+        if (element && focusTarget === target && document.activeElement === element) {
+          element.setSelectionRange(input.text.length, input.text.length);
+        }
+        return true;
+      };
     },
     appendText: (text) => {
       const store = useComposerStore.getState();

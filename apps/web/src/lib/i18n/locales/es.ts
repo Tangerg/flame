@@ -74,6 +74,8 @@ export const es: Record<string, string> = {
   "approval.what.generic": "Ejecutar {{tool}}",
   "session.regenerate.switchedAway":
     "Cambiaste de sesión antes de terminar la regeneración: no se reenvió nada.",
+  "session.editRerun.draftRetained":
+    "Se restauró el historial de la conversación original. Se conservó tu borrador actual.",
   "session.restore.files": "Árbol de trabajo restaurado a este punto de control.",
   "session.restore.both": "Conversación y archivos restaurados a este punto de control.",
   "session.restore.history": "Conversación revertida a este punto de control.",
