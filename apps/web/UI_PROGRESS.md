@@ -1549,6 +1549,11 @@ captures, pointer, ten newly generated outputs/caches and two bundle-specific
 Library directories. The pre-existing shared-UI cache, user data, read-only
 references, primary checkout and unrelated processes were preserved. Remote
 main was refetched at `e7b82c04bdce5eee848509e425d487564bdf3e01` before publication.
+Normal hooks committed the repair at
+`148a64158a2f2ccdeeb852392757cbf57de52da3`; push and `ls-remote` confirmed that exact
+commit on remote main. All 92 accepted source, test, resource and document
+hashes match its blobs. The owned worktree was clean with zero unpushed
+commits at that checkpoint; this publication receipt is a documentation update.
 
 Continue with observed complete-task defects, especially retained resource
 catalog reading and return paths across their actual read/empty/error boundaries.
