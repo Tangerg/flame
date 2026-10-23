@@ -30,7 +30,9 @@ The focused 12 tests and English/light/14 px and Chinese/dark/18 px native flows
 pass. The initial full Web command stopped on one Runtime MCP-readiness timeout;
 the complete isolated 49-test file then passed, followed by all 22 later gates and
 the supported native check. The initial failure remains recorded below. Owned
-resources are cleaned; remote delivery is being recorded for this verified batch.
+resources are cleaned. Implementation `9773c7cf5b14dbea2958789b4117edc7ebd54da4`
+is pushed to remote `main`, verified by exact remote hash, unchanged accepted
+sources/resources and a clean owned checkout with zero unpushed commits.
 
 The captured-image inset is integrated at `d25b4ef72` and settings width at
 `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
@@ -1568,6 +1570,11 @@ ownership, birth-time, containment and copied-asset checks. A private compressed
 archive retains **98** flat UTF-8 evidence files and **23** capture hashes outside
 the repository. Pre-existing shared UI Vite cache, dependencies, compiler caches,
 references, user data, unrelated processes and the primary checkout remain.
+
+Delivery: implementation `9773c7cf5b14dbea2958789b4117edc7ebd54da4` is pushed
+to remote `main`. Fresh `ls-remote` matched that commit, all **21** accepted
+product/resource inputs matched, and the owned checkout was clean with zero
+unpushed commits. This in-place receipt adds no product change.
 
 ### Approval-mode read recovery
 
