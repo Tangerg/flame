@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/examples/plugins/reviews/backend
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame v0.1.0-layout.20261021.8
+	github.com/Tangerg/flame v0.1.0-layout.20261023.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.55.0
 	github.com/invopop/jsonschema v0.14.0
@@ -19,7 +19,7 @@ require (
 	github.com/Tangerg/scope/tools v0.55.0 // indirect
 	github.com/Tangerg/scope/tools/skills v0.55.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
-	github.com/a2aproject/a2a-go/v2 v2.6.0 // indirect
+	github.com/a2aproject/a2a-go/v2 v2.7.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bluekeyes/go-gitdiff v0.9.0 // indirect
@@ -28,7 +28,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
-	github.com/go-chi/chi/v5 v5.4.0 // indirect
+	github.com/go-chi/chi/v5 v5.5.0 // indirect
 	github.com/go-chi/cors v1.2.2 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
