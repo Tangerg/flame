@@ -4,11 +4,18 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 
 	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/flame/plugins/web/backend/rpc"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/scope/tools/web"
+)
+
+const (
+	maxQueryBytes          = 8192
+	defaultSearchResults   = 20
+	maxSearchResponseBytes = 128 << 10
 )
 
 type fetchPage func(context.Context, *web.FetchRequest) (*web.FetchResponse, error)
@@ -28,8 +35,8 @@ func newResearch(store *store, fetch fetchPage, search searchWeb) (*research, er
 }
 
 func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (web.SearchResponse, error) {
-	if len(input.Query) > 8192 {
-		return web.SearchResponse{}, &capability.Refusal{Code: "invalid_request", Message: "web: search query exceeds 8192 bytes"}
+	if len(input.Query) > maxQueryBytes {
+		return web.SearchResponse{}, &capability.Refusal{Code: "invalid_request", Message: fmt.Sprintf("web: search query exceeds %d bytes", maxQueryBytes)}
 	}
 	prepared, err := input.Prepare()
 	if err != nil {
@@ -47,7 +54,7 @@ func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (web.
 	}
 	limit := prepared.MaxResults
 	if limit == 0 {
-		limit = 20
+		limit = defaultSearchResults
 	}
 	if len(response.Results) > limit {
 		return web.SearchResponse{}, errors.New("web: provider exceeded the requested result count")
@@ -56,8 +63,8 @@ func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (web.
 	if err != nil {
 		return web.SearchResponse{}, err
 	}
-	if len(encoded) > 128<<10 {
-		return web.SearchResponse{}, &capability.Refusal{Code: "response_too_large", Message: "web: search result exceeds 128 KiB"}
+	if len(encoded) > maxSearchResponseBytes {
+		return web.SearchResponse{}, &capability.Refusal{Code: "response_too_large", Message: fmt.Sprintf("web: search result exceeds %d KiB", maxSearchResponseBytes>>10)}
 	}
 	return *response, nil
 }
