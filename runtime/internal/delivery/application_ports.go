@@ -116,7 +116,6 @@ type feedbackUseCases interface {
 }
 
 type workspaceFileUseCases interface {
-	Head(ctx context.Context, cwd, path string, lines workspaceapp.HeadLineLimit) (workspaceapp.FileHead, error)
 	Grep(ctx context.Context, cwd string, input workspaceapp.GrepInput) (workspaceapp.GrepResult, error)
 	List(ctx context.Context, input workspaceapp.FileListInput) (workspaceapp.FilePage, error)
 	Read(ctx context.Context, cwd string, input workspaceapp.FileReadInput) (workspaceapp.FileReadResult, error)

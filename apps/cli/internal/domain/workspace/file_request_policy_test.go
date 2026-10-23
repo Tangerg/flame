@@ -5,9 +5,6 @@ import "testing"
 func TestFileRequestPoliciesKeepDefaultsAndExplicitValuesDistinct(t *testing.T) {
 	t.Parallel()
 
-	if lines, err := DefaultHeadLineLimit().Lines(); err != nil || lines != DefaultHeadLines {
-		t.Fatalf("default head lines = (%d, %v)", lines, err)
-	}
 	if matches, err := DefaultSearchResultLimit().Matches(); err != nil || matches != DefaultSearchMatches {
 		t.Fatalf("default search matches = (%d, %v)", matches, err)
 	}
@@ -18,7 +15,6 @@ func TestFileRequestPoliciesKeepDefaultsAndExplicitValuesDistinct(t *testing.T) 
 		name string
 		new  func(int) error
 	}{
-		{name: "head", new: func(value int) error { _, err := NewHeadLineLimit(value); return err }},
 		{name: "search", new: func(value int) error { _, err := NewSearchResultLimit(value); return err }},
 		{name: "bytes", new: func(value int) error { _, err := NewReadByteLimit(value); return err }},
 	} {
@@ -30,12 +26,7 @@ func TestFileRequestPoliciesKeepDefaultsAndExplicitValuesDistinct(t *testing.T) 
 			}
 		})
 	}
-	if _, err := (HeadLineLimit{}).Lines(); err == nil {
-		t.Fatal("zero head limit was accepted")
-	}
-	if _, err := (HeadLineLimit{kind: defaultRequestLimit, lines: 1}).Lines(); err == nil {
-		t.Fatal("corrupt default head limit was accepted")
-	}
+
 }
 
 func TestReadLineRangeIsClosedOverWholeTailAndBounded(t *testing.T) {

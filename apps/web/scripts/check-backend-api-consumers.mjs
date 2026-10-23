@@ -40,11 +40,6 @@ const terminalOperations = new Set([
   "workspace.files.search",
   "agentDocs.list",
 ]);
-// Desktop stopped reading `workspace.files.head`: a tool preview shows the recorded
-// result, and the file view reads ranges through `workspace.files.read`. The method is
-// Runtime's to retire; drop this entry in the same change that removes it there.
-const awaitingRuntimeRemoval = new Set(["workspace.files.head"]);
-const notDesktopOperations = new Set([...terminalOperations, ...awaitingRuntimeRemoval]);
 const sidecarEndpoints = new Set(
   manifest.httpEndpoints
     .filter((endpoint) => endpoint.kind === "sidecar")
@@ -228,11 +223,11 @@ for (const [operation, locations] of Object.entries(headlessCalls)) {
     errors.push(`Go product calls non-manifest operation ${operation}`);
     continue;
   }
-  if (consumers.size > 0 || notDesktopOperations.has(operation)) continue;
+  if (consumers.size > 0 || terminalOperations.has(operation)) continue;
   for (const location of locations) consumers.add(`${location} (Go product binding)`);
   headlessOperations.add(operation);
 }
-checkOperationConsumers(operationConsumers, implementationMap, notDesktopOperations, errors);
+checkOperationConsumers(operationConsumers, implementationMap, terminalOperations, errors);
 
 checkSidecarConsumers(sidecarEndpoints, sidecarMethodMap, sidecarConsumerCalls, errors);
 
@@ -247,7 +242,7 @@ const callCount =
   [...sidecarConsumerCalls.values()].reduce((total, locations) => total + locations.size, 0);
 closeCompiler();
 console.log(
-  `check-backend-api-consumers: ${operations.size - notDesktopOperations.size}/${operations.size - notDesktopOperations.size} Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct graphical operations, ${headlessOperations.size} Go headless operations, ${materializedOperations.size} materialized through server composites, ${httpProjectedOperations.size} through consumed HTTP projections), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
+  `check-backend-api-consumers: ${operations.size - terminalOperations.size}/${operations.size - terminalOperations.size} Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct graphical operations, ${headlessOperations.size} Go headless operations, ${materializedOperations.size} materialized through server composites, ${httpProjectedOperations.size} through consumed HTTP projections), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
 );
 
 function consumedHTTPEndpoints(call) {

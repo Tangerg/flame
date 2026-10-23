@@ -14,7 +14,6 @@ type workspaceBinding interface {
 	ListWorkspaces(context.Context, protocol.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)
 	ListWorkspaceFileChanges(context.Context, protocol.WorkspaceQuery, protocol.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error)
 	GetWorkspaceDiff(context.Context, protocol.GetDiffRequest, protocol.CallOptions) (*protocol.Diff, error)
-	GetWorkspaceFileHead(context.Context, protocol.GetFileHeadRequest, protocol.CallOptions) (*protocol.FileHead, error)
 	SearchWorkspaceFiles(context.Context, protocol.GrepRequest, protocol.CallOptions) (*protocol.GrepResult, error)
 	ListWorkspaceFiles(context.Context, protocol.ListFilesRequest, protocol.CallOptions) (*protocol.Page[protocol.FileEntry], error)
 	ReadWorkspaceFile(context.Context, protocol.ReadFileRequest, protocol.CallOptions) (*protocol.FileContent, error)
@@ -129,30 +128,6 @@ func (r *Connection) Diff(ctx context.Context, request workspace.DiffRequest) (w
 		return workspace.Diff{}, runtimeContractViolation("get workspace diff returned an invalid projection: %v", err)
 	}
 	return projected, nil
-}
-
-func (r *Connection) Head(ctx context.Context, request workspace.HeadRequest) (workspace.FileHead, error) {
-	if err := request.Validate(); err != nil {
-		return workspace.FileHead{}, err
-	}
-	lines, err := request.LineLimit.Lines()
-	if err != nil {
-		return workspace.FileHead{}, err
-	}
-	value, err := r.workspaces.GetWorkspaceFileHead(ctx, protocol.GetFileHeadRequest{
-		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Path: request.Path, Lines: protocolPositiveInt(lines),
-	}, r.callOptions())
-	if err != nil {
-		return workspace.FileHead{}, classifyError(err)
-	}
-	if value == nil {
-		return workspace.FileHead{}, runtimeContractViolation("get workspace file head returned nil")
-	}
-	result := workspace.FileHead{Lines: value.Lines}
-	if err := result.Validate(); err != nil {
-		return workspace.FileHead{}, runtimeContractViolation("get workspace file head returned an invalid projection: %v", err)
-	}
-	return result, nil
 }
 
 func (r *Connection) Search(ctx context.Context, request workspace.SearchRequest) (workspace.SearchResult, error) {

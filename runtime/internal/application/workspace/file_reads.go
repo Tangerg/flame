@@ -108,12 +108,11 @@ type FileReadPlan struct {
 
 // FileReadResult is a file read with whole-file line information.
 type FileReadResult struct {
-	Content         string
-	TotalLines      int
-	StartLine       int // zero-based
-	EndLine         int // one-based inclusive
-	Truncated       bool
-	OutputTruncated bool
+	Content    string
+	TotalLines int
+	StartLine  int // zero-based
+	EndLine    int // one-based inclusive
+	Truncated  bool
 }
 
 // GrepInput specifies one root-scoped content search.
@@ -145,21 +144,8 @@ type GrepResult struct {
 	Total   int
 }
 
-// FileHead is the leading numbered text of one file.
-type FileHead struct {
-	Lines []FileLine
-}
-
-// FileLine is one one-based line in a file preview.
-type FileLine struct {
-	Number int
-	Text   string
-}
-
 const (
 	defaultFileListPageLimit = 1000
-	defaultFileHeadLines     = 200
-	maxFileHeadLines         = 400
 	fileListPageNamespace    = "workspace.files"
 )
 
@@ -197,7 +183,7 @@ func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error)
 	path := ""
 	if input.Path != "" {
 		// Listing a subdirectory dereferences it. Resolve its physical identity at
-		// the application boundary just like read/head/search, otherwise a lexical
+		// the application boundary just like read/search, otherwise a lexical
 		// in-root symlink could make the file browser port enumerate a directory
 		// outside the admitted workspace.
 		path, err = f.scope.paths.ResolveExistingInRoot(root, input.Path)
@@ -223,31 +209,6 @@ func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error)
 		return FilePage{}, err
 	}
 	return FilePage{Entries: page, NextCursor: next}, nil
-}
-
-// Head returns the first requested lines of one workspace file.
-func (f *Files) Head(ctx context.Context, cwd, path string, limit HeadLineLimit) (FileHead, error) {
-	root, err := f.scope.ResolveRoot(cwd)
-	if err != nil {
-		return FileHead{}, err
-	}
-	if path == "" {
-		return FileHead{}, ErrPathRequired
-	}
-	path, err = f.scope.paths.ResolveExistingInRoot(root, path)
-	if err != nil {
-		return FileHead{}, err
-	}
-	read, err := f.readFile(ctx, root, FileReadPlan{
-		Path: path, EndLine: limit.Lines(), StartLine: 1, MaxBytes: DefaultFileReadBytes,
-	})
-	if err != nil {
-		return FileHead{}, err
-	}
-	if read.OutputTruncated {
-		return FileHead{}, ErrFileReadTooLarge
-	}
-	return FileHead{Lines: previewLines(read)}, nil
 }
 
 // Read returns all or a one-based inclusive line window of a workspace
@@ -299,18 +260,6 @@ func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResu
 		}
 	}
 	return f.files.Grep(ctx, root, GrepPlan{Path: input.Path, Pattern: pattern, Limit: input.Limit.Matches()})
-}
-
-func previewLines(read FileReadResult) []FileLine {
-	if read.Content == "" && read.TotalLines == 0 {
-		return []FileLine{}
-	}
-	parts := strings.Split(read.Content, "\n")
-	lines := make([]FileLine, 0, len(parts))
-	for index, text := range parts {
-		lines = append(lines, FileLine{Number: read.StartLine + index + 1, Text: text})
-	}
-	return lines
 }
 
 func pageFileEntries(entries []FileEntry, filters []string, cursor string, limit pagination.RequestedLimit) ([]FileEntry, string, error) {

@@ -325,7 +325,6 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"SubscribeRuntime": sideChannel("runtime events", "TUI invalidation and workspace file-change monitor"),
 
 		"GetWorkspaceDiff":              command("workspaces", "TUI /diff"),
-		"GetWorkspaceFileHead":          command("workspaces", "workspace change inspector"),
 		"ListWorkspaceFileChanges":      sideChannel("workspaces", "files.changed authoritative reconciliation"),
 		"ListWorkspaceFiles":            command("workspaces", "workspace browser"),
 		"ListWorkspaces":                command("workspaces", "TUI /workspace picker"),

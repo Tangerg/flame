@@ -146,6 +146,11 @@ retain the original content.
 
 In the terminal, `/skills` lists available skills and local discovery diagnostics. `/skills <name>` reads the current resolver-selected document, including source path, revision, and instructions. Open skill readers refresh after Runtime skill-change events.
 
+`/preview [--lines N] <path>` reads from line 1 through the same Runtime file-read
+operation as `/read`. The default is 80 lines; an explicit count is honored within
+the shared read byte budget. The reader reports the accepted window, whole-file
+line count and any truncation. It does not impose a separate preview cap.
+
 Provider selection is either an exact provider/model pair or absent. Absence means that Runtime applies the active Session selection; CLI never infers a provider from a model name.
 
 ## Architecture

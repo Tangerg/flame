@@ -3,26 +3,6 @@ package workspace
 // Each limit below keeps one count: zero is the named default, and its
 // constructor admits only a positive count, so no other state is reachable.
 
-// HeadLineLimit is the caller's file-preview line-count intent. Explicit values
-// clamp at the Application-owned preview maximum.
-type HeadLineLimit struct{ lines int }
-
-func DefaultHeadLineLimit() HeadLineLimit { return HeadLineLimit{} }
-
-func NewHeadLineLimit(lines int) (HeadLineLimit, error) {
-	if lines <= 0 {
-		return HeadLineLimit{}, ErrInvalidFileRange
-	}
-	return HeadLineLimit{lines: lines}, nil
-}
-
-func (l HeadLineLimit) Lines() int {
-	if l.lines == 0 {
-		return defaultFileHeadLines
-	}
-	return min(l.lines, maxFileHeadLines)
-}
-
 // GrepResultLimit is the caller's retained whole-match count. The search still
 // computes its honest Total; this value only bounds the stable prefix returned.
 type GrepResultLimit struct{ matches int }

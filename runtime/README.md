@@ -1144,6 +1144,13 @@ Unknown-effect termination closes every unfinished member in Run-tree postorder,
 
 ## Workspace observations
 
+Workspace file content has one read operation, `workspace.files.read`. A preview
+requests a window starting at line 1 and consumes the same byte budget, source
+validation and truncation result as any other read. Core `2026-10-23.1` removes
+`workspace.files.head` and its Go request/result types. Rebuild clients and
+replace former calls with `ReadWorkspaceFile` and an explicit line window.
+This changes the public protocol, not stored content.
+
 `runtime.subscribe` accepts exact workspace-relative `watches[].paths`; `"."` names the workspace directory. Omitted paths request only Git HEAD/index observation. Explicit paths observe ordinary external writes, atomic replacements, removal, and recreation in Git and non-Git workspaces. A directory target observes its immediate entry names and metadata; it does not recursively watch children or follow their symlinks. An opened file needs its own target to observe content changes.
 
 Discovery publishes the subscription's total path budget, per-directory entry budget, and file hashing budget. Content up to that byte budget is hashed; larger files remain observable through size and modification metadata. Exceeding directory or registration bounds fails explicitly. Background content-observation failures, including those of the Hooks and Skills observations behind `hooks.changed` and `skills.changed`, end the subscription, and Git sampling failures retry with bounded backoff before ending it. Clients reopen the stream and revalidate their reads; this is an invalidation channel, not a durable filesystem log or atomic snapshot. Notifications retain workspace, watch, and path scope; overflow can widen them.

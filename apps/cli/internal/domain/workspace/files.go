@@ -98,35 +98,6 @@ func (f FileContent) Window() string {
 	return fmt.Sprintf("lines %d-%d/%d", f.StartLine, f.EndLine, f.TotalLines)
 }
 
-type HeadRequest struct {
-	Workspace string
-	Path      string
-	LineLimit HeadLineLimit
-}
-
-func (h HeadRequest) Validate() error {
-	if strings.TrimSpace(h.Workspace) == "" || strings.TrimSpace(h.Path) == "" {
-		return errors.New("file head requires workspace and path")
-	}
-	_, err := h.LineLimit.Lines()
-	return err
-}
-
-type FileHead struct {
-	Lines []protocol.FileLine
-}
-
-func (f FileHead) Validate() error {
-	previous := 0
-	for index, line := range f.Lines {
-		if line.LineNumber <= previous {
-			return fmt.Errorf("file head line %d is not strictly ordered", index)
-		}
-		previous = line.LineNumber
-	}
-	return nil
-}
-
 type SearchRequest struct {
 	Workspace string
 	Query     string

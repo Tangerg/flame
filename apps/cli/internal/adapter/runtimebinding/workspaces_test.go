@@ -21,7 +21,6 @@ type workspaceBindingStub struct {
 	changesCalls int
 	diff         *protocol.Diff
 	diffCalls    int
-	head         *protocol.FileHead
 	search       *protocol.GrepResult
 	files        *protocol.Page[protocol.FileEntry]
 	filePages    map[string]*protocol.Page[protocol.FileEntry]
@@ -102,15 +101,6 @@ func (w *workspaceBindingStub) GetWorkspaceDiff(context.Context, protocol.GetDif
 	return &value, nil
 }
 
-func (w *workspaceBindingStub) GetWorkspaceFileHead(context.Context, protocol.GetFileHeadRequest, protocol.CallOptions) (*protocol.FileHead, error) {
-	if w.head == nil {
-		return nil, nil
-	}
-	value := *w.head
-	value.Lines = slices.Clone(value.Lines)
-	return &value, nil
-}
-
 func (w *workspaceBindingStub) SearchWorkspaceFiles(context.Context, protocol.GrepRequest, protocol.CallOptions) (*protocol.GrepResult, error) {
 	if w.search == nil {
 		return nil, nil
@@ -176,7 +166,6 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 			Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed,
 			Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: new("package main")}},
 		}}},
-		head:   &protocol.FileHead{Lines: []protocol.FileLine{{LineNumber: 1, Text: "package main"}}},
 		search: &protocol.GrepResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1},
 		filePages: map[string]*protocol.Page[protocol.FileEntry]{
 			"": protocol.NewPageWithCursor([]protocol.FileEntry{{Path: "internal", Name: "internal", Type: protocol.FileEntryDir}}, "next"),
@@ -219,16 +208,6 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	*stub.diff.Files[0].Rows[0].Code = "mutated"
 	if diff.Text() != "diff -- main.go (modified)\n+package main" {
 		t.Fatal("workspace diff projection aliases runtime row storage")
-	}
-	head, err := runtime.Head(t.Context(), workspace.HeadRequest{
-		Workspace: "/workspace", Path: "main.go", LineLimit: workspace.DefaultHeadLineLimit(),
-	})
-	if err != nil || len(head.Lines) != 1 {
-		t.Fatalf("Head = (%+v, %v)", head, err)
-	}
-	stub.head.Lines[0].Text = "mutated"
-	if head.Lines[0].Text != "package main" {
-		t.Fatal("file head projection aliases runtime line storage")
 	}
 	search, err := runtime.Search(t.Context(), workspace.SearchRequest{
 		Workspace: "/workspace", Query: "main", Limit: workspace.DefaultSearchResultLimit(),

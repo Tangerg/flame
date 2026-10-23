@@ -7,13 +7,6 @@ type WorkspaceQuery struct {
 	Workspace WorkspaceRef `json:"workspace"`
 }
 
-// GetFileHeadRequest — workspace.files.head body.
-type GetFileHeadRequest struct {
-	Workspace WorkspaceRef `json:"workspace"`
-	Path      string       `json:"path"`
-	Lines     *int         `json:"lines,omitzero"`
-}
-
 // GrepRequest — workspace.files.search body. Query is a Go/RE2-compatible
 // regular expression of at most 64 KiB. A zero Limit selects 100 retained
 // matches; larger values are capped at 1000. The service may retain fewer rows
@@ -87,17 +80,6 @@ type FileEntry struct {
 	Type       FileEntryType `json:"type"`
 	SizeBytes  *int64        `json:"sizeBytes,omitzero"`
 	ModifiedAt time.Time     `json:"modifiedAt"`
-}
-
-// FileHead is a file preview.
-type FileHead struct {
-	Lines []FileLine `json:"lines"`
-}
-
-// FileLine is one plain-text preview line for client-side highlighting.
-type FileLine struct {
-	LineNumber int    `json:"lineNumber"`
-	Text       string `json:"text"`
 }
 
 // GrepResult is the workspace.files.search result. Matches is a

@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-16.2` · 102 methods
+Protocol `2026-10-23.1` · 101 methods
 
 ## Methods
 
@@ -41,7 +41,6 @@ Protocol `2026-10-16.2` · 102 methods
 | `workspaces.list` | query | unary | none | none | none | — | — | — |
 | `workspace.changes.list` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `capability_not_negotiated` |
 | `workspace.diff.get` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `path_outside_root`, `capability_not_negotiated` |
-| `workspace.files.head` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root`, `unsupported_mime` |
 | `workspace.files.search` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `workspace.files.list` | query | unary | none | none | cursor | — | — | `workspace_unavailable`, `path_outside_root` |
 | `workspace.files.read` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root`, `unsupported_mime` |
@@ -889,7 +888,6 @@ TypeScript validator from this single registry projection.
 | `FileEntry` | `path` | `nonEmpty` |
 | `FileEntry` | `name` | `nonEmpty` |
 | `FileEntry` | `sizeBytes` | `nonNegative` |
-| `FileLine` | `lineNumber` | `positive` |
 | `GrepResult` | `total` | `nonNegative` |
 | `GrepMatch` | `path` | `nonEmpty` |
 | `GrepMatch` | `lineNumber` | `positive` |
@@ -903,8 +901,6 @@ TypeScript validator from this single registry projection.
 | `DiffRow` | `leftLine` | `positive` |
 | `DiffRow` | `rightLine` | `positive` |
 | `GetDiffRequest` | `limit` | `positive` |
-| `GetFileHeadRequest` | `path` | `nonEmpty` |
-| `GetFileHeadRequest` | `lines` | `positive` |
 | `ReadFileRequest` | `path` | `nonEmpty` |
 | `ReadFileRequest` | `startLine` | `positive` |
 | `ReadFileRequest` | `endLine` | `positive` |

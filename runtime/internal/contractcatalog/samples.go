@@ -105,7 +105,6 @@ func Samples() []Sample {
 		// Workspace — Diff/DiffRow, file shapes, methods.
 		{"ws.diff.json", reflect.TypeFor[protocol.Diff]()},
 		{"ws.fileChange.json", reflect.TypeFor[protocol.WorkspaceFileChange]()},
-		{"ws.fileHead.json", reflect.TypeFor[protocol.FileHead]()},
 		{"ws.grepResult.json", reflect.TypeFor[protocol.GrepResult]()},
 		{"ws.fileContent.json", reflect.TypeFor[protocol.FileContent]()},
 		{"method.getDiff.req.json", reflect.TypeFor[protocol.GetDiffRequest]()},

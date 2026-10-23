@@ -6,24 +6,6 @@ import (
 )
 
 func TestWorkspaceFileReadPoliciesOwnDefaultAndClamp(t *testing.T) {
-	t.Run("head lines", func(t *testing.T) {
-		if got := DefaultHeadLineLimit().Lines(); got != defaultFileHeadLines {
-			t.Fatalf("default Lines = %d, want %d", got, defaultFileHeadLines)
-		}
-		large, err := NewHeadLineLimit(maxFileHeadLines + 1)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got := large.Lines(); got != maxFileHeadLines {
-			t.Fatalf("clamped Lines = %d, want %d", got, maxFileHeadLines)
-		}
-		for _, lines := range []int{0, -1} {
-			if _, err := NewHeadLineLimit(lines); !errors.Is(err, ErrInvalidFileRange) {
-				t.Fatalf("NewHeadLineLimit(%d) = %v", lines, err)
-			}
-		}
-	})
-
 	t.Run("grep matches", func(t *testing.T) {
 		if got := DefaultGrepResultLimit().Matches(); got != DefaultGrepLimit {
 			t.Fatalf("default Matches = %d, want %d", got, DefaultGrepLimit)

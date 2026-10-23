@@ -3,7 +3,6 @@ package workspace
 import "errors"
 
 const (
-	DefaultHeadLines     = 80
 	DefaultSearchMatches = 200
 	DefaultReadBytes     = 2 << 20
 )
@@ -14,37 +13,6 @@ const (
 	defaultRequestLimit requestLimitKind = iota + 1
 	explicitRequestLimit
 )
-
-type HeadLineLimit struct {
-	kind  requestLimitKind
-	lines int
-}
-
-func DefaultHeadLineLimit() HeadLineLimit { return HeadLineLimit{kind: defaultRequestLimit} }
-
-func NewHeadLineLimit(lines int) (HeadLineLimit, error) {
-	if lines <= 0 {
-		return HeadLineLimit{}, errors.New("file head line count must be positive")
-	}
-	return HeadLineLimit{kind: explicitRequestLimit, lines: lines}, nil
-}
-
-func (l HeadLineLimit) Lines() (int, error) {
-	switch l.kind {
-	case defaultRequestLimit:
-		if l.lines != 0 {
-			return 0, errors.New("default file head line limit carries a value")
-		}
-		return DefaultHeadLines, nil
-	case explicitRequestLimit:
-		if l.lines <= 0 {
-			return 0, errors.New("file head line count must be positive")
-		}
-		return l.lines, nil
-	default:
-		return 0, errors.New("file head line limit kind is unknown")
-	}
-}
 
 type SearchResultLimit struct {
 	kind    requestLimitKind

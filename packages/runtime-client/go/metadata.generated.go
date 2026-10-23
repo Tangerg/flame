@@ -37,7 +37,6 @@ var methodMetadata = map[string]methodMeta{
 	"workspaces.list":                  {Name: "workspaces.list", Kind: "unary", Operation: "query", Result: reflect.TypeFor[*protocol.Page[protocol.WorkspaceSummary]](), Event: nil, ResultNullable: false},
 	"workspace.changes.list":           {Name: "workspace.changes.list", Kind: "unary", Operation: "query", Result: reflect.TypeFor[*protocol.Page[protocol.WorkspaceFileChange]](), Event: nil, ResultNullable: false},
 	"workspace.diff.get":               {Name: "workspace.diff.get", Kind: "unary", Operation: "query", Result: reflect.TypeFor[*protocol.Diff](), Event: nil, ResultNullable: false},
-	"workspace.files.head":             {Name: "workspace.files.head", Kind: "unary", Operation: "query", Result: reflect.TypeFor[*protocol.FileHead](), Event: nil, ResultNullable: false},
 	"workspace.files.search":           {Name: "workspace.files.search", Kind: "unary", Operation: "query", Result: reflect.TypeFor[*protocol.GrepResult](), Event: nil, ResultNullable: false},
 	"workspace.files.list":             {Name: "workspace.files.list", Kind: "unary", Operation: "query", Result: reflect.TypeFor[*protocol.Page[protocol.FileEntry]](), Event: nil, ResultNullable: false},
 	"workspace.files.read":             {Name: "workspace.files.read", Kind: "unary", Operation: "query", Result: reflect.TypeFor[*protocol.FileContent](), Event: nil, ResultNullable: false},

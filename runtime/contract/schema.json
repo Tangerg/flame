@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-16.2",
+  "protocolVersion": "2026-10-23.1",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -2330,36 +2330,6 @@
         "symlink"
       ]
     },
-    "FileHead": {
-      "type": "object",
-      "properties": {
-        "lines": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/FileLine"
-          }
-        }
-      },
-      "required": [
-        "lines"
-      ]
-    },
-    "FileLine": {
-      "type": "object",
-      "properties": {
-        "lineNumber": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "text": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "lineNumber",
-        "text"
-      ]
-    },
     "FileStatus": {
       "type": "string",
       "enum": [
@@ -2472,26 +2442,6 @@
             }
           }
         }
-      ]
-    },
-    "GetFileHeadRequest": {
-      "type": "object",
-      "properties": {
-        "lines": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "path": {
-          "type": "string",
-          "minLength": 1
-        },
-        "workspace": {
-          "$ref": "#/$defs/WorkspaceRef"
-        }
-      },
-      "required": [
-        "path",
-        "workspace"
       ]
     },
     "GetPlanRequest": {

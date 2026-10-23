@@ -98,9 +98,6 @@ func (r *binding) ListWorkspaceFileChanges(ctx context.Context, request protocol
 func (r *binding) GetWorkspaceDiff(ctx context.Context, request protocol.GetDiffRequest, options protocol.CallOptions) (*protocol.Diff, error) {
 	return r.invoke[protocol.GetDiffRequest, *protocol.Diff](ctx, delivery.Name("workspace.diff.get"), request, callOptions(options))
 }
-func (r *binding) GetWorkspaceFileHead(ctx context.Context, request protocol.GetFileHeadRequest, options protocol.CallOptions) (*protocol.FileHead, error) {
-	return r.invoke[protocol.GetFileHeadRequest, *protocol.FileHead](ctx, delivery.Name("workspace.files.head"), request, callOptions(options))
-}
 func (r *binding) SearchWorkspaceFiles(ctx context.Context, request protocol.GrepRequest, options protocol.CallOptions) (*protocol.GrepResult, error) {
 	return r.invoke[protocol.GrepRequest, *protocol.GrepResult](ctx, delivery.Name("workspace.files.search"), request, callOptions(options))
 }

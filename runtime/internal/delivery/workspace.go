@@ -11,7 +11,6 @@ const (
 	WorkspacesList       Name = "workspaces.list"
 	WorkspaceChangesList Name = "workspace.changes.list"
 	WorkspaceDiffGet     Name = "workspace.diff.get"
-	WorkspaceFilesHead   Name = "workspace.files.head"
 	WorkspaceFilesSearch Name = "workspace.files.search"
 	WorkspaceFilesList   Name = "workspace.files.list"
 	WorkspaceFilesRead   Name = "workspace.files.read"
@@ -61,19 +60,6 @@ func registerWorkspace(registry *Registry) {
 		GetWorkspaceDiff(context.Context, protocol.GetDiffRequest) (*protocol.Diff, error)
 	}, ctx context.Context, request protocol.GetDiffRequest) (*protocol.Diff, error) {
 		return service.GetWorkspaceDiff(ctx, request)
-	})
-
-	registry.query(MethodMeta{
-		Name: WorkspaceFilesHead, GoName: "GetWorkspaceFileHead",
-		Errors: []string{
-			protocol.ErrWorkspaceUnavailable.Error(),
-			protocol.ErrPathOutsideRoot.Error(),
-			protocol.ErrUnsupportedMime.Error(),
-		},
-	}, func(service interface {
-		GetWorkspaceFileHead(context.Context, protocol.GetFileHeadRequest) (*protocol.FileHead, error)
-	}, ctx context.Context, request protocol.GetFileHeadRequest) (*protocol.FileHead, error) {
-		return service.GetWorkspaceFileHead(ctx, request)
 	})
 
 	registry.query(MethodMeta{

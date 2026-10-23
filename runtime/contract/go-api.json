@@ -2510,10 +2510,6 @@
               "signature": "func(ctx context.Context, request protocol.GetDiffRequest, options protocol.CallOptions) (*protocol.Diff, error)"
             },
             {
-              "name": "GetWorkspaceFileHead",
-              "signature": "func(ctx context.Context, request protocol.GetFileHeadRequest, options protocol.CallOptions) (*protocol.FileHead, error)"
-            },
-            {
               "name": "ImportSession",
               "signature": "func(ctx context.Context, request protocol.ImportSessionRequest, options protocol.CommandOptions) (*protocol.ImportSessionResponse, error)"
             },
@@ -3124,10 +3120,6 @@
             {
               "name": "GetWorkspaceDiff",
               "signature": "func(ctx context.Context, request protocol.GetDiffRequest, options protocol.CallOptions) (*protocol.Diff, error)"
-            },
-            {
-              "name": "GetWorkspaceFileHead",
-              "signature": "func(ctx context.Context, request protocol.GetFileHeadRequest, options protocol.CallOptions) (*protocol.FileHead, error)"
             },
             {
               "name": "ImportSession",
@@ -6099,7 +6091,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-10-16.2\""
+          "value": "\"2026-10-23.1\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -7913,39 +7905,6 @@
           "underlying": "string"
         },
         {
-          "name": "FileHead",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Lines",
-              "type": "[]FileLine",
-              "tag": "json:\"lines\""
-            }
-          ]
-        },
-        {
-          "name": "FileLine",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "LineNumber",
-              "type": "int",
-              "tag": "json:\"lineNumber\""
-            },
-            {
-              "name": "Text",
-              "type": "string",
-              "tag": "json:\"text\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
           "name": "FileStatus",
           "kind": "defined",
           "underlying": "string"
@@ -8054,33 +8013,6 @@
               "name": "Limit",
               "type": "*int",
               "tag": "json:\"limit,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "GetFileHeadRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Workspace",
-              "type": "WorkspaceRef",
-              "tag": "json:\"workspace\""
-            },
-            {
-              "name": "Path",
-              "type": "string",
-              "tag": "json:\"path\""
-            },
-            {
-              "name": "Lines",
-              "type": "*int",
-              "tag": "json:\"lines,omitzero\""
             }
           ],
           "methods": [
