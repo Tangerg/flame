@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. Popup anchoring/native zoom painting, rapid Select dismissal, object-menu names, shared modal keyboard release and bounded message reading are published on remote main; their receipts remain below. Approval-mode reads distinguish recoverable failures from an unsupported method, and MCP tool errors now identify their three independent read scopes in eight locales. Current complete Web testing passed 390 files and 3,077 tests; the existing MCP API-consumer inventory still fails, so the full check is not green. All remaining Web checks and the supported native check passed. Native tool recovery retains drafts and scoped retries; a focused-action visibility observation after asynchronous content replacement remains the next investigation. The math follow-up qualifies its recorded text-caret reading path; physical horizontal wheel delivery remains unverified. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. Popup anchoring/native zoom painting, rapid Select dismissal, object-menu names, shared modal keyboard release and bounded message reading are published on remote main; their receipts remain below. Approval-mode reads distinguish recoverable failures from an unsupported method, and MCP tool errors now identify their three independent read scopes in eight locales. Current complete Web testing passed 390 files and 3,077 tests; the existing MCP API-consumer inventory still fails, so the full check is not green. All remaining Web checks and the supported native check passed. Native tool recovery now retains its read frame across asynchronous material replacement; explicit empty-state owners and connection task ordering preserve focus, deliberate scroll and connection actions, including native 200% scenes. The math follow-up qualifies its recorded text-caret reading path; physical horizontal wheel delivery remains unverified. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -1428,15 +1428,132 @@ before publication. Normal hooks committed the batch at
 exact commit on remote main. All ten accepted source/test hashes match its
 blobs, with a clean owned worktree and zero unpushed commits at that checkpoint.
 
-**Next investigation:** after asynchronous tool content replacement, native
-focus remained on Cancel but that button was below the captured viewport.
-Actual body scrolling exposed its ring and the accepted cancellation/return
-worked. This is an observed visibility limit, not a repaired or fully classified
-cause; do not infer that shrinking content alone caused it. Trace the existing
-`Panel.keepBodyFocusVisible` boundary and reproduce the geometry before choosing
-a shared repair. It currently handles focus entry and control-zone resizing,
-not all body replacements. Preserve later outside focus and deliberate reading
-scroll; do not add an unconditional refocus or per-query scroll workaround.
+### Retained read frames and connection task actions
+
+Actual Wails reproduced the previously unclassified visibility observation on
+`e7b82c04b`. During a held tool retry, Cancel remained focused and visible at
+806–834 with body height 944 and scrollTop 210. On acceptance, the body grew only
+8 px, but scrollTop fell to 60 and Cancel moved to 964–992, below the viewport.
+The passive diagnostic froze the first accepted sample before subsequent
+observations. There was no focus loss, hidden window or paused frame delivery;
+content shrink alone was not the cause.
+
+Plain HTML controls through the same Wails host isolated the boundary. Replacing
+material with a new inline-size query container reset scroll; an ordinary block
+or retained query container did not. A retained grid/query frame reproduced the
+reset when its `:empty` rule hid it during child replacement. Grid and clipping
+alone did not. Moving the query boundary to an outer wrapper passed the first
+focused-Cancel scene but still failed the later-Search-focus scene. A temporary
+diagnostic that disabled the shared `:empty` visibility rule preserved the
+user's chosen scroll. That override and the trial wrapper were removed.
+
+`packages/ui/src/records.tsx` now keeps its frame visible through transient DOM
+emptiness. The actual read/empty-state owner supplies native `hidden` for a
+truly empty group. Seven consumers migrate together: changed-file navigation,
+pending commands, installed packages, loaded plugins, Skills, Schedules and the
+Usage report breakdown. Shared globals already implement native hidden;
+`packages/ui/README.md` records that ownership. `ToolControls` retains the same
+`SettingsGroup` around loading, failure, empty and accepted material, preserving
+its local width/query contract without another wrapper.
+
+A second actual native scene exposed a different cause after that repair:
+Chinese/dark/18 px/custom blue at 200% kept scrollTop 1148, while wrapping tool
+details grew 192.5 px above the connection actions and moved Cancel below the
+viewport. `ServerForm` now puts its existing actions and connection feedback
+immediately after the connection fields, followed by Manage tools. Tool policies
+already save independently; their existing block was relocated without changing
+handlers, form ownership or tab order within either task. Connection actions
+remain stable while tool results grow. No Panel observer, refocus, timer,
+sentinel, minimum height, new state or effect is retained.
+
+The better-layout and better-accessibility guidance grounds task grouping,
+content growth and preserving later user choices. The read-only ZCode
+`packages/ui/src/settings/McpServerForm.tsx`, `McpSettingsSection.tsx` and
+`SettingsFormActions.tsx` keep connection completion with its bounded draft.
+Their actual composition informed the task boundary; Flame keeps its existing
+components, Cancel/Save order, Base UI, StyleX and semantic tokens.
+
+Four bounded Read/Edit-only Claude Code CLI invocations implemented the initial
+retainer, trial wrapper, shared-owner migration and exact task-order move
+(40.50, 19.03, 43.56 and 22.39 s; no permission denials). Primary reviewed the
+actual source and generated diffs, rejected the incomplete candidates through
+native evidence, and verified that the final task-order edit is the exact
+existing block relocation. Eleven portable resources were rebuilt and checked:
+only Skills, Schedules and Usage changed; the other eight remained byte-identical.
+The generated Skills diff includes local minifier renaming, separately reviewed.
+No Runtime, SDK, protocol, dependency, theme or persisted-data change is involved.
+
+Native acceptance used the real Wails beta.34 asset/IPC host, current production
+components and validated in-memory SDK responses. Private transport held one
+retry; passive frame/focus geometry recorded first acceptance. Final 80
+source/test/host/document inputs, 11 resources, four compiled shared-UI inputs
+and four harness inputs remained frozen through acceptance and checks. The
+harness contained no focus, scroll or geometry intervention.
+
+- Explicit English/light/14 px/Flame Orange kept Cancel at 569–597 and scrollTop
+  212 through acceptance; the body changed 946 → 952. The exact connection
+  draft survived, the enabled/off values and Orange focus ring were visible,
+  Enter restored Edit docs, and keyboard Close returned to Workspace diff.
+  Composer then accepted exactly `Continue from Orange settings · 保留`.
+- English/light/14 px/custom blue moved focus to Search and deliberately
+  scrolled to 122 while the read was still held. First acceptance retained that
+  focus, scroll and Cancel geometry, as well as the exact connection draft.
+  Keyboard cancellation/Close and new Composer input also passed. An earlier
+  attempt reached Search only after acceptance and is excluded from this
+  asynchronous-focus evidence. Omitting an accent preserved the prior private
+  bundle preference, so that scene is correctly classified blue.
+- Chinese/dark/18 px/custom blue used an actual edge-resized 2632×1798 window
+  and twenty native Zoom In commands. At 200%, held/first-accepted Cancel stayed
+  at 70.2–100.2 with scrollTop 1131 while body height grew 1422.7 → 1615.2.
+  The transition capture was already accepted and contains frozen prior-held
+  and first-accepted diagnostics; it is not claimed as a separate held screenshot.
+  Wheel reading exposed the complete long tool name/descriptions and switches.
+  Keyboard reentry reached Cancel, cancellation restored Edit docs, Close
+  returned to Conversation in the narrow layout, and continued input was exact.
+- A separate native Reload scene at the same 200% intentionally scrolled upward
+  during the held read: 1131 → 681. Acceptance kept 681 and the intentionally
+  offscreen Cancel at 519.7–549.7. No automatic focus chasing occurred. Keyboard
+  reentry exposed the action normally. Actual Size was restored before exit.
+  The unchanged shared owner also qualified changed-file search → no matches →
+  Escape clear → second-file selection with its exact Composer draft retained.
+
+All scenes refused and recorded zero MCP/approval mutations; accepted read counts
+were exposure 1, rules 1 and tools 3. These are isolated presentation/recovery
+paths, not live server connection, Save/Test, policy-write or installed-package
+migration acceptance. Existing installations keep their selected resource digest;
+a source/resource rebuild does not automatically reinstall them. VoiceOver,
+native OS IME, measured pixel contrast, the other six native locale layouts,
+other-platform GUIs and the three unrelated leaf `:empty` sites are unqualified.
+The original failure depends on native style/layout timing and was not exposed
+by happy-dom; no mirror-only DOM assertion was added.
+
+Final shared-UI checking passed build, types, lint, formatting, 5 files / 79
+tests and an independent packed UI/icons consumer (8.58 s). Portable build and
+checking passed (0.53 / 2.07 s), including all 11 resources and eight-locale
+closure. Focused Web coverage passed 11 files / 69 tests (6.44 s); after the
+exact form relocation, ServerForm/ToolControls passed 2 files / 19 tests (2.66 s).
+The final complete Web command passed types, lint, formatting, all 390 files /
+3,077 tests and the six checks through port-surface, then failed at the unchanged
+API-consumer inventory (175.89 s). Its 16 guard tests passed; it still rejects
+`mcp.servers.reconnect has no non-test frontend consumer`. The remaining 15
+checks passed independently, including the production bundle and all portable
+resources. `make check-native` passed (22.99 s). Memory MCP readiness did not fail
+in this complete run; no readiness repair is claimed. Non-failing loopback
+diagnostics remain separate. No guard, assertion or timeout was weakened; no
+browser visual suite or performance benchmark ran.
+
+All 21 recorded native PIDs and four CLI PIDs exited. No dead-app accessibility
+query was used after Quit in this batch. The exact bundle was unregistered, and
+ownership/birth-time/source-hash guards removed its private root, homes, logs,
+captures, pointer, ten newly generated outputs/caches and two bundle-specific
+Library directories. The pre-existing shared-UI cache, user data, read-only
+references, primary checkout and unrelated processes were preserved. Remote
+main was refetched at `e7b82c04bdce5eee848509e425d487564bdf3e01` before publication.
+
+Continue with observed complete-task defects, especially retained resource
+catalog reading and return paths across their actual read/empty/error boundaries.
+Do not restart this resolved scroll-clamping investigation or add a generic
+body-resize focus policy. Preserve deliberate scrolling and later outside focus.
 
 ## Wide-content breakout in the reading band
 

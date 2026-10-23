@@ -139,7 +139,7 @@ export function PackageManager() {
           empty={{ icon: "blocks", title: t("packages.empty") }}
         >
           {(rows) => (
-            <RecordGroup variant="list">
+            <RecordGroup variant="list" hidden={!operations}>
               {operations &&
                 rows.map((installation) => (
                   <PackageRow

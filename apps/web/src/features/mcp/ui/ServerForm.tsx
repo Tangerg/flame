@@ -321,12 +321,6 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
           />
         </FormField>
       </FormRow>
-      {server && (
-        <div {...stylex.props(vocab.column, gap.s1_5)}>
-          <span {...stylex.props(ss.label, typeStep.uiMd)}>{t("mcp.tools.manage")}</span>
-          <ToolControls server={server.id} />
-        </div>
-      )}
 
       <FormActions
         label={t(isEdit ? "mcp.save" : "mcp.add")}
@@ -382,6 +376,12 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
       </span>
       {feedback.state === "error" && (
         <SystemMessage variant="warning">{feedback.reason}</SystemMessage>
+      )}
+      {server && (
+        <div {...stylex.props(vocab.column, gap.s1_5)}>
+          <span {...stylex.props(ss.label, typeStep.uiMd)}>{t("mcp.tools.manage")}</span>
+          <ToolControls server={server.id} />
+        </div>
       )}
       {server && (
         <ConfirmDialog

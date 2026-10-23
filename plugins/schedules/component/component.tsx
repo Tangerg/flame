@@ -430,7 +430,12 @@ export function Schedules({ context }: { context: ComponentContext }) {
             : undefined
         }
       >
-        <RecordGroup variant="list" id="items" aria-label={t("catalog.title")}>
+        <RecordGroup
+          variant="list"
+          id="items"
+          aria-label={t("catalog.title")}
+          hidden={!page}
+        >
           {page && !matching.length && (
             <EmptyState
               icon={CalendarClock}

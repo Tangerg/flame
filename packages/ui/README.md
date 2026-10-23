@@ -52,7 +52,9 @@ Its title size can use the smaller existing display roles for workbench views.
 Page actions belong to the persistent `Panel.controls` zone, alongside filters.
 `PanelSection` groups one heading, supporting context, filters and content;
 `PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface, corners
-and separators. Its `cards` variant provides the responsive schedule grid;
+and separators. Callers own read and empty state: a truly empty group uses the
+native `hidden` attribute, and the group never infers visibility from transient
+DOM emptiness while its children are replaced. Its `cards` variant provides the responsive schedule grid;
 `ListRow variant="card"` owns each independent card surface.
 `Disclosure variant="row"` owns resource summaries that expand directly. Hover
 feedback belongs to its summary trigger; the expanded reading body remains

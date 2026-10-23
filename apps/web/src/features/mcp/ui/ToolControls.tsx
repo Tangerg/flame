@@ -79,18 +79,19 @@ export function ToolControls({ server }: Props) {
       {rules.error != null && (
         <DataError title={t("mcp.error.loadAutoApproveRules")} onRetry={() => rules.refetch()} />
       )}
-      <DataView
-        items={tools.data}
-        isLoading={tools.isLoading}
-        failure={tools.error}
-        onRetry={tools.refetch}
-        skeletonCount={3}
-        empty={{ icon: "tool", title: t("mcp.tools.empty") }}
-        error={{ title: t("mcp.error.loadTools") }}
-      >
-        {(tools) => (
-          <SettingsGroup>
-            {tools.map((tool) => {
+      {/* Keep the query boundary mounted through loading, error and accepted states. */}
+      <SettingsGroup>
+        <DataView
+          items={tools.data}
+          isLoading={tools.isLoading}
+          failure={tools.error}
+          onRetry={tools.refetch}
+          skeletonCount={3}
+          empty={{ icon: "tool", title: t("mcp.tools.empty") }}
+          error={{ title: t("mcp.error.loadTools") }}
+        >
+          {(tools) =>
+            tools.map((tool) => {
               const isDisabled = disabled.has(tool.name);
               return (
                 <SettingRow
@@ -144,10 +145,10 @@ export function ToolControls({ server }: Props) {
                   </div>
                 </SettingRow>
               );
-            })}
-          </SettingsGroup>
-        )}
-      </DataView>
+            })
+          }
+        </DataView>
+      </SettingsGroup>
     </div>
   );
 }
