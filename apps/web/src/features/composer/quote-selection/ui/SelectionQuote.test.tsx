@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isImeKey } from "@flame/ui";
 import { selectAgentSession } from "@/features/agent/public/session";
 import {
+  captureComposerSubmission,
   replaceComposerDraft,
   useComposerText,
   useSetComposerText,
@@ -12,6 +13,7 @@ import {
   registerComposerFocusPresentation,
   registerComposerFocusTarget,
 } from "@/features/composer/public/focus";
+import { createComposerSendIntent } from "@/features/composer/domain/sendIntent";
 import { SelectionQuote } from "@/features/composer/quote-selection/ui/SelectionQuote";
 
 const message = "Complete selected evidence — 保留全部内容.\nA second line with its final words.";
@@ -208,7 +210,7 @@ describe("SelectionQuote", () => {
       fireEvent.click(button);
       expect(
         screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" }).value,
-      ).toBe(`Existing draft\n\n${quote}`);
+      ).toBe(`Existing draft\n\n${quote}\n\n`);
       expect(selection.isCollapsed).toBe(true);
     },
   );
@@ -257,16 +259,65 @@ describe("SelectionQuote", () => {
     fireEvent.click(button);
     flushFrame();
 
-    expect(field.value).toBe(`Existing draft\n\n${quote}`);
+    expect(field.value).toBe(`Existing draft\n\n${quote}\n\n`);
     expect(present).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(field);
     expect(field.selectionStart).toBe(field.value.length);
     expect(field.selectionEnd).toBe(field.value.length);
     expect(window.getSelection()?.isCollapsed).toBe(true);
     expect(screen.queryByRole("button", { name: "Quote in message" })).toBeNull();
+    expect(createComposerSendIntent(captureComposerSubmission())).toMatchObject({
+      body: `Existing draft\n\n${quote}`,
+      historyText: `Existing draft\n\n${quote}`,
+    });
     fireEvent.change(field, { target: { value: `${field.value} Continued.` } });
-    expect(field.value).toBe(`Existing draft\n\n${quote} Continued.`);
+    expect(field.value).toBe(`Existing draft\n\n${quote}\n\n Continued.`);
+    expect(screen.getByRole("textbox", { name: "Composer draft" })).toBe(field);
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionEnd).toBe(field.value.length);
+    expect(createComposerSendIntent(captureComposerSubmission())).toMatchObject({
+      body: `Existing draft\n\n${quote}\n\n Continued.`,
+      historyText: `Existing draft\n\n${quote}\n\n Continued.`,
+    });
     unregister();
+  });
+
+  it("keeps consecutive quotes and continuation in the same draft with one paragraph boundary", async () => {
+    render(<Harness />);
+    const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" });
+    const first = await showQuote();
+    await act(async () => {
+      fireEvent.click(first);
+    });
+    const range = document.createRange();
+    range.selectNodeContents(
+      screen.getByRole("region", { name: "Message reader" }).querySelector("p")!,
+    );
+    selectRange(range);
+    flushFrame();
+    const second = await screen.findByRole("button", { name: "Quote in message" });
+    await act(async () => {
+      fireEvent.click(second);
+    });
+    flushFrame();
+
+    expect(field.value).toBe(`Existing draft\n\n${quote}\n\n${quote}\n\n`);
+    expect(screen.getByRole("textbox", { name: "Composer draft" })).toBe(field);
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionStart).toBe(field.value.length);
+    expect(field.selectionEnd).toBe(field.value.length);
+    expect(createComposerSendIntent(captureComposerSubmission())).toMatchObject({
+      body: `Existing draft\n\n${quote}\n\n${quote}`,
+      historyText: `Existing draft\n\n${quote}\n\n${quote}`,
+    });
+
+    fireEvent.change(field, { target: { value: `${field.value}Continue after both.` } });
+
+    expect(field.value).toBe(`Existing draft\n\n${quote}\n\n${quote}\n\nContinue after both.`);
+    expect(createComposerSendIntent(captureComposerSubmission())).toMatchObject({
+      body: `Existing draft\n\n${quote}\n\n${quote}\n\nContinue after both.`,
+      historyText: `Existing draft\n\n${quote}\n\n${quote}\n\nContinue after both.`,
+    });
   });
 
   it.each(["Enter", " "])(
@@ -285,7 +336,7 @@ describe("SelectionQuote", () => {
       flushFrame();
 
       const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" });
-      expect(field.value).toBe(`Existing draft\n\n${quote}`);
+      expect(field.value).toBe(`Existing draft\n\n${quote}\n\n`);
       expect(present).toHaveBeenCalledTimes(1);
       expect(document.activeElement).toBe(field);
       expect(field.selectionEnd).toBe(field.value.length);
@@ -308,12 +359,31 @@ describe("SelectionQuote", () => {
     });
     flushFrame();
     const button = await screen.findByRole("button", { name: "Quote in message" });
+    const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" });
 
     fireEvent.click(button);
 
-    expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" }).value).toBe(
-      "Existing draft\n\n`src/complete source.ts:4-5`\n```\nconst a = 1;\nreturn a;\n```",
-    );
+    const quoted =
+      "Existing draft\n\n`src/complete source.ts:4-5`\n```\nconst a = 1;\nreturn a;\n```";
+    expect(field.value).toBe(`${quoted}\n\n`);
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionStart).toBe(field.value.length);
+    expect(field.selectionEnd).toBe(field.value.length);
+    expect(createComposerSendIntent(captureComposerSubmission())).toMatchObject({
+      body: quoted,
+      historyText: quoted,
+    });
+
+    fireEvent.change(field, { target: { value: `${field.value} Continue file.` } });
+
+    expect(field.value).toBe(`${quoted}\n\n Continue file.`);
+    expect(screen.getByRole("textbox", { name: "Composer draft" })).toBe(field);
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionEnd).toBe(field.value.length);
+    expect(createComposerSendIntent(captureComposerSubmission())).toMatchObject({
+      body: `${quoted}\n\n Continue file.`,
+      historyText: `${quoted}\n\n Continue file.`,
+    });
   });
 
   it("does not quote a selection spanning separate sources", () => {
@@ -493,7 +563,7 @@ describe("SelectionQuote", () => {
     expect(document.activeElement).toBe(button);
     fireEvent.click(button, { detail: 0 });
     expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" }).value).toBe(
-      `Existing draft\n\n${quote}`,
+      `Existing draft\n\n${quote}\n\n`,
     );
   });
 
@@ -508,7 +578,7 @@ describe("SelectionQuote", () => {
     fireEvent.click(button, { detail: 0 });
 
     expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" }).value).toBe(
-      "Existing draft\n\n> Complete selected evidence — 保留全部内容.\n>\n> A second line with its final words.",
+      "Existing draft\n\n> Complete selected evidence — 保留全部内容.\n>\n> A second line with its final words.\n\n",
     );
   });
 
@@ -537,7 +607,7 @@ describe("SelectionQuote", () => {
     flushFrame();
 
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" });
-    expect(field.value).toBe(`Existing draft\n\n${quote}`);
+    expect(field.value).toBe(`Existing draft\n\n${quote}\n\n`);
     expect(present).toHaveBeenCalledOnce();
     expect(readerFocus).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(field);
@@ -721,7 +791,7 @@ describe("SelectionQuote", () => {
 
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" });
     const expected =
-      "Existing draft\n\n`src/complete source.ts:4-5`\n```\nconst a = 1;\nreturn a;\n```";
+      "Existing draft\n\n`src/complete source.ts:4-5`\n```\nconst a = 1;\nreturn a;\n```\n\n";
     expect(field.value).toBe(expected);
     act(() => reader.focus());
     selectRange(range);

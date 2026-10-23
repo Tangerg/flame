@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Continuous UI batches remain active. Selection quoting now supports an explicit Tab entry, visible keyboard focus, Enter/Space activation and local return without losing the draft or reclaiming later focus. Existing Popover placement and native multi-click selection are retained. English/light/14 px and Chinese/dark/18 px/blue native acceptance covers paragraph and file-line quotes, source return and 200% zoom. All 397 test files / 3,246 tests, 20 of 22 post-test Web gates and the supported native check pass. The two other guards fail identically on the clean baseline, so the aggregate Web command remains nonzero. Delivery retains exact-source verification and guarded resource cleanup. The next observed issue is continuation text joining a quoted Markdown block; compare the existing formatting owner before choosing that follow-up.
+Updated: 2026-10-24. Continuous UI batches remain active. Selection quotes now end at a blank paragraph, so immediate writing stays outside the quoted prose or fenced code. Consecutive quotes, the retained draft and the existing keyboard/focus path remain intact. English/light/14 px and Chinese/dark/18 px/blue native acceptance covers prose, file lines, repeated quotes, source return and 200% zoom. The focused 147-test run, 20 of 22 post-test Web gates and the supported native check pass. The full Web run records 3,249 passes and one Runtime MCP-readiness failure, also reproduced on the clean baseline; the complete 49-test file then passes on the candidate. Both other guards still fail on the baseline. Delivery retains exact-source verification and guarded cleanup. Continue with evidence from the next complete reading-to-conversation path.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `32a3e4fd3` and repairs the verified native keyboard gap in SelectionQuote, its adjacent regression file and this record. The earlier `05efd8213` implementation reproduces the same gap; it was not introduced by the Popover placement repair. Shared Button behavior, existing reader focus targets, retained draft ownership and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. Continue by comparing the observed quote-to-continuation Markdown boundary with the unmodified formatter and Composer append owner. The earlier milestone pause is superseded by the explicit resume.
+The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `475555981` and repairs the verified quote-to-continuation Markdown boundary in `quoteText`, with its formatter/component regressions and this record. SelectionQuote itself, shared Button behavior, existing reader focus targets, retained draft ownership and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. Continue investigating actual task continuity; a native source selection that includes the message footer is excluded from this acceptance and needs a separate reproduction before any follow-up change. The earlier milestone pause is superseded by the explicit resume.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -1624,11 +1624,101 @@ Verification and limits:
   shared UI cache, dependencies, references, user data and primary checkout remain
   preserved.
 
-The next observed continuation issue is separate from keyboard ownership: typing
-immediately after a file quote joins the closing fence line, while prose
-continuation joins the final blockquote line. The current formatter and append
-owner were unchanged by this batch. Compare that existing formatting contract and
-rendered result before selecting the next repair; do not add another focus owner.
+### Continue writing after a selection quote
+
+The native keyboard acceptance above exposed a formatting defect: immediate
+continuation joined the closing file fence or final blockquote line. Rendering
+the unchanged `475555981` formatter with the installed Markdown parser confirms
+that the new writing becomes quoted material. `quoteText` now adds one blank
+paragraph after each message, file or tool-output quote. This is the single owner
+of the fragment's Markdown boundary; the existing append owner still joins draft
+parts and requests Composer focus. It trims the previous part before another
+append, so consecutive quotes do not accumulate separators. Send-intent trimming
+keeps quote-only body/history unchanged and preserves a continued paragraph.
+No UI event, focus, source identity, dependency, Runtime, protocol or persisted
+data contract changes are needed.
+
+Read-only ZCode `ConversationComposer.tsx` renders quote-reference chips separately
+from its plain message text, supporting a clear distinction between source
+material and the user's writing; Flame retains its existing Markdown contract.
+ChatGPT's actual selected-text overlay establishes pointer selection handling,
+not a newline policy. The official CommonMark
+[fenced-code](https://spec.commonmark.org/0.31.2/#fenced-code-blocks) and
+[blockquote](https://spec.commonmark.org/0.31.2/#block-quotes) rules explain why a
+continuation on the closing-fence line invalidates that fence and why an
+unseparated paragraph can remain inside a blockquote. Better-writing and
+better-typography guide this readable source/writing boundary; better-accessibility
+guides continuity through the existing keyboard and focus path.
+
+Verification and limits:
+
+- The five-file focused run passes **147 tests**. The final formatter/component
+  pair passes **46**, including all retained keyboard cases, three rendered
+  Markdown assertions, immediate prose/file continuation, consecutive quotes,
+  same-input focus/caret and body/history projection. Restoring the original
+  formatter under the final tests yields **20 failures / 26 passes** at the
+  intended boundary; the candidate is restored by exact hash.
+- `npm run check --workspace @flame/web`, Node **22.22.1** and
+  `VITEST_MAX_WORKERS=2`, passes type, lint and format. Its full test run records
+  **396 passing / 1 failing file**, **3,249 passing / 1 failing test**, in
+  **159.36 seconds**; the command exits nonzero after **167.80 seconds**. The
+  failure is the portable-package admission case's five-second MCP-readiness
+  timeout in `runtime-http.e2e.test.ts`. Restoring all three changed source/test
+  files and confirming clean `475555981` reproduces that exact case failure.
+  After restoring the candidate, the complete Runtime file passes **49/49** in
+  **39.79 seconds**. This does not retroactively make the full run green.
+- All **22** later Web gates run serially; **20 pass**, including bundling. The
+  API guard still expects a `SIDECAR_METHODS` object literal, despite its own
+  **16** unit tests passing. The plugin-resource guard reports Diagnostics ESM
+  **20,349 / 20,318 bytes**. Both complete guards fail again on the clean baseline;
+  the plugin output is identical. No checks or assertions are weakened.
+  Non-failing loopback connection diagnostics remain unclassified.
+- `make check-native` passes Desktop test/vet/build and the supported production
+  Wails arm64 build in **25.33 seconds**. Private production-component fixture
+  assets build in **3.13 seconds**, and the isolated native host builds in
+  **3.55 seconds**. Canonical in-memory transport, loopback services and private
+  data contain the fixture. Passive observation reads selection, focus, geometry,
+  caret, draft tail and input identity without operating the UI.
+- English/light/**14 px**/Orange/full motion, **1440 × 900 px**, **523 px** Dock:
+  source-paragraph selection, Tab and native Enter preserve the **24-character**
+  draft, append a complete quote with its blank paragraph, and allow immediate
+  writing to reach **227** characters. Pointer activation and a further
+  Tab/Space quote preserve one separator and the same input; continued writing
+  reaches **611**. Opening the source file, selecting lines **4–5**, Tab and
+  Enter append the full `runtime/internal/session/store.go:4-5` reference and
+  literal code without gutter numbers. Immediate writing sits below the closing
+  fence and reaches **749** characters, with the caret visible at the end.
+  Back to task retains the child reading position and file-link focus.
+- Chinese/dark/**18 px**/custom **#007BFF**/motion off: native half-screen sizing,
+  sidebar collapse and **200%** zoom yield **561 × 525 CSS px**. Full-width
+  material retains the hidden **12-character** draft. Selecting 24 Chinese
+  characters and Tab exposes the blue **1.5 px** focus outline; Escape returns
+  to the same reader and source rectangle. Reselecting, Tab and native Space
+  reveal the same input with **42** characters and a blank paragraph. Immediate
+  native paste of the continuation reaches **52**, on its own paragraph with
+  the caret at the end. Actual Size restores **1122 × 1051** and preserves the
+  complete draft. No 320 px keyboard Dock resize is claimed for this batch.
+- Tool-output quoting is covered by the formatter/rendering contract; no current
+  native DOM producer was found for that source kind. Native coverage uses
+  pointer selection followed by real keyboard activation. A footer-crossing
+  selection and a combined gesture without an observed quote action are excluded.
+  Keyboard-only selection construction, OS IME, VoiceOver, other-platform GUI,
+  Send, live providers, durable Runtime writes and native file pickers were not
+  exercised. The Go-named fixture contains TypeScript text and proves literal
+  path/line quoting, not language semantics. No browser visual suite or
+  performance baseline was started.
+- All three reviewed source/test hashes remain unchanged through checks and
+  native acceptance. Six generated resources are restored only after matching
+  build receipts; all eleven original hashes agree. The private app is stopped.
+  Final delivery unregisters it and removes its unique Library state, newly
+  created staged/build/cache outputs, private fixture/log/receipt directory,
+  agent scratch and publication clone after ownership/preexistence checks.
+  The preexisting shared UI cache, dependencies, references, user data and primary
+  checkout remain preserved.
+
+Continue with actual reading and return paths. The selection boundary near the
+message footer needs reproducible source-local evidence before deciding whether
+there is another product defect; do not infer a repair from an unqualified gesture.
 
 ### Native short-paste continuation qualification
 
