@@ -3,7 +3,6 @@ package conversation
 import (
 	"bytes"
 	"fmt"
-	"slices"
 	"time"
 
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
@@ -182,7 +181,7 @@ func (item PlanChanged) equal(event Event) bool {
 
 func (item SegmentFinished) equal(event Event) bool {
 	other, ok := event.(SegmentFinished)
-	return ok && item.Run.Equal(other.Run) && equalInterrupts(item.Interrupts, other.Interrupts)
+	return ok && item.Run.Equal(other.Run) && InterruptsEqual(item.Interrupts, other.Interrupts)
 }
 
 // ReplayableEvent reports whether the underlying runtime retains this event in
@@ -251,21 +250,4 @@ func equalOptional[T comparable](left, right *T) bool {
 
 func equalOptionalUsage(left, right *Usage) bool {
 	return (left == nil) == (right == nil) && (left == nil || left.Equal(*right))
-}
-
-func equalInterrupts(left, right []Interrupt) bool {
-	return slices.EqualFunc(left, right, func(left, right Interrupt) bool {
-		switch item := left.(type) {
-		case Approval:
-			other, ok := right.(Approval)
-			return ok && item.Equal(other)
-		case Question:
-			other, ok := right.(Question)
-			return ok && item.Equal(other)
-		case nil:
-			return right == nil
-		default:
-			return false
-		}
-	})
 }

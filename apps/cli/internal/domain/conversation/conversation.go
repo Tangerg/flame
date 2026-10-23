@@ -196,7 +196,7 @@ func (c *Conversation) MatchesSnapshot(snapshot SessionSnapshot) bool {
 		}
 	}
 	return equalPlans(c.plan, expected.plan) &&
-		c.Usage().Equal(expected.Usage()) && equalInterrupts(c.interrupts, expected.interrupts) &&
+		c.Usage().Equal(expected.Usage()) && InterruptsEqual(c.interrupts, expected.interrupts) &&
 		c.Outcome().Equal(expected.Outcome()) && c.Phase() == expected.Phase() && c.runID == expected.runID &&
 		c.segmentID == expected.segmentID && slices.EqualFunc(c.Runs(), expected.Runs(), Run.Equal)
 }
