@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI batches remain active. Explicit no-line file openings now start at the beginning, including cached different files and same-file Markdown reentry; ordinary retained reading keeps its position. Original-source regressions and actual Wails reproduce the failures, and the candidate passes English/light/14 px and Chinese/dark/18 px flows, custom blue, 320 px Dock and 200% source return. The first complete Web command retains five failures; all affected files plus the related file suite pass 101 tests in isolation, and all 22 remaining gates plus the supported native check pass. Owned resources are removed. The next user-directed priority is one shared main/delegated Agent transcript renderer.
+Updated: 2026-10-23. Continuous UI batches remain active. Main and delegated Agent content now use one `MessageTranscript`, including turn ordering, date separators, reading gutters and individual render recovery. A failed child turn preserves its task and healthy messages; Retry retains the surviving reader's focus. Original-source regressions and actual Wails reproduce the previous failures. English/light/14 px and Chinese/dark/18 px flows pass, including custom blue, 320 px Dock and 200% source return. Focused tests, isolated reruns, 20 of 22 later Web gates and the supported native check pass. The first full test run and two independently reproduced upstream guard failures remain qualified below. Owned native and build resources are removed; continue from fresh evidence for the next complete task path.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch extends remote `main` at `8c35d5888`; delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame` still contains the user's parallel local main history and untracked documentation; it remains untouched. Do not sweep those commits or files into the UI batch. The previous milestone pause is superseded by the explicit resume. Continue with fresh source and native evidence for the next complete task path.
+The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch includes the user's latest merged main changes through `5ffec35b2`; its updated Session context, Run status helpers and shared error-reporting policy are preserved. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, including its untracked documentation, remains untouched. Read current remote state again before delivery. The previous milestone pause is superseded by the explicit resume. Continue with fresh source and native evidence for the next complete task path.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -540,7 +540,7 @@ browser download behavior.
 | MCP configuration drafts      | The mounted editor owns feedback and view completion. Existing MCP commands retain their captured inputs, Runtime generation and cache-repair owner. Pending field/control presentation comes from the shared primitives; import identity validation completes before command admission.                                                                       |
 | Context Dock                  | File identity and return navigation precede a separate wrapping mode/action row. Full directories remain available beneath the filename. Opening from the tree focuses the return action; returning restores the tree cursor without stealing another region's focus. Panels grow through their complete content; fixed pane seams paint above child surfaces. |
 | Subagent stop controls        | Shared filled stop marks and quiet circular controls replace the checkbox-like outline squares. Their placement is consistent across the narrative, Dock list and detail view; terminal entries reserve no dead cancel slot.                                                                                                                                   |
-| Main and delegated messages   | Both use `MessageTurn` and `MessageBlock` for spacing, prose, bubbles, long-input folding, tools, code, tables, media and message actions. Child rows retain their own Run and referenced facts. Their overview keeps its scroll position; returning restores the originating task's focus.                                                                    |
+| Main and delegated messages   | Both use `MessageTranscript` for ordered turns, dates, reading gutters and isolated recovery, with shared `MessageTurn` / `MessageBlock` content and actions. Child rows retain their own Run and referenced facts. Their overview keeps its scroll position; returning restores the originating task's focus.                                                 |
 | Motion and focus              | Shared moving item backplates remain interruptible and reversible and consume the host motion tokens. Reduced motion, scoped code Select All, native dismissal and focus return have established owners and regression coverage.                                                                                                                               |
 | Authoring and acceptance      | One captured submission owns draft consumption and history. Rejected input stays editable; delayed acceptance preserves successor revisions, Session changes, attachment staging and other controls' focus. Goal and slash extensions share this settlement contract.                                                                                          |
 
@@ -562,8 +562,11 @@ dark stroke or additional hover/drag darkening. Both edges share one wash rule;
 the resize cursor and keyboard focus treatment remain available. Do not cover
 either defect with per-view background patches or duplicate dividers.
 
-The selected-subagent view no longer assembles a parallel message UI. Agent's
-existing fact slicer projects each child message for the common renderer, so
+Main and selected-subagent views now compose one `MessageTranscript`. It owns
+ordered turns, stable keys, neighbors, date separators, reading gutters and
+per-turn render recovery. `MessageTurn` and `MessageBlock` continue to own message
+content and actions. Agent's existing fact slicer projects each child message for
+that common renderer, so
 running siblings do not suppress a finished child's actions. The same streaming
 preference applies in both narratives. Copy and feedback retain the selected
 message identity; regeneration appears only for a main-conversation message that
@@ -572,6 +575,94 @@ independent, while sharing the reading-focus guard and latest-content control.
 Jumping to the bottom transfers focus to that reader before hiding the control.
 The running-status pill keeps one line and grows with text size instead of
 wrapping outside a fixed-height background under narrow-window pressure.
+
+A failed child turn now preserves the selected task's identity, healthy messages
+and return actions. Previously, the child list bypassed the main conversation's
+turn boundary, so one message failure replaced the complete Subagents panel.
+`TurnErrorBoundary` now lives beside the common transcript. Its Retry action
+retires focus inside the disappearing fallback into the nearest existing reader
+before resetting; already-outside focus and recovered content's own focus still
+win. The error logging policy added on current `main` remains one implementation
+in `ui/atoms/logging-error-boundary.tsx`, shared with `ChatErrorBoundary`.
+
+`MessageStream` retains the main scroll/follow host and selects the terminal Run
+outcome through its current owner, passing that content to the matching message.
+`SubagentsPanel` retains each Run's independent reader, retained hidden content,
+selection and source chain. Both consume the same transcript, without a renderer
+variant or a second Runtime fact projection. The old Shell transcript helpers
+and public `MessageTurn` entry are removed; all in-scope callers are migrated.
+
+The read-only ChatGPT local conversation subagent tab
+(`local-conversation-subagents-panel-tab-62d7e5741aab.js`) uses its actual shared
+thread component while retaining task identity and Back above it. This is live
+UI code, distinct from the Markdown exporter. The existing ZCode, HeroUI, ArcUI,
+Radix and Ace research remains the basis for reading hierarchy and progressive
+detail. The better-interface family and React composition review keep one shared
+content owner and a concrete terminal slot instead of parallel rendering modes.
+
+Native acceptance used actual Wails v3 with production React components,
+canonical in-memory Session fixtures and private, removable render-fault probes.
+The original `5ffec35b2` implementation lost the complete selected child panel
+after an assistant-turn failure; successful main Retry restored the message but
+left focus on `BODY`. The candidate keeps a healthy child input and task identity,
+and both repeated child failure and successful main/child recovery retain their
+surviving readers. The original-source comparison independently fails exactly
+the child-isolation case and two Retry-focus cases; its other 15 cases pass.
+
+English/light/14 px/Flame Orange and Chinese/dark/18 px/custom blue scenes cover
+long prose, mixed CJK/Arabic, lists, code, tables, diagrams and media through the
+shared renderer. The English task → nested task → task flow restores the source
+link and parent reading position; task → file → task keeps the exact 105 px
+position and original file-reference focus. Main → task → file → task → main
+also preserves the Composer draft and permits continued editing.
+
+The Chinese scene includes a pointer-resized 320 px Dock (288 px inner turn
+measure), an approximately 1120 px native window and 20 separately observed
+native Zoom In actions from Actual Size, reaching 200%. Full-pane main and child
+turns use the same 521 px inner measure in that narrow zoomed window. Nested and
+file returns restore the appropriate source, and the exact draft continues as
+`放大后继续原来的任务。 已返回。`. Returning focus can reveal its source inside the
+retained reader; no invariant of identical scroll offsets across width changes
+is claimed. Actual Size was restored before the acceptance app exited.
+
+One interrupted zoom attempt and an invalid private fixture locale (`zh-CN`,
+instead of the registered `zh`) were discarded and repeated from fresh scenes.
+An English `End` key did not move the textarea caret to its end; its subsequent
+paste inserted at the current caret. Explicit Command+Down then appended exactly,
+and the Chinese final draft used that verified path. These observations are not
+reported as product defects. No browser visual suite, performance benchmark,
+live provider request or durable Runtime mutation was used. VoiceOver, real OS
+IME composition, all-day date transitions and unrelated pages remain outside
+this native qualification; deterministic tests cover date-separator behavior.
+
+The primary focused run passed six files and 101 tests. The first complete Web
+command passed type, lint and formatting, then reported nine failed test files:
+22 failed, 3,017 passed and 92 skipped tests. Most individual failures were
+timeouts; Markdown and Runtime setup hooks also timed out, and the Schedules
+provider-selection assertion differed in that run. All nine complete files plus
+`ChatPanel.sessionOwner.test.tsx` passed 275 tests in isolation with two workers,
+unchanged assertions and unchanged deadlines. This does not turn the original
+full run into a pass. The final two transcript files passed eight tests after
+their fault-injection regression moved into Chat, its actual renderer owner;
+Shell keeps its terminal-outcome and follow-measurement integration checks.
+
+Final type, lint, layer boundaries and 20 of the 22 post-test Web gates pass.
+Two remaining failures also reproduce without this UI change on `5ffec35b2`:
+`check:api-consumers` still expects the removed `SIDECAR_METHODS` object, and
+`check:plugin-resources` detects stale installed component output. Native staging
+regenerates six such upstream resources (Diagnostics, Diff, Memory, Trajectory,
+Usage and Usage Reports); their original bytes were restored after verification
+and are not part of this UI change. Neither guard nor its expectations was
+weakened. `make check-native` passed Desktop test, vet, build and the supported
+Wails arm64 production build; `vtool` confirms the macOS 13.0 floor. Accepted
+product source hashes are unchanged from native acceptance.
+
+The acceptance app exited and was unregistered. Its named WebKit/cache data,
+private fixture builds, newly created repository build outputs and the full-run
+timeout's late plugin-build residue were removed. Pre-existing UI test cache,
+dependencies, user data, reference resources and unrelated processes are kept.
+The disposable delivery checkout and verification logs are retained only until
+the non-forced main push and exact remote-hash verification, then removed.
 
 Tool groups and narrative waves now use the same `ToolActivitySummary` in the
 shared message renderer. Their compact secondary line retains ongoing calls,
@@ -1811,13 +1902,15 @@ renderer at `features/chat/message/ui/readingColumn.ts`, re-exported through
 since those belong to the shell that owns the floating composer, not to message
 rendering. Shell consumers (`MessageStream`, `ChatStream`, `FloatingComposer`)
 import the axis through the chat public surface — the same direction by which the
-shell already consumes `MessageTurn`.
+shell now consumes `MessageTranscript`.
 
 The earlier move repaired the dependency direction but left an incomplete
 composition: `SubagentsPanel` used the capped box without its gutter. Actual
 Wails showed an 808 px inner body where the main reader had 768 px; padding on
-the outside scroller did not repair that contract. The existing transcript div
-now composes both `readingColumn.box` and `readingColumn.gutter`. Its local
+the outside scroller did not repair that contract. The shared transcript now
+applies `readingColumn.gutter` to every turn, date separator and turn fallback,
+inside the host's `readingColumn.box`. The child summary and empty state compose
+the same gutter separately. Its local
 `--reading-gutter` projects the existing `--layout-compact-gutter`, preserving the
 narrow Dock's inset. The overview list keeps that same token on its scroller;
 the transcript no longer adds a second outer inset. Shared reading tokens and
@@ -4147,11 +4240,10 @@ These checks cover selected contracts and native scenarios. Consult the current 
 
 The user has explicitly resumed continuous batches. Reasoning-reader continuity,
 keyboard identity, long-file request/scroll ownership and default file entry are
-implemented and qualified above. The user now explicitly requires the main Agent
-and delegated Agent content to use the same rendering components and UI. Their
-message bodies already share MessageTurn; inspect the remaining transcript
-assembly and failure presentation before choosing the next bounded change.
-Other candidates still require current source and native evidence.
+implemented and qualified above. Main and delegated Agent content now also share
+the complete transcript assembly and per-turn recovery, as explicitly requested.
+Preserve that shared entry and the independent host reading/follow contexts.
+Further candidates still require current source and native evidence.
 
 Full-pane entry and explicit global Composer focus are implemented and natively
 qualified above. Keep presentation and focus under the host's existing owners.

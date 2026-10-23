@@ -10,6 +10,7 @@ import {
   useWorkspaceInspection,
 } from "@/features/workspace/public/navigation";
 import { ContentVisibility } from "@/ui/index";
+import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import { SubagentsPanel } from "@/features/chat/message/ui/SubagentsPanel";
 const material = vi.hoisted(() => ({
   rows: [] as readonly TranscriptRow[],
@@ -32,6 +33,16 @@ vi.mock("@/features/agent/public/conversation", async (importOriginal) => ({
 vi.mock("@/features/connection/public/serviceStatus", () => ({
   useRuntimeCommandsAvailable: () => material.available,
 }));
+
+vi.mock("@/features/chat/message/ui/MessageTurn", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/chat/message/ui/MessageTurn")>();
+  return {
+    MessageTurn: (props: Parameters<typeof actual.MessageTurn>[0]) => {
+      if (props.row.message.id === "render-boom") throw new Error("render-boom");
+      return <actual.MessageTurn {...props} />;
+    },
+  };
+});
 
 const child: AgentRunView = {
   id: "child",
@@ -95,6 +106,32 @@ function rows(run = child, text = "Child streamed output"): TranscriptRow[] {
     },
   ];
 }
+
+it("contains a failed child turn without losing the selected identity or healthy siblings", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  material.rows = rows();
+  material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages.unshift({
+    id: "render-boom",
+    role: "assistant",
+    runId: "child",
+    blocks: [],
+  });
+  navigator().go({ session: "session" });
+  openWorkspaceSubagentRun("child");
+  const { container } = render(
+    <PluginBoundary plugin="workspace:subagents" label="Subagents">
+      <SubagentsPanel />
+    </PluginBoundary>,
+  );
+  await act(async () => vi.dynamicImportSettled());
+
+  expect(screen.getByRole("button", { name: "All subagents" })).toBeTruthy();
+  expect(within(container.querySelector("header")!).getByText("Running")).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Sub-agent" })).toBeTruthy();
+  expect(screen.getByText("Child streamed output")).toBeTruthy();
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
+  expect(screen.queryByText(/failed to render/i)).toBeNull();
+});
 
 it("projects live child material, returns to the list, and never carries it into another session", async () => {
   material.rows = rows();

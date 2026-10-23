@@ -1,6 +1,5 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { AnimatePresence } from "motion/react";
 import { Activity, useLayoutEffect, useMemo, useRef } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { useT } from "@/lib/i18n/index";
@@ -31,7 +30,7 @@ import {
 import { DelegatedRunLink } from "@/features/chat/message/ui/DelegatedRunLink";
 import { type BlockCtx } from "@/features/chat/message/ui/BlockRenderer";
 import { useStreamRevealStore } from "@/features/chat/public/message/streamReveal";
-import { MessageTurn } from "@/features/chat/message/ui/MessageTurn";
+import { MessageTranscript } from "@/features/chat/message/ui/MessageTranscript";
 import { readingColumn as rc } from "./readingColumn";
 import { UnresolvedRunEffects } from "@/features/chat/message/ui/UnresolvedRunEffects";
 import { SubagentStopButton } from "@/features/chat/message/ui/SubagentStopButton";
@@ -290,10 +289,10 @@ function SubagentTranscript({
           onFocusCapture={(event) =>
             stopFollowOnReadingFocus(event, { scrollRef, state, stopScroll })
           }
-          {...stylex.props(rc.box, rc.gutter, styles.transcript)}
+          {...stylex.props(rc.box, styles.transcript)}
         >
           {(summary.detail || narrative.run.outcome?.unresolvedEffects?.length) && (
-            <div {...stylex.props(styles.evidence)}>
+            <div {...stylex.props(rc.gutter, styles.evidence)}>
               {summary.detail && (
                 <div {...stylex.props(typeStep.uiSm, toneInk[summary.ink])}>
                   <RecordBody>{summary.detail}</RecordBody>
@@ -303,22 +302,16 @@ function SubagentTranscript({
             </div>
           )}
           {rows.length === 0 && (
-            <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("agent.runTree.material.empty")}</p>
+            <p {...stylex.props(rc.gutter, vocab.muted, typeStep.uiSm)}>
+              {t("agent.runTree.material.empty")}
+            </p>
           )}
-          <AnimatePresence initial={false}>
-            {rows.map((row, index) => (
-              <MessageTurn
-                key={row.message.id}
-                row={row}
-                ctx={ctx}
-                sessionId={narrative.run.sessionId}
-                isLast={index === rows.length - 1}
-                isRunning={agentRunIsRunning(narrative.run)}
-                previous={rows[index - 1]?.message}
-                next={rows[index + 1]?.message}
-              />
-            ))}
-          </AnimatePresence>
+          <MessageTranscript
+            rows={rows}
+            ctx={ctx}
+            sessionId={narrative.run.sessionId}
+            isRunning={agentRunIsRunning(narrative.run)}
+          />
         </div>
       </ScrollArea>
       <AgentJumpToBottom

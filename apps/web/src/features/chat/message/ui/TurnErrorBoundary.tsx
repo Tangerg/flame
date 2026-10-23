@@ -1,10 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { type FallbackProps } from "react-error-boundary";
-import { LoggingErrorBoundary } from "@/features/shell/workbench/panel/LoggingErrorBoundary";
+import { LoggingErrorBoundary } from "@/ui/atoms/logging-error-boundary";
 import { useT } from "@/lib/i18n/index";
 import { Button } from "@flame/ui";
-import { readingColumn as rc } from "@/features/chat/public/message/rendering";
+import { readingColumn as rc } from "@/features/chat/message/ui/readingColumn";
 import { color, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 const teb = stylex.create({
   frame: { paddingBlock: space.s2 },
@@ -24,11 +24,20 @@ const teb = stylex.create({
 
 function TurnErrorFallback({ resetErrorBoundary }: FallbackProps) {
   const t = useT();
+  const root = useRef<HTMLDivElement>(null);
+  const retry = () => {
+    // Retire owned focus before recovery can replace the fallback or claim focus itself.
+    const retiring = root.current;
+    if (retiring?.contains(retiring.ownerDocument.activeElement)) {
+      retiring.parentElement?.closest<HTMLElement>("[tabindex]")?.focus({ preventScroll: true });
+    }
+    resetErrorBoundary();
+  };
   return (
-    <div {...stylex.props(rc.gutter, teb.frame)}>
+    <div ref={root} {...stylex.props(rc.gutter, teb.frame)}>
       <div role="alert" {...stylex.props(teb.card, typeStep.uiMd)}>
         <span {...stylex.props(teb.label)}>{t("chat.error.title")}</span>
-        <Button type="button" variant="soft" size="sm" onClick={resetErrorBoundary}>
+        <Button type="button" variant="soft" size="sm" onClick={retry}>
           {t("chat.error.retry")}
         </Button>
       </div>

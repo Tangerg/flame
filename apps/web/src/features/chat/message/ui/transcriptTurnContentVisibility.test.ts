@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { describe, expect, it } from "vitest";
-import { transcriptTurnContentVisibility } from "@/features/shell/workbench/panel/transcriptTurnContentVisibility";
+import { transcriptTurnContentVisibility } from "@/features/chat/message/ui/transcriptTurnContentVisibility";
 describe("transcript turn content visibility", () => {
   it("keeps historical turns eligible for off-screen rendering skips", () => {
     expect(stylex.props(transcriptTurnContentVisibility(false)).className).toBeTruthy();

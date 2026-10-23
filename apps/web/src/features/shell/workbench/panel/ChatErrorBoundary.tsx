@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
 import { type FallbackProps } from "react-error-boundary";
-import { LoggingErrorBoundary } from "@/features/shell/workbench/panel/LoggingErrorBoundary";
+import { LoggingErrorBoundary } from "@/ui/atoms/logging-error-boundary";
 import { useT } from "@/lib/i18n/index";
 import { Well } from "@/ui/index";
 import { Button } from "@flame/ui";

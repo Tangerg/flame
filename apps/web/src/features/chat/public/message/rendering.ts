@@ -1,4 +1,4 @@
-export { MessageTurn } from "@/features/chat/message/ui/MessageTurn";
+export { MessageTranscript } from "@/features/chat/message/ui/MessageTranscript";
 export { QuestionCard } from "@/features/chat/message/ui/cards/QuestionCard";
 export { RootRunOutcome } from "@/features/chat/message/ui/RootRunOutcome";
 export { type BlockCtx } from "@/features/chat/message/ui/blockContext";

@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type WorkspaceViewSpec } from "@/features/workspace/public/views";
 import { navigator } from "@/lib/navigation";
 import { FileRefLink } from "@/features/workspace/public/FileRefLink";
-import { MessageTurn } from "@/features/chat/public/message/rendering";
+import { MessageTranscript } from "@/features/chat/public/message/rendering";
 import {
   activateWorkspaceSessionScope,
   openWorkspaceFile,
@@ -40,25 +40,26 @@ function DraftInput() {
 
 function AnswerTurn({ text }: { text: string }) {
   return (
-    <MessageTurn
-      row={{
-        message: {
-          id: "answer",
-          runId: "run-answer",
-          role: "assistant",
-          blocks: [{ kind: "text", itemId: "answer-text", text, status: "complete" }],
+    <MessageTranscript
+      rows={[
+        {
+          message: {
+            id: "answer",
+            runId: "run-answer",
+            role: "assistant",
+            blocks: [{ kind: "text", itemId: "answer-text", text, status: "complete" }],
+          },
+          runOwner: { kind: "owned", runId: "run-answer", status: "finished" },
+          facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map<string, string>() },
         },
-        runOwner: { kind: "owned", runId: "run-answer", status: "finished" },
-        facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map<string, string>() },
-      }}
+      ]}
       ctx={{
-        sessionId: "ses-1",
+        sessionId: "ses_first",
         expandedIds: new Set(),
         onToggleExpand: () => {},
         textReveal: "instant",
       }}
       sessionId="ses_first"
-      isLast
       isRunning={false}
     />
   );

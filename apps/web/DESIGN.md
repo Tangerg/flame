@@ -389,9 +389,13 @@ move focus, and a later choice to focus another region takes precedence. Termina
 tasks share a Finished group while retaining each outcome's own status; rows
 without a stop command return its space to their reading measure.
 
-Main and delegated narratives use the same `MessageTurn` and `MessageBlock`.
-Turn spacing, streaming preference, long-input folding, tools, Markdown, media,
-selection and message actions have one renderer. Delegated rows project their
+Main and delegated narratives use one `MessageTranscript`, which owns ordered
+turns, date separators, reading gutters and per-turn failure recovery. It uses
+the same `MessageTurn` and `MessageBlock` for spacing, streaming preference,
+long-input folding, tools, Markdown, media, selection and message actions.
+A failed turn preserves the selected task and its other messages. Retry hands
+focused error controls to the surviving reader before recovery; outside focus
+and recovered content's own focus take precedence. Delegated rows project their
 own Run and referenced facts; another task's activity cannot keep a finished
 answer's actions pending. Regeneration is available only for messages in the
 main conversation, where its preceding input can actually be replayed.
