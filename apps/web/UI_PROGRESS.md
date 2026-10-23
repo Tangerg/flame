@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Continuous UI batches remain active. File and tool-output quotes now choose an outer fence longer than every backtick run in the selected body. Quoting a Markdown example preserves its literal markers and keeps immediate continuation outside the code. The existing blank paragraph, source identity, retained draft and keyboard/focus path remain intact. English/light/14 px and Chinese/dark/18 px/blue native acceptance covers the actual README source, repeated quotes, source return and 200% zoom. The focused 151-test run, all 3,254 Web tests, 20 of 22 post-test gates and the supported native check pass. Both remaining guards fail on the clean baseline as well. Delivery retains exact-source verification and guarded cleanup. Continue with evidence from the next complete reading-to-conversation path.
+Updated: 2026-10-24. The file-range focus milestone is the user's requested stopping point; further UI work is paused pending an explicit resume. Loading earlier or later lines now hands the activated control's focus to the existing named reader before requesting content. Reaching the first or last line no longer loses keyboard reading when that control disappears, and later Composer focus remains untouched. Native English/light/14 px and Chinese/dark/18 px/blue acceptance covers both edges, continued drafting, file-list return and 200% zoom. All 40 focused tests, 3,260 Web tests, 20 of 22 post-test gates and the supported native check pass. Both remaining guards also fail on the clean baseline. Delivery retains exact-source verification and guarded cleanup.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user has resumed the work and requested evidence-based batches through validation, main delivery and cleanup. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This batch starts from remote main `8322a31fd` and repairs literal Markdown file quoting in `quoteText`, with formatter/component regressions and this record. SelectionQuote itself, shared Button behavior, existing reader focus targets, retained draft ownership and Runtime command/recovery contracts remain intact. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Read current remote state again before delivery. The reviewed message boundary contains content only; actions and the terminal footer are outside it. A selection crossing that boundary is correctly retired and does not establish another defect. Continue investigating actual task continuity. The earlier milestone pause is superseded by the explicit resume.
+The user's latest instruction is to finish this batch, deliver it and pause. This overrides the earlier continuous-work instruction; no next batch is started. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This milestone starts from remote main `11d9712b7` and changes only `FileWorkspace.tsx`, its regression tests and this record. The existing reader, query, scroll anchor, navigation and Composer remain the owners; the range action transfers only its own current focus synchronously, with no completion-time focus action. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Literal Markdown quote preservation remains integrated. A later explicit resume must first read current remote state and this record, then choose a complete task with fresh evidence; the pause does not authorize another investigation.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -90,7 +90,7 @@ hidden and frame callbacks stayed paused. Do not repeat that activation request
 or add a component workaround from these inconsistent signals. Those completed
 isolation roots and their new caches are also cleaned; details follow.
 
-The 2026-10-23 goal supersedes the earlier 2026-10-22 milestone pause. Every resumed batch still requires native acceptance, relevant gates, explicit-path integration and push to `main`, cleanup and in-place handoff updates. Native page zoom and the single Dock width projection remain integrated. Open workspace views retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
+The 2026-10-23 goal resumed the earlier work; the user's subsequent request now ends that run at this milestone. Any future explicitly resumed batch still requires native acceptance, relevant gates, explicit-path integration and push to `main`, cleanup and in-place handoff updates. Native page zoom and the single Dock width projection remain integrated. Open workspace views retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
 
 Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The subsequent native focus investigation qualified the existing keyboard resize path and isolated clicked-label reverse navigation to a WebKit behavior also reproduced by a bare HTML button. No host preference or component workaround was added. The precise scenarios and limits are below.
 
@@ -2360,6 +2360,110 @@ ownership, containment and tracked files. Existing dependencies, the preexisting
 UI Vite cache, read-only references, user data and unrelated processes remain
 intact. Main delivery contains only the reviewed source/test pair and this
 record; its independent delivery checkout is removed after remote confirmation.
+
+### Keep reading after file-range expansion
+
+`FilePreview` in `FileWorkspace.tsx` owns the lifetime of the earlier/later range
+actions. Before either action changes its existing `LineWindow`, it transfers
+focus to the existing named scrollport only if that exact button currently owns
+focus. `preventScroll` preserves placement while the existing prepend anchor or
+append path handles content geometry. The rule also applies when the action
+remains available after expansion. There is no focus action on query completion,
+so later typing or navigation keeps its focus. Shared controls, query identity,
+file navigation, target placement and Runtime semantics are unchanged.
+
+Actual Wails reproduced the defect on unchanged `11d9712b7`: from lines
+**100–500**, keyboard activation of the earlier action accepted **1–500** and
+removed the focused button, leaving focus on `BODY`. Page Down did nothing at
+**1,848 px / lines 97–137**. The next Tab jumped to the remaining action at
+**8,791 px**. Loading the final lines similarly removed its focused action,
+leaving `BODY` at **8,758 px / lines 461–501** with Page Down ineffective.
+
+The better-accessibility focus guidance and
+[WAI keyboard-interface guidance](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/#kbd_focus_discernable_predictable)
+support transferring focus to a logical surviving destination when a focused
+control can disappear. Flame already has that destination and uses the same
+local ownership principle in retiring error actions. Read-only ZCode code-viewer
+research concerns request-scoped placement and preserved scrolling, not Flame's
+focus rule. Existing better-series layout, typography, colors and control
+surfaces remain intact; no component library or new semantic token is introduced.
+
+Verification for this milestone (2026-10-24):
+
+- The bounded GPT-6 Astra / max subagent changed only the source/test pair.
+  Primary review inspected the actual diff and the frozen evidence. The original
+  two file suites passed **34 tests**. Six new cases with the original production
+  source fail **5 and pass 35**; the final candidate passes **40 / 40** in
+  **3.19 s**. Cases cover both retiring edges, ordinary expansion, exact focus
+  ownership, a later draft and navigation while a range is pending. Controlled
+  geometry also checks the existing prepend anchor and one-time target placement.
+- The complete Web command passes type, lint, formatting and **397 files /
+  3,260 tests**; tests take **153.06 s** and emit local connection-refused
+  diagnostics. The aggregate exits 1 after **175.04 s** at
+  `check:api-consumers`: `SIDECAR_METHODS` must be an object literal. Its 16
+  guard unit tests pass. All remaining gates are then run, giving **20 / 22**
+  post-test gates passed. `check:plugin-resources` is the other failure, reporting
+  Diagnostics component ESM drift (**20,349 versus 20,318 bytes**).
+- Both complete failing guard commands are rerun after restoring both changed
+  files to clean `11d9712b7`; both still fail, and the plugin guard output is
+  identical. The candidate is restored to its exact accepted hashes. Neither
+  guard nor generated output is changed to manufacture a pass.
+- The subsequent serial `make check-native` passes Desktop test/vet/build and
+  the supported Wails macOS build in **23.92 s**. The non-failing duplicate
+  `-lobjc` warning remains. Final private fixture assets build in **2.99 s**
+  and run in the already-built isolated Wails host.
+
+Native acceptance uses production React views and the actual Wails host, with
+canonical fixture query shapes. Only the private `go.mod` fixture is replaced
+with 600 synthetic text lines and explicit range reads delayed by two seconds.
+A passive accessibility observer reports focus, range, geometry and the real
+Composer's identity/value; all interaction uses native UI controls. This fixture
+does not qualify live filesystem reads or Go-module content semantics.
+
+- **English / light / 14 px / Flame Orange / full motion, 1440 × 900:** the
+  **523 px** Dock retains reader focus immediately on Enter and after both
+  controls retire. Earlier-line acceptance keeps **1,848 px / lines 97–137**;
+  Page Down advances into **129–169**. Final-line acceptance keeps
+  **8,758 px / lines 461–501**; Page Down advances into **499–539**. The existing
+  **1.5 px** orange outline remains visible. Ordinary cached expansion from
+  **1–300 to 1–500** retains reader focus and **4,991 px** while more lines remain.
+- A fresh **1–320 → 1–520** request is observed pending before native input
+  resumes in Composer. Its accepted result keeps the same input, caret **53**,
+  exact continued draft and **5,371 px** reader position. Back to files restores
+  the selected `go.mod` row; continued writing reaches **76 characters** in
+  that same input, ending with `Back at the file list.`
+- **Chinese / dark / 18 px / custom blue `#007BFF` / motion off:** native Left
+  window placement gives **1122 × 1051**; Actual Size followed by twenty
+  confirmed Zoom In actions gives a **561 × 525** viewport at **200%**. The
+  full-width file reader remains **561 × 372.5 px** with identity and return
+  actions above it. Space on the earlier action and Enter on the later action
+  retain reader focus through acceptance, with the existing blue **1.5 px**
+  outline. Page Down advances **2,386 → 2,739 px** after the first edge and
+  **11,894 → 12,246 px** after the last. Shift-Tab and Enter return to the
+  selected file row; Close returns to Conversation. The same retained input
+  continues from **12 to 20 characters** as
+  `核对文件首尾后继续讨论。键盘翻页已核对。`; Actual Size preserves its text, caret and focus.
+
+An initial combined Return/Tab sequence preceded the line popover's focus
+restoration and is excluded; separated observed actions qualify the path. A
+twenty-action zoom automation exceeded its 30-second bound; a fresh Actual Size
+and four observed five-action batches establish the accepted 200% state. No
+provider request, message submission or durable Runtime mutation is issued.
+VoiceOver speech, native IME composition, range-read failure/Retry, other-platform
+GUIs and unrelated Runtime/CLI suites are not newly qualified. No browser visual
+suite or performance benchmark runs. No protocol, data or external-consumer
+migration is required.
+
+The acceptance application is quit and its exact bundle unregistered. All eleven
+generated-resource originals are hash-verified after restoring six build-owned
+changes. Seven new checkout output/cache directories, the unique WebKit/cache
+directories and the subagent scratch directory are removed with ownership,
+creation-time, containment and tracked-file guards. Existing dependencies, the
+preexisting UI Vite cache, read-only references, user data and unrelated
+processes remain intact. Main delivery contains only the reviewed source/test
+pair and this record. Its independent publication checkout and the remaining
+private bundle, fixture, logs and evidence are removed after exact remote
+confirmation. This is the requested milestone pause; no next batch is started.
 
 ## Dock tab task continuity
 

@@ -6,6 +6,7 @@ import {
   render,
   renderHook,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -238,6 +239,165 @@ describe("workspace files panel", () => {
     await act(async () => pending.resolve(lineWindow(100, 500, 1000)));
     await vi.waitFor(() => expect(row(100)).toBeTruthy());
     expect(placed).toEqual(["450", "300"]);
+  });
+
+  describe("range-control focus continuity", () => {
+    it.each([
+      { edge: "first", control: /earlier/i, start: 1, end: 500, requestedEnd: 500 },
+      { edge: "last", control: /more/i, start: 100, end: 600, requestedEnd: 700 },
+    ])(
+      "keeps the reader focused when the $edge line retires its range control",
+      async ({ control, start, end, requestedEnd }) => {
+        const placeTarget = vi
+          .spyOn(HTMLElement.prototype, "scrollIntoView")
+          .mockImplementation(() => {});
+        readFile.mockResolvedValueOnce(lineWindow(100, 500, 600));
+        openWorkspaceFile("src/big.go", 300);
+        mount(<FileWorkspace />);
+        await waitFor(() => expect(row(500)).toBeTruthy());
+        const host = controlGeometry(screen.getByRole("region", { name: "src/big.go" }));
+        host.scrollTop = 10;
+        const focusReader = vi.spyOn(host, "focus");
+        const button = screen.getByRole("button", { name: control });
+        act(() => button.focus());
+        const pending = Promise.withResolvers<WorkspaceFileContent>();
+        readFile.mockReturnValueOnce(pending.promise);
+
+        fireEvent.click(button);
+        const focusWhilePending = document.activeElement;
+        expect(host.scrollTop).toBe(10);
+        expect(row(100)).toBeTruthy();
+        await waitFor(() =>
+          expect(readFile).toHaveBeenLastCalledWith({
+            cwd: undefined,
+            path: "src/big.go",
+            startLine: start,
+            endLine: requestedEnd,
+          }),
+        );
+
+        await act(async () => pending.resolve(lineWindow(start, end, 600)));
+        await waitFor(() => expect(screen.queryByRole("button", { name: control })).toBeNull());
+        expect(document.activeElement).toBe(host);
+        expect(focusWhilePending).toBe(host);
+        expect(focusReader).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
+        expect(host.scrollTop).toBe(10 + (100 - start) * ROW);
+        expect(placeTarget).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it("hands focus to the reader even when more lines remain beyond either range control", async () => {
+      readFile.mockResolvedValueOnce(lineWindow(400, 402, 1000));
+      openWorkspaceFile("src/big.go");
+      mount(<FileWorkspace />);
+      await waitFor(() => expect(row(402)).toBeTruthy());
+      const host = screen.getByRole("region", { name: "src/big.go" });
+
+      for (const { control, content, addedLine } of [
+        { control: /earlier/i, content: lineWindow(200, 402, 1000), addedLine: 200 },
+        { control: /more/i, content: lineWindow(200, 602, 1000), addedLine: 602 },
+      ]) {
+        const button = screen.getByRole("button", { name: control });
+        act(() => button.focus());
+        const pending = Promise.withResolvers<WorkspaceFileContent>();
+        readFile.mockReturnValueOnce(pending.promise);
+
+        fireEvent.click(button);
+        expect(document.activeElement).toBe(host);
+        await act(async () => pending.resolve(content));
+        await waitFor(() => expect(row(addedLine)).toBeTruthy());
+        expect(screen.getByRole("button", { name: control })).toBe(button);
+        expect(document.activeElement).toBe(host);
+      }
+    });
+
+    it("leaves focus alone when the activated range control does not own it", async () => {
+      readFile.mockResolvedValueOnce(lineWindow(400, 402, 1000));
+      openWorkspaceFile("src/big.go");
+      mount(
+        <>
+          <textarea aria-label="Message" defaultValue="Retained message draft" />
+          <FileWorkspace />
+        </>,
+      );
+      await waitFor(() => expect(row(402)).toBeTruthy());
+      const host = screen.getByRole("region", { name: "src/big.go" });
+      const focusReader = vi.spyOn(host, "focus");
+      const earlier = screen.getByRole("button", { name: /earlier/i });
+      const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+
+      for (const { owner, control, content, addedLine } of [
+        { owner: earlier, control: /more/i, content: lineWindow(400, 602, 1000), addedLine: 602 },
+        { owner: draft, control: /earlier/i, content: lineWindow(200, 602, 1000), addedLine: 200 },
+      ]) {
+        act(() => owner.focus());
+        const pending = Promise.withResolvers<WorkspaceFileContent>();
+        readFile.mockReturnValueOnce(pending.promise);
+
+        fireEvent.click(screen.getByRole("button", { name: control }));
+        expect(document.activeElement).toBe(owner);
+        await act(async () => pending.resolve(content));
+        await waitFor(() => expect(row(addedLine)).toBeTruthy());
+        expect(document.activeElement).toBe(owner);
+      }
+      expect(focusReader).not.toHaveBeenCalled();
+      expect(draft.value).toBe("Retained message draft");
+    });
+
+    it("preserves a message draft and its focus when typing resumes while a range loads", async () => {
+      readFile.mockResolvedValueOnce(lineWindow(100, 500, 600));
+      openWorkspaceFile("src/big.go");
+      mount(
+        <>
+          <textarea aria-label="Message" defaultValue="Retained message draft" />
+          <FileWorkspace />
+        </>,
+      );
+      await waitFor(() => expect(row(500)).toBeTruthy());
+      const host = screen.getByRole("region", { name: "src/big.go" });
+      const button = screen.getByRole("button", { name: /more/i });
+      act(() => button.focus());
+      const pending = Promise.withResolvers<WorkspaceFileContent>();
+      readFile.mockReturnValueOnce(pending.promise);
+      fireEvent.click(button);
+      expect(document.activeElement).toBe(host);
+      const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+      act(() => draft.focus());
+      fireEvent.change(draft, { target: { value: "Retained message draft, continued" } });
+
+      await act(async () => pending.resolve(lineWindow(100, 600, 600)));
+      await waitFor(() => expect(row(600)).toBeTruthy());
+      expect(document.activeElement).toBe(draft);
+      expect(draft.value).toBe("Retained message draft, continued");
+    });
+
+    it("preserves navigation focus when an old range finishes loading", async () => {
+      readFile.mockResolvedValueOnce(lineWindow(100, 500, 600));
+      openWorkspaceFile("src/big.go");
+      mount(<FileWorkspace />);
+      await waitFor(() => expect(row(500)).toBeTruthy());
+      const host = screen.getByRole("region", { name: "src/big.go" });
+      const button = screen.getByRole("button", { name: /more/i });
+      act(() => button.focus());
+      const pending = Promise.withResolvers<WorkspaceFileContent>();
+      readFile.mockReturnValueOnce(pending.promise);
+      fireEvent.click(button);
+      expect(document.activeElement).toBe(host);
+
+      readFile.mockResolvedValueOnce({ content: "package main", startLine: 1, totalLines: 1 });
+      act(() => openWorkspaceFile("src/main.go"));
+      await screen.findByText("package main");
+      const back = screen.getByRole("button", { name: "Back to files" });
+      expect(document.activeElement).toBe(back);
+
+      await act(async () => pending.resolve(lineWindow(100, 600, 600)));
+      await waitFor(() => expect(client.isFetching()).toBe(0));
+      expect(document.activeElement).toBe(back);
+      expect(screen.getByRole("region", { name: "src/main.go" }).textContent).toContain(
+        "package main",
+      );
+      expect(row(600)).toBeNull();
+    });
   });
 
   describe("prepend scroll continuity", () => {

@@ -1,6 +1,14 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { Activity, useCallback, useLayoutEffect, useRef, useState, type Ref } from "react";
+import {
+  Activity,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type Ref,
+} from "react";
 import { fileExtension, splitFilePath } from "@/lib/path";
 import { fileKind } from "@/lib/fileKind";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
@@ -194,13 +202,22 @@ function FilePreview({
     anchor.current = null;
   }, [data, isPlaceholderData, lineWindow]);
 
-  const loadEarlier = () => {
+  const focusReaderFrom = (control: HTMLElement) => {
+    if (control.ownerDocument.activeElement === control) {
+      scrollPort.current?.focus({ preventScroll: true });
+    }
+  };
+  const loadEarlier = (event: MouseEvent<HTMLElement>) => {
+    focusReaderFrom(event.currentTarget);
     const host = scrollPort.current;
     const next = { start: Math.max(1, firstShown - WINDOW_RADIUS), end: lastShown };
     anchor.current = host ? { height: host.scrollHeight, window: next } : null;
     setLineWindow(next);
   };
-  const loadLater = () => setLineWindow({ start: firstShown, end: lastShown + WINDOW_RADIUS });
+  const loadLater = (event: MouseEvent<HTMLElement>) => {
+    focusReaderFrom(event.currentTarget);
+    setLineWindow({ start: firstShown, end: lastShown + WINDOW_RADIUS });
+  };
 
   const unsupported = workspaceErrorClassifier().isUnsupportedFile(error);
   const kind = fileKind(viewer.path);
