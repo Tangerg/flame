@@ -1,18 +1,11 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
-export type TaskReadoutStatus = "running" | "succeeded" | "failed";
-
-export interface TaskReadoutTask {
-  id: string;
-  label: string;
-  progress: number | null;
-  message: string | null;
-  status: TaskReadoutStatus;
-  error?: string;
-  startedAt: number;
-}
+import { type TaskEntry } from "@/extensions/tasksStore";
+// The task shape is owned by the producing store; the port only inverts the
+// runtime dependency, so it re-exports the type rather than restating it.
+export type { TaskEntry, TaskStatus } from "@/extensions/tasksStore";
 
 interface TaskReadoutPort {
-  useTasks(): Map<string, TaskReadoutTask>;
+  useTasks(): Map<string, TaskEntry>;
 }
 
 const port = createSingletonPort<TaskReadoutPort>("task readout port is not configured");

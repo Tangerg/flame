@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { clamp01 } from "@/lib/clamp";
 import { type Translate } from "@/lib/i18n/index";
 import { useT } from "@/lib/i18n/index";
-import { type TaskReadoutTask } from "@/features/workspace/application/ports/taskReadoutPort";
+import { type TaskEntry } from "@/features/workspace/application/ports/taskReadoutPort";
 import { taskReadoutPort } from "@/features/workspace/application/ports/taskReadoutPort";
 export interface TaskReadout {
-  tasks: TaskReadoutTask[];
+  tasks: TaskEntry[];
   runningCount: number;
-  head: TaskReadoutTask;
+  head: TaskEntry;
   label: string;
   title: string;
 }
@@ -18,7 +18,7 @@ export function useTaskReadout(): TaskReadout | null {
   return useMemo(() => taskReadout(t, tasks), [t, tasks]);
 }
 
-export function taskReadout(t: Translate, tasks: Map<string, TaskReadoutTask>): TaskReadout | null {
+export function taskReadout(t: Translate, tasks: Map<string, TaskEntry>): TaskReadout | null {
   if (tasks.size === 0) return null;
 
   const list = Array.from(tasks.values()).sort((a, b) => a.startedAt - b.startedAt);
@@ -38,7 +38,7 @@ export function taskReadout(t: Translate, tasks: Map<string, TaskReadoutTask>): 
   };
 }
 
-export function taskProgressPercent(task: TaskReadoutTask): number | null {
+export function taskProgressPercent(task: TaskEntry): number | null {
   if (task.progress === null || task.status === "failed") return null;
   return Math.round(clamp01(task.progress) * 100);
 }

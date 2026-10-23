@@ -13,9 +13,9 @@ export interface TaskStartOptions {
   progress?: number | null;
 }
 
-type TaskStatus = "running" | "succeeded" | "failed";
+export type TaskStatus = "running" | "succeeded" | "failed";
 
-interface TaskEntry {
+export interface TaskEntry {
   id: string;
   label: string;
   progress: number | null;

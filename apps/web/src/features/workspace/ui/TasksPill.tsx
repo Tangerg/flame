@@ -8,11 +8,11 @@ import { ProgressBar } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
 import { IconButton, toneInk, vocab } from "@flame/ui";
 import {
-  type TaskReadoutStatus,
-  type TaskReadoutTask,
+  type TaskEntry,
+  type TaskStatus,
 } from "@/features/workspace/application/ports/taskReadoutPort";
 import { taskProgressPercent, useTaskReadout } from "@/features/workspace/application/taskReadout";
-const STATUS_ICON: Record<TaskReadoutStatus, { name: IconName; tone?: "accent" | "negative" }> = {
+const STATUS_ICON: Record<TaskStatus, { name: IconName; tone?: "accent" | "negative" }> = {
   running: { name: "activity" },
   succeeded: { name: "circle-check", tone: "accent" },
   failed: { name: "circle-x", tone: "negative" },
@@ -77,7 +77,7 @@ export function TasksPill() {
   );
 }
 
-function TaskRow({ task }: { task: TaskReadoutTask }) {
+function TaskRow({ task }: { task: TaskEntry }) {
   const { name, tone } = STATUS_ICON[task.status];
   const percent = taskProgressPercent(task);
 
