@@ -172,13 +172,17 @@ export function Schedules({ context }: { context: ComponentContext }) {
     >
       {read.loading && <p role="status">{t("reading")}</p>}
       {read.error && (
-        <p role="alert">
-          {read.accepted
-            ? t("read.errorRetained", { error: read.error })
-            : t("read.error", { error: read.error })}
-        </p>
+        <div role="alert">
+          <p>{read.accepted ? t("read.errorRetained") : t("read.error")}</p>
+          <RecordBody>{read.error}</RecordBody>
+        </div>
       )}
-      {liveError && <p role="alert">{t("live.error", { error: liveError })}</p>}
+      {liveError && (
+        <div role="alert">
+          <p>{t("live.error")}</p>
+          <RecordBody>{liveError}</RecordBody>
+        </div>
+      )}
       {!editorOpen && feedback}
       {edit && (
         <ModalDialog

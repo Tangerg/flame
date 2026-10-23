@@ -15,11 +15,11 @@ export const es: Record<string, string> = {
   refresh: "Actualizar",
   reading: "Leyendo programaciones…",
   "read.error":
-    "No se pudieron leer las programaciones: {{error}}. Usa Actualizar para volver a intentarlo.",
+    "No se pudieron leer las programaciones. Usa Actualizar para volver a intentarlo.",
   "read.errorRetained":
-    "No se pudieron leer las programaciones: {{error}}. Se conserva la última página aceptada. Usa Actualizar para volver a intentarlo.",
+    "No se pudieron leer las programaciones. Se conserva la última página aceptada. Usa Actualizar para volver a intentarlo.",
   "live.error":
-    "La actualización en vivo no está disponible: {{error}}. Usa Actualizar para leer las programaciones actuales.",
+    "La actualización en vivo no está disponible. Usa Actualizar para leer las programaciones actuales.",
   "command.status.label": "Estado del comando de programación",
   "command.uncertain":
     "El resultado original no está confirmado. Concílialo antes de emitir otro comando.",

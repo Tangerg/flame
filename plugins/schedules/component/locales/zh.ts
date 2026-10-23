@@ -14,10 +14,10 @@ export const zh: Record<string, string> = {
   "status.disabled": "已禁用",
   refresh: "刷新",
   reading: "正在读取定时任务…",
-  "read.error": "无法读取定时任务：{{error}}。请使用“刷新”重试。",
+  "read.error": "无法读取定时任务。请使用“刷新”重试。",
   "read.errorRetained":
-    "无法读取定时任务：{{error}}。已保留上次接受的页面。请使用“刷新”重试。",
-  "live.error": "实时刷新不可用：{{error}}。请使用“刷新”读取当前定时任务。",
+    "无法读取定时任务。已保留上次接受的页面。请使用“刷新”重试。",
+  "live.error": "实时刷新不可用。请使用“刷新”读取当前定时任务。",
   "command.status.label": "定时任务命令状态",
   "command.uncertain": "原始结果尚未确认。请先核对，再发出其他命令。",
   "command.progress": "{{label}}…",

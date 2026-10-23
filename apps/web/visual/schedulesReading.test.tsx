@@ -1,7 +1,15 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  getDefaultNormalizer,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type ComponentContext } from "@flame/component-sdk";
-import { createFlameClient, createMutationPromise } from "@flame/runtime-client";
+import { createFlameClient, createMutationPromise, RpcError } from "@flame/runtime-client";
 import { type CallPluginResponse } from "@flame/runtime-client/wire";
 import { Schedules } from "../../../plugins/schedules/component/component";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
@@ -32,7 +40,7 @@ function heldCall(signal?: AbortSignal) {
   };
 }
 
-function mountSchedules() {
+function mountSchedules(subscribeError?: Error) {
   const owner = new AbortController();
   const runtime = createFlameClient(
     createVisualRuntimeTransport(
@@ -47,11 +55,15 @@ function mountSchedules() {
     await runtime.close();
   });
   const reads: Array<PromiseWithResolvers<CallPluginResponse>> = [];
-  let subscribed = false;
+  let subscriptionSettled = false;
   const subscribe = runtime.runtimeEvents.subscribe.bind(runtime.runtimeEvents);
   vi.spyOn(runtime.runtimeEvents, "subscribe").mockImplementation(async (...args) => {
+    if (subscribeError) {
+      subscriptionSettled = true;
+      throw subscribeError;
+    }
     const subscription = await subscribe(...args);
-    subscribed = true;
+    subscriptionSettled = true;
     return subscription;
   });
   let commands = 0;
@@ -81,7 +93,7 @@ function mountSchedules() {
   render(<Schedules context={context} />);
   let taken = 0;
   async function nextRead() {
-    await waitFor(() => expect(subscribed && reads.length > taken).toBe(true));
+    await waitFor(() => expect(subscriptionSettled && reads.length > taken).toBe(true));
     taken = reads.length;
     return reads.at(-1)!;
   }
@@ -95,6 +107,23 @@ const reply = (page: typeof VISUAL_SCHEDULES_PAGE) => ({ output: JSON.stringify(
 const refreshButton = () => screen.getByRole<HTMLButtonElement>("button", { name: "Refresh" });
 
 const alertText = async () => (await screen.findByRole("alert")).textContent;
+
+const backendOffline = (detail = "schedules backend offline") =>
+  new RpcError({
+    code: -32603,
+    message: "internal_error",
+    data: { type: "internal_error", detail },
+  });
+
+const sentenceDetail = "The schedules source is unavailable.\nReconnect it and refresh.";
+
+const literal = { normalizer: getDefaultNormalizer({ trim: false, collapseWhitespace: false }) };
+
+async function expectFailureAlert(summary: string, detail: string) {
+  const alert = await screen.findByRole("alert");
+  expect(within(alert).getByText(summary).textContent).toBe(summary);
+  expect(within(alert).getByText(detail, literal).textContent).toBe(detail);
+}
 
 function activateRepeatedly(button: HTMLElement) {
   fireEvent.pointerDown(button, { pointerType: "mouse" });
@@ -114,9 +143,10 @@ it("names a failed initial read without claiming saved or retained schedules, th
   expect(refreshButton().disabled).toBe(false);
   expect(refreshButton().getAttribute("aria-disabled")).toBe("true");
 
-  initial.reject(new Error("schedules backend offline"));
-  expect(await alertText()).toBe(
-    "Schedules could not be read: schedules backend offline. Use Refresh to try again.",
+  initial.reject(backendOffline());
+  await expectFailureAlert(
+    "Schedules could not be read. Use Refresh to try again.",
+    "schedules backend offline",
   );
   expect(screen.queryByText("No schedules saved.")).toBeNull();
   expect(screen.queryByText("No matching schedules on this page.")).toBeNull();
@@ -137,11 +167,47 @@ it("keeps an accepted empty catalog distinct from its failed refresh", async () 
   expect(screen.queryByRole("alert")).toBeNull();
 
   fireEvent.click(refreshButton());
-  (await nextRead()).reject(new Error("schedules backend offline"));
-  expect(await alertText()).toBe(
-    "Schedules could not be read: schedules backend offline. The last accepted page is retained. Use Refresh to try again.",
+  (await nextRead()).reject(backendOffline());
+  await expectFailureAlert(
+    "Schedules could not be read. The last accepted page is retained. Use Refresh to try again.",
+    "schedules backend offline",
   );
   expect(screen.getByText("No schedules saved.")).toBeTruthy();
+});
+
+it("keeps a complete published read detail separate from the localized summary", async () => {
+  const { nextRead } = mountSchedules();
+  (await nextRead()).reject(backendOffline(sentenceDetail));
+  await expectFailureAlert(
+    "Schedules could not be read. Use Refresh to try again.",
+    sentenceDetail,
+  );
+  expect(screen.queryByText(/The last accepted page is retained/)).toBeNull();
+  expect(screen.queryByText("No schedules saved.")).toBeNull();
+  expect(screen.queryByText("No matching schedules on this page.")).toBeNull();
+  expect(screen.queryByText(/enabled ·/)).toBeNull();
+  expect(refreshButton().getAttribute("aria-disabled")).toBeNull();
+});
+
+it("keeps a failed live subscription's published detail separate while the accepted page stays refreshable", async () => {
+  const { nextRead, listCalls } = mountSchedules(backendOffline(sentenceDetail));
+  (await nextRead()).resolve(reply(VISUAL_SCHEDULES_PAGE));
+  await screen.findByRole("heading", { name: nightly });
+  await expectFailureAlert(
+    "Live refresh is unavailable. Use Refresh to read the current schedules.",
+    sentenceDetail,
+  );
+  expect(screen.getByRole("heading", { name: weekly })).toBeTruthy();
+  expect(screen.queryByText(/could not be read/)).toBeNull();
+  expect(refreshButton().getAttribute("aria-disabled")).toBeNull();
+
+  const issued = listCalls();
+  fireEvent.click(refreshButton());
+  (await nextRead()).resolve(reply(VISUAL_SCHEDULES_PAGE));
+  await waitFor(() => expect(screen.queryByText("Reading schedules…")).toBeNull());
+  expect(listCalls()).toBe(issued + 1);
+  expect(screen.getByRole("heading", { name: nightly })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: weekly })).toBeTruthy();
 });
 
 it("retains accepted and filtered records through a failed refresh and its retry", async () => {

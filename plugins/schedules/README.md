@@ -179,7 +179,10 @@ window-reload interaction.
 Catalog loading, failed reads and accepted empty pages remain distinct. Only an
 accepted page supplies records, counts or an empty result; it stays visible while
 another read is pending or fails. Read failures name Refresh as the recovery
-action and claim retained data only when a page was accepted. Refresh preserves
+action and claim retained data only when a page was accepted. Read and live
+failures pair that complete localized status/recovery summary with a separate
+literal publisher explanation, preserving its punctuation and line breaks rather
+than interpolating it into the sentence. Refresh preserves
 its keyboard position during reads while blocking repeated activation; unresolved
 commands retain their independent native disablement.
 

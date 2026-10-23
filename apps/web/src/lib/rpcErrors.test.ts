@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-client/validation";
 import { PROBLEM_CODES, PROBLEM_RECOVERY, RUN_PROBLEM_RECOVERY } from "@flame/runtime-client/wire";
-import { RpcError, RpcTransportError } from "@flame/runtime-client";
+import { OperationFailure, RpcError, RpcTransportError } from "@flame/runtime-client";
+import { failureText as componentFailureText } from "@flame/component-sdk";
 import { en } from "@/lib/i18n/locales/en";
 import {
   MAPPED_TYPES,
@@ -91,6 +92,54 @@ describe("the protocol error copy table", () => {
   it("reads a non-error as no unsupported method", () => {
     for (const value of [undefined, null, "", 0, new Error("plain")]) {
       expect(isUnsupportedMethod(value)).toBe(false);
+    }
+  });
+});
+
+describe("the portable component failure text", () => {
+  const internalError = (detail?: string) =>
+    new RpcError({
+      code: -32603,
+      message: "internal_error",
+      data: detail === undefined ? { type: "internal_error" } : { type: "internal_error", detail },
+    });
+
+  it("names a typed Runtime problem by its detail rather than its machine symbol", () => {
+    expect(componentFailureText(internalError("schedules backend offline"), "fallback")).toBe(
+      "schedules backend offline",
+    );
+  });
+
+  it("keeps the RPC message when the problem carries no readable detail", () => {
+    expect(componentFailureText(internalError(), "fallback")).toBe("internal_error");
+    expect(componentFailureText(internalError(""), "fallback")).toBe("internal_error");
+  });
+
+  it("keeps the message of every other error", () => {
+    const shaped = Object.assign(new Error("plain failure"), {
+      data: { type: "internal_error", detail: "shaped detail" },
+    });
+    for (const [error, message] of [
+      [new Error("plain failure"), "plain failure"],
+      [new RpcTransportError("gateway unavailable", 502), "gateway unavailable"],
+      [new OperationFailure("schedule_conflict", "schedule changed"), "schedule changed"],
+      [shaped, "plain failure"],
+    ] as const) {
+      expect(componentFailureText(error, "fallback")).toBe(message);
+    }
+  });
+
+  it("uses the caller's fallback for a thrown non-error, including an RPC lookalike", () => {
+    const lookalike = {
+      name: "RpcError",
+      code: -32603,
+      message: "internal_error",
+      data: { type: "internal_error", detail: "untrusted detail" },
+    };
+    for (const value of [undefined, "offline", lookalike]) {
+      expect(componentFailureText(value, "Schedules are unavailable.")).toBe(
+        "Schedules are unavailable.",
+      );
     }
   });
 });

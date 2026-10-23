@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. Popup anchoring/native zoom painting, rapid Select dismissal, object-menu names, shared modal keyboard release and bounded message reading are published on remote main; their receipts remain below. Approval-mode reads distinguish recoverable failures from an unsupported method, and MCP tool errors now identify their three independent read scopes in eight locales. Current complete Web testing passed 390 files and 3,077 tests; the existing MCP API-consumer inventory still fails, so the full check is not green. All remaining Web checks and the supported native check passed. Native tool recovery now retains its read frame across asynchronous material replacement; explicit empty-state owners and connection task ordering preserve focus, deliberate scroll and connection actions, including native 200% scenes. The math follow-up qualifies its recorded text-caret reading path; physical horizontal wheel delivery remains unverified. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. Popup anchoring/native zoom painting, rapid Select dismissal, object-menu names, shared modal keyboard release and bounded message reading are published on remote main; their receipts remain below. Approval-mode reads distinguish recoverable failures from an unsupported method, and MCP tool errors now identify their three independent read scopes in eight locales. Current complete Web testing passed 390 files and 3,083 tests; the existing MCP API-consumer inventory still fails, so the full check is not green. All remaining Web checks and the supported native check passed. Native tool recovery now retains its read frame across asynchronous material replacement; explicit empty-state owners and connection task ordering preserve focus, deliberate scroll and connection actions, including native 200% scenes. Portable Skills/Schedules failures now preserve published Runtime detail, and Schedules separates localized recovery summaries from literal explanations; native English and Chinese 200% recovery/return paths are qualified below. The math follow-up qualifies its recorded text-caret reading path; physical horizontal wheel delivery remains unverified. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -518,8 +518,9 @@ The private transport refused and recorded zero Skill mutations. Returning
 cancelled the held transport, so native late-result delivery is not newly
 qualified. These are production component/SDK reads through the real Wails
 asset/IPC host, not a live installed-package, archive, proposal or filesystem
-acceptance. The RPC message `internal_error` remains literal; backend detail
-selection and every error category are outside this qualification. VoiceOver,
+acceptance. At that revision the RPC message `internal_error` remained literal;
+the subsequent shared-detail repair and its separate acceptance are recorded below.
+Every error category was outside this earlier qualification. VoiceOver,
 OS IME, measured contrast and other native locales/platforms were not run.
 
 The better-writing, better-layout and better-accessibility guidance informs
@@ -547,6 +548,85 @@ new outputs/caches and two bundle-specific Library directories. The pre-existing
 shared-UI cache, user data, read-only references, primary checkout and unrelated
 processes remained intact. Remote main was refetched at `3847ac61c` before the
 documentation-only publication.
+
+Portable read failures now preserve the Runtime owner's readable explanation.
+`packages/component-sdk/src/errorText.ts` recognizes the shared public `RpcError`
+and presents its nonempty published `data.detail`, falling back to the original
+RPC message when absent or empty. Plain errors, transport failures, operation
+refusals and explicit caller fallbacks retain their existing behavior. The typed
+error object still owns classification and command recovery; the helper projects
+text only. Skills and Schedules share this boundary without a new mapping table,
+error class, dependency or recovery state. Unknown thrown values still use the
+existing English default; that separate localization debt remains recorded.
+
+Actual baseline Wails showed Schedules' machine symbol `internal_error` despite
+a complete published recovery explanation. Strengthened public-RPC inputs in
+the existing Skills/Schedules tests plus four SDK contract cases failed four
+tests on unchanged production code (32 passed). After the SDK repair, native
+Chinese Schedules exposed a second boundary: interpolating the complete detail
+into localized prose produced `刷新。。`. The module now puts a whole localized
+status/recovery summary and a separate literal `RecordBody` in one alert.
+First-read, retained-page and live-subscription summaries changed together in all
+eight catalogs. Punctuation and line breaks belong to the published detail;
+no stripping or translation is applied. The existing read, subscription, command,
+accepted-page, focus and theme owners remain unchanged.
+
+Better-writing's whole messages and actionable recovery, better-layout and
+better-accessibility informed this composition. HeroUI's actual local
+`components/alert/alert.stories.tsx` separates scope/status from descriptive
+recovery content; ZCode's Skills/Schedules read-owner findings above remain the
+navigation reference. Flame reuses its existing `RecordBody` and semantic roles.
+Four bounded Claude Code CLI invocations edited the specified tests, SDK contract,
+Schedules composition/catalogs and module documentation only; primary reviewed
+their actual diffs and ran every check. CLI reported no permission denials.
+Primary also updated three old machine-message expectations in two existing
+installed-Schedules model-catalog tests to require the actual published details,
+preserving catalog, model-choice and draft assertions.
+
+Before the Schedules composition repair, its four new/updated assertions failed
+with 34 tests passing. Final focused validation passed 4 files / 51 tests,
+including exact multiline read/live detail, accepted empty/retained pages,
+independent model catalogs and editable draft retention. The first complete Web
+run found only the two old integration expectations (3,081 passed); the follow-up
+changed those expectations only. SDK check passed. Portable build/check passed
+all eleven resources and eight locale catalogs; only Schedules' generated ESM
+changed, with the other ten byte-identical. The final serial Web run passed type/lint/format, all 390 files / 3,083 tests and the six gates through port-surface. The unchanged API-consumer inventory still fails because `mcp.servers.reconnect` has no non-test frontend consumer; the full check is not green. All fifteen later independent Web gates passed, including production bundle/module linkage. `make check-native` passed Desktop tests/vet/build and the supported Wails build (30.12 s). Non-failing loopback diagnostics and duplicate `-lobjc` warnings remain separate.
+
+Native SDK/Skills acceptance used English/light/14 px/Flame Orange and a 523 px
+Dock. First and retained document failures showed the published explanation.
+Keyboard retries refused duplicate activation; a later Composer edit retained
+focus through accepted reading. Escape aborted the held document read and
+returned to the same source/query. Collapsing the catalog and continuing produced
+`Failure detail draft · 保留 · reading · continued`.
+
+Final English Schedules used a 660 px Dock in the light/14 px/Orange workspace.
+The summary and published detail read as separate paragraphs, without false
+empty or retained-page claims on first failure. A held retry accepted the filtered
+page while preserving the later Composer focus and draft. A later failure kept
+the expanded `sch_nightly` details and query. Collapse followed by continued
+input produced `Schedules failure draft · 保留 · reading · continued`.
+
+Final Chinese/dark/18 px/custom blue used a full pane, an actual 2632×1798
+edge-resized window and twenty native Zoom In commands to 200%. First and retained
+errors had complete, separately readable text without duplicate punctuation.
+Add → mixed-language title → Escape returned to Add and retained `nightly`.
+Native wheel reading reached the complete task/workspace/model/time facts beneath
+persistent controls. Repeated Return kept the held fifth read at one request;
+its acceptance preserved the query's later focus and expanded details. Search
+Escape cleared locally; reverse Tab reached Close, which returned to Conversation.
+New input there was exactly `定时任务恢复后继续输入 · 保留`. Actual Size was reset
+before Quit. The third read was already accepted when its query-focus capture
+was taken; only the fifth read establishes that Chinese later-focus qualification.
+
+These are production components through the actual Wails asset/IPC host with
+private in-memory reads, passive hidden diagnostics and zero Skill/Schedule
+mutations. Live-subscription rejection and model-catalog failure remain
+component/public-client regressions, not newly injected native cases. Live
+installed-package/store, filesystem, archive/proposal, successful/unknown mutation
+and background-firing paths are not qualified. VoiceOver, OS IME, measured
+contrast, other native locales/platforms, browser visual suites and benchmarks
+were not run. The SDK/Skills implementation stayed fixed after its native scene;
+Schedules received fresh final acceptance after its own repair. All five owned native PIDs and four CLI PIDs exited. UID/birth-time and copied-source guards removed the unregistered bundle, private data/overlays/logs/captures, root/pointer, ten new outputs/caches and two bundle-specific Library directories. The pre-existing shared-UI cache, primary checkout, user data, read-only references and unrelated processes remained intact. Remote main was refetched at `e5b051b814dff61b224e070e196d6828958b001e` before publication.
 
 Provider rows retain one credential draft owner and one canonical mutation owner. `providers/ui/ProviderRow.tsx` now runs Save & Test through one existing `useAsyncFeedback` lease that starts at activation. The mutation latch and saving state remain local to the admitted update; `saveDraft` still settles only the submitted URL/key values. Ordinary Save/Clear keep their existing feedback policy. A retired Runtime generation remains ignored, current save failure prevents testing, and test failure uses its existing message. Editing does not submit the successor draft or cancel an already accepted canonical update. No new draft, generation cache, protocol or persisted representation was added.
 

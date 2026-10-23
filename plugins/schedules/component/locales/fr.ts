@@ -15,11 +15,11 @@ export const fr: Record<string, string> = {
   refresh: "Actualiser",
   reading: "Lecture des planifications…",
   "read.error":
-    "Impossible de lire les planifications : {{error}}. Utilisez Actualiser pour réessayer.",
+    "Impossible de lire les planifications. Utilisez Actualiser pour réessayer.",
   "read.errorRetained":
-    "Impossible de lire les planifications : {{error}}. La dernière page acceptée est conservée. Utilisez Actualiser pour réessayer.",
+    "Impossible de lire les planifications. La dernière page acceptée est conservée. Utilisez Actualiser pour réessayer.",
   "live.error":
-    "L'actualisation en direct est indisponible : {{error}}. Utilisez Actualiser pour lire les planifications actuelles.",
+    "L'actualisation en direct est indisponible. Utilisez Actualiser pour lire les planifications actuelles.",
   "command.status.label": "Statut de la commande de planification",
   "command.uncertain":
     "Le résultat d'origine n'est pas confirmé. Rapprochez-le avant d'émettre une autre commande.",

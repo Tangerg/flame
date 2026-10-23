@@ -14,12 +14,11 @@ export const en: Record<string, string> = {
   "status.disabled": "Disabled",
   refresh: "Refresh",
   reading: "Reading schedules…",
-  "read.error":
-    "Schedules could not be read: {{error}}. Use Refresh to try again.",
+  "read.error": "Schedules could not be read. Use Refresh to try again.",
   "read.errorRetained":
-    "Schedules could not be read: {{error}}. The last accepted page is retained. Use Refresh to try again.",
+    "Schedules could not be read. The last accepted page is retained. Use Refresh to try again.",
   "live.error":
-    "Live refresh is unavailable: {{error}}. Use Refresh to read the current schedules.",
+    "Live refresh is unavailable. Use Refresh to read the current schedules.",
   "command.status.label": "Schedule command status",
   "command.uncertain":
     "The original outcome is not confirmed. Reconcile it before issuing another command.",
