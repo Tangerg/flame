@@ -11,10 +11,14 @@ type PopupProps = ComponentProps<typeof PopoverPrimitive.Popup>;
 interface PopoverContentBaseProps {
   children: ReactNode;
   className?: string;
+  anchor?: PositionerProps["anchor"];
+  positionMethod?: PositionerProps["positionMethod"];
+  collisionPadding?: PositionerProps["collisionPadding"];
   side?: PositionerProps["side"];
   align?: PositionerProps["align"];
   sideOffset?: PositionerProps["sideOffset"];
   alignOffset?: PositionerProps["alignOffset"];
+  surface?: "panel" | "none";
 }
 
 type PopoverContentProps = PopoverContentBaseProps &
@@ -23,18 +27,25 @@ type PopoverContentProps = PopoverContentBaseProps &
 function PopoverContent({
   children,
   className,
+  anchor,
+  positionMethod,
+  collisionPadding,
   side,
   align,
   sideOffset,
   alignOffset,
+  surface = "panel",
   finalFocus,
   ...popupProps
 }: PopoverContentProps) {
   const { visible, portalRef } = useHiddenPopupRelease();
-  const panel = stylex.props(FLOATING_PANEL);
+  const panel = stylex.props(surface === "panel" && FLOATING_PANEL);
   return (
     <PopoverPrimitive.Portal ref={portalRef}>
       <PopoverPrimitive.Positioner
+        anchor={anchor}
+        positionMethod={positionMethod}
+        collisionPadding={collisionPadding}
         side={side}
         align={align}
         sideOffset={sideOffset}
