@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. Settings failures now use their existing translated pane title while diagnostics retain the internal ID. Native English/light/14 px and Chinese/dark/18 px search, recovery, control access, neighboring-pane return and continued conversation pass, including native 200% and a narrow window. Three relevant suites pass 20 tests, all 25 non-test Web gates pass, and the supported native check passes. The shared Plugin Retry focus handoff, engaged ToolGroup reading, Markdown notes, neutral canvases and prior task/recovery work remain integrated. The preceding broad Web run's one MCP-readiness timeout and subsequent complete isolated pass remain recorded below; it is not relabeled as a clean first run. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. The pending reading-color qualification now passes in actual Wails: built-in light/14 px, custom warm light/Chinese/18 px and dark/18 px retain their text hierarchy through tool/result reading, Diff object switching and continued drafts. Warm light includes native 200% and a narrow window. This acceptance-only batch adds no product change; three theme suites pass 121 tests and the supported native check passes. Named Settings failures, shared Plugin Retry focus, engaged ToolGroup reading, Markdown notes and neutral canvases remain integrated. The preceding broad Web run's MCP-readiness timeout and complete isolated pass retain their separate qualification below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -44,6 +44,17 @@ all 25 non-test Web gates and the supported native check. Owned resources are
 cleaned. Implementation `dd0a21fbffe13425c4a64913144a4221670dc868` is pushed
 to remote `main`, verified by exact remote hash, all 21 unchanged accepted
 product/resource inputs and a clean owned checkout with zero unpushed commits.
+
+The remaining light-theme text-ladder acceptance is now complete for the inspected
+reading task. Built-in light, custom warm light and a dark control preserve their
+existing palette and task owners; no product source changed. Tool summaries and
+step counts remain distinct, selected Dock tabs identify the active material,
+Diff list/detail/row return works, and the final original drafts can continue.
+The warm-light path includes 18 px, native 200% and a pointer-resized narrow
+window. Three theme suites pass 121 tests; `make check-native` passes. The exact
+qualifications, excluded input attempts and new native continuation candidate
+are recorded with the color evidence below. Owned resources are cleaned;
+delivery is being recorded for this acceptance-only update.
 
 The captured-image inset is integrated at `d25b4ef72` and settings width at
 `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
@@ -333,6 +344,97 @@ The reported recurrence was real: `75fd5dd80` explicitly removed automatic tint
 at the user's request, but `d345239c4` later restored it in `neutralScale` and
 asserted that behavior in a test. Later main integrations retained it. The
 regression is repaired at the scale owner rather than hidden by a page override.
+
+### Native reading color qualification
+
+No actionable color findings in the inspected task. Approve the existing ladder
+for this scoped native reading flow. The previously shipped light neutral step
+11 anchor of 74 and its stylesheet mirror remain unchanged. This batch adds no
+product source, token, style override, focus rule or preference mutation.
+
+Better-colors guides measurement of effective text/background pairs rather than
+declared colors alone. Read-only ZCode's actual `packages/ui/src/styles.css`
+separates foreground, subtle and subtlest roles; its alpha values are not Flame
+contrast evidence. [Radix's scale guidance](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale)
+separates backgrounds, interaction states and text roles. Flame keeps its own
+semantic tokens, theme owner and AA text requirement. A private passive observer
+resolves native WebKit colors and their painted ancestor backgrounds; inspected
+resting summary/count/tab text has opacity 1. Fully revealed screenshots provide
+the visual reading context; the scroller's edge fade is not measured as resting
+text contrast.
+
+| Native scene                                   | Canvas    | Muted summary | Faint step count | Summary / canvas | Count / canvas | Inactive Dock tab / its surface |
+| ---------------------------------------------- | --------- | ------------- | ---------------- | ---------------- | -------------- | ------------------------------- |
+| English, built-in light, 14 px, Flame Orange   | `#f5f5f5` | `#4c4c4c`     | `#696969`        | 7.877:1          | 5.035:1        | 7.138:1 on `#eaeaea`            |
+| Chinese, custom warm light, 18 px, custom blue | `#fdf6e3` | `#476469`     | `#556f73`        | 5.909:1          | 4.982:1        | 5.391:1 on `#f1ecdb`            |
+| English, built-in dark, 18 px, custom blue     | `#0f0f0f` | `#a3a3a3`     | `#8c8c8c`        | 7.599:1          | 5.700:1        | 6.154:1 on `#242424`            |
+
+Native light body/soft/muted/faint OKLCH L is **0.2221 / 0.3092 / 0.4165 /
+0.5208**. Custom warm light is **0.3092 / 0.3861 / 0.4824 / 0.5226**; its exact
+declared canvas and body ink `#073642` remain. Dark is **0.9491 / 0.8452 / 0.7155 /
+0.6401**. Selected tabs use the body tier, with measured ratios **15.250:1**,
+**11.619:1** and **15.001:1** on their actual active surfaces. Built-in canvases
+remain achromatic while the chosen accent retains action/state roles.
+
+Actual Wails light acceptance reads the reply and six-step summary, expands the
+group and result, closes and reopens Read with Return, then enters Diff's file
+list, reads `session.go` and returns to that original row. Home on the native
+Dock splitter reaches **320 px**. Collapsing the Dock and returning to Composer
+retains and continues `Light reading draft 保留 — continued`.
+
+Warm light repeats tool/result reading and scrolls the summary fully into view.
+Twenty native Zoom In actions from Actual Size establish **200%**. A native
+edge drag yields a **2632 × 1798** capture and **658 × 450 CSS px** viewport.
+The current material opens full width, keeps file identity, exposes the second
+file's complete short diff through scrolling and returns to the original row.
+Explicit Close focuses Conversation; the next Tab reaches Review changed files.
+The final repeated full-view round trip retains the exact original draft; an
+explicit line-end caret then continues `暖浅色阅读草稿 保留 — 返回后继续`.
+Actual Size restores a **1317 × 900 CSS px** viewport and the retained Dock.
+Ordinary full-view Escape did not close it; this flow uses its existing Close
+contract and adds no keyboard behavior.
+
+Dark acceptance reads the same group/result, reaches Find by Tab with its visible
+focus ring, scrolls the conversation, switches Diff list → second file → original
+row, collapses the Dock and continues `Dark reading draft 保留 — continued`.
+No Send or actual provider/Runtime command was invoked. These are production
+components and ordinary portable resources over deterministic memory providers.
+
+The first private observer exceeded native AX text bounds; it was split into
+passive sections and all final scenes used the reviewed replacement. An initial
+warm scene used the unregistered `zh-CN` and did not compose the product; it is
+excluded, corrected to the repository's registered `zh` and rebuilt. CUA rejected
+several app-state-stale actions; fresh observations and subsequent successful
+actions supply the evidence. Direct typing initially omitted CJK, so the exact
+light draft was pasted and verified before its return flow. One warm continuation
+paste replaced the draft despite the original being present immediately before
+it; the cause was not isolated. That attempt is excluded from continuation
+acceptance. The original was re-established and verified through the repeated
+round trip before the final explicit-caret input. Investigate its native input
+target/selection evidence before attributing a new Composer defect.
+
+`make stage-web` passes (**7.12 s**). Palette, stylesheet-mirror and custom-theme
+suites pass **3 files / 121 tests** (**1.80 s**). The supported
+`make check-native` passes (**17.70 s**), arm64, minimum macOS **13.0**, SDK **26.5**.
+All **13** accepted product inputs, **11** portable resources, **5** harness inputs
+and compiled UI CSS match after the final scenes. The unchanged broad Web,
+Runtime, CLI and independent shared UI suites were not rerun for this native
+qualification/documentation batch. Every consumer/theme/contrast combination,
+actual preference save, clipboard denial, VoiceOver speech, OS IME, other-platform
+GUI, browser visual suites and performance benchmarks remain not verified.
+The earlier broad-run timeout remains qualified in its own batch.
+
+All five owned native processes exited, including the two excluded preparations;
+no CLI detail implementation was needed for this acceptance-only batch. The app
+was unregistered and its private root/pointer, ten newly created worktree output/
+cache paths and two bundle-specific Library paths were removed after ownership,
+birth-time, containment and copied-asset checks. A private compressed archive
+preserves **55** flat UTF-8 evidence files and **15** capture hashes outside the
+repository. Pre-existing shared UI Vite cache, installed dependencies, compiler
+caches, read-only references, user data, unrelated processes and the primary
+checkout remain.
+
+### Retained component behavior
 
 | Product area                  | Current behavior and ownership                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -3898,8 +4000,8 @@ defects; each needs a Wails look and an explicit choice before implementing:
   tools retain automatic collapse; entering grouped rows now pins their existing
   presentation so completion cannot hide engaged reading. These separate owners
   retain their appropriate defaults.
-- **Light-theme text ladder collapse (muted ≈ faint) — fixed, native acceptance
-  pending.** A color-semantics audit found the role usage consistent, but one real
+- **Light-theme text ladder collapse (muted ≈ faint) — implemented and natively
+  qualified within scope.** A color-semantics audit found the role usage consistent, but one real
   value defect: in the light theme `--color-text-muted` (#656565) and `--color-text-faint`
   (#696969) differed by ~4/255, so the two-tier metadata hierarchy (muted label over
   faint detail) that reads clearly in dark was lost in light across
@@ -3916,7 +4018,10 @@ defects; each needs a Wails look and an explicit choice before implementing:
   custom light muted/faint separate, faint keeps its floor value, and the dark ladder
   is untouched. `soft` tracks muted through its 55% anchor, so the `:root` mirror moved
   with it (`stylesheetMirror.test.ts` and the 111 `palette.test.ts` AA cases pass).
-  Confirm the muted weight across both light canvases in Wails.
+  Both light canvases and a dark control are now qualified through actual Wails
+  reading, detail/return and continued-draft flows, including warm-light 200% and
+  a narrow window. See Native reading color qualification above; retain this
+  ladder rather than reopening the completed token adjustment.
 - **Reasoning while streaming.** Today a quiet one-line glimpse; ChatGPT shows the
   full capped auto-following panel inline, but the newer ZCode reference explicitly
   reverted from that panel back to a default-collapsed glimpse (an expanded
