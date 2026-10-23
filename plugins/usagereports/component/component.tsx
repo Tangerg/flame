@@ -9,6 +9,7 @@ import {
 } from "react";
 import { ArrowLeft, Refresh } from "@flame/icons/react";
 import {
+  failureText,
   bindOperations,
   createTranslator,
   mutationSettlementIsUnknown,
@@ -92,8 +93,7 @@ function makeFormatters(locale: string, t: Translate): Formatters {
     amount: (value) => format(value, dollars),
   };
 }
-const failure = (error: unknown) =>
-  error instanceof Error ? error.message : String(error);
+const failure = (error: unknown) => failureText(error, String(error));
 const observed = (header: Header, locale: string) =>
   new Date(header.observedAt).toLocaleString(locale);
 const lowerBound = (header: Header, t: Translate, locale: string) =>

@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import {
+  failureText,
   createTranslator,
   scrollPositions,
   type ComponentContext,
@@ -131,7 +132,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         setRead((previous) => ({
           ...previous,
           loading: false,
-          error: error instanceof Error ? error.message : t("read.failed"),
+          error: failureText(error, t("read.failed")),
         }));
     }
   }, [context, mode, workspace, t]);

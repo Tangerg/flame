@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  failureText,
   bindOperations,
   createTranslator,
   mutationSettlementIsUnknown,
@@ -104,7 +105,7 @@ export function useMemory(context: ComponentContext) {
           setRead((previous) => ({
             ...previous,
             loading: false,
-            error: error instanceof Error ? error.message : t("error.read"),
+            error: failureText(error, t("error.read")),
           }));
       }
     },
@@ -137,7 +138,7 @@ export function useMemory(context: ComponentContext) {
         if (!signal.aborted)
           setRead((previous) => ({
             ...previous,
-            error: error instanceof Error ? error.message : t("error.observe"),
+            error: failureText(error, t("error.observe")),
           }));
       }
     };
@@ -199,11 +200,7 @@ export function useMemory(context: ComponentContext) {
       } else {
         command.current = undefined;
         setUnknown(undefined);
-        report(
-          original,
-          "refused",
-          error instanceof Error ? error.message : t("error.refused"),
-        );
+        report(original, "refused", failureText(error, t("error.refused")));
       }
     } finally {
       observing.current = false;
@@ -233,7 +230,7 @@ export function useMemory(context: ComponentContext) {
       update({
         label,
         state: "refused",
-        detail: error instanceof Error ? error.message : t("error.submit"),
+        detail: failureText(error, t("error.submit")),
       });
     }
   }
@@ -248,11 +245,7 @@ export function useMemory(context: ComponentContext) {
       command.current = attempt;
       void observe(attempt, owner);
     } catch (error) {
-      report(
-        unknown,
-        "unknown",
-        error instanceof Error ? error.message : t("error.check"),
-      );
+      report(unknown, "unknown", failureText(error, t("error.check")));
     }
   }
   return {

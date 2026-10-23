@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import {
+  failureText,
   createTranslator,
   mutationSettlementIsUnknown,
   type ComponentContext,
@@ -547,7 +548,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
           setRead((previous) => ({
             ...previous,
             loading: false,
-            error: error instanceof Error ? error.message : t("read.failed"),
+            error: failureText(error, t("read.failed")),
           }));
       }
     },
@@ -731,7 +732,7 @@ export function RenameSession({ context }: { context: ComponentContext }) {
       setUnknown(undefined);
     } catch (error) {
       if (context.signal.aborted) return;
-      setFailure(error instanceof Error ? error.message : String(error));
+      setFailure(failureText(error, String(error)));
       setUnknown(mutationSettlementIsUnknown(error) ? command : undefined);
     } finally {
       pending.current = false;

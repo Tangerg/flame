@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  failureText,
   createTranslator,
   type ComponentContext,
   type Translate,
@@ -287,7 +288,7 @@ export function Usage({ context }: { context: ComponentContext }) {
         setRead((previous) => ({
           ...previous,
           loading: false,
-          error: error instanceof Error ? error.message : t("read.failed"),
+          error: failureText(error, t("read.failed")),
         }));
     }
   }, [context, period, t]);

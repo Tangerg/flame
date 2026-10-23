@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  failureText,
   createTranslator,
   type ComponentContext,
   type TelemetrySnapshot,
@@ -221,7 +222,7 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
     } catch (error) {
       setRead((previous) => ({
         ...previous,
-        error: error instanceof Error ? error.message : t("read.failed"),
+        error: failureText(error, t("read.failed")),
       }));
     }
   }, [context, t]);
@@ -236,7 +237,7 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
     } catch (error) {
       setRead((previous) => ({
         ...previous,
-        error: error instanceof Error ? error.message : t("clear.failed"),
+        error: failureText(error, t("clear.failed")),
       }));
     }
   }
