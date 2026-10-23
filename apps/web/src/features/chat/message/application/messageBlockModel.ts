@@ -6,6 +6,7 @@ import {
   planRenderUnits,
   type MessageRenderUnit,
 } from "@/features/agent/public/messagePresentation";
+import { agentRunIsFinished } from "@/features/agent/public/runPresentation";
 export function narratedBlocks(
   blocks: ContentBlock[],
   toolCalls: Record<string, ToolCall>,
@@ -66,7 +67,7 @@ export function messageActionMaterialization(row: TranscriptRow): MessageActionM
   }
 
   for (const narratives of Object.values(row.facts.delegatedRuns)) {
-    if (narratives.some(({ run }) => run.status !== "finished")) return "active";
+    if (narratives.some(({ run }) => !agentRunIsFinished(run))) return "active";
   }
 
   return "settled";

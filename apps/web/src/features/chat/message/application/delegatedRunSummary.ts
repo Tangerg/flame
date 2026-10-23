@@ -4,6 +4,7 @@ import { type Translate } from "@/lib/i18n/index";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
 import {
   agentRunDetail,
+  agentRunIsFinished,
   agentRunPresentationState,
   type AgentRunPresentationState,
 } from "@/features/agent/public/runPresentation";
@@ -66,6 +67,6 @@ export function delegatedRunSummary(
     dotTone: statusView.dotTone,
     ink: statusView.ink,
     detail: agentRunDetail(run),
-    cancelable: run.status !== "finished",
+    cancelable: !agentRunIsFinished(run),
   };
 }

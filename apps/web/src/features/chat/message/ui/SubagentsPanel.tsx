@@ -6,6 +6,7 @@ import { useStickToBottom } from "use-stick-to-bottom";
 import { useT } from "@/lib/i18n/index";
 import { useActiveConversationRows } from "@/features/agent/public/conversation";
 import { delegatedTranscriptRows } from "@/features/agent/public/conversation";
+import { agentRunIsFinished, agentRunIsRunning } from "@/features/agent/public/runPresentation";
 import {
   openWorkspaceSubagentRun,
   useWorkspaceSubagentRunId,
@@ -136,7 +137,7 @@ export function SubagentsPanel() {
         selected.taskLabel,
       )
     : null;
-  const running = entries.filter(({ narrative }) => narrative.run.status === "running").length;
+  const running = entries.filter(({ narrative }) => agentRunIsRunning(narrative.run)).length;
   return (
     <AgentWorkspaceView ref={panelRef} tabIndex={-1} ariaLabel={t("subagents.title")}>
       <header data-slot="subagent-header" {...stylex.props(styles.header)}>
@@ -188,11 +189,11 @@ export function SubagentsPanel() {
             <div role="group" aria-label={t("subagents.title")}>
               <SubagentGroup
                 title={t("subagents.active")}
-                entries={entries.filter(({ narrative }) => narrative.run.status !== "finished")}
+                entries={entries.filter(({ narrative }) => !agentRunIsFinished(narrative.run))}
               />
               <SubagentGroup
                 title={t("subagents.finished")}
-                entries={entries.filter(({ narrative }) => narrative.run.status === "finished")}
+                entries={entries.filter(({ narrative }) => agentRunIsFinished(narrative.run))}
               />
             </div>
           )}
@@ -308,7 +309,7 @@ function SubagentTranscript({
                 ctx={ctx}
                 sessionId={narrative.run.sessionId}
                 isLast={index === rows.length - 1}
-                isRunning={narrative.run.status === "running"}
+                isRunning={agentRunIsRunning(narrative.run)}
                 previous={rows[index - 1]?.message}
                 next={rows[index + 1]?.message}
               />
