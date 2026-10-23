@@ -1,11 +1,11 @@
 import { rolldown } from "rolldown";
+import { fileURLToPath } from "node:url";
 import { buildComponent } from "@flame/component-sdk/build";
 
 await buildComponent({
   compiler: rolldown,
-  input: new URL("board.tsx", import.meta.url).pathname,
-  directory: new URL(
-    "../package/io.github.tangerg.flame/components",
-    import.meta.url,
-  ).pathname,
+  input: fileURLToPath(new URL("board.tsx", import.meta.url)),
+  directory: fileURLToPath(
+    new URL("../package/io.github.tangerg.flame/components", import.meta.url),
+  ),
 });

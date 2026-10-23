@@ -25,6 +25,23 @@ type Method[P, R any] struct {
 	contract *capability.Method
 }
 
+// ImplementMethod binds local codecs to a published contract. Only the contract
+// owner defines wire identity; deriving schemas from these types would give a
+// relocated or independently written implementation a different authority.
+func ImplementMethod[P, R any](owner *capability.Contract, name string) (*Method[P, R], error) {
+	if owner == nil {
+		return nil, errors.New("plugin: method contract is required")
+	}
+	method, ok := owner.Method(name)
+	if !ok {
+		return nil, fmt.Errorf("plugin: contract does not publish method %q", name)
+	}
+	if len(method.Descriptor().Stream) != 0 {
+		return nil, errors.New("plugin: streaming contract requires a streaming implementation")
+	}
+	return &Method[P, R]{contract: method}, nil
+}
+
 func NewMethod[P, R any](config MethodConfig) (*Method[P, R], error) {
 	if config.Description == "" || !utf8.ValidString(config.Description) {
 		return nil, errors.New("plugin: method description is required")

@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	memorycontract "github.com/Tangerg/flame/packages/plugin-sdk/memory"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/memorycontract"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"

@@ -102,6 +102,21 @@ try {
   // Materialize the plugin source from the frozen commit, not the live working
   // tree, so an ignored or untracked file cannot enter the author project.
   const tarball = join(output, ".source.tar");
+  const authorPaths = run(
+    "git",
+    ["ls-tree", "--name-only", revision, `plugins/${plugin}/`],
+    root,
+    process.env,
+    true,
+  )
+    .toString()
+    .trim()
+    .split("\n")
+    .filter((path) =>
+      ["backend", "component", "package", "README.md"].some(
+        (entry) => path === `plugins/${plugin}/${entry}`,
+      ),
+    );
   run(
     "git",
     [
@@ -110,7 +125,7 @@ try {
       `--output=${tarball}`,
       revision,
       "--",
-      `plugins/${plugin}`,
+      ...authorPaths,
     ],
     root,
     process.env,
@@ -134,8 +149,8 @@ try {
       else if (entry.name.endsWith(".go")) {
         let text = await readFile(path, "utf8");
         text = text.replaceAll(
-          `github.com/Tangerg/flame/plugins/${plugin}`,
-          modulePath,
+          `github.com/Tangerg/flame/plugins/${plugin}/backend`,
+          `${modulePath}/backend`,
         );
         text = text.replaceAll(
           /go run (github\.com\/Tangerg\/flame\/runtime\/cmd\/[a-zA-Z0-9_-]+)/g,
@@ -271,9 +286,9 @@ try {
     // Every packing input has been consumed; drop the frozen tree before the
     // author project's own install so it never ships inside the release.
     await rm(frozenTree, { recursive: true, force: true });
-    await writeFile(
+    await cp(
+      new URL("./author-component.mjs", import.meta.url),
       join(output, "build-component.mjs"),
-      `import {rolldown} from "rolldown";\nimport {buildComponent} from "@flame/component-sdk/build";\nawait buildComponent({compiler:rolldown,input:new URL("./component/component.tsx",import.meta.url).pathname,directory:new URL("./package/io.github.tangerg.flame/components",import.meta.url).pathname});\n`,
     );
     run(
       "npm",
@@ -293,7 +308,7 @@ try {
   }
   await writeFile(
     join(output, "AUTHORING.md"),
-    `# ${plugin} author project\n\nThe backend, component and package resource root use the same layout as Flame.\nYour module is ${modulePath}. Flame dependencies are immutable module artifacts from ${artifacts.revision}.\nGo production and generation tools are vendored; there is no local replace or Flame checkout dependency.\nJS dependencies use packed SDKs and this project's own lock. They require an ordinary npm install and are not claimed to be fully offline.\n\nRun with the Go version in go.mod:\n\n\`\`\`sh\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go test ./...\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go generate ./...\n${component ? "npm ci --ignore-scripts\nnpm run typecheck\nnpm run build\n" : ""}node build.mjs --source "$PWD" --output /absolute/new/release --os darwin --arch arm64\n\`\`\`\n\nInstall the built release; installation needs neither Go nor Node. Changing the backend's module identity regenerates its own schemas and resources.\n`,
+    `# ${plugin} author project\n\nThe backend, component and package resource root use the same layout as Flame.\nYour module is ${modulePath}; its implementation source is frozen at ${revision}. Flame dependencies are immutable module artifacts ${artifacts.version} from ${artifacts.revision}.\nGo production and generation tools are vendored; there is no local replace or Flame checkout dependency.\nJS dependencies use packed SDKs and this project's own lock. They require an ordinary npm install and are not claimed to be fully offline.\n\nRun with the Go version in go.mod:\n\n\`\`\`sh\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go test ./...\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go generate ./...\n${component ? "npm ci --ignore-scripts\nnpm run typecheck\nnpm run build\n" : ""}node build.mjs --source "$PWD" --output /absolute/new/release --os darwin --arch arm64\n\`\`\`\n\nInstall the built release; installation needs neither Go nor Node. Existing consumer contracts come from the pinned public SDK; local Go types implement them without redefining their identity. Regenerate package/UI projections after edits. New business contracts must be defined and published explicitly by their owner.\n`,
   );
   console.log(output);
 } catch (error) {

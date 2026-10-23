@@ -191,6 +191,14 @@
           "signature": "func(ctx context.Context, session *mcp.ClientSession) (Description, error)"
         },
         {
+          "name": "ImplementMethod",
+          "signature": "func[P, R any](owner *capability.Contract, name string) (*Method[P, R], error)"
+        },
+        {
+          "name": "ImplementStreamingMethod",
+          "signature": "func[P, C, R any](owner *capability.Contract, name string) (*StreamingMethod[P, C, R], error)"
+        },
+        {
           "name": "InvocationFromContext",
           "signature": "func(ctx context.Context) (capability.Invocation, error)"
         },
@@ -1231,6 +1239,998 @@
               "name": "IsError",
               "type": "bool",
               "tag": "json:\"isError,omitzero\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/plugin-sdk/memory",
+      "imports": [
+        "time"
+      ],
+      "constants": [
+        {
+          "name": "AddV1Method",
+          "type": "untyped string",
+          "value": "\"flame.memory/add.v1\""
+        },
+        {
+          "name": "CapabilityJSON",
+          "type": "untyped string",
+          "value": "\"{\\\"protocol\\\":\\\"io.github.tangerg.flame/backend/2026-10-15.3\\\",\\\"reference\\\":\\\"memory\\\",\\\"composition\\\":\\\"selection\\\",\\\"scope\\\":\\\"installation\\\",\\\"methods\\\":[{\\\"name\\\":\\\"flame.memory/add.v1\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Add a human-authored memory item in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_AddInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\",\\\"type\\\":\\\"string\\\"},\\\"Origin\\\":{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_AddResult\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/delete.v1\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Delete one memory item through its private owner.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_ItemInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Ack\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/items.v1\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Read active memory items that can inform a Run.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_ItemsInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\",\\\"type\\\":\\\"string\\\"},\\\"Origin\\\":{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"}},{\\\"name\\\":\\\"flame.memory/list.v1\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"List memory items visible in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_ListInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"maximum\\\":100,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"maximum\\\":100,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\",\\\"type\\\":\\\"string\\\"},\\\"Origin\\\":{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Page\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"const\\\":512,\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot\\\"},\\\"maxItems\\\":100,\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"const\\\":512,\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot\\\"},\\\"maxItems\\\":100,\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/maintain.v1\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Extract and curate captured conversation under the private ledger and watermark.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Conversation\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"MessageCount\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"Transcript\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"MessageCount\\\",\\\"Transcript\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_MaintenanceInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Conversation\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Conversation\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_MaintenanceResult\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/review.v1\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Apply a human review decision to a pending memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_ReviewInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Decision\\\":{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"],\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Decision\\\":{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"],\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_Ack\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/search.v1\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Rank active memories for the supplied project and query.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_SearchInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\",\\\"type\\\":\\\"string\\\"},\\\"Origin\\\":{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"}},{\\\"name\\\":\\\"flame.memory/update.v1\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Edit the current content or pin state of a memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_UpdateInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\",\\\"type\\\":\\\"string\\\"},\\\"Origin\\\":{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\",\\\"type\\\":\\\"string\\\"},\\\"Origin\\\":{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}}]}\""
+        },
+        {
+          "name": "DeleteV1Method",
+          "type": "untyped string",
+          "value": "\"flame.memory/delete.v1\""
+        },
+        {
+          "name": "ItemsV1Method",
+          "type": "untyped string",
+          "value": "\"flame.memory/items.v1\""
+        },
+        {
+          "name": "ListV1Method",
+          "type": "untyped string",
+          "value": "\"flame.memory/list.v1\""
+        },
+        {
+          "name": "MaintainV1Method",
+          "type": "untyped string",
+          "value": "\"flame.memory/maintain.v1\""
+        },
+        {
+          "name": "MaxCallbackInputBytes",
+          "type": "untyped int",
+          "value": "25234433"
+        },
+        {
+          "name": "MaxCallbackOutputBytes",
+          "type": "untyped int",
+          "value": "67108864"
+        },
+        {
+          "name": "MaxEmbeddingInputBytes",
+          "type": "untyped int",
+          "value": "25168897"
+        },
+        {
+          "name": "MaxEmbeddingTexts",
+          "type": "untyped int",
+          "value": "1024"
+        },
+        {
+          "name": "MaxModelCalls",
+          "type": "untyped int",
+          "value": "2"
+        },
+        {
+          "name": "MaxModelInputBytes",
+          "type": "untyped int",
+          "value": "524288"
+        },
+        {
+          "name": "MaxModelOutputTokens",
+          "type": "untyped int",
+          "value": "2048"
+        },
+        {
+          "name": "ReviewV1Method",
+          "type": "untyped string",
+          "value": "\"flame.memory/review.v1\""
+        },
+        {
+          "name": "SearchV1Method",
+          "type": "untyped string",
+          "value": "\"flame.memory/search.v1\""
+        },
+        {
+          "name": "UpdateV1Method",
+          "type": "untyped string",
+          "value": "\"flame.memory/update.v1\""
+        }
+      ],
+      "types": [
+        {
+          "name": "AddV1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"CWD\""
+            },
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"Content\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            }
+          ]
+        },
+        {
+          "name": "AddV1Output",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Changed",
+              "type": "bool",
+              "tag": "json:\"Changed\""
+            },
+            {
+              "name": "Item",
+              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot",
+              "tag": "json:\"Item\""
+            }
+          ]
+        },
+        {
+          "name": "DeleteV1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            }
+          ]
+        },
+        {
+          "name": "DeleteV1Output",
+          "kind": "struct"
+        },
+        {
+          "name": "ItemsV1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            }
+          ]
+        },
+        {
+          "name": "ItemsV1Output",
+          "kind": "defined",
+          "underlying": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot"
+        },
+        {
+          "name": "ListV1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"CWD\""
+            },
+            {
+              "name": "Cursor",
+              "type": "string",
+              "tag": "json:\"Cursor\""
+            },
+            {
+              "name": "Limit",
+              "type": "*uint64",
+              "tag": "json:\"Limit,omitzero\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            }
+          ]
+        },
+        {
+          "name": "ListV1Output",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Capacity",
+              "type": "int64",
+              "tag": "json:\"Capacity\""
+            },
+            {
+              "name": "NextCursor",
+              "type": "string",
+              "tag": "json:\"NextCursor\""
+            },
+            {
+              "name": "Rows",
+              "type": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot",
+              "tag": "json:\"Rows\""
+            }
+          ]
+        },
+        {
+          "name": "MaintainV1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Compacted",
+              "type": "bool",
+              "tag": "json:\"Compacted\""
+            },
+            {
+              "name": "Conversation",
+              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fConversation",
+              "tag": "json:\"Conversation\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"SessionID\""
+            }
+          ]
+        },
+        {
+          "name": "MaintainV1Output",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Published",
+              "type": "bool",
+              "tag": "json:\"Published\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2fadd_2ev1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"CWD\""
+            },
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"Content\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2fadd_2ev1Output",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Changed",
+              "type": "bool",
+              "tag": "json:\"Changed\""
+            },
+            {
+              "name": "Item",
+              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot",
+              "tag": "json:\"Item\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2fdelete_2ev1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2fdelete_2ev1Output",
+          "kind": "struct"
+        },
+        {
+          "name": "Method_flame_2ememory_2fitems_2ev1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2fitems_2ev1Output",
+          "kind": "defined",
+          "underlying": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot"
+        },
+        {
+          "name": "Method_flame_2ememory_2flist_2ev1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"CWD\""
+            },
+            {
+              "name": "Cursor",
+              "type": "string",
+              "tag": "json:\"Cursor\""
+            },
+            {
+              "name": "Limit",
+              "type": "*uint64",
+              "tag": "json:\"Limit,omitzero\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2flist_2ev1Output",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Capacity",
+              "type": "int64",
+              "tag": "json:\"Capacity\""
+            },
+            {
+              "name": "NextCursor",
+              "type": "string",
+              "tag": "json:\"NextCursor\""
+            },
+            {
+              "name": "Rows",
+              "type": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot",
+              "tag": "json:\"Rows\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2fmaintain_2ev1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Compacted",
+              "type": "bool",
+              "tag": "json:\"Compacted\""
+            },
+            {
+              "name": "Conversation",
+              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fConversation",
+              "tag": "json:\"Conversation\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"SessionID\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2fmaintain_2ev1Output",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Published",
+              "type": "bool",
+              "tag": "json:\"Published\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2freview_2ev1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Decision",
+              "type": "string",
+              "tag": "json:\"Decision\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2freview_2ev1Output",
+          "kind": "struct"
+        },
+        {
+          "name": "Method_flame_2ememory_2fsearch_2ev1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"EmbeddingSpace\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Query",
+              "type": "string",
+              "tag": "json:\"Query\""
+            },
+            {
+              "name": "TopK",
+              "type": "int64",
+              "tag": "json:\"TopK\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2fsearch_2ev1Output",
+          "kind": "defined",
+          "underlying": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot"
+        },
+        {
+          "name": "Method_flame_2ememory_2fupdate_2ev1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Content",
+              "type": "*string",
+              "tag": "json:\"Content,omitzero\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            },
+            {
+              "name": "Pinned",
+              "type": "*bool",
+              "tag": "json:\"Pinned,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "Method_flame_2ememory_2fupdate_2ev1Output",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"Content\""
+            },
+            {
+              "name": "CreatedAt",
+              "type": "time.Time",
+              "tag": "json:\"CreatedAt\""
+            },
+            {
+              "name": "Day",
+              "type": "string",
+              "tag": "json:\"Day\""
+            },
+            {
+              "name": "Embedding",
+              "type": "[]float64",
+              "tag": "json:\"Embedding\""
+            },
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"EmbeddingSpace\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            },
+            {
+              "name": "Origin",
+              "type": "string",
+              "tag": "json:\"Origin\""
+            },
+            {
+              "name": "Pinned",
+              "type": "bool",
+              "tag": "json:\"Pinned\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"SessionID\""
+            },
+            {
+              "name": "Status",
+              "type": "string",
+              "tag": "json:\"Status\""
+            },
+            {
+              "name": "UpdatedAt",
+              "type": "time.Time",
+              "tag": "json:\"UpdatedAt\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"Content\""
+            },
+            {
+              "name": "CreatedAt",
+              "type": "time.Time",
+              "tag": "json:\"CreatedAt\""
+            },
+            {
+              "name": "Day",
+              "type": "string",
+              "tag": "json:\"Day\""
+            },
+            {
+              "name": "Embedding",
+              "type": "[]float64",
+              "tag": "json:\"Embedding\""
+            },
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"EmbeddingSpace\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            },
+            {
+              "name": "Origin",
+              "type": "string",
+              "tag": "json:\"Origin\""
+            },
+            {
+              "name": "Pinned",
+              "type": "bool",
+              "tag": "json:\"Pinned\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"SessionID\""
+            },
+            {
+              "name": "Status",
+              "type": "string",
+              "tag": "json:\"Status\""
+            },
+            {
+              "name": "UpdatedAt",
+              "type": "time.Time",
+              "tag": "json:\"UpdatedAt\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fAck",
+          "kind": "struct"
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fAddInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"CWD\""
+            },
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"Content\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fAddResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Changed",
+              "type": "bool",
+              "tag": "json:\"Changed\""
+            },
+            {
+              "name": "Item",
+              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot",
+              "tag": "json:\"Item\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fConversation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "MessageCount",
+              "type": "int64",
+              "tag": "json:\"MessageCount\""
+            },
+            {
+              "name": "Transcript",
+              "type": "string",
+              "tag": "json:\"Transcript\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fItemInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fItemsInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fListInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"CWD\""
+            },
+            {
+              "name": "Cursor",
+              "type": "string",
+              "tag": "json:\"Cursor\""
+            },
+            {
+              "name": "Limit",
+              "type": "*uint64",
+              "tag": "json:\"Limit,omitzero\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fMaintenanceInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Compacted",
+              "type": "bool",
+              "tag": "json:\"Compacted\""
+            },
+            {
+              "name": "Conversation",
+              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fConversation",
+              "tag": "json:\"Conversation\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"SessionID\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fMaintenanceResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Published",
+              "type": "bool",
+              "tag": "json:\"Published\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fPage",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Capacity",
+              "type": "int64",
+              "tag": "json:\"Capacity\""
+            },
+            {
+              "name": "NextCursor",
+              "type": "string",
+              "tag": "json:\"NextCursor\""
+            },
+            {
+              "name": "Rows",
+              "type": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot",
+              "tag": "json:\"Rows\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fReviewInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Decision",
+              "type": "string",
+              "tag": "json:\"Decision\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fSearchInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"EmbeddingSpace\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Query",
+              "type": "string",
+              "tag": "json:\"Query\""
+            },
+            {
+              "name": "TopK",
+              "type": "int64",
+              "tag": "json:\"TopK\""
+            }
+          ]
+        },
+        {
+          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvcnBj_5fUpdateInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Content",
+              "type": "*string",
+              "tag": "json:\"Content,omitzero\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            },
+            {
+              "name": "Pinned",
+              "type": "*bool",
+              "tag": "json:\"Pinned,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ReviewV1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Decision",
+              "type": "string",
+              "tag": "json:\"Decision\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            }
+          ]
+        },
+        {
+          "name": "ReviewV1Output",
+          "kind": "struct"
+        },
+        {
+          "name": "SearchV1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"EmbeddingSpace\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Query",
+              "type": "string",
+              "tag": "json:\"Query\""
+            },
+            {
+              "name": "TopK",
+              "type": "int64",
+              "tag": "json:\"TopK\""
+            }
+          ]
+        },
+        {
+          "name": "SearchV1Output",
+          "kind": "defined",
+          "underlying": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot"
+        },
+        {
+          "name": "UpdateV1Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Content",
+              "type": "*string",
+              "tag": "json:\"Content,omitzero\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            },
+            {
+              "name": "Pinned",
+              "type": "*bool",
+              "tag": "json:\"Pinned,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "UpdateV1Output",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"Content\""
+            },
+            {
+              "name": "CreatedAt",
+              "type": "time.Time",
+              "tag": "json:\"CreatedAt\""
+            },
+            {
+              "name": "Day",
+              "type": "string",
+              "tag": "json:\"Day\""
+            },
+            {
+              "name": "Embedding",
+              "type": "[]float64",
+              "tag": "json:\"Embedding\""
+            },
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"EmbeddingSpace\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            },
+            {
+              "name": "Origin",
+              "type": "string",
+              "tag": "json:\"Origin\""
+            },
+            {
+              "name": "Pinned",
+              "type": "bool",
+              "tag": "json:\"Pinned\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"Scope\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"SessionID\""
+            },
+            {
+              "name": "Status",
+              "type": "string",
+              "tag": "json:\"Status\""
+            },
+            {
+              "name": "UpdatedAt",
+              "type": "time.Time",
+              "tag": "json:\"UpdatedAt\""
             }
           ]
         }
@@ -2451,6 +3451,16 @@
           "name": "Query",
           "type": "MethodKind",
           "value": "\"query\""
+        },
+        {
+          "name": "ScopeCall",
+          "type": "untyped string",
+          "value": "\"call\""
+        },
+        {
+          "name": "ScopeInstallation",
+          "type": "untyped string",
+          "value": "\"installation\""
         },
         {
           "name": "Selection",

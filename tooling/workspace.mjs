@@ -101,21 +101,8 @@ async function stampDeclarations(repository) {
 
 export async function generate(repository = root) {
   await buildShared(repository);
+  run("go", ["generate", "./packages/plugin-sdk/memory"], repository);
   run("go", ["generate", "./plugins/..."], repository);
-  const memory = join(
-    repository,
-    "runtime/internal/adapter/integration/memorycontract",
-  );
-  run(
-    "go",
-    [
-      "run",
-      "./plugins/memory/backend/cmd/contracts",
-      "--caller-go",
-      join(memory, "caller_policy.generated.go"),
-    ],
-    repository,
-  );
   run("go", ["generate", "./runtime/...", "./apps/cli/..."], repository);
   const members = JSON.parse(
     run("go", ["work", "edit", "-json"], repository, process.env, true),
@@ -220,11 +207,15 @@ export async function moduleArtifacts({
     // bytes are its pinned commit's source, never whatever HEAD happens to be, so
     // an unrelated commit can never redefine an already-published version.
     const candidates = JSON.parse(
-      await readFile(
-        join(repository, "tooling/moduleproxy/candidates.json"),
-        "utf8",
+      run(
+        "git",
+        ["show", `${frozen}:tooling/moduleproxy/candidates.json`],
+        repository,
+        process.env,
+        true,
       ),
     );
+    let productRevision;
     for (const [selected, subdir] of [
       [local, "packages/local-runtime"],
       [product, ""],
@@ -247,6 +238,7 @@ export async function moduleArtifacts({
       )
         .toString()
         .trim();
+      if (subdir === "") productRevision = source;
       run(
         tool,
         [
@@ -271,7 +263,7 @@ export async function moduleArtifacts({
       proxy: output,
       version: product.Version,
       localVersion: local.Version,
-      revision: frozen,
+      revision: productRevision,
     };
   } finally {
     await rm(bootstrap, { recursive: true, force: true });

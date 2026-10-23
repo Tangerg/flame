@@ -5,6 +5,7 @@ package rpc
 
 import (
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	memorycontract "github.com/Tangerg/flame/packages/plugin-sdk/memory"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/runtime/capability"
 )
@@ -24,39 +25,39 @@ type Contracts struct {
 func NewContracts() (Contracts, error) {
 	var contracts Contracts
 	var err error
-	contracts.List, err = pluginsdk.NewMethod[ListInput, Page](pluginsdk.MethodConfig{Name: List, Kind: capability.Query, Target: capability.ScopeInstallation, Description: "List memory items visible in the requested scope."})
+	contracts.Capability, err = capability.Parse([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Add, err = pluginsdk.NewMethod[AddInput, AddResult](pluginsdk.MethodConfig{Name: Add, Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Add a human-authored memory item in the requested scope."})
+	contracts.List, err = pluginsdk.ImplementMethod[ListInput, Page](contracts.Capability, List)
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Update, err = pluginsdk.NewMethod[UpdateInput, memory.ItemSnapshot](pluginsdk.MethodConfig{Name: Update, Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Edit the current content or pin state of a memory item."})
+	contracts.Add, err = pluginsdk.ImplementMethod[AddInput, AddResult](contracts.Capability, Add)
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Delete, err = pluginsdk.NewMethod[ItemInput, Ack](pluginsdk.MethodConfig{Name: Delete, Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Delete one memory item through its private owner."})
+	contracts.Update, err = pluginsdk.ImplementMethod[UpdateInput, memory.ItemSnapshot](contracts.Capability, Update)
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Review, err = pluginsdk.NewMethod[ReviewInput, Ack](pluginsdk.MethodConfig{Name: Review, Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Apply a human review decision to a pending memory item."})
+	contracts.Delete, err = pluginsdk.ImplementMethod[ItemInput, Ack](contracts.Capability, Delete)
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Items, err = pluginsdk.NewMethod[ItemsInput, []memory.ItemSnapshot](pluginsdk.MethodConfig{Name: Items, Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Read active memory items that can inform a Run."})
+	contracts.Review, err = pluginsdk.ImplementMethod[ReviewInput, Ack](contracts.Capability, Review)
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Search, err = pluginsdk.NewMethod[SearchInput, []memory.ItemSnapshot](pluginsdk.MethodConfig{Name: Search, Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Rank active memories for the supplied project and query."})
+	contracts.Items, err = pluginsdk.ImplementMethod[ItemsInput, []memory.ItemSnapshot](contracts.Capability, Items)
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Maintain, err = pluginsdk.NewMethod[MaintenanceInput, MaintenanceResult](pluginsdk.MethodConfig{Name: Maintain, Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Extract and curate captured conversation under the private ledger and watermark."})
+	contracts.Search, err = pluginsdk.ImplementMethod[SearchInput, []memory.ItemSnapshot](contracts.Capability, Search)
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Capability, err = capability.New(capability.Config{Reference: "memory", Composition: capability.Selection, Scope: capability.ScopeInstallation}, contracts.List.Descriptor(), contracts.Add.Descriptor(), contracts.Update.Descriptor(), contracts.Delete.Descriptor(), contracts.Review.Descriptor(), contracts.Items.Descriptor(), contracts.Search.Descriptor(), contracts.Maintain.Descriptor())
+	contracts.Maintain, err = pluginsdk.ImplementMethod[MaintenanceInput, MaintenanceResult](contracts.Capability, Maintain)
 	if err != nil {
 		return Contracts{}, err
 	}

@@ -22,6 +22,7 @@ var publicPackagePaths = []string{
 	runtimeModulePath + "/model",
 	runtimeModulePath + "/model/catalog",
 	"github.com/Tangerg/flame/packages/plugin-sdk",
+	"github.com/Tangerg/flame/packages/plugin-sdk/memory",
 	"github.com/Tangerg/flame/packages/plugin-sdk/sqlite",
 	runtimeModulePath + "/point",
 	runtimeModulePath + "/protocol",

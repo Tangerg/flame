@@ -7,10 +7,10 @@ import (
 	"sync"
 
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	memorycontract "github.com/Tangerg/flame/packages/plugin-sdk/memory"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/idempotency"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/memorycontract"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"

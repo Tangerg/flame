@@ -9,7 +9,7 @@ same watermark compare-and-set and human-review invariants as every other write.
 
 The installed stdio process opens only `PLUGIN_DATA/memory.db`, under an exclusive
 process lease. Its local declaration binds `memory-provider` to the `memory`
-server and export with the exact generated consumer contract. Multiple candidates may be enabled; product composition explicitly
+server and export with the exact [public consumer contract](../../packages/plugin-sdk/memory/README.md). The first-party and independent backends bind this same published contract; changing an implementation module does not redefine its schemas. Multiple candidates may be enabled; product composition explicitly
 selects one installation/contribution for new calls. Runtime connects human `plugins.call` operations, Run context reads and
 source-qualified `search_memory`
 Tool to that exact generation. Closing a component cannot stop this process.

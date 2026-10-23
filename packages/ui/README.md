@@ -25,10 +25,9 @@ import "@flame/ui/styles.css";
 The build emits JavaScript, declarations and one stylesheet. Ordinary consumers need no StyleX transform or application aliases. StyleX consumers may import the shared token declarations from `@flame/ui/tokens.stylex`; those declarations are compiled by their existing StyleX pipeline. Component overrides use the existing `styles` contract so each element merges its styles in one `stylex.props` call.
 
 ```sh
-npm ci --prefix icons
-npm run build --prefix icons
-npm ci --prefix ui
-npm run check --prefix ui
+npm ci
+npm run build --workspace @flame/icons
+npm run check --workspace @flame/ui
 ```
 
 The package is private and is consumed through repository-local `file:` dependencies. Package verification installs locally packed UI and icon archives into an independent consumer. It never publishes to npm. Source owns styling; generated `dist` and token-name outputs are not committed. Changes to shared components require the Desktop gate and the portable resource build and component lifecycle acceptance.
