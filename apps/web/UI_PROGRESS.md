@@ -482,6 +482,72 @@ An open Tooltip consumes its own Escape first. The catalog's independent
 is still governed by its original command and recovery contract. This is a local
 read-control repair, with no global Button behavior change or new focus state.
 
+Native recovery qualification on `3847ac61c` now covers the actual first-failure,
+retained-refresh and changing-catalog boundaries without a product-code change.
+English/light/14 px/Flame Orange used a 523 px Dock and a pre-existing mixed-language
+Composer draft. A held canonical catalog refresh accepted an empty catalog while
+the named document remained open. Initial document failures claimed no accepted
+instructions; explicit keyboard Refresh recovered the document. Later failures
+named the same document and labelled its last accepted instructions. Escape from
+a held document refresh aborted that read and returned to the retained
+`runtime` query with search focus because the original row was gone. A new
+catalog refresh restored the row; keyboard entry, source/revision reading and
+local Escape returned to that new row. Ordinary initial-catalog Escape left the
+catalog in place; the existing collapse action ended the task. Continuing the
+original Composer produced exactly
+`Skills recovery source draft · 保留 · continued`.
+
+Chinese/dark/18 px/custom blue used a full-pane Skills task, an actual edge-resized
+2632×1798 window, sidebar collapse and twenty native Zoom In commands. At 200%,
+the same first/retained failure distinctions remained readable. Native wheel
+reading reached the final mixed-language verification passage and source facts;
+Back, the document identity and Refresh remained available. The complete path
+and 64-character revision were present in accessibility output and wrapped in
+their existing fields. The diagnostic HUD is excluded fixture chrome; its overlap
+in individual captures is not a product clipping claim. Repeated native Return
+during the sixth, held document read kept the request count at six. Escape
+aborted it and restored the retained query/search focus over the accepted empty
+catalog. Search Escape cleared locally; reverse navigation through the selected
+catalog tab and named panel region reached Close. Closing returned to
+Conversation, and new native Composer input at 200% was exactly
+`技能恢复后继续输入 保留`. This scene does not claim a pre-existing Chinese draft.
+Actual Size was restored before Quit.
+
+All read retries above were explicit user actions; no automatic retry is claimed.
+The private transport refused and recorded zero Skill mutations. Returning
+cancelled the held transport, so native late-result delivery is not newly
+qualified. These are production component/SDK reads through the real Wails
+asset/IPC host, not a live installed-package, archive, proposal or filesystem
+acceptance. The RPC message `internal_error` remains literal; backend detail
+selection and every error category are outside this qualification. VoiceOver,
+OS IME, measured contrast and other native locales/platforms were not run.
+
+The better-writing, better-layout and better-accessibility guidance informs
+object identity, explicit retained-result copy, persistent task controls and
+return focus. ZCode's actual read-only `settings/SkillsSection.tsx` keeps refresh
+with the resource header and renders failure from its read owner; its modal
+detail policy is not copied into Flame's persistent document reader. Source
+review preserved Flame's existing catalog/document lifetimes and command owner.
+There was no bounded implementation to delegate to Claude Code CLI.
+
+All 88 product/source/test inputs, 11 resources, four compiled shared-UI inputs
+and four reviewed harness inputs stayed unchanged. `make stage-web` passed
+(5.66 s), followed by the reviewed native English and Chinese builds
+(2.79 / 5.73 s). The prior complete 390-file / 3,077-test Web result and supported
+native check still cover this unchanged implementation; neither full check was
+rerun for this qualification. The unchanged API-consumer inventory failure
+remains recorded below. No browser visual suite or benchmark ran. An initial
+observer configuration read whole-page text including its own HUD; it was
+replaced with bounded labels before product interaction and excluded from
+acceptance.
+
+All three private native PIDs exited. Ownership, birth-time and copied-source
+guards removed the unregistered bundle, root, data, logs, captures, pointer, six
+new outputs/caches and two bundle-specific Library directories. The pre-existing
+shared-UI cache, user data, read-only references, primary checkout and unrelated
+processes remained intact. Remote main was refetched at `3847ac61c` before the
+documentation-only publication.
+
 Provider rows retain one credential draft owner and one canonical mutation owner. `providers/ui/ProviderRow.tsx` now runs Save & Test through one existing `useAsyncFeedback` lease that starts at activation. The mutation latch and saving state remain local to the admitted update; `saveDraft` still settles only the submitted URL/key values. Ordinary Save/Clear keep their existing feedback policy. A retired Runtime generation remains ignored, current save failure prevents testing, and test failure uses its existing message. Editing does not submit the successor draft or cancel an already accepted canonical update. No new draft, generation cache, protocol or persisted representation was added.
 
 Settings layout now keeps its responsive conditions in the same native page-zoom space as its content. `ui/atoms/vertical-tabs.tsx` uses 40rem for the existing navigation retreat, and `settings/kit/SettingRow.tsx` uses 35rem for its existing row retreat and control alignment. At the observed 16 px root these retain the previous 640/560 px thresholds; the 14/18 px interface font remains owned by appearance. `providers/ui/ProvidersPane.tsx` composes its model roles with the existing `SettingsGroup`, so each row queries the group's content width rather than the wider outer Panel. The credential list retains its separate `RecordGroup` layout. No measurement state, zoom mirror, native preference, draft or mutation owner was added.
