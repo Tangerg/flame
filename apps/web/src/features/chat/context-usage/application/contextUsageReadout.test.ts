@@ -5,6 +5,8 @@ describe("contextUsageReadout", () => {
     expect(contextUsageReadout(300_000, 258_000)).toEqual({
       ratio: 1,
       percent: 100,
+      remainingPercent: 0,
+      pastHalfway: true,
       usedTokens: 258_000,
       windowTokens: 258_000,
     });

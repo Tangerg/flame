@@ -57,10 +57,10 @@ export function ContextUsageGauge() {
     <RichTooltip trigger={trigger} side="top" sideOffset={4} styles={cu.panel}>
       <div {...stylex.props(vocab.column, gap.s0_5, ct.centre)}>
         <span {...stylex.props(vocab.muted)}>{t("context.usage.label")}</span>
-        <span {...stylex.props(readout.percent >= 50 && vocab.muted)}>
-          {t(readout.percent >= 50 ? "context.usage.statusFull" : "context.usage.statusLeft", {
+        <span {...stylex.props(readout.pastHalfway && vocab.muted)}>
+          {t(readout.pastHalfway ? "context.usage.statusFull" : "context.usage.statusLeft", {
             percent: readout.percent,
-            remaining: 100 - readout.percent,
+            remaining: readout.remainingPercent,
           })}
         </span>
         <span>
