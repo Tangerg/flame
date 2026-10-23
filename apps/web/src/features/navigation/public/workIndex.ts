@@ -22,6 +22,13 @@ export {
 } from "@/features/navigation/application/workIndexActions";
 export { useWorkIndex } from "@/features/navigation/application/useWorkIndex";
 export type { WorkGroup, WorkProject, WorkSession } from "@/features/navigation/domain/workIndex";
+export {
+  sessionIsRunning,
+  sessionIsWaiting,
+  sessionNeedsAttention,
+  workGroupHasRunning,
+  workGroupWaitingCount,
+} from "@/features/navigation/domain/workIndex";
 
 export function contributeWorkIndexItem(ctx: Contributor, item: WorkIndexItemSpec): Disposable {
   return ctx.contribute(WORK_INDEX_ITEM, item);

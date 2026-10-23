@@ -16,6 +16,11 @@ import { type IconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { type WorkSession } from "@/features/navigation/public/workIndex";
+import {
+  sessionIsRunning,
+  sessionIsWaiting,
+  sessionNeedsAttention,
+} from "@/features/navigation/public/workIndex";
 import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const sr = stylex.create({
   host: { position: "relative", userSelect: "none" },
@@ -97,12 +102,11 @@ export function SessionRow({
   const [action, setAction] = useState<{ entry: SessionActionSpec; session: CapturedSession }>();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const t = useT();
-  const attentionLabel =
-    session.attention === "running"
-      ? t("session.status.running")
-      : session.attention === "waiting"
-        ? t("session.status.waiting")
-        : undefined;
+  const attentionLabel = sessionIsRunning(session)
+    ? t("session.status.running")
+    : sessionIsWaiting(session)
+      ? t("session.status.waiting")
+      : undefined;
   const when = formatRelative(session.time);
   const accessibleStatus = attentionLabel ? `${attentionLabel} · ${when}` : when;
   const title = session.title.trim() || t("session.untitled");
@@ -229,10 +233,10 @@ export function SessionRow({
               {session.favorite && (
                 <Icon name="star" size="xs" className={stylex.props(sr.favorite).className} />
               )}
-              {session.attention !== "none" ? (
+              {sessionNeedsAttention(session) ? (
                 <StatusDot
-                  tone={session.attention === "running" ? "running" : "waiting"}
-                  ring={session.attention === "running"}
+                  tone={sessionIsRunning(session) ? "running" : "waiting"}
+                  ring={sessionIsRunning(session)}
                   label={accessibleStatus}
                 />
               ) : (

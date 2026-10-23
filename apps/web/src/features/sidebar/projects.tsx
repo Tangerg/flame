@@ -13,6 +13,7 @@ import { type WorkIndexActions } from "@/features/navigation/public/workIndex";
 import { contributeWorkIndexItem } from "@/features/navigation/public/workIndex";
 import { useWorkIndex } from "@/features/navigation/public/workIndex";
 import { useWorkIndexActions } from "@/features/navigation/public/workIndex";
+import { workGroupHasRunning, workGroupWaitingCount } from "@/features/navigation/public/workIndex";
 import { definePlugin } from "@/extensions/definePlugin";
 import { space } from "@flame/ui/tokens.stylex";
 const pj = stylex.create({
@@ -39,8 +40,8 @@ function ProjectGroupNode({
     setRevealedFor(activeSessionId);
     if (holdsActive && !open) setOpen(true);
   }
-  const waiting = group.sessions.filter((session) => session.attention === "waiting").length;
-  const running = group.sessions.some((session) => session.attention === "running");
+  const waiting = workGroupWaitingCount(group);
+  const running = workGroupHasRunning(group);
 
   return (
     <div {...stylex.props(vocab.column)}>
