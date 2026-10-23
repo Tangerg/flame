@@ -255,8 +255,8 @@ still preserves known facts while their observer remains live. Retiring an older
 observer cannot detach a replacement Segment's observer.
 
 Bootstrap owns a nonblocking physical data-directory lease until complete teardown.
-Only one Runtime may open it; multiple clients use its protocol. The former external
-Under that lifetime, one admission Gate owns Session writers and physical working-tree reservations, SessionMutations owns Goal drive lifetimes, and one recovery coordinator serializes Run-then-Goal sweeps. Recovery checks those same live owners. No internal file-lease set or second liveness registry participates.
+Only one Runtime may open it; multiple clients use its protocol.
+Within that lifetime, one admission Gate owns Session writers and physical working-tree reservations, SessionMutations owns Goal drive lifetimes, and one recovery coordinator serializes Run-then-Goal sweeps. Recovery checks those same live owners. No internal file-lease set or second liveness registry participates.
 
 Data-directory acquisition distinguishes contention from operational failure. Working-tree identity resolution errors remain explicit and cannot become a lexical fallback. The authored-file adapters report the first failure in each outage through Runtime logging, including when the embedding host has not configured tracing, and retry without inventing a change notification. A successful resample resumes observation and permits a later outage to be reported again. Filesystem reconciliation reads the backend's current registrations so deleted and recreated directories regain their watches. Git observation retains its last successful HEAD/index snapshot across read failures. Failed samples retry with bounded exponential backoff without requiring another filesystem event; persistent failure or a terminated backend ends the subscription explicitly. Watcher event loss schedules a fresh semantic read. Workspace path observations reuse the bounded filesystem mechanism for exact files and directory entries, preserving the originating workspace in invalidations.
 
