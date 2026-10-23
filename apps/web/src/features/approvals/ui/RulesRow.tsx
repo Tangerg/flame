@@ -1,6 +1,9 @@
 import { iconGlyph } from "@/ui/icons/index";
-import { toolSourceLabel } from "@/lib/toolSource";
-import { type ApprovalRuleSummary } from "@/features/agent/public/approvalPolicy";
+import {
+  type ApprovalRuleSummary,
+  describeApprovalRuleTool,
+  describeApprovalSubject,
+} from "@/features/agent/public/approvalPolicy";
 import * as stylex from "@stylexjs/stylex";
 import { useId } from "react";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
@@ -131,15 +134,8 @@ export function RulesRow() {
                       {rule.stale ? <Badge tone="warning">{t("approvals.stale")}</Badge> : null}
                     </div>
                     <div {...stylex.props(r.details, vocab.muted, typeStep.uiSm, face.mono)}>
-                      <span>
-                        {rule.tool.type === "builtIn"
-                          ? t("approvals.builtIn")
-                          : toolSourceLabel(rule.tool)}
-                      </span>
-                      <span>
-                        {t(`approvals.subject.${rule.subject.type}`)}
-                        {rule.subject.type !== "all" ? `: ${rule.subject.value}` : null}
-                      </span>
+                      <span>{describeApprovalRuleTool(rule.tool, t)}</span>
+                      <span>{describeApprovalSubject(rule.subject, t)}</span>
                       {rule.dir ? <span>{rule.dir}</span> : null}
                     </div>
                   </div>

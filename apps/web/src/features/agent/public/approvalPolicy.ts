@@ -14,5 +14,7 @@ export type { ApprovalMode, ApprovalModeResult } from "@/features/agent/domain/h
 export {
   APPROVAL_MODE_LABEL_KEY,
   describeApprovalMode,
+  describeApprovalRuleTool,
+  describeApprovalSubject,
 } from "@/features/agent/presentation/approvalModes";
 export type { ApprovalRuleSummary } from "@/features/agent/application/approvalPolicyQueries";

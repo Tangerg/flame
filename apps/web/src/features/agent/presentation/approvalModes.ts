@@ -1,9 +1,11 @@
 import { type Translate } from "@/lib/i18n/index";
+import { toolSourceLabel } from "@/lib/toolSource";
 import {
   type ApprovalGate,
   type ApprovalMode,
   type ApprovalModePolicy,
 } from "@/features/agent/domain/hitl";
+import { type ApprovalRuleSummary } from "@/features/agent/application/approvalPolicyQueries";
 export const APPROVAL_MODE_LABEL_KEY: Record<ApprovalMode, string> = {
   safe: "approvals.mode.safe",
   balanced: "approvals.mode.balanced",
@@ -33,4 +35,16 @@ export function describeApprovalMode(policy: ApprovalModePolicy, t: Translate): 
       gate: t(GATE_KEY[policy[toolClass]]),
     }),
   ).join(" · ");
+}
+
+export function describeApprovalSubject(
+  subject: ApprovalRuleSummary["subject"],
+  t: Translate,
+): string {
+  const label = t(`approvals.subject.${subject.type}`);
+  return subject.type === "all" ? label : `${label}: ${subject.value}`;
+}
+
+export function describeApprovalRuleTool(tool: ApprovalRuleSummary["tool"], t: Translate): string {
+  return tool.type === "builtIn" ? t("approvals.builtIn") : toolSourceLabel(tool);
 }
