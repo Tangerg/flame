@@ -170,6 +170,12 @@ function FilePreview({
   const showRendered = renderer !== undefined && wholeFile && mode === "rendered";
 
   const scrollPort = useRef<HTMLDivElement>(null);
+  // A default arrival starts at the top like its initial window; FileView places line targets.
+  useLayoutEffect(() => {
+    const host = scrollPort.current;
+    if (host && viewer.line <= 0) host.scrollTop = 0;
+  }, [viewer]);
+
   // Bound to the window it requested; any later window or navigation retires it.
   const anchor = useRef<{ height: number; window: LineWindow } | null>(null);
   useLayoutEffect(() => {

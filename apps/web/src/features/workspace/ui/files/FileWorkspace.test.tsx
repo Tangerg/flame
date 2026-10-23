@@ -138,6 +138,44 @@ function mount(children: React.ReactNode) {
   return render(<QueryClientProvider client={client}>{children}</QueryClientProvider>);
 }
 
+const ROW = 20;
+
+// Happy DOM has no layout: the host's height is derived from rendered rows and
+// scrollTop is a plain stored value, so these tests prove which assignments the
+// preview owns, not how WebKit lays out or clamps them.
+function controlGeometry(host: HTMLElement) {
+  let top = 0;
+  Object.defineProperty(host, "scrollHeight", {
+    configurable: true,
+    get: () => host.querySelectorAll("[data-quote-line]").length * ROW,
+  });
+  Object.defineProperty(host, "scrollTop", {
+    configurable: true,
+    get: () => top,
+    set: (value: number) => {
+      top = value;
+    },
+  });
+  return host;
+}
+
+function mountRetained() {
+  const workspace = (visible: boolean) => (
+    <QueryClientProvider client={client}>
+      <div hidden={!visible}>
+        <ContentVisibility visible={visible}>
+          <FileWorkspace />
+        </ContentVisibility>
+      </div>
+    </QueryClientProvider>
+  );
+  const view = render(workspace(true));
+  return {
+    hide: () => view.rerender(workspace(false)),
+    reveal: () => view.rerender(workspace(true)),
+  };
+}
+
 describe("workspace files panel", () => {
   it("shows the rename relationship while preserving unknown binary statistics", () => {
     changes.set(file.path, {
@@ -203,27 +241,6 @@ describe("workspace files panel", () => {
   });
 
   describe("prepend scroll continuity", () => {
-    const ROW = 20;
-
-    // Happy DOM has no layout: the host's height is derived from rendered rows and
-    // scrollTop is a plain stored value, so these tests prove which height delta is
-    // applied, not how WebKit paints it.
-    function controlGeometry(host: HTMLElement) {
-      let top = 0;
-      Object.defineProperty(host, "scrollHeight", {
-        configurable: true,
-        get: () => host.querySelectorAll("[data-quote-line]").length * ROW,
-      });
-      Object.defineProperty(host, "scrollTop", {
-        configurable: true,
-        get: () => top,
-        set: (value: number) => {
-          top = value;
-        },
-      });
-      return host;
-    }
-
     async function openMiddle() {
       vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(() => {});
       readFile.mockResolvedValueOnce(lineWindow(1300, 1302, 3000));
@@ -265,6 +282,76 @@ describe("workspace files panel", () => {
       await act(async () => later.resolve(lineWindow(1300, 1502, 3000)));
       await vi.waitFor(() => expect(row(1502)).toBeTruthy());
       expect(host.scrollTop).toBe(10);
+    });
+  });
+
+  describe("default file arrival", () => {
+    it("opens a cached file at its top instead of the previous file's position", async () => {
+      readFile.mockImplementation(async ({ path }) =>
+        path === "src/main.ts" ? lineWindow(1, 39, 39) : lineWindow(1, 155, 155),
+      );
+      openWorkspaceFile("src/main.ts");
+      const retained = mountRetained();
+      await vi.waitFor(() => expect(row(39)).toBeTruthy());
+      const host = controlGeometry(screen.getByRole("region", { name: "src/main.ts" }));
+
+      act(() => openWorkspaceFile("package.json"));
+      await vi.waitFor(() => expect(row(155)).toBeTruthy());
+      expect(screen.getByRole("region", { name: "package.json" })).toBe(host);
+      host.scrollTop = 2214;
+      await act(() => client.refetchQueries({ type: "active" }));
+      retained.hide();
+      retained.reveal();
+      expect(host.scrollTop).toBe(2214);
+
+      const reads = readFile.mock.calls.length;
+      act(() => openWorkspaceFile("src/main.ts"));
+      expect(row(39)).toBeTruthy();
+      expect(readFile).toHaveBeenCalledTimes(reads);
+      expect(host.scrollTop).toBe(0);
+    });
+
+    it("reopens a file at its top after a targeted range", async () => {
+      vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(() => {});
+      readFile.mockImplementation(async ({ startLine, endLine }) =>
+        lineWindow(startLine ?? 1, endLine ?? 400, 1000),
+      );
+      openWorkspaceFile("src/main.ts", 450);
+      mount(<FileWorkspace />);
+      await vi.waitFor(() => expect(row(450)).toBeTruthy());
+      const host = controlGeometry(screen.getByRole("region", { name: "src/main.ts" }));
+      host.scrollTop = 3482;
+
+      fireEvent.click(screen.getByRole("button", { name: /more/i }));
+      await vi.waitFor(() => expect(row(850)).toBeTruthy());
+      expect(host.scrollTop).toBe(3482);
+
+      act(() => openWorkspaceFile("src/main.ts"));
+      await vi.waitFor(() => expect(row(450)).toBeNull());
+      expect(row(1)).toBeTruthy();
+      expect(host.scrollTop).toBe(0);
+    });
+
+    it("reopens a rendered file at its top in its preferred mode", async () => {
+      readFile.mockResolvedValue({ content: "# Guide", startLine: 1, totalLines: 1 });
+      openWorkspaceFile("docs/reading-guide.md");
+      mount(<FileWorkspace />);
+      await screen.findByTestId("rendered-markdown");
+      const host = controlGeometry(screen.getByRole("region", { name: "docs/reading-guide.md" }));
+      host.scrollTop = 753;
+
+      act(() => openWorkspaceFile("docs/reading-guide.md"));
+      await screen.findByTestId("rendered-markdown");
+      expect(host.scrollTop).toBe(0);
+
+      host.scrollTop = 753;
+      fireEvent.click(screen.getByRole("tab", { name: "Source" }));
+      expect(screen.queryByTestId("rendered-markdown")).toBeNull();
+      expect(host.scrollTop).toBe(753);
+
+      act(() => openWorkspaceFile("docs/reading-guide.md"));
+      await screen.findByTestId("rendered-markdown");
+      expect(host.scrollTop).toBe(0);
     });
   });
 
@@ -560,23 +647,6 @@ describe("workspace file tree keyboard model", () => {
 });
 
 describe("retained file workspace popups", () => {
-  function mountRetained() {
-    const workspace = (visible: boolean) => (
-      <QueryClientProvider client={client}>
-        <div hidden={!visible}>
-          <ContentVisibility visible={visible}>
-            <FileWorkspace />
-          </ContentVisibility>
-        </div>
-      </QueryClientProvider>
-    );
-    const view = render(workspace(true));
-    return {
-      hide: () => view.rerender(workspace(false)),
-      reveal: () => view.rerender(workspace(true)),
-    };
-  }
-
   it("retires Go to line when hidden and keeps its draft for an explicit reopen", async () => {
     readFile.mockResolvedValue({
       content: "one\ntwo\nthree\nfour\nfive",
