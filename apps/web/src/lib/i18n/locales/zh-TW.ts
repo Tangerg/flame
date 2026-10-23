@@ -507,6 +507,7 @@ export const zhTW: Record<string, string> = {
   "runError.action.diagnostics": "診斷",
   "runError.action.dismiss": "關閉",
 
+  "session.status.pinned": "已置頂",
   "session.status.running": "執行中",
 
   "session.identity.copyCwd": "複製工作目錄",

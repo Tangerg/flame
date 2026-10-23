@@ -549,6 +549,7 @@ export const fr: Record<string, string> = {
   "runError.action.diagnostics": "Diagnostics",
   "runError.action.dismiss": "Fermer",
 
+  "session.status.pinned": "Épinglée",
   "session.status.running": "En cours",
 
   "session.identity.copyCwd": "Copier le répertoire de travail",

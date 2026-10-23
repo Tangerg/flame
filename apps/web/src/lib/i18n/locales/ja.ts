@@ -520,6 +520,7 @@ export const ja: Record<string, string> = {
   "runError.action.diagnostics": "診断",
   "runError.action.dismiss": "閉じる",
 
+  "session.status.pinned": "ピン留め済み",
   "session.status.running": "実行中",
 
   "session.identity.copyCwd": "作業ディレクトリをコピー",

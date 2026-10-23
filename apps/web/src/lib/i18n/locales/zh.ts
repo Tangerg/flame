@@ -657,6 +657,7 @@ export const zh: Record<string, string> = {
   "runError.action.diagnostics": "诊断",
   "runError.action.dismiss": "忽略",
 
+  "session.status.pinned": "已置顶",
   "session.status.running": "运行中",
 
   "session.identity.copyCwd": "复制工作目录",

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. Native short-paste tracing preserves the same input, exact draft and caret through a warm-light/Chinese/18 px/200% narrow-window material round trip; small text appends through the native paste path. The earlier single whole-draft replacement did not reproduce and its cause remains unestablished. No product workaround was added. Three relevant input suites pass 42 tests and the supported native check passes. The completed three-theme reading-color qualification, named Settings failures, shared Plugin Retry focus, engaged ToolGroup reading, Markdown notes and neutral canvases remain integrated. Earlier broad-run timeout and isolated-pass qualifications remain separate below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. Pinned Sessions now include localized state in their accessible row names. Focused regressions and English/light/14 px plus Chinese/dark/18 px native menu/edit/cancel flows pass, including narrow-window 200% zoom. The broad Web run retains one MCP-readiness failure; the complete isolated HTTP file, all later gates and the supported native check pass. Earlier reading-color, Settings, Plugin Retry, ToolGroup, Markdown and neutral-canvas work remains integrated. The earlier single whole-draft replacement remains unexplained and has no product workaround. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -3922,11 +3922,11 @@ aria-checked instead of a decorative check; routed the project row's "working
 directory missing" state into the row's own aria-label (the state had been passed to
 an Icon that drops aria-label and forces aria-hidden); and gave the plugin error
 disclosure the aria-expanded every other disclosure has. The @flame/ui primitive
-layer and the dialog/combobox/live-region wiring were verified clean. One low-
-severity gap is left: the session row's favorite star is visual-only in the row's
-accessible name — folding it in needs a new "favorited" state string across eight
-locales and the state is already reachable from the row menu, so it is deferred
-rather than guessed.
+layer and the dialog/combobox/live-region wiring were verified clean. The former
+visual-only Session star gap is now resolved by the localized pinned state in the
+row name, using the existing Pin/Unpin vocabulary across all eight locales. Its
+canonical projection, menu/edit/cancel return and native qualifications are
+recorded under Sidebar / navigation; do not repeat that completed naming repair.
 
 A cross-feature consistency pass (the orthogonal view to the per-surface audits)
 confirmed empty-state, loading-skeleton, pending-button and master-detail return
@@ -4505,6 +4505,65 @@ no effects/timers/listeners leak. One real mental-model gap was fixed:
   the title). The dialog now shows the session title as its `description`
   (`session.title.trim() || t("session.untitled")`), so the target object is
   unambiguous — directly serving the brief's "which object does this act on" axis.
+
+### Pinned Session row identity
+
+`SessionRow` previously displayed the pin star and Unpin action while omitting
+that state from its accessible navigation name. The row now includes localized
+`session.status.pinned` between its displayed title and existing attention/time.
+All eight locales use the existing Pin/Unpin vocabulary. The unpinned name,
+including an empty formatted time, remains unchanged; current-page semantics,
+status-dot name, menu object identity and visible styling retain their owners.
+`WorkSession.favorite` remains the sole pin projection. A requested Pin/Unpin
+passes its current ID, revision and boolean and does not advance that projection.
+
+This follows the existing better-accessibility names/states guidance and
+better-writing vocabulary guidance. The read-only ZCode
+`project-sidebar/grouped/task-row.tsx` reference separates task metadata from
+adjacent actions; it is not evidence for Flame's native focus policy. No reference
+implementation or new component system was copied. Bounded Claude Code CLI
+(`claude-opus-5-5`, 104.96 seconds, 30 reported turns, no permission denials)
+changed only the row, its tests and eight dictionaries. Primary reviewed the full
+diff and preserved the prior empty-time label by filtering only `undefined`.
+
+- Both new regressions fail on the unchanged row while all four original title
+  editing tests pass. The restored candidate passes **4 files / 13 tests**,
+  covering canonical false/true/false updates, exact command arguments,
+  non-optimistic names, current marker, selection and More/status identity.
+- Actual Wails EN/light/14 px/Flame Orange exposes Pinned while retaining the
+  star, title and time. Tab/Space opens the named More menu; Shift+F10 opens the
+  title-named context menu. Editing `Renamed draft 保留` then Escape restores the
+  original title, pinned name and row focus. A running-row focus/return also
+  preserves the separate attention name.
+- Actual ZH/dark/18 px/custom blue exposes 已置顶. System Move & Resize → Left
+  settled at a **2242 × 1898** capture; twenty native Zoom In commands qualified
+  **200%**. Wheel scrolling and the real Tab sequence reveal the pinned row.
+  Context-menu Rename, the exact `取消标题草稿 保留` draft and Escape return to
+  that row; the next Tab/Space opens its fully readable five-action More menu.
+  Wheel scrolling reaches the last Recent rows. Actual Size was restored.
+- The initial complete Web command passed **391 files / 3,110 tests** and failed
+  one MCP memory-source readiness case in the 49-test HTTP integration file.
+  The complete isolated file then passed **49 tests** unchanged in 46.54 seconds.
+  All **22** later Web gates passed serially, including locale completeness,
+  portable resource consistency and the production bundle. `make check-native`
+  passed in **27.26 seconds**; the binary is arm64, minimum macOS 13.0, SDK 26.5.
+  The aggregate remains failed; these results do not establish its timeout cause.
+- An initial focused filter omitted the reference suite; the corrected four-file
+  run above supplies that coverage. An incorrect isolated HTTP filter ran no
+  tests and is excluded. One stale native action was refused; fresh observation
+  and retry passed without attributing its cause. The first resize capture was
+  transient and is excluded from settled geometry. The shell fixture uses the
+  actual SidebarPanel with isolated data and a static main card; it does not
+  qualify a conversation/Composer round trip, live Pin/Unpin persistence,
+  VoiceOver speech, OS IME, other locale GUIs or other platforms. No browser
+  visual suite, benchmark, live Runtime write or message submission ran.
+- All **30** accepted product/resource inputs and four private harness inputs
+  remained unchanged through final native/check acceptance. All three native
+  PIDs and the CLI exited. The exact bundle was unregistered; ten new worktree
+  outputs, two bundle-specific Library paths, the private root and pointer were
+  removed after preexistence, UID, birth-time, containment and copied-asset checks.
+  The preexisting UI Vite cache, dependencies, references, user data, primary
+  checkout and unrelated processes remain intact. No migration is required.
 
 Left as an acceptable pattern, not a defect (recorded for completeness): the
 session rows are a flat set of `<button>`s with `aria-current="page"` rather than

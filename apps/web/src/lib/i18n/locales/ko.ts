@@ -519,6 +519,7 @@ export const ko: Record<string, string> = {
   "runError.action.diagnostics": "진단",
   "runError.action.dismiss": "닫기",
 
+  "session.status.pinned": "고정됨",
   "session.status.running": "실행 중",
 
   "session.identity.copyCwd": "작업 디렉터리 복사",

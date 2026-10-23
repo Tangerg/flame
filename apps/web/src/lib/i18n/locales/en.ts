@@ -702,6 +702,7 @@ export const en: Record<string, string> = {
   "runError.action.diagnostics": "Diagnostics",
   "runError.action.dismiss": "Dismiss",
 
+  "session.status.pinned": "Pinned",
   "session.status.running": "Running",
 
   "session.identity.copyCwd": "Copy working directory",

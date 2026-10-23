@@ -548,6 +548,7 @@ export const es: Record<string, string> = {
   "runError.action.diagnostics": "Diagnóstico",
   "runError.action.dismiss": "Descartar",
 
+  "session.status.pinned": "Fijada",
   "session.status.running": "Ejecutando",
 
   "session.identity.copyCwd": "Copiar directorio de trabajo",

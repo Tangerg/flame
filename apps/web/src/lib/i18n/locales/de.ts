@@ -541,6 +541,7 @@ export const de: Record<string, string> = {
   "runError.action.diagnostics": "Diagnose",
   "runError.action.dismiss": "Schließen",
 
+  "session.status.pinned": "Angeheftet",
   "session.status.running": "Läuft",
 
   "session.identity.copyCwd": "Arbeitsverzeichnis kopieren",

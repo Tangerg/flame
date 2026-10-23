@@ -218,7 +218,13 @@ export function SessionRow({
           ref={rowRef}
           onClick={() => onSelect(session.id)}
           aria-current={active ? "page" : undefined}
-          aria-label={`${title} — ${accessibleStatus}`}
+          aria-label={[
+            title,
+            session.favorite ? t("session.status.pinned") : undefined,
+            accessibleStatus,
+          ]
+            .filter((part) => part !== undefined)
+            .join(" — ")}
           active={active}
           indent={indented ? "nested" : "none"}
           revealOverflow
