@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
+import { splitFilePath } from "@/lib/path";
 import { vocab } from "@flame/ui";
 import { color } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
@@ -19,9 +20,8 @@ const styles = stylex.create({
 });
 
 export function FilePath({ path, className }: { path: string; className?: string }) {
-  const cut = path.lastIndexOf("/");
-  const directory = cut > 0 ? path.slice(0, cut) : "";
-  const filename = cut >= 0 ? path.slice(cut + 1) : path;
+  const { directory, name } = splitFilePath(path);
+  const hasDirectorySeparator = path.includes("/");
   const root = stylex.props(styles.root);
 
   return (
@@ -31,8 +31,8 @@ export function FilePath({ path, className }: { path: string; className?: string
           <span dir="ltr">{directory}</span>
         </span>
       )}
-      {cut >= 0 && <span {...stylex.props(styles.separator)}>/</span>}
-      <span {...stylex.props(styles.filename, vocab.truncate)}>{filename}</span>
+      {hasDirectorySeparator && <span {...stylex.props(styles.separator)}>/</span>}
+      <span {...stylex.props(styles.filename, vocab.truncate)}>{name}</span>
     </span>
   );
 }

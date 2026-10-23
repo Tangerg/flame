@@ -1,3 +1,4 @@
+import { basename } from "@/lib/path";
 interface Hit {
   path: string;
   score: number;
@@ -19,7 +20,7 @@ export function fuzzyFile(query: string, paths: string[], limit: number): string
 
 function scorePath(q: string, path: string): number {
   const lower = path.toLowerCase();
-  const base = lower.slice(lower.lastIndexOf("/") + 1);
+  const base = basename(lower);
   const baseScore = subseqScore(q, base);
   if (baseScore > 0) return baseScore + 1000;
   return subseqScore(q, lower);

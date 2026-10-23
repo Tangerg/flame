@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type RefObject } from "react";
+import { basename } from "@/lib/path";
 import { Icon } from "@/ui/index";
 import { OptionRow } from "@/ui/index";
 import { TextButton } from "@/ui/index";
@@ -48,9 +49,8 @@ export function FileMentionPopup({ mentions, anchor }: Props) {
       }
     >
       {mentions.items.map((path, i) => {
-        const slash = path.lastIndexOf("/");
-        const dir = slash >= 0 ? path.slice(0, slash + 1) : "";
-        const name = slash >= 0 ? path.slice(slash + 1) : path;
+        const name = basename(path);
+        const dir = path.slice(0, path.length - name.length);
         return (
           <OptionRow
             key={path}
