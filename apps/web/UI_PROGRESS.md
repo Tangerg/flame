@@ -65,7 +65,9 @@ DOM and the sole draft owner agreeing. The original combined activation/paste
 attempt remains unexplained. Preserve the existing native input and focus owners;
 these separated observations do not establish the original timing or selection.
 The 42 focused tests and supported native check pass. Owned resources are cleaned;
-delivery is being recorded for this bounded qualification.
+qualification record `6530cdd8ea413b36b85a55bbb5022e8935ab83b4` is pushed
+to remote `main`, verified by exact remote hash, all 30 unchanged accepted
+product/resource inputs and a clean owned checkout with zero unpushed commits.
 
 The captured-image inset is integrated at `d25b4ef72` and settings width at
 `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
@@ -1110,6 +1112,11 @@ dependencies, compiler caches, references, user data, unrelated processes and th
 primary checkout remain. Continue with another observed task; this bounded
 negative result does not authorize rewriting Composer or repeating the completed
 oversized-editor investigation.
+
+Delivery: qualification record `6530cdd8ea413b36b85a55bbb5022e8935ab83b4`
+is pushed to remote `main`. Fresh `ls-remote` matched that commit, all **30**
+accepted product/resource inputs matched, and the owned checkout was clean with
+zero unpushed commits. This in-place receipt adds no product change.
 
 ## Search selection and task handoff
 
