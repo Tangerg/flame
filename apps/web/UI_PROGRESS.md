@@ -41,7 +41,9 @@ handoff focuses the current Settings tabpanel, and the named recovery/search/
 control/return flow passes in English and Chinese, including 200% and a narrow
 window. The one-prop change and its behavior regression pass 20 relevant tests,
 all 25 non-test Web gates and the supported native check. Owned resources are
-cleaned; delivery is being recorded for this verified settings change.
+cleaned. Implementation `dd0a21fbffe13425c4a64913144a4221670dc868` is pushed
+to remote `main`, verified by exact remote hash, all 21 unchanged accepted
+product/resource inputs and a clean owned checkout with zero unpushed commits.
 
 The captured-image inset is integrated at `d25b4ef72` and settings width at
 `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
@@ -1657,6 +1659,11 @@ the repository. Pre-existing shared UI Vite cache, dependencies, compiler caches
 references, user data, unrelated processes and the primary checkout remain.
 Continue another observed task rather than mechanically extending this name
 projection or replacing settings' existing navigation and field components.
+
+Delivery: implementation `dd0a21fbffe13425c4a64913144a4221670dc868` is pushed
+to remote `main`. Fresh `ls-remote` matched that commit, all **21** accepted
+product/resource inputs matched, and the owned checkout was clean with zero
+unpushed commits. This in-place receipt adds no product change.
 
 ### Approval-mode read recovery
 
