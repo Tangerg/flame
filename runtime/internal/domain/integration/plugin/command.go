@@ -87,7 +87,7 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 		return nil, fmt.Errorf("%w: command dependencies omit the original provider", ErrInvalid)
 	}
 	record.Activation = record.Activation.Clone()
-	if record.Invocation.Target.Scope == "installation" && record.Invocation.Target.Reference != record.Provider.InstallationID.String() {
+	if record.Invocation.Target.Scope == capability.ScopeInstallation && record.Invocation.Target.Reference != record.Provider.InstallationID.String() {
 		return nil, fmt.Errorf("%w: command target differs from its installation", ErrInvalid)
 	}
 	if err := record.Server.Validate(); err != nil {

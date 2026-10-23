@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/runtime/capability"
+
 	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/jsoninput"
@@ -46,7 +48,7 @@ func ResolvePoint(ctx context.Context, store Store, contract *point.Contract, ta
 			continue
 		}
 		declaration := snapshot.Selected.Declaration()
-		declaresTarget := target.Target.Scope != "installation" || target.Target.Reference == snapshot.Installation.ID().String()
+		declaresTarget := target.Target.Scope != capability.ScopeInstallation || target.Target.Reference == snapshot.Installation.ID().String()
 		for _, definition := range declaration.Points {
 			if definition.Contract == contract.Identity() && declaresTarget {
 				declared = true

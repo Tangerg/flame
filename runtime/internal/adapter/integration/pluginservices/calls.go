@@ -165,7 +165,7 @@ func admitCallRequest(request plugins.CallRequest, streaming bool) (*capability.
 	if err := request.Target.Validate(); err != nil {
 		return nil, errors.Join(plugin.ErrInvalid, err)
 	}
-	if request.Target.Scope != method.Descriptor().Target || request.Target.Scope == "installation" && request.Target.Reference != request.Installation.String() {
+	if request.Target.Scope != method.Descriptor().Target || request.Target.Scope == capability.ScopeInstallation && request.Target.Reference != request.Installation.String() {
 		return nil, plugin.ErrInvalid
 	}
 	if err := request.Input.Validate(); err != nil {

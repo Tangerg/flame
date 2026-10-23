@@ -95,7 +95,7 @@ func (c *Commands) RestoreInvocation(ctx context.Context, invocation capability.
 		if record.Invocation != invocation || record.Provider.InstallationID != actor.InstallationID() || record.Provider.Digest != actor.Release() || record.Server != actor.Server() || !command.WasDispatched() {
 			return nil, plugin.ErrCommandConflict
 		}
-	} else if invocation.Origin != capability.Automatic || invocation.Parent != "" || invocation.Target.Scope != "installation" || invocation.Target.Reference != actor.InstallationID().String() {
+	} else if invocation.Origin != capability.Automatic || invocation.Parent != "" || invocation.Target.Scope != capability.ScopeInstallation || invocation.Target.Reference != actor.InstallationID().String() {
 		return nil, plugin.ErrCommandConflict
 	}
 	return operation.Adopt(ctx, invocation.ID, invocation.Origin, invocation.Parent), nil

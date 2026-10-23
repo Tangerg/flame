@@ -7,6 +7,8 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/capability"
+
 	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
 	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -134,7 +136,7 @@ type modelCapture struct {
 
 func (c *modelCapture) enter(ctx context.Context) (context.Context, func(), error) {
 	invocation, err := pluginsdk.InvocationFromContext(ctx)
-	if err != nil || invocation.Target.Scope != "call" {
+	if err != nil || invocation.Target.Scope != capability.ScopeCall {
 		return nil, nil, errors.Join(err, errors.New("model composition: model call identity is required"))
 	}
 	c.mu.Lock()
