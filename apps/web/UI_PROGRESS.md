@@ -1683,8 +1683,12 @@ the exact bundle and removed the private root/data/logs/pointer, ten newly
 generated outputs/caches and two bundle-specific Library directories. The
 pre-existing UI test cache, user data, references, compiler/dependency caches,
 unrelated processes and primary checkout were preserved. Remote main was
-refreshed at `2b8cd16b6` before publication; the normal-hook delivery receipt
-is recorded after the commit is confirmed remotely.
+refreshed at `2b8cd16b6` before publication. Normal hooks committed the change at
+`747e2e81ae7570996439fb45bb683ad664fba088`; push and `ls-remote` confirmed that exact
+revision on remote main. All fifty-two accepted product/test/host hashes match
+its blobs. The owned worktree was clean with zero unpushed commits at that
+checkpoint. Continue with the user's explicit surface-style constraint; do not
+repeat the completed count-only tool-entry investigation.
 
 ### Retained read frames and connection task actions
 
