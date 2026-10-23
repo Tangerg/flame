@@ -26,15 +26,15 @@ type Contracts struct {
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Get, err = pluginsdk.NewMethod[struct{}, guardrail.Summary](pluginsdk.MethodConfig{Name: "flame.guardrails/get-policy.v1", Kind: capability.Query, Target: "installation", Description: "Inspect the private policy revision and protected phrase count without returning protected values."})
+	c.Get, err = pluginsdk.NewMethod[struct{}, guardrail.Summary](pluginsdk.MethodConfig{Name: "flame.guardrails/get-policy.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Inspect the private policy revision and protected phrase count without returning protected values."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Replace, err = pluginsdk.NewMethod[ReplaceInput, guardrail.Summary](pluginsdk.MethodConfig{Name: "flame.guardrails/replace-policy.v1", Kind: capability.Mutation, Target: "installation", Description: "Replace exact, case-sensitive protected phrases at the inspected revision. Matching model-visible string fields refuse provider dispatch."})
+	c.Replace, err = pluginsdk.NewMethod[ReplaceInput, guardrail.Summary](pluginsdk.MethodConfig{Name: "flame.guardrails/replace-policy.v1", Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Replace exact, case-sensitive protected phrases at the inspected revision. Matching model-visible string fields refuse provider dispatch."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Capability, err = capability.New(capability.Config{Reference: "flame.guardrails.v1", Composition: capability.Collection, Scope: "installation"}, c.Get.Descriptor(), c.Replace.Descriptor())
+	c.Capability, err = capability.New(capability.Config{Reference: "flame.guardrails.v1", Composition: capability.Collection, Scope: capability.ScopeInstallation}, c.Get.Descriptor(), c.Replace.Descriptor())
 	return c, err
 }
 

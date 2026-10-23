@@ -44,23 +44,23 @@ type Contracts[Summary any] struct {
 func NewContracts[Summary any]() (Contracts[Summary], error) {
 	var c Contracts[Summary]
 	var err error
-	c.Capture, err = pluginsdk.NewMethod[CaptureInput, Header](pluginsdk.MethodConfig{Name: "flame.usage-reports/capture.v1", Kind: capability.Mutation, Target: "installation", Description: "Capture a daily or weekly core accounting report with its actual observation time and lower bound. Totals remain core-owned; saved reports are immutable."})
+	c.Capture, err = pluginsdk.NewMethod[CaptureInput, Header](pluginsdk.MethodConfig{Name: "flame.usage-reports/capture.v1", Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Capture a daily or weekly core accounting report with its actual observation time and lower bound. Totals remain core-owned; saved reports are immutable."})
 	if err != nil {
 		return Contracts[Summary]{}, err
 	}
-	c.List, err = pluginsdk.NewMethod[struct{}, []Header](pluginsdk.MethodConfig{Name: "flame.usage-reports/list.v1", Kind: capability.Query, Target: "installation", Description: "List saved accounting report headers in capture order, newest first."})
+	c.List, err = pluginsdk.NewMethod[struct{}, []Header](pluginsdk.MethodConfig{Name: "flame.usage-reports/list.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "List saved accounting report headers in capture order, newest first."})
 	if err != nil {
 		return Contracts[Summary]{}, err
 	}
-	c.Get, err = pluginsdk.NewMethod[ReportInput, Report[Summary]](pluginsdk.MethodConfig{Name: "flame.usage-reports/get.v1", Kind: capability.Query, Target: "installation", Description: "Read one saved core report verbatim, preserving missing usage, unknown prices and recorded zeros."})
+	c.Get, err = pluginsdk.NewMethod[ReportInput, Report[Summary]](pluginsdk.MethodConfig{Name: "flame.usage-reports/get.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Read one saved core report verbatim, preserving missing usage, unknown prices and recorded zeros."})
 	if err != nil {
 		return Contracts[Summary]{}, err
 	}
-	c.Delete, err = pluginsdk.NewMethod[ReportInput, bool](pluginsdk.MethodConfig{Name: "flame.usage-reports/delete.v1", Kind: capability.Mutation, Target: "installation", Description: "Remove one immutable saved report without changing core accounting evidence or totals."})
+	c.Delete, err = pluginsdk.NewMethod[ReportInput, bool](pluginsdk.MethodConfig{Name: "flame.usage-reports/delete.v1", Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Remove one immutable saved report without changing core accounting evidence or totals."})
 	if err != nil {
 		return Contracts[Summary]{}, err
 	}
-	c.Capability, err = capability.New(capability.Config{Reference: "flame.usage-reports.v1", Composition: capability.Collection, Scope: "installation"}, c.Capture.Descriptor(), c.List.Descriptor(), c.Get.Descriptor(), c.Delete.Descriptor())
+	c.Capability, err = capability.New(capability.Config{Reference: "flame.usage-reports.v1", Composition: capability.Collection, Scope: capability.ScopeInstallation}, c.Capture.Descriptor(), c.List.Descriptor(), c.Get.Descriptor(), c.Delete.Descriptor())
 	return c, err
 }
 

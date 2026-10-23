@@ -26,15 +26,15 @@ type Contracts struct {
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Get, err = pluginsdk.NewMethod[struct{}, routing.Snapshot](pluginsdk.MethodConfig{Name: "flame.model-router/get-policy.v1", Kind: capability.Query, Target: "installation", Description: "Inspect the private routing policy and revision before editing."})
+	c.Get, err = pluginsdk.NewMethod[struct{}, routing.Snapshot](pluginsdk.MethodConfig{Name: "flame.model-router/get-policy.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Inspect the private routing policy and revision before editing."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Replace, err = pluginsdk.NewMethod[ReplaceInput, routing.Snapshot](pluginsdk.MethodConfig{Name: "flame.model-router/replace-policy.v1", Kind: capability.Mutation, Target: "installation", Description: "Replace the routing policy at the inspected revision. Each use has at most one exact target and an optional caller-envelope ceiling."})
+	c.Replace, err = pluginsdk.NewMethod[ReplaceInput, routing.Snapshot](pluginsdk.MethodConfig{Name: "flame.model-router/replace-policy.v1", Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Replace the routing policy at the inspected revision. Each use has at most one exact target and an optional caller-envelope ceiling."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Capability, err = capability.New(capability.Config{Reference: "flame.model-router.v1", Composition: capability.Collection, Scope: "installation"}, c.Get.Descriptor(), c.Replace.Descriptor())
+	c.Capability, err = capability.New(capability.Config{Reference: "flame.model-router.v1", Composition: capability.Collection, Scope: capability.ScopeInstallation}, c.Get.Descriptor(), c.Replace.Descriptor())
 	return c, err
 }
 

@@ -25,23 +25,23 @@ type Contracts struct {
 func NewContracts() (Contracts, error) {
 	var contracts Contracts
 	var err error
-	contracts.List, err = pluginsdk.NewMethod[ListInput, Page](pluginsdk.MethodConfig{Name: List, Kind: capability.Query, Target: "installation", Description: "List current schedule definitions and revisions."})
+	contracts.List, err = pluginsdk.NewMethod[ListInput, Page](pluginsdk.MethodConfig{Name: List, Kind: capability.Query, Target: capability.ScopeInstallation, Description: "List current schedule definitions and revisions."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Create, err = pluginsdk.NewMethod[schedule.Draft, schedule.Snapshot](pluginsdk.MethodConfig{Name: Create, Kind: capability.Mutation, Target: "installation", Description: "Create one schedule definition."})
+	contracts.Create, err = pluginsdk.NewMethod[schedule.Draft, schedule.Snapshot](pluginsdk.MethodConfig{Name: Create, Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Create one schedule definition."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Update, err = pluginsdk.NewMethod[UpdateInput, schedule.Snapshot](pluginsdk.MethodConfig{Name: Update, Kind: capability.Mutation, Target: "installation", Description: "Change one schedule using its inspected revision."})
+	contracts.Update, err = pluginsdk.NewMethod[UpdateInput, schedule.Snapshot](pluginsdk.MethodConfig{Name: Update, Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Change one schedule using its inspected revision."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Delete, err = pluginsdk.NewMethod[ItemInput, Ack](pluginsdk.MethodConfig{Name: Delete, Kind: capability.Mutation, Target: "installation", Description: "Delete one schedule definition."})
+	contracts.Delete, err = pluginsdk.NewMethod[ItemInput, Ack](pluginsdk.MethodConfig{Name: Delete, Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Delete one schedule definition."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.RunNow, err = pluginsdk.NewMethod[ItemInput, app.RunReference](pluginsdk.MethodConfig{Name: RunNow, Kind: capability.Mutation, Target: "installation", Description: "Capture and reconcile one manual Run through its original Runtime acceptance."})
+	contracts.RunNow, err = pluginsdk.NewMethod[ItemInput, app.RunReference](pluginsdk.MethodConfig{Name: RunNow, Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Capture and reconcile one manual Run through its original Runtime acceptance."})
 	if err != nil {
 		return Contracts{}, err
 	}

@@ -32,27 +32,27 @@ type Contracts struct {
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Get, err = pluginsdk.NewMethod[struct{}, filewatch.Snapshot](pluginsdk.MethodConfig{Name: "flame.filewatch/get.v1", Kind: capability.Query, Target: "installation", Description: "Read this installation's single persistent file trigger and configuration revision."})
+	c.Get, err = pluginsdk.NewMethod[struct{}, filewatch.Snapshot](pluginsdk.MethodConfig{Name: "flame.filewatch/get.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Read this installation's single persistent file trigger and configuration revision."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Configure, err = pluginsdk.NewMethod[ConfigureInput, filewatch.Snapshot](pluginsdk.MethodConfig{Name: "flame.filewatch/configure.v1", Kind: capability.Mutation, Target: "installation", Description: "Replace or rearm the trigger at its current revision; omitting trigger disables observation. Configuration acceptance does not claim a live watch. Captured work remains immutable."})
+	c.Configure, err = pluginsdk.NewMethod[ConfigureInput, filewatch.Snapshot](pluginsdk.MethodConfig{Name: "flame.filewatch/configure.v1", Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Replace or rearm the trigger at its current revision; omitting trigger disables observation. Configuration acceptance does not claim a live watch. Captured work remains immutable."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Status, err = pluginsdk.NewMethod[struct{}, filewatch.Status](pluginsdk.MethodConfig{Name: "flame.filewatch/status.v1", Kind: capability.Query, Target: "installation", Description: "Inspect the actual background observation revision and failures. A failed watch requires explicit configuration rearm; accepted dispatch intents continue reconciliation."})
+	c.Status, err = pluginsdk.NewMethod[struct{}, filewatch.Status](pluginsdk.MethodConfig{Name: "flame.filewatch/status.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Inspect the actual background observation revision and failures. A failed watch requires explicit configuration rearm; accepted dispatch intents continue reconciliation."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Events, err = pluginsdk.NewMethod[struct{}, []filewatch.Header](pluginsdk.MethodConfig{Name: "flame.filewatch/events.v1", Kind: capability.Query, Target: "installation", Description: "Read at most 256 retained observation headers, newest first. Accepted means core confirmed the captured Run opening, not that execution completed. Pending intents are never pruned."})
+	c.Events, err = pluginsdk.NewMethod[struct{}, []filewatch.Header](pluginsdk.MethodConfig{Name: "flame.filewatch/events.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Read at most 256 retained observation headers, newest first. Accepted means core confirmed the captured Run opening, not that execution completed. Pending intents are never pruned."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Event, err = pluginsdk.NewMethod[EventInput, filewatch.Event](pluginsdk.MethodConfig{Name: "flame.filewatch/event.v1", Kind: capability.Query, Target: "installation", Description: "Read one retained observation and its complete original dispatch capture."})
+	c.Event, err = pluginsdk.NewMethod[EventInput, filewatch.Event](pluginsdk.MethodConfig{Name: "flame.filewatch/event.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Read one retained observation and its complete original dispatch capture."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Capability, err = capability.New(capability.Config{Reference: "flame.filewatch.v1", Composition: capability.Collection, Scope: "installation"}, c.Get.Descriptor(), c.Configure.Descriptor(), c.Status.Descriptor(), c.Events.Descriptor(), c.Event.Descriptor())
+	c.Capability, err = capability.New(capability.Config{Reference: "flame.filewatch.v1", Composition: capability.Collection, Scope: capability.ScopeInstallation}, c.Get.Descriptor(), c.Configure.Descriptor(), c.Status.Descriptor(), c.Events.Descriptor(), c.Event.Descriptor())
 	return c, err
 }
 

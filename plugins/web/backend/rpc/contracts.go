@@ -27,19 +27,19 @@ type Contracts struct {
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Search, err = pluginsdk.NewMethod[web.SearchRequest, web.SearchResponse](pluginsdk.MethodConfig{Name: "flame.web/search.v1", Kind: capability.Query, Target: "installation", Description: "Search through configured Tavily credentials with a query up to 8192 bytes, honoring explicit domain and supported recency filters. Each call queries the provider; results are bounded to 128 KiB."})
+	c.Search, err = pluginsdk.NewMethod[web.SearchRequest, web.SearchResponse](pluginsdk.MethodConfig{Name: "flame.web/search.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Search through configured Tavily credentials with a query up to 8192 bytes, honoring explicit domain and supported recency filters. Each call queries the provider; results are bounded to 128 KiB."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Fetch, err = pluginsdk.NewMethod[web.FetchRequest, capture.Page](pluginsdk.MethodConfig{Name: "flame.web/fetch.v1", Kind: capability.Query, Target: "installation", Description: "Fetch a URL through configured Jina Reader credentials and capture a private immutable snapshot. Return its first 8192 Unicode codepoints and exact continuation offset."})
+	c.Fetch, err = pluginsdk.NewMethod[web.FetchRequest, capture.Page](pluginsdk.MethodConfig{Name: "flame.web/fetch.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Fetch a URL through configured Jina Reader credentials and capture a private immutable snapshot. Return its first 8192 Unicode codepoints and exact continuation offset."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Browse, err = pluginsdk.NewMethod[BrowseInput, capture.Page](pluginsdk.MethodConfig{Name: "flame.web/browse.v1", Kind: capability.Query, Target: "installation", Description: "Read a bounded page of a previously captured snapshot by ID and Unicode codepoint offset. This reads captured material without network I/O; an evicted snapshot is refused."})
+	c.Browse, err = pluginsdk.NewMethod[BrowseInput, capture.Page](pluginsdk.MethodConfig{Name: "flame.web/browse.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Read a bounded page of a previously captured snapshot by ID and Unicode codepoint offset. This reads captured material without network I/O; an evicted snapshot is refused."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Capability, err = capability.New(capability.Config{Reference: "flame.web.v1", Composition: capability.Collection, Scope: "installation"}, c.Search.Descriptor(), c.Fetch.Descriptor(), c.Browse.Descriptor())
+	c.Capability, err = capability.New(capability.Config{Reference: "flame.web.v1", Composition: capability.Collection, Scope: capability.ScopeInstallation}, c.Search.Descriptor(), c.Fetch.Descriptor(), c.Browse.Descriptor())
 	return c, err
 }
 

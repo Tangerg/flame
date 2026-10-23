@@ -10,7 +10,7 @@ import (
 )
 
 func ScheduleInvocation() capability.Invocation {
-	return capability.Invocation{ID: "schedule-trigger", Origin: capability.Automatic, Parent: "parent-trigger", Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}}
+	return capability.Invocation{ID: "schedule-trigger", Origin: capability.Automatic, Parent: "parent-trigger", Target: capability.Target{Scope: capability.ScopeInstallation, Reference: "12345678-1234-1234-1234-123456789abc"}}
 }
 
 // MustOccurrenceRunRequest returns the launch input of one durable cron

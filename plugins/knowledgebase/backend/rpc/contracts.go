@@ -57,23 +57,23 @@ type Contracts struct {
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Import, err = pluginsdk.NewMethod[ImportInput, knowledge.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/import.v1", Kind: capability.Mutation, Target: "installation", Description: "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document."})
+	c.Import, err = pluginsdk.NewMethod[ImportInput, knowledge.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/import.v1", Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Delete, err = pluginsdk.NewMethod[DocumentInput, bool](pluginsdk.MethodConfig{Name: "flame.knowledgebase/delete.v1", Kind: capability.Mutation, Target: "installation", Description: "Delete a document and its index at the inspected revision."})
+	c.Delete, err = pluginsdk.NewMethod[DocumentInput, bool](pluginsdk.MethodConfig{Name: "flame.knowledgebase/delete.v1", Kind: capability.Mutation, Target: capability.ScopeInstallation, Description: "Delete a document and its index at the inspected revision."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.List, err = pluginsdk.NewMethod[struct{}, []knowledge.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/list.v1", Kind: capability.Query, Target: "installation", Description: "List indexed user documents and their revisions."})
+	c.List, err = pluginsdk.NewMethod[struct{}, []knowledge.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/list.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "List indexed user documents and their revisions."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Search, err = pluginsdk.NewMethod[SearchInput, []knowledge.Match](pluginsdk.MethodConfig{Name: "flame.knowledgebase/search.v1", Kind: capability.Query, Target: "installation", Description: "Retrieve cited chunks from indexed user documents through the configured embedding role."})
+	c.Search, err = pluginsdk.NewMethod[SearchInput, []knowledge.Match](pluginsdk.MethodConfig{Name: "flame.knowledgebase/search.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Retrieve cited chunks from indexed user documents through the configured embedding role."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Capability, err = capability.New(capability.Config{Reference: "flame.knowledgebase.v1", Composition: capability.Collection, Scope: "installation"}, c.Import.Descriptor(), c.Delete.Descriptor(), c.List.Descriptor(), c.Search.Descriptor())
+	c.Capability, err = capability.New(capability.Config{Reference: "flame.knowledgebase.v1", Composition: capability.Collection, Scope: capability.ScopeInstallation}, c.Import.Descriptor(), c.Delete.Descriptor(), c.List.Descriptor(), c.Search.Descriptor())
 	return c, err
 }
 

@@ -75,18 +75,18 @@ type Contracts struct {
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.List, err = pluginsdk.NewMethod[ListInput, IssuePage](pluginsdk.MethodConfig{Name: "flame.github/list-issues.v1", Kind: capability.Query, Target: "installation", Description: "Read one explicit page of repository issues and pull requests, exposing the next page number supplied by GitHub."})
+	c.List, err = pluginsdk.NewMethod[ListInput, IssuePage](pluginsdk.MethodConfig{Name: "flame.github/list-issues.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Read one explicit page of repository issues and pull requests, exposing the next page number supplied by GitHub."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Issue, err = pluginsdk.NewMethod[IssueInput, Issue](pluginsdk.MethodConfig{Name: "flame.github/get-issue.v1", Kind: capability.Query, Target: "installation", Description: "Read one GitHub issue or pull request by its repository and issue number."})
+	c.Issue, err = pluginsdk.NewMethod[IssueInput, Issue](pluginsdk.MethodConfig{Name: "flame.github/get-issue.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Read one GitHub issue or pull request by its repository and issue number."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.File, err = pluginsdk.NewMethod[FileInput, File](pluginsdk.MethodConfig{Name: "flame.github/read-file.v1", Kind: capability.Query, Target: "installation", Description: "Read a UTF-8 repository file up to one MiB, optionally at an exact Git ref. Directory and binary content are refused."})
+	c.File, err = pluginsdk.NewMethod[FileInput, File](pluginsdk.MethodConfig{Name: "flame.github/read-file.v1", Kind: capability.Query, Target: capability.ScopeInstallation, Description: "Read a UTF-8 repository file up to one MiB, optionally at an exact Git ref. Directory and binary content are refused."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Capability, err = capability.New(capability.Config{Reference: "flame.github.v1", Composition: capability.Collection, Scope: "installation"}, c.List.Descriptor(), c.Issue.Descriptor(), c.File.Descriptor())
+	c.Capability, err = capability.New(capability.Config{Reference: "flame.github.v1", Composition: capability.Collection, Scope: capability.ScopeInstallation}, c.List.Descriptor(), c.Issue.Descriptor(), c.File.Descriptor())
 	return c, err
 }
