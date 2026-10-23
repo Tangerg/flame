@@ -1,5 +1,5 @@
 import { type Element, type Root, type Text } from "hast";
-import { parseFileRefs } from "@/features/agent/public/fileRefs";
+import { formatFileRef, parseFileRefs } from "@/features/agent/public/fileRefs";
 import { rewriteTextNodes } from "@/features/chat/message/ui/markdown/rewriteTextNodes";
 const SKIP_TAGS = new Set(["pre", "code", "a", "sup", "script", "style"]);
 
@@ -26,15 +26,7 @@ export function rehypeFileRefs() {
               dataFileLine: segment.line,
               dataFileColumn: segment.column,
             },
-            children: [
-              {
-                type: "text",
-                value:
-                  segment.line > 0
-                    ? `${segment.path}:${segment.line}${segment.column > 0 ? `:${segment.column}` : ""}`
-                    : segment.path,
-              },
-            ],
+            children: [{ type: "text", value: formatFileRef(segment) }],
           });
         }
         return parts;

@@ -1,4 +1,5 @@
 import { createContext, Fragment, use, type RefObject } from "react";
+import { formatFileRef } from "@/features/agent/public/fileRefs";
 import { openWorkspaceFile } from "@/features/workspace/public/navigation";
 import { Pressable } from "@/ui/index";
 export interface FileReferencePresentation {
@@ -20,7 +21,7 @@ export function FileRefLink({
   column?: number;
 }) {
   const presentation = use(FileReferencePresentationContext);
-  const label = line > 0 ? `${path}:${line}${column > 0 ? `:${column}` : ""}` : path;
+  const label = formatFileRef({ path, line, column });
   return (
     <Pressable
       render={<span />}

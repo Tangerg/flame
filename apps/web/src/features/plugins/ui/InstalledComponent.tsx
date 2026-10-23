@@ -22,6 +22,7 @@ import {
   type PluginComponent,
 } from "@flame/component-sdk";
 import { useActiveSessionId, useActiveSessionWorkspace } from "@/features/agent/public/session";
+import { tupleKey } from "@/lib/tupleKey";
 import { useWorkspaceFileFocus } from "@/features/workspace/public/navigation";
 import { type FlameClient } from "@flame/runtime-client";
 import { type PluginOperationBinding } from "@flame/runtime-client/wire";
@@ -295,11 +296,7 @@ function WorkspaceComponent(props: ComponentProps) {
     );
   return (
     <RenderingComponent
-      key={JSON.stringify([
-        workspace.ref.path,
-        workspace.focus.revision.toString(),
-        workspace.focus.path,
-      ])}
+      key={tupleKey(workspace.ref.path, workspace.focus.revision.toString(), workspace.focus.path)}
       {...props}
       workspace={workspace}
     />

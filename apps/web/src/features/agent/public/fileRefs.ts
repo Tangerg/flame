@@ -1,4 +1,4 @@
-interface FileRef {
+export interface FileRef {
   path: string;
   line: number;
   column: number;
@@ -109,4 +109,13 @@ export function parseFileRefs(text: string): RefSegment[] {
   }
   if (last < text.length) out.push(text.slice(last));
   return out.length > 0 ? out : [text];
+}
+
+// formatFileRef renders a file reference back to its "path:line:col" source form,
+// inverse to parseFileRefs. A line or column of 0 means "unspecified" and
+// collapses out, so a bare path round-trips unchanged.
+export function formatFileRef(ref: FileRef): string {
+  if (ref.line <= 0) return ref.path;
+  const column = ref.column > 0 ? `:${ref.column}` : "";
+  return `${ref.path}:${ref.line}${column}`;
 }

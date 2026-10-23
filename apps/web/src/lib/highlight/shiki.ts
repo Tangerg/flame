@@ -1,5 +1,5 @@
 import { type Highlighter } from "shiki";
-import { fileExtension } from "@/lib/path";
+import { basename, fileExtension } from "@/lib/path";
 const THEMES = ["github-dark", "github-light-high-contrast"] as const;
 
 const LANGS = [
@@ -128,7 +128,7 @@ const LANG_BY_ALIAS = new Map([
 ]);
 
 export function langFromPath(path: string): string {
-  const base = path.slice(path.lastIndexOf("/") + 1);
+  const base = basename(path);
   const byName = LANG_BY_FILENAME.get(base);
   if (byName) return byName;
   return LANG_BY_EXTENSION.get(fileExtension(path)) ?? "text";
