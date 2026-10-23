@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
 import { type FallbackProps } from "react-error-boundary";
-import { ErrorBoundary } from "react-error-boundary";
+import { LoggingErrorBoundary } from "@/features/shell/workbench/panel/LoggingErrorBoundary";
 import { useT } from "@/lib/i18n/index";
 import { Button } from "@flame/ui";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
@@ -43,14 +43,12 @@ interface Props {
 
 export function TurnErrorBoundary({ resetKey, children }: Props) {
   return (
-    <ErrorBoundary
-      FallbackComponent={TurnErrorFallback}
+    <LoggingErrorBoundary
+      tag="turn-error-boundary"
+      fallback={TurnErrorFallback}
       resetKeys={[resetKey]}
-      onError={(error, info) => {
-        console.error("[turn-error-boundary]:", error, info.componentStack);
-      }}
     >
       {children}
-    </ErrorBoundary>
+    </LoggingErrorBoundary>
   );
 }

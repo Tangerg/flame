@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
 import { type FallbackProps } from "react-error-boundary";
-import { ErrorBoundary } from "react-error-boundary";
+import { LoggingErrorBoundary } from "@/features/shell/workbench/panel/LoggingErrorBoundary";
 import { useT } from "@/lib/i18n/index";
 import { Well } from "@/ui/index";
 import { Button } from "@flame/ui";
@@ -51,14 +51,12 @@ function ChatErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
 
 export function ChatErrorBoundary({ resetKey, label, children }: Props) {
   return (
-    <ErrorBoundary
-      FallbackComponent={ChatErrorFallback}
+    <LoggingErrorBoundary
+      tag={`chat-error-boundary ${label ?? "chat"}`}
+      fallback={ChatErrorFallback}
       resetKeys={resetKey === undefined ? [] : [resetKey]}
-      onError={(error, info) => {
-        console.error(`[chat-error-boundary] ${label ?? "chat"}:`, error, info.componentStack);
-      }}
     >
       {children}
-    </ErrorBoundary>
+    </LoggingErrorBoundary>
   );
 }
