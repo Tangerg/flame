@@ -239,6 +239,51 @@ func (c summarizingObservationCompactor) CompactModelContext(
 	)
 }
 
+// TestInteractionExecutorAttributesCompactionToExecutingMember guards R01: the
+// auxiliary summary model work dispatched during compaction must inherit the
+// executing member's model-call attribution, not run against a bare context that
+// would strand its consumption at the Session.
+func TestInteractionExecutorAttributesCompactionToExecutingMember(t *testing.T) {
+	compactor := &attributionCapturingCompactor{summary: "ATTRIBUTED SUMMARY"}
+	model := &observationScriptModel{
+		responses: []*chat.Response{interactionUsageTextResponse("done", 11, 3)},
+	}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ModelContextCompactor: compactor,
+		ModelContextState:     emptyInteractionModelContextState{},
+	})
+
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	if len(payloadsOf[runs.CompactionBoundary](events)) != 1 {
+		t.Fatalf("compaction did not run: %#v", payloadsOf[runs.CompactionBoundary](events))
+	}
+	if !compactor.called || !compactor.modelCallsBound {
+		t.Fatalf("compaction ran without the executing member's model-call attribution: called=%t bound=%t", compactor.called, compactor.modelCallsBound)
+	}
+}
+
+type attributionCapturingCompactor struct {
+	summary         string
+	called          bool
+	modelCallsBound bool
+}
+
+func (c *attributionCapturingCompactor) CompactModelContext(
+	ctx context.Context,
+	request ModelContextCompaction,
+) (ModelContextCompactionResult, error) {
+	c.called = true
+	c.modelCallsBound = executionctx.ModelCallsFromContext(ctx) != nil
+	if request.Durable() {
+		rewrite, err := conversation.NewCompaction(len(request.Candidate()), 0, 0, request.Candidate())
+		if err != nil {
+			return ModelContextCompactionResult{}, err
+		}
+		return NewDurableModelContextCompactionResult(request.Candidate(), c.summary, len(request.Candidate()), 100, rewrite)
+	}
+	return NewModelContextCompactionResult(request.Candidate(), true, c.summary, len(request.Candidate()), 100)
+}
+
 type fixedRunMaintenance struct {
 	result     RunMaintenanceResult
 	contextErr *error

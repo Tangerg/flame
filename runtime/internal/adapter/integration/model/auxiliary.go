@@ -110,7 +110,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		return "", err
 	}
 	id := uuid.NewString()
-	invocation := capability.Invocation{ID: id, Origin: capability.Automatic, Parent: operation.Identity(ctx), Target: capability.Target{Scope: "call", Reference: id}}
+	invocation := capability.Invocation{ID: id, Origin: capability.Automatic, Parent: operation.Identity(ctx), Target: capability.Target{Scope: capability.ScopeCall, Reference: id}}
 	if parent, err := pluginsdk.InvocationFromContext(ctx); err == nil {
 		invocation.Origin, invocation.Parent = parent.Origin, parent.ID
 	}

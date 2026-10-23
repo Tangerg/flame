@@ -73,7 +73,7 @@ func queryContext(ctx context.Context, location plugins.ContributionBinding) (co
 	if operation.Identity(ctx) == "" {
 		ctx = operation.Bind(ctx, "plugins.query", "")
 	}
-	invocation, err := operation.Capture(ctx, capability.Target{Scope: "installation", Reference: location.InstallationID.String()})
+	invocation, err := operation.Capture(ctx, capability.Target{Scope: capability.ScopeInstallation, Reference: location.InstallationID.String()})
 	if err != nil {
 		return nil, err
 	}

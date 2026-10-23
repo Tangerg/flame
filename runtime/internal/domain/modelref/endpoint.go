@@ -55,7 +55,7 @@ func (i EndpointInvocation) Validate() error {
 	if err := i.Caller.Validate(); err != nil {
 		return err
 	}
-	if i.Caller.Target.Scope != "call" || i.Caller.Target.Reference != i.Caller.ID || i.Caller.ID == i.ID || i.StartedAt.IsZero() {
+	if i.Caller.Target.Scope != capability.ScopeCall || i.Caller.Target.Reference != i.Caller.ID || i.Caller.ID == i.ID || i.StartedAt.IsZero() {
 		return errors.New("models: endpoint invocation requires a distinct calling model operation")
 	}
 	if _, err := modelchoice.New(i.Provider, i.Model); err != nil {

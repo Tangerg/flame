@@ -57,7 +57,7 @@ func (o *observedInteractionModel) Call(
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
 	}
 	ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
-	ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: callID}})
+	ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: capability.ScopeCall, Reference: callID}})
 	if err != nil {
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
 	}
@@ -96,7 +96,7 @@ func (o *observedInteractionModel) Stream(
 		}
 		dispatchedAt := time.Now()
 		ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
-		ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: callID}})
+		ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: capability.ScopeCall, Reference: callID}})
 		if err != nil {
 			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err))
 			return
@@ -113,6 +113,7 @@ func (o *observedInteractionModel) Stream(
 			return runs.ModelObservation{Text: text.String(), Reasoning: reasoning.String()}
 		}
 		var firstOutputLatencyMillis *int64
+		var stopped bool
 		for chunk, streamErr := range sequence {
 			if streamErr != nil {
 				yield(nil, o.finishFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis, streamErr))
@@ -135,13 +136,20 @@ func (o *observedInteractionModel) Stream(
 				firstOutputLatencyMillis = new(receivedAt.Sub(dispatchedAt).Milliseconds())
 			}
 			if !yield(chunk, nil) {
-				if err := o.fail(ctx, invocation, callID, observation(), firstOutputLatencyMillis); err != nil {
-					// Scope rejected this delta and stopped consuming. Preserve the
-					// publication failure locally; yielding again violates the stream.
-					o.session.effectFailures.record(invocation.EffectID(), err)
-				}
-				return
+				// Scope stopped consuming. Break so the physical stream settles its own
+				// result first; recording the failure here, still nested in the inner
+				// iterator, would commit an unknown outcome and drop usage the provider
+				// has already reported on this chunk.
+				stopped = true
+				break
 			}
+		}
+		if stopped {
+			if err := o.settleStoppedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis); err != nil {
+				// Preserve the settlement failure locally; yielding again violates the stream.
+				o.session.effectFailures.record(invocation.EffectID(), err)
+			}
+			return
 		}
 		response, responseErr := accumulated.Response()
 		if responseErr != nil {
@@ -229,14 +237,22 @@ func (o *observedInteractionModel) stopFailedCall(ctx context.Context, invocatio
 }
 
 func (o *observedInteractionModel) finishKnownFailedCall(ctx context.Context, invocation interaction.ModelInvocation, callID string, response *corechat.Response, latency *int64, cause error) error {
+	err := o.settleKnownFailedCall(ctx, invocation, callID, response, latency)
+	return o.stopFailedCall(ctx, invocation, cause, err)
+}
+
+// settleKnownFailedCall commits the failure fact carrying the physical response,
+// usage and price, and nothing else. It owns the fact only; whether and how the
+// model process ends is the caller's decision.
+func (o *observedInteractionModel) settleKnownFailedCall(ctx context.Context, invocation interaction.ModelInvocation, callID string, response *corechat.Response, latency *int64) error {
 	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
 	defer cancel()
 	if err := o.session.flushDeltas(projectionCtx); err != nil {
-		return errors.Join(cause, err)
+		return err
 	}
 	accounted, err := o.accountEndpoint(projectionCtx, invocation, callID)
 	if err != nil {
-		return errors.Join(cause, err)
+		return err
 	}
 	var observation runs.ModelObservation
 	if response.Output.Message != nil {
@@ -249,8 +265,22 @@ func (o *observedInteractionModel) finishKnownFailedCall(ctx context.Context, in
 			}
 		}
 	}
-	err = o.session.commitFact(projectionCtx, o.session.executorMember(invocation.Relation()), runs.ModelCallFailed{CallID: callID, Observation: observation, KnownResponse: response.Clone(), Accounting: &accounted, FirstOutputLatencyMillis: latency})
-	return o.stopFailedCall(ctx, invocation, cause, err)
+	return o.session.commitFact(projectionCtx, o.session.executorMember(invocation.Relation()), runs.ModelCallFailed{CallID: callID, Observation: observation, KnownResponse: response.Clone(), Accounting: &accounted, FirstOutputLatencyMillis: latency})
+}
+
+// settleStoppedCall records the fact after the consumer stopped reading and the
+// physical stream has settled: the known response, usage and price when the
+// provider completed, unknown otherwise. It settles only the fact — Scope owns the
+// capacity-stop outcome, so this never stops the model process.
+func (o *observedInteractionModel) settleStoppedCall(ctx context.Context, invocation interaction.ModelInvocation, callID string, observation runs.ModelObservation, latency *int64) error {
+	response, err := o.knownEndpoint(ctx, callID)
+	if err != nil {
+		return err
+	}
+	if response != nil {
+		return o.settleKnownFailedCall(ctx, invocation, callID, response.Response, latency)
+	}
+	return o.fail(ctx, invocation, callID, observation, latency)
 }
 
 func (o *observedInteractionModel) fail(

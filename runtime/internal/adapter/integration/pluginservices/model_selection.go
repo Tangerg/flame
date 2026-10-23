@@ -68,7 +68,7 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 		return modelchoice.Selection{}, err
 	}
 	id := uuid.NewString()
-	target := capability.Target{Scope: "call", Reference: id}
+	target := capability.Target{Scope: capability.ScopeCall, Reference: id}
 	invocation := capability.Invocation{ID: id, Origin: capability.Automatic, Parent: operation.Identity(ctx), Target: target}
 	if parent, err := operation.Capture(ctx, target); err == nil {
 		invocation.Origin = parent.Origin

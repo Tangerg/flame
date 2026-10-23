@@ -363,7 +363,7 @@ func (o *observedInteractionTool) prepare(
 		if !slices.EqualFunc(activations, o.session.compositionActivations, plugin.Activation.Equal) {
 			return tool.Arguments{}, false, "", nil, plugin.ErrStale
 		}
-		invocation, err := operation.Capture(ctx, capability.Target{Scope: "call", Reference: callID})
+		invocation, err := operation.Capture(ctx, capability.Target{Scope: capability.ScopeCall, Reference: callID})
 		if err != nil {
 			return tool.Arguments{}, false, "", nil, err
 		}

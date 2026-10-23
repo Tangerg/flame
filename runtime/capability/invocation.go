@@ -22,6 +22,13 @@ type Target struct {
 	Reference string `json:"reference"`
 }
 
+// Target scope vocabulary: the kind of resource an invocation targets. A method
+// contract validates an invocation against the scope its operation owns.
+const (
+	ScopeCall         = "call"
+	ScopeInstallation = "installation"
+)
+
 func (t Target) Validate() error {
 	if !validToken(t.Scope) || t.Reference == "" || !utf8.ValidString(t.Reference) || strings.ContainsFunc(t.Reference, unicode.IsControl) {
 		return errors.New("capability: concrete target scope and reference are required")

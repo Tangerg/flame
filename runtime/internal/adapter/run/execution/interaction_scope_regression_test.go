@@ -247,6 +247,95 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 	}
 }
 
+// TestCapacityStopAfterCompleteResponseRetainsKnownUsage guards R02: when the
+// consumer stops reading on a chunk that already completed the physical stream,
+// the single failure fact must carry the known response and its usage, not the
+// unknown outcome the old inline settle recorded before the physical settled.
+func TestCapacityStopAfterCompleteResponseRetainsKnownUsage(t *testing.T) {
+	model := budgetStopCompleteModel{text: strings.Repeat("x", 2048), usage: &chat.Usage{InputTokens: 9, OutputTokens: 4}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: true})
+	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := executor.Release(context.Background(), ref); err != nil {
+			t.Error(err)
+		}
+	}()
+	session, err := executor.session(ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Build the budgeted Dispatcher over the session's journaled streamer so the
+	// physical endpoint is recorded, then settled, before the capacity stop reads it.
+	resolved, err := executor.resolveChat(t.Context(), session.start.ModelSelection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	streamer, _ := resolved.Streamer()
+	observed, err := newObservedInteractionModel(resolved.Model(), streamer, session)
+	if err != nil {
+		t.Fatal(err)
+	}
+	definition := session.deployment.Definition().(*interaction.Definition)
+	dispatcher, err := interaction.NewDispatcher(definition, interaction.DispatcherConfig{Streamer: observed, MaxResponseBytes: 512, ModelContextReducer: newInteractionModelContextReducer(nil, nil, session, session.start, nil, nil, nil)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement, err := agent.NewDeployment(agent.DeploymentConfig{Definition: definition, Dispatcher: &interactionDispatcher{inner: dispatcher, session: session}, ImplementationDigest: agent.ComputeDigest([]byte("known-stop")), ConfigurationDigest: agent.ComputeDigest([]byte("known-stop"))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	session.deployment = replacement
+	session.state.deployments.root = replacement
+	sequence, err := observeTestInteraction(t, executor, t.Context(), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ready := make(chan []runs.ExecutorEvent, 1)
+	go func() {
+		var events []runs.ExecutorEvent
+		for event := range sequence {
+			if commit, ok := event.Payload.(runs.ExecutionFactCommit); ok {
+				event.Payload = commit.Fact()
+				commit.Complete(nil)
+			}
+			events = append(events, event)
+		}
+		ready <- events
+	}()
+	if err := executor.BeginRoot(t.Context(), ref); err != nil {
+		t.Fatal(err)
+	}
+	events := <-ready
+	failed := payloadsOf[runs.ModelCallFailed](events)
+	if len(failed) != 1 || failed[0].KnownResponse == nil || failed[0].Accounting == nil ||
+		failed[0].Accounting.ReportedUsage == nil || failed[0].Accounting.ReportedUsage.InputTokens != 9 ||
+		failed[0].Accounting.ReportedUsage.OutputTokens != 4 || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
+		t.Fatalf("capacity stop after a complete response dropped the known usage: %+v", failed)
+	}
+}
+
+type budgetStopCompleteModel struct {
+	text  string
+	usage *chat.Usage
+}
+
+func (budgetStopCompleteModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
+	return nil, errors.New("unexpected synchronous model call")
+}
+
+func (m budgetStopCompleteModel) Stream(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return func(yield func(*chat.ResponseDelta, error) bool) {
+		yield(&chat.ResponseDelta{
+			Parts:        []chat.PartDelta{chat.NewTextDelta(m.text)},
+			Metadata:     &chat.ResponseMetadata{Model: "served-model", Usage: m.usage},
+			FinishReason: chat.FinishReasonStop,
+		}, nil)
+	}
+}
+
 func scopeTestCoordinator(t *testing.T, executor *InteractionExecutor) *runs.Coordinator {
 	t.Helper()
 	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{ID: "session_1", Title: "scope", Workspace: testsupport.MustWorkspace(t.TempDir())})}

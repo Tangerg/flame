@@ -87,7 +87,7 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 		}
 		return nil
 	}, nil, resolve, collaborators, func(binding plugins.ContributionBinding) capability.Target {
-		return capability.Target{Scope: "installation", Reference: binding.InstallationID.String()}
+		return capability.Target{Scope: capability.ScopeInstallation, Reference: binding.InstallationID.String()}
 	})
 	if err != nil {
 		var zero R

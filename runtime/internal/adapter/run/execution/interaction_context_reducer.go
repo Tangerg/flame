@@ -117,17 +117,21 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if err != nil {
 		return nil, err
 	}
+	// One attributed context binds this reduction's auxiliary model work to the
+	// executing member; context contribution, compaction, and input contribution
+	// all inherit it so every physical call they dispatch is owned by this Run,
+	// not re-derived (or dropped) per branch.
+	identity, err := modelInvocationID(invocation)
+	if err != nil {
+		return nil, err
+	}
+	calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.Relation())})
+	calling, err = pluginsdk.WithInvocation(calling, capability.Invocation{ID: identity.String(), Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: capability.ScopeCall, Reference: identity.String()}})
+	if err != nil {
+		return nil, err
+	}
 	var material []corechat.Message
 	if len(i.session.modelContexts) > 0 {
-		identity, err := modelInvocationID(invocation)
-		if err != nil {
-			return nil, err
-		}
-		calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.Relation())})
-		calling, err = pluginsdk.WithInvocation(calling, capability.Invocation{ID: identity.String(), Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: identity.String()}})
-		if err != nil {
-			return nil, err
-		}
 		candidate := request.Clone()
 		candidate.Messages, err = appendPendingContinuation(candidate.Messages, pendingContinuation, hasPendingContinuation)
 		if err != nil {
@@ -152,7 +156,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		if err := validation.Validate(); err != nil {
 			return nil, fmt.Errorf("execution: reduced model context: %w", err)
 		}
-		validation, err = i.prepareInput(ctx, invocation, validation)
+		validation, err = i.prepareInput(calling, invocation, validation)
 		if err != nil {
 			return nil, err
 		}
@@ -242,7 +246,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if buildErr != nil {
 		return nil, buildErr
 	}
-	result, err := i.compactor.CompactModelContext(ctx, compaction)
+	result, err := i.compactor.CompactModelContext(calling, compaction)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +257,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if err := validation.Validate(); err != nil {
 		return nil, fmt.Errorf("execution: compacted model context: %w", err)
 	}
-	validation, err = i.prepareInput(ctx, invocation, validation)
+	validation, err = i.prepareInput(calling, invocation, validation)
 	if err != nil {
 		return nil, err
 	}
@@ -341,21 +345,12 @@ func sameInteractionMessages(left, right []corechat.Message) (bool, error) {
 
 var _ interaction.ModelContextReducer = (*interactionModelContextReducer)(nil)
 
-func (i *interactionModelContextReducer) prepareInput(ctx context.Context, invocation interaction.ModelInvocation, request *corechat.Request) (*corechat.Request, error) {
+func (i *interactionModelContextReducer) prepareInput(calling context.Context, invocation interaction.ModelInvocation, request *corechat.Request) (*corechat.Request, error) {
 	if len(i.session.modelInputs) == 0 {
 		if err := i.session.selectedChat.AdmitInput(request); err != nil {
 			return nil, err
 		}
 		return request, nil
-	}
-	identity, err := modelInvocationID(invocation)
-	if err != nil {
-		return nil, err
-	}
-	calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.Relation())})
-	calling, err = pluginsdk.WithInvocation(calling, capability.Invocation{ID: identity.String(), Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: "call", Reference: identity.String()}})
-	if err != nil {
-		return nil, err
 	}
 	transformed, err := i.session.callComposition.PrepareInput(calling, i.session.modelInputs, i.start.ModelSelection, request)
 	if err != nil {

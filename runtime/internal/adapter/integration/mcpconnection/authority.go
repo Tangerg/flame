@@ -37,7 +37,7 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 		return toolcontract.Result{}, err
 	}
 	if installation, managed := t.config.Server.Source.Origin().Installation(); managed {
-		captured, err := operation.Capture(ctx, capability.Target{Scope: "installation", Reference: installation.String()})
+		captured, err := operation.Capture(ctx, capability.Target{Scope: capability.ScopeInstallation, Reference: installation.String()})
 		if err != nil {
 			return toolcontract.Result{}, err
 		}

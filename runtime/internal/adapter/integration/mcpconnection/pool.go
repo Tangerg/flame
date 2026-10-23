@@ -270,7 +270,7 @@ func setupContributions(connection mcpapp.Launch) ([]pluginsdk.SetupContribution
 			if !found {
 				return nil, errors.New("mcp: background role requires an installed entry")
 			}
-			value.Background = &capability.Target{Scope: "installation", Reference: installation.String()}
+			value.Background = &capability.Target{Scope: capability.ScopeInstallation, Reference: installation.String()}
 		}
 		for _, required := range connection.Requirements.Snapshot() {
 			if required.Contribution != contribution.ID {
