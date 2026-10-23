@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. The pending reading-color qualification now passes in actual Wails: built-in light/14 px, custom warm light/Chinese/18 px and dark/18 px retain their text hierarchy through tool/result reading, Diff object switching and continued drafts. Warm light includes native 200% and a narrow window. This acceptance-only batch adds no product change; three theme suites pass 121 tests and the supported native check passes. Named Settings failures, shared Plugin Retry focus, engaged ToolGroup reading, Markdown notes and neutral canvases remain integrated. The preceding broad Web run's MCP-readiness timeout and complete isolated pass retain their separate qualification below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. Native short-paste tracing preserves the same input, exact draft and caret through a warm-light/Chinese/18 px/200% narrow-window material round trip; small text appends through the native paste path. The earlier single whole-draft replacement did not reproduce and its cause remains unestablished. No product workaround was added. Three relevant input suites pass 42 tests and the supported native check passes. The completed three-theme reading-color qualification, named Settings failures, shared Plugin Retry focus, engaged ToolGroup reading, Markdown notes and neutral canvases remain integrated. Earlier broad-run timeout and isolated-pass qualifications remain separate below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -52,11 +52,20 @@ step counts remain distinct, selected Dock tabs identify the active material,
 Diff list/detail/row return works, and the final original drafts can continue.
 The warm-light path includes 18 px, native 200% and a pointer-resized narrow
 window. Three theme suites pass 121 tests; `make check-native` passes. The exact
-qualifications, excluded input attempts and new native continuation candidate
+qualifications, excluded input attempts and subsequent native caret qualification
 are recorded with the color evidence below. Owned resources are cleaned;
 acceptance record `a35b04856c74459ebc72f51661d6f6edd55a6d53` is pushed to
 remote `main`, verified by exact remote hash, all 24 unchanged accepted
 product/resource inputs and a clean owned checkout with zero unpushed commits.
+
+The native short-paste follow-up isolates no product defect: a passive trace
+keeps the same textarea and `10..10` caret through material hiding, file switching,
+return, Tab and input activation; `insertFromPaste` then appends to `18..18` with
+DOM and the sole draft owner agreeing. The original combined activation/paste
+attempt remains unexplained. Preserve the existing native input and focus owners;
+these separated observations do not establish the original timing or selection.
+The 42 focused tests and supported native check pass. Owned resources are cleaned;
+delivery is being recorded for this bounded qualification.
 
 The captured-image inset is integrated at `d25b4ef72` and settings width at
 `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
@@ -412,8 +421,9 @@ light draft was pasted and verified before its return flow. One warm continuatio
 paste replaced the draft despite the original being present immediately before
 it; the cause was not isolated. That attempt is excluded from continuation
 acceptance. The original was re-established and verified through the repeated
-round trip before the final explicit-caret input. Investigate its native input
-target/selection evidence before attributing a new Composer defect.
+round trip before the final explicit-caret input. The subsequent Native short-paste
+continuation qualification below records input/selection events without
+reproducing that replacement. Its original cause remains unestablished.
 
 `make stage-web` passes (**7.12 s**). Palette, stylesheet-mirror and custom-theme
 suites pass **3 files / 121 tests** (**1.80 s**). The supported
@@ -1026,6 +1036,80 @@ Flame's actual navigation/history, registered input target and retained-view
 lifetimes supply the implementation contracts. Existing Base UI modal semantics
 and better-series focus/layout guidance preserve bounded tasks, source returns,
 typography, semantic colors and the approved visual system.
+
+### Native short-paste continuation qualification
+
+No actionable focus/caret finding in the inspected trace. Approve the observed
+continuity; the earlier single replacement is not a diagnosed or fixed defect.
+No product source, test, preference, Runtime contract or focus policy changed.
+
+The real `TextAreaPrimitive` is a native textarea. Shared `TextArea` owns geometry;
+Composer's focus callback clears only its composition guard, and short plain text
+keeps `composerPasteIntent`'s native path. The draft store remains the value owner.
+Better-accessibility guides the distinction between focus, selection and an edit.
+Read-only HeroUI's actual textarea forwards consumer props to its primitive;
+ZCode's actual prompt-input textarea keeps controlled values and leaves ordinary
+text paste native while separately handling image attachments. Neither reference
+establishes Flame's native caret behavior.
+
+Bounded Claude Code CLI supplied a private read-only observer in **53.54 s**,
+**8 turns**, with no denials or subagents. Primary verified its real Composer
+selector and sole read-only store access, then added trusted-event and pointer
+coordinates/detail observations. Passive capture and an offscreen bounded log
+record the input identity, draft/DOM values, selection, focus and event order.
+The observer never dispatches input, writes selection/value, focuses a product
+node or reads clipboard/system data. All private code stays outside the repo.
+
+Actual Wails first qualifies a normal small paste at Actual Size: the ten-character
+draft's `10..10` caret appends eleven characters and settles at `21..21`, with
+DOM and draft agreeing. The exact original `暖浅色阅读草稿 保留` is then restored.
+The production tool group/result remains open while twenty native Zoom In actions,
+a native edge resize to **2632 × 1798** and fixture-sidebar collapse reproduce the
+warm custom light, Chinese, **18 px**, **200%**, **658 CSS px** setting.
+
+Opening the current material full width retains textarea identity **2** with
+`10..10` and the exact draft, behind a hidden parent. Diff list → `session.go` →
+original row → explicit Close returns to Conversation with that same input,
+selection and value. Tab reaches Review changed files. Native input activation
+records a trusted single pointer click and ends at `10..10`. The later paste
+records `beforeinput` **insertFromPaste**, eight characters and `10..10`; the
+settled DOM/draft is `暖浅色阅读草稿 保留 — 返回后继续` at `18..18`. No explicit
+caret adjustment precedes this paste. Actual Size retains that input, value and
+`18..18` while the Dock reappears.
+
+Capture-phase `input` briefly sees the edited DOM before React's value callback;
+the following selection-change/current-state observations agree with the store.
+That event order is not a competing draft transition. The original replacement
+does not reproduce under this passive trace. These separated click/observation/
+paste actions do not establish the original combined action timing, its prior
+selection, or the observer's timing effect. Its cause remains unestablished;
+revisit on a repeat with corresponding event evidence, without forcing the caret
+or adding a paste/focus workaround. A stale-app-state CUA rejection required
+fresh observation. A native paragraph pointer/focus interval was observed;
+no actor/cause attribution is made, and the final controlled snapshots supply
+the evidence. No bare-HTML/platform isolation or broad native-input claim follows.
+
+`make stage-web` passes (**5.88 s**); Composer, input-controller and paste-intent
+suites pass **3 files / 42 tests** (**2.14 s**). The supported native check passes
+(**61.39 s**), arm64, minimum macOS **13.0**, SDK **26.5**. An early binary
+inspection preceded build completion and had no output binary; only the final
+post-check inspection establishes those facts. All **19** accepted product
+inputs, **11** portable resources, **5** private harness inputs and compiled UI
+CSS match after acceptance. Unchanged broad Web, Runtime, CLI and independent
+shared UI suites were not rerun. No Send, live provider/Runtime command,
+preference save, credential or permission action was invoked. VoiceOver speech,
+OS IME, clipboard denial, other-platform GUI, browser visual suites and performance
+benchmarks remain not verified.
+
+The owned native process and read-only CLI exited. After ownership, birth-time,
+containment and copied-asset checks, the app was unregistered and its private
+root/pointer, ten new worktree output/cache paths and two bundle-specific Library
+paths were removed. A private archive preserves **41** flat UTF-8 evidence files
+and **6** capture hashes outside the repository. Pre-existing UI Vite cache,
+dependencies, compiler caches, references, user data, unrelated processes and the
+primary checkout remain. Continue with another observed task; this bounded
+negative result does not authorize rewriting Composer or repeating the completed
+oversized-editor investigation.
 
 ## Search selection and task handoff
 
