@@ -17,8 +17,10 @@ and untouched/header-only groups retain automatic collapse. The focused checks,
 complete Web check (391 files / 3,100 tests), supported native check and final
 English/light/14 px and Chinese/dark/18 px native flows pass. The latter includes
 a 320 px Dock, 200% full-pane return and exact continued drafts. Owned native and
-build resources are cleaned. Delivery is being recorded for this verified change;
-the earlier Markdown-note and MCP receipts remain integrated.
+build resources are cleaned. Implementation `2d96c7a37699e0ef83489689ceda61e52a891871`
+is pushed to remote `main`; its exact remote hash was verified with a clean owned
+checkout and zero unpushed commits. The earlier Markdown-note and MCP receipts
+remain integrated.
 
 The captured-image inset is integrated at `d25b4ef72` and settings width at
 `1f8c7a0fe`. Fullscreen follow-up qualified visible plain CSS/HTML controls but
@@ -2166,6 +2168,10 @@ repository. Pre-existing shared UI Vite cache, dependencies, compiler caches,
 read-only references, unrelated processes, user data and the primary checkout
 remain preserved. Continue with a new observed task rather than extending this
 bounded focus-engagement repair without evidence.
+
+Delivery: implementation `2d96c7a37699e0ef83489689ceda61e52a891871` is pushed
+to remote `main`. A fresh `ls-remote` matched that exact commit; the owned checkout
+was clean with zero unpushed commits. This in-place receipt adds no product change.
 
 ## Tool row action context
 
