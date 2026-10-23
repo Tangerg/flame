@@ -18,7 +18,11 @@ import { workspaceErrorClassifier } from "@/features/workspace/application/ports
 import { useT } from "@/lib/i18n/index";
 import { FileView } from "@/features/workspace/ui/files/FileView";
 import { WorkspaceViewLayout } from "@/features/workspace/ui/WorkspaceViewLayout";
-import { useActiveSessionWorkspace } from "@/features/agent/public/session";
+import {
+  isWorkspaceResolving,
+  resolvedWorkspaceCwd,
+  useActiveSessionWorkspace,
+} from "@/features/agent/public/session";
 import {
   useWorkspaceListFiles,
   useWorkspaceReadFile,
@@ -98,8 +102,8 @@ export function FileWorkspace() {
 function FileBrowser({ restoreFocus }: { restoreFocus: (item: HTMLElement) => void }) {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
-  const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
-  const query = useWorkspaceListFiles(workspace.status === "ready" ? { cwd } : undefined);
+  const cwd = resolvedWorkspaceCwd(workspace);
+  const query = useWorkspaceListFiles(isWorkspaceResolving(workspace) ? undefined : { cwd });
   const scrollPort = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const item = scrollPort.current?.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
@@ -109,7 +113,7 @@ function FileBrowser({ restoreFocus }: { restoreFocus: (item: HTMLElement) => vo
     <WorkspaceViewLayout scrollInset="flush" scrollRef={scrollPort}>
       <DataView
         items={query.data}
-        isLoading={query.isLoading || workspace.status === "resolving"}
+        isLoading={query.isLoading || isWorkspaceResolving(workspace)}
         failure={query.error}
         onRetry={query.refetch}
         unsupported={{ icon: "folder" }}
@@ -132,7 +136,7 @@ function FilePreview({
   const t = useT();
   const { copied, copy } = useCopyFeedback(viewer.path);
   const workspace = useActiveSessionWorkspace();
-  const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
+  const cwd = resolvedWorkspaceCwd(workspace);
   const targetLine = viewer.line;
   const [windowFor, setWindowFor] = useState<{ intent: object; window: LineWindow }>(() => ({
     intent: viewer,
@@ -142,7 +146,7 @@ function FilePreview({
   const setLineWindow = (next: LineWindow) => setWindowFor({ intent: viewer, window: next });
 
   const { data, isLoading, error, refetch } = useWorkspaceReadFile(
-    workspace.status === "ready"
+    !isWorkspaceResolving(workspace)
       ? {
           cwd,
           path: viewer.path,
@@ -276,7 +280,7 @@ function FilePreview({
       ) : (
         <DataView
           items={data ? [data] : []}
-          isLoading={isLoading || workspace.status === "resolving"}
+          isLoading={isLoading || isWorkspaceResolving(workspace)}
           failure={error}
           onRetry={refetch}
           skeletonCount={12}

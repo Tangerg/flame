@@ -21,7 +21,12 @@ import {
   type ComponentReference,
   type PluginComponent,
 } from "@flame/component-sdk";
-import { useActiveSessionId, useActiveSessionWorkspace } from "@/features/agent/public/session";
+import {
+  isWorkspaceResolving,
+  resolvedWorkspaceCwd,
+  useActiveSessionId,
+  useActiveSessionWorkspace,
+} from "@/features/agent/public/session";
 import { tupleKey } from "@/lib/tupleKey";
 import { useWorkspaceFileFocus } from "@/features/workspace/public/navigation";
 import { type FlameClient } from "@flame/runtime-client";
@@ -278,7 +283,7 @@ function WorkspaceComponent(props: ComponentProps) {
   const t = useT();
   const selection = useActiveSessionWorkspace();
   const focus = useWorkspaceFileFocus();
-  const cwd = selection.status === "ready" ? selection.cwd : undefined;
+  const cwd = resolvedWorkspaceCwd(selection);
   const workspace = useMemo(
     () =>
       cwd
@@ -289,7 +294,7 @@ function WorkspaceComponent(props: ComponentProps) {
   if (!workspace)
     return (
       <p role="status">
-        {selection.status === "resolving"
+        {isWorkspaceResolving(selection)
           ? t("packages.module.resolvingWorkspace")
           : t("packages.module.selectWorkspace")}
       </p>
@@ -306,7 +311,7 @@ function WorkspaceComponent(props: ComponentProps) {
 function ClientComponent(props: ComponentProps) {
   const selection = useActiveSessionWorkspace();
   const sessionId = useActiveSessionId();
-  const cwd = selection.status === "ready" ? selection.cwd : undefined;
+  const cwd = resolvedWorkspaceCwd(selection);
   const workspace = useMemo<WorkspaceContext | undefined>(
     () => (cwd ? { ref: { path: cwd } } : undefined),
     [cwd],

@@ -13,7 +13,8 @@ const mocks = vi.hoisted(() => ({
   notifyError: vi.fn(),
 }));
 
-vi.mock("@/features/agent/public/session", () => ({
+vi.mock("@/features/agent/public/session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
   selectAgentSession: vi.fn(),
   getActiveSessionId: () => mocks.activeSessionId,
   createSession: mocks.create,

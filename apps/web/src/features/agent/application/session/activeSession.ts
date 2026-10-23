@@ -7,6 +7,19 @@ export type { AgentOpenSessions } from "@/features/agent/application/session/ses
 export type ActiveSessionWorkspaceSelection =
   { status: "ready"; cwd?: string } | { status: "resolving"; sessionId: string };
 
+// resolvedWorkspaceCwd and isWorkspaceResolving own the two facts every consumer
+// derives from a selection: the directory to act in, and whether the active
+// session's workspace is still being located. A resolving selection has no cwd.
+export function resolvedWorkspaceCwd(
+  selection: ActiveSessionWorkspaceSelection,
+): string | undefined {
+  return selection.status === "ready" ? selection.cwd : undefined;
+}
+
+export function isWorkspaceResolving(selection: ActiveSessionWorkspaceSelection): boolean {
+  return selection.status === "resolving";
+}
+
 export function useActiveSessionId(): string {
   return agentSessionState().useActiveSessionId();
 }

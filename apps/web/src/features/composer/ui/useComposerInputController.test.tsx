@@ -6,7 +6,8 @@ const submitted = vi.fn(() => true);
 
 vi.mock("@/lib/i18n/index", () => ({ useT: () => (key: string) => key }));
 
-vi.mock("@/features/agent/public/session", () => ({
+vi.mock("@/features/agent/public/session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
   useActiveSessionWorkspace: () => ({ status: "ready", cwd: "/w" }),
 }));
 

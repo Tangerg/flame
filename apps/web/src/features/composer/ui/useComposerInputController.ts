@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { type ComposerImage, type PastedText } from "@/features/composer/public/attachments";
 import { type AgentInput } from "@/features/agent/public/input";
 import { imageFiles } from "@/features/composer/public/input";
-import { useActiveSessionWorkspace } from "@/features/agent/public/session";
+import { resolvedWorkspaceCwd, useActiveSessionWorkspace } from "@/features/agent/public/session";
 import {
   useFileMentions,
   useKnownWorkspacePaths,
@@ -64,7 +64,7 @@ export function useComposerInputController({
     return registerComposerFocusTarget(inputRef.current);
   }, []);
   const workspace = useActiveSessionWorkspace();
-  const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
+  const cwd = resolvedWorkspaceCwd(workspace);
   const [caret, setCaret] = useState(0);
   const composition = useCompositionCommitGuard();
   const applyMention = useCallback(

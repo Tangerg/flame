@@ -3,6 +3,7 @@ import {
   selectAgentSession,
   getActiveSessionId,
   useActiveSessionId,
+  resolvedWorkspaceCwd,
   useActiveSessionWorkspace,
 } from "@/features/agent/public/session";
 import { createSession, useCreateSession } from "@/features/agent/public/session";
@@ -48,7 +49,7 @@ export function useWorkIndexActions(): WorkIndexActions {
   const activeSessionId = useActiveSessionId();
   const activeWorkspace = useActiveSessionWorkspace();
   const activeWorkspaceStatus = activeWorkspace.status;
-  const activeCwd = activeWorkspace.status === "ready" ? activeWorkspace.cwd : undefined;
+  const activeCwd = resolvedWorkspaceCwd(activeWorkspace);
   const remove = useDeleteSession();
   const fork = useForkSession();
   const rename = useRenameSession();

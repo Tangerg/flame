@@ -8,7 +8,11 @@ import { Badge, gap, ListRow, RecordGroup, vocab } from "@flame/ui";
 import { type HookReadModel } from "@/features/hooks/application/hookConfig";
 import { useHookConfigs } from "@/features/hooks/application/hookConfig";
 import { setHookTrust } from "@/features/hooks/application/hookTrust";
-import { useActiveSessionWorkspace } from "@/features/agent/public/session";
+import {
+  isWorkspaceResolving,
+  resolvedWorkspaceCwd,
+  useActiveSessionWorkspace,
+} from "@/features/agent/public/session";
 import { useCommandAction } from "@/features/command/public/commandAction";
 import { useT } from "@/lib/i18n/index";
 import { color, face, leading, layout, type as typeStep, weight } from "@flame/ui/tokens.stylex";
@@ -99,8 +103,9 @@ export function HooksPane() {
     fallback: t("hooks.error.trust"),
   });
   const workspace = useActiveSessionWorkspace();
+  const cwd = resolvedWorkspaceCwd(workspace);
   const { data, isLoading, error, refetch } = useHookConfigs(
-    workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
+    isWorkspaceResolving(workspace) ? undefined : { cwd },
   );
 
   const projectRoot = data?.projectRoot;
@@ -130,7 +135,7 @@ export function HooksPane() {
 
       <DataView
         items={data?.hooks}
-        isLoading={isLoading || workspace.status === "resolving"}
+        isLoading={isLoading || isWorkspaceResolving(workspace)}
         failure={error}
         onRetry={refetch}
         skeletonCount={3}

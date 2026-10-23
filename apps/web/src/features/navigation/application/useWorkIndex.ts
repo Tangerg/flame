@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { useWorkspaceProjects } from "@/features/workspace/public/queries";
-import { useActiveSessionWorkspace, useActiveSessionId } from "@/features/agent/public/session";
+import {
+  resolvedWorkspaceCwd,
+  useActiveSessionWorkspace,
+  useActiveSessionId,
+} from "@/features/agent/public/session";
 import { useAgentSessions } from "@/features/agent/public/session";
 import { type AgentSessionSummary } from "@/features/agent/public/session";
 import { type WorkIndex } from "@/features/navigation/domain/workIndex";
@@ -12,7 +16,7 @@ export function useWorkIndex(): WorkIndex {
   const { data: sessions = EMPTY_SESSIONS } = useAgentSessions();
   const activeSessionId = useActiveSessionId();
   const workspace = useActiveSessionWorkspace();
-  const activeCwd = workspace.status === "ready" ? workspace.cwd : undefined;
+  const activeCwd = resolvedWorkspaceCwd(workspace);
 
   const content = useMemo(
     () => buildWorkIndex({ projects: projects.data, sessions }),
