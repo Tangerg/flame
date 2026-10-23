@@ -3,11 +3,13 @@ import { type FlameClient } from "@flame/runtime-client";
 import { queryClient } from "@/lib/queryClient";
 import {
   authorizeMCPServer,
+  reconnectMCPServer,
   setMCPServerEnabled,
   setMCPToolExposure,
 } from "@/features/mcp/application/mcpServerConfig";
 import {
   MCP_SERVERS_KEY,
+  type MCPServerID,
   type MCPServerSettings,
   userMCPServer,
 } from "@/features/mcp/application/mcpServerQueries";
@@ -168,6 +170,46 @@ describe("runtimeMcpServerGateway", () => {
     });
     expect(update).toHaveBeenCalledWith({ server: userMCPServer("cloud"), enabled: false });
   });
+
+  it.each<[string, MCPServerID]>([
+    ["user", userMCPServer("docs")],
+    [
+      "installation",
+      {
+        origin: { type: "installation", installationId: "eeb329cd-c7ce-40c9-bd90-6821fef06d30" },
+        name: "docs",
+      },
+    ],
+  ])(
+    "forwards a %s server reconnect to the Runtime without changing configuration",
+    async (_origin, id) => {
+      const acknowledged = Promise.withResolvers<void>();
+      const reconnect = vi.fn(() => acknowledged.promise);
+      const update = vi.fn();
+      const setToolExposure = vi.fn();
+      const client = { mcp: { reconnect, update, setToolExposure } } as unknown as FlameClient;
+      uninstall = installMCPServerGateway(() => client).dispose;
+      const failed = server({ id, status: "failed", errorDetail: "Couldn't reach this server." });
+      queryClient.setQueryData([MCP_SERVERS_KEY], [failed]);
+
+      let settled = false;
+      const reconnection = reconnectMCPServer(id).then((value) => {
+        settled = true;
+        return value;
+      });
+      await vi.waitFor(() => expect(reconnect).toHaveBeenCalledOnce());
+      expect(reconnect).toHaveBeenCalledWith(id);
+      await Promise.resolve();
+      expect(settled).toBe(false);
+
+      acknowledged.resolve();
+      await expect(reconnection).resolves.toBeUndefined();
+      expect(reconnect).toHaveBeenCalledOnce();
+      expect(update).not.toHaveBeenCalled();
+      expect(setToolExposure).not.toHaveBeenCalled();
+      expect(queryClient.getQueryData([MCP_SERVERS_KEY])).toEqual([failed]);
+    },
+  );
 
   it("retires in-flight and queued server commands before installing a successor", async () => {
     const retiredUpdate = Promise.withResolvers<ReturnType<typeof runtimeServer>>();

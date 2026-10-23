@@ -29,6 +29,11 @@ session titles, message authors, and complete entry paths for files. Nested
 submenus keep their primitive's relationship to the controlling item instead of
 receiving a separate name.
 
+MCP server rows read their own tools directly, independent of configuration
+editing and server origin. Reconnect runs in the same exact-ID serial mutation
+generation as other server commands; its acknowledgement only admits a
+background dial, so the row shows canonical server status after the reread.
+
 Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
 `tests/integration`; visual fixtures live in `visual`. The full check includes
 compiler-resolved dependency/contract guards, lifecycle tests, resource drift,

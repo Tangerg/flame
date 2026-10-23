@@ -26,7 +26,6 @@ import {
 } from "@/features/mcp/application/mcpServerConfig";
 import { useT } from "@/lib/i18n/index";
 import { MCPServerEdit, type MCPServerFields } from "@/features/mcp/application/mcpServerDraft";
-import { ToolControls } from "@/features/mcp/ui/ToolControls";
 import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
@@ -376,12 +375,6 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
       </span>
       {feedback.state === "error" && (
         <SystemMessage variant="warning">{feedback.reason}</SystemMessage>
-      )}
-      {server && (
-        <div {...stylex.props(vocab.column, gap.s1_5)}>
-          <span {...stylex.props(ss.label, typeStep.uiMd)}>{t("mcp.tools.manage")}</span>
-          <ToolControls server={server.id} />
-        </div>
       )}
       {server && (
         <ConfirmDialog

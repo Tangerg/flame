@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-23. Continuous UI work remains active. Popup anchoring/native zoom painting, rapid Select dismissal, object-menu names, shared modal keyboard release and bounded message reading are published on remote main; their receipts remain below. Approval-mode reads distinguish recoverable failures from an unsupported method, and MCP tool errors now identify their three independent read scopes in eight locales. Current complete Web testing passed 390 files and 3,083 tests; the existing MCP API-consumer inventory still fails, so the full check is not green. All remaining Web checks and the supported native check passed. Native tool recovery now retains its read frame across asynchronous material replacement; explicit empty-state owners and connection task ordering preserve focus, deliberate scroll and connection actions, including native 200% scenes. Portable Skills/Schedules failures now preserve published Runtime detail, and Schedules separates localized recovery summaries from literal explanations; native English and Chinese 200% recovery/return paths are qualified below. The math follow-up qualifies its recorded text-caret reading path; physical horizontal wheel delivery remains unverified. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
+Updated: 2026-10-23. Continuous UI work remains active. Popup anchoring/native zoom painting, rapid Select dismissal, object-menu names, shared modal keyboard release and bounded message reading are published on remote main; their receipts remain below. MCP server rows now expose their tools directly, visible connection states and a real reconnect action through the existing command generation. Native English and Chinese 200% recovery/reading/return paths pass. Current complete Web testing passed 391 files and 3,094 tests, and every Web gate now passes, including the formerly missing reconnect consumer. The supported native check passed. Portable Skills/Schedules preserve Runtime failure detail, and retained read frames preserve recovery continuity. The user's latest visual constraint rejects decorative thick edge stripes on rounded cards with heavy shadows. Coverage limits, cleanup and delivery are recorded by area below. Continue useful batches until the user explicitly stops the resumed goal.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -49,6 +49,13 @@ The primary checkout is `/Users/tangerg/Desktop/flame`, on `main`; the resumed U
 Shared `Select` and `ActionMenu` in installed views now use the same inherited visibility fact as product popups. Their open popup retires only when its retained content becomes hidden; moving a visible inspection into a full pane keeps its menu. Revealing content preserves the control, selected value, search and drafts without reopening the retired popup. `packages/ui` owns the one context and retirement mechanism, and the obsolete application copies are removed. Native acceptance covers ordinary collapse, narrow zoom, source/history return and visible Escape, as detailed below.
 
 An open `ModalDialog` now establishes its own visible task scope above the retained material. Backing Dock collapse, width retreat and history navigation no longer retire its nested Select or ActionMenu or send focus behind the task. On dismissal over a hidden owner, explicit no-focus policies and visible caller targets remain authoritative; otherwise the host's current presented-region ref supplies the return destination. Schedules keeps its existing draft, command and reconciliation owners. This does not make Memory's independently operable authoring flow modal.
+
+The user's latest reference rejects decorative thick edge stripes attached to
+rounded cards with heavy shadows. Use typography, spacing and necessary
+boundaries to organize content; accent color communicates meaningful states
+and actions. Preserve the approved radius and theme owners. The current MCP
+change adds no decorative edge stripe. The next shared-surface review must
+inspect the existing callout edge treatment against this explicit constraint.
 
 ## Integrated brand and authoring work
 
@@ -1575,6 +1582,109 @@ before publication. Normal hooks committed the batch at
 `4d3b00510d893de5afb7e761fd9bfac24bc6f012`; push and `ls-remote` confirmed that
 exact commit on remote main. All ten accepted source/test hashes match its
 blobs, with a clean owned worktree and zero unpushed commits at that checkpoint.
+
+### Direct MCP tool reading and connection recovery
+
+Actual Wails on `2b8cd16b6` confirmed the user's report: a connected row exposed
+only its tool count. Names and descriptions required Edit → Manage tools, and
+installation-owned servers had no Edit entry. A failed installation row told
+the reader to retry without supplying an action. These gaps prevented direct
+reading and recovery.
+
+`ServerRow.tsx` now exposes one shared, source-named Disclosure containing the
+existing `ToolControls` for the exact server ID. It stays outside configuration
+editing and canonical status conditions; the old form section and
+`mcp.tools.manage` key are removed. Tool descriptions, independent read recovery,
+exposure/approval guards and mutation owners remain authoritative. The six
+canonical connection states have visible text alongside the decorative status
+dot. Every enabled row keeps one connection Button: Reconnect ordinarily,
+the existing Sign in task when authorization is required. Its shared pending
+behavior retains focus and refuses duplicate activation while the command is
+held or the canonical status is Connecting. Disabled rows have no reconnect.
+
+Reconnect passes the complete user/installation identity through the existing
+per-server serial generation to `client.mcp.reconnect`. The acknowledgement
+admits background work; a no-op commit and existing cache repair reread Runtime
+facts instead of synthesizing Connected. Generation replacement retires pending
+and queued work without dispatching it through a successor. Eight locale
+catalogs supply whole status, action, scoped-name and tools-title messages.
+No Runtime, SDK, protocol, persisted schema, shared control, theme or dependency
+source changed.
+
+The read-only ZCode MCP list supplied canonical failure reasons and
+source-dependent configuration evidence; its own count-only presentation was
+not used as a direct-tools reference. HeroUI's actual Accordion Trigger/Panel
+composition supports inline progressive reading with retained list identity.
+Better-writing, better-layout and better-accessibility guided object names,
+redundant status text, translated wrapping, task continuity and native focus.
+
+Two bounded Claude Code CLI invocations authored the regression cases
+(172.92 s) and implementation (219.81 s), with no permission denials. Primary
+reviewed every actual diff. On unchanged production, the eleven new cases
+failed while forty-one old cases passed; a missing-method cleanup also rejected
+one held test task. Primary corrected the new cache-identity assertion to
+capture TanStack's accepted projection after structural sharing, completed two
+existing gateway doubles for the required port and typed the generic test
+provider input correctly, preserving the production behavior assertions. Final
+focused verification passed all fourteen
+MCP files / eighty-nine tests, and typechecking passed. Fifty-two product/test/
+host inputs, eleven portable resources and six private harness inputs then
+stayed frozen through native acceptance.
+
+English/light/14 px/Orange qualified direct tool names and complete descriptions
+before Edit, independent keyboard expansion while editing, and exactly one
+tools instance per source. The exact unsaved
+`private-fixture-notes --draft 保留` survived both installation recovery and its
+own server's reconnect. Repeated Enter admitted one first command; ACK still
+showed Connecting, then canonical failure restored the same focused trigger.
+Retry accepted the installation's exact ID and preserved later Command focus;
+the user's own row recovery retained later Cancel focus. Keyboard Cancel
+returned Edit. Closing Settings restored the original Workspace diff; pointer
+entry then accepted `MCP tools reviewed 保留` in Composer without sending.
+
+Chinese/dark/18 px/custom blue qualified twenty actual View → Zoom In commands
+(200%) and a native edge resize from 2878×1798 to 2632×1798. Long tool names and
+complete descriptions wrapped; switches retreated beneath reading content and
+remained keyboard-reachable without activation. Repeated Enter again admitted
+only one connection command, with visible Connecting/failure and blue Button
+focus. Successful retry retained the expanded installation tools and the
+reader's later Disclosure focus. Seven Shift-Tabs reached Close; Enter returned
+Conversation at 200%. Exact Composer input
+`工具明细看完继续输入 保留` survived Actual Size, which also restored the Dock.
+
+The private composition used validated wire records, the real SDK, production
+query invalidation/components and Wails beta.34. Its `mcp.changed` facts enter
+the existing invalidator directly; it does not certify live SSE delivery,
+real MCP executables/network dials, OAuth, policy writes or unknown-result
+reconciliation. Final English and Chinese scenes recorded three/two in-memory
+reconnects, ten/seven canonical reads and zero forbidden command attempts.
+An initial invalid server-name setup and later user-interrupted actions are
+excluded. The valid baseline captures recorded zero attempts; its subsequent
+interrupted state had four refused auth/config attempts, without live writes.
+A final English combined draft action was interrupted and excluded with zero
+attempts. Mod-L did not move focus in this isolated composition, so only the
+observed pointer Composer entry is claimed. VoiceOver, OS IME, measured contrast,
+six other native locale layouts and other-platform GUIs were not run. No browser
+visual suite or performance benchmark ran.
+
+Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web`
+passed in 368.47 s: all 391 files / 3,094 tests and every compiler, lint,
+format, dependency/contract, style, locale, resource, bundle and module gate.
+The reconnect API-consumer inventory now passes with its real UI consumer;
+no guard or assertion changed. All eleven portable ESM resources are byte
+identical to the baseline. `make check-native` passed tests/vet/build and the
+supported Wails build in 25.17 s. Non-failing loopback diagnostics and duplicate
+`-lobjc` warnings remain separate; this run does not claim their cause was
+repaired.
+
+All four owned native PIDs and both CLI PIDs exited. After retaining ninety-four
+UTF-8 evidence files and twenty capture hashes, guarded cleanup unregistered
+the exact bundle and removed the private root/data/logs/pointer, ten newly
+generated outputs/caches and two bundle-specific Library directories. The
+pre-existing UI test cache, user data, references, compiler/dependency caches,
+unrelated processes and primary checkout were preserved. Remote main was
+refreshed at `2b8cd16b6` before publication; the normal-hook delivery receipt
+is recorded after the commit is confirmed remotely.
 
 ### Retained read frames and connection task actions
 

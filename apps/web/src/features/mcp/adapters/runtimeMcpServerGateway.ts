@@ -131,6 +131,9 @@ function runtimeMCPServerGateway(client: FlameClient): MCPServerGateway {
     async setToolExposure(server, name, disabled) {
       await client.mcp.setToolExposure({ server, name, disabled });
     },
+    async reconnect(server) {
+      await client.mcp.reconnect(server);
+    },
     async createAuthorizationAttempt(server, signal) {
       const attempt = await client.mcp.authorizationAttempts.create(server, signal);
       return authorizationAttempt(attempt);

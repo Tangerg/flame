@@ -107,6 +107,77 @@ describe("MCPServerMutationOwner", () => {
     await expect(blocked).resolves.toMatchObject({ enabled: false });
   });
 
+  it("serializes reconnection with other commands for the same server", async () => {
+    const enabling = Promise.withResolvers<MCPServerSettings>();
+    const setEnabled = vi.fn(() => enabling.promise);
+    const reconnect = vi.fn((_id: MCPServerID) => Promise.resolve());
+    owner = MCPServerMutationOwner.install({
+      setEnabled,
+      reconnect,
+    } as unknown as MCPServerGateway);
+    queryClient.setQueryData([MCP_SERVERS_KEY], [server({ status: "failed" })]);
+
+    const enabled = owner.setEnabled(userMCPServer("cloud"), true);
+    const reconnected = owner.reconnect(userMCPServer("cloud"));
+    const independent = owner.reconnect(userMCPServer("local"));
+    await vi.waitFor(() => expect(setEnabled).toHaveBeenCalledOnce());
+    await expect(independent).resolves.toBeUndefined();
+    expect(reconnect.mock.calls).toEqual([[userMCPServer("local")]]);
+
+    enabling.resolve(server({ status: "connecting" }));
+    await expect(enabled).resolves.toMatchObject({ status: "connecting" });
+    await expect(reconnected).resolves.toBeUndefined();
+    expect(reconnect.mock.calls).toEqual([[userMCPServer("local")], [userMCPServer("cloud")]]);
+    expect(queryClient.getQueryData([MCP_SERVERS_KEY])).toEqual([server({ status: "connecting" })]);
+  });
+
+  it("rereads canonical server facts after a reconnect acknowledgement without writing them", async () => {
+    const failed = server({ status: "failed", errorDetail: "Couldn't reach this server." });
+    owner = MCPServerMutationOwner.install({
+      reconnect: vi.fn().mockResolvedValue(undefined),
+    } as unknown as MCPServerGateway);
+    queryClient.setQueryData([MCP_SERVERS_KEY], [failed]);
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+    await expect(owner.reconnect(userMCPServer("cloud"))).resolves.toBeUndefined();
+
+    expect(queryClient.getQueryData([MCP_SERVERS_KEY])).toEqual([failed]);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: [MCP_SERVERS_KEY] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: [MCP_TOOLS_KEY] });
+  });
+
+  it("retires pending and queued reconnection with its Runtime generation", async () => {
+    const retired = Promise.withResolvers<void>();
+    const reconnect = vi.fn(() => retired.promise);
+    const successorReconnect = vi.fn().mockResolvedValue(undefined);
+    owner = MCPServerMutationOwner.install({ reconnect } as unknown as MCPServerGateway);
+    queryClient.setQueryData([MCP_SERVERS_KEY], [server({ status: "failed" })]);
+
+    const inFlight = rejected(owner.reconnect(userMCPServer("cloud")));
+    const queued = rejected(owner.reconnect(userMCPServer("cloud")));
+    await vi.waitFor(() => expect(reconnect).toHaveBeenCalledOnce());
+
+    owner.replaceRuntimeGeneration(
+      () => ({ reconnect: successorReconnect }) as unknown as MCPServerGateway,
+    );
+    await expect(inFlight).resolves.toMatchObject({
+      message: "mcp_server_mutation_generation_retired",
+    });
+    await expect(queued).resolves.toMatchObject({
+      message: "mcp_server_mutation_generation_retired",
+    });
+    const accepted = [server({ status: "connected", toolCount: 2 })];
+    queryClient.setQueryData([MCP_SERVERS_KEY], accepted);
+    const acceptedCache = queryClient.getQueryData([MCP_SERVERS_KEY]);
+    expect(acceptedCache).toEqual(accepted);
+
+    retired.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(reconnect).toHaveBeenCalledOnce();
+    expect(successorReconnect).not.toHaveBeenCalled();
+    expect(queryClient.getQueryData([MCP_SERVERS_KEY])).toBe(acceptedCache);
+  });
+
   it("does not turn failed cache repair into an accepted server command failure", async () => {
     const saved = server({ status: "connected", toolCount: 2 });
     owner = MCPServerMutationOwner.install({
