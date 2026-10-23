@@ -216,6 +216,15 @@ export async function moduleArtifacts({
     const product = author.Require.find(
       (p) => p.Path === "github.com/Tangerg/flame",
     );
+    // candidates owns version -> immutable source commit. A candidate version's
+    // bytes are its pinned commit's source, never whatever HEAD happens to be, so
+    // an unrelated commit can never redefine an already-published version.
+    const candidates = JSON.parse(
+      await readFile(
+        join(repository, "tooling/moduleproxy/candidates.json"),
+        "utf8",
+      ),
+    );
     for (const [selected, subdir] of [
       [local, "packages/local-runtime"],
       [product, ""],
@@ -224,13 +233,27 @@ export async function moduleArtifacts({
         throw new Error(
           "candidate dependencies must be selected before freezing source",
         );
+      const pinned = candidates[selected.Path]?.[selected.Version];
+      if (!pinned)
+        throw new Error(
+          `module proxy: ${selected.Path} ${selected.Version} has no pinned source commit in tooling/moduleproxy/candidates.json`,
+        );
+      const source = run(
+        "git",
+        ["rev-parse", `${pinned}^{commit}`],
+        repository,
+        process.env,
+        true,
+      )
+        .toString()
+        .trim();
       run(
         tool,
         [
           "--repository",
           repository,
           "--revision",
-          frozen,
+          source,
           "--output",
           output,
           "--module",

@@ -6,6 +6,7 @@ import {
   readdir,
   realpath,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { isAbsolute, join, sep } from "node:path";
@@ -159,6 +160,37 @@ try {
   if (component) {
     const npmArtifacts = join(output, "artifacts/npm");
     await mkdir(npmArtifacts, { recursive: true });
+    // Materialize every packing input from the frozen commit into one tree, then
+    // build and pack inside it. A git-ignored or stale working-tree file is
+    // invisible to the diff/untracked gates above, so packing from the live tree
+    // could leak it into a published SDK; packing from this tree cannot.
+    // node_modules is the shared toolchain, symlinked rather than archived.
+    const frozenTree = join(output, ".frozen");
+    const frozenTar = join(output, ".frozen.tar");
+    run(
+      "git",
+      [
+        "archive",
+        "--format=tar",
+        `--output=${frozenTar}`,
+        revision,
+        "--",
+        "packages/icons",
+        "packages/ui",
+        "packages/runtime-client/typescript",
+        "packages/component-sdk",
+        "package.json",
+        "package-lock.json",
+        "plugins/tsconfig.json",
+      ],
+      root,
+      process.env,
+      true,
+    );
+    await mkdir(frozenTree);
+    run("tar", ["-xf", frozenTar, "-C", frozenTree], root, process.env, true);
+    await rm(frozenTar);
+    await symlink(join(root, "node_modules"), join(frozenTree, "node_modules"));
     const dependencies = {};
     for (const directory of [
       "packages/icons",
@@ -166,9 +198,7 @@ try {
       "packages/runtime-client/typescript",
       "packages/component-sdk",
     ]) {
-      const packageDirectory = join(root, directory);
-      // Build the publishable product from the frozen source, so a stale dist in
-      // the working tree is never packed into the author project.
+      const packageDirectory = join(frozenTree, directory);
       const manifest = JSON.parse(
         await readFile(join(packageDirectory, "package.json"), "utf8"),
       );
@@ -194,7 +224,7 @@ try {
       dependencies[packed.name] = `file:./artifacts/npm/${packed.filename}`;
     }
     const lock = JSON.parse(
-      await readFile(join(root, "package-lock.json"), "utf8"),
+      await readFile(join(frozenTree, "package-lock.json"), "utf8"),
     );
     const version = (name) => {
       const entry = lock.packages[`node_modules/${name}`];
@@ -231,13 +261,16 @@ try {
       ) + "\n",
     );
     const config = JSON.parse(
-      await readFile(join(root, "plugins/tsconfig.json"), "utf8"),
+      await readFile(join(frozenTree, "plugins/tsconfig.json"), "utf8"),
     );
     config.include = ["component"];
     await writeFile(
       join(output, "tsconfig.json"),
       JSON.stringify(config, null, 2) + "\n",
     );
+    // Every packing input has been consumed; drop the frozen tree before the
+    // author project's own install so it never ships inside the release.
+    await rm(frozenTree, { recursive: true, force: true });
     await writeFile(
       join(output, "build-component.mjs"),
       `import {rolldown} from "rolldown";\nimport {buildComponent} from "@flame/component-sdk/build";\nawait buildComponent({compiler:rolldown,input:new URL("./component/component.tsx",import.meta.url).pathname,directory:new URL("./package/io.github.tangerg.flame/components",import.meta.url).pathname});\n`,
