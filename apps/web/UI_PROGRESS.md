@@ -7983,14 +7983,21 @@ Both apps restore Actual Size and Quit. All fifteen recorded processes are dead;
 both bundles are unregistered. Nine new checkout outputs, four owned Library
 directories and two bundle-temp directories are removed. Thirty-six output
 presence baselines, three original files/inventories and eleven product resource
-hashes are preserved. The private evidence root remains only until publication
-and evidence archive. Its accepted artifacts comprise 596 compiled files, eight
-module files, two three-file app bundles and eleven private inputs. Primary
+hashes are preserved. Implementation `3bfd8533bb938f5577923df5a02c1810fd2e5291` is pushed to remote
+main; normal formatting, workspace lint and commit-message hooks pass. All
+accepted source bytes remain unchanged after those hooks. The evidence archive
+round-trips exactly: **96 UTF-8 files** and **sixteen screenshot digests**, gzip
+SHA-256 `bfb461e11b1805e72de7e8f8a7583c887f37fea9d3942c3fa7b738812415d2c3`.
+The exact private root `flame-ui-directory-scope-1025-TuYPn0` is deleted after
+publication, accepted-source/artifact and ownership checks. Its accepted artifacts
+comprise 596 compiled files, eight module files, two three-file app bundles and
+eleven private inputs. Primary
 parallel work and read-only references remain untouched.
 
-Next candidate from native observation: the Files list exposes generic AX
-containers for its leaves. Trace its actual selection, keyboard scope and reader
-return before deciding whether this is a defect. The goal remains active.
+Follow-up source tracing finds the Files list's existing tree/treeitem semantics,
+single-tab-stop cursor and guarded reader return. Generic AX container wording
+alone does not establish a product defect, so no speculative change is made.
+Continue content/Dock review through actual reading tasks; the goal remains active.
 
 ### Notification history and current action focus
 
