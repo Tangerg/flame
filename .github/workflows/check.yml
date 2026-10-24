@@ -2,6 +2,9 @@ name: Check
 on:
   push:
   pull_request:
+env:
+  NODE_VERSION: 22.22.1
+  NPM_VERSION: 11.12.1
 jobs:
   workspace:
     strategy:
@@ -17,9 +20,9 @@ jobs:
           go-version-file: go.work
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.22.1
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm install --global npm@11.12.1
+      - run: npm install --global npm@"$NPM_VERSION"
       - run: make setup
       - run: make check
       - if: runner.os == 'macOS'
@@ -35,9 +38,9 @@ jobs:
           go-version-file: go.work
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.22.1
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm install --global npm@11.12.1
+      - run: npm install --global npm@"$NPM_VERSION"
       - run: make setup
       - run: go install github.com/wailsapp/wails/v3/cmd/wails3@$(cd apps/desktop && go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)
       - run: make check-native
