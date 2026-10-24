@@ -111,16 +111,17 @@ func (o *observedInteractionModel) Stream(
 			return runs.ModelObservation{Text: text.String(), Reasoning: reasoning.String()}
 		}
 		var firstOutputLatencyMillis *int64
+		var failure error
 		var stopped bool
 		for chunk, streamErr := range sequence {
 			if streamErr != nil {
-				yield(nil, o.finishFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis, streamErr))
-				return
+				failure = streamErr
+				break
 			}
 			receivedAt := time.Now()
 			if err := accumulated.Add(chunk); err != nil {
-				yield(nil, o.finishFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis, err))
-				return
+				failure = err
+				break
 			}
 			for _, part := range chunk.Parts {
 				switch part.Kind {
@@ -134,13 +135,15 @@ func (o *observedInteractionModel) Stream(
 				firstOutputLatencyMillis = new(receivedAt.Sub(dispatchedAt).Milliseconds())
 			}
 			if !yield(chunk, nil) {
-				// Scope stopped consuming. Break so the physical stream settles its own
-				// result first; recording the failure here, still nested in the inner
-				// iterator, would commit an unknown outcome and drop usage the provider
-				// has already reported on this chunk.
 				stopped = true
 				break
 			}
+		}
+		// Every early exit must unwind the physical stream before reading its
+		// settled evidence, including errors raised by an outer observer.
+		if failure != nil {
+			yield(nil, o.finishFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis, failure))
+			return
 		}
 		if stopped {
 			if err := o.settleFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis); err != nil {

@@ -16,7 +16,9 @@ auxiliary calls now publish through the original execution member, with a persis
 cannot write primary output or context. Both purposes retain unknown consumption
 through live settlement and recovery, so known token counts survive while exact
 total cost remains absent. Goal consumption derives from the same committed Run
-metrics. Existing settled historical totals are not recalculated on read or restart.
+metrics. Live settlement waits for nested streams to exit before reading physical
+evidence, including observer failures, invalid chunks and consumer stops.
+Existing settled historical totals are not recalculated on read or restart.
 Each calling operation supplies its actual resource
 limits; no universal Run/Goal cost ceiling is inferred from accounting totals. The journal now requires logical_purpose for logical
 rows; old database shapes are refused unchanged by strict schema admission, without

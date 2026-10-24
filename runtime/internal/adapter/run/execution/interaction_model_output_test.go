@@ -182,6 +182,89 @@ func TestFailedOuterStreamRetainsCompletedInnerResponse(t *testing.T) {
 	}
 }
 
+func TestOuterStreamFailureWaitsForPhysicalSettlement(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		failure error
+	}{
+		{name: "observer error", failure: errors.New("outer observer rejected the completed response")},
+		{name: "invalid chunk"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "model-evidence.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
+			journal := sqlite.NewModelInvocationStore(db)
+			provider := budgetStopCompleteModel{text: "physical answer", usage: &chat.Usage{InputTokens: 12, OutputTokens: 3}}
+			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, func(string, string, *chat.Usage) accounting.Cost {
+				cost, _ := accounting.NewCost(.25)
+				return cost
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			outer := interactionChatResolverFunc(func(ctx context.Context, selection modelchoice.Selection) (modeladapter.ResolvedChat, error) {
+				resolved, err := recorded.ResolveChat(ctx, selection)
+				if err != nil {
+					return modeladapter.ResolvedChat{}, err
+				}
+				streamer, _ := resolved.Streamer()
+				return modeladapter.NewResolvedChat(struct {
+					chat.Model
+					chat.Streamer
+				}{
+					Model: resolved.Model(),
+					Streamer: chat.StreamerFunc(func(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+						return func(yield func(*chat.ResponseDelta, error) bool) {
+							for delta, err := range streamer.Stream(ctx, request) {
+								if err != nil {
+									yield(nil, err)
+									return
+								}
+								if delta.FinishReason != "" {
+									yield(nil, test.failure)
+									return
+								}
+								if !yield(delta, nil) {
+									return
+								}
+							}
+						}
+					}),
+				}, nil)
+			})
+			executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
+				Lifetime: t.Context(), BuildID: interactionTestBuildID, ChatResolver: outer, ModelEvidence: journal, StreamModelResponses: true,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+			failed := payloadsOf[runs.ModelCallFailed](events)
+			if len(failed) != 1 {
+				t.Fatalf("expected one failed model call: %+v", failed)
+			}
+			source, found, err := journal.EndpointForCaller(t.Context(), failed[0].CallID)
+			if err != nil || !found || source.Response == nil || source.CostUSD == nil || *source.CostUSD != .25 {
+				t.Fatalf("physical response was not settled: %+v %v", source, err)
+			}
+			fact := failed[0]
+			if !reflect.DeepEqual(fact.KnownResponse, source.Response) || fact.Accounting == nil || !reflect.DeepEqual(fact.Accounting.ReportedUsage, source.Usage) {
+				t.Fatalf("logical failure preceded physical settlement: %+v", fact)
+			}
+			if cost, known := fact.Accounting.Cost.USD(); !known || cost != .25 {
+				t.Fatalf("logical failure lost the settled price: known=%v cost=%v", known, cost)
+			}
+			ends := payloadsOf[runs.SegmentEnded](events)
+			if len(payloadsOf[runs.ModelCallCompleted](events)) != 0 || len(ends) != 1 || ends[0].Reason != run.OutcomeFailed {
+				t.Fatalf("known evidence changed the failed outer outcome: %+v", ends)
+			}
+		})
+	}
+}
+
 func TestUnavailableModelStreamClosesAttemptWithoutInventingResponse(t *testing.T) {
 	for _, test := range []struct {
 		name     string
