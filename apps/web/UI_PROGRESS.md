@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Conversation imports preserve selected-file read failures instead of treating them as cancellation. Existing import ownership publishes localized recovery guidance in all eight locales; cancellation stays quiet and explicit retries remain available. All 399 Web files / 3,399 tests, all 25 non-test gates and supported native checks pass. Actual English/Chinese Wails tasks qualify real NotReadableError feedback, cancellation, retry, selected bytes, source return and continued drafts, including native 200%. The narrow bottom-toast stack still overlaps composing content and is the next shared-layout task. Owned processes and new checkout/Library/bundle-temp outputs are cleaned; delivery and guarded evidence retirement follow. Primary parallel work is preserved.
+Updated: 2026-10-24. Conversation import read failures now produce localized recovery guidance; cancellation stays quiet and explicit retries remain available. Implementation `436253d1098381dbbfd85dbca985fde474b84e49` is pushed to remote main. All 399 Web files / 3,399 tests, 25 non-test gates and supported native checks pass. Actual English/Chinese Wails tasks qualify real NotReadableError feedback, cancellation, retry, selected bytes, source return and continued drafts, including 200%. The observed narrow toast/composer overlap remains the next shared-layout priority. All owned processes, new checkout/Library/bundle-temp outputs and the exact private root are cleaned; source/output/archive guards pass. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-import-read-1024`, based on delivered main `1fa1826f7b2a5dc8f1f3b45ced1703c584a1f965`. Fresh fetches found no incoming commit at batch start. Real native selection of an owned mode-000 file reproduced an unreported NotReadableError. FileTransfer now preserves that failure, while the existing import generation owns feedback, release and retirement; exact text, JSON parsing, Runtime admission, native export, image saving and established navigation retain their owners. Thirty-four focused tests, two failures against the original production sources, all 399 Web files / 3,399 tests, 25 non-test gates and supported native checks qualify the repair. EN/light/14 px and ZH/dark/18 px/custom-blue/200% native tasks preserve original input identities and continued drafts. All 5,725 accepted non-Markdown sources, eleven resources, fifteen private inputs, 595 compiled inputs and eight private module artifacts retain accepted bytes. Twenty-one owned PIDs are dead; new checkout, Library and bundle-temp outputs are removed, and original output files are restored. This verified boundary repair is ready for explicit-path main delivery and guarded archive retirement. The observed narrow toast/composer overlap remains open and takes priority in the following batch; broader notification-layout readiness is unproven. Prior export, notification, Find, Approval and Runtime-timeout records retain their own qualifications.
+The continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-import-read-1024`. Implementation `436253d1098381dbbfd85dbca985fde474b84e49`, based on main `1fa1826f7b2a5dc8f1f3b45ced1703c584a1f965`, is pushed to remote main and verified by exact remote hash, a clean checkout and zero unpushed commits. Fresh fetches at batch start and delivery found no incoming commit. Real native selection of an owned mode-000 file reproduced the silent read error; FileTransfer now preserves its rejection and the existing import generation owns recovery feedback, release and retirement. All 399 Web files / 3,399 tests, 25 non-test gates and supported native checks pass. EN/light/14 px and ZH/dark/18 px/custom-blue/200% native tasks qualify outcomes and original input continuity. All 5,725 accepted non-Markdown sources, eleven resources, fifteen private inputs, 595 compiled inputs and eight private module artifacts retain accepted bytes. Twenty-one owned PIDs are dead; new checkout, Library, bundle-temp outputs and the exact private root are absent; original output bytes/inventories are preserved. The verified compressed archive contains 179 UTF-8 evidence files and 12 screenshot digests. The observed narrow toast/composer overlap is open and takes priority next; broader notification-layout readiness remains unproven. Retain the just-qualified file-transfer, generation and navigation contracts and the earlier export, notification, Find, Approval and Runtime-timeout qualifications.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -666,8 +666,20 @@ All **21** owned PIDs are dead. Seven new checkout paths, nine bundle Library
 paths and three exact bundle temporary directories are removed; all three apps
 are unregistered. The original native-check binary is restored and original
 output files/directories are preserved. Dependencies, toolchains, reference
-resources, user data and parallel primary work remain intact. The private root
-remains only for guarded archive retirement; exact main delivery receipts follow.
+resources, user data and parallel primary work remain intact.
+
+Implementation `436253d1098381dbbfd85dbca985fde474b84e49` is committed and pushed to
+remote main. Normal formatter, all-workspace lint and commit-message hooks pass;
+exact remote hash, clean checkout and zero-ahead/behind checks confirm delivery.
+The verified compressed archive contains **179 UTF-8 evidence files** and **12
+screenshot digests**, gzip SHA-256
+`ee1d3293b24dccd1930fc8ebd9888764ef3ffcd163a73d62e4f099507c87e8c2`.
+Guarded retirement removes the exact private root after rechecking all accepted
+source/private/compiled/module inputs, three native binaries, complete Web/native
+results, all twenty-one dead PIDs, seventeen output-presence baselines, three
+original files/inventories, absent Library/bundle-temp paths and the exact main
+commit. This documentation-only receipt changes no product bytes or qualification
+scope.
 
 The next priority is the directly observed narrow notification/composer overlap:
 make feedback readable alongside the ongoing drafting task through its shared
