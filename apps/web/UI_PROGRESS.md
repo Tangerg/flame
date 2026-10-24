@@ -1,14 +1,15 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Notification/menu obstruction, task-local errors and the compact directory identity are implemented, natively qualified and pushed through `c9b9d729f753007073e896387cf7429daadd4de1`. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
+Updated: 2026-10-25. Notification/menu obstruction, task-local errors, compact directory identity, catalog clearing and compact model selection are implemented, natively qualified and pushed through `b5a641224a1324515ab41150036830a3ef692a39`. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/catalog-search-1025`, starting from delivered main
-`c9b9d729f753007073e896387cf7429daadd4de1`. The last integration interval
+is clean on `codex/catalog-search-1025`. Catalog implementation
+`b5a641224a1324515ab41150036830a3ef692a39` is published to remote main from frozen
+accepted base `c9b9d729f753007073e896387cf7429daadd4de1`. The last integration interval
 includes incoming main through `1e7b76720`; the former pending author/bootstrap
 commits are already integrated. The primary checkout remains user-owned.
 
@@ -21,7 +22,7 @@ directory scope are completed, not next tasks.
 Catalog clear/selection/return is implemented and natively qualified, including
 compact model height and a single visible full-pane title. Its original-source
 regression and final scoped verification are recorded under the shared catalog
-section below. Publication and final evidence retirement complete this batch.
+section below. Publication and final evidence retirement are complete.
 The next review must start from a concrete remaining task observation.
 
 ### Earlier integration evidence
@@ -1404,8 +1405,19 @@ not live provider persistence. All 18 recorded processes exited; seven new
 checkout outputs, four owned Library paths and two bundle-temp paths were removed.
 All 36 output-presence baselines, three original files and eleven accepted product
 resources are preserved; two missing Vitest baseline files were restored from the
-captured originals. The private root remains only until publication and evidence
-retirement.
+captured originals. Implementation `b5a641224a1324515ab41150036830a3ef692a39` is pushed to remote
+main and verified by exact remote hash, clean owned checkout and zero commits
+ahead or behind. No incoming integration was required; the frozen base was kept
+throughout this complete UI task. Independent verification covers all 36 exact
+output inventories, three original file hashes, eleven resources and 606 accepted
+private artifacts (596 compiled files, eight module-proxy files, two binaries).
+The independently round-trip-verified archive retains 153 UTF-8 evidence files
+and 26 screenshot digests, gzip SHA-256
+`ef10f41f589e6a54f03a85b7eb93ab40a49464c33899dedf686b3abcbd6c9b96`.
+Both apps are unregistered and the exact owned root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-catalog-search-1025-ZzI1dn`
+is absent. Primary work, user data and reference resources remain untouched.
+This documentation-only receipt changes no tested source.
 
 The shared document focus rule now suppresses the browser's native outline on
 `data-chrome-focus` controls. Their existing field edge or row state owns focus;
