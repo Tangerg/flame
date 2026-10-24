@@ -6,7 +6,9 @@ async function expectFocusVisible(target: Locator, request: Locator) {
   await expect(target).toBeFocused();
   const bounds = (await request.boundingBox())!;
   const focused = (await target.boundingBox())!;
-  const footer = (await request.getByRole("button", { name: /^(Next|Skip)$/ }).boundingBox())!;
+  const footer = (await request
+    .getByRole("button", { name: "Submit answers", exact: true })
+    .boundingBox())!;
   expect(focused.y).toBeGreaterThanOrEqual(bounds.y);
   expect(focused.y + focused.height).toBeLessThanOrEqual(footer.y);
 }
@@ -96,7 +98,9 @@ for (const [width, height, fixture, theme] of [
     await expect(options.first()).toBeChecked();
     await expect(request.getByRole("checkbox", { name: lastOption, exact: true })).toBeChecked();
     await page.keyboard.press("Tab");
-    const submit = request.getByRole("button", { name: "Next", exact: true });
+    await expect(request.getByRole("button", { name: "Skip", exact: true })).toBeFocused();
+    await page.keyboard.press("Tab");
+    const submit = request.getByRole("button", { name: "Submit answers", exact: true });
     await expect(submit).toBeFocused();
     const button = (await submit.boundingBox())!;
     const card = (await request.boundingBox())!;

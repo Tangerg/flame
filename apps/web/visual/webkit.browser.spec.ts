@@ -137,14 +137,26 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
-test("WebKit question radio navigation advances through Base UI semantics", async ({ page }) => {
+test("WebKit question radio navigation stays editable until explicit confirmation", async ({
+  page,
+}) => {
   await openFixture(page, { fixture: "agent", state: "question", theme: "dark" });
 
   const first = page.getByRole("radio", { name: /Race detector/ });
   await first.focus();
   await page.keyboard.press("ArrowDown");
 
+  const selected = page.getByRole("radio", { name: /Visual suite/ });
+  await expect(selected).toBeFocused();
+  await expect(selected).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByText("1 of 2", { exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "What should this gate protect?" })).toHaveCount(
+    0,
+  );
+
+  await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "What should this gate protect?" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "What should this gate protect?" })).toBeFocused();
   await expect(page.getByText("2 of 2", { exact: true })).toBeVisible();
   await expectNoPageOverflow(page);
 });

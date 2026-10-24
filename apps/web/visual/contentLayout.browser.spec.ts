@@ -325,7 +325,7 @@ for (const theme of ["light", "dark"]) {
     const last = page.getByRole("checkbox", { name: labels[1], exact: true });
     await last.click();
     await expect(last).toHaveAttribute("aria-checked", "true");
-    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await page.getByRole("button", { name: "Submit answers", exact: true }).click();
     await expect(page.locator("html")).toHaveAttribute(
       "data-visual-resumed-response",
       JSON.stringify({ type: "answer", answers: [[labels[1]]] }),

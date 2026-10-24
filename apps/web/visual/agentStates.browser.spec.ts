@@ -141,10 +141,15 @@ test("question settlement uses the exact interrupt identity", async ({ page }) =
   );
 
   await page.getByRole("radio", { name: /Race detector/ }).click();
+  await expect(page.getByText("1 of 2", { exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "What should this gate protect?" })).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: "Next", exact: true }).click();
   await page
     .getByRole("textbox", { name: "What should this gate protect?" })
     .fill("Runtime boundaries and cancellation paths.");
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Submit answers", exact: true }).click();
 
   const settled = page.getByRole("button", { name: "Asked 2 questions" });
   await expect(settled).toBeVisible();

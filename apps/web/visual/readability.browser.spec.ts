@@ -93,12 +93,13 @@ for (const theme of ["light", "dark"]) {
     for (const label of labels) expect(label.line).toBeGreaterThanOrEqual(label.glyph);
     await open(page, `fixture=agent&state=question&theme=${theme}`);
     await page.getByRole("radio", { name: "Race detector", exact: true }).click();
+    await page.getByRole("button", { name: "Next", exact: true }).click();
     const answer =
       "Keep each accepted application fact with its owner.\nPreserve the original command and verify the captured result.";
     await page
       .getByRole("textbox", { name: "What should this gate protect?", exact: true })
       .fill(answer);
-    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await page.getByRole("button", { name: "Submit answers", exact: true }).click();
     await page.getByRole("button", { name: /Asked.*2 questions/ }).click();
     const settled = page.locator("[data-settled-answer]").filter({ hasText: answer });
     await expect(settled).toHaveText(answer);

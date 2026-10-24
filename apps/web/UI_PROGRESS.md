@@ -6,7 +6,7 @@ This user-requested file is the maintained progress and handoff record for the d
 
 ## Current position
 
-The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/question-navigation-1024`. At the user's latest synchronization request it fast-forwarded from delivered main `a2a6ba1d4` to `08daa7a7cf5a8a1ea1954717c46fbcb6688aa688`, preserving all fourteen active paths without conflict. The primary checkout and its user-owned work remain outside this batch. Question selection, page-focus registration, empty controlled values and question-to-Composer focus now each have one responsible owner. Focused regressions, complete Web gates, supported native build and main-synchronized English/Chinese native tasks pass. All 5,723 accepted non-Markdown source inputs, eleven plugin resources and nineteen private inputs retain their accepted bytes. Nine owned CLI/native PIDs are dead; seven new checkout directories and six unique Library Cache/WebKit directories are removed, all bundles are unregistered, and three preexisting output files retain their original bytes. Implementation `0bc2a5c9d0b3c1c5c7b78ae37048ae2899e99fcf` is committed with normal hooks and pushed to remote main. Exact remote hash, clean owned checkout and zero unpushed commits pass before this receipt. The guarded private root is archived and removed; session memory retains 296 UTF-8 evidence files and 17 screenshot hashes, gzip SHA-256 `46c8f23e5d4da602caafe77055e3ef0af2628c171ffcaac56c36f36a8f574d99`. Continue from the resulting main revision and select the next batch only from a new evidenced defect.
+The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/question-navigation-1024`. At the user's latest synchronization request it fast-forwarded from delivered main `a2a6ba1d4` to `08daa7a7cf5a8a1ea1954717c46fbcb6688aa688`, preserving all fourteen active paths without conflict. The primary checkout and its user-owned work remain outside this batch. Question selection, page-focus registration, empty controlled values and question-to-Composer focus now each have one responsible owner. Focused regressions, complete Web gates, supported native build and main-synchronized English/Chinese native tasks pass. At implementation delivery, all 5,723 accepted non-Markdown source inputs, eleven plugin resources and nineteen private inputs retain their accepted bytes. A subsequent static review migrates five existing browser behavior files to explicit question confirmation without any production change. Nine owned CLI/native PIDs are dead; seven new checkout directories and six unique Library Cache/WebKit directories are removed, all bundles are unregistered, and three preexisting output files retain their original bytes. Implementation `0bc2a5c9d0b3c1c5c7b78ae37048ae2899e99fcf` is committed with normal hooks and pushed to remote main. Exact remote hash, clean owned checkout and zero unpushed commits pass before this receipt. The guarded private root is archived and removed; session memory retains 296 UTF-8 evidence files and 17 screenshot hashes, gzip SHA-256 `46c8f23e5d4da602caafe77055e3ef0af2628c171ffcaac56c36f36a8f574d99`. Continue from the resulting main revision and select the next batch only from a new evidenced defect.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -2108,8 +2108,8 @@ Earlier Session-identity MCP-readiness failures remain qualified in their own
 section; this passing run does not establish their cause. No standalone Runtime
 or CLI suite, browser visual suite or performance benchmark is run for this batch.
 
-All 5,723 accepted non-Markdown inputs, eleven installed plugin resources and
-nineteen private inputs retain their accepted hashes. The additional source is
+At implementation delivery, all 5,723 accepted non-Markdown inputs, eleven installed
+plugin resources and nineteen private inputs retain their accepted hashes. The additional source is
 main's new `tooling/npm-consumer-lock.mjs`. Nine owned CLI/native PIDs are dead.
 Path, UID, birth-time, symlink and tracked-file guards remove seven new checkout
 output/cache directories and six unique Library Cache/WebKit directories;
@@ -2125,6 +2125,24 @@ and removed. Session memory retains 296 UTF-8 evidence files and 17 screenshot
 hashes, gzip SHA-256
 `46c8f23e5d4da602caafe77055e3ef0af2628c171ffcaac56c36f36a8f574d99`.
 Continue only from a new evidenced task defect; preserve these completed owners.
+
+The immediate post-delivery review found five existing browser behavior files
+still using automatic radio progression, the old last-page Next label or the old
+single footer Tab stop. Their contracts are migrated in `agentStates`,
+`readability`, `contentLayout`, `questionReading` and `webkit.browser.spec.ts`:
+explicit Next separates choice and text, Submit answers names the final action,
+Skip remains an independent keyboard stop, and the footer geometry query has one
+precise target. The WebKit contract now checks selected-radio focus and page 1
+before confirmation. Existing payload, multiline-text, visibility, overflow and
+geometry assertions remain. This corrects an omitted test migration from the
+implementation; there is no production source, fixture or build-policy change.
+After rebuilding only the two required declaration packages, typecheck including
+`visual` passes (1.34 s), lint passes (0.36 s) and all five files pass formatting
+(0.31 s). Browser suites remain not run under the goal's native-only acceptance
+agreement. The earlier actual Wails flows qualify the same unchanged production
+behavior; the full Web/native checks above precede this test-only follow-up.
+The two new declaration-output directories are removed with path, UID, birth-time,
+symlink, tracked-file and exact-copy checks; no native app is launched.
 
 ## Captured Session naming task
 
