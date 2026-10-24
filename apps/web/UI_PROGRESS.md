@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Directory read Retry now re-enters the tree's existing cursor row, so arrow navigation continues through repeated failure and recovery without changing file selection. All 60 focused tests, 3,269 Web tests, 25 non-test Web gates and the supported native check pass. Actual English/light/14 px and Chinese/dark/18 px/custom-blue flows qualify retry, child reading, return and continued drafts, including half-screen sizing and native 200% zoom. Owned processes and new checkout/Library outputs are cleaned; preexisting output files are restored. The private evidence root remains only for delivery archiving. Commit and remote delivery verification follow.
+Updated: 2026-10-24. Directory read Retry now re-enters the tree's existing cursor row, so arrow navigation continues through repeated failure and recovery without changing file selection. All 60 focused tests, 3,269 Web tests, 25 non-test Web gates and the supported native check pass. Actual English/light/14 px and Chinese/dark/18 px/custom-blue flows qualify retry, child reading, return and continued drafts, including half-screen sizing and native 200% zoom. Owned processes, new checkout/Library outputs and the archived private evidence root are cleaned; preexisting output files are restored. Implementation `18b185fdf` is pushed to remote main and its exact hash is verified.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user's latest instruction explicitly resumes continuous work. The directory Retry batch starts from remote main `b8236495877b11d356fd56761dd4bb39ffa0df86`, retaining the delivered shared read-error handoff. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` uses `codex/tree-retry-keyboard-1024`. Its only product change is shared `TreeRoot` focus entry; the existing primitive and file-workspace suites add seven regressions. The feature's rendered cursor remains authoritative, separately from the selected file. There is no completion-time focus action, new cursor state or query/navigation change. Focused, full Web, supported native and actual English/Chinese acceptance pass. Owned processes and new outputs/Library state are removed and preexisting files restored. Commit, remote push and private evidence archiving remain to be completed. The primary checkout `/Users/tangerg/Desktop/flame` remains untouched on `codex/repository-ownership-cleanup` at `f5af47969`. A repeated user-requested read-only check found no unpublished commits or modified code; it was two commits behind the preceding remote delivery and contained only untracked `docs/ui打磨优化.md`. Next, qualify the separate workspace refresh boundary before selecting another change.
+The user's latest instruction explicitly resumes continuous work. The directory Retry batch starts from remote main `b8236495877b11d356fd56761dd4bb39ffa0df86`, retaining the delivered shared read-error handoff, and is delivered as `18b185fdf2ce2caafd075e53a9ba86fa040fc869`. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `main`. Its only product change is shared `TreeRoot` focus entry; the existing primitive and file-workspace suites add seven regressions. The feature's rendered cursor remains authoritative, separately from the selected file. There is no completion-time focus action, new cursor state or query/navigation change. Focused, full Web, supported native and actual English/Chinese acceptance pass. The exact remote implementation hash, a clean owned checkout and zero unpushed commits are verified. Owned processes, new outputs/Library state and the archived private evidence root are removed; preexisting files are restored. The primary checkout `/Users/tangerg/Desktop/flame` remains untouched on `codex/repository-ownership-cleanup` at `f5af47969`. Repeated user-requested read-only checks found no unpublished commits or modified code there; only untracked `docs/ui打磨优化.md` was present. Next, qualify the separate workspace refresh boundary before selecting another change.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -2270,9 +2270,16 @@ app bundles are unregistered; seven new checkout output directories and six
 unique Library Cache/WebKit directories are removed. The preexisting native
 binary is restored and all three preexisting files retain their original bytes.
 Four build copies with older birth metadata were qualified against exact
-read-only source bytes before cleanup. The guarded private root remains only
-until delivery evidence is archived. Commit, push and final cleanup verification
-are still pending here.
+read-only source bytes before cleanup. The retained session archive contains 174
+UTF-8 evidence files and nine screenshot hashes (391,024 base64 characters;
+gzip SHA-256
+`358d95c38fde9583abc716ced86ce34b506d997e638d171128b540324f429481`).
+The guarded private bundles, data, logs and evidence root are removed after exact
+remote confirmation. Implementation
+`18b185fdf2ce2caafd075e53a9ba86fa040fc869` is pushed to remote `main`; the
+exact remote hash, clean owned checkout, zero unpushed commits, unchanged accepted
+inputs and restored preexisting outputs are verified. Continue with fresh task
+evidence at the separate workspace refresh boundary.
 
 ### Long-file targets and prepend ownership
 
