@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Notification history now retains the same focusable action after dismissal and associates it with its own message. Ten focused regressions, all 25 non-test Web gates, supported native checks and English/Chinese actual Wails tasks pass, including 200%. The complete Web command retains two unclassified Runtime integration timeouts (3,373 passed); the complete isolated integration file passes all 49 tests. Primary parallel work is untouched. Owned native processes and new checkout/Library outputs are cleaned, all three preexisting output files are preserved, and exact main delivery/archive receipts follow.
+Updated: 2026-10-24. Notification history preserves the current action after dismissal and associates each action with its own message. Implementation `fa52c539bf693652b8c8f92d58fa03ff807f8e34` is pushed to remote main. Ten focused regressions, all 25 non-test Web gates, supported native checks and actual English/Chinese Wails tasks pass, including 200%. The complete Web command retains two unclassified Runtime integration timeouts (3,373 passed); the complete isolated integration file passes all 49 tests. Owned resources are cleaned and exact source/output/archive checks pass. Primary parallel work remains untouched.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/notification-review-1024`, based on delivered main `8fdd3be864f8492b22775914e8f3fcae87468117`. Fresh fetches retain that main with no incoming commit. Primary parallel work remains outside this batch. Notification history now preserves the current retained-row action through dismissal with the existing shared focusable-disabled contract, and each action has its own message description. No second dismissal/count owner, focus restoration mechanism, routing, shared style or Runtime change is added. Ten focused tests, actual EN/ZH native tasks, all 25 non-test Web gates and supported native checks pass. The complete Web command's Memory readiness and CLI provider-dispatch timeouts remain unclassified; one separate complete 49-test integration run passes. The earlier Approval failures retain their own history. All 5,724 accepted non-Markdown sources, eleven plugin resources and sixteen private inputs retain their accepted bytes. Six owned CLI/native PIDs are dead; seven new checkout directories and six unique Library directories are removed, all three bundles are unregistered, and three preexisting output files/inventories are preserved. The verified implementation is ready for explicit-path commit and push to main, followed by exact remote/clean/unpushed checks and guarded private evidence retirement. Continue from that receipt with a new evidenced task issue.
+The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/notification-review-1024`. Notification implementation `fa52c539bf693652b8c8f92d58fa03ff807f8e34`, based on main `8fdd3be864f8492b22775914e8f3fcae87468117`, is pushed to remote main and verified by exact remote hash, a clean owned checkout and zero unpushed commits. A fresh fetch finds no further incoming commit. Primary parallel work remains outside this batch. Notification history keeps its original action through dismissal with the existing shared focusable-disabled contract; each action describes its own message. Canonical log/count ownership, opening/closing behavior, routing, shared styles and Runtime contracts retain their existing owners. Ten focused regressions, actual EN/ZH native tasks, all 25 non-test Web gates and supported native checks pass. The complete Web command's two Runtime integration timeouts remain unclassified; the complete isolated 49-test integration file passes. All 5,724 accepted non-Markdown sources, eleven plugin resources and sixteen archived private inputs retain their accepted bytes. Six owned PIDs are dead; all new checkout/Library outputs and the private root are absent; preexisting output bytes and file inventories are exact. The verified compressed archive retains 222 UTF-8 files and thirteen screenshot digests. Continue from this completed receipt with a fresh, evidenced task issue; do not repeat completed Approval, Conversation Find or notification focus work.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -7432,10 +7432,19 @@ CLI/native PIDs are dead; seven new checkout directories and six unique Library
 Cache/WebKit directories are removed and three bundles unregistered. All three
 preexisting output files are preserved, including the restored native-check
 binary; preexisting cache file inventories are exact. Primary parallel work,
-dependencies, shared tools and read-only references are untouched. Fresh fetch
-still finds main `8fdd3be864f8492b22775914e8f3fcae87468117` with no incoming
-commits. This record accompanies explicit-path implementation delivery; exact
-remote hash and guarded private archive retirement follow in the receipt.
+dependencies, shared tools and read-only references are untouched.
+
+Implementation `fa52c539bf693652b8c8f92d58fa03ff807f8e34` is committed and
+pushed to remote main. Normal formatter, all-workspace lint and commit-message
+hooks pass. Fresh fetch and exact remote hash confirm the delivered implementation,
+a clean owned checkout and zero commits ahead or behind. The compressed evidence
+retains 222 UTF-8 files and thirteen screenshot digests, with gzip SHA-256
+`d4a9d2efe2c0cf06e15b70dc598e62dbfcee4a19b1bfbd7e9dcf715357dd7b7e`.
+The exact private root is absent. Independent post-retirement checks confirm
+all six PIDs are dead, all seventeen output-presence baselines and three original
+file hashes/inventories are preserved, all new Library outputs are absent, and
+all accepted source/resource bytes match. This documentation-only receipt does
+not repeat code checks or change the retained two aggregate Web failures.
 
 ## HITL approval surface audit
 
