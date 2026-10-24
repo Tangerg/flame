@@ -1,15 +1,15 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Notification/menu obstruction, task-local errors, compact directory identity, catalog clearing, compact model selection and grouped Tool disclosure clarity are implemented, natively qualified and pushed through `ae2cffa98cf82cb3bfb390a00ca49f02fd4fd194`. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
+Updated: 2026-10-25. Captured question and compaction text now retain complete long identifiers within the reading area; scoped checks and actual Wails acceptance pass. Earlier notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is clean on `codex/tool-evidence-1025`. Tool evidence implementation
-`ae2cffa98cf82cb3bfb390a00ca49f02fd4fd194` is published to remote main from the
-frozen accepted base `c5537a0bae207ffb5436aa8e85fd3a275bd07f55`. The last integration interval
+is on `codex/captured-text-1025`. Captured-text acceptance uses the frozen
+accepted base `5e2dff10cb2436fc1a059c0a78d1f7f6504f0b79`; publication and final
+evidence retirement follow below. The last integration interval
 includes incoming main through `1e7b76720`; the former pending author/bootstrap
 commits are already integrated. The primary checkout remains user-owned.
 
@@ -26,8 +26,10 @@ section below. Publication and final evidence retirement are complete.
 Member disclosure clarity and canonical narrative evidence are now implemented
 and natively qualified. Their scope, counterexample, 26 passing regressions and
 full reading/file/return path are recorded under Tool group reading continuity.
-Publication and evidence retirement are complete. Continue from a new observed
-reading or management task; do not reopen these completed disclosures.
+Publication and evidence retirement are complete. Captured question/compaction
+reading is also qualified under Question review and confirmation. Finish its
+publication and retirement, then continue from a new observed reading or management
+task; do not reopen these completed disclosures.
 
 ### Earlier integration evidence
 
@@ -2716,6 +2718,58 @@ full failed gate logs and passing checks. Continue from that resulting main with
 a newly evidenced defect, preserving the two unresolved gate records.
 
 ## Question review and confirmation
+
+Captured question prompts and compaction summaries now use `overflowWrap:
+"anywhere"` at their two plain-text owners: `QuestionCard`'s `settledAsk` and
+`CompactionBlock`'s `summary`. Both retain `pre-wrap`, exact original strings,
+paragraph breaks, type, leading, color and reading width. The generic disclosure
+continues to accommodate independently owned code, tables and media. No Runtime,
+command, selection, draft or focus transition changes. Existing answers and active
+choice labels already wrap; their owners remain unchanged.
+
+Actual original Wails evidence shows the final characters of a 332-character
+summary identifier and a 321-character question identifier at x2681 and x2407,
+outside a frame ending at x897. Corrected native text ranges all fit their frames
+while retaining the exact literal text. This applies the existing better-layout
+and better-typography reading/reflow guidance without inserting break characters
+or converting recorded text into Markdown. Context-usage review finds no defect:
+the current Run's exact provider/model capacity and intentionally clamped readout
+remain unchanged. The actual ChatGPT composer reference was distinguished from
+export code; ZCode's richer quota actions are outside this task.
+
+The bounded Read/Edit-only Claude CLI completes the exact two-file edit in
+15.11 s, exit 0; primary reviews the actual diff. All **3 files / 39 tests** pass,
+including recorded disclosure identity, settled answers and active question
+interaction. Web type, lint, format, token, interactive-chrome, dead-style,
+authored-class and production-bundle checks pass together in **20.09 s**.
+Original and final native geometry provide regression evidence for the CSS
+failure; no DOM CSS-value mirror test is added. Unchanged shared UI, architecture,
+Runtime/backend, author, full Web, live-provider, browser visual and benchmark
+suites are not rerun.
+
+English/light/14 px/Orange and Chinese/dark/18 px/custom blue/reduced-motion
+Wails scenes pass. Native resizing retains complete question text in a 458 px
+frame; twenty native Zoom In commands establish **561 × 365 CSS px at 200%**.
+Both long tokens and trailing text remain reachable through ordinary conversation
+scrolling. Return opens the original question; Space closes it with visible
+focus. Both records can be closed before continuing the same draft: EN textarea
+2 retains and extends **27 → 38** characters; ZH textarea 2 **11 → 16**. Chinese
+Actual Size is restored before Quit. Oversized fixture navigation is collapsed
+for reading; zoom displacement is not attributed to the product. English/Chinese
+Wails builds (6.35 s / 6.01 s) and final private assets (2.69 s) run serially.
+These deterministic fixtures exercise production presentation in Wails, not live
+compaction or question submission. Native IME, VoiceOver speech, RTL, other
+platforms and animation timing remain unverified; unchanged theme evidence is
+reused.
+
+All nine recorded processes exit. Seven new checkout outputs, four owned Library
+paths and two bundle-temp paths are removed; 36 output-presence baselines, three
+original files and eleven accepted product resources are preserved. The two
+missing Vitest baseline files are restored. Accepted 5,765 non-Markdown sources
+have aggregate SHA-256
+`c311892aa51c8fd33faa3c89513261d5c8fcaa5cf306ee51c0389d9232758d1b`.
+Final private asset/binary verification, publication and root retirement remain
+the closing steps. No main fetch/merge is required during this UI task.
 
 The native baseline at `a2a6ba1d4` exposed a task interruption: ArrowDown in the
 first radio question immediately advanced to the text question. `QuestionCard`

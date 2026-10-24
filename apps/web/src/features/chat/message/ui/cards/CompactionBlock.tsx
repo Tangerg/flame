@@ -7,6 +7,7 @@ const cb = stylex.create({
   summary: {
     maxWidth: "640px",
     whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
     textAlign: "left",
     lineHeight: leading.prose,
     color: color.fgMuted,

@@ -58,7 +58,12 @@ const qc = stylex.create({
   },
   settledList: { display: "flex", flexDirection: "column", gap: space.s3 },
   settledItem: { display: "flex", flexDirection: "column", gap: space.s1 },
-  settledAsk: { whiteSpace: "pre-wrap", lineHeight: leading.body, color: color.fgMuted },
+  settledAsk: {
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    lineHeight: leading.body,
+    color: color.fgMuted,
+  },
   settledAnswer: {
     whiteSpace: "pre-wrap",
     overflowWrap: "break-word",
