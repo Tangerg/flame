@@ -1,15 +1,15 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Notification/menu obstruction, task-local errors, compact directory identity, catalog clearing and compact model selection are implemented, natively qualified and pushed through `b5a641224a1324515ab41150036830a3ef692a39`. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
+Updated: 2026-10-25. Notification/menu obstruction, task-local errors, compact directory identity, catalog clearing, compact model selection and grouped Tool disclosure clarity are implemented, natively qualified and pushed through `ae2cffa98cf82cb3bfb390a00ca49f02fd4fd194`. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/tool-evidence-1025`, starting from published main
-`c5537a0bae207ffb5436aa8e85fd3a275bd07f55`. That accepted base stays frozen for
-this complete tool-evidence task. The last integration interval
+is clean on `codex/tool-evidence-1025`. Tool evidence implementation
+`ae2cffa98cf82cb3bfb390a00ca49f02fd4fd194` is published to remote main from the
+frozen accepted base `c5537a0bae207ffb5436aa8e85fd3a275bd07f55`. The last integration interval
 includes incoming main through `1e7b76720`; the former pending author/bootstrap
 commits are already integrated. The primary checkout remains user-owned.
 
@@ -26,7 +26,8 @@ section below. Publication and final evidence retirement are complete.
 Member disclosure clarity and canonical narrative evidence are now implemented
 and natively qualified. Their scope, counterexample, 26 passing regressions and
 full reading/file/return path are recorded under Tool group reading continuity.
-Publication and evidence retirement finish the current batch.
+Publication and evidence retirement are complete. Continue from a new observed
+reading or management task; do not reopen these completed disclosures.
 
 ### Earlier integration evidence
 
@@ -5497,8 +5498,8 @@ facts into the same small chevron used by standalone activity rows. The indicato
 sits between the operation and object, remains decorative and lets pointer input
 reach the existing native button. Denied static summaries receive no indicator.
 Category icons, path detail, status/meta, actions, parent engagement, result mounts
-and controlled expansion keep their owners. No state, focus handler, copy, token,
-new animation or business transition is added.
+and controlled expansion keep their owners. No state, focus handler, copy, token or business transition is added; motion
+follows the existing chevron rule.
 
 The original narrative fixture also omitted Runtime's tool categories and used
 `file_path` for its second Read. Real `presentToolCategory` already supplies
@@ -5588,7 +5589,18 @@ original files and eleven accepted product resources are preserved. The two
 missing Vitest baseline files are restored from captured originals. Accepted
 5,765 non-Markdown sources have aggregate SHA-256
 `53bf7918e5f527c89612adeb2731f0d453c748b7cc1a244147203ee1ef447484`.
-Publication and exact private-root evidence retirement are pending below.
+Implementation `ae2cffa98cf82cb3bfb390a00ca49f02fd4fd194` is pushed to remote
+main and independently verified by exact remote hash, clean owned checkout and
+zero commits ahead or behind. The frozen base remains throughout this task;
+no incoming integration is required. All 607 accepted private artifacts are
+verified (597 compiled files, eight module-proxy files and two binaries). Both
+apps are unregistered, and the exact owned root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-tool-evidence-1025-F19IBE`
+is absent. The independently round-trip-verified archive contains 104 UTF-8
+evidence files and 19 screenshot digests, gzip SHA-256
+`0626ff7fb2400dbb3eeb538853af88fe22d2141355da7ba331fa49e44de75e1f`.
+Primary work, user data and references remain untouched. This documentation-only
+receipt changes no tested source.
 
 ## Tool row action context
 
