@@ -18,12 +18,12 @@ import (
 	"github.com/Tangerg/flame/runtime/point"
 
 	"github.com/Tangerg/flame/runtime/exactjson"
+	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/runtime/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 	sdk "github.com/Tangerg/scope/skills"
 )
@@ -109,11 +109,14 @@ func parse(ctx context.Context, root *os.Root, digest fingerprint.Digest) (plugi
 	for _, diagnostic := range unknown {
 		release.Report(diagnostic)
 	}
-	if err = parseMCP(ctx, root, release); err != nil {
+	nativeServers, err := parseMCP(ctx, root, release)
+	if err != nil {
 		return plugin.Release{}, err
 	}
 	if raw, found := envelope["extensions"]; found {
-		parseExtensions(raw, release, ctx, root)
+		if err := parseExtensions(raw, release, ctx, root, nativeServers); err != nil {
+			return plugin.Release{}, err
+		}
 		if err := cancellation.Err(ctx); err != nil {
 			return plugin.Release{}, err
 		}
@@ -127,50 +130,68 @@ func parse(ctx context.Context, root *os.Root, digest fingerprint.Digest) (plugi
 	return release.Release(digest)
 }
 
-func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Context, root *os.Root) {
+func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Context, root *os.Root, nativeServers []string) error {
 	var namespaces map[string]jsontext.Value
 	if err := json.Unmarshal(raw, &namespaces); err != nil || namespaces == nil {
 		report(release, plugin.Component{Kind: plugin.ComponentManifestField, Name: "extensions"}, plugin.DiagnosticInvalidDeclaration)
-		return
+		return nil
 	}
 	raw, found := namespaces[plugin.Namespace]
 	if !found {
-		return
+		return nil
 	}
 	var reference struct {
 		Declaration string `json:"declaration"`
 	}
 	if err := json.Unmarshal(raw, &reference, json.RejectUnknownMembers(true)); err != nil || !plugin.ValidResourcePath(reference.Declaration) || !strings.HasPrefix(reference.Declaration, plugin.Namespace+"/") {
 		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-		return
+		return nil
 	}
 	body, err := read(ctx, root, reference.Declaration, MaxManifestBytes)
 	if err != nil {
 		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-		return
+		return nil
 	}
 	var members map[string]jsontext.Value
 	var requiredProtocol string
 	if err := json.Unmarshal(body, &members); err != nil || members == nil || json.Unmarshal(members["protocol"], &requiredProtocol) != nil || requiredProtocol != capability.Protocol {
 		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-		return
+		return nil
 	}
 	for field := range members {
 		if !slices.Contains(declarationFields, field) {
 			report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-			return
+			return nil
+		}
+	}
+	if raw, found := members["managedBackends"]; found {
+		var values []wireManagedBackend
+		if err := exactjson.UnmarshalNonNull(raw, &values); err != nil {
+			return fmt.Errorf("%w: managed backend declarations: %w", plugin.ErrInvalid, err)
+		}
+		for _, value := range values {
+			if slices.Contains(nativeServers, value.ID.String()) {
+				return fmt.Errorf("%w: server %s has native and managed startup declarations", plugin.ErrInvalid, value.ID)
+			}
+			server := plugin.Server{Name: value.ID, Transport: mcpserver.TransportStdio, Managed: &plugin.ManagedBackend{Runtime: value.Runtime, Entry: value.Entry}}
+			if err := inspectServerFiles(root, server); err != nil {
+				return fmt.Errorf("%w: managed backend %s: %w", plugin.ErrInvalid, value.ID, err)
+			}
+			if err := release.AdmitServer(server); err != nil {
+				return fmt.Errorf("%w: managed backend %s: %w", plugin.ErrInvalid, value.ID, err)
+			}
 		}
 	}
 	var contributes map[string]jsontext.Value
 	if raw := members["contributes"]; len(raw) != 0 {
 		if err := json.Unmarshal(raw, &contributes); err != nil || contributes == nil {
 			report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-			return
+			return nil
 		}
 		for field := range contributes {
 			if !slices.Contains(presentationFields, field) {
 				report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-				return
+				return nil
 			}
 		}
 	}
@@ -272,6 +293,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 			return release.AdmitTheme(theme)
 		})
 	}
+	return nil
 }
 
 func report(release *plugin.Builder, component plugin.Component, code plugin.DiagnosticCode) {
@@ -319,29 +341,33 @@ func admission(err error) (plugin.DiagnosticCode, bool) {
 	return plugin.DiagnosticInvalidDeclaration, false
 }
 
-func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) error {
+func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) ([]string, error) {
 	body, err := read(ctx, root, "mcp.json", MaxManifestBytes)
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil
+		return nil, nil
 	}
 	if err != nil {
 		if cause := cancellation.Err(ctx); cause != nil {
-			return errors.Join(err, cause)
+			return nil, errors.Join(err, cause)
 		}
 		report(release, plugin.Component{Kind: plugin.ComponentMCP}, plugin.DiagnosticUnavailableComponent)
-		return nil
+		return nil, nil
 	}
 	var envelope struct {
 		Schema  string                    `json:"$schema"`
 		Servers map[string]jsontext.Value `json:"mcpServers"`
 	}
 	decodeErr := json.Unmarshal(body, &envelope, json.RejectUnknownMembers(true))
+	var names []string
+	if decodeErr == nil {
+		names = slices.Sorted(maps.Keys(envelope.Servers))
+	}
 	supported := decodeErr == nil && envelope.Schema == MCPSchema && envelope.Servers != nil
 	if !supported {
 		report(release, plugin.Component{Kind: plugin.ComponentMCP}, plugin.DiagnosticInvalidDeclaration)
-		return nil
+		return names, nil
 	}
-	for _, name := range slices.Sorted(maps.Keys(envelope.Servers)) {
+	for _, name := range names {
 		server, err := portableServer(name, envelope.Servers[name])
 		if err == nil {
 			err = inspectServerFiles(root, server)
@@ -354,12 +380,12 @@ func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) error
 		case admitted:
 		case code == plugin.DiagnosticComponentLimit:
 			report(release, plugin.Component{Kind: plugin.ComponentMCP}, code)
-			return nil
+			return names, nil
 		default:
 			report(release, plugin.Component{Kind: plugin.ComponentMCPServer, Name: name}, code)
 		}
 	}
-	return nil
+	return names, nil
 }
 
 // portableServer is the only translation from the portable mcp.json spelling
@@ -410,7 +436,14 @@ func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 // inspectServerFiles requires a package-relative command and working
 // directory to exist in the exact bytes being admitted.
 func inspectServerFiles(root *os.Root, s plugin.Server) error {
-	if packaged, found := s.PackagedCommand(); found {
+	packaged, found := s.PackagedCommand()
+	if s.Managed != nil {
+		packaged, found = s.Managed.Entry, true
+		if !plugin.ValidResourcePath(packaged) {
+			return plugin.ErrInvalid
+		}
+	}
+	if found {
 		f, _, err := fileinput.OpenAt(root, packaged, MaxPackageBytes)
 		if err != nil {
 			return fmt.Errorf("pluginpackage: open server command: %w", packageInputError(err))

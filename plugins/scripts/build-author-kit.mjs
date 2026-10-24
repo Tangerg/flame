@@ -9,12 +9,13 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises";
-import { isAbsolute, join, sep } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { createConsumerLock } from "../../tooling/npm-consumer-lock.mjs";
 import { moduleArtifacts, root, run } from "../../tooling/workspace.mjs";
-import { prepareGoKit } from "./build-go-kit.mjs";
-import { validateDestination } from "./build.mjs";
+import { prepareGoKit, prepareDevelopmentTools } from "./build-go-kit.mjs";
+import { validateDestination, readBuildPlan } from "./build.mjs";
+import { stageNode } from "../../tooling/node-companion.mjs";
 
 const { values } = parseArgs({
   options: {
@@ -27,23 +28,29 @@ const { values } = parseArgs({
 });
 const { output, plugin, offline } = values,
   modulePath = values["module-path"];
+if (!plugin || !/^[a-z][a-z0-9-]*$/.test(plugin))
+  throw new Error("a source plugin name is required");
+const source = join(root, "plugins", plugin);
+const plan = await readBuildPlan(source);
+const managed = plan.managed.length > 0;
 if (
   !output ||
   !isAbsolute(output) ||
   !plugin ||
   !/^[a-z][a-z0-9-]*$/.test(plugin) ||
-  !modulePath ||
-  modulePath === "github.com/Tangerg/flame" ||
-  modulePath.startsWith("github.com/Tangerg/flame/") ||
-  !/^[-a-zA-Z0-9.]+\.[-a-zA-Z0-9.]+\/[a-zA-Z0-9._~/-]+$/.test(modulePath) ||
-  modulePath
-    .split("/")
-    .some((part) => part === "." || part === ".." || part === "")
+  (plan.native &&
+    (!modulePath ||
+      modulePath === "github.com/Tangerg/flame" ||
+      modulePath.startsWith("github.com/Tangerg/flame/") ||
+      !/^[-a-zA-Z0-9.]+\.[-a-zA-Z0-9.]+\/[a-zA-Z0-9._~/-]+$/.test(modulePath) ||
+      modulePath
+        .split("/")
+        .some((part) => part === "." || part === ".." || part === ""))) ||
+  (!plan.native && modulePath !== undefined)
 )
   throw new Error(
-    "--plugin, --module-path in the author's namespace, and an absolute new --output are required",
+    "--plugin and an absolute new --output are required; native backends also require --module-path in the author's namespace",
   );
-const source = join(root, "plugins", plugin);
 await validateDestination(source, output);
 await access(join(source, "package/plugin.json"));
 const revision = run(
@@ -55,10 +62,28 @@ const revision = run(
 )
   .toString()
   .trim();
+const inputs = [
+  `plugins/${plugin}`,
+  "plugins/scripts",
+  "plugins/tsconfig.json",
+  "plugins/package.json",
+  "tooling",
+  "packages/icons",
+  "packages/ui",
+  "packages/runtime-client/typescript",
+  "packages/component-sdk",
+  "packages/plugin-sdk/typescript",
+  "packages/local-runtime/node-release.json",
+  "package.json",
+  "package-lock.json",
+  "go.mod",
+  "go.sum",
+  "examples/plugins/reviews/backend/go.mod",
+];
 try {
   run(
     "git",
-    ["diff", "--exit-code", "--quiet", revision, "--"],
+    ["diff", "--exit-code", "--quiet", revision, "--", ...inputs],
     root,
     process.env,
     true,
@@ -71,7 +96,7 @@ try {
 if (
   run(
     "git",
-    ["ls-files", "--others", "--exclude-standard"],
+    ["ls-files", "--others", "--exclude-standard", "--", ...inputs],
     root,
     process.env,
     true,
@@ -114,7 +139,7 @@ try {
     .trim()
     .split("\n")
     .filter((path) =>
-      ["backend", "component", "package", "README.md"].some(
+      ["backend", "component", "contracts", "package", "README.md"].some(
         (entry) => path === `plugins/${plugin}/${entry}`,
       ),
     );
@@ -164,16 +189,40 @@ try {
       }
     }
   }
-  if (backend) await rewrite(join(output, "backend"));
-  await prepareGoKit({
-    repository: root,
-    output,
-    artifacts,
-    offline,
-    tools: [...tools],
-  });
+  if (plan.native && backend) await rewrite(join(output, "backend"));
+  if (plan.native)
+    await prepareGoKit({
+      repository: root,
+      output,
+      artifacts,
+      offline,
+      tools: [...tools],
+    });
+  if (managed) {
+    await prepareDevelopmentTools({
+      repository: root,
+      output,
+      artifacts,
+      offline,
+    });
+    await cp(
+      new URL("./author-package.mjs", import.meta.url),
+      join(output, "package.mjs"),
+    );
+    await cp(
+      new URL("./author-generate.mjs", import.meta.url),
+      join(output, "generate.mjs"),
+    );
+  }
   const component = await exists(join(output, "component/component.tsx"));
-  if (component) {
+  if (component || managed) {
+    const packageDirectories = [
+      "packages/runtime-client/typescript",
+      ...(component
+        ? ["packages/icons", "packages/ui", "packages/component-sdk"]
+        : []),
+      ...(managed ? ["packages/plugin-sdk/typescript"] : []),
+    ];
     const npmArtifacts = join(output, "artifacts/npm");
     await mkdir(npmArtifacts, { recursive: true });
     // Materialize every packing input from the frozen commit into one tree, then
@@ -195,6 +244,7 @@ try {
         "packages/ui",
         "packages/runtime-client/typescript",
         "packages/component-sdk",
+        "packages/plugin-sdk/typescript",
         "package.json",
         "package-lock.json",
         "plugins/tsconfig.json",
@@ -209,12 +259,7 @@ try {
     await symlink(join(root, "node_modules"), join(frozenTree, "node_modules"));
     const dependencies = {};
     const packedDependencies = [];
-    for (const directory of [
-      "packages/icons",
-      "packages/ui",
-      "packages/runtime-client/typescript",
-      "packages/component-sdk",
-    ]) {
+    for (const directory of packageDirectories) {
       const packageDirectory = join(frozenTree, directory);
       const manifest = JSON.parse(
         await readFile(join(packageDirectory, "package.json"), "utf8"),
@@ -254,7 +299,9 @@ try {
       return entry.version;
     };
     for (const name of ["react", "react-dom", "motion", "marked"])
-      dependencies[name] = version(name);
+      if (component) dependencies[name] = version(name);
+    if (managed)
+      dependencies["@js-temporal/polyfill"] = version("@js-temporal/polyfill");
     const devDependencies = {};
     for (const name of [
       "typescript",
@@ -262,6 +309,7 @@ try {
       "@types/react-dom",
       "@types/node",
       "rolldown",
+      ...(managed ? ["vitest"] : []),
     ])
       devDependencies[name] = version(name);
     const consumer = {
@@ -270,7 +318,14 @@ try {
       type: "module",
       scripts: {
         typecheck: "tsc --noEmit",
-        build: "node build-component.mjs",
+        ...(component ? { build: "node build-component.mjs" } : {}),
+        ...(managed
+          ? {
+              generate: "node generate.mjs",
+              package: "node package.mjs",
+              test: "node test-backend.mjs",
+            }
+          : {}),
       },
       dependencies,
       devDependencies,
@@ -290,7 +345,14 @@ try {
     const config = JSON.parse(
       await readFile(join(frozenTree, "plugins/tsconfig.json"), "utf8"),
     );
-    config.include = ["component"];
+    config.include = [
+      ...(component ? ["component"] : []),
+      ...(managed ? ["backend"] : []),
+    ];
+    if (managed) {
+      config.compilerOptions.target = "ESNext";
+      config.compilerOptions.resolveJsonModule = true;
+    }
     await writeFile(
       join(output, "tsconfig.json"),
       JSON.stringify(config, null, 2) + "\n",
@@ -298,10 +360,11 @@ try {
     // Every packing input has been consumed; drop the frozen tree before the
     // author project's own install so it never ships inside the release.
     await rm(frozenTree, { recursive: true, force: true });
-    await cp(
-      new URL("./author-component.mjs", import.meta.url),
-      join(output, "build-component.mjs"),
-    );
+    if (component)
+      await cp(
+        new URL("./author-component.mjs", import.meta.url),
+        join(output, "build-component.mjs"),
+      );
     run(
       "npm",
       ["install", "--ignore-scripts", ...(offline ? ["--offline"] : [])],
@@ -316,11 +379,27 @@ try {
       )
         throw new Error(`author dependency escapes its own project: ${name}`);
     run("npm", ["run", "typecheck"], output);
-    run("npm", ["run", "build"], output);
+    if (component) run("npm", ["run", "build"], output);
+    if (managed) {
+      const node = await stageNode({
+        os: process.platform,
+        arch: process.arch === "x64" ? "amd64" : process.arch,
+        output: join(output, "tools"),
+        offline,
+      });
+      await writeFile(
+        join(output, "test-backend.mjs"),
+        `import { execFileSync } from "node:child_process";\nimport { fileURLToPath } from "node:url";\nexecFileSync(fileURLToPath(new URL(${JSON.stringify(relative(output, node).split(sep).join("/"))}, import.meta.url)), [fileURLToPath(new URL("./node_modules/vitest/vitest.mjs", import.meta.url)), "run", "backend"], { cwd: fileURLToPath(new URL("./", import.meta.url)), stdio: "inherit" });\n`,
+      );
+      run("npm", ["run", "generate"], output);
+      run("npm", ["test"], output);
+    }
   }
   await writeFile(
     join(output, "AUTHORING.md"),
-    `# ${plugin} author project\n\nThe backend, component and package resource root use the same layout as Flame.\nYour module is ${modulePath}; its implementation source is frozen at ${revision}. Flame dependencies are immutable module artifacts ${artifacts.version} from ${artifacts.revision}.\nGo production and generation tools are vendored; there is no local replace or Flame checkout dependency.\nJS dependencies use packed SDKs and this project's own lock. They require an ordinary npm install and are not claimed to be fully offline.\n\nRun with the Go version in go.mod:\n\n\`\`\`sh\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go test ./...\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go generate ./...\n${component ? "npm ci --ignore-scripts\nnpm run typecheck\nnpm run build\n" : ""}node build.mjs --source "$PWD" --output /absolute/new/release --os darwin --arch arm64\n\`\`\`\n\nInstall the built release; installation needs neither Go nor Node. Existing consumer contracts come from the pinned public SDK; local Go types implement them without redefining their identity. Regenerate package/UI projections after edits. New business contracts must be defined and published explicitly by their owner.\n`,
+    managed && !plan.native
+      ? `# ${plugin} TypeScript author project\n\nImplementation source is frozen at ${revision}. Packed public SDKs and this project's lock own the npm graph. There is no Go source or Go compiler prerequisite. Prebuilt contractgen and archive tools are development-only programs; the included selected Node companion runs backend storage tests.\n\nFrom this directory:\n\n\`\`\`sh\nnpm ci --ignore-scripts\nnpm run generate\nnpm run typecheck\nnpm test\nnpm run build\nnpm run package -- --output /absolute/new/release --archives /absolute/new/archives\n\`\`\`\n\nThe portable ZIP contains its complete backend graph and declared resources, without node_modules or an interpreter. Install it through Runtime; Runtime supplies its qualified Node companion. Generation projects contracts/capability.json without changing existing opaque schema names. Rebuild and explicitly select a new release after edits. Preserve prior installations and data; Usage Reports uses a fresh archive at the pre-release cutover.\n`
+      : `# ${plugin} author project\n\nThe backend, component and package resource root use the same layout as Flame.\nYour module is ${modulePath}; its implementation source is frozen at ${revision}. Flame dependencies are immutable module artifacts ${artifacts.version} from ${artifacts.revision}.\nGo production and generation tools are vendored; there is no local replace or Flame checkout dependency.\nJS dependencies use packed SDKs and this project's own lock. They require an ordinary npm install and are not claimed to be fully offline.\n\nRun with the Go version in go.mod:\n\n\`\`\`sh\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go test ./...\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go generate ./...\n${component ? "npm ci --ignore-scripts\nnpm run typecheck\nnpm run build\n" : ""}node build.mjs --source "$PWD" --output /absolute/new/release --os darwin --arch arm64\n\`\`\`\n\nInstall the built release; installation needs neither Go nor Node. Existing consumer contracts come from the pinned public SDK; local Go types implement them without redefining their identity. Regenerate package/UI projections after edits. New business contracts must be defined and published explicitly by their owner.\n`,
   );
   console.log(output);
 } catch (error) {

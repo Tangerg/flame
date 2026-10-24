@@ -1,3 +1,4 @@
+import { stringifyJSON } from "@flame/runtime-client";
 import { type KeyValueStore } from "@/extensions/storage";
 import { configureRuntimeMutationJournalStorage } from "@/features/connection/application/ports/mutationJournal";
 const STORAGE_PREFIX = "mutation-journal.";
@@ -9,7 +10,8 @@ function storageKey(key: string): string {
 }
 
 function storedValuesEqual(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  if (left === undefined || right === undefined) return left === right;
+  return stringifyJSON(left) === stringifyJSON(right);
 }
 
 export function installRuntimeMutationJournalStorage(ctx: { storage: KeyValueStore }): () => void {

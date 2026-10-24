@@ -72,12 +72,20 @@ their digests are projections. Re-encoding a DTO cannot replace original evidenc
 An incompatible digest-only directory is refused, retained separately and replaced
 with a fresh directory rather than silently interpreted under a new algorithm.
 
-Feature authoring keeps Go-owned types and method descriptions authoritative.
-Scope derives and compiles their structural schemas; the same immutable contract
-admits the backend wire call and publishes build/discovery descriptors. Runtime's
-existing generator projects those standard schemas into TypeScript and operation
-documentation. Generated files do not become another registration authority, and
-shape equivalence never selects a provider or proves behavioral substitutability.
+Each feature has one published contract owner. A Go author may derive that
+contract from owned types through Scope; an independent author may maintain its
+standard descriptor directly. Implementations in either language bind the exact
+published descriptor and supply local pure codecs. Existing schema definition
+names remain opaque contract data when an implementation moves. Runtime's
+generator projects the same descriptor into consumer bindings and documentation.
+Generated files never become another registration authority, and shape equivalence
+never selects a provider or proves behavioral substitutability.
+
+The distribution owns the managed Node companion, its fixed launch policy and
+execution environment identity. A package declares only its Node entry. Both
+managed and native entries enter the existing MCP activation, leased release,
+callback and retirement owners. The companion is an executable dependency; it
+does not change a business command's original identity or own its result.
 
 ## Evidence over symmetry
 

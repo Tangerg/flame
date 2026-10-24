@@ -35,12 +35,17 @@ func presentPluginSkill(v plugin.Skill) protocol.PluginSkill {
 }
 func presentPluginServerDeclaration(v plugin.Server) (protocol.PluginServerDeclaration, error) {
 	result := protocol.PluginServerDeclaration{Name: v.Name.String()}
+	if v.Managed != nil {
+		result.Type = protocol.PluginServerNode
+		result.Entry = v.Managed.Entry
+		return result, nil
+	}
 	switch v.Transport {
 	case mcpserver.TransportStdio:
-		result.Type = protocol.MCPTransportStdio
+		result.Type = protocol.PluginServerStdio
 		result.Command, result.Args, result.Env, result.Dir = v.Command, slices.Clone(v.Args), maps.Clone(v.Env), v.Dir
 	case mcpserver.TransportStreamableHTTP:
-		result.Type = protocol.MCPTransportStreamableHTTP
+		result.Type = protocol.PluginServerHTTP
 		result.URL, result.Headers = v.URL, maps.Clone(v.Headers)
 	default:
 		return protocol.PluginServerDeclaration{}, fmt.Errorf("plugin: project server transport %q", v.Transport)

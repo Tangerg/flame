@@ -146,7 +146,7 @@ func (r *Releases) Connection(ctx context.Context, installation *plugin.Installa
 	if err != nil {
 		return mcpapp.Launch{}, false, err
 	}
-	if err := realizeBackend(executable, declared, lease.path, data); err != nil {
+	if err := realizeBackend(ctx, executable, declared, lease.path, data); err != nil {
 		return mcpapp.Launch{}, false, fmt.Errorf("%w: server %q backend: %w", plugin.ErrUnavailable, name, err)
 	}
 	return mcpapp.Launch{Server: server, Stdio: &mcpapp.Stdio{Command: executable.Command, Args: executable.Args, Env: executable.Env, Dir: executable.Dir}, Retire: lease}, true, nil

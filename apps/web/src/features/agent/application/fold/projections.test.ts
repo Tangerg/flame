@@ -1,9 +1,18 @@
-import { type ToolInvocation } from "@flame/runtime-client";
+import { parseJSON, type ToolInvocation } from "@flame/runtime-client";
 import { describe, expect, it } from "vitest";
 import { argsText, toolFields, toolLabel } from "@/features/agent/application/fold/projections";
 import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
 const tool = (name: string, args: Record<string, unknown>, result?: unknown): ToolInvocation =>
   ({ name, category: toolCategoryForName(name), arguments: args, result }) as ToolInvocation;
+
+it("renders original opaque Tool arguments and output without numeric conversion", () => {
+  const value = parseJSON('{"wide":9007199254740993,"decimal":1.0}') as Record<string, unknown>;
+  const invocation = tool("independent_tool", value, value);
+  for (const text of [argsText(invocation), toolFields(invocation).result]) {
+    expect(text).toContain("9007199254740993");
+    expect(text).toContain("1.0");
+  }
+});
 
 describe("toolLabel — name-keyed specialised tools", () => {
   it("lsp position operations label path:line:character", () => {

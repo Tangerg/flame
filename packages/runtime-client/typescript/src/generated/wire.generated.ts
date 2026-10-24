@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-23.1";
+export const PROTOCOL_VERSION = "2026-10-24.1";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1352,7 +1352,10 @@ export interface PluginResourceLease {
 
 export type PluginServerDeclaration =
   | { type: "stdio"; args?: string[]; command: string; dir?: string; env?: Record<string, string>; name: string }
-  | { type: "streamableHttp"; headers?: Record<string, string>; name: string; url: string };
+  | { type: "streamableHttp"; headers?: Record<string, string>; name: string; url: string }
+  | { type: "managedNode"; entry: string; name: string };
+
+export type PluginServerType = "stdio" | "streamableHttp" | "managedNode";
 
 export interface PluginSkill {
   description: string;
@@ -2273,6 +2276,7 @@ export const WIRE_ENUMS = {
   PluginPresentation: ["admitted", "withheld"],
   PluginRealizationType: ["available", "releaseUnavailable"],
   PluginRendererSelectorType: ["toolName", "resultShape", "fileExtension"],
+  PluginServerType: ["stdio", "streamableHttp", "managedNode"],
   PluginStreamKind: ["chunk", "result", "failure"],
   PluginThemeScheme: ["dark", "light"],
   PluginValueChangeType: ["set", "clear"],

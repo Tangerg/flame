@@ -14,6 +14,44 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { buildPlugin } from "./build.mjs";
+import { buildBackend } from "@flame/backend-sdk/build";
+import { rolldown } from "rolldown";
+
+for (const [kind, content, problem] of [
+  [
+    "missing dependency",
+    'import "missing-backend-package";',
+    /resolve|unresolved|not found/i,
+  ],
+  [
+    "computed import",
+    "const name=process.env.MODULE; await import(name);",
+    /dynamic imports must name/,
+  ],
+  [
+    "computed require",
+    "const name=process.env.MODULE; require(name);",
+    /require must name/,
+  ],
+  ["native addon", 'import "./binding.node";', /native addons/],
+])
+  test(`portable backend refuses ${kind} before publication`, async () => {
+    const directory = await mkdtemp(join(tmpdir(), "flame-backend-closure-"));
+    try {
+      const input = join(directory, "author.ts");
+      await writeFile(input, content + "\nexport default {};\n");
+      await assert.rejects(
+        buildBackend({
+          input,
+          directory: join(directory, "output"),
+          compiler: rolldown,
+        }),
+        problem,
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 
 test("replacement refuses to erase the author project", async () => {
   const root = await mkdtemp(join(tmpdir(), "flame-release-"));

@@ -1,3 +1,4 @@
+import { parseJSON } from "@flame/runtime-client/json";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { createPublicationSlot } from "@/lib/publicationSlot";
@@ -115,7 +116,7 @@ class ConversationArchiveGeneration {
 
       let artifact: unknown;
       try {
-        artifact = JSON.parse(text);
+        artifact = parseJSON(text);
       } catch {
         this.#cohort.assertCurrent();
         notifyError(t("convExport.notJson"), { source: "import" });

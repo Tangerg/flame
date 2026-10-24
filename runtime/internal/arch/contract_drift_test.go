@@ -959,7 +959,11 @@ func statesCheck(entry, path, keyword string, constraint dispatch.FieldConstrain
 	field := segments[len(segments)-1] + ": "
 	call := keyword + "("
 	if constraint.Limit > 0 {
-		call += strconv.FormatInt(constraint.Limit, 10) + ")"
+		limit := strconv.FormatInt(constraint.Limit, 10)
+		if constraint.Kind == dispatch.ConstraintMinimum || constraint.Kind == dispatch.ConstraintMaximum {
+			limit = strconv.Quote(limit)
+		}
+		call += limit + ")"
 	} else if constraint.Kind == dispatch.ConstraintPattern ||
 		constraint.Kind == dispatch.ConstraintPatternItems {
 		call += strconv.Quote(constraint.Value) + ")"

@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./json": "./src/json.ts",
     "./wire": "./src/generated/wire.generated.ts",
     "./methods": "./src/generated/wire.methods.generated.ts",
     "./validation": "./src/validation/index.ts",
@@ -11,6 +12,7 @@
     "./testing/samples/*": "./testing/generated/samples/*"
   },
   "dependencies": {
+    "decimal.js": "10.6.0",
     "@opentelemetry/api": "^1.9.1",
     "eventsource-parser": "^4.1.2",
     "jsonc-parser": "3.3.1",

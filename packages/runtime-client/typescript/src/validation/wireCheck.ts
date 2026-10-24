@@ -17,6 +17,16 @@
 //   - `format` and `contentEncoding` are annotations, not assertions — the default
 //     reading of both keywords. A malformed timestamp is caught where it is decoded.
 
+import {
+  ExactNumber,
+  compareJSONNumbers,
+  equalJSON,
+  isJSONInteger,
+  isJSONNumber,
+  projectNumber,
+  type JSONNumber,
+} from "../json";
+
 /** One rule a value broke, and where. */
 export interface WireViolation {
   /**
@@ -32,12 +42,22 @@ export interface WireViolation {
  * first — a caller fixing a frame wants the whole list, and `oneOf` needs to count
  * how badly each variant missed.
  */
-export type WireCheck = (
+export type WireCheck = ((
   value: unknown,
   path: string,
   out: WireViolation[],
   boundary?: "request",
-) => void;
+) => void) & { project?: (value: unknown) => unknown };
+
+function withProjection(check: WireCheck, project: (value: unknown) => unknown): WireCheck {
+  return Object.assign(check, { project });
+}
+
+// Only schema-declared numeric fields promise JS numbers. Opaque JSON retains
+// its exact representation, including schema bounds and feature-owned values.
+export function projectWireValue(check: WireCheck, value: unknown): unknown {
+  return check.project ? check.project(value) : value;
+}
 
 /**
  * The distinct facts a check found, in the order it found them.
@@ -66,19 +86,22 @@ export function object(
   required: readonly string[],
 ): WireCheck {
   const stated = fields(properties, required);
-  return (value, path, out, boundary) => {
-    if (!isObject(value)) {
-      out.push({ path, detail: "expected an object" });
-      return;
-    }
-    if (boundary === "request") {
-      for (const name of Object.keys(value)) {
-        if (!Object.hasOwn(properties, name))
-          out.push({ path: `${path}.${name}`, detail: "must not be present" });
+  return withProjection(
+    (value, path, out, boundary) => {
+      if (!isObject(value)) {
+        out.push({ path, detail: "expected an object" });
+        return;
       }
-    }
-    stated(value, path, out, boundary);
-  };
+      if (boundary === "request") {
+        for (const name of Object.keys(value)) {
+          if (!Object.hasOwn(properties, name))
+            out.push({ path: `${path}.${name}`, detail: "must not be present" });
+        }
+      }
+      stated(value, path, out, boundary);
+    },
+    (value) => projectWireValue(stated, value),
+  );
 }
 
 /**
@@ -91,15 +114,24 @@ export function fields(
   properties: Record<string, WireCheck>,
   required: readonly string[],
 ): WireCheck {
-  return (value, path, out, boundary) => {
-    if (!isObject(value)) return;
-    for (const name of required) {
-      if (value[name] === undefined) out.push({ path: `${path}.${name}`, detail: "is required" });
-    }
-    for (const [name, check] of Object.entries(properties)) {
-      if (value[name] !== undefined) check(value[name], `${path}.${name}`, out, boundary);
-    }
-  };
+  return withProjection(
+    (value, path, out, boundary) => {
+      if (!isObject(value)) return;
+      for (const name of required) {
+        if (value[name] === undefined) out.push({ path: `${path}.${name}`, detail: "is required" });
+      }
+      for (const [name, check] of Object.entries(properties)) {
+        if (value[name] !== undefined) check(value[name], `${path}.${name}`, out, boundary);
+      }
+    },
+    (value) => {
+      if (!isObject(value)) return value;
+      const result = { ...value };
+      for (const [name, check] of Object.entries(properties))
+        if (value[name] !== undefined) result[name] = projectWireValue(check, value[name]);
+      return result;
+    },
+  );
 }
 
 /**
@@ -117,19 +149,19 @@ export function text(): WireCheck {
 }
 
 export function integer(): WireCheck {
-  return (value, path, out) => {
-    if (typeof value !== "number" || !Number.isInteger(value)) {
+  return withProjection((value, path, out) => {
+    if (!isJSONInteger(value)) {
       out.push({ path, detail: "expected an integer" });
     }
-  };
+  }, projectNumber);
 }
 
 export function numeric(): WireCheck {
-  return (value, path, out) => {
-    if (typeof value !== "number" || !Number.isFinite(value)) {
+  return withProjection((value, path, out) => {
+    if (!isJSONNumber(value)) {
       out.push({ path, detail: "expected a number" });
     }
-  };
+  }, projectNumber);
 }
 
 /**
@@ -171,27 +203,30 @@ export function pattern(expression: string): WireCheck {
 }
 
 /** `minimum`, which constrains a number and says nothing about anything else. */
-export function minimum(least: number): WireCheck {
+export function minimum(least: number | string): WireCheck {
+  const bound: JSONNumber = typeof least === "string" ? new ExactNumber(least) : least;
   return (value, path, out) => {
-    if (typeof value === "number" && value < least) {
+    if (isJSONNumber(value) && compareJSONNumbers(value, bound) < 0) {
       out.push({ path, detail: `expected at least ${least}` });
     }
   };
 }
 
 /** `exclusiveMinimum`, applied only to numbers as JSON Schema specifies. */
-export function exclusiveMinimum(boundary: number): WireCheck {
+export function exclusiveMinimum(boundary: number | string): WireCheck {
+  const bound: JSONNumber = typeof boundary === "string" ? new ExactNumber(boundary) : boundary;
   return (value, path, out) => {
-    if (typeof value === "number" && value <= boundary) {
+    if (isJSONNumber(value) && compareJSONNumbers(value, bound) <= 0) {
       out.push({ path, detail: `expected greater than ${boundary}` });
     }
   };
 }
 
 /** `maximum`, which constrains a number and says nothing about anything else. */
-export function maximum(most: number): WireCheck {
+export function maximum(most: number | string): WireCheck {
+  const bound: JSONNumber = typeof most === "string" ? new ExactNumber(most) : most;
   return (value, path, out) => {
-    if (typeof value === "number" && value > most) {
+    if (isJSONNumber(value) && compareJSONNumbers(value, bound) > 0) {
       out.push({ path, detail: `expected at most ${most}` });
     }
   };
@@ -218,12 +253,7 @@ export function maxItems(most: number): WireCheck {
 /** `minProperties`, which constrains an object's own-property count. */
 export function minProperties(least: number): WireCheck {
   return (value, path, out) => {
-    if (
-      typeof value === "object" &&
-      value !== null &&
-      !Array.isArray(value) &&
-      Object.keys(value).length < least
-    ) {
+    if (isObject(value) && Object.keys(value).length < least) {
       const noun = least === 1 ? "property" : "properties";
       out.push({ path, detail: `expected at least ${least} ${noun}` });
     }
@@ -238,27 +268,15 @@ export function minProperties(least: number): WireCheck {
 export function uniqueItems(): WireCheck {
   return (value, path, out) => {
     if (!Array.isArray(value)) return;
-    const seen = new Set<string>();
+    const seen: unknown[] = [];
     for (const element of value) {
-      const key = JSON.stringify(canonicalJSONValue(element)) ?? "undefined";
-      if (seen.has(key)) {
+      if (seen.some((previous) => equalJSON(element, previous))) {
         out.push({ path, detail: "expected no repeated items" });
         return;
       }
-      seen.add(key);
+      seen.push(element);
     }
   };
-}
-
-function canonicalJSONValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonicalJSONValue);
-  if (typeof value !== "object" || value === null) return value;
-  const record = value as Record<string, unknown>;
-  return Object.fromEntries(
-    Object.keys(record)
-      .sort()
-      .map((key) => [key, canonicalJSONValue(record[key])]),
-  );
 }
 
 export function flag(): WireCheck {
@@ -296,32 +314,46 @@ export function anything(): WireCheck {
 
 /** A nullable result: JSON null or the declared non-null shape. */
 export function nullable(value: WireCheck): WireCheck {
-  return (candidate, path, out, boundary) => {
-    if (candidate !== null) value(candidate, path, out, boundary);
-  };
+  return withProjection(
+    (candidate, path, out, boundary) => {
+      if (candidate !== null) value(candidate, path, out, boundary);
+    },
+    (candidate) => (candidate === null ? null : projectWireValue(value, candidate)),
+  );
 }
 
 export function array(items: WireCheck): WireCheck {
-  return (value, path, out, boundary) => {
-    if (!Array.isArray(value)) {
-      out.push({ path, detail: "expected an array" });
-      return;
-    }
-    value.forEach((element, index) => items(element, `${path}[${index}]`, out, boundary));
-  };
+  return withProjection(
+    (value, path, out, boundary) => {
+      if (!Array.isArray(value)) {
+        out.push({ path, detail: "expected an array" });
+        return;
+      }
+      value.forEach((element, index) => items(element, `${path}[${index}]`, out, boundary));
+    },
+    (value) => (Array.isArray(value) ? value.map((item) => projectWireValue(items, item)) : value),
+  );
 }
 
 /** `additionalProperties`: a map keyed by any string. */
 export function record(values: WireCheck): WireCheck {
-  return (value, path, out, boundary) => {
-    if (!isObject(value)) {
-      out.push({ path, detail: "expected an object" });
-      return;
-    }
-    for (const [key, member] of Object.entries(value)) {
-      values(member, `${path}[${JSON.stringify(key)}]`, out, boundary);
-    }
-  };
+  return withProjection(
+    (value, path, out, boundary) => {
+      if (!isObject(value)) {
+        out.push({ path, detail: "expected an object" });
+        return;
+      }
+      for (const [key, member] of Object.entries(value)) {
+        values(member, `${path}[${JSON.stringify(key)}]`, out, boundary);
+      }
+    },
+    (value) =>
+      isObject(value)
+        ? Object.fromEntries(
+            Object.entries(value).map(([key, member]) => [key, projectWireValue(values, member)]),
+          )
+        : value,
+  );
 }
 
 /** `propertyNames`: validate every own key of an object as a string value. */
@@ -340,7 +372,10 @@ export function propertyNames(check: WireCheck): WireCheck {
  * of a cycle is built second.
  */
 export function ref(resolve: () => WireCheck): WireCheck {
-  return (value, path, out, boundary) => resolve()(value, path, out, boundary);
+  return withProjection(
+    (value, path, out, boundary) => resolve()(value, path, out, boundary),
+    (value) => projectWireValue(resolve(), value),
+  );
 }
 
 /**
@@ -352,74 +387,104 @@ export function ref(resolve: () => WireCheck): WireCheck {
  * union's exclusivity rather than in the frame, and says so.
  */
 export function oneOf(branches: readonly WireCheck[]): WireCheck {
-  return (value, path, out, boundary) => {
-    let matched = 0;
-    let nearest: WireViolation[] | undefined;
-    let nearestMissesDiscriminator = true;
-    for (const branch of branches) {
-      const missed: WireViolation[] = [];
-      branch(value, path, missed, boundary);
-      if (missed.length === 0) {
-        matched++;
-        continue;
+  return withProjection(
+    (value, path, out, boundary) => {
+      let matched = 0;
+      let nearest: WireViolation[] | undefined;
+      let nearestMissesDiscriminator = true;
+      for (const branch of branches) {
+        const missed: WireViolation[] = [];
+        branch(value, path, missed, boundary);
+        if (missed.length === 0) {
+          matched++;
+          continue;
+        }
+        // Every first-party union is discriminated by `type`. Once that tag matches,
+        // report the defects in that variant even when an earlier wrong-tag branch
+        // happens to have fewer violations. Otherwise `{type:"resync"}` misleadingly
+        // reports `expected "skills.changed"` instead of `topics is required`.
+        const missesDiscriminator = missed.some((violation) => violation.path === `${path}.type`);
+        if (
+          nearest === undefined ||
+          (nearestMissesDiscriminator && !missesDiscriminator) ||
+          (nearestMissesDiscriminator === missesDiscriminator && missed.length < nearest.length)
+        ) {
+          nearest = missed;
+          nearestMissesDiscriminator = missesDiscriminator;
+        }
       }
-      // Every first-party union is discriminated by `type`. Once that tag matches,
-      // report the defects in that variant even when an earlier wrong-tag branch
-      // happens to have fewer violations. Otherwise `{type:"resync"}` misleadingly
-      // reports `expected "skills.changed"` instead of `topics is required`.
-      const missesDiscriminator = missed.some((violation) => violation.path === `${path}.type`);
-      if (
-        nearest === undefined ||
-        (nearestMissesDiscriminator && !missesDiscriminator) ||
-        (nearestMissesDiscriminator === missesDiscriminator && missed.length < nearest.length)
-      ) {
-        nearest = missed;
-        nearestMissesDiscriminator = missesDiscriminator;
+      if (matched === 1) return;
+      if (matched > 1) {
+        out.push({
+          path,
+          detail: `matches ${matched} variants, and exactly one may apply`,
+        });
+        return;
       }
-    }
-    if (matched === 1) return;
-    if (matched > 1) {
-      out.push({
-        path,
-        detail: `matches ${matched} variants, and exactly one may apply`,
-      });
-      return;
-    }
-    out.push({ path, detail: "matches no permitted variant" });
-    if (nearest !== undefined) out.push(...nearest);
-  };
+      out.push({ path, detail: "matches no permitted variant" });
+      if (nearest !== undefined) out.push(...nearest);
+    },
+    (value) => projectAlternative(branches, value),
+  );
 }
 
 /** `anyOf`: one or more alternatives may apply. */
 export function anyOf(branches: readonly WireCheck[]): WireCheck {
-  return (value, path, out, boundary) => {
-    let nearest: WireViolation[] | undefined;
-    for (const branch of branches) {
-      const missed: WireViolation[] = [];
-      branch(value, path, missed, boundary);
-      if (missed.length === 0) return;
-      if (nearest === undefined || missed.length < nearest.length) nearest = missed;
-    }
-    out.push({ path, detail: "matches no permitted alternative" });
-    if (nearest !== undefined) out.push(...nearest);
-  };
+  return withProjection(
+    (value, path, out, boundary) => {
+      let nearest: WireViolation[] | undefined;
+      for (const branch of branches) {
+        const missed: WireViolation[] = [];
+        branch(value, path, missed, boundary);
+        if (missed.length === 0) return;
+        if (nearest === undefined || missed.length < nearest.length) nearest = missed;
+      }
+      out.push({ path, detail: "matches no permitted alternative" });
+      if (nearest !== undefined) out.push(...nearest);
+    },
+    (value) => projectAlternative(branches, value),
+  );
+}
+
+function projectAlternative(branches: readonly WireCheck[], value: unknown): unknown {
+  for (const branch of branches) {
+    const violations: WireViolation[] = [];
+    branch(value, "$", violations);
+    if (violations.length === 0) return projectWireValue(branch, value);
+  }
+  throw new TypeError("wire projection requires an admitted alternative");
 }
 
 export function allOf(members: readonly WireCheck[]): WireCheck {
-  return (value, path, out, boundary) => {
-    for (const member of members) member(value, path, out, boundary);
-  };
+  return withProjection(
+    (value, path, out, boundary) => {
+      for (const member of members) member(value, path, out, boundary);
+    },
+    (value) => members.reduce((result, member) => projectWireValue(member, result), value),
+  );
 }
 
 /** `if` / `then`: a cross-field presence rule. */
 export function ifThen(condition: WireCheck, consequence: WireCheck): WireCheck {
-  return (value, path, out, boundary) => {
-    const unmet: WireViolation[] = [];
-    condition(value, path, unmet, boundary);
-    if (unmet.length === 0) consequence(value, path, out, boundary);
-  };
+  return withProjection(
+    (value, path, out, boundary) => {
+      const unmet: WireViolation[] = [];
+      condition(value, path, unmet, boundary);
+      if (unmet.length === 0) consequence(value, path, out, boundary);
+    },
+    (value) => {
+      const unmet: WireViolation[] = [];
+      condition(value, "$", unmet);
+      return unmet.length === 0 ? projectWireValue(consequence, value) : value;
+    },
+  );
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !(value instanceof ExactNumber)
+  );
 }

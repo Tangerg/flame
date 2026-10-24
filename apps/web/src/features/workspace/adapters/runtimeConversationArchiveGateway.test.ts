@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FlameClient } from "@flame/runtime-client";
+import { parseJSON } from "@flame/runtime-client/json";
 import {
+  exportConversationJson,
   exportConversationMarkdown,
   exportSessionTrajectory,
 } from "@/features/workspace/application/conversationExport";
@@ -49,6 +51,24 @@ afterEach(async () => {
 });
 
 describe("runtimeConversationArchiveGateway", () => {
+  it("preserves exact opaque numbers through the injected export destination", async () => {
+    const artifact = parseJSON(
+      '{"session":{"id":"session-current"},"evidence":{"count":9007199254740993,"fraction":0.1000000000000000000001}}',
+    );
+    const exportConversation = vi.fn().mockResolvedValue({ format: "json", artifact });
+    const client = { sessions: { export: exportConversation } } as unknown as FlameClient;
+    installations.push(installConversationArchiveGateway(() => client, files));
+
+    await exportConversationJson();
+
+    expect(exportConversation).toHaveBeenCalledExactlyOnceWith("session-current", "json");
+    expect(mocks.download).toHaveBeenCalledWith(
+      expect.stringContaining("flame-session-current-"),
+      '{\n  "session": {\n    "id": "session-current"\n  },\n  "evidence": {\n    "count": 9007199254740993,\n    "fraction": 0.1000000000000000000001\n  }\n}',
+      "application/json;charset=utf-8",
+    );
+  });
+
   it("downloads the complete Runtime evidence envelope with no UI reconstruction", async () => {
     const trajectory = {
       schemaVersion: 1,

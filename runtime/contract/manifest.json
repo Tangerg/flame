@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-23.1",
+  "protocolVersion": "2026-10-24.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -4064,6 +4064,13 @@
           ],
           "optional": [
             "headers"
+          ]
+        },
+        {
+          "tag": "managedNode",
+          "required": [
+            "name",
+            "entry"
           ]
         }
       ]

@@ -1,10 +1,12 @@
 {
   "github.com/Tangerg/flame": {
+    "v0.1.0-node.20261024.1": "8aba4f6c356f145cb56fe9fc5a10dbbac74c6580",
     "v0.1.0-layout.20261023.2": "55d80fa2383310e0959d641aa72fc3e1acb37549",
     "v0.1.0-layout.20261024.1": "5e8c1e7a28b75e5064409058b82a6c3bfd9f8e9a",
     "v0.1.0-layout.20261024.2": "a34ad19d0628d34c5ec10b4c160c9b5050501fc9"
   },
   "github.com/Tangerg/flame/packages/local-runtime": {
+    "v0.1.0-node.20261024.1": "6a1c9c3c6549827bf9739343d26097c7e9056b98",
     "v0.1.0-layout.20261021.2": "f22a9d783054855de40eb9b1e07cd1ac9d27881b",
     "v0.1.0-layout.20261024.1": "ce8357e57bfb463ff93c0f188cb3dbed91ef82a2"
   }

@@ -63,7 +63,7 @@ func newWireChecks(registry *delivery.Registry, shapes *dispatch.Shapes, set *sc
 	// `distinctViolations` is not a schema keyword, so it never lands in `used`.
 	// Every entry point below returns through it, so it is always imported.
 	imports := slices.Sorted(maps.Keys(emitter.used))
-	imports = append(imports, "distinctViolations")
+	imports = append(imports, "distinctViolations", "projectWireValue")
 	slices.Sort(imports)
 	fmt.Fprintf(&out, "import { %s } from \"../validation/wireCheck\";\n", strings.Join(imports, ", "))
 	out.WriteString("import type { WireCheck, WireViolation } from \"../validation/wireCheck\";\n\n")
@@ -107,6 +107,11 @@ export function validateHTTPSidecarResponse(
   HTTP_RESPONSES[endpoint](value, ` + "`${endpoint}.response`" + `, out);
   return out;
 }
+
+/** Project already validated operational sidecar fields into their DTO. */
+export function projectHTTPSidecarResponse(endpoint: Wire.HTTPSidecarEndpointName, value: unknown): unknown {
+  return projectWireValue(HTTP_RESPONSES[endpoint], value);
+}
 `)
 	return out.String()
 }
@@ -134,6 +139,11 @@ export function validateWire(type: WireTypeName, value: unknown, boundary?: "req
   const out: WireViolation[] = [];
   CHECKS[type](value, type, out, boundary);
   return distinctViolations(out);
+}
+
+/** Project already validated DTO fields while retaining opaque JSON values. */
+export function projectWire(type: WireTypeName, value: unknown): unknown {
+  return projectWireValue(CHECKS[type], value);
 }
 `
 
@@ -180,6 +190,11 @@ export function validateMethodResult(method: WireMethodName, value: unknown): Wi
   const out: WireViolation[] = [];
   METHOD_RESULTS[method](value, ` + "`${method}.result`" + `, out);
   return distinctViolations(out);
+}
+
+/** Project an already validated method result into its declared DTO. */
+export function projectMethodResult(method: WireMethodName, value: unknown): unknown {
+  return projectWireValue(METHOD_RESULTS[method], value);
 }
 `)
 	return out.String()
@@ -232,6 +247,11 @@ export function validateNotificationParams(
   const out: WireViolation[] = [];
   NOTIFICATION_PARAMS[method](value, ` + "`${method}.params`" + `, out);
   return distinctViolations(out);
+}
+
+/** Project already validated notification fields into their declared DTO. */
+export function projectNotificationParams(method: WireNotificationName, value: unknown): unknown {
+  return projectWireValue(NOTIFICATION_PARAMS[method], value);
 }
 `)
 	return out.String()
@@ -290,13 +310,13 @@ func (c *checkEmitter) stringChecks(node *schema) []string {
 func (c *checkEmitter) numericChecks(node *schema) []string {
 	var checks []string
 	if node.Minimum != nil {
-		checks = append(checks, c.call("minimum", strconv.FormatInt(*node.Minimum, 10)))
+		checks = append(checks, c.call("minimum", strconv.Quote(strconv.FormatInt(*node.Minimum, 10))))
 	}
 	if node.ExclusiveMinimum != nil {
-		checks = append(checks, c.call("exclusiveMinimum", strconv.FormatInt(*node.ExclusiveMinimum, 10)))
+		checks = append(checks, c.call("exclusiveMinimum", strconv.Quote(strconv.FormatInt(*node.ExclusiveMinimum, 10))))
 	}
 	if node.Maximum != nil {
-		checks = append(checks, c.call("maximum", strconv.FormatInt(*node.Maximum, 10)))
+		checks = append(checks, c.call("maximum", strconv.Quote(strconv.FormatInt(*node.Maximum, 10))))
 	}
 	return checks
 }

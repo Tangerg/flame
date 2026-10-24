@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RpcError, RpcTransportError } from "./errors";
 import { createMutationPromise, type MutationPromise } from "./mutation";
+import { parseJSON, stringifyJSON } from "./json";
 import {
   createMutationJournal,
   MutationJournalCapacityError,
@@ -69,6 +70,39 @@ afterEach(() => {
 });
 
 describe("mutation journal", () => {
+  it("retains exact edited Tool arguments across persistence and original-command recovery", () => {
+    const values = new Map<string, string>();
+    const storage: MutationJournalStorage = {
+      get: (key) => (values.has(key) ? parseJSON(values.get(key)!) : undefined),
+      set: (key, value) => {
+        values.set(key, stringifyJSON(value));
+      },
+      remove: (key) => {
+        values.delete(key);
+      },
+      keys: () => [...values.keys()],
+    };
+    const params = {
+      runId: "run_1",
+      responses: [
+        {
+          itemId: "tool_1",
+          response: {
+            type: "approval",
+            decision: "approve",
+            editedArgs: parseJSON('{"wide":9007199254740993,"decimal":1.0}'),
+          },
+        },
+      ],
+    };
+    const first = journal(storage);
+    first.reserve("runs.resume", params, "original-exact");
+    first.dispose();
+    const pending = journal(storage).pendingCommands();
+    expect(pending).toHaveLength(1);
+    expect(pending[0]!.idempotencyKey).toBe("original-exact");
+    expect(stringifyJSON(pending[0]!.params, true)).toBe(stringifyJSON(params, true));
+  });
   it("keeps independent connection journals alive until their own owner retires them", async () => {
     const firstStorage = new MemoryStorage();
     const first = journal(firstStorage);

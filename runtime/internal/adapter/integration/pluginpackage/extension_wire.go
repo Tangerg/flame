@@ -17,6 +17,12 @@ type wireContribution struct {
 	Requires   []wireRequirement     `json:"requires,omitzero"`
 }
 
+type wireManagedBackend struct {
+	ID      mcpserver.ServerName  `json:"id"`
+	Runtime plugin.ManagedRuntime `json:"runtime"`
+	Entry   string                `json:"entry"`
+}
+
 type wireRequirement struct {
 	ID       plugin.ContributionID `json:"id"`
 	Contract string                `json:"contract"`
@@ -101,5 +107,5 @@ func (v wireTheme) domain() (plugin.Theme, error) {
 	return plugin.Theme{ID: v.ID, Title: v.Title, Scheme: plugin.ThemeScheme(v.Scheme), Colors: colors}, nil
 }
 
-var declarationFields = []string{"protocol", "inputs", "contributions", "contributes", "points", "pointValues", "components"}
+var declarationFields = []string{"protocol", "managedBackends", "inputs", "contributions", "contributes", "points", "pointValues", "components"}
 var presentationFields = []string{"themes"}

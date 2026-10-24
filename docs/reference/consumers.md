@@ -5,6 +5,7 @@
 | Local Go host              | `github.com/Tangerg/flame/runtime`                                              |
 | Remote Go client           | `github.com/Tangerg/flame/packages/runtime-client/go` (package `runtimeclient`) |
 | Go backend author          | `github.com/Tangerg/flame/packages/plugin-sdk`                                  |
+| TypeScript backend author  | `@flame/backend-sdk`                                                            |
 | Memory role implementation | `github.com/Tangerg/flame/packages/plugin-sdk/memory`                           |
 | Shared wire/options        | `github.com/Tangerg/flame/runtime/protocol`                                     |
 | TypeScript Runtime client  | `@flame/runtime-client`                                                         |
@@ -34,6 +35,8 @@ be reused for changed source, and any release tag must identify that frozen sour
 node plugins/scripts/build-author-kit.mjs \
   --plugin memory --module-path example.com/author/memory \
   --output /absolute/new/memory-author --revision HEAD
+node plugins/scripts/build-author-kit.mjs \
+  --plugin usagereports --output /absolute/new/typescript-author --revision HEAD
 ```
 
 Use an author's own module namespace; the Flame first-party prefix overlaps the
@@ -54,6 +57,11 @@ materials fail. `make check-author` additionally denies network and checkout
 reads, empties build/module caches and runs test/generate/build using vendor.
 Only that isolated verified-vendor phase disables checksum database requests.
 The Go toolchain must already be installed; it is not vendored.
+TypeScript-only exports have no Go module or DTO source prerequisite. They include
+host-specific prebuilt contractgen/archive development programs and the selected
+Node test companion; their generated JavaScript ZIP remains portable. The
+independent check denies Go execution through the author PATH as well as network
+and checkout reads while regenerating, checking, testing and packaging that project.
 The check includes a Memory author directory with spaces and Unicode, then installs
 the independent release ZIP, selects its exact Memory role, invokes it and verifies
 its original private command outcome after Runtime/backend restart.

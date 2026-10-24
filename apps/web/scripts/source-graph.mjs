@@ -7,6 +7,8 @@ import typescriptPreset from "@babel/preset-typescript";
 import * as ts from "typescript/unstable/ast";
 
 export const RUNTIME_CLIENT_EDGE = "@flame/runtime-client";
+export const RUNTIME_JSON_EDGE = "@flame/runtime-client/json";
+const runtimeJSON = realpathSync(fileURLToPath(import.meta.resolve(RUNTIME_JSON_EDGE)));
 const runtimeClientRoot = dirname(
   dirname(realpathSync(fileURLToPath(import.meta.resolve(RUNTIME_CLIENT_EDGE)))),
 );
@@ -127,6 +129,30 @@ export function withSourceProject(root, inspect) {
   }
 }
 
+export function assertSourceClosure(root, entry, forbiddenEntries) {
+  withSourceProject(root, (project) => {
+    const visited = new Set();
+    const { program, checker } = project;
+    const inspect = (file) => {
+      if (forbiddenEntries.has(file)) {
+        throw new Error(`source closure reaches forbidden entry: ${relative(root, file)}`);
+      }
+      if (visited.has(file)) return;
+      visited.add(file);
+      const source = program.getSourceFile(file);
+      if (!source) throw new Error(`cannot inspect source dependency: ${file}`);
+      for (const specifier of importEdges(source)) {
+        const symbol = checker.getSymbolAtLocation(specifier);
+        for (const handle of symbol?.declarations ?? []) {
+          const target = resolve(handle.resolve(project).getSourceFile().fileName);
+          if (target.startsWith(root + sep)) inspect(target);
+        }
+      }
+    };
+    inspect(entry);
+  });
+}
+
 export function readSourceGraph(root = process.cwd()) {
   const src = resolve(root, "src");
   return withSourceProject(root, (project, expected) => {
@@ -147,7 +173,9 @@ export function readSourceGraph(root = process.cwd()) {
         if (!specifier || !ts.isStringLiteralLikeNode(specifier)) continue;
         const name = specifier.text;
         let target;
-        if (name === RUNTIME_CLIENT_EDGE || name.startsWith(`${RUNTIME_CLIENT_EDGE}/`)) {
+        if (name === RUNTIME_JSON_EDGE) {
+          target = RUNTIME_JSON_EDGE;
+        } else if (name === RUNTIME_CLIENT_EDGE || name.startsWith(`${RUNTIME_CLIENT_EDGE}/`)) {
           target = RUNTIME_CLIENT_EDGE;
         } else {
           const symbol = checker.getSymbolAtLocation(specifier);
@@ -159,7 +187,9 @@ export function readSourceGraph(root = process.cwd()) {
             const resolved = resolve(declaration.fileName);
             // Relative paths and aliases must retain the SDK's ownership even
             // though its implementation lives outside the frontend source tree.
-            if (realpathSync(resolved).startsWith(`${runtimeClientRoot}${sep}`)) {
+            if (realpathSync(resolved) === runtimeJSON) {
+              target = RUNTIME_JSON_EDGE;
+            } else if (realpathSync(resolved).startsWith(`${runtimeClientRoot}${sep}`)) {
               target = RUNTIME_CLIENT_EDGE;
             } else if (resolved.startsWith(`${src}${sep}`)) {
               target = localName(resolved);

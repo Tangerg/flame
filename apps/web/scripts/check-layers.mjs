@@ -8,7 +8,7 @@
 // regressions we care about (UI/plugin upward deps, rpc purity) without
 // policing every legitimate inward dependency.
 
-import { readSourceGraph, RUNTIME_CLIENT_EDGE } from "./source-graph.mjs";
+import { readSourceGraph, RUNTIME_CLIENT_EDGE, RUNTIME_JSON_EDGE } from "./source-graph.mjs";
 import {
   atCompositionRoot,
   builtinContext,
@@ -50,6 +50,7 @@ const UNGUARDED_ROOTS = new Set(["styles", "test"]);
 
 function layerOf(path) {
   if (path === RUNTIME_CLIENT_EDGE) return "rpc";
+  if (path === RUNTIME_JSON_EDGE) return "external";
   for (const [prefix, layer] of LAYER_PREFIXES) if (path.startsWith(prefix)) return layer;
   return "other";
 }

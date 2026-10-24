@@ -165,13 +165,20 @@ type PluginRendererSelector struct {
 	Name string                     `json:"name"`
 }
 
-// PluginServerDeclaration is a closed union by transport that projects a
-// release's server declaration in the MCP vocabulary. stdio carries command,
-// args, env and dir; streamableHttp carries url and headers. Command and Dir
-// keep their package-relative spelling.
+type PluginServerType string
+
+const (
+	PluginServerStdio PluginServerType = "stdio"
+	PluginServerHTTP  PluginServerType = "streamableHttp"
+	PluginServerNode  PluginServerType = "managedNode"
+)
+
+// PluginServerDeclaration projects one authored startup source. Managed Node
+// entries carry no command, interpreter path or package-specific launch flags.
 type PluginServerDeclaration struct {
 	Name    string            `json:"name"`
-	Type    MCPTransport      `json:"type"`
+	Type    PluginServerType  `json:"type"`
+	Entry   string            `json:"entry,omitempty"`
 	Command string            `json:"command,omitempty"`
 	Args    []string          `json:"args,omitempty"`
 	Env     map[string]string `json:"env,omitempty"`

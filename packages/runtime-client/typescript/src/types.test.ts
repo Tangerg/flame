@@ -7,6 +7,7 @@ import {
   parseRpcMessage,
 } from "./types";
 import { PROBLEM_CODES } from "@flame/runtime-client/wire";
+import { stringifyJSON } from "./json";
 
 describe("rpc/types discriminators", () => {
   it("isResponse matches { jsonrpc, id, result|error } but not Request", () => {
@@ -95,11 +96,13 @@ describe("parseRpcMessage envelope gate", () => {
     expect(parseRpcMessage('{"jsonrpc":"2.0","id":"1","result":' + payload + "}")).toBeNull();
   });
 
-  it("preserves native JSON numbers, member ownership, and valid Unicode", () => {
+  it("preserves exact JSON numbers, member ownership, and valid Unicode", () => {
     const wire =
       '{"jsonrpc":"2.0","id":"1","result":{"__proto__":{"owned":true},"numbers":[-0,9007199254740993,1e400,1e-400],"text":"\\ud83d\\ude00","objects":[{"same":1},{"same":2}]}}';
     const message = parseRpcMessage(wire);
-    expect(message).toEqual(JSON.parse(wire));
+    expect(stringifyJSON(message)).toBe(
+      '{"jsonrpc":"2.0","id":"1","result":{"__proto__":{"owned":true},"numbers":[-0,9007199254740993,1e400,1e-400],"text":"😀","objects":[{"same":1},{"same":2}]}}',
+    );
     const result = (message as { result: object }).result;
     expect(Object.hasOwn(result, "__proto__")).toBe(true);
     expect(Object.getPrototypeOf(result)).toBe(Object.prototype);

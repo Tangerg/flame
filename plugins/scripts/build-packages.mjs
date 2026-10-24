@@ -11,13 +11,11 @@ const { values } = parseArgs({
     arch: { type: "string" },
     plugin: { type: "string" },
     archives: { type: "string" },
+    "archive-tool": { type: "string" },
     replace: { type: "boolean", default: false },
   },
 });
 await validateDestination(source, values.output);
-if (!values.os || !values.arch) {
-  throw new Error("--os and --arch are required");
-}
 // Resolve the selection to a validated build plan before any output is touched.
 // Enumerating all plugins skips ordinary directories; an explicit --plugin must
 // name a real plugin and the plan must be non-empty, so a missing or non-plugin
@@ -55,6 +53,7 @@ try {
       ...values,
       source: join(source, name),
       output: join(target, name),
+      archiveTool: values["archive-tool"],
     });
   }
   if (values.replace) await rm(values.output, { recursive: true, force: true });

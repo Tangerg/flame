@@ -9,6 +9,7 @@ import {
 } from "@opentelemetry/api";
 import { createParser } from "eventsource-parser";
 import { createPushPullChannel } from "../channel";
+import { stringifyJSON } from "../json";
 import {
   errorMessage,
   parseTransportProblem,
@@ -50,6 +51,7 @@ export interface HttpTransportConfig {
   localToken?: string;
   fetch?: typeof fetch;
   maximumEventStreamFrameCharacters?: number;
+  maximumEventStreamFrameBytes?: number;
 }
 
 interface EventStreamTextParser {
@@ -92,6 +94,12 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
   ) {
     throw new RangeError("event-stream frame capacity must be a positive safe integer");
   }
+  if (
+    config.maximumEventStreamFrameBytes !== undefined &&
+    (!Number.isSafeInteger(config.maximumEventStreamFrameBytes) ||
+      config.maximumEventStreamFrameBytes <= 0)
+  )
+    throw new RangeError("event-stream byte capacity must be a positive safe integer");
 
   const channel = createPushPullChannel<TransportEvent>({ capacity: 0 });
   const closeController = new AbortController();
@@ -120,6 +128,15 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     const parser = createParser({
       onEvent(event) {
         if (!event.data) return;
+        if (
+          config.maximumEventStreamFrameBytes !== undefined &&
+          new TextEncoder().encode(event.data).byteLength + 1 > config.maximumEventStreamFrameBytes
+        )
+          throw new RpcTransportError(
+            "event-stream frame exceeds its byte capacity",
+            undefined,
+            metadata.requestId,
+          );
         if (
           method === "plugins.stream" &&
           (event.id || (event.event !== undefined && event.event !== "message"))
@@ -322,7 +339,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
         method: HTTP_ENDPOINTS.rpc.method,
         redirect: "error",
         headers,
-        body: JSON.stringify(msg),
+        body: stringifyJSON(msg),
         signal: requestSignal,
       });
     } catch (err) {

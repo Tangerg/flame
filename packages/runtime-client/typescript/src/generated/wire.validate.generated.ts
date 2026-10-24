@@ -7,7 +7,7 @@
 // What each call MEANS lives in wireCheck.ts. This file only says which rule
 // applies where.
 
-import { absent, allOf, anyOf, anything, array, distinctViolations, enumOf, fields, flag, ifThen, integer, literal, maxItems, maxLength, maximum, minItems, minLength, minProperties, minimum, nullable, numeric, object, oneOf, pattern, propertyNames, record, ref, text, uniqueItems } from "../validation/wireCheck";
+import { absent, allOf, anyOf, anything, array, distinctViolations, enumOf, fields, flag, ifThen, integer, literal, maxItems, maxLength, maximum, minItems, minLength, minProperties, minimum, nullable, numeric, object, oneOf, pattern, projectWireValue, propertyNames, record, ref, text, uniqueItems } from "../validation/wireCheck";
 import type { WireCheck, WireViolation } from "../validation/wireCheck";
 
 import type { WireMethodName } from "./wire.methods.generated";
@@ -254,6 +254,7 @@ export type WireTypeName =
   | "PluginResourceEvent"
   | "PluginResourceLease"
   | "PluginServerDeclaration"
+  | "PluginServerType"
   | "PluginSkill"
   | "PluginStreamEvent"
   | "PluginStreamKind"
@@ -487,8 +488,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       approvalDecision: ref(() => CHECKS.ApprovalDecision),
       content: array(ref(() => CHECKS.ContentBlock)),
       createdAt: text(),
-      droppedMessages: allOf([integer(), minimum(0)]),
-      durationMillis: allOf([integer(), minimum(0), maximum(9223372036854)]),
+      droppedMessages: allOf([integer(), minimum("0")]),
+      durationMillis: allOf([integer(), minimum("0"), maximum("9223372036854")]),
       error: ref(() => CHECKS.ArtifactProblem),
       finishedAt: text(),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -665,7 +666,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       detail: text(),
       docUrl: text(),
-      retryAfterSeconds: allOf([integer(), minimum(1), maximum(9223372036)]),
+      retryAfterSeconds: allOf([integer(), minimum("1"), maximum("9223372036")]),
       type: ref(() => CHECKS.ArtifactProblemType),
     }, ["type"]),
     ifThen(
@@ -744,7 +745,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ArtifactProblemType: enumOf(["internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"]),
   ArtifactRun: allOf([
     object({
-      contextTokens: allOf([integer(), minimum(0)]),
+      contextTokens: allOf([integer(), minimum("0")]),
       createdAt: text(),
       finishedAt: text(),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -969,8 +970,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   DiffRow: allOf([
     object({
       code: text(),
-      leftLine: allOf([integer(), minimum(1)]),
-      rightLine: allOf([integer(), minimum(1)]),
+      leftLine: allOf([integer(), minimum("1")]),
+      rightLine: allOf([integer(), minimum("1")]),
       text: text(),
       type: ref(() => CHECKS.DiffRowType),
     }, []),
@@ -1064,9 +1065,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   FileContent: allOf([
     object({
       content: text(),
-      endLine: allOf([integer(), minimum(1)]),
-      startLine: allOf([integer(), minimum(1)]),
-      totalLines: allOf([integer(), minimum(1)]),
+      endLine: allOf([integer(), minimum("1")]),
+      startLine: allOf([integer(), minimum("1")]),
+      totalLines: allOf([integer(), minimum("1")]),
       truncated: flag(),
     }, ["content", "totalLines"]),
     ifThen(
@@ -1080,11 +1081,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   FileDiff: allOf([
     object({
-      added: allOf([integer(), minimum(0)]),
+      added: allOf([integer(), minimum("0")]),
       binary: flag(),
       path: allOf([text(), minLength(1)]),
       previousPath: text(),
-      removed: allOf([integer(), minimum(0)]),
+      removed: allOf([integer(), minimum("0")]),
       rows: array(ref(() => CHECKS.DiffRow)),
       status: ref(() => CHECKS.FileStatus),
     }, ["path", "rows", "status"]),
@@ -1138,7 +1139,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     modifiedAt: text(),
     name: allOf([text(), minLength(1)]),
     path: allOf([text(), minLength(1)]),
-    sizeBytes: allOf([integer(), minimum(0)]),
+    sizeBytes: allOf([integer(), minimum("0")]),
     type: ref(() => CHECKS.FileEntryType),
   }, ["modifiedAt", "name", "path", "type"]),
   FileEntryType: enumOf(["file", "dir", "symlink"]),
@@ -1152,15 +1153,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     title: text(),
   }, ["sessionId"]),
   GenerationParams: object({
-    maxTokens: allOf([integer(), minimum(1)]),
+    maxTokens: allOf([integer(), minimum("1")]),
     stop: allOf([array(text()), minItems(1), uniqueItems()]),
-    temperature: allOf([numeric(), minimum(0), maximum(2)]),
-    topP: allOf([numeric(), minimum(0), maximum(1)]),
+    temperature: allOf([numeric(), minimum("0"), maximum("2")]),
+    topP: allOf([numeric(), minimum("0"), maximum("1")]),
   }, []),
   GetDiffRequest: allOf([
     object({
       format: ref(() => CHECKS.DiffFormat),
-      limit: allOf([integer(), minimum(1)]),
+      limit: allOf([integer(), minimum("1")]),
       mode: ref(() => CHECKS.DiffMode),
       path: text(),
       workspace: ref(() => CHECKS.WorkspaceRef),
@@ -1307,24 +1308,24 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["sessionId"]),
   GoalStatus: enumOf(["active", "paused", "blocked", "completing"]),
   GoalUsage: object({
-    costUsd: allOf([numeric(), minimum(0)]),
-    runs: allOf([integer(), minimum(0)]),
-    steps: allOf([integer(), minimum(0)]),
+    costUsd: allOf([numeric(), minimum("0")]),
+    runs: allOf([integer(), minimum("0")]),
+    steps: allOf([integer(), minimum("0")]),
   }, ["runs", "steps"]),
   GrepMatch: object({
-    lineNumber: allOf([integer(), minimum(1)]),
+    lineNumber: allOf([integer(), minimum("1")]),
     path: allOf([text(), minLength(1)]),
     text: text(),
   }, ["lineNumber", "path", "text"]),
   GrepRequest: object({
-    limit: allOf([integer(), minimum(1)]),
+    limit: allOf([integer(), minimum("1")]),
     path: text(),
     query: allOf([text(), minLength(1)]),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["query", "workspace"]),
   GrepResult: object({
     matches: array(ref(() => CHECKS.GrepMatch)),
-    total: allOf([integer(), minimum(0)]),
+    total: allOf([integer(), minimum("0")]),
   }, ["matches", "total"]),
   HealthStatus: enumOf(["ok", "degraded", "unhealthy"]),
   HookEvent: enumOf(["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"]),
@@ -1337,7 +1338,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       matcher: text(),
       scope: ref(() => CHECKS.HookScope),
       source: allOf([text(), minLength(1)]),
-      timeoutMillis: allOf([integer(), minimum(0), maximum(300000)]),
+      timeoutMillis: allOf([integer(), minimum("0"), maximum("300000")]),
     }, ["active", "event", "scope", "source"]),
     anyOf([fields({}, ["command"]), fields({}, ["inject"])]),
     ifThen(
@@ -1403,7 +1404,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["hooks", "projectTrusted"]),
   IdempotencyLimits: object({
     namespace: allOf([text(), pattern("^idp_[0-9a-f]{32}$")]),
-    retentionSeconds: allOf([integer(), minimum(1), maximum(9223372036)]),
+    retentionSeconds: allOf([integer(), minimum("1"), maximum("9223372036")]),
   }, ["namespace", "retentionSeconds"]),
   ImportSessionRequest: object({
     artifact: ref(() => CHECKS.SessionArtifact),
@@ -1491,8 +1492,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       approvalDecision: ref(() => CHECKS.ApprovalDecision),
       content: array(ref(() => CHECKS.ContentBlock)),
       createdAt: text(),
-      droppedMessages: allOf([integer(), minimum(0)]),
-      durationMillis: allOf([integer(), minimum(0), maximum(9223372036854)]),
+      droppedMessages: allOf([integer(), minimum("0")]),
+      durationMillis: allOf([integer(), minimum("0"), maximum("9223372036854")]),
       error: ref(() => CHECKS.ProblemData),
       finishedAt: text(),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -1727,7 +1728,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     cursor: allOf([text(), maxLength(65536)]),
     glob: text(),
     includeIgnored: flag(),
-    limit: allOf([integer(), minimum(1)]),
+    limit: allOf([integer(), minimum("1")]),
     path: text(),
     recursive: flag(),
     workspace: ref(() => CHECKS.WorkspaceRef),
@@ -1737,13 +1738,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["workspace"]),
   ListInterruptsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
-    limit: allOf([integer(), minimum(1)]),
+    limit: allOf([integer(), minimum("1")]),
     rootRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, []),
   ListItemsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
-    limit: allOf([integer(), minimum(1)]),
+    limit: allOf([integer(), minimum("1")]),
     order: ref(() => CHECKS.ItemOrder),
     scope: ref(() => CHECKS.ItemListScope),
   }, ["scope"]),
@@ -1754,12 +1755,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["data", "runs"]),
   ListModelEndpointsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
-    limit: allOf([integer(), minimum(1)]),
+    limit: allOf([integer(), minimum("1")]),
     parentCallId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["parentCallId"]),
   ListModelInvocationsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
-    limit: allOf([integer(), minimum(1)]),
+    limit: allOf([integer(), minimum("1")]),
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId"]),
   ListModelsRequest: object({
@@ -1768,19 +1769,19 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ListRunsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
     includeDescendants: flag(),
-    limit: allOf([integer(), minimum(1)]),
+    limit: allOf([integer(), minimum("1")]),
     sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     statuses: allOf([array(ref(() => CHECKS.RunStatus)), minItems(1), uniqueItems()]),
   }, []),
   ListSessionTrajectoryRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
     includeDescendants: flag(),
-    limit: allOf([integer(), minimum(1)]),
+    limit: allOf([integer(), minimum("1")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   ListSessionsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
-    limit: allOf([integer(), minimum(1)]),
+    limit: allOf([integer(), minimum("1")]),
     search: allOf([text(), maxLength(1024)]),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, []),
@@ -1833,7 +1834,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   MCPAuthorizationAttemptLimits: object({
-    retentionSeconds: allOf([integer(), minimum(1), maximum(9223372036)]),
+    retentionSeconds: allOf([integer(), minimum("1"), maximum("9223372036")]),
   }, ["retentionSeconds"]),
   MCPAuthorizationAttemptRequest: object({
     attemptId: allOf([text(), pattern("^mcpauth_[A-Z2-7]{26,64}$")]),
@@ -1951,7 +1952,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   MCPHandshakeTimeout: allOf([
     object({
-      seconds: allOf([integer(), minimum(1), maximum(9223372036)]),
+      seconds: allOf([integer(), minimum("1"), maximum("9223372036")]),
       type: ref(() => CHECKS.MCPHandshakeTimeoutType),
     }, []),
     oneOf([
@@ -2024,7 +2025,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   MCPServerState: allOf([
     object({
       error: ref(() => CHECKS.MCPStatusProblem),
-      toolCount: allOf([integer(), minimum(0), maximum(2048)]),
+      toolCount: allOf([integer(), minimum("0"), maximum("2048")]),
       type: ref(() => CHECKS.MCPServerStateType),
     }, []),
     oneOf([
@@ -2116,7 +2117,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ModelEndpointInvocation: allOf([
     object({
       caller: ref(() => CHECKS.Invocation),
-      costUSD: allOf([numeric(), minimum(0)]),
+      costUSD: allOf([numeric(), minimum("0")]),
       failure: text(),
       id: allOf([text(), minLength(1), pattern("^[^\\p{C}\\p{Z}]*$")]),
       kind: ref(() => CHECKS.ModelEndpointKind),
@@ -2174,7 +2175,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ModelInvocation: allOf([
     object({
       callId: allOf([text(), maxLength(256), pattern("^[A-Za-z0-9._:-]+$")]),
-      firstOutputLatencyMillis: allOf([integer(), minimum(0)]),
+      firstOutputLatencyMillis: allOf([integer(), minimum("0")]),
       knownResponse: text(),
       runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -2227,33 +2228,33 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   ModelInvocationState: enumOf(["started", "completed", "failed", "unknown"]),
   ModelInvocationUsage: object({
-    cacheReadTokens: allOf([integer(), minimum(0)]),
-    cacheWriteTokens: allOf([integer(), minimum(0)]),
-    inputTokens: allOf([integer(), minimum(0)]),
-    outputTokens: allOf([integer(), minimum(0)]),
-    reasoningTokens: allOf([integer(), minimum(0)]),
+    cacheReadTokens: allOf([integer(), minimum("0")]),
+    cacheWriteTokens: allOf([integer(), minimum("0")]),
+    inputTokens: allOf([integer(), minimum("0")]),
+    outputTokens: allOf([integer(), minimum("0")]),
+    reasoningTokens: allOf([integer(), minimum("0")]),
   }, ["inputTokens", "outputTokens"]),
   ModelPricing: object({
-    cacheReadUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
-    cacheWriteUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
-    inputUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
-    outputUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
+    cacheReadUsdPerMillionTokens: allOf([numeric(), minimum("0")]),
+    cacheWriteUsdPerMillionTokens: allOf([numeric(), minimum("0")]),
+    inputUsdPerMillionTokens: allOf([numeric(), minimum("0")]),
+    outputUsdPerMillionTokens: allOf([numeric(), minimum("0")]),
   }, []),
   ModelTokenLimits: allOf([
     object({
-      contextWindow: allOf([integer(), minimum(1)]),
-      maxInputTokens: allOf([integer(), minimum(1)]),
-      maxOutputTokens: allOf([integer(), minimum(1)]),
+      contextWindow: allOf([integer(), minimum("1")]),
+      maxInputTokens: allOf([integer(), minimum("1")]),
+      maxOutputTokens: allOf([integer(), minimum("1")]),
     }, []),
     anyOf([fields({}, ["contextWindow"]), fields({}, ["maxInputTokens"]), fields({}, ["maxOutputTokens"])]),
   ]),
   ModelUsage: object({
-    cacheReadTokens: allOf([integer(), minimum(0)]),
-    cacheWriteTokens: allOf([integer(), minimum(0)]),
-    costUsd: allOf([numeric(), minimum(0)]),
-    inputTokens: allOf([integer(), minimum(0)]),
-    outputTokens: allOf([integer(), minimum(0)]),
-    reasoningTokens: allOf([integer(), minimum(0)]),
+    cacheReadTokens: allOf([integer(), minimum("0")]),
+    cacheWriteTokens: allOf([integer(), minimum("0")]),
+    costUsd: allOf([numeric(), minimum("0")]),
+    inputTokens: allOf([integer(), minimum("0")]),
+    outputTokens: allOf([integer(), minimum("0")]),
+    reasoningTokens: allOf([integer(), minimum("0")]),
   }, []),
   OpenPluginResourcesRequest: object({
     componentId: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
@@ -2361,7 +2362,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["data"]),
   PageQuery: object({
     cursor: allOf([text(), maxLength(65536)]),
-    limit: allOf([integer(), minimum(1)]),
+    limit: allOf([integer(), minimum("1")]),
   }, []),
   PatchResult: object({
     changes: array(ref(() => CHECKS.AppliedChange)),
@@ -2377,7 +2378,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     state: ref(() => CHECKS.PlanState),
   }, ["sessionId"]),
   PlanState: object({
-    revision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
+    revision: allOf([integer(), minimum("1"), maximum("9007199254740991")]),
     steps: array(ref(() => CHECKS.PlanStep)),
     updatedAt: text(),
   }, ["revision", "steps", "updatedAt"]),
@@ -2627,14 +2628,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       args: array(text()),
       command: text(),
       dir: text(),
+      entry: text(),
       env: record(text()),
       headers: record(text()),
       name: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
-      type: ref(() => CHECKS.MCPTransport),
+      type: ref(() => CHECKS.PluginServerType),
       url: text(),
     }, []),
     oneOf([
       fields({
+        entry: absent(),
         headers: absent(),
         type: literal("stdio"),
         url: absent(),
@@ -2643,11 +2646,22 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         args: absent(),
         command: absent(),
         dir: absent(),
+        entry: absent(),
         env: absent(),
         type: literal("streamableHttp"),
       }, ["name", "type", "url"]),
+      fields({
+        args: absent(),
+        command: absent(),
+        dir: absent(),
+        env: absent(),
+        headers: absent(),
+        type: literal("managedNode"),
+        url: absent(),
+      }, ["entry", "name", "type"]),
     ]),
   ]),
+  PluginServerType: enumOf(["stdio", "streamableHttp", "managedNode"]),
   PluginSkill: object({
     description: text(),
     name: text(),
@@ -2721,7 +2735,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       docUrl: text(),
       errors: array(ref(() => CHECKS.FieldError)),
       requiredCapabilities: allOf([array(ref(() => CHECKS.CapabilityRequirement)), minItems(1), uniqueItems()]),
-      retryAfterSeconds: allOf([integer(), minimum(1), maximum(9223372036)]),
+      retryAfterSeconds: allOf([integer(), minimum("1"), maximum("9223372036")]),
       type: text(),
     }, []),
     oneOf([
@@ -3187,10 +3201,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["label"]),
   ReadFileRequest: allOf([
     object({
-      endLine: allOf([integer(), minimum(1)]),
-      maxBytes: allOf([integer(), minimum(1)]),
+      endLine: allOf([integer(), minimum("1")]),
+      maxBytes: allOf([integer(), minimum("1")]),
       path: allOf([text(), minLength(1)]),
-      startLine: allOf([integer(), minimum(1)]),
+      startLine: allOf([integer(), minimum("1")]),
       workspace: ref(() => CHECKS.WorkspaceRef),
     }, ["path", "workspace"]),
     ifThen(
@@ -3211,7 +3225,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["instanceId", "status"]),
   RecordedUsage: object({
     coverage: ref(() => CHECKS.UsageCoverage),
-    recordedCostUsd: allOf([numeric(), minimum(0)]),
+    recordedCostUsd: allOf([numeric(), minimum("0")]),
     total: ref(() => CHECKS.ModelUsage),
   }, ["coverage", "total"]),
   RememberScope: object({
@@ -3319,8 +3333,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     timestamp: text(),
   }, ["event", "eventId", "runId", "segmentId", "timestamp"]),
   RunMetrics: object({
-    activeDurationMillis: allOf([integer(), minimum(0), maximum(9223372036854)]),
-    steps: allOf([integer(), minimum(0)]),
+    activeDurationMillis: allOf([integer(), minimum("0"), maximum("9223372036854")]),
+    steps: allOf([integer(), minimum("0")]),
     usage: ref(() => CHECKS.Usage),
   }, ["activeDurationMillis", "steps"]),
   RunOutcome: allOf([
@@ -3358,8 +3372,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RunProgress: allOf([
     object({
       activity: text(),
-      contextTokens: allOf([integer(), minimum(0)]),
-      step: allOf([integer(), minimum(0)]),
+      contextTokens: allOf([integer(), minimum("0")]),
+      step: allOf([integer(), minimum("0")]),
       usage: ref(() => CHECKS.Usage),
     }, []),
     anyOf([fields({}, ["step"]), fields({}, ["usage"]), fields({}, ["contextTokens"]), fields({}, ["activity"])]),
@@ -3372,7 +3386,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RunRef: allOf([
     object({
       activeSegmentId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      contextTokens: allOf([integer(), minimum(0)]),
+      contextTokens: allOf([integer(), minimum("0")]),
       createdAt: text(),
       finishedAt: text(),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3454,8 +3468,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   RunReplayLimits: object({
-    maxBytes: allOf([integer(), minimum(1)]),
-    maxEvents: allOf([integer(), minimum(1)]),
+    maxBytes: allOf([integer(), minimum("1")]),
+    maxEvents: allOf([integer(), minimum("1")]),
     scope: ref(() => CHECKS.RunReplayScope),
   }, ["maxBytes", "maxEvents", "scope"]),
   RunReplayScope: enumOf(["runtimeInstanceRootSegment"]),
@@ -3523,7 +3537,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       names: allOf([array(text()), minItems(1), uniqueItems()]),
       paths: allOf([array(text()), minItems(1), uniqueItems()]),
       runIds: allOf([array(allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")])), minItems(1), uniqueItems()]),
-      sequence: allOf([integer(), minimum(1), maximum(9007199254740991)]),
+      sequence: allOf([integer(), minimum("1"), maximum("9007199254740991")]),
       servers: allOf([array(ref(() => CHECKS.MCPServerID)), minItems(1), uniqueItems()]),
       sessionIds: allOf([array(allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")])), minItems(1), uniqueItems()]),
       topics: allOf([array(ref(() => CHECKS.RuntimeTopic)), minItems(1), uniqueItems()]),
@@ -3707,7 +3721,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["info", "liveness", "readiness", "rpc"]),
   RuntimeLimits: object({
     idempotency: ref(() => CHECKS.IdempotencyLimits),
-    maxConcurrentRuns: allOf([integer(), minimum(1)]),
+    maxConcurrentRuns: allOf([integer(), minimum("1")]),
     mcpAuthorizationAttempts: ref(() => CHECKS.MCPAuthorizationAttemptLimits),
     runReplay: ref(() => CHECKS.RunReplayLimits),
     runtimeSubscription: ref(() => CHECKS.SubscriptionLimits),
@@ -3759,7 +3773,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
     reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    revision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
+    revision: allOf([integer(), minimum("1"), maximum("9007199254740991")]),
     status: ref(() => CHECKS.SessionStatus),
     title: text(),
     updatedAt: text(),
@@ -3772,7 +3786,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runs: array(ref(() => CHECKS.ArtifactRun)),
     session: ref(() => CHECKS.ArtifactSession),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
-    version: allOf([integer(), minimum(31), maximum(31)]),
+    version: allOf([integer(), minimum("31"), maximum("31")]),
   }, ["items", "messages", "runs", "session", "toolResults", "version"]),
   SessionSnapshot: object({
     goal: ref(() => CHECKS.Goal),
@@ -3794,7 +3808,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     modelInvocations: array(ref(() => CHECKS.ModelInvocation)),
     plan: array(ref(() => CHECKS.PlanStep)),
     runs: array(ref(() => CHECKS.RunRef)),
-    schemaVersion: allOf([integer(), minimum(3), maximum(3)]),
+    schemaVersion: allOf([integer(), minimum("3"), maximum("3")]),
     session: ref(() => CHECKS.Session),
     toolAttempts: array(ref(() => CHECKS.ToolAttempt)),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
@@ -3802,7 +3816,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   SessionUsage: object({
     byModel: array(ref(() => CHECKS.UsageBucket)),
     coverage: ref(() => CHECKS.UsageCoverage),
-    recordedCostUsd: allOf([numeric(), minimum(0)]),
+    recordedCostUsd: allOf([numeric(), minimum("0")]),
     total: ref(() => CHECKS.ModelUsage),
   }, ["byModel", "coverage", "total"]),
   SessionUsageRequest: object({
@@ -4109,11 +4123,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     snapshot: ref(() => CHECKS.SessionSnapshot),
   }, ["runId", "segmentId"]),
   SubscriptionLimits: object({
-    maxDirectoryEntries: allOf([integer(), minimum(1)]),
-    maxFileBytes: allOf([integer(), minimum(1)]),
-    maxPaths: allOf([integer(), minimum(1)]),
-    maxTopics: allOf([integer(), minimum(1)]),
-    maxWatches: allOf([integer(), minimum(1)]),
+    maxDirectoryEntries: allOf([integer(), minimum("1")]),
+    maxFileBytes: allOf([integer(), minimum("1")]),
+    maxPaths: allOf([integer(), minimum("1")]),
+    maxTopics: allOf([integer(), minimum("1")]),
+    maxWatches: allOf([integer(), minimum("1")]),
   }, ["maxDirectoryEntries", "maxFileBytes", "maxPaths", "maxTopics", "maxWatches"]),
   SuppressibleRunEventType: enumOf(["segment.progress", "item.delta"]),
   Target: object({
@@ -4259,7 +4273,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["provider"]),
   UpdateSessionRequest: allOf([
     object({
-      expectedRevision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
+      expectedRevision: allOf([integer(), minimum("1"), maximum("9007199254740991")]),
       favorite: flag(),
       isolated: flag(),
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -4280,27 +4294,27 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   Usage: object({
     byModel: allOf([record(ref(() => CHECKS.ModelUsage)), propertyNames(allOf([maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]))]),
-    cacheReadTokens: allOf([integer(), minimum(0)]),
-    cacheWriteTokens: allOf([integer(), minimum(0)]),
-    costUsd: allOf([numeric(), minimum(0)]),
-    inputTokens: allOf([integer(), minimum(0)]),
-    outputTokens: allOf([integer(), minimum(0)]),
-    reasoningTokens: allOf([integer(), minimum(0)]),
+    cacheReadTokens: allOf([integer(), minimum("0")]),
+    cacheWriteTokens: allOf([integer(), minimum("0")]),
+    costUsd: allOf([numeric(), minimum("0")]),
+    inputTokens: allOf([integer(), minimum("0")]),
+    outputTokens: allOf([integer(), minimum("0")]),
+    reasoningTokens: allOf([integer(), minimum("0")]),
   }, []),
   UsageBucket: object({
     coverage: ref(() => CHECKS.UsageCoverage),
     key: allOf([text(), minLength(1)]),
-    recordedCostUsd: allOf([numeric(), minimum(0)]),
+    recordedCostUsd: allOf([numeric(), minimum("0")]),
     total: ref(() => CHECKS.ModelUsage),
   }, ["coverage", "key", "total"]),
   UsageCoverage: object({
-    calls: allOf([integer(), minimum(0)]),
-    completedCalls: allOf([integer(), minimum(0)]),
-    failedCalls: allOf([integer(), minimum(0)]),
-    pricedCalls: allOf([integer(), minimum(0)]),
-    reportedCalls: allOf([integer(), minimum(0)]),
-    startedCalls: allOf([integer(), minimum(0)]),
-    unknownCalls: allOf([integer(), minimum(0)]),
+    calls: allOf([integer(), minimum("0")]),
+    completedCalls: allOf([integer(), minimum("0")]),
+    failedCalls: allOf([integer(), minimum("0")]),
+    pricedCalls: allOf([integer(), minimum("0")]),
+    reportedCalls: allOf([integer(), minimum("0")]),
+    startedCalls: allOf([integer(), minimum("0")]),
+    unknownCalls: allOf([integer(), minimum("0")]),
   }, ["calls", "completedCalls", "failedCalls", "pricedCalls", "reportedCalls", "startedCalls", "unknownCalls"]),
   UsageSummary: object({
     byDay: array(ref(() => CHECKS.UsageBucket)),
@@ -4310,14 +4324,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     byScope: array(ref(() => CHECKS.UsageBucket)),
     coverage: ref(() => CHECKS.UsageCoverage),
     observedAt: text(),
-    recordedCostUsd: allOf([numeric(), minimum(0)]),
-    runs: allOf([integer(), minimum(0)]),
-    sessions: allOf([integer(), minimum(0)]),
+    recordedCostUsd: allOf([numeric(), minimum("0")]),
+    runs: allOf([integer(), minimum("0")]),
+    sessions: allOf([integer(), minimum("0")]),
     since: text(),
     total: ref(() => CHECKS.ModelUsage),
   }, ["byDay", "byModel", "byOrigin", "byProvider", "byScope", "coverage", "observedAt", "runs", "sessions", "total"]),
   UsageSummaryRequest: object({
-    sinceDays: allOf([integer(), minimum(1)]),
+    sinceDays: allOf([integer(), minimum("1")]),
   }, []),
   UtilityRole: object({
     model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -4340,11 +4354,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   WorkspaceAvailability: enumOf(["available", "missing"]),
   WorkspaceFileChange: allOf([
     object({
-      added: allOf([integer(), minimum(0)]),
+      added: allOf([integer(), minimum("0")]),
       binary: flag(),
       path: allOf([text(), minLength(1)]),
       previousPath: text(),
-      removed: allOf([integer(), minimum(0)]),
+      removed: allOf([integer(), minimum("0")]),
       status: ref(() => CHECKS.FileStatus),
     }, ["path", "status"]),
     ifThen(
@@ -4407,7 +4421,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   WorkspaceSummary: object({
     lastActiveAt: text(),
     name: allOf([text(), minLength(1)]),
-    sessionCount: allOf([integer(), minimum(0)]),
+    sessionCount: allOf([integer(), minimum("0")]),
     workspace: ref(() => CHECKS.WorkspaceInfo),
   }, ["name", "sessionCount", "workspace"]),
 };
@@ -4634,6 +4648,11 @@ export function validateMethodResult(method: WireMethodName, value: unknown): Wi
   return distinctViolations(out);
 }
 
+/** Project an already validated method result into its declared DTO. */
+export function projectMethodResult(method: WireMethodName, value: unknown): unknown {
+  return projectWireValue(METHOD_RESULTS[method], value);
+}
+
 const HTTP_RESPONSES: Record<Wire.HTTPSidecarEndpointName, WireCheck> = {
   "info": ref(() => CHECKS.RuntimeInfo),
   "liveness": ref(() => CHECKS.LivenessStatus),
@@ -4648,6 +4667,11 @@ export function validateHTTPSidecarResponse(
   const out: WireViolation[] = [];
   HTTP_RESPONSES[endpoint](value, `${endpoint}.response`, out);
   return out;
+}
+
+/** Project already validated operational sidecar fields into their DTO. */
+export function projectHTTPSidecarResponse(endpoint: Wire.HTTPSidecarEndpointName, value: unknown): unknown {
+  return projectWireValue(HTTP_RESPONSES[endpoint], value);
 }
 
 export const WIRE_NOTIFICATION_NAMES = [
@@ -4686,6 +4710,11 @@ export function validateNotificationParams(
   return distinctViolations(out);
 }
 
+/** Project already validated notification fields into their declared DTO. */
+export function projectNotificationParams(method: WireNotificationName, value: unknown): unknown {
+  return projectWireValue(NOTIFICATION_PARAMS[method], value);
+}
+
 /**
  * validateWire reports every way a value fails the published shape, and an empty
  * list when it satisfies it.
@@ -4697,4 +4726,9 @@ export function validateWire(type: WireTypeName, value: unknown, boundary?: "req
   const out: WireViolation[] = [];
   CHECKS[type](value, type, out, boundary);
   return distinctViolations(out);
+}
+
+/** Project already validated DTO fields while retaining opaque JSON values. */
+export function projectWire(type: WireTypeName, value: unknown): unknown {
+  return projectWireValue(CHECKS[type], value);
 }

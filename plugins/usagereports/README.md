@@ -35,10 +35,37 @@ wide integers and exact JSON numbers without rounding them through JavaScript
 Regenerate the typed contribution after changing its methods:
 
 ```sh
-go generate ./plugins/usagereports/backend/rpc
+go generate ./plugins/usagereports
 npm run build --prefix plugins
 ```
 
-Build and install the complete target package with the ordinary first-party
-package builder. Source installation never compiles the backend. Reinstall and
+The published source is `contracts/capability.json`. Go consumer codecs and the
+TypeScript implementation bind that exact descriptor; old schema definition
+names remain opaque contract data. The backend uses `@flame/backend-sdk` and
+the distribution's selected Node companion, with `node:sqlite` as the private
+archive owner. Exclusive SQLite ownership spans the process lifetime;
+transactions never span host I/O. There is no replacement Go executable.
+
+Build a portable package with the ordinary first-party builder:
+
+```sh
+node plugins/scripts/build-packages.mjs --plugin usagereports --output /absolute/new/packages
+node plugins/scripts/build-author-kit.mjs --plugin usagereports --output /absolute/new/author --offline
+```
+
+The exported full-stack project has its own lock, packed SDKs and prebuilt
+development tools. Its generate/typecheck/test/build/package commands require
+no Go source or compiler. Runtime installation executes no build or npm install.
+
+This pre-release cutover requires fresh private archive data. The previous Go
+archive and installation remain for the original binary; the Node owner refuses
+their different schema instead of converting or guessing at receipts.
+
+For cutover, stop the previous Runtime and retain its complete distribution and
+original `FLAME_HOME` unchanged. Launch the new complete Runtime distribution
+with a new absolute `FLAME_HOME` directory; its fresh catalog creates a new
+private archive. Do not copy the former `reports.db` or receipts into it. Inspect
+historical archives with the matching previous distribution and original home.
+
+Build and install the complete package. Reinstall and
 select the new package digest when its declaration or component changes.

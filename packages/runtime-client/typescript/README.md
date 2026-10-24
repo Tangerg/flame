@@ -11,11 +11,24 @@ const client = createFlameClient(createHttpTransport({ baseUrl: "http://127.0.0.
 const discovery = await client.runtime.discover();
 ```
 
-Consumers use explicit public entries: the main API, `wire`, `methods`,
+Consumers use explicit public entries: the main API, `json`, `wire`, `methods`,
 `validation`, `testing`, and `testing/samples/*`. Internal implementation paths
 and unit tests are not exports. `testing` supplies the deliberate memory-transport
 fixture and sample index. Its raw sample JSON is an exact generated copy of
 `runtime/contract/samples`; edit canonical samples at that Runtime owner.
+
+Transport receives JSON losslessly before method validation. Schema-declared
+numeric DTO fields project into JavaScript numbers and reject values they cannot
+represent exactly. Opaque JSON, including Tool schemas, retains exact numbers.
+For evidence such as accounting archives, `client.queryJSON(method,
+params, { signal })` returns canonical JSON with the original numeric lexemes,
+wide integers, null and missing members retained. It uses the same request,
+generated validation and cancellation path. It accepts only unary queries;
+commands and streams keep their existing lifecycle APIs. Use `parseJSON`,
+`stringifyJSON`, `bigint` and `ExactNumber` to inspect or return exact data.
+The `json` entry owns only that pure data mechanism. Its dependency closure
+cannot enter Runtime calls, protocol records or validation; neutral application
+input and presentation code may consume it without importing the client API.
 
 Mutation handles retain the original key and receipt authority after uncertain
 responses. Retrying continues that original command. Presentation components

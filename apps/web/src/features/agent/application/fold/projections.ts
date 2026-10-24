@@ -1,3 +1,5 @@
+import { stringifyJSON } from "@flame/runtime-client/json";
+import { prettyJSON } from "@/lib/json";
 import {
   commandToolResult,
   patchToolResult,
@@ -195,7 +197,7 @@ export function toolFields(tool: AgentToolInvocation): Partial<ToolCall> {
 function rawResult(result: unknown): Pick<ToolCall, "result"> | Record<string, never> {
   return result === undefined
     ? {}
-    : { result: typeof result === "string" ? result : JSON.stringify(result) };
+    : { result: typeof result === "string" ? result : stringifyJSON(result) };
 }
 
 function categoryFields(
@@ -260,8 +262,7 @@ function categoryFields(
       return tool.result === undefined
         ? {}
         : {
-            result:
-              typeof tool.result === "string" ? tool.result : JSON.stringify(tool.result, null, 2),
+            result: typeof tool.result === "string" ? tool.result : prettyJSON(tool.result),
           };
   }
 }
@@ -270,7 +271,7 @@ export function argsText(tool: AgentToolInvocation): string {
   if (tool.argumentsText !== undefined) return tool.argumentsText;
   if (nameLabel(tool) !== undefined) return "";
   if (tool.category !== "unknown" && tool.category !== "task") return "";
-  return Object.keys(tool.arguments).length > 0 ? JSON.stringify(tool.arguments, null, 2) : "";
+  return Object.keys(tool.arguments).length > 0 ? prettyJSON(tool.arguments) : "";
 }
 
 function toolStatus(item: Extract<AgentItem, { type: "toolCall" }>): ToolCallStatus {

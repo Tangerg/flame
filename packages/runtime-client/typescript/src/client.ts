@@ -6,6 +6,7 @@ import {
   RpcConnectionError,
 } from "./errors";
 import { checkRequest, requestRequiresIdempotency } from "./request";
+import { stringifyJSON } from "./json";
 import {
   MAXIMUM_RUN_EVENT_ID_CHARACTERS,
   PROBLEM_CODES,
@@ -24,12 +25,16 @@ import type {
 import {
   wireMethodAcceptsReplayCursor,
   wireMethodReturnsValue,
+  isWireStreamingMethodName,
   type WireMethodName,
   type WireParams,
   type WireResult,
 } from "@flame/runtime-client/methods";
 import {
   isWireNotificationName,
+  projectMethodResult,
+  projectNotificationParams,
+  projectWire,
   validateMethodResult,
   validateNotificationParams,
   validateWire,
@@ -73,6 +78,11 @@ export interface RpcClient {
     params: WireParams<M>,
     options?: RpcCallOptions,
   ): Promise<WireResult<M>>;
+  callJSON<M extends WireMethodName>(
+    method: M,
+    params: WireParams<M>,
+    options?: Pick<RpcCallOptions, "signal" | "requestMeta">,
+  ): Promise<string>;
   subscribe<M extends WireNotificationName>(
     method: M,
     observer: NotificationObserver<M>,
@@ -83,6 +93,7 @@ export interface RpcClient {
 
 interface Pending {
   method: WireMethodName;
+  exactJSON: boolean;
   resolve: (value: unknown) => void;
   reject: (err: unknown) => void;
 }
@@ -193,26 +204,67 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
           );
           return;
         }
+        let problem: ProblemData;
+        try {
+          problem = projectWire("ProblemData", payload.data) as ProblemData;
+        } catch (cause) {
+          const error = new RpcProtocolError(
+            `${entry.method} error`,
+            [{ path: "$", detail: "number cannot be represented by the typed wire projection" }],
+            metadata?.requestId,
+          );
+          error.cause = cause;
+          entry.reject(error);
+          return;
+        }
         entry.reject(
           new RpcError(
             {
               code: payload.code,
               message: payload.message,
-              data: payload.data as ProblemData,
+              data: problem,
             },
             metadata?.requestId,
           ),
         );
       } else {
         const result = msg.result;
-        const violations = validateMethodResult(entry.method, result);
+        let violations;
+        try {
+          violations = validateMethodResult(entry.method, result);
+        } catch (cause) {
+          const error = new RpcProtocolError(
+            `${entry.method} result`,
+            [{ path: "$", detail: "numeric evidence cannot be validated" }],
+            metadata?.requestId,
+          );
+          error.cause = cause;
+          entry.reject(error);
+          return;
+        }
         if (violations.length > 0) {
           entry.reject(
             new RpcProtocolError(`${entry.method} result`, violations, metadata?.requestId),
           );
           return;
         }
-        entry.resolve(wireMethodReturnsValue(entry.method) ? result : undefined);
+        try {
+          entry.resolve(
+            entry.exactJSON
+              ? stringifyJSON(result, true)
+              : wireMethodReturnsValue(entry.method)
+                ? projectMethodResult(entry.method, result)
+                : undefined,
+          );
+        } catch (cause) {
+          const error = new RpcProtocolError(
+            `${entry.method} result`,
+            [{ path: "$", detail: "number cannot be represented by the typed wire projection" }],
+            metadata?.requestId,
+          );
+          error.cause = cause;
+          entry.reject(error);
+        }
       }
       return;
     }
@@ -220,7 +272,20 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       if (!isWireNotificationName(msg.method)) return;
       const handlers = subscribers.get(msg.method);
       if (!handlers) return;
-      const violations = validateNotificationParams(msg.method, msg.params);
+      let params: WireNotificationParams[typeof msg.method] | undefined;
+      let violations;
+      try {
+        violations = validateNotificationParams(msg.method, msg.params);
+        if (violations.length === 0)
+          params = projectNotificationParams(
+            msg.method,
+            msg.params,
+          ) as WireNotificationParams[typeof msg.method];
+      } catch {
+        violations = [
+          { path: "$", detail: "number cannot be represented by the typed wire projection" },
+        ];
+      }
       if (violations.length > 0) {
         const failure = new RpcProtocolError(
           `${msg.method} params`,
@@ -240,10 +305,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       const deliveries: Promise<void>[] = [];
       for (const observer of handlers) {
         try {
-          const delivery = observer.next(
-            msg.params as WireNotificationParams[typeof msg.method],
-            requestRpcId,
-          );
+          const delivery = observer.next(params!, requestRpcId);
           if (delivery) {
             const consumed = delivery.catch((cause: unknown) => {
               observer.error(
@@ -270,13 +332,19 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     console.warn("[rpc] dropping unexpected server-initiated Request", msg);
   }
 
-  async function call<M extends WireMethodName>(
+  async function request<M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
     callOptions: RpcCallOptions = {},
-  ): Promise<WireResult<M>> {
+    exactJSON = false,
+  ): Promise<WireResult<M> | string> {
     if (connection.signal.aborted) throw new RpcTransportError("client closed");
     const requiresIdempotency = requestRequiresIdempotency(method, params);
+    if (
+      exactJSON &&
+      (requiresIdempotency || isWireStreamingMethodName(method) || !wireMethodReturnsValue(method))
+    )
+      throw new TypeError("exact JSON delivery requires a unary query result");
     if (callOptions.idempotencyKey !== undefined && !requiresIdempotency) {
       throw new TypeError(`${method} does not accept an idempotency key`);
     }
@@ -316,7 +384,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       params: requestMeta ? { ...params, _meta: requestMeta } : params,
     };
 
-    return new Promise<WireResult<M>>((resolve, reject) => {
+    return new Promise<WireResult<M> | string>((resolve, reject) => {
       const { signal } = callOptions;
       const onAbort = () => {
         if (!pending.has(id)) return;
@@ -326,9 +394,10 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       const detach = () => signal?.removeEventListener("abort", onAbort);
       pending.set(id, {
         method,
+        exactJSON,
         resolve: (value) => {
           detach();
-          (resolve as (v: unknown) => void)(value);
+          resolve(value as WireResult<M> | string);
         },
         reject: (err) => {
           detach();
@@ -357,6 +426,21 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
           reject(err);
         });
     });
+  }
+
+  function call<M extends WireMethodName>(
+    method: M,
+    params: WireParams<M>,
+    options?: RpcCallOptions,
+  ): Promise<WireResult<M>> {
+    return request(method, params, options) as Promise<WireResult<M>>;
+  }
+  function callJSON<M extends WireMethodName>(
+    method: M,
+    params: WireParams<M>,
+    options?: Pick<RpcCallOptions, "signal" | "requestMeta">,
+  ): Promise<string> {
+    return request(method, params, options, true) as Promise<string>;
   }
 
   function subscribe<M extends WireNotificationName>(
@@ -399,5 +483,5 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     return closePromise;
   }
 
-  return { call, subscribe, onStreamEnd, close, closedSignal: connection.signal };
+  return { call, callJSON, subscribe, onStreamEnd, close, closedSignal: connection.signal };
 }

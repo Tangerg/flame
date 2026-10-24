@@ -56,22 +56,88 @@ async function exists(path) {
     throw error;
   }
 }
-export async function buildPlugin({ source, output, os, arch, archives }) {
+function resourcePath(value) {
   if (
-    !["darwin", "linux", "windows"].includes(os) ||
-    !["amd64", "arm64"].includes(arch)
+    typeof value !== "string" ||
+    value.includes("\\") ||
+    isAbsolute(value) ||
+    value.split("/").some((part) => !part || part === "." || part === "..")
   )
-    throw new Error("a supported target OS and architecture are required");
-  await validateDestination(source, output);
+    throw new Error("plugin build requires a package-relative resource path");
+  return value;
+}
+export async function readBuildPlan(source) {
   const resources = join(source, "package");
   const manifest = JSON.parse(
     await readFile(join(resources, "plugin.json"), "utf8"),
   );
+  const reference =
+    manifest.extensions?.["io.github.tangerg.flame"]?.declaration;
+  const declaration =
+    reference === undefined
+      ? {}
+      : JSON.parse(
+          await readFile(join(resources, resourcePath(reference)), "utf8"),
+        );
+  const mcpPath = join(resources, "mcp.json");
+  const mcp = (await exists(mcpPath))
+    ? JSON.parse(await readFile(mcpPath, "utf8"))
+    : undefined;
+  const managed = declaration.managedBackends ?? [];
+  if (!Array.isArray(managed))
+    throw new Error("managed backends must be an array");
+  const ids = new Set(Object.keys(mcp?.mcpServers ?? {}));
+  for (const backend of managed) {
+    if (
+      typeof backend.id !== "string" ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(backend.id) ||
+      ids.has(backend.id) ||
+      backend.runtime !== "node" ||
+      !resourcePath(backend.entry).endsWith(".mjs") ||
+      Object.keys(backend).some(
+        (key) => !["id", "runtime", "entry"].includes(key),
+      )
+    )
+      throw new Error(
+        "invalid or duplicate managed backend startup declaration",
+      );
+    ids.add(backend.id);
+  }
+  return {
+    manifest,
+    declaration,
+    mcp,
+    managed,
+    native: Object.values(mcp?.mcpServers ?? {}).some(
+      (server) => server.command !== undefined,
+    ),
+  };
+}
+export async function buildPlugin({
+  source,
+  output,
+  os,
+  arch,
+  archives,
+  archiveTool,
+}) {
+  await validateDestination(source, output);
+  const plan = await readBuildPlan(source);
+  if (
+    plan.native &&
+    (!["darwin", "linux", "windows"].includes(os) ||
+      !["amd64", "arm64"].includes(arch))
+  )
+    throw new Error(
+      "native backends require a supported target OS and architecture",
+    );
+  const resources = join(source, "package");
+  const { manifest } = plan;
   await mkdir(output);
   await cp(resources, output, { recursive: true });
   const mcp = join(output, "mcp.json");
-  if (await exists(mcp)) {
-    const descriptor = JSON.parse(await readFile(mcp, "utf8"));
+  if (plan.mcp) {
+    const descriptor = plan.mcp;
     await mkdir(join(output, "bin"));
     for (const [name, server] of Object.entries(descriptor.mcpServers)) {
       if (!server.command) continue;
@@ -98,6 +164,17 @@ export async function buildPlugin({ source, output, os, arch, archives }) {
     }
     await writeFile(mcp, JSON.stringify(descriptor, null, 2) + "\n");
   }
+  if (plan.managed.length) {
+    const { buildBackend } = await import("@flame/backend-sdk/build");
+    const { rolldown } = await import("rolldown");
+    for (const backend of plan.managed)
+      await buildBackend({
+        compiler: rolldown,
+        input: join(source, backend.entry.slice(0, -4) + ".ts"),
+        directory: dirname(join(output, backend.entry)),
+        entryFileName: basename(backend.entry),
+      });
+  }
   if (archives) {
     await validateDestination(source, archives);
     await mkdir(archives, { recursive: true });
@@ -107,19 +184,30 @@ export async function buildPlugin({ source, output, os, arch, archives }) {
         !/^[a-zA-Z0-9][a-zA-Z0-9.+-]{0,127}$/.test(value)
       )
         throw new Error("plugin archive requires a bounded name and version");
+    const archiveArgs = [
+      "--source",
+      output,
+      "--output",
+      join(
+        archives,
+        `plugin-${manifest.name}-${manifest.version}${plan.native ? `-${os}-${arch}` : ""}.zip`,
+      ),
+    ];
+    if (archiveTool !== undefined && !isAbsolute(archiveTool))
+      throw new Error("archive tool must be an absolute executable path");
+    if (plan.managed.length && !archiveTool)
+      throw new Error(
+        "managed backend packaging requires an explicit prebuilt archive tool",
+      );
     await run(
-      "go",
-      [
-        "tool",
-        "github.com/Tangerg/flame/plugins/scripts/archive",
-        "--source",
-        output,
-        "--output",
-        join(
-          archives,
-          `plugin-${manifest.name}-${manifest.version}-${os}-${arch}.zip`,
-        ),
-      ],
+      archiveTool ?? "go",
+      archiveTool
+        ? archiveArgs
+        : [
+            "tool",
+            "github.com/Tangerg/flame/plugins/scripts/archive",
+            ...archiveArgs,
+          ],
       {
         cwd: source,
         env: { ...process.env, GOOS: "", GOARCH: "" },
@@ -139,9 +227,10 @@ if (
       os: { type: "string" },
       arch: { type: "string" },
       archives: { type: "string" },
+      "archive-tool": { type: "string" },
     },
   });
   if (!values.source || !values.output)
     throw new Error("--source and --output are required");
-  await buildPlugin(values);
+  await buildPlugin({ ...values, archiveTool: values["archive-tool"] });
 }

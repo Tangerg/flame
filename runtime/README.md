@@ -4,6 +4,25 @@ Flame Runtime is the local product backend for Flame. It owns durable agent sema
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
+Managed Node entries use the same installed MCP activation as native backends.
+The package owns only `managedBackends: [{id, runtime: "node", entry}]`; the
+distribution owns the pinned companion, launch flags and execution environment
+identity. Runtime resolves it beside the actual hosting executable and verifies
+its selected bytes before evaluation. It never searches PATH, the workspace or
+FLAME_HOME for Node. Missing or damaged companions fail the affected activation;
+management, native and UI-only packages remain independently usable. Each entry
+gets its own existing process, immutable release lease, frozen requirements and
+call-scoped callbacks. There is no shared JavaScript supervisor or result store.
+
+Build Runtime/CLI distributions with `make build-runtime` / `make build-cli` after
+`make setup`. Ship their companion `runtimes` and `plugins` directories together.
+Replace the complete distribution only while quiescent. Desktop attaches to a
+Runtime and does not host backends; it does not ship an unused interpreter.
+Core `2026-10-24.1` projects managed server declarations explicitly. Rebuild its
+Go/TypeScript/CLI/Desktop consumers together. Backend protocol identity remains
+owned by `capability.Protocol`. Usage Reports has a new private SQLite owner and
+requires fresh installation data; retain the former installation/data separately.
+
 Run accounting facts report every physically dispatched model call, including
 unknown outcomes, original reported usage and captured per-call price. `Steps`
 counts these calls; preparation failures without dispatch evidence do not count.

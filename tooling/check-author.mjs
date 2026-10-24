@@ -1,9 +1,33 @@
-import { mkdtemp, mkdir, readdir, readFile, rm } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { run, root, buildShared } from "./workspace.mjs";
 const scratch = await mkdtemp(join(tmpdir(), "flame-author-check-"));
+function isolated(policy, command, directory, env) {
+  // Pipes keep the sandbox from inheriting a repository-local redirected log
+  // descriptor. Its source-read denial also applies to descriptor metadata.
+  const result = spawnSync(
+    "/usr/bin/sandbox-exec",
+    ["-p", policy, ...command],
+    { cwd: directory, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+  );
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  if (result.error) throw result.error;
+  if (result.status !== 0)
+    throw new Error(
+      `isolated author command failed (${result.signal ?? result.status}): ${command.join(" ")}`,
+    );
+}
 async function snapshot(directory) {
   const entries = [];
   for (const item of await readdir(directory, { withFileTypes: true })) {
@@ -18,7 +42,8 @@ async function snapshot(directory) {
 }
 try {
   await buildShared();
-  for (const name of ["memory", "guardrails"]) {
+  for (const name of ["memory", "guardrails", "usagereports"]) {
+    const managed = name === "usagereports";
     const project = join(
       scratch,
       name === "memory" ? "memory author 作者" : name,
@@ -27,8 +52,9 @@ try {
       "plugins/scripts/build-author-kit.mjs",
       "--plugin",
       name,
-      "--module-path",
-      `example.com/flame-author/${name}`,
+      ...(!managed
+        ? ["--module-path", `example.com/flame-author/${name}`]
+        : []),
       "--output",
       project,
       "--offline",
@@ -54,25 +80,48 @@ try {
         "offline author verification requires the supported macOS network sandbox",
       );
     const policy = `(version 1) (allow default) (deny network*) (deny file-read* (subpath ${JSON.stringify(root)}))`;
-    for (const command of ["test", "generate", "build"])
-      run(
-        "/usr/bin/sandbox-exec",
-        ["-p", policy, "go", command, "./..."],
-        project,
-        env,
-      );
-    if (existsSync(join(project, "package.json")))
-      for (const command of [
-        ["ci", "--ignore-scripts", "--offline"],
-        ["run", "typecheck"],
-        ["run", "build"],
-      ])
-        run(
-          "/usr/bin/sandbox-exec",
-          ["-p", policy, "npm", ...command],
-          project,
-          env,
+    if (!managed)
+      for (const command of ["test", "generate", "build"])
+        isolated(policy, ["go", command, "./..."], project, env);
+    if (managed) {
+      if (existsSync(join(project, "go.mod")))
+        throw new Error(
+          "managed author project retains a Go compiler prerequisite",
         );
+      const noGo = join(scratch, "no-go");
+      await mkdir(noGo);
+      await writeFile(
+        join(noGo, "go"),
+        '#!/bin/sh\necho "Go is unavailable in the TypeScript author environment" >&2\nexit 97\n',
+        { mode: 0o755 },
+      );
+      env.PATH = noGo + ":" + process.env.PATH;
+    }
+    const npmCommands = managed
+      ? [
+          ["ci", "--ignore-scripts", "--offline"],
+          ["run", "generate"],
+          ["run", "typecheck"],
+          ["test"],
+          ["run", "build"],
+          [
+            "run",
+            "package",
+            "--",
+            "--output",
+            join(scratch, name + "-release"),
+            "--archives",
+            join(scratch, name + "-archives"),
+          ],
+        ]
+      : [
+          ["ci", "--ignore-scripts", "--offline"],
+          ["run", "typecheck"],
+          ["run", "build"],
+        ];
+    if (existsSync(join(project, "package.json")))
+      for (const command of npmCommands)
+        isolated(policy, ["npm", ...command], project, env);
     const after = new Map(await snapshot(project));
     if (
       before.size !== after.size ||
@@ -86,4 +135,4 @@ try {
   await rm(scratch, { recursive: true, force: true });
 }
 
-run("go", ["test", "-tags", "author", "./tests/integration"]);
+run("go", ["test", "-count=1", "-tags", "author", "./tests/integration"]);

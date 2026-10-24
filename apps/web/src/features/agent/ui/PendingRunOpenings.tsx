@@ -1,3 +1,4 @@
+import { prettyJSON } from "@/lib/json";
 import * as stylex from "@stylexjs/stylex";
 import { Button, Disclosure } from "@flame/ui";
 import { color, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
@@ -53,7 +54,7 @@ export function PendingRunOpenings() {
             ),
           )}
           <pre {...stylex.props(styles.content, face.mono, typeStep.uiSm)}>
-            {JSON.stringify(reviewedOptions(command), null, 2)}
+            {prettyJSON(reviewedOptions(command))}
           </pre>
         </Disclosure>
       </div>

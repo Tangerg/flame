@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useId } from "react";
+import { prettyJSON } from "@/lib/json";
 import { toolFamilyId } from "@/lib/toolFamilies";
 import { toolIconFor } from "@/features/agent/public/toolIcon";
 import { type ApprovalDecision } from "@/features/agent/public/hitl";
@@ -64,7 +65,7 @@ export function ApprovalCard({
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const hasArgs = args !== undefined;
   const argsEditor = useApprovalArgsEditor({
-    originalArgs: hasArgs ? JSON.stringify(args, null, 2) : "",
+    originalArgs: hasArgs ? prettyJSON(args) : "",
   });
   const { disabled, argsReadOnly, approve, decline } = useApprovalCardActions({
     sessionId,

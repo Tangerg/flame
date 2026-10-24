@@ -22,6 +22,10 @@ func RunWithFirstPartyPackages(tests *testing.M) int {
 	if os.Getenv("FLAME_TEST_FIRST_PARTY_DIRECTORY") == directory {
 		return tests.Run()
 	}
+	if err := prepareNode(executable); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	_, file, _, ok := goruntime.Caller(0)
 	if !ok {
 		fmt.Fprintln(os.Stderr, "locate first-party test sources")
@@ -44,7 +48,40 @@ func RunWithFirstPartyPackages(tests *testing.M) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	if err := os.RemoveAll(filepath.Join(filepath.Dir(executable), "runtimes")); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	return status
+}
+
+func RunWithNode(tests *testing.M) int {
+	executable, err := os.Executable()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := prepareNode(executable); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	status := tests.Run()
+	if err := os.RemoveAll(filepath.Join(filepath.Dir(executable), "runtimes")); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return status
+}
+
+func prepareNode(executable string) error {
+	_, file, _, ok := goruntime.Caller(0)
+	if !ok {
+		return fmt.Errorf("locate node companion test preparation")
+	}
+	script := filepath.Join(filepath.Dir(file), "../../..", "tooling", "node-companion.mjs")
+	command := exec.Command("node", script, "--os", goruntime.GOOS, "--arch", goruntime.GOARCH, "--output", filepath.Dir(executable), "--offline")
+	command.Stdout, command.Stderr = os.Stdout, os.Stderr
+	return command.Run()
 }
 
 // TempDirectory joins immutable-release cleanup after the Runtime has closed.

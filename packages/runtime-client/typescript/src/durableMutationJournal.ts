@@ -7,7 +7,7 @@ import type {
   RequestMeta,
 } from "./generated/wire.generated";
 import { validateWire } from "./generated/wire.validate.generated";
-import { parseJSON, stringifyJSON } from "./json";
+import { cloneJSON, parseJSON, stringifyJSON } from "./json";
 
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
@@ -18,6 +18,7 @@ const FINGERPRINT_HEX_LENGTH = 32;
 const MILLISECONDS_PER_SECOND = 1_000;
 const FINGERPRINT_PATTERN = new RegExp(`^[0-9a-f]{${FINGERPRINT_HEX_LENGTH}}$`);
 
+// Serialized stores must preserve exact JSON values with parseJSON/stringifyJSON.
 export interface MutationJournalStorage {
   get(key: string): unknown;
   set(key: string, value: unknown): void;
@@ -229,20 +230,20 @@ function prepareCommand(
     case "runs.start":
       return {
         operation: "start",
-        params: structuredClone(checkRequest(method, params, requestMeta)),
-        requestMeta: structuredClone(requestMeta),
+        params: cloneJSON(checkRequest(method, params, requestMeta)),
+        requestMeta: cloneJSON(requestMeta),
       };
     case "runs.resume":
       return {
         operation: "resume",
-        params: structuredClone(checkRequest(method, params, requestMeta)),
-        requestMeta: structuredClone(requestMeta),
+        params: cloneJSON(checkRequest(method, params, requestMeta)),
+        requestMeta: cloneJSON(requestMeta),
       };
     case "runs.steer":
       return {
         operation: "steer",
-        params: structuredClone(checkRequest(method, params, requestMeta)),
-        requestMeta: structuredClone(requestMeta),
+        params: cloneJSON(checkRequest(method, params, requestMeta)),
+        requestMeta: cloneJSON(requestMeta),
       };
     default:
       return null;
@@ -499,7 +500,7 @@ export function openDurableMutationJournal(
       const entry = matches[0];
       if (!entry) return undefined;
       const route = entry.installed!.route;
-      const request = { ...structuredClone(route), ...structuredClone(input) };
+      const request = { ...cloneJSON(route), ...cloneJSON(input) };
       if (!matchesCommand(entry, pluginDeliveryMethod(request), request, null))
         throw new MutationJournalOwnershipError(
           "plugin command intent requires its original contract and input",
@@ -520,17 +521,17 @@ export function openDurableMutationJournal(
       const scope = currentScope();
       if (loadEntries(options.storage).length >= MAX_ENTRIES)
         throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
-      const { input: _, ...route } = structuredClone(request);
+      const { input: _, ...route } = cloneJSON(request);
       const entry = createEntry(method, request, scope, crypto.randomUUID(), null, {
         intent,
         route,
       });
-      return { identity: { entry }, request: structuredClone(request) };
+      return { identity: { entry }, request: cloneJSON(request) };
     },
     pendingCommands() {
       return loadEntries(options.storage)
         .filter((entry) => entry.command !== null)
-        .map((entry) => ({ entry: structuredClone(entry) }));
+        .map((entry) => ({ entry: cloneJSON(entry) }));
     },
     pendingPluginCommands() {
       return loadEntries(options.storage)
@@ -539,7 +540,7 @@ export function openDurableMutationJournal(
             (entry.method === "plugins.call" || entry.method === "plugins.stream") &&
             entry.installed !== undefined,
         )
-        .map((entry) => ({ entry: structuredClone(entry) }));
+        .map((entry) => ({ entry: cloneJSON(entry) }));
     },
     validatePluginCommand(identity, request) {
       validateIdentity(identity, currentScope());
@@ -586,7 +587,7 @@ export function openDurableMutationJournal(
         const installed =
           method === "plugins.call" || method === "plugins.stream"
             ? (() => {
-                const { input: _, ...route } = structuredClone(params as CallPluginRequest);
+                const { input: _, ...route } = cloneJSON(params as CallPluginRequest);
                 return { intent: null, route };
               })()
             : undefined;

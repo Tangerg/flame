@@ -1,4 +1,4 @@
-import { applyEdits, format } from "jsonc-parser";
+import { formatJSONText } from "@/lib/json";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 export interface ToolInspectorBody {
   text: string;
@@ -16,7 +16,7 @@ export function formatToolInspectorBody(raw: string | undefined): ToolInspectorB
   const trimmed = raw.trim();
   if (!trimmed) return emptyBody();
   if (!looksStructured(trimmed) || !isStrictJson(trimmed)) return { text: raw, isJson: false };
-  return { text: reindentJson(trimmed), isJson: true };
+  return { text: formatJSONText(trimmed), isJson: true };
 }
 
 export function toolInspectorModel(
@@ -47,14 +47,4 @@ function isStrictJson(source: string): boolean {
     if (error instanceof SyntaxError) return false;
     throw error;
   }
-}
-
-// Re-serializing parsed values would round unsafe integers, collapse -0 and
-// overflowing exponents, and drop duplicate members; editing only the
-// whitespace between tokens shows exactly what the tool reported.
-function reindentJson(source: string): string {
-  return applyEdits(
-    source,
-    format(source, undefined, { tabSize: 2, insertSpaces: true, eol: "\n" }),
-  );
 }

@@ -1,3 +1,4 @@
+import { parseJSON, stringifyJSON } from "@flame/runtime-client";
 const ROOT = "flame.plugin";
 
 export interface KeyValueStore {
@@ -35,7 +36,7 @@ export function createStorage(pluginName: string): KeyValueStore {
         const raw = storage.getItem(prefix + key);
         if (raw == null) return undefined;
         try {
-          const parsed: unknown = JSON.parse(raw);
+          const parsed = parseJSON(raw);
           return parsed;
         } catch {
           return raw;
@@ -45,7 +46,7 @@ export function createStorage(pluginName: string): KeyValueStore {
 
     set(key: string, value: unknown): void {
       writeStorage(`set("${key}")`, (storage) => {
-        storage.setItem(prefix + key, JSON.stringify(value));
+        storage.setItem(prefix + key, stringifyJSON(value));
       });
     },
 

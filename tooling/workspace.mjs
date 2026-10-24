@@ -13,6 +13,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { stageNode } from "./node-companion.mjs";
 
 export const root = fileURLToPath(new URL("../", import.meta.url));
 export function run(
@@ -101,9 +102,11 @@ async function stampDeclarations(repository) {
 
 export async function generate(repository = root) {
   await buildShared(repository);
-  run("go", ["generate", "./packages/plugin-sdk/memory"], repository);
-  run("go", ["generate", "./plugins/..."], repository);
-  run("go", ["generate", "./runtime/...", "./apps/cli/..."], repository);
+  const env = proxyEnvironment(join(root, "out/module-proxy"));
+  run("go", ["generate", "./packages/plugin-sdk"], repository, env);
+  run("go", ["generate", "./packages/plugin-sdk/memory"], repository, env);
+  run("go", ["generate", "./plugins/..."], repository, env);
+  run("go", ["generate", "./runtime/...", "./apps/cli/..."], repository, env);
   const members = JSON.parse(
     run("go", ["work", "edit", "-json"], repository, process.env, true),
   ).Use;
@@ -113,7 +116,7 @@ export async function generate(repository = root) {
     const manifest = JSON.parse(
       run("go", ["mod", "edit", "-json"], directory, process.env, true),
     );
-    if (manifest.Tool?.length) run("go", ["generate", "./..."], directory);
+    if (manifest.Tool?.length) run("go", ["generate", "./..."], directory, env);
   }
   for (const p of ordered(await workspaces(repository)))
     if (p.scripts?.generate) run("npm", ["run", "generate"], p.directory);
@@ -406,6 +409,14 @@ async function main(command) {
       run("npm", ["ci"], root);
       run("go", ["mod", "download"], root, env);
       await buildShared();
+      const target = JSON.parse(
+        run("go", ["env", "-json", "GOOS", "GOARCH"], root, process.env, true),
+      );
+      await stageNode({
+        os: target.GOOS,
+        arch: target.GOARCH,
+        output: join(root, "out/toolchains"),
+      });
       return;
     }
     case "generate":
@@ -427,6 +438,7 @@ async function main(command) {
             : null;
         if (script) run("npm", ["run", script], p.directory);
       }
+      run("node", ["tooling/qualify-node.mjs"]);
       run("git", ["diff", "--check"]);
       return;
     case "check-native":
@@ -459,6 +471,12 @@ async function main(command) {
       const kind = command === "build-runtime" ? "runtime" : "cli",
         directory = join(root, "out", kind, `${target.GOOS}-${target.GOARCH}`);
       await mkdir(directory, { recursive: true });
+      await stageNode({
+        os: target.GOOS,
+        arch: target.GOARCH,
+        output: directory,
+        offline: true,
+      });
       run("node", [
         "plugins/scripts/build-packages.mjs",
         "--os",

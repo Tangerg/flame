@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
@@ -188,6 +189,54 @@ test("resolved Runtime SDK paths and aliases keep the client boundary", () => {
         assert.deepEqual(graph[file], [RUNTIME_CLIENT_EDGE]);
         assert.deepEqual(values[file], [RUNTIME_CLIENT_EDGE]);
       }
+    },
+  );
+});
+
+test("keeps pure JSON external without weakening layer guards", () => {
+  const jsonEntry = fileURLToPath(import.meta.resolve("@flame/runtime-client/json"));
+  const jsonSource = 'export { parseJSON } from "@runtime-json";';
+  fixture(
+    {
+      "tsconfig.json": JSON.stringify({
+        compilerOptions: {
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          paths: { "@runtime-json": [jsonEntry] },
+          types: [],
+        },
+        include: ["src"],
+      }),
+      "src/foundation/data.ts": jsonSource,
+      "src/foundation/direct.ts": 'export { parseJSON } from "@flame/runtime-client/json";',
+    },
+    (root) => {
+      const check = () =>
+        spawnSync(
+          process.execPath,
+          [fileURLToPath(new URL("./check-layers.mjs", import.meta.url))],
+          {
+            cwd: root,
+            encoding: "utf8",
+          },
+        );
+      const neutral = check();
+      assert.equal(neutral.status, 0, neutral.stderr);
+
+      writeFileSync(
+        join(root, "src/foundation/data.ts"),
+        'export { createFlameClient } from "@flame/runtime-client";',
+      );
+      const runtime = check();
+      assert.equal(runtime.status, 1);
+      assert.match(runtime.stderr, /foundation → rpc/);
+
+      writeFileSync(join(root, "src/foundation/data.ts"), jsonSource);
+      mkdirSync(join(root, "src/new-layer"));
+      writeFileSync(join(root, "src/new-layer/entry.ts"), "export {};");
+      const undeclared = check();
+      assert.equal(undeclared.status, 1);
+      assert.match(undeclared.stderr, /no declared direction: new-layer/);
     },
   );
 });

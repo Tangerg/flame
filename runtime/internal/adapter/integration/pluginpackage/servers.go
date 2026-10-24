@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -80,7 +81,7 @@ func (r *Releases) Server(ctx context.Context, installation *plugin.Installation
 	if err := root.Close(); err != nil {
 		return mcpserver.Server{}, false, fmt.Errorf("pluginpackage: close release %s: %w", release.Digest(), err)
 	}
-	if err := realizeBackend(server, declared, dir, data); err != nil {
+	if err := realizeBackend(ctx, server, declared, dir, data); err != nil {
 		return mcpserver.Server{}, false, fmt.Errorf("%w: server %q backend: %w", plugin.ErrUnavailable, declared.Name, err)
 	}
 	return server, true, nil
@@ -185,7 +186,7 @@ func (r *Releases) Realize(ctx context.Context, installation *plugin.Installatio
 			return plugins.Realization{}, err
 		}
 		server, err := descriptorServer(installation, release, declaration, declared, dir, data)
-		if err != nil || realizeBackend(server, declared, dir, data) != nil {
+		if err != nil || realizeBackend(ctx, server, declared, dir, data) != nil {
 			result.UnavailableBackends = append(result.UnavailableBackends, declared.Name)
 		}
 	}
@@ -232,14 +233,24 @@ func descriptorServer(installation *plugin.Installation, release plugin.Release,
 	}
 	switch declared.Transport {
 	case mcpserver.TransportStdio:
-		server.Command = declared.Command
-		if packaged, found := declared.PackagedCommand(); found {
-			server.Command = filepath.Join(dir, filepath.FromSlash(packaged))
-		}
-		for _, arg := range declared.Args {
-			server.Args = append(server.Args, plugin.ExpandPlaceholders(arg, dir, data))
-		}
 		server.Env = map[string]string{plugin.RootVariable: dir, plugin.DataVariable: data}
+		if declared.Managed != nil {
+			node, err := hostNode()
+			if err != nil {
+				return mcpserver.Server{}, err
+			}
+			server.Command = node.Command()
+			server.Args = node.Arguments(filepath.Join(dir, filepath.FromSlash(declared.Managed.Entry)))
+			server.ExecutionEnvironment = node.Identity()
+		} else {
+			server.Command = declared.Command
+			if packaged, found := declared.PackagedCommand(); found {
+				server.Command = filepath.Join(dir, filepath.FromSlash(packaged))
+			}
+			for _, arg := range declared.Args {
+				server.Args = append(server.Args, plugin.ExpandPlaceholders(arg, dir, data))
+			}
+		}
 		for key, value := range declared.Env {
 			server.Env[key] = plugin.ExpandPlaceholders(value, dir, data)
 		}
@@ -281,9 +292,21 @@ func descriptorServer(installation *plugin.Installation, release plugin.Release,
 
 // realizeBackend checks that an enabled stdio descriptor's working directory
 // exists inside its boundary now; other descriptors need no backend.
-func realizeBackend(server mcpserver.Server, declared plugin.Server, dir, data string) error {
+func realizeBackend(ctx context.Context, server mcpserver.Server, declared plugin.Server, dir, data string) error {
 	if !server.Enabled || server.Transport != mcpserver.TransportStdio {
 		return nil
+	}
+	if declared.Managed != nil {
+		node, err := hostNode()
+		if err != nil {
+			return err
+		}
+		if server.Command != node.Command() {
+			return errors.New("pluginpackage: managed executable differs from distribution")
+		}
+		if err := node.Verify(ctx); err != nil {
+			return err
+		}
 	}
 	if err := unchangedDataRoot(data); err != nil {
 		return err
@@ -305,6 +328,14 @@ func realizeBackend(server mcpserver.Server, declared plugin.Server, dir, data s
 		return fmt.Errorf("%w: server %q working directory is not a directory", plugin.ErrUnavailable, declared.Name)
 	}
 	return nil
+}
+
+func hostNode() (localruntime.Node, error) {
+	executable, err := os.Executable()
+	if err != nil {
+		return localruntime.Node{}, err
+	}
+	return localruntime.NodeForExecutable(executable)
 }
 
 // locate resolves a working directory to the boundary it is confined to and
