@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
+import { type Ref, useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 import { copyText } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { ContextMenu } from "@/ui/index";
@@ -238,10 +238,12 @@ function TreeNode({
 export function FileTree({
   entries,
   cwd,
+  ref,
   onSelectFile,
 }: {
   entries: WorkspaceFileEntry[];
   cwd?: string;
+  ref?: Ref<HTMLDivElement>;
   onSelectFile: (path: string) => void;
 }) {
   const t = useT();
@@ -269,7 +271,7 @@ export function FileTree({
     onSelectFile,
   };
   return (
-    <Tree.Root aria-label={t("workspace.view.title.file")} {...stylex.props(ft.pad)}>
+    <Tree.Root ref={ref} aria-label={t("workspace.view.title.file")} {...stylex.props(ft.pad)}>
       {entries.map((entry, index) => (
         <TreeNode
           key={entry.path}

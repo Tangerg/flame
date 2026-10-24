@@ -60,9 +60,7 @@ function TreeRoot({ onFocus, onKeyDown, ...props }: DivProps) {
         const root = event.currentTarget;
         if (event.defaultPrevented || event.target !== root) return;
         if (root.ownerDocument.activeElement !== root) return;
-        root
-          .querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]')
-          ?.focus({ preventScroll: true });
+        root.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]')?.focus();
       }}
       onKeyDown={(event) => {
         onKeyDown?.(event);

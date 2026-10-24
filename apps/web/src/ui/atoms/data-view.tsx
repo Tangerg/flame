@@ -2,9 +2,8 @@ import { iconGlyph } from "@/ui/icons/index";
 import { type ReactNode } from "react";
 import { type IconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
-import { isUnsupportedMethod } from "@/lib/rpcErrors";
 import { EmptyState, type EmptyStateSize } from "@flame/ui/empty-state";
-import { DataError } from "@/ui/atoms/data-error";
+import { DataError, type UnsupportedConfig } from "@/ui/atoms/data-error";
 import { SkeletonList, type SkeletonListVariant } from "@/ui/atoms/skeleton";
 interface EmptyConfig {
   icon?: IconName;
@@ -21,7 +20,7 @@ interface Props<T> {
   skeletonVariant?: SkeletonListVariant;
   loadingLabel?: string;
   empty?: EmptyConfig;
-  unsupported?: Partial<EmptyConfig>;
+  unsupported?: UnsupportedConfig;
   error?: Omit<EmptyConfig, "icon">;
   onRetry?: () => void;
   children: (items: T[]) => ReactNode;
@@ -50,19 +49,8 @@ export function DataView<T>({
       />
     );
   }
-  if (failure != null && isUnsupportedMethod(failure)) {
-    return (
-      <EmptyState
-        icon={iconGlyph(unsupported?.icon ?? "alert")}
-        tone="warning"
-        title={unsupported?.title ?? t("runtime.unsupported.title")}
-        sub={unsupported?.sub ?? t("runtime.unsupported.sub")}
-        size={unsupported?.size}
-      />
-    );
-  }
   if (failure != null) {
-    return <DataError onRetry={onRetry} {...error} />;
+    return <DataError failure={failure} unsupported={unsupported} onRetry={onRetry} {...error} />;
   }
   if (!items || items.length === 0) {
     return empty ? <EmptyState {...empty} icon={iconGlyph(empty.icon)} /> : null;

@@ -865,6 +865,8 @@ export const de: Record<string, string> = {
   "file.backToFiles": "Zurück zu den Dateien",
   "file.empty.title": "Keine Dateien",
   "file.empty.sub": "Dieses Verzeichnis enthält keine sichtbaren Dateien.",
+  "file.refreshError.title": "Dateien konnten nicht aktualisiert werden",
+  "file.refreshError.sub": "Es werden die zuletzt geladenen Dateien angezeigt.",
   "file.error.title": "Datei konnte nicht geöffnet werden",
   "file.error.sub": "Sie wurde möglicherweise verschoben oder liegt außerhalb des Arbeitsbereichs.",
   "composer.key.historyPrevDesc": "Vorherige Nachricht abrufen",

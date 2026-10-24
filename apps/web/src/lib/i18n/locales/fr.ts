@@ -881,6 +881,8 @@ export const fr: Record<string, string> = {
   "file.backToFiles": "Retour aux fichiers",
   "file.empty.title": "Aucun fichier",
   "file.empty.sub": "Ce dossier ne contient aucun fichier visible.",
+  "file.refreshError.title": "Impossible d'actualiser les fichiers",
+  "file.refreshError.sub": "Les derniers fichiers chargés sont affichés.",
   "file.error.title": "Impossible d'ouvrir le fichier",
   "file.error.sub": "Il a peut-être été déplacé ou se trouve hors de l'espace de travail.",
   "composer.key.historyPrevDesc": "Rappeler le message précédent",

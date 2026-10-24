@@ -15,6 +15,7 @@ interface Props extends ViewHeaderProps {
   // When the scrolled content has no focusable elements (a file viewer), name
   // the region so it is keyboard-focusable and scrollable.
   scrollLabel?: string;
+  notice?: ReactNode;
   children: ReactNode;
 }
 
@@ -22,12 +23,14 @@ export function WorkspaceViewLayout({
   scrollInset = "rows",
   scrollRef,
   scrollLabel,
+  notice,
   children,
   ...header
 }: Props) {
   return (
     <AgentWorkspaceView>
       <ViewHeader {...header} />
+      {notice}
       <ScrollArea
         ref={scrollRef}
         tabIndex={scrollLabel ? 0 : undefined}

@@ -589,6 +589,8 @@ export const zhTW: Record<string, string> = {
   "file.backToFiles": "返回檔案列表",
   "file.empty.title": "沒有檔案",
   "file.empty.sub": "此目錄中沒有可顯示的檔案。",
+  "file.refreshError.title": "檔案重新整理失敗",
+  "file.refreshError.sub": "目前顯示上次載入的檔案。",
   "file.error.title": "無法開啟檔案",
   "file.error.sub": "它可能已移動，或位於工作區之外。",
 

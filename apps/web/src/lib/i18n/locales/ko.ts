@@ -826,6 +826,8 @@ export const ko: Record<string, string> = {
   "file.backToFiles": "파일 목록으로 돌아가기",
   "file.empty.title": "파일 없음",
   "file.empty.sub": "이 디렉터리에는 표시할 파일이 없습니다.",
+  "file.refreshError.title": "파일을 새로 고칠 수 없습니다",
+  "file.refreshError.sub": "마지막으로 불러온 파일을 표시하고 있습니다.",
   "file.error.title": "파일을 열 수 없습니다",
   "file.error.sub": "이동되었거나 워크스페이스 밖에 있을 수 있습니다.",
   "composer.key.historyPrevDesc": "이전 메시지 불러오기",

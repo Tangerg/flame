@@ -2,19 +2,22 @@ import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import {
   Activity,
+  Component,
   useCallback,
   useLayoutEffect,
   useRef,
   useState,
   type MouseEvent,
+  type ReactNode,
   type Ref,
+  type RefObject,
 } from "react";
 import { fileExtension, splitFilePath } from "@/lib/path";
 import { fileKind } from "@/lib/fileKind";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import { WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
-import { DataView } from "@/ui/index";
+import { DataError, DataView, SkeletonList } from "@/ui/index";
 import { Popover } from "@/ui/index";
 import { Segmented } from "@flame/ui";
 import { TextButton } from "@/ui/index";
@@ -107,30 +110,109 @@ export function FileWorkspace() {
   );
 }
 
+interface FileBrowserLayoutProps {
+  viewport: RefObject<HTMLDivElement | null>;
+  notice?: ReactNode;
+  children: ReactNode;
+}
+
+function visibleInViewport(viewport: HTMLElement, row: HTMLElement): boolean {
+  const bounds = viewport.getBoundingClientRect();
+  const rect = row.getBoundingClientRect();
+  return bounds.height > 0 && rect.top >= bounds.top && rect.bottom <= bounds.bottom;
+}
+
+// A pre-mutation snapshot distinguishes layout displacement from a user who scrolled away.
+class FileBrowserLayout extends Component<FileBrowserLayoutProps, unknown, HTMLElement | null> {
+  override getSnapshotBeforeUpdate(): HTMLElement | null {
+    const viewport = this.props.viewport.current;
+    const active = viewport?.ownerDocument.activeElement;
+    return viewport &&
+      active instanceof HTMLElement &&
+      active.getAttribute("role") === "treeitem" &&
+      viewport.contains(active) &&
+      visibleInViewport(viewport, active)
+      ? active
+      : null;
+  }
+
+  override componentDidUpdate(
+    _previousProps: FileBrowserLayoutProps,
+    _previousState: unknown,
+    row: HTMLElement | null,
+  ) {
+    const viewport = this.props.viewport.current;
+    if (
+      row &&
+      viewport &&
+      row.ownerDocument.activeElement === row &&
+      viewport.contains(row) &&
+      !visibleInViewport(viewport, row)
+    ) {
+      row.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }
+
+  override render() {
+    return (
+      <WorkspaceViewLayout
+        scrollInset="flush"
+        scrollRef={this.props.viewport}
+        notice={this.props.notice}
+      >
+        {this.props.children}
+      </WorkspaceViewLayout>
+    );
+  }
+}
+
 function FileBrowser({ restoreFocus }: { restoreFocus: (item: HTMLElement) => void }) {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
   const query = useWorkspaceListFiles(isWorkspaceResolving(workspace) ? undefined : { cwd });
   const scrollPort = useRef<HTMLDivElement>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const item = scrollPort.current?.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
     if (item) restoreFocus(item);
   }, [query.data, restoreFocus]);
+  // A failed refresh of this query's accepted files keeps them, and the tree's cursor, in place.
+  const retained = query.data !== undefined && query.data.length > 0;
+  const refreshFeedback =
+    retained && query.error != null ? (
+      query.isFetching ? (
+        <SkeletonList count={1} variant="compact" label={t("common.loading")} />
+      ) : (
+        <div role="status">
+          <DataError
+            failure={query.error}
+            focusTarget={treeRef}
+            unsupported={{ icon: "folder", sub: t("file.refreshError.sub"), size: "compact" }}
+            onRetry={query.refetch}
+            title={t("file.refreshError.title")}
+            sub={t("file.refreshError.sub")}
+            size="compact"
+          />
+        </div>
+      )
+    ) : undefined;
   return (
-    <WorkspaceViewLayout scrollInset="flush" scrollRef={scrollPort}>
+    <FileBrowserLayout viewport={scrollPort} notice={refreshFeedback}>
       <DataView
         items={query.data}
         isLoading={query.isLoading || isWorkspaceResolving(workspace)}
-        failure={query.error}
+        failure={retained ? undefined : query.error}
         onRetry={query.refetch}
         unsupported={{ icon: "folder" }}
         skeletonCount={8}
         empty={{ icon: "folder", title: t("file.empty.title"), sub: t("file.empty.sub") }}
       >
-        {(entries) => <FileTree entries={entries} cwd={cwd} onSelectFile={openWorkspaceFile} />}
+        {(entries) => (
+          <FileTree ref={treeRef} entries={entries} cwd={cwd} onSelectFile={openWorkspaceFile} />
+        )}
       </DataView>
-    </WorkspaceViewLayout>
+    </FileBrowserLayout>
   );
 }
 

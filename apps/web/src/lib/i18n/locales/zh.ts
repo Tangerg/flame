@@ -739,6 +739,8 @@ export const zh: Record<string, string> = {
   "file.backToFiles": "返回文件列表",
   "file.empty.title": "没有文件",
   "file.empty.sub": "此目录中没有可显示的文件。",
+  "file.refreshError.title": "文件刷新失败",
+  "file.refreshError.sub": "当前显示上次加载的文件。",
   "file.error.title": "无法打开文件",
   "file.error.sub": "它可能已移动，或位于工作区之外。",
 

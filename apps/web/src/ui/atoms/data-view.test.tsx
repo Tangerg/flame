@@ -1,7 +1,10 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { RpcError, RpcTransportError } from "@flame/runtime-client";
+import { DataError } from "@/ui/atoms/data-error";
 import { DataView } from "@/ui/atoms/data-view";
+import { TreePrimitive } from "@/ui/primitives/tree";
 const rows = (items: string[]) => <div>{items.join(",")}</div>;
 
 const broke = new Error("the runtime answered badly");
@@ -205,5 +208,73 @@ describe("DataView", () => {
       screen.queryByRole("button", { name: "Retry" }),
       "a call the Runtime does not have cannot be tried again",
     ).toBeNull();
+  });
+});
+
+describe("DataError", () => {
+  it("hands owned Retry focus to its caller's surviving sibling composite", () => {
+    const target = createRef<HTMLDivElement>();
+    const callbackFocus: (Element | null)[] = [];
+    render(
+      <>
+        <TreePrimitive.Root ref={target} aria-label="Recovered files">
+          <TreePrimitive.Item level={1} selected={false} focusable onActivate={vi.fn()}>
+            kept.go
+          </TreePrimitive.Item>
+        </TreePrimitive.Root>
+        <div role="region" aria-label="Read error" tabIndex={-1}>
+          <DataError
+            focusTarget={target}
+            onRetry={() => callbackFocus.push(document.activeElement)}
+          />
+        </div>
+        <button>Another task</button>
+      </>,
+    );
+    const retry = screen.getByRole("button", { name: "Retry" });
+    const row = screen.getByRole("treeitem", { name: "kept.go" });
+    act(() => retry.focus());
+    fireEvent.click(retry);
+    expect(document.activeElement).toBe(row);
+
+    const outside = screen.getByRole("button", { name: "Another task" });
+    act(() => outside.focus());
+    fireEvent.click(retry);
+    expect(document.activeElement).toBe(outside);
+    expect(callbackFocus).toEqual([row, outside]);
+  });
+
+  it("classifies an unsupported call with its caller's copy and offers no retry", () => {
+    const { container } = render(
+      <DataError
+        failure={notImplemented}
+        unsupported={{ icon: "folder", sub: "The last files remain.", size: "compact" }}
+        onRetry={vi.fn()}
+        title="Couldn't refresh"
+        size="compact"
+      />,
+    );
+
+    expect(screen.getByText("Not supported by this runtime")).toBeTruthy();
+    expect(screen.getByText("The last files remain.")).toBeTruthy();
+    expect(screen.queryByText("Couldn't refresh")).toBeNull();
+    expect(container.querySelector('[data-icon-name="folder"]')).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it.each([
+    { name: "no failure", failure: undefined },
+    { name: "a transport failure", failure: new RpcTransportError("not found", 404) },
+  ])("keeps generic recovery for $name", ({ failure }) => {
+    const onRetry = vi.fn();
+    const { container } = render(
+      <DataError failure={failure} unsupported={{ title: "Not supported" }} onRetry={onRetry} />,
+    );
+
+    expect(screen.getByText("Couldn't load")).toBeTruthy();
+    expect(screen.queryByText("Not supported")).toBeNull();
+    expect(container.querySelector('[data-icon-name="alert"]')).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetry).toHaveBeenCalledOnce();
   });
 });

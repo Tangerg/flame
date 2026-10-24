@@ -68,14 +68,14 @@ describe("tree focus entry", () => {
     return { onActivate, tree: screen.getByRole("tree", { name: "Files" }) };
   }
 
-  it("enters the existing cursor row without changing selection", () => {
+  it("lets the browser reveal the existing cursor row without changing selection", () => {
     const { onActivate, tree } = renderTree();
     const cursor = screen.getByRole("treeitem", { name: "Cursor" });
     const focusCursor = vi.spyOn(cursor, "focus");
 
     act(() => tree.focus());
     expect(document.activeElement).toBe(cursor);
-    expect(focusCursor).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
+    expect(focusCursor).toHaveBeenCalledExactlyOnceWith();
     expect(onActivate).not.toHaveBeenCalled();
     expect(screen.getByRole("treeitem", { name: "Selected" }).getAttribute("aria-selected")).toBe(
       "true",
