@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. The user's explicit resume integrates current main `f5af47969` and continues the desktop UI work. Shared read-error Retry now hands only its own current focus to the existing nearest focusable host before invoking the read callback. Repeated failure and successful recovery preserve keyboard reading, while later authoring keeps its focus. All 51 focused tests, 3,262 Web tests, 25 non-test Web gates and the supported native check pass. Actual English/light/14 px and Chinese/dark/18 px/custom-blue flows qualify reading, return and continued drafts, including half-screen sizing and native 200% zoom. Owned processes and new checkout/Library outputs are cleaned; final delivery archives and removes the remaining private evidence root.
+Updated: 2026-10-24. The user's explicit resume integrates current main `f5af47969` and continues the desktop UI work. Shared read-error Retry now hands only its own current focus to the existing nearest focusable host before invoking the read callback. Repeated failure and successful recovery preserve keyboard reading, while later authoring keeps its focus. All 51 focused tests, 3,262 Web tests, 25 non-test Web gates and the supported native check pass. Actual English/light/14 px and Chinese/dark/18 px/custom-blue flows qualify reading, return and continued drafts, including half-screen sizing and native 200% zoom. Owned processes, new checkout/Library outputs and the private evidence root are cleaned. Implementation `ca3e76a9f` is pushed to remote main and its exact hash is verified.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user's latest instruction explicitly resumes continuous work. The read-error batch starts from remote main `f5af479697e1880d9b7b83499a74675e93722ad9` in `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/ui-data-retry-1024`. Its product change is confined to `DataError`; the existing DataView and file-workspace suites add four regressions. The shared error entry retires only focus currently on its Retry button, synchronously before the original callback. Existing hosts, queries, navigation, source rendering and Composer retain ownership; there is no completion-time focus action. Verification and guarded output cleanup are complete. Delivery switches this owned checkout to `main`, fast-forwards the reviewed commit, makes a normal push and confirms the exact remote hash before deleting its private evidence root. The primary checkout `/Users/tangerg/Desktop/flame`, its branch and unrelated work remain untouched. A read-only check requested by the user found no unpublished commits or modified code there; only the untracked `docs/ui打磨优化.md` document was present. The next evidence candidate is the separate directory-read Retry and tree-cursor path, which still needs native qualification before a change is chosen.
+The user's latest instruction explicitly resumes continuous work. The read-error batch integrates remote main `f5af479697e1880d9b7b83499a74675e93722ad9` and is delivered as `ca3e76a9f033ee24817dedcb9af1a1b52f468a0a`. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `main`. Its product change is confined to `DataError`; the existing DataView and file-workspace suites add four regressions. Existing hosts, queries, navigation, source rendering and Composer retain ownership, with no completion-time focus action. Focused checks, the full Web command, the supported native check and actual English/Chinese desktop acceptance pass. The exact remote implementation hash, a clean owned checkout and zero unpushed commits are verified. Owned native processes, new outputs/Library state and the archived private evidence root are removed; preexisting output files are restored. The primary checkout `/Users/tangerg/Desktop/flame`, its branch and unrelated work remain untouched. A user-requested read-only check found no unpublished commits or modified code there; only untracked `docs/ui打磨优化.md` was present. The next evidence candidate is the separate directory-read Retry and tree-cursor path, which needs native qualification before choosing a change.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -2858,8 +2858,8 @@ Verification and limits:
   pass **51 / 51** in **5.05 s**. Restoring the original production source under
   those final tests produces **2 failures / 49 passes** at the intended focus
   boundary; the candidate is restored by exact hash. Cases cover nearest nested
-  hosts, callback order, pending replacement, repeated failure, successful same-
-  reader recovery, later draft focus, recovered child focus and a missing host.
+  hosts, callback order, pending replacement, repeated failure, successful recovery in the same
+  reader, later draft focus, recovered child focus and a missing host.
 - The complete `npm run check --workspace @flame/web` passes **397 files /
   3,262 tests**, **168.89 s** for tests and **201.08 s** overall, with all **25**
   non-test gates passed. Current main's API-consumer and plugin-resource guards
@@ -2915,8 +2915,11 @@ its directory, the existing Vite config directory and shared UI Vite cache are
 preserved. Four copied public/font/icon-preview files retained older source birth
 metadata; source-byte equality qualifies only those known copies for cleanup.
 Dependencies, references, user data and unrelated processes remain intact. The
-remaining private bundles, fixture/logs and evidence root are removed after its
-archive and exact remote confirmation. Continue only with fresh task evidence.
+private bundles, fixture/logs and evidence root are removed after exact remote
+confirmation. The retained archive contains 153 UTF-8 evidence files and six
+capture hashes (gzip SHA-256
+`1a095356a15290e62b4b2d8dd36d58b9e870aa66f21c5b649b0fa4c23bcdf241`).
+Continue only with fresh task evidence.
 
 ### Plugin render recovery
 
