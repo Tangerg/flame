@@ -160,9 +160,9 @@ export function ModelPicker() {
           : groups[0]?.id
       }
       label={t("composer.switchModel")}
-      heading={t("composer.model.title")}
       placeholder={t("composer.model.search.placeholder")}
       emptyLabel={t("composer.model.search.empty")}
+      clearLabel={t("common.clearSearch")}
       onSelect={(item) => {
         const model = modelsByItemId.get(item.id);
         if (!model) return;

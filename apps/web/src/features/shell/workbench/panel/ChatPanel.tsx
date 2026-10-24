@@ -113,6 +113,7 @@ function AddDockViewPicker({
       label={t("dock.action.browse")}
       placeholder={t("dock.picker.placeholder")}
       emptyLabel={t("dock.picker.empty")}
+      clearLabel={t("common.clearSearch")}
       trigger={
         <IconButton
           ref={triggerRef}
@@ -132,18 +133,21 @@ function AddDockViewPicker({
 function DockCatalogPage({
   groups,
   openViewIds,
+  titleHidden,
 }: {
   groups: ContextDockDestinationGroup[];
   openViewIds: ReadonlySet<string>;
+  titleHidden: boolean;
 }) {
   const t = useT();
   return (
     <AgentDockCatalog
       groups={useDockCatalogGroups(groups, openViewIds)}
       title={t("dock.catalog.title")}
-      description={t("dock.catalog.description")}
+      titleHidden={titleHidden}
       placeholder={t("dock.picker.placeholder")}
       emptyLabel={t("dock.picker.empty")}
+      clearLabel={t("common.clearSearch")}
       onSelect={openWorkspaceViewInDock}
     />
   );
@@ -396,7 +400,11 @@ export function ChatPanel({ onSend, ref }: Props) {
                   data-dock-view-id={WORKSPACE_DOCK_CATALOG}
                   {...stylex.props(sh.overlay)}
                 >
-                  <DockCatalogPage groups={catalog} openViewIds={openViewIds} />
+                  <DockCatalogPage
+                    groups={catalog}
+                    openViewIds={openViewIds}
+                    titleHidden={presentedMain}
+                  />
                 </div>
               </Activity>
               {[...mountedViewIds].map((viewId) => (

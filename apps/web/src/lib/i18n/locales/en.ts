@@ -60,6 +60,7 @@ export const en: Record<string, string> = {
   "packages.requirements.unread": "Bindings have not been read.",
   "packages.requirements.failed": "The dependency bindings could not be read.",
 
+  "common.clearSearch": "Clear search",
   "common.cancel": "Cancel",
   "common.close": "Close",
 
@@ -108,7 +109,6 @@ export const en: Record<string, string> = {
   "composer.switchModel": "Switch model",
   "composer.switchReasoningEffort": "Switch reasoning effort",
   "composer.model.unavailable": "Unavailable in the current catalog",
-  "composer.model.title": "Models",
   "composer.model.recent": "Recent",
   "composer.model.search.placeholder": "Search models…",
   "composer.model.search.empty": "No models found",
@@ -142,7 +142,6 @@ export const en: Record<string, string> = {
 
   "dock.action.browse": "Browse panels",
   "dock.catalog.title": "Open a panel",
-  "dock.catalog.description": "Inspect workspace and session material alongside the conversation.",
   "dock.picker.placeholder": "Find a panel…",
   "dock.picker.empty": "No panels found",
   "dock.action.hide": "Collapse right workspace",
@@ -1102,7 +1101,6 @@ export const en: Record<string, string> = {
     "A provider is ready. Close Settings to return — your draft is still there.",
   "providers.roles.heading": "Model roles",
   "settings.search.empty": "No settings match “{{query}}”.",
-  "settings.search.clear": "Clear search",
   "startup.failed.title": "Flame couldn’t start",
   "startup.failed.body":
     "Something failed before the window was ready. Retry, or copy the diagnostics to report it.",

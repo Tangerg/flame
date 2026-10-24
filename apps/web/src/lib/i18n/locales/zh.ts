@@ -58,6 +58,7 @@ export const zh: Record<string, string> = {
   "packages.requirements.unread": "尚未读取绑定。",
   "packages.requirements.failed": "无法读取依赖绑定。",
 
+  "common.clearSearch": "清除搜索",
   "common.cancel": "取消",
   "common.close": "关闭",
 
@@ -104,7 +105,6 @@ export const zh: Record<string, string> = {
   "composer.switchModel": "切换模型",
   "composer.switchReasoningEffort": "切换思考强度",
   "composer.model.unavailable": "当前模型目录中不可用",
-  "composer.model.title": "模型",
   "composer.model.recent": "最近使用",
   "composer.model.search.placeholder": "搜索模型…",
   "composer.model.search.empty": "没有匹配的模型",
@@ -135,7 +135,6 @@ export const zh: Record<string, string> = {
 
   "dock.action.browse": "浏览面板",
   "dock.catalog.title": "打开一个面板",
-  "dock.catalog.description": "在对话旁查看工作区资料与会话详情。",
   "dock.picker.placeholder": "查找面板…",
   "dock.picker.empty": "没有匹配的面板",
   "dock.action.hide": "收起右侧工作区",
@@ -1016,7 +1015,6 @@ export const zh: Record<string, string> = {
   "providers.setup.done": "提供商已就绪。关闭设置即可返回——你的草稿仍在。",
   "providers.roles.heading": "模型角色",
   "settings.search.empty": "没有与“{{query}}”匹配的设置。",
-  "settings.search.clear": "清除搜索",
   "startup.failed.title": "Flame 无法启动",
   "startup.failed.body": "窗口就绪前发生了错误。请重试，或复制诊断信息进行反馈。",
   "startup.failed.copy": "复制诊断信息",

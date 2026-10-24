@@ -62,6 +62,7 @@ export const de: Record<string, string> = {
   "packages.requirements.unread": "Bindungen wurden noch nicht gelesen.",
   "packages.requirements.failed": "Abhängigkeitsbindungen konnten nicht gelesen werden.",
 
+  "common.clearSearch": "Suche löschen",
   "common.cancel": "Abbrechen",
   "common.close": "Schließen",
 
@@ -110,7 +111,6 @@ export const de: Record<string, string> = {
   "composer.switchModel": "Modell wechseln",
   "composer.switchReasoningEffort": "Denkintensität ändern",
   "composer.model.unavailable": "Im aktuellen Katalog nicht verfügbar",
-  "composer.model.title": "Modelle",
   "composer.model.recent": "Zuletzt verwendet",
   "composer.model.search.placeholder": "Modelle suchen…",
   "composer.model.search.empty": "Keine Modelle gefunden",
@@ -136,7 +136,6 @@ export const de: Record<string, string> = {
 
   "dock.action.browse": "Bereiche durchsuchen",
   "dock.catalog.title": "Ein Panel öffnen",
-  "dock.catalog.description": "Arbeitsmaterial und Sitzungsdetails neben dem Gespräch ansehen.",
   "dock.picker.placeholder": "Bereich suchen…",
   "dock.picker.empty": "Keine Bereiche gefunden",
   "dock.action.hide": "Rechten Arbeitsbereich einklappen",
@@ -1129,7 +1128,6 @@ export const de: Record<string, string> = {
     "Ein Anbieter ist bereit. Schließe die Einstellungen, um zurückzukehren – dein Entwurf ist noch da.",
   "providers.roles.heading": "Modellrollen",
   "settings.search.empty": "Keine Einstellung passt zu „{{query}}“.",
-  "settings.search.clear": "Suche löschen",
   "startup.failed.title": "Flame konnte nicht starten",
   "startup.failed.body":
     "Vor dem Bereitstellen des Fensters ist etwas fehlgeschlagen. Versuche es erneut oder kopiere die Diagnose, um es zu melden.",

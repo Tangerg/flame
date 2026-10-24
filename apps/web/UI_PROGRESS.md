@@ -1,20 +1,36 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Sixteen committed main changes through `245ba37065860f955a7bda0cc6a87ea915b0076f` are integrated and pushed. The Scope integration passes the full normal/native checks and fresh English/Chinese Wails tasks; subsequent author-tooling changes pass independent author distribution and compiler-environment regressions. The user now explicitly prioritizes UI batches on a frozen accepted base, with main synchronization at intervals and affected-check reuse. Notification overlap with an expanded model menu remains HIGH and is the next UI task. Primary parallel work is preserved.
+Updated: 2026-10-25. Notification/menu obstruction, task-local errors and the compact directory identity are implemented, natively qualified and pushed through `c9b9d729f753007073e896387cf7429daadd4de1`. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/sync-local-main-1025`, delivered through `46a029d132429df2a636ff97a226fca9c571b87b`. It includes sixteen committed primary-main changes through `245ba37065860f955a7bda0cc6a87ea915b0076f`, preserving the delivered UI owners. The primary checkout and its untracked UI document remain user-owned. Later console-bootstrap and SDK-freeze commits `99247f459` / `528082aa0` are pending a later integration interval.
+The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
+is on `codex/catalog-search-1025`, starting from delivered main
+`c9b9d729f753007073e896387cf7429daadd4de1`. The last integration interval
+includes incoming main through `1e7b76720`; the former pending author/bootstrap
+commits are already integrated. The primary checkout remains user-owned.
 
-The latest user direction changes the cadence: freeze the accepted base for a complete UI task, advance the UI, then integrate main at meaningful intervals across UI batches. New commits in the primary checkout do not restart a validation cycle. Reuse evidence whose sources and dependencies are unchanged; add checks only for actual affected contracts. Actual Wails acceptance still qualifies changed presentation and interaction. The immediate task is the captured HIGH notification/model-menu overlap, followed by task-oriented layout and copy reduction from the latest goal.
+Freeze the accepted base for complete UI tasks, then integrate main at meaningful
+intervals across batches. New primary commits do not restart validation. Reuse
+evidence whose sources and dependencies are unchanged; check actual affected
+contracts and qualify changed interaction in real Wails. Notification overlap and
+directory scope are completed, not next tasks.
+
+Catalog clear/selection/return is implemented and natively qualified, including
+compact model height and a single visible full-pane title. Its original-source
+regression and final scoped verification are recorded under the shared catalog
+section below. Publication and final evidence retirement complete this batch.
+The next review must start from a concrete remaining task observation.
+
+### Earlier integration evidence
 
 The Scope integration validation uses 5,763 tracked non-Markdown files, aggregate SHA-256 `77404b2344bfd5cd513d1cb12c1aa85e5642f18304fec0c98fd80a67ab163d26`. All fourteen notification/Composer source and test paths remain byte-identical to the delivered repair. Normal `make check` passes in **1,035.70 s**, including every non-native Go member, npm workspace, all **401 Web files / 3,415 tests**, the later Web gates and managed Node darwin/arm64 callback, CLI, restart, receipt, removal and retirement qualification. Final `make check-native` passes in **31.73 s** and `make check-author` in **342.84 s**. The final English build (**6.24 s**), Chinese build (**3.59 s**) and private acceptance assets (**3.68 s**) run serially after those checks. There are 595 compiled private files; their five changed and three retired paths relative to the first-ten-commit snapshot are qualified by fresh native acceptance. Earlier first-ten-commit checks and failures remain evidence of their own source, not this final Scope qualification.
 
 The two author-tooling follow-ups generate the selected workflow in the project README and keep browser/component and Node/backend TypeScript programs separate. The final source has **5,763 non-Markdown files**, aggregate SHA-256 `ad79f43da854c784a685eda3e9b8d49344f63fe56a264519308b663a43e7a17b`. Its only non-Markdown differences from the native-qualified input are `plugins/scripts/build-author-kit.mjs` and `tooling/check-author.mjs`; desktop, Runtime, Web presentation and dependencies remain identical. The final normal `make check-author` passes in **225.96 s**, including the separate-program positive probe, the expected **TS2322** refusal for invalid backend source, ordinary tests/build/package and Runtime installation integration (**100.382 s**). Actual Memory/Guardrails Go and Usage Reports TypeScript READMEs retain their selected commands and omit the retired AUTHORING file. Root/tooling lint, plugin lint and formatting pass. The preceding README-only source passes author checks in **275.10 s**. One earlier attempt stops on a prepared Node artifact removed by prior cleanup; normal `make setup` restores prerequisites in **33.73 s** before accepted runs. These tooling-only changes reuse the unchanged native and full-product qualifications above.
 
-Actual final Wails acceptance uses production views and deterministic data with CUA input only. EN/light/14 px/Orange and ZH/dark/18 px/custom blue/reduced motion both reach **561 × 365 CSS px at 200%**. Six long notifications remain within a 144 px English or 71 px Chinese scroller while all five composing controls and the original input remain reachable. Keyboard action 6 and native pointer action 1 each admit once; four localized keyboard dismissals empty the list. File detail opens full width, clears hidden composing geometry, then returns to the same textarea ID 2 and exact draft/caret. Confirmed activation and a subsequent paste extend English **41 → 51** and Chinese seven-line **59 → 64**. Both apps restore Actual Size before Quit. A fresh English capture confirms the existing HIGH notification/model-menu overlap. The goal is not complete; that observed overlap remains the next UI priority. Live Runtime/provider Send, business export/import, fresh 320 px Dock, RTL, VoiceOver and OS IME composition are not qualified by these presentation fixtures.
+Actual final Wails acceptance uses production views and deterministic data with CUA input only. EN/light/14 px/Orange and ZH/dark/18 px/custom blue/reduced motion both reach **561 × 365 CSS px at 200%**. Six long notifications remain within a 144 px English or 71 px Chinese scroller while all five composing controls and the original input remain reachable. Keyboard action 6 and native pointer action 1 each admit once; four localized keyboard dismissals empty the list. File detail opens full width, clears hidden composing geometry, then returns to the same textarea ID 2 and exact draft/caret. Confirmed activation and a subsequent paste extend English **41 → 51** and Chinese seven-line **59 → 64**. Both apps restore Actual Size before Quit. At that checkpoint an English capture reproduced notification/model-menu overlap; the later Task menus, notifications and modal feedback section records its completed repair. Live Runtime/provider Send, business export/import, fresh 320 px Dock, RTL, VoiceOver and OS IME composition are not qualified by these presentation fixtures.
 
 The first ten-commit integration exposed two source-graph failures: unused traversal exports and the neutral JSON entry being treated as an undeclared source root. Current main supplies the canonical private traversal and foundation classification; the merged CLI regression proves allowed direct/resolved JSON imports and retained refusals for foundation-to-client imports and undeclared roots. The negative old classifier fails as expected. One initial author-check attempt refuses unfrozen source before any author verification; final frozen-source author checks pass. An early native/asset build overlap of **1,770.562 ms** is retained in the evidence; the supported native check and all subsequent accepted builds were rerun serially. Final Web tests retain loopback-fixture connection-refused stderr while all tests pass; no production diagnosis or suppressed failure is claimed. The native helper also caught a stale REPL state read and one initial 195% Chinese result; fresh state and one further native Zoom In command establish the final 200% result. No production input or zoom workaround was added.
 
@@ -1307,16 +1323,89 @@ These are task-specific compositions of shared controls, not a requirement to tu
 all pages into the same card, accordion or modal. The source review does not claim
 that every unchanged page has received fresh native acceptance.
 
-The empty Dock now has a clear title, supporting context and a fixed search field
-above its scrolling groups. The directory and header picker use one `CatalogList`
-for filtering, icons, open marks and keyboard selection, including searching by a
-localized group name. Missing contributed icons keep a stable fallback column.
-The directory is retained within its Session so inspection and return preserve
-the query, results position and originating search control. Picker selections
-retire their popup before entering the selected material; canceling restores the
-trigger. The selection marker remains through Base UI's final focus settlement
-so the trigger cannot steal focus back from the material. Full-view-to-Dock entry
-uses the same inspection owner and returns to its named main reader.
+The empty Dock keeps one title and a fixed shared search field above its scrolling
+groups. The directory and header picker use one `CatalogList` for filtering,
+icons, open marks and keyboard selection, including localized group-name searches.
+The directory remains mounted within its Session, preserving its query, results
+position and originating search control through material inspection and return.
+Picker selections retire the popup before entering material; cancellation restores
+the trigger. Existing selection/final-focus and navigation owners remain intact.
+
+Catalog search now composes Base UI's native input with the existing shared
+`SearchField`. The existing query remains authoritative. Nonempty Escape clears
+locally, including from the explicit localized clear action, and restores the same
+native input. Empty Escape remains available to enclosing dismissal/navigation.
+Composition and keyCode 229 retain the current query. The model picker uses this
+same full-width field instead of its separate small, right-aligned input and
+manual Escape handler. Base UI already supplied literal input defaults; this was
+a missing shared clear/focus contract, not a missing-defaults defect.
+
+The generic Dock paragraph and model heading are removed. The full-pane host
+supplies the sole visible catalog title; the retained body heading becomes
+screen-reader-only without replacing its search tree. The model body uses natural
+height capped by 280 px and the available popup height. Actual English one-model
+content occupies 82 px instead of 280 px; two searched results occupy 112 px in
+Chinese. Provider/model pair identity, chosen-group restoration, recent choices,
+Runtime preferences and one-shot panel selection are unchanged. The existing
+translated clear label is owned by `common.clearSearch` across all eight locales;
+Settings and Shortcuts use that same key without behavior changes.
+
+Read-only HeroUI SearchField/Autocomplete compositions and Arc's native-input
+clear/focus behavior informed the shared-field choice. ZCode Settings search
+supplied a concrete clear affordance reference. Better Layout and Accessibility
+informed grouping, reserved control space and local keyboard ownership. Flame
+keeps its Base UI, StyleX, semantic tokens and existing motion; no decorative
+stripe, new component system or explanatory copy was added. The bounded
+Read/Edit-only Claude CLI supplied partial locale/Shortcuts edits before its
+210-second limit (211.11 s, exit 143); primary inspected and completed the diff.
+Its incomplete report is not acceptance evidence.
+
+Original-source regression failed **1 / 87 tests** and actual Wails Escape retained
+`Files`. The candidate passed **5 files / 127 tests**. The initial later lint gate
+correctly rejected a test-only noninteractive JSX key handler; a passive ancestor
+observer retained every assertion. Final CatalogPicker **9 tests**, Web type,
+lint, format, eight-locale completeness (**1,104 keys**), design boundaries,
+tokens, chrome, invalidation, dead styles, authored classes and production bundle
+checks passed. After the height-only refinement, affected style/type/bundle gates
+passed; after the title projection, the complete ChatPanel inspection file
+(**84 tests**) and affected gates passed. The three accepted gate runs took
+18.19 s, 13.93 s and 21.91 s respectively. Native builds (6.77 s EN, 7.28 s ZH)
+and every private asset build ran serially. Unchanged test evidence is reused.
+
+Actual final Wails/CUA scenes qualify EN/light/14 px/Orange and
+ZH/dark/18 px/custom blue/reduced motion, pointer-resized **320 px Dock** and
+**561 × 365 CSS px at 200%**. Shared clear works by trusted pointer, keyboard
+activation and Escape, with the same input and no incidental selection. English
+keyboard selection enters Files, opens `go.mod`, returns to its tree item and then
+to the same catalog/query. Chinese Files/Back likewise retains input 1/query
+`文件` and draft 4. Ordinary panel/model popups clear before closing back to their
+trigger. Final full-pane catalogs show one visible title, retain the accessible
+body heading and reach Close by reverse Tab. Closing preserves the original
+draft: final native append extends EN **21 → 32** and ZH **11 → 16**, same textarea
+and matching owner. Both apps restore Actual Size before Quit.
+
+The isolated Chinese fixture supplies 61 configured models across OpenAI and
+Anthropic. Its 30-item Anthropic group remains within a 280 px body / 236 px
+scroller; 30 native Down presses reveal item 29 at scrollTop 672, and Return
+selects the exact `Review model 29 · Anthropic` pair. Native wheel reaches that
+same end. Searching `29` exposes both provider identities; clearing restores the
+chosen group. Empty results recover locally. At 200% the long popup, search,
+clear and dismissal remain reachable. Fixture sidebar clipping is outside the
+product view. The earlier AX-only splitter attempt is excluded; the trusted drag
+establishes 320 px. No OS input workaround was added.
+
+The final accepted **5,765 non-Markdown sources** have aggregate SHA-256
+`e2719174c44d1d63b93066cbcdb3623361153fecf45e5484af9a0a75c6607cd7`.
+Full Web/Runtime/backend, live provider Send, business import/export, OS IME,
+VoiceOver, other platforms/locales, browser visual suites and benchmarks were not
+rerun. Composition is covered by regression events, not a native IME claim.
+The isolated deterministic transport proves presentation and selection projection,
+not live provider persistence. All 18 recorded processes exited; seven new
+checkout outputs, four owned Library paths and two bundle-temp paths were removed.
+All 36 output-presence baselines, three original files and eleven accepted product
+resources are preserved; two missing Vitest baseline files were restored from the
+captured originals. The private root remains only until publication and evidence
+retirement.
 
 The shared document focus rule now suppresses the browser's native outline on
 `data-chrome-focus` controls. Their existing field edge or row state owns focus;

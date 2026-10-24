@@ -260,7 +260,7 @@ export function ShortcutsPane() {
           value={query}
           onValueChange={setQuery}
           onClear={() => setQuery("")}
-          clearLabel={t("settings.search.clear")}
+          clearLabel={t("common.clearSearch")}
           placeholder={t("shortcuts.filter")}
           aria-label={t("shortcuts.filterAria")}
         />

@@ -1,7 +1,8 @@
 import { useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, space, type, weight } from "@flame/ui/tokens.stylex";
+import { color, space, type, weight } from "@flame/ui/tokens.stylex";
 import { CatalogList, type CatalogPickerGroup } from "@/ui/atoms/index";
+import { cn } from "@/lib/classNames";
 const styles = stylex.create({
   root: {
     display: "flex",
@@ -10,38 +11,45 @@ const styles = stylex.create({
     flexDirection: "column",
     padding: space.s4,
   },
-  heading: { display: "flex", flexDirection: "column", gap: space.s1, paddingBottom: space.s4 },
-  title: { margin: 0, fontWeight: weight.semibold, color: color.fg },
-  description: { margin: 0, lineHeight: leading.body, color: color.fgMuted },
+  title: {
+    margin: 0,
+    marginBottom: space.s4,
+    flexShrink: 0,
+    fontWeight: weight.semibold,
+    color: color.fg,
+  },
 });
 
 export function AgentDockCatalog({
   groups,
   title,
-  description,
+  titleHidden = false,
   placeholder,
   emptyLabel,
+  clearLabel,
   onSelect,
 }: {
   groups: CatalogPickerGroup[];
   title: string;
-  description: string;
+  titleHidden?: boolean;
   placeholder: string;
   emptyLabel: string;
+  clearLabel: string;
   onSelect: (id: string, origin: HTMLElement) => void;
 }) {
   const searchRef = useRef<HTMLInputElement>(null);
+  const heading = stylex.props(styles.title, type.uiMd);
   return (
     <div {...stylex.props(styles.root)}>
-      <div {...stylex.props(styles.heading)}>
-        <h2 {...stylex.props(styles.title, type.uiMd)}>{title}</h2>
-        <p {...stylex.props(styles.description, type.uiSm)}>{description}</p>
-      </div>
+      <h2 {...heading} className={cn(heading.className, titleHidden && "sr-only")}>
+        {title}
+      </h2>
       <CatalogList
         groups={groups}
         label={title}
         placeholder={placeholder}
         emptyLabel={emptyLabel}
+        clearLabel={clearLabel}
         inputRef={searchRef}
         onSelect={(item) => {
           if (searchRef.current) onSelect(item.id, searchRef.current);

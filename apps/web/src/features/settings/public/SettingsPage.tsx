@@ -102,7 +102,7 @@ export function SettingsPage() {
               searchRef.current?.focus();
             }}
           >
-            {t("settings.search.clear")}
+            {t("common.clearSearch")}
           </TextButton>
         </div>
       }
@@ -161,7 +161,7 @@ function SettingsRailHeader({
         value={query}
         onValueChange={onQueryChange}
         onClear={() => onQueryChange("")}
-        clearLabel={t("settings.search.clear")}
+        clearLabel={t("common.clearSearch")}
         onKeyDown={(event) => {
           if (event.key === "Enter" && !isImeKey(event.nativeEvent)) onSubmit();
         }}

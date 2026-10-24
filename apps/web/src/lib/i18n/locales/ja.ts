@@ -61,6 +61,7 @@ export const ja: Record<string, string> = {
   "packages.requirements.unread": "バインドは未取得です。",
   "packages.requirements.failed": "依存関係のバインドを取得できませんでした。",
 
+  "common.clearSearch": "検索をクリア",
   "common.cancel": "キャンセル",
   "common.close": "閉じる",
 
@@ -108,7 +109,6 @@ export const ja: Record<string, string> = {
   "composer.switchModel": "モデルを切替",
   "composer.switchReasoningEffort": "思考強度を切替",
   "composer.model.unavailable": "現在のカタログでは利用できません",
-  "composer.model.title": "モデル",
   "composer.model.recent": "最近使用した",
   "composer.model.search.placeholder": "モデルを検索…",
   "composer.model.search.empty": "一致するモデルはありません",
@@ -134,7 +134,6 @@ export const ja: Record<string, string> = {
 
   "dock.action.browse": "パネルを参照",
   "dock.catalog.title": "パネルを開く",
-  "dock.catalog.description": "会話の隣でワークスペースの資料やセッションの詳細を確認できます。",
   "dock.picker.placeholder": "パネルを検索…",
   "dock.picker.empty": "パネルが見つかりません",
   "dock.action.hide": "右ワークスペースを折りたたむ",
@@ -1082,7 +1081,6 @@ export const ja: Record<string, string> = {
     "プロバイダーの準備ができました。設定を閉じると戻れます。下書きはそのままです。",
   "providers.roles.heading": "モデルの役割",
   "settings.search.empty": "「{{query}}」に一致する設定はありません。",
-  "settings.search.clear": "検索をクリア",
   "startup.failed.title": "Flame を起動できませんでした",
   "startup.failed.body":
     "ウィンドウの準備が整う前に問題が発生しました。再試行するか、診断情報をコピーして報告してください。",

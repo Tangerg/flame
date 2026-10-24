@@ -1330,6 +1330,11 @@ describe("material inspection focus", () => {
     expect((search as HTMLInputElement).value).toBe("Files");
     expect(document.activeElement).toBe(search);
     expect(screen.queryByRole("option", { name: "Subagents" })).toBeNull();
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect((search as HTMLInputElement).value).toBe("");
+    expect(document.activeElement).toBe(search);
+    expect(navigator().get().dock).toBe("catalog");
+    expect(screen.getByRole("option", { name: "Subagents" })).toBeTruthy();
   });
 
   it("enters a picker selection after its popup retires and returns to the previous panel", async () => {

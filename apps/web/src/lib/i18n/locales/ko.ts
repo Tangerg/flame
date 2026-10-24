@@ -60,6 +60,7 @@ export const ko: Record<string, string> = {
   "packages.requirements.unread": "연결 정보를 아직 읽지 않았습니다.",
   "packages.requirements.failed": "종속성 연결을 읽을 수 없습니다.",
 
+  "common.clearSearch": "검색 지우기",
   "common.cancel": "취소",
   "common.close": "닫기",
 
@@ -106,7 +107,6 @@ export const ko: Record<string, string> = {
   "composer.switchModel": "모델 변경",
   "composer.switchReasoningEffort": "추론 강도 변경",
   "composer.model.unavailable": "현재 카탈로그에서 사용할 수 없음",
-  "composer.model.title": "모델",
   "composer.model.recent": "최근 사용",
   "composer.model.search.placeholder": "모델 검색…",
   "composer.model.search.empty": "일치하는 모델이 없습니다",
@@ -132,7 +132,6 @@ export const ko: Record<string, string> = {
 
   "dock.action.browse": "패널 탐색",
   "dock.catalog.title": "패널 열기",
-  "dock.catalog.description": "대화 옆에서 작업 공간 자료와 세션 세부 정보를 확인하세요.",
   "dock.picker.placeholder": "패널 검색…",
   "dock.picker.empty": "패널을 찾을 수 없음",
   "dock.action.hide": "오른쪽 작업 영역 접기",
@@ -1064,7 +1063,6 @@ export const ko: Record<string, string> = {
   "providers.setup.done": "공급자가 준비되었습니다. 설정을 닫고 돌아가면 초안이 그대로 있습니다.",
   "providers.roles.heading": "모델 역할",
   "settings.search.empty": "“{{query}}”와(과) 일치하는 설정이 없습니다.",
-  "settings.search.clear": "검색 지우기",
   "startup.failed.title": "Flame을 시작할 수 없습니다",
   "startup.failed.body":
     "창이 준비되기 전에 문제가 발생했습니다. 다시 시도하거나 진단 정보를 복사해 보고하세요.",

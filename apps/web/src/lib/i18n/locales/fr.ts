@@ -62,6 +62,7 @@ export const fr: Record<string, string> = {
   "packages.requirements.unread": "Les liaisons ne sont pas encore lues.",
   "packages.requirements.failed": "Impossible de lire les liaisons des dépendances.",
 
+  "common.clearSearch": "Effacer la recherche",
   "common.cancel": "Annuler",
   "common.close": "Fermer",
 
@@ -110,7 +111,6 @@ export const fr: Record<string, string> = {
   "composer.switchModel": "Changer de modèle",
   "composer.switchReasoningEffort": "Changer l’intensité du raisonnement",
   "composer.model.unavailable": "Indisponible dans le catalogue actuel",
-  "composer.model.title": "Modèles",
   "composer.model.recent": "Récents",
   "composer.model.search.placeholder": "Rechercher des modèles…",
   "composer.model.search.empty": "Aucun modèle trouvé",
@@ -136,8 +136,6 @@ export const fr: Record<string, string> = {
 
   "dock.action.browse": "Parcourir les panneaux",
   "dock.catalog.title": "Ouvrir un panneau",
-  "dock.catalog.description":
-    "Consultez les ressources de l’espace de travail et les détails de la session à côté de la conversation.",
   "dock.picker.placeholder": "Rechercher un panneau…",
   "dock.picker.empty": "Aucun panneau trouvé",
   "dock.action.hide": "Replier l’espace de droite",
@@ -1141,7 +1139,6 @@ export const fr: Record<string, string> = {
     "Un fournisseur est prêt. Fermez les paramètres pour revenir : votre brouillon est toujours là.",
   "providers.roles.heading": "Rôles des modèles",
   "settings.search.empty": "Aucun réglage ne correspond à « {{query}} ».",
-  "settings.search.clear": "Effacer la recherche",
   "startup.failed.title": "Flame n’a pas pu démarrer",
   "startup.failed.body":
     "Un problème est survenu avant que la fenêtre soit prête. Réessayez ou copiez le diagnostic pour le signaler.",

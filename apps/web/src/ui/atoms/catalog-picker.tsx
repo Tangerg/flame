@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
-import { FIELD_SURFACE } from "@flame/ui";
+import { SearchField } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { color, motion, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { ComboboxPrimitive } from "@/ui/primitives/index";
@@ -11,31 +11,10 @@ import { floatingRow } from "@/ui/atoms/option-row";
 import { Pressable } from "@/ui/atoms/pressable";
 import { vocab } from "@flame/ui/vocabulary";
 const styles = stylex.create({
-  content: { display: "flex", flex: 1, minHeight: 0, flexDirection: "column" },
+  content: { display: "flex", flex: 1, minHeight: 0, flexDirection: "column", gap: space.s1 },
   emptyFlush: { padding: { default: null, ":is([data-empty])": 0 } },
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
-  searchBox: {
-    marginBottom: space.s1,
-    display: "flex",
-    height: "var(--control-height-md)",
-    flexShrink: 0,
-    alignItems: "center",
-    gap: space.s2,
-    paddingInline: "calc(var(--spacing) * 2 - var(--control-edge-width))",
-    color: { default: color.fgMuted, ":focus-within": color.fg },
-  },
-  glyph: { flexShrink: 0 },
-  input: {
-    height: "100%",
-    minWidth: 0,
-    flex: 1,
-    borderWidth: 0,
-    backgroundColor: "transparent",
-    fontFamily: "var(--font-sans)",
-    color: color.fg,
-    "::placeholder": { color: color.fgFaint },
-  },
-  inputShort: { height: space.s6 },
+  searchBox: { flexShrink: 0 },
 
   row: { cursor: "default", userSelect: "none" },
   rowGlyph: { color: color.fgMuted },
@@ -114,7 +93,7 @@ const styles = stylex.create({
     borderRightColor: surface.divider,
     padding: space.s1,
   },
-  railBody: { display: "flex", height: "280px", minHeight: 0 },
+  railBody: { display: "flex", maxHeight: "min(280px, var(--available-height))", minHeight: 0 },
   railColumn: { display: "flex", minWidth: 0, flex: 1, flexDirection: "column" },
   railHead: {
     display: "flex",
@@ -125,17 +104,6 @@ const styles = stylex.create({
     paddingTop: space.s2,
     paddingBottom: space.s1,
   },
-  railTitle: { flexShrink: 0, fontWeight: weight.medium, color: color.fgFaint },
-  railSearch: {
-    display: "flex",
-    minWidth: 0,
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: space.s1_5,
-    color: { default: color.fgFaint, ":focus-within": color.fg },
-  },
-  railSearchInput: { flex: "0 1 auto", maxWidth: "100%", fieldSizing: "content" },
   rowUnmarked: {
     gridTemplateColumns: "var(--menu-glyph, calc(var(--spacing) * 4)) minmax(0, 1fr)",
   },
@@ -190,6 +158,7 @@ interface CatalogSurfaceProps {
   label: string;
   placeholder: string;
   emptyLabel: string;
+  clearLabel: string;
   onSelect: (item: CatalogPickerItem) => void;
   className?: string;
   contentClassName?: string;
@@ -223,18 +192,33 @@ function CatalogTrigger({
   );
 }
 
-function CatalogSearch({ placeholder, ref }: { placeholder: string; ref?: Ref<HTMLInputElement> }) {
+function CatalogSearch({
+  placeholder,
+  clearLabel,
+  value,
+  onClear,
+  ref,
+}: {
+  placeholder: string;
+  clearLabel: string;
+  value: string;
+  onClear: () => void;
+  ref?: Ref<HTMLInputElement>;
+}) {
   return (
-    <div {...stylex.props(FIELD_SURFACE.face, styles.searchBox)}>
-      <Icon name="search" size="sm" {...stylex.props(styles.glyph)} />
-      <ComboboxPrimitive.Input
-        ref={ref}
-        aria-label={placeholder}
-        data-chrome-focus=""
-        placeholder={placeholder}
-        {...stylex.props(styles.input, type.uiMd)}
-      />
-    </div>
+    <ComboboxPrimitive.Input
+      ref={ref}
+      render={
+        <SearchField
+          aria-label={placeholder}
+          placeholder={placeholder}
+          value={value}
+          onClear={onClear}
+          clearLabel={clearLabel}
+          styles={styles.searchBox}
+        />
+      }
+    />
   );
 }
 
@@ -283,9 +267,10 @@ export function CatalogList({
   label,
   placeholder,
   emptyLabel,
+  clearLabel,
   onSelect,
   inputRef,
-}: Pick<CatalogSurfaceProps, "label" | "placeholder" | "emptyLabel" | "onSelect"> & {
+}: Pick<CatalogSurfaceProps, "label" | "placeholder" | "emptyLabel" | "clearLabel" | "onSelect"> & {
   groups: CatalogPickerGroup[];
   inputRef?: Ref<HTMLInputElement>;
 }) {
@@ -305,7 +290,13 @@ export function CatalogList({
       open
     >
       <div {...stylex.props(styles.content)}>
-        <CatalogSearch ref={inputRef} placeholder={placeholder} />
+        <CatalogSearch
+          ref={inputRef}
+          placeholder={placeholder}
+          clearLabel={clearLabel}
+          value={query}
+          onClear={() => setQuery("")}
+        />
         <ComboboxPrimitive.Empty
           className={stylex.props(styles.empty, styles.hideWhenEmpty, type.uiSm).className}
         >
@@ -344,6 +335,7 @@ export function CatalogPicker({
   label,
   placeholder,
   emptyLabel,
+  clearLabel,
   onSelect,
   className,
   contentClassName,
@@ -384,6 +376,7 @@ export function CatalogPicker({
           label={label}
           placeholder={placeholder}
           emptyLabel={emptyLabel}
+          clearLabel={clearLabel}
           onSelect={(item) => {
             selection.current = { deliver: () => onSelect(item) };
             setOpen(false);
@@ -397,10 +390,10 @@ export function CatalogPicker({
 export function RailCatalogPicker({
   groups,
   openAtGroupId,
-  heading,
   label,
   placeholder,
   emptyLabel,
+  clearLabel,
   onSelect,
   className,
   contentClassName,
@@ -410,7 +403,6 @@ export function RailCatalogPicker({
 }: CatalogSurfaceProps & {
   groups: CatalogPickerGroup[];
   openAtGroupId?: string;
-  heading: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -498,27 +490,13 @@ export function RailCatalogPicker({
 
             <div {...stylex.props(styles.railColumn)}>
               <div {...stylex.props(styles.railHead)}>
-                <span {...stylex.props(styles.railTitle, type.uiSm)}>{heading}</span>
-                <div {...stylex.props(styles.railSearch)}>
-                  <ComboboxPrimitive.Input
-                    ref={searchRef}
-                    aria-label={placeholder}
-                    placeholder={placeholder}
-                    onKeyDown={(event) => {
-                      if (event.key !== "Escape" || !searching) return;
-                      event.preventDefault();
-                      event.stopPropagation();
-                      setQuery("");
-                    }}
-                    {...stylex.props(
-                      styles.input,
-                      styles.inputShort,
-                      styles.railSearchInput,
-                      type.uiSm,
-                    )}
-                  />
-                  <Icon name="search" size="sm" {...stylex.props(styles.glyph)} />
-                </div>
+                <CatalogSearch
+                  ref={searchRef}
+                  placeholder={placeholder}
+                  clearLabel={clearLabel}
+                  value={query}
+                  onClear={() => setQuery("")}
+                />
               </div>
               <ComboboxPrimitive.Empty
                 className={

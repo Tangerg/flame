@@ -1,7 +1,166 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { CatalogList, CatalogPicker } from "@/ui/atoms/catalog-picker";
+import { createRef } from "react";
+import { CatalogList, CatalogPicker, RailCatalogPicker } from "@/ui/atoms/catalog-picker";
 afterEach(cleanup);
+
+it.each(["pointer", "Escape"])(
+  "clears from its %s action and keeps keyboard selection",
+  async (action) => {
+    const select = vi.fn();
+    const inputRef = createRef<HTMLInputElement>();
+    const child = { id: "child", label: "Subagents" };
+    render(
+      <CatalogList
+        label="Panels"
+        placeholder="Find a panel"
+        emptyLabel="No panels"
+        clearLabel="Clear search"
+        inputRef={inputRef}
+        groups={[{ id: "panels", label: "Panels", items: [{ id: "file", label: "Files" }, child] }]}
+        onSelect={select}
+      />,
+    );
+    const search = screen.getByRole<HTMLInputElement>("combobox", { name: "Find a panel" });
+    expect(inputRef.current).toBe(search);
+    expect(search.type).toBe("search");
+    expect(search.getAttribute("aria-expanded")).toBe("true");
+    expect(document.getElementById(search.getAttribute("aria-controls") ?? "")).toBe(
+      screen.getByRole("listbox"),
+    );
+    fireEvent.change(search, { target: { value: "no-match" } });
+    await screen.findByText("No panels");
+    const clear = screen.getByRole("button", { name: "Clear search" });
+    clear.focus();
+    if (action === "pointer") fireEvent.click(clear);
+    else fireEvent.keyDown(clear, { key: "Escape" });
+    expect(search.value).toBe("");
+    expect(document.activeElement).toBe(search);
+    expect(select).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Clear search" })).toBeNull();
+    fireEvent.change(search, { target: { value: "Sub" } });
+    await screen.findByRole("option", { name: "Subagents" });
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    fireEvent.keyDown(search, { key: "Enter" });
+    await vi.waitFor(() => expect(select).toHaveBeenCalledExactlyOnceWith(child));
+  },
+);
+
+it.each([{ isComposing: true }, { keyCode: 229 }])(
+  "leaves the catalog query with the composing input for %j",
+  (composition) => {
+    render(
+      <CatalogList
+        label="Panels"
+        placeholder="Find a panel"
+        emptyLabel="No panels"
+        clearLabel="Clear search"
+        groups={[{ id: "panels", label: "Panels", items: [{ id: "file", label: "Files" }] }]}
+        onSelect={() => {}}
+      />,
+    );
+    const search = screen.getByRole<HTMLInputElement>("combobox", { name: "Find a panel" });
+    search.focus();
+    fireEvent.change(search, { target: { value: "Files" } });
+    fireEvent.keyDown(search, { key: "Escape", ...composition });
+    expect(search.value).toBe("Files");
+    expect(document.activeElement).toBe(search);
+  },
+);
+
+it("clears a popup query before dismissing and restoring its trigger", async () => {
+  const select = vi.fn();
+  render(
+    <CatalogPicker
+      label="Browse panels"
+      placeholder="Find a panel"
+      emptyLabel="No panels"
+      clearLabel="Clear search"
+      groups={[{ id: "panels", label: "Panels", items: [{ id: "file", label: "Files" }] }]}
+      onSelect={select}
+    />,
+  );
+  const browse = screen.getByRole("button", { name: "Browse panels" });
+  fireEvent.click(browse);
+  const search = await screen.findByRole<HTMLInputElement>("combobox", { name: "Find a panel" });
+  search.focus();
+  fireEvent.change(search, { target: { value: "Files" } });
+  fireEvent.keyDown(search, { key: "Escape" });
+  expect(screen.getByRole("combobox", { name: "Find a panel" })).toBe(search);
+  expect(search.value).toBe("");
+  expect(document.activeElement).toBe(search);
+  fireEvent.keyDown(search, { key: "Escape" });
+  await vi.waitFor(() => expect(screen.queryByRole("combobox")).toBeNull());
+  expect(document.activeElement).toBe(browse);
+  expect(select).not.toHaveBeenCalled();
+});
+
+it("returns a cleared model search to its chosen group and exact item", async () => {
+  const select = vi.fn();
+  const selected = { id: "b/shared", label: "Shared model", active: true };
+  render(
+    <RailCatalogPicker
+      label="Switch model"
+      placeholder="Search models"
+      emptyLabel="No models"
+      clearLabel="Clear search"
+      openAtGroupId="b"
+      groups={[
+        { id: "a", label: "Provider A", items: [{ id: "a/only", label: "A only" }] },
+        { id: "b", label: "Provider B", items: [selected] },
+      ]}
+      onSelect={select}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+  const search = await screen.findByRole<HTMLInputElement>("combobox", { name: "Search models" });
+  search.focus();
+  fireEvent.change(search, { target: { value: "A only" } });
+  await screen.findByRole("option", { name: "A only" });
+  expect(screen.queryByRole("button", { name: "Provider B" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+  expect(document.activeElement).toBe(search);
+  expect(search.value).toBe("");
+  expect(screen.getByRole("button", { name: "Provider B" }).getAttribute("aria-pressed")).toBe(
+    "true",
+  );
+  expect(screen.queryByRole("option", { name: "A only" })).toBeNull();
+  expect(select).not.toHaveBeenCalled();
+  fireEvent.keyDown(search, { key: "ArrowDown" });
+  fireEvent.keyDown(search, { key: "Enter" });
+  await vi.waitFor(() => expect(select).toHaveBeenCalledExactlyOnceWith(selected));
+});
+
+it("clears a catalog query before an enclosing Escape navigation", async () => {
+  const leave = vi.fn();
+  const observeNavigation = (event: KeyboardEvent) => {
+    if (event.key === "Escape") leave();
+  };
+  document.body.addEventListener("keydown", observeNavigation);
+  try {
+    render(
+      <CatalogList
+        label="Panels"
+        placeholder="Find a panel"
+        emptyLabel="No panels"
+        clearLabel="Clear search"
+        groups={[{ id: "workspace", label: "Workspace", items: [{ id: "file", label: "Files" }] }]}
+        onSelect={() => {}}
+      />,
+    );
+    const search = screen.getByRole<HTMLInputElement>("combobox", { name: "Find a panel" });
+    search.focus();
+    fireEvent.change(search, { target: { value: "Files" } });
+    fireEvent.keyDown(search, { key: "Escape" });
+    await vi.waitFor(() => expect(search.value).toBe(""));
+    expect(leave).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(search);
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(leave).toHaveBeenCalledOnce();
+  } finally {
+    document.body.removeEventListener("keydown", observeNavigation);
+  }
+});
 
 it("filters the inline catalog by keywords, exposes empty results and selects with the keyboard", async () => {
   const select = vi.fn();
@@ -11,6 +170,7 @@ it("filters the inline catalog by keywords, exposes empty results and selects wi
       label="Panels"
       placeholder="Find a panel"
       emptyLabel="No panels"
+      clearLabel="Clear search"
       groups={[
         { id: "workspace", label: "Workspace", items: [file] },
         { id: "session", label: "Session", items: [{ id: "child", label: "Subagents" }] },
@@ -41,6 +201,7 @@ it("delivers a selection after the catalog closes so its consumer can create a n
         label="Browse panels"
         placeholder="Search panels"
         emptyLabel="No panels"
+        clearLabel="Clear search"
         groups={[{ id: "panels", label: "Panels", items: [item] }]}
         onSelect={(selected) => {
           expect(selected).toEqual(item);

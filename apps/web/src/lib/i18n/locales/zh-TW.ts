@@ -58,6 +58,7 @@ export const zhTW: Record<string, string> = {
   "packages.requirements.unread": "尚未讀取綁定。",
   "packages.requirements.failed": "無法讀取相依項目綁定。",
 
+  "common.clearSearch": "清除搜尋",
   "common.cancel": "取消",
   "common.close": "關閉",
 
@@ -103,7 +104,6 @@ export const zhTW: Record<string, string> = {
   "composer.switchModel": "切換模型",
   "composer.switchReasoningEffort": "切換思考強度",
   "composer.model.unavailable": "目前模型目錄中無法使用",
-  "composer.model.title": "模型",
   "composer.model.recent": "最近使用",
   "composer.model.search.placeholder": "搜尋模型…",
   "composer.model.search.empty": "找不到相符的模型",
@@ -133,7 +133,6 @@ export const zhTW: Record<string, string> = {
 
   "dock.action.browse": "瀏覽面板",
   "dock.catalog.title": "開啟一個面板",
-  "dock.catalog.description": "在對話旁檢視工作區資料與對話詳情。",
   "dock.picker.placeholder": "尋找面板…",
   "dock.picker.empty": "找不到符合的面板",
   "dock.action.hide": "收合右側工作區",
@@ -1020,7 +1019,6 @@ export const zhTW: Record<string, string> = {
   "providers.setup.done": "供應商已就緒。關閉設定即可返回——你的草稿仍在。",
   "providers.roles.heading": "模型角色",
   "settings.search.empty": "沒有與「{{query}}」相符的設定。",
-  "settings.search.clear": "清除搜尋",
   "startup.failed.title": "Flame 無法啟動",
   "startup.failed.body": "視窗就緒前發生了錯誤。請重試，或複製診斷資訊回報。",
   "startup.failed.copy": "複製診斷資訊",

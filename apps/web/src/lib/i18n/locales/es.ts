@@ -63,6 +63,7 @@ export const es: Record<string, string> = {
   "packages.requirements.unread": "Todavía no se han leído los enlaces.",
   "packages.requirements.failed": "No se pudieron leer los enlaces de dependencias.",
 
+  "common.clearSearch": "Borrar búsqueda",
   "common.cancel": "Cancelar",
   "common.close": "Cerrar",
 
@@ -111,7 +112,6 @@ export const es: Record<string, string> = {
   "composer.switchModel": "Cambiar modelo",
   "composer.switchReasoningEffort": "Cambiar intensidad de razonamiento",
   "composer.model.unavailable": "No disponible en el catálogo actual",
-  "composer.model.title": "Modelos",
   "composer.model.recent": "Recientes",
   "composer.model.search.placeholder": "Buscar modelos…",
   "composer.model.search.empty": "No se encontraron modelos",
@@ -137,8 +137,6 @@ export const es: Record<string, string> = {
 
   "dock.action.browse": "Explorar paneles",
   "dock.catalog.title": "Abrir un panel",
-  "dock.catalog.description":
-    "Consulta el material del espacio de trabajo y los detalles de la sesión junto a la conversación.",
   "dock.picker.placeholder": "Buscar un panel…",
   "dock.picker.empty": "No se encontraron paneles",
   "dock.action.hide": "Contraer espacio derecho",
@@ -1136,7 +1134,6 @@ export const es: Record<string, string> = {
     "Hay un proveedor listo. Cierra Ajustes para volver: tu borrador sigue ahí.",
   "providers.roles.heading": "Funciones de modelo",
   "settings.search.empty": "Ningún ajuste coincide con «{{query}}».",
-  "settings.search.clear": "Borrar búsqueda",
   "startup.failed.title": "Flame no pudo iniciarse",
   "startup.failed.body":
     "Algo falló antes de que la ventana estuviera lista. Reinténtalo o copia el diagnóstico para informarlo.",
