@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Conversation archive exports now use the composed host: Desktop opens an attached native save panel; Browser retains its download handoff. Markdown, JSON and complete trajectory exports await the file effect and preserve current-generation failure ownership. All 399 Web files / 3,390 tests, all 25 non-test Web gates and supported native checks pass. Actual English/Chinese Wails tasks qualify save, cancellation, exact exported bytes, source return and continued drafts, including 200% and a separate keyboard-only save. Owned native/CLI processes and new checkout/Library outputs are cleaned; implementation delivery and guarded archive retirement follow. Primary parallel work is untouched.
+Updated: 2026-10-24. Conversation archive exports now use the composed host and an attached native save panel on Desktop. Implementation `2f6dfadf56b270191c8f681c4b1141669dd5c0be` is pushed to remote main. All 399 Web files / 3,390 tests, all 25 non-test gates and supported native checks pass. Actual English/Chinese Wails save/cancel/source-return tasks pass, including 200%, exact bytes in all three formats and a separate keyboard-only save. Owned processes, new checkout/Library outputs and the private evidence root are cleaned; source/output/archive guards pass. Primary parallel work is untouched.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-export-native-1024`, based on delivered main `7b33ef5c06fed980757e29fb43638ae64cc77d21`. Fresh fetches find no incoming commit. The export task now has one injected host file effect and a native destination chosen only by the user. Browser handoff, captured Session/material, Runtime generation retirement, import, image saving and existing focus/navigation owners retain their contracts. All 399 Web files / 3,390 tests and 25 non-test gates pass; supported native checks pass. Actual EN/ZH Wails saves produce exact Markdown, JSON and trajectory bytes; cancellation and source/detail/return preserve the original drafts, including 200%. A fresh initial-body keyboard route saves JSON with Return. All 5,725 accepted non-Markdown sources, eleven plugin resources, nine private inputs and 599 compiled inputs retain accepted bytes. Thirteen owned PIDs are dead; seven new checkout paths and eight unique bundle Library paths are removed, three bundles are unregistered, and three preexisting output files/inventories are preserved. The verified batch is ready for explicit-path commit/push to main and exact delivery/retirement receipts. Earlier aggregate Runtime timeouts retain their own history; this full run passes without attributing their cause to the export repair. Continue from this task with another fresh evidenced issue rather than repeating completed export, notification, Find or Approval work.
+The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-export-native-1024`. Implementation `2f6dfadf56b270191c8f681c4b1141669dd5c0be`, based on main `7b33ef5c06fed980757e29fb43638ae64cc77d21`, is pushed to remote main and verified by exact remote hash, a clean owned checkout and zero unpushed commits. Fresh fetches found no further incoming commit. One injected host effect now owns archive file handoff; Browser download, captured Session/material, Runtime generations, import, image saving and established focus/navigation contracts retain their owners. All 399 Web files / 3,390 tests and 25 non-test gates pass, as do supported native checks and the qualified EN/ZH actual Wails tasks. All 5,725 accepted non-Markdown sources, eleven resources, nine private inputs and 599 compiled inputs retain accepted bytes. Thirteen owned PIDs are dead; all new checkout/Library outputs and the exact private root are absent; original output bytes and inventories are preserved. The verified compressed archive retains 242 UTF-8 files and 8 screenshot digests. Earlier aggregate Runtime timeouts retain their own unclassified history. Continue with fresh evidence for the remaining complete task paths; do not repeat completed export, notification, Find or Approval work.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -666,8 +666,19 @@ All thirteen owned native/CLI PIDs are dead. Seven new checkout paths and eight
 unique bundle Library paths are removed, all three bundles unregistered, and
 three preexisting files/inventories are preserved, including the restored native
 check binary. Primary parallel work, dependencies, toolchains and references stay
-untouched. The private evidence root remains only for guarded archive retirement;
-exact implementation delivery and cleanup receipts follow.
+untouched.
+
+Implementation `2f6dfadf56b270191c8f681c4b1141669dd5c0be` is committed and pushed to remote
+main. Normal formatter, all-workspace lint and commit-message hooks pass; exact
+remote hash, clean checkout and zero-ahead/behind checks confirm delivery.
+The verified compressed archive retains 242 UTF-8 evidence files and 8 screenshot
+digests, gzip SHA-256
+`f5996d0eaa327da98ceb4ce8f385b7fb5e9dc4bb33d5b6c842d3e628d9310ea7`.
+The guarded retirement removes the exact private root after rechecking every
+accepted source/private/compiled input, all four exported-file proofs, complete
+Web/native results, all thirteen dead PIDs, seventeen output-presence baselines,
+three original files/inventories, absent Library paths and the exact main commit.
+This documentation-only receipt changes no product bytes or verification scope.
 
 ### Retained component behavior
 
