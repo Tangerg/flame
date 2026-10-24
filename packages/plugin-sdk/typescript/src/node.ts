@@ -1,14 +1,19 @@
-import { Console } from "node:console";
+import console, { Console } from "node:console";
+import { syncBuiltinESMExports } from "node:module";
 import { Backend } from "./backend";
 import { StdioTransport } from "./transport";
 
 export async function startBackend(options: {
   load(): Promise<{ default: Backend }>;
 }): Promise<void> {
-  globalThis.console = new Console({
-    stdout: process.stderr,
-    stderr: process.stderr,
-  });
+  Object.assign(
+    console,
+    new Console({ stdout: process.stderr, stderr: process.stderr }),
+  );
+  globalThis.console = console;
+  // Built-in named imports must observe the same redirected console before
+  // the author and its dependencies are evaluated.
+  syncBuiltinESMExports();
   let backend: Backend | undefined;
   let failure = false;
   let stopping = false;

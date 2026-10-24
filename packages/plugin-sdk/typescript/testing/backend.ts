@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
+import "./logging";
 import {
   Backend,
   Capability,

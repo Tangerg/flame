@@ -211,8 +211,10 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if text, found := toolReceipt.Text(); !found || text != arguments.String() {
 		t.Fatalf("Tool receipt changed original exact evidence: %+v", toolReceipt)
 	}
-	if !strings.Contains(diagnostics.String(), "conformance module loaded") {
-		t.Fatal("module initialization logging did not reach stderr")
+	for _, message := range []string{"conformance module loaded", "default console dependency loaded", "named console dependency loaded"} {
+		if !strings.Contains(diagnostics.String(), message) {
+			t.Fatalf("module initialization logging did not reach stderr: %s", message)
+		}
 	}
 	queryBinding, err := bound.Method(queryStream.Descriptor().Name)
 	if err != nil {
