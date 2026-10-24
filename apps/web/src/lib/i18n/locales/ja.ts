@@ -549,7 +549,6 @@ export const ja: Record<string, string> = {
   "agent.runTree.status.finished": "完了",
   "agent.runTree.status.error": "エラー",
   "agent.runTree.status.canceled": "キャンセル済み",
-  "agent.runOutcome.unresolvedEffects": "結果を確認できない操作",
   "agent.unresolved.summary":
     "この実行は終了しました。これらの外部操作の結果はまだ確認されていません。",
   "agent.unresolved.operation": "未確認の操作 {{index}}",

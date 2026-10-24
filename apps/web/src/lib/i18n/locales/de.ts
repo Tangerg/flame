@@ -572,7 +572,6 @@ export const de: Record<string, string> = {
   "agent.runTree.status.finished": "Beendet",
   "agent.runTree.status.error": "Fehler",
   "agent.runTree.status.canceled": "Abgebrochen",
-  "agent.runOutcome.unresolvedEffects": "Vorgänge mit unbestätigtem Ergebnis",
   "agent.unresolved.summary":
     "Dieser Lauf ist beendet. Die Ergebnisse dieser externen Vorgänge sind weiterhin unbestätigt.",
   "agent.unresolved.operation": "Unbestätigter Vorgang {{index}}",

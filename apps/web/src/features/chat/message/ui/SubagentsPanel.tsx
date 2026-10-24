@@ -20,10 +20,7 @@ import { useContentVisible } from "@/ui/index";
 import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
 import { AgentJumpToBottom } from "@/ui/agent/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
-import {
-  stopFollowOnDisclosureActivation,
-  stopFollowOnReadingFocus,
-} from "@/ui/agent/readingFollow";
+import { prepareDisclosureReading, stopFollowOnReadingFocus } from "@/ui/agent/readingFollow";
 import { face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "@/features/chat/message/application/subagents";
 import {
@@ -294,9 +291,7 @@ function SubagentTranscript({
           onFocusCapture={(event) =>
             stopFollowOnReadingFocus(event, { scrollRef, state, stopScroll })
           }
-          onClick={(event) =>
-            stopFollowOnDisclosureActivation(event, { scrollRef, state, stopScroll })
-          }
+          onClick={(event) => prepareDisclosureReading(event, { scrollRef, state, stopScroll })}
           {...stylex.props(rc.box, styles.transcript)}
         >
           {(summary.detail || narrative.run.outcome?.unresolvedEffects?.length) && (

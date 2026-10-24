@@ -547,7 +547,6 @@ export const ko: Record<string, string> = {
   "agent.runTree.status.finished": "완료",
   "agent.runTree.status.error": "오류",
   "agent.runTree.status.canceled": "취소됨",
-  "agent.runOutcome.unresolvedEffects": "결과가 확인되지 않은 작업",
   "agent.unresolved.summary":
     "이 실행은 종료되었습니다. 이러한 외부 작업의 결과는 아직 확인되지 않았습니다.",
   "agent.unresolved.operation": "확인되지 않은 작업 {{index}}",

@@ -9,7 +9,7 @@ import {
   Facts,
   RecordBody,
   RecordGroup,
-  RecordTitle,
+  RecordSummary,
   vocab,
 } from "@flame/ui";
 import { space, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -32,10 +32,18 @@ export function UnresolvedRunEffects({ effects }: { effects?: AgentUnresolvedEff
       <p {...stylex.props(styles.explanation, vocab.muted, typeStep.uiSm)}>
         {t("agent.unresolved.summary")}
       </p>
-      <Disclosure title={t("agent.runOutcome.unresolvedEffects")}>
+      <RecordGroup variant="list">
         {effects.map((effect, index) => (
-          <RecordGroup key={tupleKey(effect.processId, effect.effectId)}>
-            <RecordTitle>{t("agent.unresolved.operation", { index: index + 1 })}</RecordTitle>
+          <Disclosure
+            key={tupleKey(effect.processId, effect.effectId)}
+            variant="row"
+            title={
+              <RecordSummary
+                title={t("agent.unresolved.operation", { index: index + 1 })}
+                description={effect.effectId}
+              />
+            }
+          >
             <Facts
               values={[
                 [t("agent.unresolved.processId"), effect.processId],
@@ -55,9 +63,9 @@ export function UnresolvedRunEffects({ effects }: { effects?: AgentUnresolvedEff
                 </CodeBlock>
               </>
             )}
-          </RecordGroup>
+          </Disclosure>
         ))}
-      </Disclosure>
+      </RecordGroup>
     </div>
   );
 }

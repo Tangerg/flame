@@ -685,7 +685,6 @@ export const zh: Record<string, string> = {
   "agent.runTree.status.finished": "已完成",
   "agent.runTree.status.error": "出错",
   "agent.runTree.status.canceled": "已取消",
-  "agent.runOutcome.unresolvedEffects": "有未确认结果的操作",
   "agent.unresolved.summary": "本次执行已结束，以下外部操作的结果仍未确认。",
   "agent.unresolved.operation": "未确认的操作 {{index}}",
   "agent.unresolved.processId": "Process ID",

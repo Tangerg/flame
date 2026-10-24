@@ -580,7 +580,6 @@ export const es: Record<string, string> = {
   "agent.runTree.status.finished": "Finalizado",
   "agent.runTree.status.error": "Error",
   "agent.runTree.status.canceled": "Cancelado",
-  "agent.runOutcome.unresolvedEffects": "Operaciones con resultados sin confirmar",
   "agent.unresolved.summary":
     "Esta ejecución ha terminado. Los resultados de estas operaciones externas siguen sin confirmarse.",
   "agent.unresolved.operation": "Operación sin confirmar {{index}}",

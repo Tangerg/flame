@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { CurrentRootMaterial } from "@/features/agent/public/run";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
@@ -52,20 +52,23 @@ describe("RootRunOutcome", () => {
           "This run has ended. The outcomes of these external operations are still unconfirmed.",
         ),
       ).toBeTruthy();
-      const details = screen.getByRole("button", { name: "Operations with unconfirmed outcomes" });
-      expect(screen.queryByText(/effect-with-no-receipt/)).toBeNull();
-      fireEvent.click(details);
-      expect(details.getAttribute("aria-expanded")).toBe("true");
-      expect(screen.getByText("effect-with-no-receipt")).toBeTruthy();
-      expect(screen.getByText("process-external")).toBeTruthy();
-      expect(screen.getByText("response_lost")).toBeTruthy();
-      expect(screen.getByText("connection closed before a response")).toBeTruthy();
+      const operation = screen.getByRole("button", {
+        name: /^Unconfirmed operation 1\s*effect-with-no-receipt$/,
+      });
+      expect(operation.getAttribute("aria-expanded")).toBe("false");
+      expect(screen.queryByText("process-external")).toBeNull();
+      expect(screen.queryByText("connection closed before a response")).toBeNull();
+      fireEvent.click(operation);
+      expect(operation.getAttribute("aria-expanded")).toBe("true");
+      const evidence = within(document.getElementById(operation.getAttribute("aria-controls")!)!);
+      expect(evidence.getByText("effect-with-no-receipt")).toBeTruthy();
+      expect(evidence.getByText("process-external")).toBeTruthy();
+      expect(evidence.getByText("response_lost")).toBeTruthy();
+      expect(evidence.getByText("connection closed before a response")).toBeTruthy();
       expect(screen.queryByRole("button", { name: /retry|resume/i })).toBeNull();
       expect(material.outcome?.type).toBe(type);
       rerender(<RootRunOutcome material={material} />);
-      expect(
-        screen.getAllByRole("button", { name: "Operations with unconfirmed outcomes" }),
-      ).toHaveLength(1);
+      expect(screen.getAllByRole("button", { name: /^Unconfirmed operation/ })).toHaveLength(1);
     },
   );
 
@@ -94,9 +97,14 @@ describe("RootRunOutcome", () => {
       );
       expect(screen.getByText("Canceled")).toBeTruthy();
       expect(screen.getByText(/This run has ended/)).toBeTruthy();
-      fireEvent.click(screen.getByRole("button", { name: "Operations with unconfirmed outcomes" }));
-      expect(screen.getByText("effect-a")).toBeTruthy();
-      expect(screen.getByText("effect-b")).toBeTruthy();
+      for (const [index, effectId] of ["effect-a", "effect-b"].entries()) {
+        const operation = screen.getByRole("button", {
+          name: new RegExp(`^Unconfirmed operation ${index + 1}\\s*${effectId}$`),
+        });
+        fireEvent.click(operation);
+        const evidence = within(document.getElementById(operation.getAttribute("aria-controls")!)!);
+        expect(evidence.getByText(effectId)).toBeTruthy();
+      }
       expect(screen.queryByText("Reason code")).toBeNull();
       expect(
         screen.getByRole("region", { name: "Observed output (outcome unconfirmed)" }).textContent,

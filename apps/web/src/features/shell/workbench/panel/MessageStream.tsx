@@ -6,10 +6,7 @@ import { useEffect, type PropsWithChildren } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { cn } from "@/lib/classNames";
 import { useContentVisible } from "@/ui/index";
-import {
-  stopFollowOnDisclosureActivation,
-  stopFollowOnReadingFocus,
-} from "@/ui/agent/readingFollow";
+import { prepareDisclosureReading, stopFollowOnReadingFocus } from "@/ui/agent/readingFollow";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import { composerOverlay } from "@/features/shell/workbench/panel/composerOverlay";
 import { useCurrentRootMaterial } from "@/features/agent/public/run";
@@ -65,7 +62,7 @@ function TranscriptContent({ children }: PropsWithChildren) {
         ref={visible ? follow.contentRef : undefined}
         tabIndex={-1}
         onFocus={(event) => stopFollowOnReadingFocus(event, follow)}
-        onClick={(event) => stopFollowOnDisclosureActivation(event, follow)}
+        onClick={(event) => prepareDisclosureReading(event, follow)}
         {...stylex.props(rc.box, ms.content)}
       >
         {children}

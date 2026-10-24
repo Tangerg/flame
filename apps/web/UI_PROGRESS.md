@@ -1,16 +1,18 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Run cancellation reasons now retain complete text, and explicitly opening a transcript record retires tail following before expansion. Main and delegated reading, scoped checks and actual Wails acceptance pass. Earlier captured-text, notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
+Updated: 2026-10-25. Unconfirmed operations now expose individual identities before evidence is opened. Closing a record after reading keeps its focused trigger in the safe reading area. Main and delegated reading, scoped checks and actual Wails acceptance pass. Earlier run-settlement, captured-text, notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is clean on `codex/run-settlement-1025`. Run-settlement implementation
-`4c4e28045a3d865f885a8bef1aa0a92a2a8d56cd` is published to remote main from
-the frozen accepted base `199bd8a77f04690bba94940ad2db0dece7da6545`. Its
-evidence retirement is complete. Captured-text implementation
+is on `codex/unconfirmed-operations-1025`. Individual unconfirmed-operation
+reading and the focused close-return policy are accepted on frozen base
+`b5f59809cb7b31d31b0e2f6ff563e8097153aac6`; publication and private evidence
+retirement are the remaining delivery steps. Run-settlement implementation
+`4c4e28045a3d865f885a8bef1aa0a92a2a8d56cd` and its evidence retirement are
+already published to remote main. Captured-text implementation
 `48277ecc2cdcc9aba2018b2f9d59b7289f80aa20` and its receipt remain published.
 The last integration interval
 includes incoming main through `1e7b76720`; the former pending author/bootstrap
@@ -4262,11 +4264,12 @@ resize-follow advanced to the expanded content's bottom. The existing focus
 guard runs before expansion and receives no second focus event. The existing
 `ui/agent/readingFollow.ts` boundary now observes bubbled native-button activation
 in both `MessageStream` and `SubagentTranscript`. Opening an enabled inline
-disclosure stops the existing follow owner before its content mounts. Closing,
-prevented activation, menus, dialog launchers, comboboxes, detached/hidden
+disclosure stops the existing follow owner before its content mounts. Prevented
+activation, menus, dialog launchers, comboboxes, detached/hidden
 viewports and portaled controls outside the reader do not initiate that policy.
-There is no second follow state, per-record workaround or imperative scroll or
-focus. The native button already owns Enter/Space; the content root only
+The closing policy is qualified in the individual-operation section below.
+There is no second follow state, per-record workaround or imperative focus.
+The native button already owns Enter/Space; the content root only
 observes its click, with a narrowly explained accessibility-lint exception.
 
 The retained ChatGPT subagent/body and ZCode record/output research informs the
@@ -4325,6 +4328,83 @@ files and two native binaries. The exact private root
 is absent after publication and archive verification. This documentation receipt
 changes no tested source. Continue from a new observed task while preserving
 the frozen-base cadence and all primary parallel work.
+
+### Individual unconfirmed-operation reading
+
+The former generic disclosure mounted every operation's facts and output at
+once. In actual Wails, a three-operation record put the second and third
+identities at y=1209.1 and y=1512.1 beneath the first operation's long output.
+`UnresolvedRunEffects.tsx` now uses the existing list RecordGroup and one row
+Disclosure per operation. Every closed row shows its localized ordinal and
+complete literal effect ID. Only explicitly opened evidence mounts, multiple
+rows can remain open, and the existing process/effect tuple preserves identity
+through reorder. Base UI owns expansion. Captured facts, reason, detail and
+output remain unchanged; the ended-run summary still distinguishes cancellation
+from unknown external outcomes. The unused parent-disclosure label is removed
+from all eight locales. No new action, badge, decorative stripe or state owner
+is added.
+
+Reading at native 200% exposed a related closing defect: after wheel reading,
+Space closed the same focused button at y=-1.7, partially behind the header and
+not hit-testable. This was partial occlusion, not lost focus. The existing
+`readingFollow.ts` owner now handles opening and closing through
+`prepareDisclosureReading`, with both transcript callers migrated and the old
+export removed. Before a focused header closes its following linked panel,
+the owner checks the viewport's existing scroll-padding clearances, stops active
+follow if necessary, and uses synchronous native nearest scrolling only when
+the header is outside that safe area. Tall headers align at the start. It does
+not move focus, schedule work or take over footer-fold positioning; absent,
+preceding, external and popup panels and later user focus remain excluded.
+
+Read-only ZCode ToolCallBody/ExecuteOutput and HeroUI disclosure-group/multiple
+accordion examples support object identity before bounded evidence. Retained
+ChatGPT research and better-layout, typography, writing and accessibility
+guidance support progressive reading, complete identifiers and visible return
+controls. Existing shared components and semantic tokens supply the visual
+hierarchy. Runtime, command lifecycle, recovery and draft ownership are unchanged.
+
+Two bounded Claude Code CLI edits succeed in **127.78 s** and **50.73 s**; the
+primary agent reviews the diff, adds the linked-following-panel guard and owns
+regression tests and native acceptance. The final frozen input has **5,767
+non-Markdown files**, SHA-256
+`d869a48e510dcbb624c784265fc412cb2aec3d2a684ea1c94d7eafc25c27f3ec`.
+Six focused files pass **62 tests**; typecheck, lint, format, knip, design-system,
+token, chrome, style, class, locale and production-bundle gates pass in
+**20.60 s**. The original all-at-once implementation fails **5 of 7** new
+operation tests. The original reading policy, with only its export renamed for
+the current callers, fails **6 of 23** policy tests. Both negative runs restore
+the accepted candidate bytes. `git diff --check` passes.
+
+Actual Wails CUA acceptance covers EN/light/14 px/Orange and
+ZH/dark/18 px/custom blue/reduced motion. At ordinary English width all three
+closed identities fit before the Composer; real Dock resizing narrows their
+measure from **542 to 356 px**. Opening operation 2 mounts only its invoice
+receipt; independent multi-open/close and the first record's full 32-line output
+retain the literal `9007199254740993`. Chinese native 200% uses a **561 × 365
+CSS-pixel** viewport. After reading and Space-close, the same main button is
+fully visible at **y=69.8** and the same child button at **y=113**, both
+hit-testable. A **224-character** child effect ID wraps fully with its last
+glyph visible. Final-policy English main/child close and source return also
+pass. Returning retains textarea ID 2 and the original draft owner; native paste
+extends English **30→41** and Chinese **11→16** characters with exact end carets.
+Both apps restore Actual Size before Quit. Overview/narrow-width observations
+reuse the unchanged presentation sources; the final closing policy is separately
+qualified in both native apps.
+
+The private observer splits reports to respect native AX text limits. One early
+Dock drag used the wrong Retina coordinate scale; the corrected screenshot-based
+drag establishes the accepted narrower width. Initial post-render samples are
+not used as final evidence. These are harness observations, not product repairs.
+Deterministic production views do not qualify live Runtime cancellation,
+external-operation recovery, VoiceOver, OS IME or RTL. The production native
+minimum prevents a 320 CSS-pixel viewport. No browser visual suite, benchmark,
+fetch or merge ran in this batch, and no full-suite rerun was triggered by main
+activity. Serial native builds and final asset builds retain their accepted
+artifacts. All **20** recorded processes are dead; seven owned checkout outputs,
+four Library paths and two bundle-temp paths are removed. Both apps are
+unregistered; all 36 output baselines, three original files and 11 product
+resources are preserved. Publication and exact private-root retirement are
+pending the delivery receipt.
 
 ## Conversation reading axis ownership
 

@@ -431,13 +431,19 @@ it("explains unconfirmed effects for the selected terminal child without replaci
   expect(screen.getByText(/This run has ended/)).toBeTruthy();
   expect(within(container.querySelector("header")!).getByText("Canceled")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Operations with unconfirmed outcomes" }));
-  expect(screen.getByText("child-effect")).toBeTruthy();
+  const operation = screen.getByRole("button", {
+    name: /^Unconfirmed operation 1\s*child-effect$/,
+  });
+  fireEvent.click(operation);
+  const evidence = within(document.getElementById(operation.getAttribute("aria-controls")!)!);
+  expect(evidence.getByText("child-effect")).toBeTruthy();
+  expect(evidence.getByText("child-process")).toBeTruthy();
   expect(material.rows[0]!.facts.delegatedRuns.delegate![0]!.run.outcome?.type).toBe("canceled");
 
   act(() => openWorkspaceSubagentRun("nested"));
   rerender(<SubagentsPanel />);
   expect(screen.queryByText(/This run has ended/)).toBeNull();
+  expect(screen.queryByRole("button", { name: /^Unconfirmed operation/ })).toBeNull();
   expect(screen.queryByText("child-effect")).toBeNull();
 });
 
