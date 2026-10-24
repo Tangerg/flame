@@ -7,9 +7,10 @@ This user-requested file is the maintained progress and handoff record for the d
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/captured-text-1025`. Captured-text acceptance uses the frozen
-accepted base `5e2dff10cb2436fc1a059c0a78d1f7f6504f0b79`; publication and final
-evidence retirement follow below. The last integration interval
+is clean on `codex/captured-text-1025`. Captured-text implementation
+`48277ecc2cdcc9aba2018b2f9d59b7289f80aa20` is published to remote main from the
+frozen accepted base `5e2dff10cb2436fc1a059c0a78d1f7f6504f0b79`. Its evidence
+retirement is complete. The last integration interval
 includes incoming main through `1e7b76720`; the former pending author/bootstrap
 commits are already integrated. The primary checkout remains user-owned.
 
@@ -27,9 +28,8 @@ Member disclosure clarity and canonical narrative evidence are now implemented
 and natively qualified. Their scope, counterexample, 26 passing regressions and
 full reading/file/return path are recorded under Tool group reading continuity.
 Publication and evidence retirement are complete. Captured question/compaction
-reading is also qualified under Question review and confirmation. Finish its
-publication and retirement, then continue from a new observed reading or management
-task; do not reopen these completed disclosures.
+reading is also delivered under Question review and confirmation. Continue from
+a new observed reading or management task; do not reopen these completed disclosures.
 
 ### Earlier integration evidence
 
@@ -2768,8 +2768,17 @@ original files and eleven accepted product resources are preserved. The two
 missing Vitest baseline files are restored. Accepted 5,765 non-Markdown sources
 have aggregate SHA-256
 `c311892aa51c8fd33faa3c89513261d5c8fcaa5cf306ee51c0389d9232758d1b`.
-Final private asset/binary verification, publication and root retirement remain
-the closing steps. No main fetch/merge is required during this UI task.
+All 607 accepted private artifacts are independently verified: 597 compiled files,
+eight module-proxy files and two binaries. Implementation
+`48277ecc2cdcc9aba2018b2f9d59b7289f80aa20` is published to remote main; exact
+remote hash, clean owned checkout and preserved source bytes are confirmed.
+The exact owned root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-captured-text-1025-ZUgrtH`
+is absent. The round-trip-verified archive retains 73 UTF-8 evidence files and
+15 screenshot hashes, gzip SHA-256
+`ec92188cc759275b420ba72e60e73a77580ceace20981c74b5f207091b7e6919`.
+Primary work, user data and references are untouched. This documentation-only
+receipt changes no tested source. No main fetch/merge is required during this UI task.
 
 The native baseline at `a2a6ba1d4` exposed a task interruption: ArrowDown in the
 first radio question immediately advanced to the text question. `QuestionCard`
