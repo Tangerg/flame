@@ -12,7 +12,7 @@ import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { run, root, buildShared } from "./workspace.mjs";
 const scratch = await mkdtemp(join(tmpdir(), "flame-author-check-"));
-function isolated(policy, command, directory, env) {
+function isolated(policy, command, directory, env, expectedError) {
   // Pipes keep the sandbox from inheriting a repository-local redirected log
   // descriptor. Its source-read denial also applies to descriptor metadata.
   const result = spawnSync(
@@ -23,10 +23,44 @@ function isolated(policy, command, directory, env) {
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
   if (result.error) throw result.error;
+  if (expectedError) {
+    if (
+      result.status === null ||
+      result.status === 0 ||
+      !expectedError.test(result.stdout + result.stderr)
+    )
+      throw new Error(
+        `isolated author command did not reject the invalid source: ${command.join(" ")}`,
+      );
+    return;
+  }
   if (result.status !== 0)
     throw new Error(
       `isolated author command failed (${result.signal ?? result.status}): ${command.join(" ")}`,
     );
+}
+async function verifyTypecheckEnvironments(policy, project, env) {
+  const browser = join(project, "component/authoring-environment.probe.ts");
+  const backend = join(project, "backend/authoring-environment.probe.ts");
+  try {
+    await writeFile(
+      browser,
+      'export {};\ndeclare global { interface AuthoringEnvironmentProbe { runtime: "browser"; } }\n',
+    );
+    await writeFile(
+      backend,
+      'export {};\ndeclare global { interface AuthoringEnvironmentProbe { runtime: "node"; } }\n',
+    );
+    isolated(policy, ["npm", "run", "typecheck"], project, env);
+    await writeFile(
+      backend,
+      "const values: string[] = [];\nexport const required: string = values[0];\n",
+    );
+    isolated(policy, ["npm", "run", "typecheck"], project, env, /TS2322/);
+  } finally {
+    await rm(browser, { force: true });
+    await rm(backend, { force: true });
+  }
 }
 async function snapshot(directory) {
   const entries = [];
@@ -96,6 +130,7 @@ try {
         { mode: 0o755 },
       );
       env.PATH = noGo + ":" + process.env.PATH;
+      await verifyTypecheckEnvironments(policy, project, env);
     }
     const npmCommands = managed
       ? [

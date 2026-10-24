@@ -66,6 +66,7 @@ const inputs = [
   `plugins/${plugin}`,
   "plugins/scripts",
   "plugins/tsconfig.json",
+  "plugins/backend.tsconfig.json",
   "plugins/package.json",
   "tooling",
   "packages/icons",
@@ -248,6 +249,7 @@ try {
         "package.json",
         "package-lock.json",
         "plugins/tsconfig.json",
+        "plugins/backend.tsconfig.json",
       ],
       root,
       process.env,
@@ -317,7 +319,10 @@ try {
       private: true,
       type: "module",
       scripts: {
-        typecheck: "tsc --noEmit",
+        typecheck:
+          managed && component
+            ? "tsc --noEmit && tsc -p backend.tsconfig.json"
+            : "tsc --noEmit",
         ...(component ? { build: "node build-component.mjs" } : {}),
         ...(managed
           ? {
@@ -342,21 +347,25 @@ try {
         2,
       ) + "\n",
     );
-    const config = JSON.parse(
-      await readFile(join(frozenTree, "plugins/tsconfig.json"), "utf8"),
-    );
-    config.include = [
-      ...(component ? ["component"] : []),
-      ...(managed ? ["backend"] : []),
-    ];
-    if (managed) {
-      config.compilerOptions.target = "ESNext";
-      config.compilerOptions.resolveJsonModule = true;
+    for (const [source, destination, include] of [
+      [
+        component ? "tsconfig.json" : "backend.tsconfig.json",
+        "tsconfig.json",
+        component ? "component" : "backend",
+      ],
+      ...(managed && component
+        ? [["backend.tsconfig.json", "backend.tsconfig.json", "backend"]]
+        : []),
+    ]) {
+      const config = JSON.parse(
+        await readFile(join(frozenTree, "plugins", source), "utf8"),
+      );
+      config.include = [include];
+      await writeFile(
+        join(output, destination),
+        JSON.stringify(config, null, 2) + "\n",
+      );
     }
-    await writeFile(
-      join(output, "tsconfig.json"),
-      JSON.stringify(config, null, 2) + "\n",
-    );
     // Every packing input has been consumed; drop the frozen tree before the
     // author project's own install so it never ships inside the release.
     await rm(frozenTree, { recursive: true, force: true });
