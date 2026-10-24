@@ -7902,10 +7902,95 @@ The exact private root `flame-ui-popup-task-order-1025-9PFidw` is deleted after
 publication, source, artifact and ownership verification. Primary parallel work
 and read-only references are preserved. This receipt changes no tested source.
 
-Next observed refinement: the directory task's explanatory paragraph crowds its
-Runtime scope at large type when error revelation scrolls the body. Reduce that
-copy while keeping the target endpoint identifiable; preserve this batch's error,
-retry and return behavior. The goal remains active.
+#### Directory identity and recovery
+
+This refinement stays on accepted main `20b26df0d` throughout development and
+native qualification. Main is synchronized at delivery intervals; unrelated
+commits do not restart UI checks.
+
+The observed directory task lost its Runtime identity when error revelation
+scrolled the explanatory paragraph. `WorkingDirectoryDialog` now places the
+exact endpoint below its task title in the persistent header and removes that
+paragraph. `InputDialog` accepts the existing ModalDialog ReactNode title
+contract and drops its obsolete description prop. Selection, pending state,
+validation, captured owner, stale completion, initial field focus and return
+remain with their existing owners.
+
+Native boundary review rejects an unbounded header: the Runtime endpoint policy
+admits long paths, and a 1,083-character address makes the field unreachable at
+561 × 365 / 200%. The final identity uses the existing `ScrollRegion` with a
+three-line-height bound, complete selectable text and ordinary native keyboard
+scrolling. Its new, explicitly typed `as="span"` form keeps phrasing content
+valid inside the heading; the default div, refs, attributes, focusability and
+styles contract remain. There is no second scroll state or focus handler.
+
+Eight locales remove the unused directory description and give errors a direct
+recovery: retry creation, or enter the directory when the folder chooser fails.
+Traditional Chinese creation feedback now uses the same task vocabulary as its
+title and action. Reference review uses HeroUI's actual `modal/with-form.tsx`
+and `modal/scroll-comparison.tsx` examples for fixed task/action boundaries,
+ZCode's `docs/desktop/workspace-directory-picker.md` for desktop picker scope,
+and better-writing, better-layout and better-accessibility for concise recovery,
+object identity and keyboard reading. Flame keeps its existing Base UI, tokens,
+brand, motion and modal ownership.
+
+| Severity         | Location                      | Before                                                        | After                                                                                          | Basis                                                            |
+| ---------------- | ----------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| HIGH, repaired   | Directory task header         | An admitted long endpoint pushes the field out of view.       | The complete address scrolls in a bounded reader while the field and actions remain reachable. | Actual Wails negative and corrected evidence at 200%.            |
+| MEDIUM, repaired | Directory identity            | Error revelation can hide the target inside explanatory copy. | Task title and exact target stay in the persistent header.                                     | Native scope retention and fixed header/body/footer composition. |
+| MEDIUM, repaired | Creation and chooser feedback | Failure gives no recovery.                                    | Localized text names retry or direct directory entry.                                          | better-writing recovery guidance and actual supported actions.   |
+
+The scoped review has no remaining HIGH in the qualified directory paths. The
+bounded Claude CLI task finishes in 148.13 s with no permission denials. Primary
+reviews its actual diff, strengthens retained-path and successor-target coverage,
+corrects the Traditional Chinese task term and completes the native boundary fix.
+
+**Verification**
+
+- Shared UI check passes in 11.72 s: build, types, lint, formatting, **5 files /
+  81 tests** and an independent packed UI/icon consumer without StyleX or host.
+- Current shared/UI/plugin resources are staged serially. Final Web gate passes
+  in 31.88 s: **3 files / 31 tests**, types, lint, formatting, all **1,106 keys /
+  8 locales**, design-system/token/chrome/style-invalidation checks, production
+  bundle and emitted public-module linking. Reader/image and component lifecycle
+  consumers pass **3 files / 37 tests** separately in 3.42 s. Existing unaffected
+  broad-suite evidence is reused; no Runtime/backend matrix, browser visual suite
+  or performance benchmark is repeated.
+- Final **5,765** non-Markdown source hashes aggregate to
+  `7b523959716f804a1c5fa306af55502373b450c0ec4551c688c49a64d5dfb81e`.
+  Native assets build in 3.28 s; the existing private Wails DirFS hosts reload
+  those assets through their native View menu. Both final apps retain 200% zoom.
+
+| Native scene                                                   | Observed result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| EN/light/14 px/Orange/full motion, **561 × 365 / 200%**        | The short endpoint stays complete and visible. Initial focus enters the field; Shift+Tab reaches its named reader and Tab returns. Chooser failure retains the exact entered path and all four controls pass hit testing. Retry replaces the path and clears feedback; an observed field focus then Return completes the isolated task and returns to textarea ID 2. Confirmed caret 27 followed by native paste produces `Draft before notifications. Continued.`, caret 38.                                    |
+| ZH/dark/18 px/custom blue/reduced motion, **561 × 365 / 200%** | The 1,083-character address occupies a 68.8 px reader. Native Home/End and mouse scrolling expose domain and `runtime-scope-end`; trusted keys move its scroll from 0 to 539 with client/scroll heights 69/608. Rejection retains `/tmp/reject-native-review/项目`, complete identity and reachable field/actions. Editing clears feedback; a trusted coordinate click submits the retry. The same textarea ID 2 returns, and observed caret 11 then paste produces `通知检查前保留的草稿。 已继续。`, caret 16. |
+
+CUA owns all native actions; private probes only observe. An initial Cmd+End
+attempt did not move the caret and is excluded from append proof; native edits
+restore the original draft before observed Cmd+Right and continuation. An AX-only
+browse-return sequence does not establish keyboard submission; the final native
+pointer-to-field, reader Tab cycle and Return do. The initial inline-reader lint
+failure and tag/ref typing failure are repaired without suppressing checks.
+The checked shared package's default readers and component lifetime tests pass.
+These are production views with deterministic private Runtime/chooser ports;
+they do not claim live provider execution, persisted Session creation, OS folder
+dialogs, VoiceOver speech, OS IME, RTL or other platforms.
+
+**Resource ownership**
+
+Both apps restore Actual Size and Quit. All fifteen recorded processes are dead;
+both bundles are unregistered. Nine new checkout outputs, four owned Library
+directories and two bundle-temp directories are removed. Thirty-six output
+presence baselines, three original files/inventories and eleven product resource
+hashes are preserved. The private evidence root remains only until publication
+and evidence archive. Its accepted artifacts comprise 596 compiled files, eight
+module files, two three-file app bundles and eleven private inputs. Primary
+parallel work and read-only references remain untouched.
+
+Next candidate from native observation: the Files list exposes generic AX
+containers for its leaves. Trace its actual selection, keyboard scope and reader
+return before deciding whether this is a defect. The goal remains active.
 
 ### Notification history and current action focus
 

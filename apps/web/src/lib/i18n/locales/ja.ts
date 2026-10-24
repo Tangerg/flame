@@ -935,14 +935,13 @@ export const ja: Record<string, string> = {
   "rpcError.plugin_disabled": "使用する前にこのプラグインを有効にしてください。",
   "rpcError.plugin_unavailable":
     "そのプラグインのリリースは検証に失敗しました。再インストールまたは更新してください。",
-  "session.error.create": "セッションを作成できませんでした。",
+  "session.error.create": "セッションを作成できませんでした。もう一度お試しください。",
   "session.directory.title": "新しいセッション",
-  "session.directory.description":
-    "{{endpoint}} の Runtime にある作業ディレクトリを入力してください。セッション作成前に検証します。",
   "session.directory.path": "Runtime の作業ディレクトリ",
   "session.directory.create": "セッションを作成",
   "session.directory.browse": "このコンピューターを参照",
-  "session.error.chooseWorkingDirectory": "フォルダー選択を開けませんでした。",
+  "session.error.chooseWorkingDirectory":
+    "フォルダー選択を開けませんでした。ディレクトリを直接入力してください。",
   "session.error.delete": "セッションを削除できませんでした。",
   "session.error.rename": "セッション名を変更できませんでした。",
   "session.error.fork": "セッションをフォークできませんでした。",

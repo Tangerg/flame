@@ -46,6 +46,7 @@ import {
   Stats,
   RecordForm,
   SearchField,
+  ScrollRegion,
   type SearchFieldProps,
   Segmented,
   Select,
@@ -57,6 +58,47 @@ import {
 import { vocab } from "../dist/vocabulary.js";
 
 afterEach(cleanup);
+
+describe("named scroll readers", () => {
+  it("keeps inline identity inside a heading keyboard reachable and complete", () => {
+    const identity = `https://runtime.example/${"workspace/".repeat(50)}`;
+    const reader = createRef<HTMLSpanElement>();
+    render(
+      <h2>
+        New session{" "}
+        <ScrollRegion as="span" ref={reader} label={identity}>
+          {identity}
+        </ScrollRegion>
+      </h2>,
+    );
+    const heading = screen.getByRole("heading", {
+      level: 2,
+      name: `New session ${identity}`,
+    });
+    const region = screen.getByRole("region", { name: identity });
+    expect(heading.contains(region)).toBe(true);
+    expect(region.tagName).toBe("SPAN");
+    expect(region.textContent).toBe(identity);
+    expect(reader.current).toBe(region);
+    expect(region.tabIndex).toBe(0);
+    region.focus();
+    expect(document.activeElement).toBe(region);
+  });
+
+  it("preserves the default region ref and caller focusability", () => {
+    const reader = createRef<HTMLDivElement>();
+    render(
+      <ScrollRegion label="Tool output" ref={reader} tabIndex={-1}>
+        Complete output
+      </ScrollRegion>,
+    );
+    const region = screen.getByRole("region", { name: "Tool output" });
+    expect(region.tagName).toBe("DIV");
+    expect(reader.current).toBe(region);
+    expect(region.tabIndex).toBe(-1);
+  });
+});
+
 describe("record form focus ownership", () => {
   it("resolves the current return target only after an eligible form removal", () => {
     let target: HTMLElement | null = null;

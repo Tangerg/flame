@@ -984,14 +984,13 @@ export const fr: Record<string, string> = {
   "rpcError.plugin_disabled": "Activez ce plugin avant de l’utiliser.",
   "rpcError.plugin_unavailable":
     "Cette version du plugin n'a pas passé la vérification — réinstallez ou mettez à jour le plugin.",
-  "session.error.create": "Impossible de créer la session.",
+  "session.error.create": "Impossible de créer la session. Réessayez.",
   "session.directory.title": "Nouvelle session",
-  "session.directory.description":
-    "Saisissez un répertoire sur le Runtime à {{endpoint}}. Flame le vérifie avant de créer la session.",
   "session.directory.path": "Répertoire du Runtime",
   "session.directory.create": "Créer la session",
   "session.directory.browse": "Parcourir cet ordinateur",
-  "session.error.chooseWorkingDirectory": "Impossible d’ouvrir le sélecteur de dossiers.",
+  "session.error.chooseWorkingDirectory":
+    "Impossible d’ouvrir le sélecteur de dossiers. Saisissez plutôt le répertoire.",
   "session.error.delete": "Impossible de supprimer la session.",
   "session.error.rename": "Impossible de renommer la session.",
   "session.error.fork": "Impossible de forker la session.",

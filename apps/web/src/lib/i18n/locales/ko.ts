@@ -918,14 +918,13 @@ export const ko: Record<string, string> = {
   "rpcError.plugin_disabled": "사용하기 전에 이 플러그인을 활성화하세요.",
   "rpcError.plugin_unavailable":
     "해당 플러그인 릴리스가 검증에 실패했습니다. 플러그인을 다시 설치하거나 업데이트하세요.",
-  "session.error.create": "세션을 만들 수 없습니다.",
+  "session.error.create": "세션을 만들 수 없습니다. 다시 시도하세요.",
   "session.directory.title": "새 세션",
-  "session.directory.description":
-    "{{endpoint}}의 Runtime 작업 디렉터리를 입력하세요. 세션 생성 전에 확인합니다.",
   "session.directory.path": "Runtime 작업 디렉터리",
   "session.directory.create": "세션 만들기",
   "session.directory.browse": "이 컴퓨터 찾아보기",
-  "session.error.chooseWorkingDirectory": "폴더 선택기를 열 수 없습니다.",
+  "session.error.chooseWorkingDirectory":
+    "폴더 선택기를 열 수 없습니다. 디렉터리를 직접 입력하세요.",
   "session.error.delete": "세션을 삭제할 수 없습니다.",
   "session.error.rename": "세션 이름을 바꿀 수 없습니다.",
   "session.error.fork": "세션을 포크할 수 없습니다.",

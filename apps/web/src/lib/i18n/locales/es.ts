@@ -978,14 +978,13 @@ export const es: Record<string, string> = {
   "rpcError.plugin_disabled": "Activa este plugin antes de usarlo.",
   "rpcError.plugin_unavailable":
     "Esa versión del plugin no superó la verificación — reinstala o actualiza el plugin.",
-  "session.error.create": "No se pudo crear la sesión.",
+  "session.error.create": "No se pudo crear la sesión. Inténtalo de nuevo.",
   "session.directory.title": "Nueva sesión",
-  "session.directory.description":
-    "Introduce un directorio del Runtime en {{endpoint}}. Flame lo valida antes de crear la sesión.",
   "session.directory.path": "Directorio del Runtime",
   "session.directory.create": "Crear sesión",
   "session.directory.browse": "Explorar este equipo",
-  "session.error.chooseWorkingDirectory": "No se pudo abrir el selector de carpetas.",
+  "session.error.chooseWorkingDirectory":
+    "No se pudo abrir el selector de carpetas. Introduce el directorio directamente.",
   "session.error.delete": "No se pudo borrar la sesión.",
   "session.error.rename": "No se pudo renombrar la sesión.",
   "session.error.fork": "No se pudo bifurcar la sesión.",

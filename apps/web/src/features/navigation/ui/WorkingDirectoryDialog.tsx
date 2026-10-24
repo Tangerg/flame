@@ -1,3 +1,6 @@
+import * as stylex from "@stylexjs/stylex";
+import { ScrollRegion } from "@flame/ui";
+import { color, face, space, type, weight } from "@flame/ui/tokens.stylex";
 import { workingDirectoryPicker } from "@/features/navigation/application/ports/workingDirectoryPicker";
 import { useT } from "@/lib/i18n/index";
 import { InputDialog } from "@/ui/index";
@@ -8,6 +11,21 @@ import {
   updateWorkingDirectorySelection,
   useWorkingDirectorySelection,
 } from "@/features/navigation/adapters/workingDirectorySelection";
+
+const styles = stylex.create({
+  title: { display: "grid", gap: space.s0_5, minWidth: 0 },
+  endpoint: {
+    minWidth: 0,
+    maxHeight: "3lh",
+    paddingBlock: 0,
+    color: color.fgMuted,
+    fontWeight: weight.regular,
+    overflowWrap: "anywhere",
+    textWrap: "wrap",
+    userSelect: "text",
+  },
+});
+
 export function WorkingDirectoryDialog() {
   const t = useT();
   const create = useCreateSession();
@@ -41,8 +59,19 @@ export function WorkingDirectoryDialog() {
   };
   return (
     <InputDialog
-      title={t("session.directory.title")}
-      description={t("session.directory.description", { endpoint: selection.endpoint })}
+      title={
+        // The explicit space keeps the accessible name readable; the grid ignores it visually.
+        <span {...stylex.props(styles.title)}>
+          <span>{t("session.directory.title")}</span>{" "}
+          <ScrollRegion
+            as="span"
+            label={selection.endpoint}
+            styles={[styles.endpoint, type.uiSm, face.mono]}
+          >
+            {selection.endpoint}
+          </ScrollRegion>
+        </span>
+      }
       label={t("session.directory.path")}
       value={selection.path}
       busy={selection.busy}

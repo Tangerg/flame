@@ -2,8 +2,7 @@ import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { Button, FormField, ModalDialog, TextField } from "@flame/ui";
 import { SystemMessage } from "@/ui/atoms/system-message";
 interface InputDialogProps {
-  title: string;
-  description: ReactNode;
+  title: ReactNode;
   label: string;
   value: string;
   busy: boolean;
@@ -27,7 +26,6 @@ export function InputDialog(props: InputDialogProps) {
     <ModalDialog
       open
       title={props.title}
-      description={props.description}
       initialFocus={field}
       onOpenChange={(open) => {
         if (!open) props.onClose();

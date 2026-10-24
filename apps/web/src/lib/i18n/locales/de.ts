@@ -974,14 +974,13 @@ export const de: Record<string, string> = {
   "rpcError.plugin_disabled": "Aktiviere dieses Plugin, bevor du es verwendest.",
   "rpcError.plugin_unavailable":
     "Diese Plugin-Version hat die Prüfung nicht bestanden — installiere oder aktualisiere das Plugin neu.",
-  "session.error.create": "Sitzung konnte nicht erstellt werden.",
+  "session.error.create": "Sitzung konnte nicht erstellt werden. Versuche es erneut.",
   "session.directory.title": "Neue Sitzung",
-  "session.directory.description":
-    "Arbeitsverzeichnis auf der Runtime unter {{endpoint}} eingeben. Flame prüft es vor dem Erstellen der Sitzung.",
   "session.directory.path": "Runtime-Arbeitsverzeichnis",
   "session.directory.create": "Sitzung erstellen",
   "session.directory.browse": "Diesen Computer durchsuchen",
-  "session.error.chooseWorkingDirectory": "Ordnerauswahl konnte nicht geöffnet werden.",
+  "session.error.chooseWorkingDirectory":
+    "Ordnerauswahl konnte nicht geöffnet werden. Gib das Verzeichnis stattdessen direkt ein.",
   "session.error.delete": "Sitzung konnte nicht gelöscht werden.",
   "session.error.rename": "Sitzung konnte nicht umbenannt werden.",
   "session.error.fork": "Sitzung konnte nicht geforkt werden.",

@@ -36,6 +36,7 @@ beforeEach(() => {
   runtime.browse.mockReset();
   runtime.focus.mockReset();
   runtime.local = false;
+  runtime.endpoint = "https://runtime.example";
   picker = installWorkingDirectoryPicker(runtime.browse, () => runtime.local);
 });
 
@@ -99,15 +100,26 @@ describe("Runtime workspace selection", () => {
 
   it("reports chooser failure inside the dialog and clears it on retry", async () => {
     runtime.local = true;
+    runtime.endpoint = `https://runtime.example/${"organization/workspace/deployment-region/".repeat(25)}runtime-scope-end`;
+    const task = `${t("session.directory.title")} ${runtime.endpoint}`;
     runtime.browse
       .mockRejectedValueOnce(new Error("permission denied"))
       .mockResolvedValueOnce("/picked");
     open();
+    expect(screen.getByRole("dialog", { name: task })).toBeTruthy();
+    const endpoint = screen.getByRole("region", { name: runtime.endpoint });
+    expect(endpoint.textContent).toBe(runtime.endpoint);
+    expect(endpoint.tabIndex).toBe(0);
+    fireEvent.change(screen.getByLabelText("Runtime workspace directory"), {
+      target: { value: "/srv/chosen-project" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Browse this computer" }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain(t("session.error.chooseWorkingDirectory"));
     expect(alert.textContent).toContain("permission denied");
+    expect(screen.getByRole("dialog", { name: task })).toBeTruthy();
     const field = screen.getByLabelText("Runtime workspace directory");
+    expect((field as HTMLInputElement).value).toBe("/srv/chosen-project");
     expect(field.getAttribute("aria-invalid")).toBeNull();
     expect(field.getAttribute("aria-describedby")).toBe(alert.id);
 
@@ -175,9 +187,17 @@ describe("Runtime workspace selection", () => {
     act(() => {
       picker.cancel();
       runtime.local = false;
+      runtime.endpoint = "https://successor-runtime.example";
       workingDirectoryPicker().open();
     });
+    const task = `${t("session.directory.title")} https://successor-runtime.example`;
+    expect(screen.getByRole("dialog", { name: task })).toBeTruthy();
     await act(async () => native.resolve("/old/local/path"));
+    expect(screen.getByRole("dialog", { name: task })).toBeTruthy();
+    expect(screen.queryByText("https://runtime.example")).toBeNull();
+    expect((screen.getByLabelText("Runtime workspace directory") as HTMLInputElement).value).toBe(
+      "",
+    );
     expect(useWorkingDirectorySelection.getState().selection?.path).toBe("");
     expect(useWorkingDirectorySelection.getState().selection?.canBrowse).toBe(false);
     expect(runtime.create).not.toHaveBeenCalled();

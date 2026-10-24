@@ -950,14 +950,13 @@ export const en: Record<string, string> = {
   "rpcError.plugin_disabled": "Enable this plugin before using it.",
   "rpcError.plugin_unavailable":
     "That plugin release failed verification — reinstall or update the plugin.",
-  "session.error.create": "Couldn't create the session.",
+  "session.error.create": "Couldn't create the session. Try again.",
   "session.directory.title": "New session",
-  "session.directory.description":
-    "Enter a workspace directory on the Runtime at {{endpoint}}. Flame validates it before creating the session.",
   "session.directory.path": "Runtime workspace directory",
   "session.directory.create": "Create session",
   "session.directory.browse": "Browse this computer",
-  "session.error.chooseWorkingDirectory": "Couldn't open the folder chooser.",
+  "session.error.chooseWorkingDirectory":
+    "Couldn't open the folder chooser. Enter the directory instead.",
   "session.error.delete": "Couldn't delete the session.",
   "session.error.rename": "Couldn't rename the session.",
   "session.error.fork": "Couldn't fork the session.",

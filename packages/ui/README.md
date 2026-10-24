@@ -264,6 +264,9 @@ requires consumer-supplied region and column labels, including assistive text.
 Every code cell reserves the same nonselectable marker width so context, added
 and deleted source retain a common code column in both layouts. Source text and
 its original indentation remain separate from the decorative marker.
+`ScrollRegion` defaults to a `div`; `as="span"` keeps a bounded, named keyboard
+reader valid inside a heading. Both forms retain native refs, attributes and the
+same scrolling and focus contract.
 `ScrollRegion` contains horizontal overscroll while allowing vertical scrolling
 to continue through the enclosing reading viewport. Bounded image and diagram
 viewers explicitly contain both axes in their own viewport styles.
