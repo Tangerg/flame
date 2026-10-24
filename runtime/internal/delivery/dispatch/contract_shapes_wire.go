@@ -1120,8 +1120,9 @@ func registerPluginUnions(s *Shapes) {
 		{Tag: string(protocol.PluginRealizationReleaseUnavailable)},
 	}})
 	s.union(UnionSpec{GoType: typeOf[protocol.PluginServerDeclaration](), Discriminator: "type", Variants: []VariantSpec{
-		{Tag: string(protocol.MCPTransportStdio), Required: []string{"name", "command"}, Optional: []string{"args", "env", "dir"}},
-		{Tag: string(protocol.MCPTransportStreamableHTTP), Required: []string{"name", "url"}, Optional: []string{"headers"}},
+		{Tag: string(protocol.PluginServerStdio), Required: []string{"name", "command"}, Optional: []string{"args", "env", "dir"}},
+		{Tag: string(protocol.PluginServerHTTP), Required: []string{"name", "url"}, Optional: []string{"headers"}},
+		{Tag: string(protocol.PluginServerNode), Required: []string{"name", "entry"}},
 	}})
 	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.PluginInput](), Rules: []ConditionalRule{
 		{When: []delivery.FieldCondition{{Field: "target", Operator: delivery.OperatorEquals, Value: string(protocol.PluginInputEnvironment)}}, Required: []string{"key"}},

@@ -11,6 +11,7 @@
     "apps/web",
     "packages/runtime-client/typescript",
     "packages/component-sdk",
+    "packages/plugin-sdk/typescript",
     "packages/ui",
     "packages/icons",
     "plugins",

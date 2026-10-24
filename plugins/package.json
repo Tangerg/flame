@@ -4,20 +4,22 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-components.mjs",
-    "typecheck": "tsc --noEmit",
-    "lint": "oxlint */component scripts --deny-warnings",
-    "format:check": "prettier --check */component scripts package.json tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc -p backend.tsconfig.json",
+    "lint": "oxlint */component usagereports/backend scripts --deny-warnings",
+    "format:check": "prettier --check */component usagereports/backend usagereports/contracts scripts package.json tsconfig.json backend.tsconfig.json",
     "check:resources": "node scripts/build-components.mjs --check",
     "check:i18n": "node scripts/check-i18n.mjs",
-    "test": "node --test scripts/build-release.test.mjs",
+    "test": "node --test scripts/build-release.test.mjs && node scripts/test-backends.mjs",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run check:i18n && npm run check:resources",
     "generate": "npm run build"
   },
   "dependencies": {
-    "@flame/icons": "*",
+    "@flame/backend-sdk": "^0.1.0",
     "@flame/component-sdk": "*",
+    "@flame/icons": "*",
     "@flame/runtime-client": "*",
     "@flame/ui": "*",
+    "@js-temporal/polyfill": "^0.5.1",
     "marked": "18.1.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
@@ -29,6 +31,7 @@
     "oxlint": "^1.89.0",
     "prettier": "^3.9.10",
     "rolldown": "^1.2.15",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
   }
 }

@@ -19,6 +19,9 @@ func (s Server) AuthorityFingerprint() fingerprint.Digest {
 	} else {
 		fields = append(fields, s.Command, s.Dir)
 		fields = append(fields, s.Args...)
+		if s.ExecutionEnvironment != "" {
+			fields = append(fields, s.ExecutionEnvironment)
+		}
 	}
 	return fingerprint.Strings(fields...)
 }
@@ -35,7 +38,7 @@ func (s Server) SameConnection(other Server) bool {
 	case TransportStreamableHTTP:
 		return s.URL == other.URL && s.Authorization == other.Authorization && maps.Equal(s.Headers, other.Headers)
 	case TransportStdio:
-		return s.Command == other.Command && s.Dir == other.Dir && slices.Equal(s.Args, other.Args) &&
+		return s.Command == other.Command && s.ExecutionEnvironment == other.ExecutionEnvironment && s.Dir == other.Dir && slices.Equal(s.Args, other.Args) &&
 			(s.Env == nil) == (other.Env == nil) && maps.Equal(s.Env, other.Env)
 	default:
 		return false

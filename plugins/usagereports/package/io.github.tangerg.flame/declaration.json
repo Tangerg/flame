@@ -1,5 +1,8 @@
 {
   "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "managedBackends": [
+    { "id": "usagereports", "runtime": "node", "entry": "backend/start.mjs" }
+  ],
   "contributions": [
     {
       "id": "usage-reports",

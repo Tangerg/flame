@@ -7,12 +7,13 @@ It lives in the root module and imports only public contracts and pure mechanism
 Use the ordinary MCP SDK server and transport; this package does not create a
 second process supervisor or lifecycle. React UI components are authored separately
 through [`component-sdk`](../component-sdk).
+The public [`@flame/backend-sdk`](typescript/README.md) provides the same backend
+protocol for TypeScript implementations, including ordinary MCP Tools.
 
 ## MCP metadata
 
-Scope's `core`, `agent`, `a2a` and `mcp` modules use v0.53.0 with
-`github.com/Tangerg/go-sdk` v1.8.1-scope.3. Other Scope modules retain their own
-published release versions. Native SDK `Meta` values are encoded JSON: write typed
+The root `go.mod` selects Scope and native MCP SDK releases. Native SDK `Meta`
+values are encoded JSON: write typed
 values with `Meta.Set`, check its error, and decode a consumed entry directly into
 its declared type. Do not round-trip metadata through `map[string]any`.
 

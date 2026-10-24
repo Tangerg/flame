@@ -59,6 +59,10 @@ type Server struct {
 	// Command is the executable to spawn. Used when Transport == [TransportStdio].
 	Command string
 
+	// ExecutionEnvironment captures a distribution-selected interpreter and
+	// launch policy independently of plugin bytes and business command identity.
+	ExecutionEnvironment string
+
 	// Args are the command arguments (stdio).
 	Args []string
 
@@ -143,6 +147,9 @@ func (s Server) ValidateConnection() error {
 	}
 	switch s.Transport {
 	case TransportStreamableHTTP:
+		if s.ExecutionEnvironment != "" {
+			return fmt.Errorf("mcpserver %q: execution environment applies to stdio only", s.ID())
+		}
 		if s.URL == "" {
 			return fmt.Errorf("mcpserver %q: URL is required for streamableHttp transport", s.ID())
 		}

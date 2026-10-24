@@ -1,9 +1,10 @@
-import { createRpcClient } from "./client";
+import { createRpcClient, type RpcClient } from "./client";
 import { createMethods, type Methods, type MethodsOptions } from "./methods";
 import type { Transport } from "./transport";
 import { createMutationJournal } from "./mutationJournal";
 
 export interface FlameClient extends Methods {
+  queryJSON: RpcClient["callJSON"];
   close(): Promise<void>;
 }
 
@@ -40,5 +41,8 @@ export function createFlameClient(transport: Transport, opts?: MethodsOptions): 
     })();
     return closePromise;
   };
-  return Object.assign(createMethods(rpc, { ...opts, mutationJournal }), { close });
+  return Object.assign(createMethods(rpc, { ...opts, mutationJournal }), {
+    close,
+    queryJSON: rpc.callJSON,
+  });
 }

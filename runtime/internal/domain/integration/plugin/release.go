@@ -37,6 +37,7 @@ const (
 // vocabulary. Command and Dir keep the package-relative spelling; the package
 // adapter resolves them against the release directory at realization.
 type Server struct {
+	Managed   *ManagedBackend
 	Name      mcpserver.ServerName
 	Transport mcpserver.Transport
 	Command   string
@@ -46,6 +47,15 @@ type Server struct {
 	URL       string
 	Headers   map[string]string
 }
+
+type ManagedBackend struct {
+	Runtime ManagedRuntime
+	Entry   string
+}
+
+type ManagedRuntime string
+
+const Node ManagedRuntime = "node"
 
 // Input is a value the user supplies for one server. Secrecy is declared, but
 // a header or authorization input is admitted only as a secret: anything sent
@@ -133,6 +143,10 @@ func (d Declaration) clone() Declaration {
 }
 
 func (s Server) clone() Server {
+	if s.Managed != nil {
+		managed := *s.Managed
+		s.Managed = &managed
+	}
 	s.Args = slices.Clone(s.Args)
 	s.Env = maps.Clone(s.Env)
 	s.Headers = maps.Clone(s.Headers)
@@ -233,6 +247,9 @@ func (r Release) recipient(name mcpserver.ServerName) (fingerprint.Digest, bool)
 		return fingerprint.Digest{}, false
 	}
 	fields := []string{string(server.Transport)}
+	if server.Managed != nil {
+		fields = append(fields, string(server.Managed.Runtime), server.Managed.Entry)
+	}
 	switch server.Transport {
 	case mcpserver.TransportStreamableHTTP:
 		fields = append(fields, server.URL)
@@ -370,6 +387,9 @@ func (i Input) binding(server Server) (string, error) {
 		if server.Transport != mcpserver.TransportStdio {
 			return "", refuse(DiagnosticInvalidDependencies, "input %q binds an environment variable of a non-stdio server", i.ID)
 		}
+		if server.Managed != nil && slices.Contains([]string{"NODE_OPTIONS", "NODE_PATH", "NODE_REPL_EXTERNAL_MODULE"}, strings.ToUpper(key)) {
+			return "", refuse(DiagnosticInvalidDependencies, "input %q replaces managed node launch policy", i.ID)
+		}
 		if err := validatePackageEnvironment(map[string]string{key: ""}); err != nil {
 			return "", &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("input %q: %w", i.ID, err)}
 		}
@@ -413,6 +433,12 @@ func (i Input) binding(server Server) (string, error) {
 func (s Server) validate() error {
 	if err := s.Name.Validate(); err != nil {
 		return fmt.Errorf("%w: local server identity: %w", ErrInvalid, err)
+	}
+	if s.Managed != nil {
+		if s.Transport != mcpserver.TransportStdio || s.Command != "" || len(s.Args) != 0 || len(s.Env) != 0 || s.Dir != "" || s.URL != "" || len(s.Headers) != 0 || s.Managed.Runtime != Node || !ValidResourcePath(s.Managed.Entry) || !strings.HasSuffix(s.Managed.Entry, ".mjs") {
+			return fmt.Errorf("%w: managed backend requires one node ESM entry without another startup", ErrInvalid)
+		}
+		return nil
 	}
 	connection := mcpserver.Server{Name: s.Name, Transport: s.Transport, Command: s.Command, Args: s.Args, Env: s.Env, Dir: s.Dir, URL: s.URL, Headers: s.Headers}
 	if err := connection.ValidateConnection(); err != nil {

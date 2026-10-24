@@ -48,9 +48,13 @@ Build target-specific packages from the repository's local `go.work`:
 node plugins/scripts/build-packages.mjs --os darwin --arch arm64 --output /absolute/new/packages
 ```
 
-The output directory must not exist. Supported targets are Darwin, Linux and
-Windows on amd64 or arm64. The output contains the complete first-party catalog,
-including all workspace pages, renderers and the ten compiled backends.
+The output directory must not exist. Native backend compilation accepts Darwin,
+Linux and Windows on amd64 or arm64. Saved usage reports is a portable managed
+Node backend; the distribution's selected companion targets live in
+`packages/local-runtime/node-release.json`. A distribution build refuses targets
+without a selected Node artifact. The output contains the first-party catalog,
+including all workspace pages, renderers, native executables and the complete
+managed JavaScript graph.
 The same build copies each backend's generated contracts and declared resources.
 GitHub uses the same package path with a declared optional secret token input;
 its unset configuration supports public reads without blocking catalog initialization.
@@ -100,10 +104,14 @@ Export one complete plugin outside the checkout:
 
 ```sh
 node plugins/scripts/build-author-kit.mjs --plugin guardrails --module-path example.com/author/guardrails --output /absolute/new/author --offline
+node plugins/scripts/build-author-kit.mjs --plugin usagereports --output /absolute/new/typescript-author --offline
 ```
 
-The author owns its explicit module namespace. New feature contracts derive from
-their owner's types; implementations of existing consumer contracts reuse the
+Go authors own their explicit module namespace. TypeScript authors need no Go
+module, DTO source or compiler. Their kit carries packed `@flame/backend-sdk`,
+the public UI/client packages, its own npm lock and prebuilt development-only
+contract/ZIP tools. New features publish one owned descriptor; implementations of
+existing consumer contracts reuse the
 published exact schemas. Memory uses the public
 [`plugin-sdk/memory`](../packages/plugin-sdk/memory/README.md) contract, so its
 author namespace cannot redefine the host's role. Go
@@ -123,6 +131,23 @@ GOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go g
 node build.mjs --source "$PWD" --os darwin --arch arm64 --output /absolute/new/packages --archives /absolute/new/releases
 ```
 
+In an exported TypeScript author project:
+
+```sh
+npm ci --ignore-scripts
+npm run generate
+npm run typecheck
+npm test
+npm run build
+npm run package -- --output /absolute/new/package --archives /absolute/new/releases
+```
+
+These commands run outside the Flame checkout without Go. The package builder
+compiles a declared `backend/start.mjs` from author `backend/start.ts` with an
+explicit compiler and includes its complete chunks, maps and package resources.
+It rejects unresolved modules, computed module loading and native addons in
+portable output. There is no dependency installation at activation.
+
 The collection coordinator calls the same explicit source/output builder used by an exported author project. Install the resulting ZIP through the ordinary
 Runtime `plugins.install` operation or CLI with its absolute Runtime-host path:
 
@@ -130,14 +155,15 @@ Runtime `plugins.install` operation or CLI with its absolute Runtime-host path:
 flame --runtime-url http://127.0.0.1:17171 plugins install --request '{"source":"/absolute/releases/plugin-flame.guardrails-1.0.0-darwin-arm64.zip"}'
 ```
 
-The ZIP contains the platform's executable and declared resources, with executable
-permissions preserved. Runtime computes and admits its ordinary immutable release;
-installation needs no Go, Node, compiler, source checkout or dependency installation.
+Native ZIPs contain the platform's executable and declared resources, with
+executable permissions preserved. Portable managed ZIPs have no platform suffix
+or bundled interpreter. Runtime computes and admits its ordinary immutable release;
+installation needs no Go, system Node, compiler, source checkout or dependency installation.
 Choose the Runtime host's OS/architecture; native sandbox availability follows the
 actual confinement mechanism. Package acquisition from a registry/URL and automatic
 updates remain separate work.
 
-The exporter includes `backend`, `component`, `package` and the plugin README.
+The exporter includes `backend`, `component`, owned `contracts`, `package` and the plugin README.
 Contract definition tools stay with their publisher; the author's pinned public
 dependencies carry existing consumer contracts. Local generation refreshes package
 and UI projections without deriving a replacement role from relocated Go types.

@@ -17,6 +17,15 @@
 //   - `format` and `contentEncoding` are annotations, not assertions — the default
 //     reading of both keywords. A malformed timestamp is caught where it is decoded.
 
+import {
+  ExactNumber,
+  compareJSONNumbers,
+  equalJSON,
+  isJSONInteger,
+  isJSONNumber,
+  type JSONNumber,
+} from "../json";
+
 /** One rule a value broke, and where. */
 export interface WireViolation {
   /**
@@ -118,7 +127,7 @@ export function text(): WireCheck {
 
 export function integer(): WireCheck {
   return (value, path, out) => {
-    if (typeof value !== "number" || !Number.isInteger(value)) {
+    if (!isJSONInteger(value)) {
       out.push({ path, detail: "expected an integer" });
     }
   };
@@ -126,7 +135,7 @@ export function integer(): WireCheck {
 
 export function numeric(): WireCheck {
   return (value, path, out) => {
-    if (typeof value !== "number" || !Number.isFinite(value)) {
+    if (!isJSONNumber(value)) {
       out.push({ path, detail: "expected a number" });
     }
   };
@@ -171,27 +180,30 @@ export function pattern(expression: string): WireCheck {
 }
 
 /** `minimum`, which constrains a number and says nothing about anything else. */
-export function minimum(least: number): WireCheck {
+export function minimum(least: number | string): WireCheck {
+  const bound: JSONNumber = typeof least === "string" ? new ExactNumber(least) : least;
   return (value, path, out) => {
-    if (typeof value === "number" && value < least) {
+    if (isJSONNumber(value) && compareJSONNumbers(value, bound) < 0) {
       out.push({ path, detail: `expected at least ${least}` });
     }
   };
 }
 
 /** `exclusiveMinimum`, applied only to numbers as JSON Schema specifies. */
-export function exclusiveMinimum(boundary: number): WireCheck {
+export function exclusiveMinimum(boundary: number | string): WireCheck {
+  const bound: JSONNumber = typeof boundary === "string" ? new ExactNumber(boundary) : boundary;
   return (value, path, out) => {
-    if (typeof value === "number" && value <= boundary) {
+    if (isJSONNumber(value) && compareJSONNumbers(value, bound) <= 0) {
       out.push({ path, detail: `expected greater than ${boundary}` });
     }
   };
 }
 
 /** `maximum`, which constrains a number and says nothing about anything else. */
-export function maximum(most: number): WireCheck {
+export function maximum(most: number | string): WireCheck {
+  const bound: JSONNumber = typeof most === "string" ? new ExactNumber(most) : most;
   return (value, path, out) => {
-    if (typeof value === "number" && value > most) {
+    if (isJSONNumber(value) && compareJSONNumbers(value, bound) > 0) {
       out.push({ path, detail: `expected at most ${most}` });
     }
   };
@@ -218,12 +230,7 @@ export function maxItems(most: number): WireCheck {
 /** `minProperties`, which constrains an object's own-property count. */
 export function minProperties(least: number): WireCheck {
   return (value, path, out) => {
-    if (
-      typeof value === "object" &&
-      value !== null &&
-      !Array.isArray(value) &&
-      Object.keys(value).length < least
-    ) {
+    if (isObject(value) && Object.keys(value).length < least) {
       const noun = least === 1 ? "property" : "properties";
       out.push({ path, detail: `expected at least ${least} ${noun}` });
     }
@@ -238,27 +245,15 @@ export function minProperties(least: number): WireCheck {
 export function uniqueItems(): WireCheck {
   return (value, path, out) => {
     if (!Array.isArray(value)) return;
-    const seen = new Set<string>();
+    const seen: unknown[] = [];
     for (const element of value) {
-      const key = JSON.stringify(canonicalJSONValue(element)) ?? "undefined";
-      if (seen.has(key)) {
+      if (seen.some((previous) => equalJSON(element, previous))) {
         out.push({ path, detail: "expected no repeated items" });
         return;
       }
-      seen.add(key);
+      seen.push(element);
     }
   };
-}
-
-function canonicalJSONValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonicalJSONValue);
-  if (typeof value !== "object" || value === null) return value;
-  const record = value as Record<string, unknown>;
-  return Object.fromEntries(
-    Object.keys(record)
-      .sort()
-      .map((key) => [key, canonicalJSONValue(record[key])]),
-  );
 }
 
 export function flag(): WireCheck {
@@ -421,5 +416,10 @@ export function ifThen(condition: WireCheck, consequence: WireCheck): WireCheck 
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !(value instanceof ExactNumber)
+  );
 }

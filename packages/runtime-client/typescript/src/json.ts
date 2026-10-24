@@ -1,4 +1,5 @@
 import { parseTree, printParseErrorCode, visit, type Node } from "jsonc-parser";
+import { Decimal } from "decimal.js";
 
 // Unicode mode consumes a valid surrogate pair as one code point.
 const unpairedSurrogate = /\p{Surrogate}/u;
@@ -38,8 +39,7 @@ function validateJSON(text: string): void {
 }
 
 export function parseWireJSON(text: string): unknown {
-  validateJSON(text);
-  return JSON.parse(text) as unknown;
+  return projectJSON(parseJSON(text));
 }
 
 // A feature owns arbitrary numeric ranges and receipt lexemes. Values that a
@@ -66,6 +66,73 @@ export class ExactNumber {
 }
 
 export type JSONNumber = number | bigint | ExactNumber;
+
+export function isJSONNumber(value: unknown): value is JSONNumber {
+  return (
+    (typeof value === "number" && Number.isFinite(value)) ||
+    typeof value === "bigint" ||
+    value instanceof ExactNumber
+  );
+}
+
+export function compareJSONNumbers(left: JSONNumber, right: JSONNumber): number {
+  const a = new Decimal(left.toString()),
+    b = new Decimal(right.toString());
+  if (!a.isFinite() || !b.isFinite())
+    throw new RangeError("JSON numeric comparison capacity exceeded");
+  return a.comparedTo(b);
+}
+
+export function isJSONInteger(value: unknown): boolean {
+  return isJSONNumber(value) && new Decimal(value.toString()).isInteger();
+}
+
+export function equalJSON(left: unknown, right: unknown): boolean {
+  if (isJSONNumber(left) || isJSONNumber(right))
+    return isJSONNumber(left) && isJSONNumber(right) && compareJSONNumbers(left, right) === 0;
+  if (Array.isArray(left) || Array.isArray(right))
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => equalJSON(value, right[index]))
+    );
+  if (left !== null && right !== null && typeof left === "object" && typeof right === "object") {
+    const a = left as Record<string, unknown>,
+      b = right as Record<string, unknown>;
+    return (
+      Object.keys(a).length === Object.keys(b).length &&
+      Object.keys(a).every((key) => Object.hasOwn(b, key) && equalJSON(a[key], b[key]))
+    );
+  }
+  return left === right;
+}
+
+// A typed wire DTO promises JavaScript numbers. Exact query JSON retains the
+// received evidence; this projection refuses values the DTO cannot represent.
+export function projectJSON(value: unknown): unknown {
+  if (
+    typeof value === "number" &&
+    (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value)))
+  )
+    throw new RangeError("wire number is not exactly representable; consume exact query JSON");
+  if (value instanceof ExactNumber || typeof value === "bigint") {
+    const projected = Number(value.toString());
+    if (
+      !Number.isFinite(projected) ||
+      (Number.isInteger(projected) && !Number.isSafeInteger(projected)) ||
+      compareJSONNumbers(value, projected) !== 0
+    )
+      throw new RangeError("wire number is not exactly representable; consume exact query JSON");
+    return projected;
+  }
+  if (Array.isArray(value)) return value.map(projectJSON);
+  if (value !== null && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value).map(([key, field]) => [key, projectJSON(field)]),
+    );
+  return value;
+}
 
 export function parseJSON(text: string): unknown {
   validateJSON(text);

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { parseWireJSON } from "./json";
+import { parseJSON } from "./json";
 
 export const JSONRPC_VERSION = "2.0" as const;
 
@@ -88,7 +88,7 @@ const RpcEnvelopeSchema = z
 export function parseRpcMessage(text: string): RpcMessage | null {
   let json: unknown;
   try {
-    json = parseWireJSON(text);
+    json = parseJSON(text);
   } catch {
     return null;
   }

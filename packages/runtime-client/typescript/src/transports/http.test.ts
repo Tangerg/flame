@@ -6,6 +6,7 @@ import { createHttpTransport } from "./http";
 import { createFlameClient } from "../sdk";
 import { asSessionId } from "../ids";
 import { createMutationJournal } from "../mutationJournal";
+import * as rpcTypes from "../types";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -143,7 +144,7 @@ describe("HTTPTransport — streamable HTTP", () => {
         },
       }),
     );
-    const parse = vi.spyOn(JSON, "parse");
+    const parse = vi.spyOn(rpcTypes, "parseRpcMessage");
     const parsedFrameCount = (): number =>
       parse.mock.calls.filter(
         ([input]) => typeof input === "string" && input.startsWith('{"jsonrpc":"2.0"'),
@@ -802,6 +803,29 @@ it("keeps an authenticated request on its exact configured target", async () => 
 });
 
 describe("HTTP mutation acknowledgement", () => {
+  it("enforces a captured SSE byte capacity across multiline Unicode data", async () => {
+    const body = 'data: {"jsonrpc":"2.0","id":"1",\ndata: "result":"' + "界".repeat(40) + '"}\n\n';
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      maximumEventStreamFrameCharacters: 1000,
+      maximumEventStreamFrameBytes: 100,
+      fetch: vi.fn(
+        async () => new Response(body, { headers: { "Content-Type": "text/event-stream" } }),
+      ),
+    });
+    const events = transport.recv()[Symbol.asyncIterator]();
+    try {
+      await transport.send(req("1", "runs.start"));
+      await expect(events.next()).resolves.toMatchObject({
+        value: {
+          type: "requestError",
+          error: { message: "event-stream frame exceeds its byte capacity" },
+        },
+      });
+    } finally {
+      await transport.close();
+    }
+  });
   it.each([
     ["no content", () => new Response(null, { status: 204 })],
     [

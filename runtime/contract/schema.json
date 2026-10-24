@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-23.1",
+  "protocolVersion": "2026-10-24.1",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -7255,6 +7255,9 @@
         "dir": {
           "type": "string"
         },
+        "entry": {
+          "type": "string"
+        },
         "env": {
           "type": "object",
           "additionalProperties": {
@@ -7272,7 +7275,7 @@
           "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
         },
         "type": {
-          "$ref": "#/$defs/MCPTransport"
+          "$ref": "#/$defs/PluginServerType"
         },
         "url": {
           "type": "string"
@@ -7281,6 +7284,7 @@
       "oneOf": [
         {
           "properties": {
+            "entry": false,
             "headers": false,
             "type": {
               "const": "stdio"
@@ -7298,6 +7302,7 @@
             "args": false,
             "command": false,
             "dir": false,
+            "entry": false,
             "env": false,
             "type": {
               "const": "streamableHttp"
@@ -7308,7 +7313,33 @@
             "type",
             "url"
           ]
+        },
+        {
+          "properties": {
+            "args": false,
+            "command": false,
+            "dir": false,
+            "env": false,
+            "headers": false,
+            "type": {
+              "const": "managedNode"
+            },
+            "url": false
+          },
+          "required": [
+            "entry",
+            "name",
+            "type"
+          ]
         }
+      ]
+    },
+    "PluginServerType": {
+      "type": "string",
+      "enum": [
+        "stdio",
+        "streamableHttp",
+        "managedNode"
       ]
     },
     "PluginSkill": {

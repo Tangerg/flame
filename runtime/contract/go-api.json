@@ -2,6 +2,9 @@
   "packages": [
     {
       "path": "github.com/Tangerg/flame/packages/local-runtime",
+      "imports": [
+        "context"
+      ],
       "constants": [
         {
           "name": "DefaultListenAddress",
@@ -38,6 +41,10 @@
           "signature": "func(executable string) (string, error)"
         },
         {
+          "name": "NodeForExecutable",
+          "signature": "func(executable string) (Node, error)"
+        },
+        {
           "name": "OpenToken",
           "signature": "func(path string) (*Token, error)"
         },
@@ -66,6 +73,28 @@
             {
               "name": "Path",
               "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "Node",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Arguments",
+              "signature": "func(entry string) []string"
+            },
+            {
+              "name": "Command",
+              "signature": "func() string"
+            },
+            {
+              "name": "Identity",
+              "signature": "func() string"
+            },
+            {
+              "name": "Verify",
+              "signature": "func(ctx context.Context) (err error)"
             }
           ]
         },
@@ -361,6 +390,10 @@
         {
           "name": "SetUp",
           "signature": "func(ctx context.Context, session *mcp.ClientSession, contributions []SetupContribution, metadata mcp.ParamsBase) error"
+        },
+        {
+          "name": "StreamDeliveryContract",
+          "signature": "func() (capability.MethodDescriptor, error)"
         },
         {
           "name": "StreamHost",
@@ -5446,6 +5479,21 @@
           "value": "\"toolName\""
         },
         {
+          "name": "PluginServerHTTP",
+          "type": "PluginServerType",
+          "value": "\"streamableHttp\""
+        },
+        {
+          "name": "PluginServerNode",
+          "type": "PluginServerType",
+          "value": "\"managedNode\""
+        },
+        {
+          "name": "PluginServerStdio",
+          "type": "PluginServerType",
+          "value": "\"stdio\""
+        },
+        {
           "name": "PluginStreamChunk",
           "type": "PluginStreamKind",
           "value": "\"chunk\""
@@ -6103,7 +6151,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-10-23.1\""
+          "value": "\"2026-10-24.1\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -11224,8 +11272,13 @@
             },
             {
               "name": "Type",
-              "type": "MCPTransport",
+              "type": "PluginServerType",
               "tag": "json:\"type\""
+            },
+            {
+              "name": "Entry",
+              "type": "string",
+              "tag": "json:\"entry,omitempty\""
             },
             {
               "name": "Command",
@@ -11264,6 +11317,11 @@
               "signature": "func() error"
             }
           ]
+        },
+        {
+          "name": "PluginServerType",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "PluginSkill",

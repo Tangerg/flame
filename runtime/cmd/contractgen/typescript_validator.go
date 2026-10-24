@@ -290,13 +290,13 @@ func (c *checkEmitter) stringChecks(node *schema) []string {
 func (c *checkEmitter) numericChecks(node *schema) []string {
 	var checks []string
 	if node.Minimum != nil {
-		checks = append(checks, c.call("minimum", strconv.FormatInt(*node.Minimum, 10)))
+		checks = append(checks, c.call("minimum", strconv.Quote(strconv.FormatInt(*node.Minimum, 10))))
 	}
 	if node.ExclusiveMinimum != nil {
-		checks = append(checks, c.call("exclusiveMinimum", strconv.FormatInt(*node.ExclusiveMinimum, 10)))
+		checks = append(checks, c.call("exclusiveMinimum", strconv.Quote(strconv.FormatInt(*node.ExclusiveMinimum, 10))))
 	}
 	if node.Maximum != nil {
-		checks = append(checks, c.call("maximum", strconv.FormatInt(*node.Maximum, 10)))
+		checks = append(checks, c.call("maximum", strconv.Quote(strconv.FormatInt(*node.Maximum, 10))))
 	}
 	return checks
 }

@@ -26,6 +26,16 @@ func chunkDeliveryMethod() (*Method[deliveredChunk, bool], error) {
 	return NewMethod[deliveredChunk, bool](MethodConfig{Name: "flame.stream/deliver.v1", Kind: capability.Mutation, Target: "call", Description: "Deliver one ordered chunk to its captured stream consumer."})
 }
 
+// StreamDeliveryContract projects the existing acknowledged chunk callback for
+// independent language bindings. Its schema identity remains owned here.
+func StreamDeliveryContract() (capability.MethodDescriptor, error) {
+	method, err := chunkDeliveryMethod()
+	if err != nil {
+		return capability.MethodDescriptor{}, err
+	}
+	return method.Descriptor(), nil
+}
+
 func (m *StreamingMethod[P, C, R]) RegisterServer(backend *Backend, handler func(context.Context, *sdk.ServerSession, Command[P]) iter.Seq2[StreamValue[C, R], error]) error {
 	if m == nil || backend == nil || handler == nil {
 		return errors.New("plugin: streaming backend and handler are required")

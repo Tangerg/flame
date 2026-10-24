@@ -1258,17 +1258,27 @@ func (p PluginRealization) ValidateWire() error {
 func (p PluginServerDeclaration) ValidateWire() error {
 	return collectWireViolations("PluginServerDeclaration",
 		requiredTextPattern("name", p.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
-		closedEnum("type", string(p.Type), []string{"stdio", "streamableHttp"}, false),
+		closedEnum("type", string(p.Type), []string{"stdio", "streamableHttp", "managedNode"}, false),
 		requiredWhen(wireFieldEquals(p, "type", "stdio"), "name", p),
 		requiredWhen(wireFieldEquals(p, "type", "stdio"), "command", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "stdio"), "url", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "stdio"), "headers", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "stdio"), "entry", p),
 		requiredWhen(wireFieldEquals(p, "type", "streamableHttp"), "name", p),
 		requiredWhen(wireFieldEquals(p, "type", "streamableHttp"), "url", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "streamableHttp"), "command", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "streamableHttp"), "args", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "streamableHttp"), "env", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "streamableHttp"), "dir", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "streamableHttp"), "entry", p),
+		requiredWhen(wireFieldEquals(p, "type", "managedNode"), "name", p),
+		requiredWhen(wireFieldEquals(p, "type", "managedNode"), "entry", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "command", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "args", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "env", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "dir", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "url", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "headers", p),
 	)
 }
 

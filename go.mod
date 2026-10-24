@@ -3,7 +3,7 @@ module github.com/Tangerg/flame
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame/packages/local-runtime v0.1.0-layout.20261024.1
+	github.com/Tangerg/flame/packages/local-runtime v0.1.0-node.20261024.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/oolong/components v0.25.0
 	github.com/Tangerg/oolong/core v0.25.0
