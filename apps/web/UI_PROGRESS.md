@@ -1,13 +1,16 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Unconfirmed operations now expose individual identities before evidence is opened. Closing a record after reading keeps its focused trigger in the safe reading area. Main and delegated reading, scoped checks and actual Wails acceptance pass. Earlier run-settlement, captured-text, notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
+Updated: 2026-10-25. Native footnote reading and corresponding-reference return are qualified without a product change. Unconfirmed operations expose individual identities before evidence is opened; closing after reading keeps the focused trigger visible. Earlier run-settlement, captured-text, notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is clean on `codex/unconfirmed-operations-1025`. Individual unconfirmed-operation
+is on `codex/native-note-reading-1025`. Native footnote reading is qualified on
+frozen base `dc1d0163d32e2e20671dd37553896fa87e4e0117` without changing
+product sources. Publication and private evidence retirement are pending below.
+Individual unconfirmed-operation
 implementation `486d4ef2f6f12a6b248032d3a516e99ceb55265b` is published to
 remote main from frozen base `b5f59809cb7b31d31b0e2f6ff563e8097153aac6`.
 Its private evidence retirement is complete. Run-settlement implementation
@@ -4618,6 +4621,58 @@ Delivery: implementation `98949b36233c4550d7177790d93c53575523b79c` is pushed
 to remote `main`. A fresh `ls-remote` matched that exact commit, the **24**
 reviewed product/resource inputs matched acceptance, and the owned checkout was
 clean with zero unpushed commits. This in-place receipt adds no product change.
+
+### Native footnote reading and return
+
+The existing `reference-notes` canonical fixture supplies two answers, each with
+two references to the same non-Latin footnote label and two corresponding return
+links. Current `MarkdownRenderer`, `rehypeFootnoteLabels`, TextLink and shared
+prose styles already preserve unique per-message IDs, localized names, ordinary
+local anchors and the note's reading hierarchy. This inspection found no
+actionable defect in that task. Product source, state, typography and native
+preferences remain unchanged; no speculative focus or navigation handler was
+added, and no implementation task was sent to Claude CLI.
+
+Actual Wails EN/light/14 px/Orange qualifies pointer entry, the first answer's
+note, both return identities and continued drafting. macOS ordinary Tab skips
+links under the current native navigation preference; Option-Tab reaches the
+protocol link and both named return links in document order. Return on the second
+backlink restores the same second reference at **y=73**, hit-testable. The native
+note target is a non-focusable list item, so activeElement becomes BODY; its
+sequential navigation starting point still enters the note's links correctly.
+This is native fragment behavior, not lost reading context.
+
+ZH/dark/18 px/custom blue/reduced motion qualifies the second answer at native
+**200% / 561 × 365 CSS px**. The note occupies y=69.9 through y=200.9, above the
+Composer. Option-Tab reaches both localized return links at y=176.9; Return
+restores the same reference at **y=75.5**, hit-testable. Returning to textarea ID 2
+preserves the original draft owner, and native paste extends exact drafts
+**25→36** English and **9→14** Chinese characters with matching end carets.
+Both apps restore Actual Size before Quit; the Chinese viewport is then
+1122 × 730. Source-encoded non-Latin IDs resolve correctly in WKWebView; a
+decoded-only diagnostic lookup would have been incorrect.
+
+The five existing footnote tests pass in **3.84 s**, covering message identity,
+repeated references, localized relations, copy exclusions, inert authored HTML
+and streaming stability. The **5,767-file** non-Markdown source map remains
+`d869a48e510dcbb624c784265fc412cb2aec3d2a684ea1c94d7eafc25c27f3ec`.
+Earlier unchanged owner checks are reused; no full-suite, browser suite,
+benchmark, fetch or merge was run. Native builds run serially. Better-accessibility
+and layout guidance favor the native navigation path and existing clearances.
+The inspected ChatGPT footnote code is a parser utility, not product interaction
+evidence. VoiceOver, OS IME, RTL, delegated-host footnotes and live Runtime
+streaming are not freshly qualified here.
+
+One long CUA zoom call times out and resets its kernel. Re-observation confirms
+the same live app at 195%; one further native Zoom In establishes the final
+200% scene without restarting it. The fixture sidebar is explicitly collapsed
+for the accepted narrow reading scene. One diagnostic assignment error occurs
+after its native action and capture; the stored result is read without repeating
+the action. No product defect or workaround is inferred from these harness events.
+All **seven** recorded processes are dead. Six owned checkout outputs, four
+Library paths and two bundle-temp paths are removed; both apps are unregistered.
+All 36 output baselines, three original files and 11 product resources remain
+preserved. Publication and exact private-root retirement are pending the receipt.
 
 ## Empty, error and unsupported state ownership
 
