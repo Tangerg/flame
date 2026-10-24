@@ -30,8 +30,7 @@ const contract = new Capability(
 );
 const backend = new Backend({ name: "example.notes", version: "1" });
 backend.implement(
-  contract,
-  "notes.read",
+  contract.method("notes.read"),
   decodeInput,
   async (context, input) => {
     context.signal.throwIfAborted();
