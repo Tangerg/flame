@@ -333,6 +333,15 @@ func (t *tsEmitter) alias(name string, shape reflect.Type) {
 }
 
 func (t *tsEmitter) define(name string, node *schema) {
+	if len(node.AllOf) > 0 {
+		base := *node
+		base.AllOf = nil
+		if expression := t.typeOf(node); expression != t.typeOf(&base) {
+			t.line("export type %s = %s;", name, expression)
+			t.line("")
+			return
+		}
+	}
 	switch {
 	case len(node.Enum) > 0:
 		t.line("export type %s = %s;", name, unionOf(quoteAll(node.Enum)))
@@ -445,6 +454,15 @@ func (t tsTypes) resolve(node *schema) *schema {
 
 // typeOf renders a schema node as a TypeScript type expression.
 func (t tsTypes) typeOf(node *schema) string {
+	if len(node.AllOf) > 0 {
+		base := *node
+		base.AllOf = nil
+		parts := []string{t.typeOf(&base)}
+		for _, member := range node.AllOf {
+			parts = append(parts, t.typeOf(member))
+		}
+		return intersectionOf(parts)
+	}
 	if node.TypeScriptType != "" {
 		return node.TypeScriptType
 	}
@@ -633,7 +651,46 @@ func quoteAll(values []string) []string {
 	return out
 }
 
-func unionOf(parts []string) string { return strings.Join(parts, " | ") }
+func unionOf(parts []string) string {
+	var members []string
+	for _, part := range parts {
+		if part == "unknown" {
+			return "unknown"
+		}
+		if part != "never" && !slices.Contains(members, part) {
+			members = append(members, part)
+		}
+	}
+	if len(members) == 0 {
+		return "never"
+	}
+	return strings.Join(members, " | ")
+}
+
+func intersectionOf(parts []string) string {
+	var members []string
+	for _, part := range parts {
+		if part == "never" {
+			return "never"
+		}
+		if part == "unknown" || slices.Contains(members, part) {
+			continue
+		}
+		members = append(members, part)
+	}
+	if len(members) == 0 {
+		return "unknown"
+	}
+	if len(members) == 1 {
+		return members[0]
+	}
+	for index, member := range members {
+		if strings.Contains(member, "|") {
+			members[index] = "(" + member + ")"
+		}
+	}
+	return strings.Join(members, " & ")
+}
 
 // discriminatorFirst orders a variant's fields with the tag in front. A reader
 // scanning a union wants to see which case each line is before its payload, and

@@ -21,9 +21,13 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": [
-                  "project",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "project",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               }
@@ -46,9 +50,13 @@
             "type": "string"
           },
           "Scope": {
-            "enum": [
-              "project",
-              "user"
+            "allOf": [
+              {
+                "enum": [
+                  "project",
+                  "user"
+                ]
+              }
             ],
             "type": "string"
           }
@@ -87,13 +95,21 @@
                 "type": "string"
               },
               "ID": {
-                "pattern": "^mem_[0-9a-f]{32}$",
+                "allOf": [
+                  {
+                    "pattern": "^mem_[0-9a-f]{32}$"
+                  }
+                ],
                 "type": "string"
               },
               "Origin": {
-                "enum": [
-                  "auto",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "auto",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -104,9 +120,13 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": [
-                  "project",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "project",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -114,10 +134,14 @@
                 "type": "string"
               },
               "Status": {
-                "enum": [
-                  "active",
-                  "pending",
-                  "rejected"
+                "allOf": [
+                  {
+                    "enum": [
+                      "active",
+                      "pending",
+                      "rejected"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -237,9 +261,13 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": [
-                  "project",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "project",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               }
@@ -258,9 +286,13 @@
             "type": "string"
           },
           "Scope": {
-            "enum": [
-              "project",
-              "user"
+            "allOf": [
+              {
+                "enum": [
+                  "project",
+                  "user"
+                ]
+              }
             ],
             "type": "string"
           }
@@ -298,13 +330,21 @@
                 "type": "string"
               },
               "ID": {
-                "pattern": "^mem_[0-9a-f]{32}$",
+                "allOf": [
+                  {
+                    "pattern": "^mem_[0-9a-f]{32}$"
+                  }
+                ],
                 "type": "string"
               },
               "Origin": {
-                "enum": [
-                  "auto",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "auto",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -315,9 +355,13 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": [
-                  "project",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "project",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -325,10 +369,14 @@
                 "type": "string"
               },
               "Status": {
-                "enum": [
-                  "active",
-                  "pending",
-                  "rejected"
+                "allOf": [
+                  {
+                    "enum": [
+                      "active",
+                      "pending",
+                      "rejected"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -390,9 +438,13 @@
                 "type": "integer"
               },
               "Scope": {
-                "enum": [
-                  "project",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "project",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               }
@@ -426,9 +478,13 @@
             "type": "integer"
           },
           "Scope": {
-            "enum": [
-              "project",
-              "user"
+            "allOf": [
+              {
+                "enum": [
+                  "project",
+                  "user"
+                ]
+              }
             ],
             "type": "string"
           }
@@ -467,13 +523,21 @@
                 "type": "string"
               },
               "ID": {
-                "pattern": "^mem_[0-9a-f]{32}$",
+                "allOf": [
+                  {
+                    "pattern": "^mem_[0-9a-f]{32}$"
+                  }
+                ],
                 "type": "string"
               },
               "Origin": {
-                "enum": [
-                  "auto",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "auto",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -484,9 +548,13 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": [
-                  "project",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "project",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -494,10 +562,14 @@
                 "type": "string"
               },
               "Status": {
-                "enum": [
-                  "active",
-                  "pending",
-                  "rejected"
+                "allOf": [
+                  {
+                    "enum": [
+                      "active",
+                      "pending",
+                      "rejected"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -704,9 +776,13 @@
             "additionalProperties": false,
             "properties": {
               "Decision": {
-                "enum": [
-                  "approve",
-                  "reject"
+                "allOf": [
+                  {
+                    "enum": [
+                      "approve",
+                      "reject"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -725,9 +801,13 @@
         "additionalProperties": false,
         "properties": {
           "Decision": {
-            "enum": [
-              "approve",
-              "reject"
+            "allOf": [
+              {
+                "enum": [
+                  "approve",
+                  "reject"
+                ]
+              }
             ],
             "type": "string"
           },
@@ -850,13 +930,21 @@
                 "type": "string"
               },
               "ID": {
-                "pattern": "^mem_[0-9a-f]{32}$",
+                "allOf": [
+                  {
+                    "pattern": "^mem_[0-9a-f]{32}$"
+                  }
+                ],
                 "type": "string"
               },
               "Origin": {
-                "enum": [
-                  "auto",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "auto",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -867,9 +955,13 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": [
-                  "project",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "project",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -877,10 +969,14 @@
                 "type": "string"
               },
               "Status": {
-                "enum": [
-                  "active",
-                  "pending",
-                  "rejected"
+                "allOf": [
+                  {
+                    "enum": [
+                      "active",
+                      "pending",
+                      "rejected"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -985,13 +1081,21 @@
                 "type": "string"
               },
               "ID": {
-                "pattern": "^mem_[0-9a-f]{32}$",
+                "allOf": [
+                  {
+                    "pattern": "^mem_[0-9a-f]{32}$"
+                  }
+                ],
                 "type": "string"
               },
               "Origin": {
-                "enum": [
-                  "auto",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "auto",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -1002,9 +1106,13 @@
                 "type": "string"
               },
               "Scope": {
-                "enum": [
-                  "project",
-                  "user"
+                "allOf": [
+                  {
+                    "enum": [
+                      "project",
+                      "user"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -1012,10 +1120,14 @@
                 "type": "string"
               },
               "Status": {
-                "enum": [
-                  "active",
-                  "pending",
-                  "rejected"
+                "allOf": [
+                  {
+                    "enum": [
+                      "active",
+                      "pending",
+                      "rejected"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -1067,13 +1179,21 @@
             "type": "string"
           },
           "ID": {
-            "pattern": "^mem_[0-9a-f]{32}$",
+            "allOf": [
+              {
+                "pattern": "^mem_[0-9a-f]{32}$"
+              }
+            ],
             "type": "string"
           },
           "Origin": {
-            "enum": [
-              "auto",
-              "user"
+            "allOf": [
+              {
+                "enum": [
+                  "auto",
+                  "user"
+                ]
+              }
             ],
             "type": "string"
           },
@@ -1084,9 +1204,13 @@
             "type": "string"
           },
           "Scope": {
-            "enum": [
-              "project",
-              "user"
+            "allOf": [
+              {
+                "enum": [
+                  "project",
+                  "user"
+                ]
+              }
             ],
             "type": "string"
           },
@@ -1094,10 +1218,14 @@
             "type": "string"
           },
           "Status": {
-            "enum": [
-              "active",
-              "pending",
-              "rejected"
+            "allOf": [
+              {
+                "enum": [
+                  "active",
+                  "pending",
+                  "rejected"
+                ]
+              }
             ],
             "type": "string"
           },

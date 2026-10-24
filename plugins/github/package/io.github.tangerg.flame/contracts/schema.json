@@ -97,9 +97,13 @@
           "type": "string"
         },
         "state": {
-          "enum": [
-            "open",
-            "closed"
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
           ],
           "type": "string"
         },
@@ -206,10 +210,14 @@
           "type": "string"
         },
         "state": {
-          "enum": [
-            "open",
-            "closed",
-            "all"
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ]
+            }
           ],
           "type": "string"
         }

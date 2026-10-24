@@ -16,6 +16,8 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
+var _ interaction.AdvertisingTool = (*toolset.Discovery)(nil)
+
 type interactionDeploymentSet struct {
 	// Connection publication can occur between group resolutions. Recovery must
 	// retain each group's authority rather than reconstructing their union.
@@ -215,6 +217,9 @@ func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth i
 		tools, err = interaction.NewToolSet(interaction.ToolSetConfig{
 			Name: definitionName + ".tools", Description: definitionDescription,
 			Tools: visible, DeferredTools: deferred,
+			DecorateDispatcher: func(inner agent.Dispatcher) (agent.Dispatcher, error) {
+				return &interactionDispatcher{inner: inner, session: i.session}, nil
+			},
 			ImplementationDigest: agent.ComputeDigest([]byte(i.executor.buildID.String())),
 			ConfigurationDigest:  agent.ComputeDigest(configuration),
 		})

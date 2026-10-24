@@ -82,9 +82,13 @@
                 "type": "integer"
               },
               "status": {
-                "enum": [
-                  "open",
-                  "resolved"
+                "allOf": [
+                  {
+                    "enum": [
+                      "open",
+                      "resolved"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -165,9 +169,13 @@
                 "type": "integer"
               },
               "status": {
-                "enum": [
-                  "open",
-                  "resolved"
+                "allOf": [
+                  {
+                    "enum": [
+                      "open",
+                      "resolved"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -224,9 +232,13 @@
                 "type": "string"
               },
               "status": {
-                "enum": [
-                  "open",
-                  "resolved"
+                "allOf": [
+                  {
+                    "enum": [
+                      "open",
+                      "resolved"
+                    ]
+                  }
                 ],
                 "type": "string"
               }
@@ -256,9 +268,13 @@
             "type": "string"
           },
           "status": {
-            "enum": [
-              "open",
-              "resolved"
+            "allOf": [
+              {
+                "enum": [
+                  "open",
+                  "resolved"
+                ]
+              }
             ],
             "type": "string"
           }
@@ -288,9 +304,13 @@
                 "type": "integer"
               },
               "status": {
-                "enum": [
-                  "open",
-                  "resolved"
+                "allOf": [
+                  {
+                    "enum": [
+                      "open",
+                      "resolved"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -313,13 +333,17 @@
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot"
               },
               "type": {
-                "enum": [
-                  "updated",
-                  "revisionConflict",
-                  "notFound",
-                  "invalidUpdate",
-                  "invocationConflict",
-                  "revisionExhausted"
+                "allOf": [
+                  {
+                    "enum": [
+                      "updated",
+                      "revisionConflict",
+                      "notFound",
+                      "invalidUpdate",
+                      "invocationConflict",
+                      "revisionExhausted"
+                    ]
+                  }
                 ],
                 "type": "string"
               }
@@ -337,13 +361,17 @@
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot"
           },
           "type": {
-            "enum": [
-              "updated",
-              "revisionConflict",
-              "notFound",
-              "invalidUpdate",
-              "invocationConflict",
-              "revisionExhausted"
+            "allOf": [
+              {
+                "enum": [
+                  "updated",
+                  "revisionConflict",
+                  "notFound",
+                  "invalidUpdate",
+                  "invocationConflict",
+                  "revisionExhausted"
+                ]
+              }
             ],
             "type": "string"
           }

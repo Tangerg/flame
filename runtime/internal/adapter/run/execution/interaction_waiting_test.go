@@ -1141,6 +1141,9 @@ func observeInteractionUntilWaiting(
 	}
 	value := <-ready
 	if len(value.barrier.Interruptions()) != 1 {
+		for _, terminal := range payloadsOf[runs.SegmentEnded](value.events) {
+			t.Logf("terminal reason=%s failure=%+v effects=%+v", terminal.Reason, terminal.Failure(), terminal.UnresolvedEffects())
+		}
 		t.Fatalf("waiting barrier = %#v", value.barrier)
 	}
 	return value.events, value.barrier

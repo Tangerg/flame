@@ -15,8 +15,8 @@ github.com/Tangerg/go-sdk v1.8.1-scope.3 h1:hMC4qrvwu38L4/bLwnPiCYi9BTRFQxGb6Cs9
 github.com/Tangerg/go-sdk v1.8.1-scope.3/go.mod h1:9ZBcxdycY3/8/I1dCH3Uo5rCY3Run9Y4ZmEmiQIulUw=
 github.com/Tangerg/scope/a2a v0.55.0 h1:ahgHpolmoupNzrlbNi4N4kqSUlSrNJR+arRcoTQQuoQ=
 github.com/Tangerg/scope/a2a v0.55.0/go.mod h1:JD+K13an0I5k11CVnnfgIK1aWtUP81k8uOnQydRJhHU=
-github.com/Tangerg/scope/core v0.55.0 h1:dblu9iJqEfCti3vPIJAjeHLBTNYpas+i8YQtTwpadxI=
-github.com/Tangerg/scope/core v0.55.0/go.mod h1:YVjrbA/nQ63xvHX5QX3Y/19c6JH1VsOfaa800Ni0v3o=
+github.com/Tangerg/scope/core v0.56.0 h1:2YJ1w9R/2zXW5AlJ6KZ80xMr861Z/avlhXbtSfvAJnE=
+github.com/Tangerg/scope/core v0.56.0/go.mod h1:YVjrbA/nQ63xvHX5QX3Y/19c6JH1VsOfaa800Ni0v3o=
 github.com/Tangerg/scope/mcp v0.55.0 h1:g1MUsDirFlEJzQGzp2JnNUZDI0EVnFtgE3KdU7S8H78=
 github.com/Tangerg/scope/mcp v0.55.0/go.mod h1:hAGK9BTeAGv3OjLmKD1Nm3K7vGtbDlDTdbkfjrSkLYE=
 github.com/Tangerg/scope/models/alibaba v0.55.0 h1:mNmeeiq6Lg1cHsJECjyaNmVZmCorL0VTkXa9a/usnNo=

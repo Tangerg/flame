@@ -173,14 +173,14 @@ func (i *interactionSession) restoreDelegateCalls(
 		if _, active := members[parentID]; !active {
 			continue
 		}
-		active, found, err := interaction.ActiveDelegateChildren(parentSnapshot)
+		attributions, found, err := interaction.DelegateAttributions(parentSnapshot)
 		if err != nil {
 			return nil, nil, fmt.Errorf("inspect parent %s: %w", parentID, err)
 		}
 		if !found {
 			continue
 		}
-		for _, child := range active {
+		for _, child := range attributions {
 			managedCall, err := restoreManagedDelegateCall(
 				deployments, snapshots, members, parentID, parentSnapshot, child,
 			)
@@ -196,7 +196,7 @@ func (i *interactionSession) restoreDelegateCalls(
 			continue
 		}
 		if children[processID] == nil {
-			return nil, nil, fmt.Errorf("surviving child %s has no active Delegate attribution", processID)
+			return nil, nil, fmt.Errorf("surviving child %s has no Delegate attribution", processID)
 		}
 	}
 	return calls, children, nil
@@ -208,7 +208,7 @@ func restoreManagedDelegateCall(
 	members map[agent.ProcessID]runs.ExecutionMember,
 	parentID agent.ProcessID,
 	parentSnapshot agent.ProcessSnapshot,
-	child interaction.ActiveDelegateChild,
+	child interaction.DelegateAttribution,
 ) (*managedDelegateCall, error) {
 	childSnapshot, exists := snapshots[child.ProcessID()]
 	if !exists {

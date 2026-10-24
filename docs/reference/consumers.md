@@ -17,7 +17,7 @@ Go modules, TS package names, wildcard implementation exports and source-layout
 aliases are removed. Operation and stored business semantics retain their owners;
 this directory migration does not convert or delete user data. Rebuild and select new plugin releases after their resource imports or contract identities change; the host does not register former package aliases.
 
-The TypeScript client explicitly exports its main client API, `wire`, `methods`,
+The TypeScript client explicitly exports its main client API, `json`, `wire`, `methods`,
 `validation`, `testing` and `testing/samples/*`. Ordinary unit tests and internal
 implementation paths are not package APIs. `npm pack` is exercised by independent
 author projects. Raw JSON sample copies are generated from Runtime-owned bytes.

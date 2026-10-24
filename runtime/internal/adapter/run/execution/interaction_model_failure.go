@@ -8,9 +8,9 @@ import (
 	agent "github.com/Tangerg/scope/agent"
 )
 
-// interactionModelFailures owns the product classification of stopped model
-// calls. Scope preserves their unknown external outcome and records the host's
-// cancellation; Runtime projects the cause for the member that observed it.
+// interactionModelFailures owns the product classification of failed model
+// calls. Scope owns their definite failure or requested cancellation; Runtime
+// projects the cause for the member that observed it.
 // Terminal delivery retires the classification even when another cause wins.
 type interactionModelFailures struct {
 	mu        sync.Mutex

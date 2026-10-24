@@ -477,7 +477,7 @@ func featureNode(raw jsontext.Value) (*schema, error) {
 		}
 		node.AdditionalProps = child
 	}
-	for key, target := range map[string]*[]*schema{"anyOf": &node.AnyOf, "oneOf": &node.OneOf} {
+	for key, target := range map[string]*[]*schema{"allOf": &node.AllOf, "anyOf": &node.AnyOf, "oneOf": &node.OneOf} {
 		if len(fields[key]) == 0 {
 			continue
 		}

@@ -62,9 +62,13 @@
           "type": "integer"
         },
         "status": {
-          "enum": [
-            "open",
-            "resolved"
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "resolved"
+              ]
+            }
           ],
           "type": "string"
         },

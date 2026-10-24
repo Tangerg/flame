@@ -223,6 +223,29 @@ func TestFeatureTypesUseTheExistingEmitterForScalarAndNullableFrames(t *testing.
 	}
 }
 
+func TestFeatureTypeProjectionPreservesIntersectionsAndSiblingConstraints(t *testing.T) {
+	for _, sample := range []struct{ schema, want string }{
+		{`{"type":"string","allOf":[{"enum":["open","resolved"]}]}`, `string & ("open" | "resolved")`},
+		{`{"enum":["open","resolved"],"allOf":[{"const":"resolved"}]}`, `("open" | "resolved") & "resolved"`},
+		{`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"allOf":[{"$ref":"#/$defs/Revision"}]}`, `{ id: string } & Revision`},
+		{`{"type":"string","allOf":[false]}`, `never`},
+		{`{"type":"integer","allOf":[{"minimum":1}]}`, `JSONNumber`},
+		{`{"type":"string","allOf":[{"anyOf":[true,{"type":"null"}]}]}`, `string`},
+	} {
+		t.Run(sample.schema, func(t *testing.T) {
+			node, err := featureNode([]byte(sample.schema))
+			if err != nil {
+				t.Fatal(err)
+			}
+			emitter := &tsEmitter{tsTypes: tsTypes{set: &schemaSet{defs: make(map[string]*schema)}}}
+			emitter.define("Value", node)
+			if got := emitter.out.String(); got != "export type Value = "+sample.want+";\n\n" {
+				t.Fatalf("type projection = %s, want %s", got, sample.want)
+			}
+		})
+	}
+}
+
 func TestFeatureNullableObjectPreservesRequiredProperties(t *testing.T) {
 	node, err := featureNode([]byte(`{"type":["object","null"],"properties":{"revision":{"type":"integer"}},"required":["revision"]}`))
 	if err != nil {
