@@ -10,9 +10,14 @@ const ro = stylex.create({
     marginBlock: space.s2,
     display: "flex",
     minWidth: 0,
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: space.s2,
     color: color.fgFaint,
+  },
+  text: {
+    minWidth: 0,
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
   },
 });
 
@@ -25,11 +30,13 @@ export function RootRunOutcome({ material }: { material: CurrentRootMaterial }) 
     <>
       {outcome.type === "canceled" && (
         <div {...stylex.props(ro.line, typeStep.uiSm)}>
-          <Icon name="stop" size="xs" className={stylex.props(vocab.hold).className} />
-          <span {...stylex.props(vocab.hold)}>{t("agent.runOutcome.canceled")}</span>
-          {outcome.detail && (
-            <span {...stylex.props(vocab.min, vocab.truncate)}>· {outcome.detail}</span>
-          )}
+          <span {...stylex.props(vocab.hold, vocab.firstLine)}>
+            <Icon name="stop" size="xs" />
+          </span>
+          <span {...stylex.props(ro.text)}>
+            <span>{t("agent.runOutcome.canceled")}</span>
+            {outcome.detail && <span>{` · ${outcome.detail}`}</span>}
+          </span>
         </div>
       )}
       <UnresolvedRunEffects effects={outcome.unresolvedEffects} />

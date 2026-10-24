@@ -1,5 +1,5 @@
 import { type PropsWithChildren } from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { type BlockCtx } from "@/features/chat/public/message/rendering";
@@ -20,7 +20,12 @@ const { root, follow } = vi.hoisted(() => {
         terminalTurnIndex: (): number => -1,
       },
     },
-    follow: { scrollRef: followRef(), contentRef: followRef() },
+    follow: {
+      scrollRef: followRef(),
+      contentRef: followRef(),
+      stopScroll: vi.fn(),
+      state: { isAtBottom: true, targetScrollTop: 0 },
+    },
   };
 });
 
@@ -44,8 +49,6 @@ vi.mock("use-stick-to-bottom", () => {
   const context = {
     isAtBottom: true,
     scrollToBottom: vi.fn(),
-    stopScroll: vi.fn(),
-    state: { isAtBottom: true, targetScrollTop: 0 },
     ...follow,
   };
   const StickToBottom = ({ children }: PropsWithChildren) => <div>{children}</div>;
@@ -170,6 +173,33 @@ describe("MessageStream terminal footer materialization", () => {
 });
 
 describe("MessageStream reading measurement", () => {
+  it("retires follow when an already-focused record opens before resize begins", async () => {
+    follow.stopScroll.mockClear();
+    const row = transcriptRow("complete");
+    row.message.blocks = [
+      {
+        kind: "reasoning",
+        reasoningId: "reasoning-retained-operation",
+        text: "Inspect the retained operation evidence.",
+        status: "complete",
+      },
+    ];
+    render(<MessageStream rows={[row]} ctx={CTX} sessionId="session-disclosure" />);
+    await act(async () => vi.dynamicImportSettled());
+    const trigger = screen.getByRole("button", { name: "Thought" });
+    act(() => trigger.focus());
+    expect(follow.stopScroll).not.toHaveBeenCalled();
+
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(follow.stopScroll).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(trigger);
+
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(follow.stopScroll).toHaveBeenCalledTimes(1);
+  });
+
   it("detaches follow measurement while an ancestor host hides the retained transcript", async () => {
     root.current = { running: false, terminalTurnIndex: () => -1 };
     const stream = (visible: boolean) => (

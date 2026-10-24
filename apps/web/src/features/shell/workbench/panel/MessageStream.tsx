@@ -6,7 +6,10 @@ import { useEffect, type PropsWithChildren } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { cn } from "@/lib/classNames";
 import { useContentVisible } from "@/ui/index";
-import { stopFollowOnReadingFocus } from "@/ui/agent/readingFollow";
+import {
+  stopFollowOnDisclosureActivation,
+  stopFollowOnReadingFocus,
+} from "@/ui/agent/readingFollow";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import { composerOverlay } from "@/features/shell/workbench/panel/composerOverlay";
 import { useCurrentRootMaterial } from "@/features/agent/public/run";
@@ -56,10 +59,13 @@ function TranscriptContent({ children }: PropsWithChildren) {
       ref={visible ? follow.scrollRef : undefined}
       className={cn("msg-scroll-viewport", stylex.props(ms.viewport).className)}
     >
+      {/* Native button clicks already include keyboard activation; this reader only observes them. */}
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         ref={visible ? follow.contentRef : undefined}
         tabIndex={-1}
         onFocus={(event) => stopFollowOnReadingFocus(event, follow)}
+        onClick={(event) => stopFollowOnDisclosureActivation(event, follow)}
         {...stylex.props(rc.box, ms.content)}
       >
         {children}

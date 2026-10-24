@@ -1,16 +1,17 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Captured question and compaction text now retain complete long identifiers within the reading area; scoped checks and actual Wails acceptance pass. Earlier notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
+Updated: 2026-10-25. Run cancellation reasons now retain complete text, and explicitly opening a transcript record retires tail following before expansion. Main and delegated reading, scoped checks and actual Wails acceptance pass. Earlier captured-text, notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is clean on `codex/captured-text-1025`. Captured-text implementation
-`48277ecc2cdcc9aba2018b2f9d59b7289f80aa20` is published to remote main from the
-frozen accepted base `5e2dff10cb2436fc1a059c0a78d1f7f6504f0b79`. Its evidence
-retirement is complete. The last integration interval
+continues on `codex/run-settlement-1025` from the frozen accepted base
+`199bd8a77f04690bba94940ad2db0dece7da6545`. Run-settlement reading and disclosure
+engagement are verified; publication and evidence retirement are being recorded
+below. Captured-text implementation `48277ecc2cdcc9aba2018b2f9d59b7289f80aa20`
+and its evidence receipt are already published. The last integration interval
 includes incoming main through `1e7b76720`; the former pending author/bootstrap
 commits are already integrated. The primary checkout remains user-owned.
 
@@ -4243,6 +4244,76 @@ patch receipts in `visual/agentSessionSnapshots.ts` now retain zero values for
 their abbreviated, unparseable patch inputs, matching the Runtime presenter.
 The existing contract test exposed the omission. No frontend patch grammar,
 inferred count or permissive result fallback was introduced.
+
+### Run settlement and explicit record reading
+
+`RootRunOutcome.tsx` now presents the existing canceled label and original reason
+in one wrapping text flow. Explicit newlines remain intact, long identifiers can
+break within the reading measure, and the stop icon aligns with the first line.
+The original one-line ellipsis had no complete-value reading route. Native Wails
+reproduced it with a 313-character English reason and a 200-character request ID:
+the last character had zero rendered width. The repair retains the original
+Runtime outcome, status tone, text size and unconfirmed-effects reader.
+
+Actual 200% reading exposed a second defect. Pressing Return on an already
+focused closed record moved that same button from y=134.1 to y=-486.9 when
+resize-follow advanced to the expanded content's bottom. The existing focus
+guard runs before expansion and receives no second focus event. The existing
+`ui/agent/readingFollow.ts` boundary now observes bubbled native-button activation
+in both `MessageStream` and `SubagentTranscript`. Opening an enabled inline
+disclosure stops the existing follow owner before its content mounts. Closing,
+prevented activation, menus, dialog launchers, comboboxes, detached/hidden
+viewports and portaled controls outside the reader do not initiate that policy.
+There is no second follow state, per-record workaround or imperative scroll or
+focus. The native button already owns Enter/Space; the content root only
+observes its click, with a narrowly explained accessibility-lint exception.
+
+The retained ChatGPT subagent/body and ZCode record/output research informs the
+task boundary: read the reason, inspect the original operation, return and keep
+writing. The better-layout and better-typography guidance applies through the
+existing reading measure, literal wrapping and first-line alignment. Base UI
+continues to own disclosure state and keyboard semantics. No explanatory badge,
+decorative stripe or additional action was introduced.
+
+Verification uses the frozen 5,766-file non-Markdown input map, SHA-256
+`fa40e7b74921bf8d838f7330cbe54ef280d8aaba8a5262a79ab22d0be4b992c8`.
+Five focused files pass all **49 tests**; typecheck, lint, formatting, token,
+chrome, style, class and production-bundle checks pass in **17.26 s**. The typed
+original-caller regression fails exactly one assertion while the other 17 tests
+pass: the record opens, but follow is never stopped. Candidate source is restored
+after that negative run. The initial missing reasoning ID and observer lint
+placement failures are corrected; no test assertion or interaction requirement
+was weakened. The first bounded Claude CLI edit succeeds; its second scoped
+edit reaches the 24-turn limit after writing the policy and callers. The primary
+agent reviews those changes, narrows the native-button contract and supplies
+the regression tests and final verification.
+
+Final actual Wails acceptance covers EN/light/14 px/Orange and
+ZH/dark/18 px/custom blue/reduced motion. The reason fits the 602 px ordinary
+measure, the observed 416 px narrow reading measure and the 521 px measure at
+200% (561 × 365 CSS viewport). The same Chinese main-record button stays at
+y=134.4 before and after Return; closing returns it visibly to that position.
+The existing floating Jump button covers the middle of the expanded row's empty
+area at that zoom, so the center hit probe is false; the label remains visible
+and the real keyboard interaction succeeds. A canonical canceled child Run and
+delegate receipt qualify the second host: its focused disclosure stays at
+y=185 before and after Return, remains hit-testable, scrolls to the original
+request identity and literal `9007199254740993`, then closes into the same
+control. English Dock pointer reading also retains its y=182 control. Source
+return preserves the original textarea ID 2; native paste extends exact drafts
+31→42 English and 11→16 Chinese with matching end carets and the same draft
+owner. Both apps restore Actual Size before Quit.
+
+These are deterministic production-view scenarios, not live Runtime cancellation
+or external-operation recovery qualification. VoiceOver, OS IME and RTL were not
+run. The production 1120 × 720 minimum prevents a 320 CSS-pixel native viewport;
+the measured narrow widths above are the qualified boundaries. No browser visual
+suite or benchmark ran. Web asset variants are built serially; the final native
+host builds retain their verified binaries. All 18 recorded processes are dead,
+seven owned checkout outputs, four Library paths and two bundle-temp paths are
+removed, and both apps are unregistered. All 36 output baselines, three original
+files and 11 product resources are restored or unchanged. Final publication and
+the private evidence-root retirement receipt follow this verified source.
 
 ## Conversation reading axis ownership
 

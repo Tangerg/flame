@@ -20,7 +20,10 @@ import { useContentVisible } from "@/ui/index";
 import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
 import { AgentJumpToBottom } from "@/ui/agent/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
-import { stopFollowOnReadingFocus } from "@/ui/agent/readingFollow";
+import {
+  stopFollowOnDisclosureActivation,
+  stopFollowOnReadingFocus,
+} from "@/ui/agent/readingFollow";
 import { face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "@/features/chat/message/application/subagents";
 import {
@@ -281,6 +284,8 @@ function SubagentTranscript({
         ref={measured ? scrollRef : undefined}
         className={stylex.props(styles.scroller).className}
       >
+        {/* Native button clicks already include keyboard activation; this reader only observes them. */}
+        {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
         <div
           ref={measured ? contentRef : undefined}
           role="region"
@@ -288,6 +293,9 @@ function SubagentTranscript({
           tabIndex={-1}
           onFocusCapture={(event) =>
             stopFollowOnReadingFocus(event, { scrollRef, state, stopScroll })
+          }
+          onClick={(event) =>
+            stopFollowOnDisclosureActivation(event, { scrollRef, state, stopScroll })
           }
           {...stylex.props(rc.box, styles.transcript)}
         >
