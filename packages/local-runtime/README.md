@@ -1,9 +1,13 @@
 # Local Runtime handoff
 
-This independent Go module owns process deployment roots, strict token handoff and
-companion `plugins/` lookup. It is
+This independent Go module owns the default local endpoint, process deployment
+roots, strict token handoff and companion `plugins/` lookup. It is
 shared by Runtime, CLI and the native Desktop host without importing their
 business implementation.
+
+`DefaultListenAddress` owns the default listener; `DefaultOrigin` derives its
+HTTP origin for CLI and Desktop. Explicit endpoint configuration remains owned
+by each consuming process.
 
 `FLAME_HOME` selects an absolute product root. Empty selects the user's normal
 Flame root; explicit values retain meaningful whitespace. Token files are
