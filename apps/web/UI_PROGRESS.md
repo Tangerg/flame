@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Expanded file-tree branches now expose their child-group ownership, and expand-only folders omit selectable state. The batch starts from synchronized remote main `26a891365`. All 85 focused tests, the complete Web command (397 files / 3,300 tests plus 25 non-test gates) and the supported native check pass. Actual English/light/14 px/Orange and Chinese/dark/18 px/custom-blue native flows qualify two directory levels, menus, refresh/retry, reading/return and continued drafts at a 320 px Dock and native 200% zoom. VoiceOver speech remains unverified. Owned processes and new checkout/Library outputs are cleaned; all three preexisting output files retain their original bytes. Implementation is ready for explicit-path delivery, with the private evidence root retained until archival.
+Updated: 2026-10-24. Expanded file-tree branches now expose their child-group ownership, and expand-only folders omit selectable state. The batch starts from synchronized remote main `26a891365`. All 85 focused tests, the complete Web command (397 files / 3,300 tests plus 25 non-test gates) and the supported native check pass. Actual English/light/14 px/Orange and Chinese/dark/18 px/custom-blue native flows qualify two directory levels, menus, refresh/retry, reading/return and continued drafts at a 320 px Dock and native 200% zoom. VoiceOver speech remains unverified. Owned processes and new checkout/Library outputs are cleaned; all three preexisting output files retain their original bytes. Implementation `5b69ade0f` is pushed to remote main and its exact hash is verified. The private evidence root is archived and removed.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user's latest instruction explicitly resumes continuous work and requests timely main synchronization. The tree-semantics batch starts from delivered remote main `26a891365ff4db15925e76c092abf9afa72c4dea`, retaining the root-list, file-reader and expanded-directory work plus the user's `9789132a1` integration. Fetches before native acceptance, complete verification and delivery preparation find no newer remote commit. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/tree-semantics-1024`; the primary checkout occupies local `main`, so delivery uses the verified feature HEAD as the remote main update without changing the primary's files or checked-out branch. Existing query, selected-file, expansion and cursor owners retain their behavior; React node identity supplies each child-group association. Focused, complete Web, supported native and actual English/Chinese acceptance pass. All 5,721 accepted non-Markdown tracked inputs, eleven plugin resources and sixteen private acceptance/build inputs remain unchanged. Four owned CLI/native PIDs are dead, seven new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. Implementation delivery and evidence-root removal remain to be recorded. Next, inspect remaining object-menu and pane-return flows, selecting only a new evidenced defect.
+The user's latest instruction explicitly resumes continuous work and requests timely main synchronization. The tree-semantics batch starts from delivered remote main `26a891365ff4db15925e76c092abf9afa72c4dea`, retaining the root-list, file-reader and expanded-directory work plus the user's `9789132a1` integration. Fetches before native acceptance, complete verification and delivery preparation find no newer remote commit. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/tree-semantics-1024`; the primary checkout occupies local `main`, so delivery uses the verified feature HEAD as the remote main update without changing the primary's files or checked-out branch. Existing query, selected-file, expansion and cursor owners retain their behavior; React node identity supplies each child-group association. Focused, complete Web, supported native and actual English/Chinese acceptance pass. All 5,721 accepted non-Markdown tracked inputs, eleven plugin resources and sixteen private acceptance/build inputs remain unchanged. Four owned CLI/native PIDs are dead, seven new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. Implementation `5b69ade0f3a3a2e803236ee8a86ca8602965be49` is pushed to remote main; its exact remote hash, clean owned checkout and zero unpushed commits are verified before this receipt. The private evidence root is archived and removed. The retained session archive contains 98 UTF-8 evidence files and six screenshot hashes, with gzip SHA-256 `0a16daec91c5dad4c58cd32d028f027dec6cc93b1d902b6b40278ec4a6c61a38`. Next, inspect remaining object-menu and pane-return flows, selecting only a new evidenced defect.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -2196,7 +2196,7 @@ without containment or an `aria-owns` association. Each directory also exposes
 `aria-selected=false`, although its activation only changes expansion.
 Declared level/position/size metadata does not supply the missing ownership.
 
-`FileTree.tsx:95` now derives a group ID from the node's existing React
+`FileTree.tsx:97` now derives a group ID from the node's existing React
 `useId` stem. The row references that group under the same expansion condition
 that mounts it. Collapsed branches and leaves have no owned-group reference;
 separate trees with the same paths resolve their own groups. The interactive
@@ -2219,7 +2219,7 @@ the exercised keyboard paths.
 
 | Severity | Location                                        | Before                                                       | After                                                                                             | Why                                                                               |
 | -------- | ----------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| MEDIUM   | `FileTree.tsx:148`, `FileTree.tsx:214`          | Child groups had no semantic parent association.             | Each expanded row owns its mounted child group with a unique ID.                                  | WCAG 1.3.1: expose the visible parent/child relationship to assistive technology. |
+| MEDIUM   | `FileTree.tsx:149`, `FileTree.tsx:215`          | Child groups had no semantic parent association.             | Each expanded row owns its mounted child group with a unique ID.                                  | WCAG 1.3.1: expose the visible parent/child relationship to assistive technology. |
 | MEDIUM   | `FileTree.tsx:146`, `ui/primitives/tree.tsx:77` | Expand-only folders declared an unselected selectable state. | Folders omit selection state; selectable files and generic selectable branches retain false/true. | WCAG 4.1.2: reflect the control's actual supported state.                         |
 
 The pre-edit focused baseline passes 68 tests in the two matched owner files.
@@ -2313,8 +2313,12 @@ binary. The other two preexisting output files never change; all three retain
 their original bytes. Four old-birth copied assets are qualified against exact
 source bytes. The primary checkout, its parallel work, user data, references,
 shared dependency caches and global tool configuration are preserved. The
-private root remains only until its text evidence and six screenshot hashes
-are archived; delivery and root-removal verification belong to the receipt.
+private root is archived and removed. The retained session archive contains
+98 UTF-8 evidence files and six screenshot hashes; its gzip SHA-256 is
+`0a16daec91c5dad4c58cd32d028f027dec6cc93b1d902b6b40278ec4a6c61a38`.
+Implementation `5b69ade0f3a3a2e803236ee8a86ca8602965be49` is pushed to remote main,
+verified by exact remote hash, unchanged accepted inputs, a clean owned checkout
+and zero unpushed commits before this documentation receipt.
 
 **Approve** for the inspected declarations and exercised keyboard scope;
 the listed unverified scenarios are outside that approval.
