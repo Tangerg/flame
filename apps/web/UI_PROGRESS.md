@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Expanded file-tree branches now expose their child-group ownership, and expand-only folders omit selectable state. The batch starts from synchronized remote main `26a891365`. All 85 focused tests, the complete Web command (397 files / 3,300 tests plus 25 non-test gates) and the supported native check pass. Actual English/light/14 px/Orange and Chinese/dark/18 px/custom-blue native flows qualify two directory levels, menus, refresh/retry, reading/return and continued drafts at a 320 px Dock and native 200% zoom. VoiceOver speech remains unverified. Owned processes and new checkout/Library outputs are cleaned; all three preexisting output files retain their original bytes. Implementation `5b69ade0f` is pushed to remote main and its exact hash is verified. The private evidence root is archived and removed.
+Updated: 2026-10-24. Session identity now offers a visible keyboard menu beside its heading, preserving the existing right-click actions and clipboard boundary. The batch starts from synchronized remote main `5602c6382`. All 119 focused tests pass. The aggregate Web command retains one Memory MCP-readiness failure (3,314 pass); its complete 49-test file passes in isolation, all 25 non-test gates pass, and the supported native check passes. Actual English/light/14 px/Orange and Chinese/dark/18 px/custom-blue flows qualify menu entry/return, long-title retreat, file reading/return and continued drafts at a 320 px Dock and native 200%. Owned processes and new checkout/Library outputs are cleaned, with all three preexisting output files preserved. Explicit-path publication and evidence retirement are next.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user's latest instruction explicitly resumes continuous work and requests timely main synchronization. The tree-semantics batch starts from delivered remote main `26a891365ff4db15925e76c092abf9afa72c4dea`, retaining the root-list, file-reader and expanded-directory work plus the user's `9789132a1` integration. Fetches before native acceptance, complete verification and delivery preparation find no newer remote commit. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/tree-semantics-1024`; the primary checkout occupies local `main`, so delivery uses the verified feature HEAD as the remote main update without changing the primary's files or checked-out branch. Existing query, selected-file, expansion and cursor owners retain their behavior; React node identity supplies each child-group association. Focused, complete Web, supported native and actual English/Chinese acceptance pass. All 5,721 accepted non-Markdown tracked inputs, eleven plugin resources and sixteen private acceptance/build inputs remain unchanged. Four owned CLI/native PIDs are dead, seven new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. Implementation `5b69ade0f3a3a2e803236ee8a86ca8602965be49` is pushed to remote main; its exact remote hash, clean owned checkout and zero unpushed commits are verified before this receipt. The private evidence root is archived and removed. The retained session archive contains 98 UTF-8 evidence files and six screenshot hashes, with gzip SHA-256 `0a16daec91c5dad4c58cd32d028f027dec6cc93b1d902b6b40278ec4a6c61a38`. Next, inspect remaining object-menu and pane-return flows, selecting only a new evidenced defect.
+The user's latest instruction requests timely main synchronization within the resumed continuous goal. This Session-identity batch starts from delivered remote main `5602c6382d2fdc786cf0147d22a2ac99264ff470`; repeated fetches through delivery preparation find no newer remote commit. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/session-identity-keyboard-1024`. The primary checkout has independently moved to `codex/ownership-deep-review` at `f28598e391bd694d8ba4451435c58ff747c9bb81`: its exact remote branch matches, with two commits absent from main and no unpushed commits. Its untracked `docs/ui打磨优化.md` is user-owned and untouched. Delivery updates remote main from this verified feature HEAD without changing those parallel files or branch. One caller-owned action list supplies both Session menus; existing visibility and focus owners remain authoritative. The precise first-tabbable expectation changes in four material-modal tests because the new visible button precedes the former file control. Focused, actual English/Chinese native acceptance, the isolated failed Web file, all 25 non-test Web gates and supported native check pass; the initial aggregate retains one unclassified MCP-readiness failure. All 5,722 accepted non-Markdown inputs, eleven plugin resources and sixteen private inputs are unchanged. Owned new outputs are cleaned and all preexisting bytes retained. Commit/push, exact remote verification and private-root archive/removal remain to finish this delivery.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -5163,6 +5163,127 @@ Verification and delivery boundary:
   and shared-modal dismissal qualification is recorded above. Continue the
   result → detail → source workflow from current production behavior; do not
   repeat the completed popup checks or assume an unobserved defect.
+
+### Session identity keyboard actions
+
+At synchronized remote main `5602c6382`, the actual Wails baseline skips
+Session identity when traversing backward from the Composer. Its context trigger
+contains only a working-directory span and an `h1`, with no focusable child;
+right-click is the only available route to Copy working directory / Copy session
+ID. The shared ContextMenu already implements Shift+F10 for focused triggers.
+Adding another key handler or making every context wrapper tabbable would create
+competing behavior and duplicate stops around existing interactive rows.
+
+`SessionIdentity.tsx:42` now owns one conditional copy-action list for both
+menus, preserving the exact clipboard payload and success label. The existing
+small More IconButton and DropdownMenu provide a visible, native-button entry
+beside the unchanged heading (`:104`). The old right-click route remains.
+Existing spacing, typography, truncation, icon, focus, popup and theme owners
+supply the presentation; no new style values or translation keys are needed.
+With no copyable value, static identity renders without an empty custom menu.
+The Session ID keys the menu subtree (`:92`) so replacing the Session retires
+the old actions. Renaming that same Session keeps its current identity. Existing
+content visibility retires hidden menus; there is no new popup or focus state.
+
+[Base UI's Context Menu guidance](https://base-ui.com/react/components/context-menu)
+calls for visible access to its actions. [WCAG 2.1.1](https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html)
+requires keyboard access to functionality. Flame reuses the same More control
+composition already present in `features/sidebar/ui/SessionRow.tsx:178`;
+the existing reference research above remains applicable without importing a
+second component system.
+
+| Severity | Location                  | Before                                      | After                                                                                           | Why                                                         |
+| -------- | ------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| HIGH     | `SessionIdentity.tsx:104` | Copy actions had no visible keyboard entry. | A labelled native button opens the object-named menu with Enter or Space and returns on Escape. | WCAG 2.1.1: make these actions reachable without a pointer. |
+
+The better-accessibility review is **Approve within this scope**. Native heading
+and menu names are inspected, but VoiceOver speech, IME, RTL, six other locales
+and other platforms remain unverified. The better-ui review finds **no actionable
+UI-polish findings** in the inspected reused controls: alignment, narrow-title
+retreat, focus, menu legibility and light/dark surfaces pass the native scenes
+below. No animation values change; a 10% animation replay is not run.
+
+The pre-edit focused baseline passes 104 tests in three files (5.97 s).
+The final four-file suite passes 119 (6.76 s), with typecheck (1.42 s) and lint
+(0.40 s). The new 15-test file uses the real menus and mocks only clipboard I/O.
+It covers both payloads/routes, partial or absent identity, Session replacement,
+same-Session rename, hidden-host retirement and later outside focus. Restoring
+the old component yields 10 failures / 5 passes (2.92 s); removing only the
+Session key yields 2 / 13 (4.20 s). Accepted bytes are restored after each control.
+
+The first focused run has 5 failures / 114 passes (11.58 s). One new test queried
+its outside button after a modal menu made it inert; querying before opening
+corrects the test. Four existing material-modal cases now correctly expect
+`More actions for New session` as the exact first tabbable child of the returned
+Conversation region (`ChatPanel.inspection.test.tsx:2018`). Installed Base UI's
+`FloatingFocusManager` resolves an explicit non-tabbable final-focus region to
+that child. These cases opened from Dock Evidence, not a conversation file
+reference; the old file button was simply first. Only the precise expectation
+changes, with no production focus workaround. Existing explicit-source return
+coverage stays intact.
+
+Bounded Claude Code CLI finishes in 161.44 s with 42 reported turns and no
+permission denials; its configured turn argument is 24, not an observed turn
+count. Only Read/Glob/Grep/Edit/Write are enabled and it edits the two permitted
+SessionIdentity files. The primary reviews the diff, corrects the test query and
+four integration expectations, formats and independently verifies all changes.
+
+Actual production-host Wails acceptance uses private FLAME_HOME, assets,
+three unique bundles and deterministic providers. A passive observer reports
+focus, heading/button DOM identity, menus, draft/caret and viewport. The private
+Chinese title transform supplies a long title; no provider/observer code ships.
+
+- English/light/14 px/Flame Orange: a real keyboard-resized 320 px Dock,
+  reverse Tab to More, Enter and Space entry, arrow navigation, stepped Escape
+  to the same button and right-click all pass. Outside press continues the same
+  textarea. Canonical DockResizer.tsx reading, Go to line, Escape, reader Tab,
+  Back to the selected resizer.ts and continued draft pass with separately
+  observed steps. Final draft uses original input ID 5, 51 characters / 51..51.
+- Chinese/dark/18 px/custom #007BFF/motion off: actual Move & Resize → Left,
+  collapsed fixture navigation and twenty individually observed native Zoom In
+  actions produce 561×525 CSS pixels at 200%. The long heading retreats while
+  More stays visible; both complete copy labels fit. Enter, Space, arrows,
+  Escape and right-click pass. Opening More then clicking the full-pane material
+  entry retires its menu; Files receives focus. File reading, stepped Go to line /
+  Escape, reader Tab, Back, Close and continued input pass without reopening the
+  menu. Original input ID 5 reaches 20 characters / 20..20; Actual Size restores
+  1122×1051 with the same draft, heading ID 2 and More ID 4.
+
+The initial English rapid Escape/Tab batch did not establish reader focus and
+later rapid keys collapsed the Dock rather than activating Back. Those captures
+are retained and excluded from successful focus claims; separately observed steps
+pass on the unchanged product. Reverse Tab moved the English caret to zero, so
+that traversal is not exact-caret-retention evidence; later appends explicitly
+move to the end. A stale native View index opened Edit without executing a
+command; native Cancel and a fresh View selection supplied the verified zoom.
+The first private visual build failed from literal newline escaping in its
+builder; the corrected private build passes, with no product edit. Native menus
+are inspected and dismissed without OS clipboard writes. Unit tests establish
+payloads; real clipboard delivery, native Session replacement/rename, Send/live
+Runtime, browser visual suites and performance benchmarks are not newly qualified.
+
+The complete Web command exits 1 after 209.09 s: 397 files / 3,314 tests pass,
+and one Runtime HTTP integration case fails while its beforeEach waits for the
+installed Memory MCP source (200.38 s test duration). The entire failed file
+then passes all 49 tests in 47.18 s (46.42 s test duration). Connection-refused
+console output also appears during that passing diagnostic; it does not establish
+the aggregate failure's cause. No timeout, assertion, Runtime source or setup
+policy is weakened. The initial typecheck/lint/format gates pass, followed by all
+22 remaining canonical Web gates run serially (28.23 s), including eleven plugin
+resource comparisons, production bundle and module checks. Supported
+`make check-native` passes in 33.71 s. Native linker warnings are non-failing.
+The initial aggregate failure remains unclassified and is not reported green.
+
+All 5,722 accepted non-Markdown source inputs, eleven plugin resources and
+sixteen private build/acceptance inputs retain their accepted bytes. Four owned
+CLI/native PIDs are dead; seven new checkout directories and six unique
+Cache/WebKit directories are removed after path, UID, birth-time, symlink and
+tracked-file guards. Four build copies with older birth times are verified
+against their exact source bytes. The preexisting native-check binary is
+restored; both preexisting shared-UI cache files retain their original bytes.
+All three bundles are unregistered. The private evidence root is retained only
+until archive and exact-main delivery verification. Explicit-path commit, push
+and receipt follow; this is not yet a published-revision claim.
 
 ## Native workspace zoom and Dock geometry
 
