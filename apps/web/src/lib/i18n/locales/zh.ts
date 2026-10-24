@@ -1047,6 +1047,8 @@ export const zh: Record<string, string> = {
   "file.pathCopied": "路径已复制",
   "file.reveal": "在 Finder 中显示",
   "file.goToLine": "跳转到行",
+  "file.goToLine.submit": "跳转",
+  "file.goToLine.invalid": "请输入大于 0 的整数行号。",
   "file.goToLine.placeholder": "行号",
   "file.mode": "文件视图",
   "file.mode.rendered": "预览",

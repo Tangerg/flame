@@ -1115,6 +1115,8 @@ export const ja: Record<string, string> = {
   "file.pathCopied": "パスをコピーしました",
   "file.reveal": "Finder で表示",
   "file.goToLine": "行へ移動",
+  "file.goToLine.submit": "移動",
+  "file.goToLine.invalid": "1 以上の整数で行番号を入力してください。",
   "file.goToLine.placeholder": "行番号",
   "file.mode": "ファイル表示",
   "file.mode.rendered": "プレビュー",

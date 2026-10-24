@@ -1736,6 +1736,136 @@ describe("workspace file tree keyboard model", () => {
   });
 });
 
+describe("Go to line target validation", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  async function openLineEditor() {
+    readFile.mockResolvedValue({
+      content: "one\ntwo\nthree\nfour\nfive",
+      startLine: 1,
+      totalLines: 5,
+    });
+    const viewer = renderHook(useWorkspaceFileViewer);
+    act(() => openWorkspaceFile("src/main.go", 2));
+    mount(<FileWorkspace />);
+    await screen.findByText("three");
+    const trigger = screen.getByRole("button", { name: "Go to line" });
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole("dialog");
+    const field = within(dialog).getByRole<HTMLInputElement>("textbox", { name: "Go to line" });
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    const navigate = vi.spyOn(
+      await import("@/features/workspace/public/navigation"),
+      "openWorkspaceFile",
+    );
+    return { viewer, trigger, dialog, field, navigate };
+  }
+
+  it.each(["-4", "1.5", "1e2", "line 4", "9007199254740993", "0", ""])(
+    "keeps invalid target %j editable and refuses both submission paths",
+    async (value) => {
+      const { viewer, dialog, field, navigate } = await openLineEditor();
+      const before = viewer.result.current;
+      expect(field.getAttribute("aria-invalid")).toBeNull();
+      expect(field.getAttribute("aria-describedby")).toBeNull();
+      expect(within(dialog).queryByText("Enter a positive whole line number.")).toBeNull();
+
+      fireEvent.change(field, { target: { value } });
+      expect(field.value).toBe(value);
+      fireEvent.keyDown(field, { key: "Enter" });
+
+      expect(viewer.result.current).toBe(before);
+      expect(navigate).not.toHaveBeenCalled();
+      expect(dialog.isConnected).toBe(true);
+      expect(field.value).toBe(value);
+      expect(field.getAttribute("aria-invalid")).toBe("true");
+      const message = document.getElementById(field.getAttribute("aria-describedby")!)!;
+      expect(message.textContent).toBe("Enter a positive whole line number.");
+      expect(dialog.contains(message)).toBe(true);
+      expect(document.activeElement).toBe(field);
+
+      const submit = within(dialog).getByRole<HTMLButtonElement>("button", { name: "Go" });
+      expect(submit.disabled).toBe(false);
+      act(() => submit.focus());
+      fireEvent.click(submit);
+
+      expect(viewer.result.current).toBe(before);
+      expect(navigate).not.toHaveBeenCalled();
+      expect(dialog.isConnected).toBe(true);
+      expect(field.value).toBe(value);
+      expect(document.activeElement).toBe(field);
+    },
+  );
+
+  it.each([
+    ["Enter", " 004 "],
+    ["Go", "4"],
+  ])("corrects the target and navigates once through %s", async (method, value) => {
+    const { viewer, trigger, dialog, field, navigate } = await openLineEditor();
+    fireEvent.change(field, { target: { value: "1.5" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+
+    fireEvent.change(field, { target: { value } });
+
+    expect(field.value).toBe(value);
+    expect(field.getAttribute("aria-invalid")).toBeNull();
+    expect(field.getAttribute("aria-describedby")).toBeNull();
+    expect(within(dialog).queryByText("Enter a positive whole line number.")).toBeNull();
+    if (method === "Enter") fireEvent.keyDown(field, { key: "Enter" });
+    else fireEvent.click(within(dialog).getByRole("button", { name: "Go" }));
+
+    expect(navigate).toHaveBeenCalledExactlyOnceWith("src/main.go", 4);
+    expect(viewer.result.current).toEqual({ path: "src/main.go", line: 4 });
+    await waitFor(() => expect(dialog.isConnected).toBe(false));
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+
+    fireEvent.click(trigger);
+    const reopened = await screen.findByRole("dialog");
+    expect(within(reopened).getByRole<HTMLInputElement>("textbox").value).toBe("");
+    expect(within(reopened).queryByText("Enter a positive whole line number.")).toBeNull();
+  });
+
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    "keeps an IME Enter inside the editor (%j)",
+    async (composition) => {
+      const { viewer, dialog, field, navigate } = await openLineEditor();
+      const before = viewer.result.current;
+      fireEvent.change(field, { target: { value: "4" } });
+
+      fireEvent.keyDown(field, { key: "Enter", ...composition });
+
+      expect(viewer.result.current).toBe(before);
+      expect(navigate).not.toHaveBeenCalled();
+      expect(dialog.isConnected).toBe(true);
+      expect(field.value).toBe("4");
+      expect(field.getAttribute("aria-invalid")).toBeNull();
+      expect(document.activeElement).toBe(field);
+
+      fireEvent.keyDown(field, { key: "Enter" });
+      expect(navigate).toHaveBeenCalledExactlyOnceWith("src/main.go", 4);
+    },
+  );
+
+  it("keeps the exact dismissed draft for explicit reopening", async () => {
+    const { viewer, trigger, dialog, field, navigate } = await openLineEditor();
+    const before = viewer.result.current;
+    fireEvent.change(field, { target: { value: "-4" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    fireEvent.keyDown(field, { key: "Escape" });
+    await waitFor(() => expect(dialog.isConnected).toBe(false));
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    expect(viewer.result.current).toBe(before);
+    expect(navigate).not.toHaveBeenCalled();
+
+    fireEvent.click(trigger);
+    const reopened = await screen.findByRole("dialog");
+    const draft = within(reopened).getByRole<HTMLInputElement>("textbox", { name: "Go to line" });
+    expect(draft.value).toBe("-4");
+    await waitFor(() => expect(document.activeElement).toBe(draft));
+  });
+});
+
 describe("retained file workspace popups", () => {
   it("retires Go to line when hidden and keeps its draft for an explicit reopen", async () => {
     readFile.mockResolvedValue({

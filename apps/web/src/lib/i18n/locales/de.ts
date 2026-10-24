@@ -1163,6 +1163,8 @@ export const de: Record<string, string> = {
   "file.pathCopied": "Pfad kopiert",
   "file.reveal": "Im Finder zeigen",
   "file.goToLine": "Gehe zu Zeile",
+  "file.goToLine.submit": "Los",
+  "file.goToLine.invalid": "Geben Sie eine positive ganze Zeilennummer ein.",
   "file.goToLine.placeholder": "Zeilennummer",
   "file.mode": "Dateiansicht",
   "file.mode.rendered": "Vorschau",

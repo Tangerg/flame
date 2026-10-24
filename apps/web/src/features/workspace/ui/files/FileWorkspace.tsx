@@ -4,9 +4,11 @@ import {
   Activity,
   Component,
   useCallback,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
+  type FormEvent,
   type MouseEvent,
   type ReactNode,
   type Ref,
@@ -62,6 +64,9 @@ const fp = stylex.create({
     gap: space.s2,
     padding: space.s2,
   },
+  gotoRow: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: space.s2 },
+  gotoField: { flexGrow: 1, flexBasis: "6rem", minWidth: 0 },
+  gotoError: { margin: 0, color: color.negative, overflowWrap: "anywhere" },
 });
 
 interface LineWindow {
@@ -476,12 +481,34 @@ function FilePreview({
   );
 }
 
+function lineNumber(value: string): number | null {
+  const text = value.trim();
+  if (!/^[0-9]+$/.test(text)) return null;
+  const line = Number(text);
+  return Number.isSafeInteger(line) && line > 0 ? line : null;
+}
+
 function GoToLine({ onGo }: { onGo: (line: number) => void }) {
   const t = useT();
+  const errorId = useId();
+  const field = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
-  const line = Number(value);
-  const valid = Number.isInteger(line) && line > 0;
+  const [attempted, setAttempted] = useState(false);
+  const line = lineNumber(value);
+  const invalid = attempted && line === null;
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (line === null) {
+      setAttempted(true);
+      field.current?.focus();
+      return;
+    }
+    onGo(line);
+    setOpen(false);
+    setValue("");
+    setAttempted(false);
+  };
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
@@ -490,23 +517,35 @@ function GoToLine({ onGo }: { onGo: (line: number) => void }) {
         }
       />
       <Popover.Content align="end" sideOffset={6}>
-        <div {...stylex.props(fp.goto)}>
-          <TextField
-            inputMode="numeric"
-            aria-label={t("file.goToLine")}
-            placeholder={t("file.goToLine.placeholder")}
-            value={value}
-            onChange={(event) => setValue(event.target.value.replace(/[^0-9]/g, ""))}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" || isImeKey(event.nativeEvent) || !valid) return;
-              event.preventDefault();
-              onGo(line);
-              setOpen(false);
-              setValue("");
-            }}
-            {...stylex.props(typeStep.uiMd)}
-          />
-        </div>
+        <form onSubmit={submit} {...stylex.props(fp.goto)}>
+          <div {...stylex.props(fp.gotoRow)}>
+            <TextField
+              ref={field}
+              inputMode="numeric"
+              aria-label={t("file.goToLine")}
+              aria-describedby={invalid ? errorId : undefined}
+              invalid={invalid}
+              placeholder={t("file.goToLine.placeholder")}
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                // Implicit submission would bypass the IME guard, so Enter always routes here.
+                event.preventDefault();
+                if (!isImeKey(event.nativeEvent)) event.currentTarget.form?.requestSubmit();
+              }}
+              styles={fp.gotoField}
+            />
+            <Button type="submit" variant="primary">
+              {t("file.goToLine.submit")}
+            </Button>
+          </div>
+          {invalid && (
+            <p id={errorId} {...stylex.props(typeStep.uiSm, fp.gotoError)}>
+              {t("file.goToLine.invalid")}
+            </p>
+          )}
+        </form>
       </Popover.Content>
     </Popover.Root>
   );

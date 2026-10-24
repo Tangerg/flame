@@ -1,13 +1,16 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Native footnote reading and corresponding-reference return are qualified without a product change. Unconfirmed operations expose individual identities before evidence is opened; closing after reading keeps the focused trigger visible. Earlier run-settlement, captured-text, notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
+Updated: 2026-10-25. Go to line preserves entered text, rejects invalid targets without navigation and provides a visible submit action with associated feedback. Native file reading, correction, return and draft continuation pass, including Chinese large text at 200%. Earlier footnote, unconfirmed-operation, run-settlement, captured-text, notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is clean on `codex/native-note-reading-1025`. Native footnote reading is qualified on
+is on `codex/file-line-input-1025`. Go-to-line input preservation and submission
+are accepted on frozen base `9b8fe29a187c726395db1b084d99af6f41b8f2b8`;
+publication and private evidence retirement are pending below.
+Native footnote reading is qualified on
 frozen base `dc1d0163d32e2e20671dd37553896fa87e4e0117` without changing
 product sources. Qualification `c882bdc8d97fc369c6efcc4a2c687f7fe52dad68` is
 published to remote main, and private evidence retirement is complete.
@@ -4118,6 +4121,72 @@ processes remain intact. Main delivery contains only the reviewed source/test
 pair and this record. Its independent publication checkout and the remaining
 private bundle, fixture, logs and evidence are removed after exact remote
 confirmation. This is the requested milestone pause; no next batch is started.
+
+### Go to line preserves the entered target
+
+Native Wails reproduced a local input defect: pasting `-4` became `4` and moved
+the file from line 6 to line 4; pasting `1.5` became `15` and navigated there.
+`FileWorkspace.tsx` removed every non-digit during editing. The same search
+found no other occurrence across Web, shared UI and plugin TSX. Shared TextField
+already preserves its value, so the repair stays in the private GoToLine task.
+
+The popover is now one compact native form with the existing TextField and a
+localized Go button. It retains exact editable text and validates a trimmed
+positive safe decimal integer at submission. Negative, fractional, exponent,
+mixed, empty, zero and inexact large values keep the popup open and the current
+file position unchanged. A submitted invalid field receives the existing invalid
+style and a concise associated message; correcting it clears that feedback.
+Keyboard and button use one submit owner. Enter prevents implicit submission
+during IME composition, including legacy 229. Success keeps the existing onGo,
+close, reset and Base UI trigger-return semantics. The eight existing catalogs
+provide the action and error strings. No shared input, navigation, read-range,
+Runtime, command or Composer owner changes.
+
+Better-accessibility's forms guidance directly rejects character filtering and
+requires submission feedback beside the field. HeroUI's actual form/basic and
+input-group/invalid examples support explicit completion and associated errors;
+their components and skin are not imported. Existing Flame tokens, button,
+field, popover and error-text conventions provide the layout without helper
+copy, another frame, badges or decorative accents.
+
+The original FileWorkspace baseline passes **63 tests** in **6.41 s**. The bounded
+Claude CLI reaches its **180.81 s** limit after writing the candidate and all
+eight catalogs; it emits no final report. The primary agent reviews those nine
+allowed files, removes an inaccurate comment and supplies twelve regressions.
+One initial test helper omitted its FileWorkspace child and is corrected; no
+assertion or product requirement is weakened. With only the original production
+file restored, the new cases fail **10 and pass two**, with the earlier 63 tests
+outside that focused negative run. Candidate bytes are restored afterward.
+Final FileWorkspace, FileView and navigation checks pass **3 files / 109 tests**
+and all eleven scoped Web gates in **19.15 s**. The frozen **5,767-file**
+non-Markdown map is
+`6ddf53b4f9bd34ab0a139e372b7160283e967b3ab27eb318c3551075ad4e8976`.
+
+Actual final Wails EN/light/14 px/Orange qualifies raw negative/decimal input,
+invalid Enter and Go, correction through both submission paths, exact padded
+`004`, cancellation/reopening and visible trigger return. File-tree entry →
+line 5 → Back returns focus to the original `resizer.ts` row. ZH/dark/18 px/custom
+blue/reduced motion qualifies ordinary feedback and native **200% / 561 × 365
+CSS px**. Full-width material entry retains the dismissed `1.5` draft and its
+error. Input and Go remain hit-testable; Tab/Space on invalid Go returns focus
+to the same field without moving line 6. Correcting to 4 and pointer Go visibly
+select line 4 and restore its trigger. Closing material focuses Conversation.
+Native paste extends the retained textarea ID 2 from **30→41** English and
+**11→16** Chinese characters, with the same draft owner and exact end carets.
+Both apps restore Actual Size before Quit.
+
+These are canonical in-memory production-view scenarios, not live filesystem or
+Runtime execution. OS IME, VoiceOver, RTL and other platforms are not freshly
+qualified. Positive targets beyond the accepted file remain a separate reading
+contract; revisit them with read-owner EOF/refusal evidence rather than adding
+snapshot-based range arbitration here. No browser suite, benchmark, full-product
+check, fetch or merge ran. An early preview overlaps setup by **3,176.380 ms** and
+is excluded; the accepted baseline and all later builds run serially. One failed
+placeholder-path launch starts no acceptance process. All **16** recorded
+processes are dead. Seven owned checkout outputs, four Library paths and two
+bundle-temp paths are removed; both apps are unregistered. The 36 output
+baselines, three original files and 11 product resources are preserved.
+Publication and exact private-root retirement are pending the delivery receipt.
 
 ## Dock tab task continuity
 

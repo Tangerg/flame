@@ -1051,6 +1051,8 @@ export const zhTW: Record<string, string> = {
   "file.pathCopied": "已複製路徑",
   "file.reveal": "在 Finder 中顯示",
   "file.goToLine": "跳至行",
+  "file.goToLine.submit": "跳轉",
+  "file.goToLine.invalid": "請輸入大於 0 的整數行號。",
   "file.goToLine.placeholder": "行號",
   "file.mode": "檔案檢視",
   "file.mode.rendered": "預覽",

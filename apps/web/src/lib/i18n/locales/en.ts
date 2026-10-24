@@ -1136,6 +1136,8 @@ export const en: Record<string, string> = {
   "file.pathCopied": "Path copied",
   "file.reveal": "Show in Finder",
   "file.goToLine": "Go to line",
+  "file.goToLine.submit": "Go",
+  "file.goToLine.invalid": "Enter a positive whole line number.",
   "file.goToLine.placeholder": "Line number",
   "file.mode": "File view",
   "file.mode.rendered": "Preview",

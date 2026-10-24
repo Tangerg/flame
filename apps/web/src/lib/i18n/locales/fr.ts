@@ -1174,6 +1174,8 @@ export const fr: Record<string, string> = {
   "file.pathCopied": "Chemin copié",
   "file.reveal": "Afficher dans le Finder",
   "file.goToLine": "Aller à la ligne",
+  "file.goToLine.submit": "Aller",
+  "file.goToLine.invalid": "Saisissez un numéro de ligne entier positif.",
   "file.goToLine.placeholder": "Numéro de ligne",
   "file.mode": "Vue du fichier",
   "file.mode.rendered": "Aperçu",
