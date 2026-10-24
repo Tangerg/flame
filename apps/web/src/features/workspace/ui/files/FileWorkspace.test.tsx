@@ -650,6 +650,79 @@ describe("workspace files panel", () => {
     expect(listFiles).toHaveBeenCalledTimes(2);
   });
 
+  it.each([false, true])(
+    "keeps a retried directory's folder as the tree cursor through failure and recovery (typing while listing: %s)",
+    async (typeWhileListing) => {
+      mount(
+        <>
+          <textarea aria-label="Message" defaultValue="Retained message draft" />
+          <FileWorkspace />
+        </>,
+      );
+      const folder = await screen.findByRole("treeitem", { name: "src" });
+      const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+      act(() => folder.focus());
+      listFiles.mockRejectedValueOnce(new Error("directory unavailable"));
+      fireEvent.keyDown(folder, { key: "ArrowRight" });
+
+      for (const { typing, settle } of [
+        {
+          typing: false,
+          settle: (listing: PromiseWithResolvers<WorkspaceFileEntry[]>) =>
+            listing.reject(new Error("directory unavailable")),
+        },
+        {
+          typing: typeWhileListing,
+          settle: (listing: PromiseWithResolvers<WorkspaceFileEntry[]>) => listing.resolve([file]),
+        },
+      ]) {
+        const retry = await screen.findByRole("button", { name: "Retry" });
+        act(() => retry.focus());
+        const listing = Promise.withResolvers<WorkspaceFileEntry[]>();
+        listFiles.mockReturnValueOnce(listing.promise);
+
+        fireEvent.click(retry);
+        expect(document.activeElement).toBe(folder);
+        await waitFor(() => expect(screen.queryByRole("button", { name: "Retry" })).toBeNull());
+        expect(document.activeElement).toBe(folder);
+        expect(folder.getAttribute("aria-expanded")).toBe("true");
+        if (typing) {
+          act(() => draft.focus());
+          fireEvent.change(draft, { target: { value: "Retained message draft, continued" } });
+        }
+
+        await act(async () => settle(listing));
+        await waitFor(() => expect(client.isFetching()).toBe(0));
+        expect(document.activeElement).toBe(typing ? draft : folder);
+        expect(folder.tabIndex).toBe(0);
+        expect(folder.getAttribute("aria-expanded")).toBe("true");
+      }
+      expect(listFiles.mock.calls).toEqual([
+        [{ cwd: undefined }],
+        ...Array.from({ length: 3 }, () => [{ cwd: undefined, path: "src" }]),
+      ]);
+      expect(draft.value).toBe(
+        typeWhileListing ? "Retained message draft, continued" : "Retained message draft",
+      );
+      act(() => screen.getByRole("tree", { name: "Files" }).focus());
+      expect(document.activeElement).toBe(folder);
+
+      fireEvent.keyDown(folder, { key: "ArrowRight" });
+      const child = screen.getByRole("treeitem", { name: "main.go" });
+      expect(document.activeElement).toBe(child);
+      fireEvent.keyDown(child, { key: "Enter" });
+      await screen.findByText("package main");
+      expect(readFile).toHaveBeenCalledWith({ cwd: undefined, path: "src/main.go" });
+
+      const back = screen.getByRole("button", { name: "Back to files" });
+      expect(document.activeElement).toBe(back);
+      fireEvent.click(back);
+      const returned = await screen.findByRole("treeitem", { name: "main.go" });
+      expect(returned.getAttribute("aria-current")).toBe("true");
+      expect(document.activeElement).toBe(returned);
+    },
+  );
+
   it("keeps a retried file read's focus in the reader through failure and recovery", async () => {
     readFile.mockRejectedValueOnce(new Error("file unavailable"));
     openWorkspaceFile("src/main.go");

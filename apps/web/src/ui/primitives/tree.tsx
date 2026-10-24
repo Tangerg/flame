@@ -47,12 +47,23 @@ function moveInTree(event: KeyboardEvent<HTMLDivElement>) {
 
 type DivProps = ComponentPropsWithoutRef<"div"> & { ref?: Ref<HTMLDivElement> };
 
-function TreeRoot({ onKeyDown, ...props }: DivProps) {
+function TreeRoot({ onFocus, onKeyDown, ...props }: DivProps) {
   return (
     <div
       role="tree"
       tabIndex={-1}
       {...props}
+      onFocus={(event) => {
+        onFocus?.(event);
+        // Keys only move from a row, so focus handed to the tree itself (such as by a retiring
+        // control) enters the caller's single tab-stop row; without one the tree keeps focus.
+        const root = event.currentTarget;
+        if (event.defaultPrevented || event.target !== root) return;
+        if (root.ownerDocument.activeElement !== root) return;
+        root
+          .querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]')
+          ?.focus({ preventScroll: true });
+      }}
       onKeyDown={(event) => {
         onKeyDown?.(event);
         if (!event.defaultPrevented) moveInTree(event);
