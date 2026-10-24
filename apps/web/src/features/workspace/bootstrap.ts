@@ -4,6 +4,7 @@ import { installLocalWorkspaceActions } from "@/features/workspace/adapters/loca
 import { registerWorkspaceDataProviders } from "@/features/workspace/adapters/runtimeDataProviders";
 import { definePlugin } from "@/extensions/definePlugin";
 import { installConversationArchiveGateway } from "@/features/workspace/adapters/runtimeConversationArchiveGateway";
+import { createFileTransfer } from "@/features/workspace/adapters/fileTransfer";
 import { installWorkspaceErrorClassifier } from "@/features/workspace/adapters/runtimeWorkspaceErrorClassifier";
 import { installWorkspaceNavigationPort } from "@/features/workspace/adapters/navigationStatePort";
 import {
@@ -17,7 +18,7 @@ import { RUNTIME_STREAM } from "@/features/connection/public/services";
 import { currentRuntimeEndpoint } from "@/features/connection/public/endpoint";
 export function createWorkspaceBootstrapPlugin(
   runtimeClient: () => FlameClient,
-  host: Pick<ClientHost, "openPath" | "revealPath">,
+  host: Pick<ClientHost, "openPath" | "revealPath" | "saveTextFile">,
   canAccessLocalWorkspace: () => boolean,
 ) {
   return definePlugin({
@@ -30,7 +31,10 @@ export function createWorkspaceBootstrapPlugin(
     },
     setup(ctx) {
       registerWorkspaceDataProviders(ctx, runtimeClient);
-      const conversationArchive = installConversationArchiveGateway(runtimeClient);
+      const conversationArchive = installConversationArchiveGateway(
+        runtimeClient,
+        createFileTransfer(host),
+      );
       ctx.cleanup(() => conversationArchive.dispose());
       ctx.cleanup(installLocalWorkspaceActions(host, canAccessLocalWorkspace));
       ctx.cleanup(installWorkspaceErrorClassifier());

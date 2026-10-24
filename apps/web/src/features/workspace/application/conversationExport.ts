@@ -48,7 +48,7 @@ class ConversationArchiveGeneration {
       const content = await this.#cohort.run(() =>
         this.#gateway.exportConversation(sessionId, format),
       );
-      this.#download({
+      await this.#save({
         filename: `flame-${sessionId}-${timestampForFilename(new Date())}.${format}`,
         content,
         mime: format === "md" ? "text/markdown;charset=utf-8" : "application/json;charset=utf-8",
@@ -69,7 +69,7 @@ class ConversationArchiveGeneration {
       }
       const stamp = timestampForFilename(new Date());
       const content = await this.#cohort.run(() => this.#gateway.exportTrajectory(sessionId));
-      this.#download({
+      await this.#save({
         filename: `flame-${sessionId}-trajectory-${stamp}.json`,
         content,
         mime: "application/json;charset=utf-8",
@@ -138,9 +138,11 @@ class ConversationArchiveGeneration {
     }
   }
 
-  #download(material: ExportMaterial): void {
-    this.#cohort.assertCurrent();
-    this.#files.download(material.filename, material.content, material.mime);
+  // A save that outlives its generation may still finish, but cannot publish feedback.
+  async #save(material: ExportMaterial): Promise<void> {
+    await this.#cohort.run(() =>
+      this.#files.saveText(material.filename, material.content, material.mime),
+    );
   }
 
   #releaseImport(operation: Promise<void>): void {

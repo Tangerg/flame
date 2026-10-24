@@ -1,7 +1,7 @@
 import { asSessionId, type FlameClient, type SessionArtifact } from "@flame/runtime-client";
 import { ConversationArchiveOwner } from "@/features/workspace/application/conversationExport";
 import { type ConversationArchiveGateway } from "@/features/workspace/application/ports/conversationArchiveGateway";
-import { browserFileTransfer } from "@/features/workspace/adapters/browserFileTransfer";
+import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
 function runtimeConversationArchiveGateway(client: FlameClient): ConversationArchiveGateway {
   return {
     async exportConversation(sessionId, format) {
@@ -28,10 +28,13 @@ function runtimeConversationArchiveGateway(client: FlameClient): ConversationArc
   };
 }
 
-export function installConversationArchiveGateway(runtimeClient: () => FlameClient) {
+export function installConversationArchiveGateway(
+  runtimeClient: () => FlameClient,
+  files: FileTransferPort,
+) {
   const owner = ConversationArchiveOwner.install({
     gateway: runtimeConversationArchiveGateway(runtimeClient()),
-    files: browserFileTransfer(),
+    files,
   });
   return {
     replaceRuntimeGeneration: () =>

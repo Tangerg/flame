@@ -51,6 +51,12 @@ func (i imageSaverFunc) SaveImage(suggestedFilename string, contents []byte) (bo
 	return i(suggestedFilename, contents)
 }
 
+type textFileSaverFunc func(suggestedFilename string, contents []byte) (bool, error)
+
+func (s textFileSaverFunc) SaveTextFile(suggestedFilename string, contents []byte) (bool, error) {
+	return s(suggestedFilename, contents)
+}
+
 func TestDesktopHostBootstrap(t *testing.T) {
 	home := t.TempDir()
 	host := mustDesktopHost(t, home)
@@ -433,6 +439,106 @@ func TestDesktopHostSaveImageRequiresAndPropagatesNativeOwner(t *testing.T) {
 	}))
 	if saved, err := host.SaveImage("data:image/png;base64,aW1hZ2U="); err == nil {
 		t.Fatalf("SaveImage() = %v, nil; want native save error", saved)
+	}
+}
+
+func TestDesktopHostSaveTextFileHandsExactNameAndTextToTheNativeOwner(t *testing.T) {
+	const filename = "flame-session 1-2026-10-24T09-30-00.md"
+	const content = "# Café 火焰 🔥\r\n\tline\x00 end\n"
+	destination := filepath.Join(t.TempDir(), "chosen.md")
+	host := mustDesktopHost(t, t.TempDir())
+	var suggested string
+	host.useTextFileSaver(textFileSaverFunc(func(suggestedFilename string, contents []byte) (bool, error) {
+		suggested = suggestedFilename
+		return true, os.WriteFile(destination, contents, 0o666)
+	}))
+
+	saved, err := host.SaveTextFile(filename, content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !saved {
+		t.Fatal("SaveTextFile() = false, want completed save")
+	}
+	if suggested != filename {
+		t.Fatalf("suggested filename = %q, want %q unchanged", suggested, filename)
+	}
+	written, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(written, []byte(content)) {
+		t.Fatalf("written text = %q, want %q", written, content)
+	}
+}
+
+func TestDesktopHostSaveTextFilePreservesCancellation(t *testing.T) {
+	host := mustDesktopHost(t, t.TempDir())
+	host.useTextFileSaver(textFileSaverFunc(func(string, []byte) (bool, error) {
+		return false, nil
+	}))
+
+	if saved, err := host.SaveTextFile("flame-trajectory.json", "{}"); err != nil {
+		t.Fatal(err)
+	} else if saved {
+		t.Fatal("canceled SaveTextFile() = true, want false")
+	}
+}
+
+func TestDesktopHostSaveTextFileRejectsInvalidNamesBeforeOpeningDialog(t *testing.T) {
+	tests := []string{
+		"",
+		".md",
+		".json",
+		"export.txt",
+		"export",
+		"export.MD",
+		"export.md.exe",
+		"../export.md",
+		"dir/export.md",
+		`dir\export.md`,
+		"/tmp/export.md",
+		`C:export.md`,
+		"export\n.md",
+		"export\x00.md",
+		"export\u0085.md",
+		"export\xff.md",
+	}
+	for _, filename := range tests {
+		t.Run(filename, func(t *testing.T) {
+			called := false
+			host := mustDesktopHost(t, t.TempDir())
+			host.useTextFileSaver(textFileSaverFunc(func(string, []byte) (bool, error) {
+				called = true
+				return true, nil
+			}))
+
+			if saved, err := host.SaveTextFile(filename, "text"); err == nil {
+				t.Fatalf("SaveTextFile(%q) = %v, nil; want validation error", filename, saved)
+			}
+			if called {
+				t.Fatal("native text file saver opened for invalid filename")
+			}
+		})
+	}
+}
+
+func TestDesktopHostSaveTextFileRequiresAndPropagatesNativeOwner(t *testing.T) {
+	if saved, err := mustDesktopHost(t, t.TempDir()).SaveTextFile("export.md", "text"); err == nil {
+		t.Fatalf("SaveTextFile() = %v, nil; want unconfigured saver error", saved)
+	}
+
+	diskFull := errors.New("disk full")
+	host := mustDesktopHost(t, t.TempDir())
+	host.useTextFileSaver(textFileSaverFunc(func(string, []byte) (bool, error) {
+		return false, diskFull
+	}))
+	saved, err := host.SaveTextFile("export.json", "{}")
+	if !errors.Is(err, diskFull) {
+		t.Fatalf("SaveTextFile() error = %v, want wrapped %v", err, diskFull)
+	}
+	if saved {
+		t.Fatal("failed SaveTextFile() = true, want false")
 	}
 }
 

@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"unicode"
+	"unicode/utf8"
 	"unsafe"
 
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
@@ -45,6 +47,11 @@ type imageSaver interface {
 	SaveImage(suggestedFilename string, contents []byte) (bool, error)
 }
 
+// The native picker owns the write destination; IPC callers supply only a basename and text.
+type textFileSaver interface {
+	SaveTextFile(suggestedFilename string, contents []byte) (bool, error)
+}
+
 type pathRevealer interface {
 	OpenFileManager(path string, selectFile bool) error
 }
@@ -60,6 +67,7 @@ type DesktopHost struct {
 	localTokenPath         string
 	workingDirectoryPicker workingDirectoryPicker
 	imageSaver             imageSaver
+	textFileSaver          textFileSaver
 	window                 nativeWindow
 	reveal                 func()
 	pathRevealer           pathRevealer
@@ -136,6 +144,10 @@ func (d *DesktopHost) useWorkingDirectoryPicker(picker workingDirectoryPicker) {
 
 func (d *DesktopHost) useImageSaver(saver imageSaver) {
 	d.imageSaver = saver
+}
+
+func (d *DesktopHost) useTextFileSaver(saver textFileSaver) {
+	d.textFileSaver = saver
 }
 
 func defaultDesktopHost() (*DesktopHost, error) {
@@ -257,6 +269,42 @@ func (d *DesktopHost) SaveImage(source string) (bool, error) {
 		return false, fmt.Errorf("desktop host: save image: %w", err)
 	}
 	return saved, nil
+}
+
+// The bool distinguishes a completed write from user cancellation. The name is only a
+// suggestion for the native picker, so it is validated rather than rewritten.
+func (d *DesktopHost) SaveTextFile(suggestedFilename, content string) (bool, error) {
+	if err := validateTextFilename(suggestedFilename); err != nil {
+		return false, fmt.Errorf("desktop host: save text file: %w", err)
+	}
+	if d.textFileSaver == nil {
+		return false, errors.New("desktop host: text file saver is not configured")
+	}
+	saved, err := d.textFileSaver.SaveTextFile(suggestedFilename, []byte(content))
+	if err != nil {
+		return false, fmt.Errorf("desktop host: save text file: %w", err)
+	}
+	return saved, nil
+}
+
+func validateTextFilename(name string) error {
+	if !utf8.ValidString(name) {
+		return errors.New("filename is not valid UTF-8")
+	}
+	if strings.ContainsAny(name, `/\:`) {
+		return fmt.Errorf("filename %q must be a basename", name)
+	}
+	if strings.IndexFunc(name, unicode.IsControl) >= 0 {
+		return fmt.Errorf("filename %q contains control characters", name)
+	}
+	extension := filepath.Ext(name)
+	if extension != ".md" && extension != ".json" {
+		return fmt.Errorf("filename %q must end in .md or .json", name)
+	}
+	if name == extension {
+		return fmt.Errorf("filename %q has no name before its extension", name)
+	}
+	return nil
 }
 
 func (d *DesktopHost) Bootstrap() (DesktopBootstrap, error) {

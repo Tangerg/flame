@@ -15,6 +15,7 @@ const HOST_METHOD = {
   revealPath: "main.DesktopHost.RevealPath",
   revealWindow: "main.DesktopHost.RevealWindow",
   saveImage: "main.DesktopHost.SaveImage",
+  saveTextFile: "main.DesktopHost.SaveTextFile",
   windowChrome: "main.DesktopHost.WindowChrome",
 } as const;
 
@@ -36,6 +37,8 @@ const NotificationAuthorizationSchema = z.enum(["unsupported", "default", "grant
 const NotificationTargetSchema = z.string().min(1);
 
 const SaveImageSchema = z.boolean();
+
+const SaveTextFileSchema = z.boolean();
 
 const DesktopBootstrapSchema = z.object({
   localRuntime: z.object({
@@ -124,6 +127,23 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
       if (!parsed.success) {
         throw new RpcTransportError(
           `desktop host image save returned an invalid shape: ${parsed.error.message}`,
+        );
+      }
+      return parsed.data;
+    },
+    // The native panel owns the destination, so only the suggested basename crosses IPC.
+    async saveTextFile(filename, content) {
+      const host = binding;
+      let value: unknown;
+      try {
+        value = await host.call(HOST_METHOD.saveTextFile, filename, content);
+      } catch (error) {
+        throw new RpcTransportError(`desktop host text file save failed: ${errorMessage(error)}`);
+      }
+      const parsed = SaveTextFileSchema.safeParse(value);
+      if (!parsed.success) {
+        throw new RpcTransportError(
+          `desktop host text file save returned an invalid shape: ${parsed.error.message}`,
         );
       }
       return parsed.data;

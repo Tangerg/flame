@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Notification history preserves the current action after dismissal and associates each action with its own message. Implementation `fa52c539bf693652b8c8f92d58fa03ff807f8e34` is pushed to remote main. Ten focused regressions, all 25 non-test Web gates, supported native checks and actual English/Chinese Wails tasks pass, including 200%. The complete Web command retains two unclassified Runtime integration timeouts (3,373 passed); the complete isolated integration file passes all 49 tests. Owned resources are cleaned and exact source/output/archive checks pass. Primary parallel work remains untouched.
+Updated: 2026-10-24. Conversation archive exports now use the composed host: Desktop opens an attached native save panel; Browser retains its download handoff. Markdown, JSON and complete trajectory exports await the file effect and preserve current-generation failure ownership. All 399 Web files / 3,390 tests, all 25 non-test Web gates and supported native checks pass. Actual English/Chinese Wails tasks qualify save, cancellation, exact exported bytes, source return and continued drafts, including 200% and a separate keyboard-only save. Owned native/CLI processes and new checkout/Library outputs are cleaned; implementation delivery and guarded archive retirement follow. Primary parallel work is untouched.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/notification-review-1024`. Notification implementation `fa52c539bf693652b8c8f92d58fa03ff807f8e34`, based on main `8fdd3be864f8492b22775914e8f3fcae87468117`, is pushed to remote main and verified by exact remote hash, a clean owned checkout and zero unpushed commits. A fresh fetch finds no further incoming commit. Primary parallel work remains outside this batch. Notification history keeps its original action through dismissal with the existing shared focusable-disabled contract; each action describes its own message. Canonical log/count ownership, opening/closing behavior, routing, shared styles and Runtime contracts retain their existing owners. Ten focused regressions, actual EN/ZH native tasks, all 25 non-test Web gates and supported native checks pass. The complete Web command's two Runtime integration timeouts remain unclassified; the complete isolated 49-test integration file passes. All 5,724 accepted non-Markdown sources, eleven plugin resources and sixteen archived private inputs retain their accepted bytes. Six owned PIDs are dead; all new checkout/Library outputs and the private root are absent; preexisting output bytes and file inventories are exact. The verified compressed archive retains 222 UTF-8 files and thirteen screenshot digests. Continue from this completed receipt with a fresh, evidenced task issue; do not repeat completed Approval, Conversation Find or notification focus work.
+The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-export-native-1024`, based on delivered main `7b33ef5c06fed980757e29fb43638ae64cc77d21`. Fresh fetches find no incoming commit. The export task now has one injected host file effect and a native destination chosen only by the user. Browser handoff, captured Session/material, Runtime generation retirement, import, image saving and existing focus/navigation owners retain their contracts. All 399 Web files / 3,390 tests and 25 non-test gates pass; supported native checks pass. Actual EN/ZH Wails saves produce exact Markdown, JSON and trajectory bytes; cancellation and source/detail/return preserve the original drafts, including 200%. A fresh initial-body keyboard route saves JSON with Return. All 5,725 accepted non-Markdown sources, eleven plugin resources, nine private inputs and 599 compiled inputs retain accepted bytes. Thirteen owned PIDs are dead; seven new checkout paths and eight unique bundle Library paths are removed, three bundles are unregistered, and three preexisting output files/inventories are preserved. The verified batch is ready for explicit-path commit/push to main and exact delivery/retirement receipts. Earlier aggregate Runtime timeouts retain their own history; this full run passes without attributing their cause to the export repair. Continue from this task with another fresh evidenced issue rather than repeating completed export, notification, Find or Approval work.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -525,6 +525,149 @@ browser download behavior.
   The private archive retains 67 UTF-8 evidence files and 21 capture hashes outside
   the repository. No migration is needed. That earlier checkpoint ended at the user's
   requested pause; the current explicit resume governs subsequent work.
+
+### Native conversation archive export
+
+At main `7b33ef5c0`, actual Wails reproduced the incomplete file handoff:
+from an unsent draft, select complete trajectory or Markdown in the production
+command menu. The archive owner captures `ses_visual`, receives the fixed
+material and clicks a Blob download anchor. No native save panel appears; the
+exact known default destinations contain no captured trajectory file. Menu
+return and the original draft remain correct. The traced cause is the gateway's
+unconditional browser-only file adapter and its synchronous `download` contract,
+which cannot observe a native selection/write outcome.
+
+- `workspace/bootstrap.ts:34` now supplies `createFileTransfer(host)` to
+  `installConversationArchiveGateway`. The composed ClientHost owns the platform
+  effect; archive policy makes no platform choice or new host instance.
+- `adapters/fileTransfer.ts:28` replaces `browserFileTransfer.ts`. It awaits the
+  host's `saveTextFile`; false is ordinary cancellation. The original JSON picker
+  and cancellation semantics remain. Superseded source/test paths are removed.
+- Both export methods await `conversationExport.ts:142`'s existing cohort-owned
+  save. The captured material and Session stay fixed. A retired generation can
+  let an already admitted native save finish without publishing stale feedback;
+  a current failure reaches the existing Session error notification. No export
+  state machine, retry, timer, focus policy or Runtime operation was added.
+- `platform/desktopHost.ts:135` invokes and validates one new boolean IPC result.
+  Only suggested basename and exact text cross IPC; MIME remains a Browser Blob
+  concern. Browser true means download handoff, not proof of a completed disk
+  write. Native true follows the selected write; false follows cancellation.
+- `DesktopHost.SaveTextFile` (`desktop_host.go:276`) validates UTF-8 filenames,
+  rejects both separator directions, colons, control characters and extensions
+  outside `.md`/`.json` before opening a panel, then preserves text bytes.
+  `text_file_saver.go:17` attaches the existing Wails SaveFile API to the window,
+  applies the matching type filter and writes only the selected destination.
+  Cancellation and concrete dialog/write errors stay distinct. Existing image
+  saving is unchanged; no dependency, path joining, migration or Runtime/CLI
+  change is introduced. Web and the native bridge ship together in the normal
+  embedded build; no old-host browser fallback is retained.
+
+| Severity | Location                                                                                                           | Before                                                                         | After                                                                                           | Why                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| High     | `workspace/adapters/runtimeConversationArchiveGateway.ts:31`; `platform/desktopHost.ts:135`; `desktop_host.go:276` | Desktop exports request a browser download with no native destination/outcome. | The composed native owner presents a save panel and writes exact selected material.             | Concrete task: save the current captured Session locally, then resume work.               |
+| Medium   | `workspace/application/conversationExport.ts:49`, `:72`, `:142`                                                    | Export policy cannot wait for or report an asynchronous file failure.          | All three formats await the existing generation-owned handoff and report only current failures. | Task completion and failure feedback must belong to the admitted material and generation. |
+
+Better-accessibility and better-layout give a scoped Approve for the observed
+export flows. The native panel exposes named fields and Save/Cancel controls;
+keyboard command selection, Escape cancellation, pointer save and a separate
+Return save pass. The existing web command surface fits 561 CSS px at 200%, and
+source/detail/return keeps the drafting task. No actionable layout finding was
+observed in that scope. No custom visual treatment, palette, typography or motion
+was added. VoiceOver speech and product-wide conformance are not claimed.
+
+[Wails Dialogs API](https://v3.wails.io/reference/dialogs/) documents the native
+manager, filename, filter, attachment and selection APIs; the pinned beta.34
+implementation and actual false result establish cancellation here.
+[HTML download guidance](https://developer.mozilla.org/en-US/docs/Web/API/HTMLAnchorElement/download)
+describes a requested download, which is not native completion evidence.
+Read-only ZCode `desktopMainIpcPlatform.ts:154` registers its actual native save
+handler, which delegates destination choice to the dialog before writing.
+HeroUI's pending Button example keeps one named task action. Existing ChatGPT
+conversation/action-return research remains a UI comparison; its Markdown
+exporter is not used as native or keyboard evidence. Reference source stays
+read-only, and Flame retains its existing shared controls and tokens.
+
+The bounded read-only Claude diagnostic reaches its 12-turn limit (13 reported,
+81.06 s, one denied private-directory Glob); primary isolates the preparation
+issue. The first implementation reaches its 24-turn limit after Web changes
+(25 reported, 172.60 s, no denials). A native-only continuation succeeds in
+76.57 s (22 configured / 23 reported turns, no denials). None runs commands or
+tests. Primary completes the port retirement and Web regressions, corrects an
+incomplete test gateway exposed by typecheck, formats and reviews every diff.
+
+Six relevant files pass 49 tests (2.44 s test time / 3.29 s command). A negative
+control removes only the two required awaits while retaining the migrated port:
+all three deferred-format tests fail because the command settles too early
+(1.13 s test time / 2.09 s command; the other 18 cases are outside that focused
+control). The accepted source is restored in a finally block and matches its
+frozen hash. Native host tests cover exact UTF-8 bytes, cancellation, invalid
+names before admission, missing configuration and wrapped failures. Client tests
+cover malformed native results and browser filename/content/MIME preservation.
+
+Complete `npm run check --workspace @flame/web` passes all 399 files / 3,390 tests
+and all 25 non-test gates (254.14 s test time / 324.06 s command). Supported
+`make check-native` passes in 31.39 s, including Desktop test/vet/build and its
+Wails production build. Prior Runtime integration timeouts remain historical;
+no rerun or cause/fix claim replaces them. The initial typecheck catches only the
+new incomplete test gateway; the corrected check passes in 1.60 s. A private
+negative-control script syntax error occurs before source mutation and is fixed
+before the recorded failing control. Browser visual/performance suites and
+standalone Runtime/CLI suites are not run.
+
+Actual Wails uses canonical long-content/workspace readers, real archive policy,
+real composed client-host detection, actual file transfer, production commands
+and native SaveFile. Its gateway supplies fixed captured material, so this is
+native handoff acceptance, not a live Runtime export/import or Send claim.
+Passive reports inspect identity, native outcomes, canonical draft text and caret.
+
+- EN/light/14 px/Orange at 1440 × 900: keyboard command selection opens the
+  Markdown panel. Escape resolves false and restores the original textarea at
+  20..20 without an error. Reopening saves all 162 Markdown bytes; complete
+  trajectory saves all 118 bytes. Both resolve true and return to that textarea.
+  Native continuation, source-file inspection and source return finish the same
+  draft as `Draft before export. Continued. Returned.` at 41..41.
+- ZH/dark/18 px/custom blue/motion off: system Left arrangement settles at
+  1122 × 1051, and twenty separately observed native Zoom In operations retain
+  the same textarea through 561 × 525 at 200%. The exact JSON command remains
+  readable and reachable. Escape resolves false; reopening saves all 270 JSON
+  bytes and resolves true with the original caret 9..9. Source full-pane reading
+  and return preserve the draft; separately observed end positions qualify
+  9 → 15 → 20. Final text is `导出前保留的草稿。 继续核对。 已返回。`.
+  Native Actual Size restores 1122 × 1051 with the same draft and input focus.
+- A fresh EN instance begins from initial content/BODY. Keyboard command/query/
+  Return opens a panel already pointing at the owned exports directory; Return
+  writes the original suggested JSON name, verifies all 270 bytes and returns to
+  that content opener. Its preceding Mod-L probe leaves BODY in this partial
+  composition and is excluded from completed global Composer-focus coverage.
+  This route does not claim cross-restart draft persistence.
+
+The private bootstrap initially adds a second shortcut provider beside the
+production shortcut plugin: two toggles close the menu again. Primary removes
+that private duplicate before acceptance; no product workaround is added. Long
+AX registry text is shortened into separate passive facts. A temporary observer's
+bare dependency import fails and is resolved to the installed exact module; its
+inadvertently launched owned preparation is stopped. Native path paste does not
+replace the field, so the accepted directory is separately set and observed
+through the native control before Save. An EN reader-wheel request is refused by
+the UI state guard and excluded; fresh state and source return/append pass. The
+ZH wheel produces no AX movement, so no fresh scroll-distance claim is made.
+
+The static fixture sidebar is not production-sidebar navigation evidence. This
+qualifies 561 CSS px at 200%, not a fresh 320 CSS px viewport or 320 px Dock.
+OS IME, VoiceOver, RTL, other locale GUIs/platforms, an actual filesystem-denial
+UI and a live Runtime archive round trip remain unverified. Cancellation and
+write-failure contracts have the stated native and unit/integration coverage.
+
+All 5,725 tracked non-Markdown sources retain accepted aggregate SHA-256
+`fd0349ff281e3740c01babb62b8365c45b312ed2709e437fbe22b0ff57c2125e`;
+eleven plugin resources, nine private inputs and 599 compiled inputs match.
+Final private visual build takes 3.15 s; EN/ZH native builds take 4.35/3.47 s.
+All thirteen owned native/CLI PIDs are dead. Seven new checkout paths and eight
+unique bundle Library paths are removed, all three bundles unregistered, and
+three preexisting files/inventories are preserved, including the restored native
+check binary. Primary parallel work, dependencies, toolchains and references stay
+untouched. The private evidence root remains only for guarded archive retirement;
+exact implementation delivery and cleanup receipts follow.
 
 ### Retained component behavior
 

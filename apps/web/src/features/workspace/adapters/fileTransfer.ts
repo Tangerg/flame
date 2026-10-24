@@ -1,9 +1,5 @@
-import { downloadBlob } from "@/platform/download";
+import { type ClientHost } from "@/platform/host";
 import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
-function downloadFile(filename: string, content: string, mime: string): void {
-  downloadBlob(filename, new Blob([content], { type: mime }));
-}
-
 function pickTextFile(accept: string): Promise<string | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
@@ -28,6 +24,12 @@ function pickTextFile(accept: string): Promise<string | null> {
   });
 }
 
-export function browserFileTransfer(): FileTransferPort {
-  return { download: downloadFile, pickText: pickTextFile };
+// Saving belongs to the composed host; cancellation is an ordinary outcome, not a failure.
+export function createFileTransfer(host: Pick<ClientHost, "saveTextFile">): FileTransferPort {
+  return {
+    async saveText(filename, content, mime) {
+      await host.saveTextFile(filename, content, mime);
+    },
+    pickText: pickTextFile,
+  };
 }

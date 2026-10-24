@@ -12,7 +12,7 @@ import (
 var boundMethods = []string{
 	"Bootstrap", "ChooseWorkingDirectory", "NotificationAuthorization", "OpenPath",
 	"RequestNotificationAuthorization", "RevealPath", "RevealWindow", "SaveImage",
-	"SendNotification", "WindowChrome",
+	"SaveTextFile", "SendNotification", "WindowChrome",
 }
 
 func TestDesktopHostBindsExactlyTheDeclaredMethods(t *testing.T) {

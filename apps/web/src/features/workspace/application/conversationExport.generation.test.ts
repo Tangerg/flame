@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ConversationArchiveOwner,
   exportConversationMarkdown,
+  exportConversationJson,
   exportSessionTrajectory,
   importConversationJson,
 } from "@/features/workspace/application/conversationExport";
@@ -42,7 +43,7 @@ vi.mock("sonner", () => ({ toast: { success: mocks.success } }));
 
 const disposers: Array<() => void> = [];
 
-let download = vi.fn<(filename: string, content: string, mime: string) => void>();
+let download = vi.fn<(filename: string, content: string, mime: string) => Promise<void>>();
 
 let files: FileTransferPort | null;
 
@@ -54,7 +55,9 @@ beforeEach(() => {
   mocks.rehydrateSessionView.mockReset().mockResolvedValue(undefined);
   mocks.selectAgentSession.mockReset();
   mocks.success.mockReset();
-  download = vi.fn<(filename: string, content: string, mime: string) => void>();
+  download = vi
+    .fn<(filename: string, content: string, mime: string) => Promise<void>>()
+    .mockResolvedValue(undefined);
   files = null;
 });
 
@@ -64,10 +67,88 @@ afterEach(() => {
 });
 
 describe("conversation archive generation", () => {
+  it.each([
+    ["Markdown", exportConversationMarkdown],
+    ["JSON", exportConversationJson],
+    ["trajectory", exportSessionTrajectory],
+  ] as const)("waits for the %s file handoff to finish", async (_format, run) => {
+    const handoff = Promise.withResolvers<void>();
+    download.mockImplementationOnce(() => handoff.promise);
+    installFiles({ saveText: download, pickText: vi.fn() });
+    installGateway({
+      exportConversation: vi.fn().mockResolvedValue("captured content"),
+      exportTrajectory: vi.fn().mockResolvedValue("captured evidence"),
+    });
+
+    const exporting = run();
+    const settled = observedSettlement(exporting);
+    try {
+      await vi.waitFor(() => expect(download).toHaveBeenCalledOnce());
+      expect(settled()).toBe(false);
+      expect(mocks.notifyError).not.toHaveBeenCalled();
+    } finally {
+      handoff.resolve();
+      await exporting;
+    }
+    expect(settled()).toBe(true);
+  });
+
+  it.each([
+    ["Markdown", exportConversationMarkdown],
+    ["JSON", exportConversationJson],
+    ["trajectory", exportSessionTrajectory],
+  ] as const)("reports a deferred %s save failure", async (_format, run) => {
+    const handoff = Promise.withResolvers<void>();
+    const failure = new Error("selected file could not be written");
+    download.mockImplementationOnce(() => handoff.promise);
+    installFiles({ saveText: download, pickText: vi.fn() });
+    installGateway({
+      exportConversation: vi.fn().mockResolvedValue("captured content"),
+      exportTrajectory: vi.fn().mockResolvedValue("captured evidence"),
+    });
+
+    const exporting = run();
+    await vi.waitFor(() => expect(download).toHaveBeenCalledOnce());
+    handoff.reject(failure);
+    await exporting;
+    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(failure.message, {
+      source: "session",
+    });
+  });
+
+  it("retires pending file feedback without changing the admitted material", async () => {
+    const handoff = Promise.withResolvers<void>();
+    download.mockImplementationOnce(() => handoff.promise);
+    installFiles({ saveText: download, pickText: vi.fn() });
+    const owner = installGateway({
+      exportTrajectory: vi.fn().mockResolvedValue("original captured evidence"),
+    });
+
+    const exporting = exportSessionTrajectory();
+    await vi.waitFor(() => expect(download).toHaveBeenCalledOnce());
+    owner.replaceRuntimeGeneration(() => ({
+      exportConversation: async () => "current conversation",
+      exportTrajectory: async () => "current evidence",
+      importConversation: async () => ({ id: "current-import" }),
+    }));
+    await exporting;
+    handoff.reject(new Error("late native write failure"));
+    await drainMicrotasks();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(download.mock.calls[0]?.[1]).toBe("original captured evidence");
+
+    await exportSessionTrajectory();
+    expect(download).toHaveBeenLastCalledWith(
+      expect.stringContaining("flame-session-current-trajectory-"),
+      "current evidence",
+      "application/json;charset=utf-8",
+    );
+  });
+
   it("exports captured Session evidence without reading the visible conversation", async () => {
     const response = Promise.withResolvers<string>();
     const exportTrajectory = vi.fn(() => response.promise);
-    installFiles({ download, pickText: vi.fn() });
+    installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportTrajectory });
 
     const exporting = exportSessionTrajectory();
@@ -86,7 +167,7 @@ describe("conversation archive generation", () => {
   it("does not request evidence without the Runtime export capability", async () => {
     const exportTrajectory = vi.fn();
     mocks.sessionExport = false;
-    installFiles({ download, pickText: vi.fn() });
+    installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportTrajectory });
     await exportSessionTrajectory();
     expect(exportTrajectory).not.toHaveBeenCalled();
@@ -96,7 +177,7 @@ describe("conversation archive generation", () => {
 
   it("reports evidence export failure without downloading a partial substitute", async () => {
     const failure = new Error("session is busy");
-    installFiles({ download, pickText: vi.fn() });
+    installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportTrajectory: vi.fn().mockRejectedValue(failure) });
 
     await exportSessionTrajectory();
@@ -109,7 +190,7 @@ describe("conversation archive generation", () => {
 
   it("reports conversation export failure without downloading a client-made substitute", async () => {
     const failure = new Error("session is busy");
-    installFiles({ download, pickText: vi.fn() });
+    installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportConversation: vi.fn().mockRejectedValue(failure) });
 
     await exportConversationMarkdown();
@@ -123,7 +204,7 @@ describe("conversation archive generation", () => {
   it("hands Runtime the artifact it exported for admission", async () => {
     const importConversation = vi.fn().mockResolvedValue({ id: "imported", title: "Imported" });
     const artifact = { version: 30, session: { id: "imported" }, runs: [], items: [] };
-    installFiles({ download, pickText: () => Promise.resolve(JSON.stringify(artifact)) });
+    installFiles({ saveText: download, pickText: () => Promise.resolve(JSON.stringify(artifact)) });
     installGateway({ importConversation });
 
     await importConversationJson();
@@ -136,7 +217,7 @@ describe("conversation archive generation", () => {
   it("retires a pending evidence export before the previous Runtime can download", async () => {
     const response = Promise.withResolvers<string>();
     const exportTrajectory = vi.fn(() => response.promise);
-    installFiles({ download, pickText: vi.fn() });
+    installFiles({ saveText: download, pickText: vi.fn() });
     const owner = installGateway({ exportTrajectory });
 
     const exporting = exportSessionTrajectory();
@@ -163,7 +244,7 @@ describe("conversation archive generation", () => {
   it("does not request evidence when no Session is selected", async () => {
     const exportTrajectory = vi.fn();
     mocks.activeSessionId = undefined;
-    installFiles({ download, pickText: vi.fn() });
+    installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportTrajectory });
 
     await exportSessionTrajectory();
@@ -175,7 +256,7 @@ describe("conversation archive generation", () => {
   it("retires a picker before its continuation can borrow the successor gateway", async () => {
     const picker = Promise.withResolvers<string | null>();
     const successorImport = vi.fn().mockResolvedValue({ id: "successor-session" });
-    installFiles({ download, pickText: () => picker.promise });
+    installFiles({ saveText: download, pickText: () => picker.promise });
     installGateway({ importConversation: vi.fn() });
 
     const retired = importConversationJson();
@@ -198,7 +279,10 @@ describe("conversation archive generation", () => {
   it("settles an in-flight import at replacement and rejects every late product effect", async () => {
     const response = Promise.withResolvers<{ id: string; title?: string }>();
     const retiredImport = vi.fn(() => response.promise);
-    installFiles({ download, pickText: () => Promise.resolve(validArtifact("old-session")) });
+    installFiles({
+      saveText: download,
+      pickText: () => Promise.resolve(validArtifact("old-session")),
+    });
     installGateway({ importConversation: retiredImport });
 
     const retired = importConversationJson();
@@ -221,7 +305,7 @@ describe("conversation archive generation", () => {
   it("does not turn a retired export failure into a successor download", async () => {
     const response = Promise.withResolvers<never>();
     const retiredExport = vi.fn(() => response.promise);
-    installFiles({ download, pickText: vi.fn() });
+    installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportConversation: retiredExport });
 
     const retired = exportConversationMarkdown();
@@ -243,7 +327,10 @@ describe("conversation archive generation", () => {
   it("retires the import while rehydrate is pending before query repair or navigation", async () => {
     const hydration = Promise.withResolvers<void>();
     mocks.rehydrateSessionView.mockReturnValueOnce(hydration.promise);
-    installFiles({ download, pickText: () => Promise.resolve(validArtifact("imported")) });
+    installFiles({
+      saveText: download,
+      pickText: () => Promise.resolve(validArtifact("imported")),
+    });
     const gateway = {
       importConversation: vi.fn().mockResolvedValue({ id: "imported", title: "Imported" }),
     } as unknown as ConversationArchiveGateway;
@@ -268,7 +355,10 @@ describe("conversation archive generation", () => {
   it("retires query repair before it can publish old import navigation", async () => {
     const repair = Promise.withResolvers<void>();
     mocks.invalidateAgentSessions.mockReturnValueOnce(repair.promise);
-    installFiles({ download, pickText: () => Promise.resolve(validArtifact("imported")) });
+    installFiles({
+      saveText: download,
+      pickText: () => Promise.resolve(validArtifact("imported")),
+    });
     const gateway = {
       importConversation: vi.fn().mockResolvedValue({ id: "imported", title: "Imported" }),
     } as unknown as ConversationArchiveGateway;
@@ -291,7 +381,10 @@ describe("conversation archive generation", () => {
 
   it("publishes an accepted import even when Session collection repair fails", async () => {
     mocks.invalidateAgentSessions.mockRejectedValueOnce(new Error("query unavailable"));
-    installFiles({ download, pickText: () => Promise.resolve(validArtifact("imported")) });
+    installFiles({
+      saveText: download,
+      pickText: () => Promise.resolve(validArtifact("imported")),
+    });
     installGateway({
       importConversation: vi.fn().mockResolvedValue({ id: "imported", title: "Imported" }),
     });
@@ -308,7 +401,7 @@ describe("conversation archive generation", () => {
     const picker = Promise.withResolvers<string | null>();
     const importConversation = vi.fn().mockResolvedValue({ id: "imported" });
     const pickText = vi.fn(() => picker.promise);
-    installFiles({ download, pickText });
+    installFiles({ saveText: download, pickText });
     installGateway({ importConversation });
 
     const first = importConversationJson();

@@ -34,6 +34,10 @@ export function createBrowserHost(): ClientHost {
       );
       return true;
     },
+    async saveTextFile(filename, content, mime) {
+      downloadBlob(filename, new Blob([content], { type: mime }));
+      return true;
+    },
     windowChrome: async () => null,
     async revealWindow() {
       window.focus();

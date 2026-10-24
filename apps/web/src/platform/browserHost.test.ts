@@ -43,6 +43,32 @@ describe("browser host", () => {
     expect(revoke).toHaveBeenCalledWith("blob:flame-image");
   });
 
+  it("hands exact exported text and MIME to the browser download", async () => {
+    vi.useFakeTimers();
+    const create = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:flame-export");
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const names: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      names.push(this.download);
+    });
+    const content = "# Captured result\n\n中文证据 🔥\n";
+    const mime = "text/markdown;charset=utf-8";
+
+    await expect(createBrowserHost().saveTextFile("flame-session.md", content, mime)).resolves.toBe(
+      true,
+    );
+
+    expect(names).toEqual(["flame-session.md"]);
+    const blob = create.mock.calls[0]![0] as Blob;
+    expect(blob.type).toBe(mime);
+    expect(await blob.text()).toBe(content);
+    expect(document.querySelector('a[download="flame-session.md"]')).toBeNull();
+    await vi.runAllTimersAsync();
+    expect(revoke).toHaveBeenCalledWith("blob:flame-export");
+  });
+
   it("does not turn remote URLs or executable data into downloaded images", async () => {
     const create = vi.spyOn(URL, "createObjectURL");
     for (const source of [

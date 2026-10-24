@@ -5,8 +5,12 @@ import {
   exportSessionTrajectory,
 } from "@/features/workspace/application/conversationExport";
 import { installConversationArchiveGateway } from "@/features/workspace/adapters/runtimeConversationArchiveGateway";
+import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
+import { createFileTransfer } from "@/features/workspace/adapters/fileTransfer";
+import { createDesktopHostClient } from "@/platform/desktopHost";
+import { notifyError } from "@/features/notifications/public/notifications";
 const mocks = vi.hoisted(() => ({
-  download: vi.fn<(filename: string, content: string, mime: string) => void>(),
+  download: vi.fn<(filename: string, content: string, mime: string) => Promise<void>>(),
 }));
 
 vi.mock("@/features/connection/public/capabilities", () => ({
@@ -30,13 +34,14 @@ vi.mock("@/features/notifications/public/notifications", async (importOriginal) 
   return { ...actual, notifyError: vi.fn() };
 });
 
-vi.mock("@/features/workspace/adapters/browserFileTransfer", () => ({
-  browserFileTransfer: () => ({ download: mocks.download, pickText: vi.fn() }),
-}));
+const files: FileTransferPort = { saveText: mocks.download, pickText: vi.fn() };
 
 const installations: Array<ReturnType<typeof installConversationArchiveGateway>> = [];
 
-beforeEach(() => mocks.download.mockReset());
+beforeEach(() => {
+  mocks.download.mockReset().mockResolvedValue(undefined);
+  vi.mocked(notifyError).mockReset();
+});
 
 afterEach(async () => {
   for (const installation of installations.splice(0).reverse()) installation.dispose();
@@ -56,7 +61,7 @@ describe("runtimeConversationArchiveGateway", () => {
     };
     const exportTrajectory = vi.fn().mockResolvedValue({ trajectory });
     const client = { sessions: { exportTrajectory } } as unknown as FlameClient;
-    installations.push(installConversationArchiveGateway(() => client));
+    installations.push(installConversationArchiveGateway(() => client, files));
 
     await exportSessionTrajectory();
 
@@ -72,7 +77,7 @@ describe("runtimeConversationArchiveGateway", () => {
     const retiredExport = vi.fn().mockResolvedValue({ format: "md", markdown: "retired" });
     const successorExport = vi.fn().mockResolvedValue({ format: "md", markdown: "successor" });
     let runtimeClient = () => clientWithExport(retiredExport);
-    installations.push(installConversationArchiveGateway(() => runtimeClient()));
+    installations.push(installConversationArchiveGateway(() => runtimeClient(), files));
 
     runtimeClient = () => clientWithExport(successorExport);
     await exportConversationMarkdown();
@@ -91,7 +96,7 @@ describe("runtimeConversationArchiveGateway", () => {
     const exportConversation = vi.fn(() => response.promise);
     const successorExport = vi.fn().mockResolvedValue({ format: "md", markdown: "current" });
     let runtimeClient = () => clientWithExport(exportConversation);
-    const installation = installConversationArchiveGateway(() => runtimeClient());
+    const installation = installConversationArchiveGateway(() => runtimeClient(), files);
     installations.push(installation);
 
     const retired = exportConversationMarkdown();
@@ -114,6 +119,48 @@ describe("runtimeConversationArchiveGateway", () => {
       expect.stringContaining("flame-session-current-"),
       "current",
       "text/markdown;charset=utf-8",
+    );
+  });
+
+  it("saves through the composed desktop host with only a suggested basename", async () => {
+    const call = vi.fn(async (..._args: unknown[]) => true as unknown);
+    const host = createDesktopHostClient({ call, on: async () => () => {} });
+    const exportConversation = vi.fn().mockResolvedValue({ format: "md", markdown: "# Résumé" });
+    installations.push(
+      installConversationArchiveGateway(
+        () => clientWithExport(exportConversation),
+        createFileTransfer(host),
+      ),
+    );
+
+    await exportConversationMarkdown();
+
+    expect(call).toHaveBeenCalledExactlyOnceWith(
+      "main.DesktopHost.SaveTextFile",
+      expect.stringMatching(/^flame-session-current-[0-9T-]+\.md$/),
+      "# Résumé",
+    );
+    expect(notifyError).not.toHaveBeenCalled();
+  });
+
+  it("reports a native save failure through the export failure notification", async () => {
+    const call = vi.fn(async () => {
+      throw new Error("write selected file: permission denied");
+    });
+    const host = createDesktopHostClient({ call, on: async () => () => {} });
+    const exportConversation = vi.fn().mockResolvedValue({ format: "md", markdown: "# Title" });
+    installations.push(
+      installConversationArchiveGateway(
+        () => clientWithExport(exportConversation),
+        createFileTransfer(host),
+      ),
+    );
+
+    await expect(exportConversationMarkdown()).resolves.toBeUndefined();
+
+    expect(notifyError).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining("permission denied"),
+      { source: "session" },
     );
   });
 });

@@ -15,6 +15,8 @@ const CHOOSE_WORKING_DIRECTORY = "main.DesktopHost.ChooseWorkingDirectory";
 
 const SAVE_IMAGE = "main.DesktopHost.SaveImage";
 
+const SAVE_TEXT_FILE = "main.DesktopHost.SaveTextFile";
+
 const WINDOW_CHROME = "main.DesktopHost.WindowChrome";
 
 const NOTIFICATION_AUTHORIZATION = "main.DesktopHost.NotificationAuthorization";
@@ -33,6 +35,7 @@ function hostBinding(
     }),
     [CHOOSE_WORKING_DIRECTORY]: async () => "/tmp/project",
     [SAVE_IMAGE]: async () => true,
+    [SAVE_TEXT_FILE]: async () => true,
     [WINDOW_CHROME]: async () => ({
       controlsCentreY: 20,
       controlsInlineEnd: 72,
@@ -97,6 +100,47 @@ describe("DesktopHostClient", () => {
     const malformed = hostBinding({ [CHOOSE_WORKING_DIRECTORY]: async () => ({ path: "/tmp" }) });
     await expect(
       createDesktopHostClient(malformed).chooseWorkingDirectory(),
+    ).rejects.toBeInstanceOf(RpcTransportError);
+  });
+
+  it("awaits native text saving with only the suggested name and exact content", async () => {
+    const choice = Promise.withResolvers<boolean>();
+    const binding = hostBinding({ [SAVE_TEXT_FILE]: () => choice.promise });
+    const client = createDesktopHostClient(binding);
+    const content = "# Captured result\n\n中文证据 🔥\n";
+    const saving = client.saveTextFile("flame-session.md", content, "text/markdown;charset=utf-8");
+    expect(binding.call).toHaveBeenCalledExactlyOnceWith(
+      SAVE_TEXT_FILE,
+      "flame-session.md",
+      content,
+    );
+    choice.resolve(false);
+    await expect(saving).resolves.toBe(false);
+
+    const completed = hostBinding();
+    await expect(
+      createDesktopHostClient(completed).saveTextFile(
+        "flame-session.json",
+        "{}",
+        "application/json",
+      ),
+    ).resolves.toBe(true);
+  });
+
+  it("rejects malformed text-save responses and native failures", async () => {
+    for (const value of [undefined, null, "saved", {}, 1]) {
+      const binding = hostBinding({ [SAVE_TEXT_FILE]: async () => value });
+      await expect(
+        createDesktopHostClient(binding).saveTextFile("flame.md", "# Result", "text/markdown"),
+      ).rejects.toBeInstanceOf(RpcTransportError);
+    }
+    const failed = hostBinding({
+      [SAVE_TEXT_FILE]: async () => {
+        throw new Error("selected file could not be written");
+      },
+    });
+    await expect(
+      createDesktopHostClient(failed).saveTextFile("flame.md", "# Result", "text/markdown"),
     ).rejects.toBeInstanceOf(RpcTransportError);
   });
 

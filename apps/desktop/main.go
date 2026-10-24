@@ -37,6 +37,10 @@ func main() {
 		dialogs: app.Dialog,
 		window:  window,
 	})
+	host.useTextFileSaver(wailsTextFileSaver{
+		dialogs: app.Dialog,
+		window:  window,
+	})
 	installNativeZoom(app)
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
