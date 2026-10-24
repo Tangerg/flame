@@ -235,7 +235,7 @@ function FilePreview({
   const lineWindow = windowFor.intent === viewer ? windowFor.window : initialWindow(targetLine);
   const setLineWindow = (next: LineWindow) => setWindowFor({ intent: viewer, window: next });
 
-  const { data, isPlaceholderData, isLoading, error, refetch } = useWorkspaceReadFile(
+  const { data, isPlaceholderData, isLoading, isFetching, error, refetch } = useWorkspaceReadFile(
     !isWorkspaceResolving(workspace)
       ? {
           cwd,
@@ -305,21 +305,43 @@ function FilePreview({
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
   const { directory, name } = splitFilePath(viewer.path);
+  // A failed refresh of this query's own accepted content keeps its reader, and position, in place.
+  const retained = data !== undefined && !isPlaceholderData && !unsupported;
+  const refreshFeedback =
+    retained && error != null ? (
+      isFetching ? (
+        <SkeletonList count={1} variant="compact" label={t("common.loading")} />
+      ) : (
+        <div role="status">
+          <DataError
+            failure={error}
+            focusTarget={scrollPort}
+            unsupported={{ icon, sub: t("file.readRefreshError.sub"), size: "compact" }}
+            onRetry={refetch}
+            title={t("file.readRefreshError.title")}
+            sub={t("file.readRefreshError.sub")}
+            size="compact"
+          />
+        </div>
+      )
+    ) : undefined;
 
-  const sub = data ? (
-    <span>
-      {moreBefore || moreAfter
-        ? t("file.range", { start: firstShown, end: lastShown, total: data.totalLines })
-        : t("file.lines", { count: data.totalLines })}
-      {data.truncated && ` · ${t("file.truncated")}`}
-    </span>
-  ) : undefined;
+  const sub =
+    data && !unsupported ? (
+      <span>
+        {moreBefore || moreAfter
+          ? t("file.range", { start: firstShown, end: lastShown, total: data.totalLines })
+          : t("file.lines", { count: data.totalLines })}
+        {data.truncated && ` · ${t("file.truncated")}`}
+      </span>
+    ) : undefined;
 
   return (
     <WorkspaceViewLayout
       scrollInset="flush"
       scrollRef={scrollPort}
       scrollLabel={viewer.path}
+      notice={refreshFeedback}
       navigation={
         <IconButton
           ref={backRef}
@@ -343,7 +365,7 @@ function FilePreview({
         </span>
       }
       controls={
-        renderer && wholeFile ? (
+        renderer && wholeFile && !unsupported ? (
           <Segmented
             value={mode}
             onChange={setMode}
@@ -393,7 +415,7 @@ function FilePreview({
         <DataView
           items={data ? [data] : []}
           isLoading={isLoading || isWorkspaceResolving(workspace)}
-          failure={error}
+          failure={retained ? undefined : error}
           onRetry={refetch}
           skeletonCount={12}
           error={{ title: t("file.error.title"), sub: t("file.error.sub") }}

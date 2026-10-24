@@ -591,6 +591,8 @@ export const zhTW: Record<string, string> = {
   "file.empty.sub": "此目錄中沒有可顯示的檔案。",
   "file.refreshError.title": "檔案重新整理失敗",
   "file.refreshError.sub": "目前顯示上次載入的檔案。",
+  "file.readRefreshError.title": "檔案重新整理失敗",
+  "file.readRefreshError.sub": "目前顯示上次載入的內容。",
   "file.error.title": "無法開啟檔案",
   "file.error.sub": "它可能已移動，或位於工作區之外。",
 

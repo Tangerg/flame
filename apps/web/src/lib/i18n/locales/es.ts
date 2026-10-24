@@ -880,6 +880,8 @@ export const es: Record<string, string> = {
   "file.empty.sub": "Este directorio no contiene archivos visibles.",
   "file.refreshError.title": "No se pudieron actualizar los archivos",
   "file.refreshError.sub": "Se muestran los últimos archivos cargados.",
+  "file.readRefreshError.title": "No se pudo actualizar el archivo",
+  "file.readRefreshError.sub": "Se muestra el último contenido cargado.",
   "file.error.title": "No se pudo abrir el archivo",
   "file.error.sub": "Puede haberse movido o estar fuera del espacio de trabajo.",
   "composer.key.historyPrevDesc": "Recuperar el mensaje anterior",

@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. A failed background file-list refresh now keeps accepted files, the existing tree cursor, selection and expanded directories available with persistent recovery feedback. All 73 focused tests, 3,282 Web tests, 25 non-test Web gates and the supported native check pass. Actual English/light/14 px/Orange and Chinese/dark/18 px/custom-blue flows qualify repeated retry, long-list visibility, deliberate scrolling, reading/return and continued drafts, including a 320 px Dock and native 200% zoom. Owned processes, new checkout/Library outputs are cleaned; preexisting output files are restored. The private evidence root is archived and removed. Implementation `4cfc60e57` is pushed to remote main and its exact hash is verified.
+Updated: 2026-10-24. A failed background file read now keeps the current query's accepted content, selected renderer mode, reader and scroll position available with persistent recovery feedback. The latest remote main `9789132a1` is integrated. On its new dependency graph, all 82 focused tests, 3,291 Web tests, 25 non-test Web gates and the supported native check pass. Actual English/light/14 px/Orange and Chinese/dark/18 px/custom-blue flows qualify repeated retry, deliberate scrolling, reading/return and continued drafts, including a 320 px Dock and native 200% zoom. Owned processes and new checkout/Library outputs are cleaned; three preexisting output files are restored. Delivery and evidence removal are the remaining final steps.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user's latest instruction explicitly resumes continuous work. The root-file refresh batch starts from remote main `454cd3b9ea9018564cf8a5f5695adf9404ca86bd`, retaining the delivered read-error and tree-entry work. Implementation `4cfc60e576535f318a8fa7ff180f359840490d41` is delivered to remote `main`. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `main`; exact remote hash, clean status and zero unpushed commits were verified before the receipt. The current query cache remains the sole accepted-list owner; the existing FileTree owns its cursor, expansion and selected-file projection. A local pre-mutation layout snapshot preserves a visible active row when recovery feedback reduces its viewport, while later draft focus and deliberate scrolling remain authoritative. Focused, complete Web, supported native and actual English/Chinese acceptance pass. Before evidence removal, all 1,697 accepted product/source/resource inputs and 11 private acceptance inputs matched the accepted bytes. Six owned PIDs are dead, seven new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. The private evidence root, bundles, data and logs are archived and removed after exact remote confirmation. The session archive retains 211 UTF-8 evidence files and ten screenshot hashes; its gzip SHA-256 is `5fc59e7a931fe5ccf1d99963a398fc4dc889b05c966e915e0528bd3dc8f94186`. Read-only primary-checkout inspection found branch `codex/repository-ownership-cleanup` at `c5d818374`, with 11 commits absent from every fetched remote branch, no modified/staged code and only untracked `docs/ui打磨优化.md`; none of that parallel work was changed. Next, inspect the surrounding file-browse/read task before selecting another evidence-backed batch.
+The user's latest instruction explicitly resumes continuous work. The file-read refresh batch starts from the delivered root-list receipt `6868279a2`, then fast-forwards to remote main `9789132a1e03129e6612dfbbe1ef85f0207d9e2b` at the user's request. All ten UI work files retain their bytes through that merge. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/file-read-refresh-continuity-1024`; the primary checkout occupies local `main`, so delivery uses the verified feature HEAD as the remote main update without changing the primary's files or checked-out branch. The current query cache remains the sole accepted-content owner. No last-good copy or completion-time focus action is introduced. Focused, complete Web, supported native and actual English/Chinese acceptance pass on the merged graph. All 5,721 accepted non-Markdown tracked inputs and ten private acceptance inputs remain unchanged. Four owned CLI/native PIDs are dead, eight new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. The private evidence root remains only for exact delivery confirmation and archive/removal. Next, inspect the expanded-directory browse/read boundary before selecting another evidence-backed batch.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -2421,6 +2421,137 @@ accepted inputs and restored preexisting outputs are verified. The accepted
 1,697-input aggregate SHA-256 is
 `7ed8edb0e69f8d0e657d841a088382f4278a983e792b48a78d5a5dc85e09dd43`.
 Continue from fresh evidence at the surrounding browse/read task boundary.
+
+### File read refresh continuity
+
+Actual Wails at `6868279a2` reproduced a distinct read failure. Open
+`reading-guide.md`, choose Source, focus its named reader and PageDown to 713 px.
+The background replacement fails with all 3,206 accepted characters still in
+the current query, but the original `DataView` unmounts the source and clamps
+that surviving reader to 0 px. The production focus/visibility and filesystem
+observers use this same read-replacement boundary.
+
+`FilePreview` in `FileWorkspace.tsx` now keeps its current query's own accepted
+body through ordinary refresh failure and retry. Its existing renderer mode,
+reader and content nodes remain mounted; persistent recovery feedback occupies
+`WorkspaceViewLayout.notice` outside the scrollport. Pending feedback uses the
+existing compact skeleton. A focused retiring Retry enters the same named
+reader through `DataError.focusTarget`; later focus is never reclaimed. The
+query cache still owns accepted content, with no last-good state, observer,
+timer, completion effect or global query/DataView policy change.
+
+First reads, a different path/CWD, workspace resolution and new line windows
+without their own accepted data retain their existing behavior. Placeholder
+content is not promoted to an accepted result. Accepted empty text is retained.
+Unsupported Runtime methods retain readable content with warning feedback and
+no Retry. `unsupported_mime` retains its native-open classification and removes
+the obsolete accepted line metadata and Source/Preview controls. A primary
+review regression initially caught the stale Source tab; both cached PNG and
+Markdown cases now prove the complete classification, including singular
+`1 line` metadata.
+
+Read-only ZCode's actual `PreviewPane.tsx:939–993` distinguishes file changes and
+first-load failure; it does not establish background-cache continuity and its
+local state/effects were not copied. TanStack's
+[query result contract](https://tanstack.com/query/latest/docs/framework/react/reference/functions/useQuery)
+provides the accepted-data and placeholder distinction; Flame's current query
+and `workspaceReadObservation.ts` establish the actual owner. The previously
+reviewed WAI keyboard guidance and better-accessibility, typography, writing
+and layout skills inform recovery and continued reading. Existing surfaces,
+type roles, Orange/custom accent ownership and focus tokens remain in use.
+
+Bounded Claude Code CLI (`claude-opus-5-5`, 258.89 seconds, 45 reported turns,
+no permission denials or spawned agents) supplied the scoped initial ten-file
+candidate. The primary reviewed the actual diff, made mode assertions
+unconditional and added the cached-MIME header boundary and regressions.
+
+The user's new main `9789132a1` contains 45 incoming files, including dependency,
+Runtime and DesktopHost changes. All ten UI work files survive the fast-forward
+byte for byte. The old-base full Web process group was stopped and its partial
+log retained; that interrupted run is not a pass. `make setup` on the merged
+linked worktree fails before npm installation because `golang.org/x/mod/zip`
+rejects its Git-directory shape. The existing module-artifact owner was then
+invoked against a private clean clone of that exact commit, using its pinned
+candidate commits and the owned checkout's proxy output. Root `npm ci`, module
+download and existing shared builds pass; the private source clone is removed.
+No tooling source, module/lock file or global configuration is changed. Linked
+worktree support remains tooling debt to revisit when changing module packaging.
+
+Verification on the merged graph:
+
+- Four focused files / 82 tests pass (4.56 seconds), followed by typecheck and
+  lint. With final tests retained, the original reader yields nine failures /
+  73 passes; removing only the explicit reader focus target yields one / 81;
+  restoring only the stale MIME header behavior yields two / 80. Accepted
+  source is restored after every control. Deferred repeated failure/success,
+  updated text, accepted empty text, selected Preview/Source, later drafting,
+  zero-argument refetch, unsupported methods, MIME, path/CWD and placeholder
+  line-window boundaries are covered. HappyDOM geometry does not establish
+  native scroll clamping; the real Wails evidence does.
+- The complete Web command passes 397 files / 3,291 tests (214.37 seconds),
+  all 25 non-test gates and production module linking; whole-command time is
+  257.15 seconds. Non-failing loopback `ECONNREFUSED` diagnostics remain
+  unclassified. `make check-native` passes in 33.49 seconds, including Desktop
+  test/vet/build and production Wails arm64. `vtool` confirms macOS 13.0 minimum
+  / SDK 26.5; duplicate `-lobjc` is non-failing.
+- English/light/14 px/Flame Orange: the real composer-to-separator Tab path
+  and Home establish a 320 px Dock. The selected Preview keeps the same view
+  and 713 px position through background failure. Source remains selectable;
+  repeated keyboard Retry keeps the same source and 1,264 px position. During
+  request four's private 30-second delay, a deliberate wheel scroll reaches
+  1,981 px and the original draft grows from 25 to 52 characters. Success
+  preserves that source, exact scroll position, original input, text, focus
+  and `52..52` caret. Back retains the selected guide and tree cursor; continued
+  typing reaches 65 characters.
+- Chinese/dark/18 px/custom `#007BFF`/motion off: native Window Left settles
+  at 1122 × 1051; Actual Size plus 20 individually observed Zoom In actions
+  produces 561 × 525 CSS pixels at 200%. The full-width Files path keeps the
+  same Source and 341 px position through background/repeated failure. The
+  reader shrinks from 361 to 184 px while title, mode, recovery and return
+  remain available. During request four's genuine pending delay, explicit
+  Close returns to the Conversation region; activating the original input
+  then grows its draft from 8 to 16 characters. Success leaves its exact input,
+  focus and `16..16` caret alone. Reopening retains Source and 341 px. Back,
+  Close, continued typing to 22 characters and Actual Size preserve that input
+  and `22..22` caret. The request-three capture had already settled to repeated
+  failure; it is not counted as an additional pending observation.
+
+Writing review (Approve for inspected copy):
+
+| Severity       | Location                                                               | Before                                         | After                                                                | Why                                                                |
+| -------------- | ---------------------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| HIGH, resolved | `FileWorkspace.tsx` and `file.readRefreshError.*` in all eight locales | Generic open failure hid accepted file content | Refresh-specific failure, last-loaded explanation and existing Retry | Names the failed task and explains which content remains available |
+
+Layout review (Approve for inspected scenes):
+
+| Severity       | Location                                 | Before                                                                | After                                                | Why                                                                             |
+| -------------- | ---------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------- |
+| HIGH, resolved | File reader and its existing notice slot | Error replacement removed the reading body and collapsed its position | Recovery stays outside the same surviving scrollport | Retains a readable task and reachable recovery/return at 320 px and native 200% |
+
+English and Chinese rendered copy is native-qualified; the other six strings
+are source-reviewed and pass locale/type gates. Other-locale native rendering,
+forced RTL mirroring, VoiceOver speech and native IME are not claimed. The
+private fixture substitutes only this canonical file read's outcome/timing,
+disables its automatic retry and passively records DOM/query identity. F8
+invokes production read replacement. Actual Wails, product UI/navigation,
+canonical accepted content and the original draft owner remain in use. The
+unit test proves changed successful text; native success uses the unchanged
+canonical text and proves availability, identity, focus and position. No live
+filesystem fault, provider/Send/durable-write flow, other platform, browser visual
+suite, performance benchmark or standalone Runtime/CLI suite is claimed.
+
+All 5,721 accepted non-Markdown tracked inputs and ten private acceptance inputs
+remain unchanged; all 11 generated plugin resources retain their base bytes.
+The accepted aggregate SHA-256 is
+`6a495919765d51aebb47bca0f9a2b2098feeac51024bdc379dedd5cb059560f2`.
+Four owned CLI/native PIDs are dead and three exact bundles are unregistered.
+Eight new checkout output directories and six unique Library Cache/WebKit
+directories are removed. The preexisting native binary and two UI-cache files
+are restored byte for byte; preexisting output directories remain. Four older
+build copies were qualified against their exact read-only source bytes. The
+private evidence root is retained only until delivery confirmation and archival.
+Continue by inspecting expanded-directory refresh behavior before selecting
+the next evidence-backed batch.
 
 ### Long-file targets and prepend ownership
 

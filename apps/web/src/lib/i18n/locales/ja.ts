@@ -833,6 +833,8 @@ export const ja: Record<string, string> = {
   "file.empty.sub": "このフォルダーには表示できるファイルがありません。",
   "file.refreshError.title": "ファイルを更新できませんでした",
   "file.refreshError.sub": "前回読み込んだファイルを表示しています。",
+  "file.readRefreshError.title": "ファイルを更新できませんでした",
+  "file.readRefreshError.sub": "前回読み込んだ内容を表示しています。",
   "file.error.title": "ファイルを開けませんでした",
   "file.error.sub": "移動されたか、ワークスペース外にある可能性があります。",
   "composer.key.historyPrevDesc": "前のメッセージを呼び出す",

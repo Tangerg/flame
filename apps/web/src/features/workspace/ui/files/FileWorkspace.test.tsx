@@ -1050,6 +1050,270 @@ describe("root file listing refresh continuity", () => {
   });
 });
 
+describe("file read refresh continuity", () => {
+  const guide = "docs/reading-guide.md";
+  const readQuery = (path: string, cwd?: string) => ({
+    queryKey: [WORKSPACE_READ_FILE_KEY, { cwd, path }],
+    exact: true,
+  });
+  const unavailable = () => new Error("file unavailable");
+  const sourceView = () => {
+    const view = document.querySelector<HTMLElement>('[data-quote-source="file"]');
+    if (!view) throw new Error("source view is not shown");
+    return view;
+  };
+
+  it("keeps the accepted source, its reader and focus through failed refreshes and retries", async () => {
+    readFile.mockResolvedValueOnce({
+      content: "# Guide\nAccepted line",
+      startLine: 1,
+      totalLines: 2,
+    });
+    openWorkspaceFile(guide);
+    mount(
+      <>
+        <textarea aria-label="Message" defaultValue="Retained message draft" />
+        <FileWorkspace />
+      </>,
+    );
+    await screen.findByTestId("rendered-markdown");
+    fireEvent.click(screen.getByRole("tab", { name: "Source" }));
+    const host = controlGeometry(screen.getByRole("region", { name: guide }));
+    const view = sourceView();
+    expect(view.textContent).toContain("Accepted line");
+    act(() => host.focus());
+    host.scrollTop = 713;
+    const back = screen.getByRole("button", { name: "Back to files" });
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+
+    const refresh = Promise.withResolvers<WorkspaceFileContent>();
+    readFile.mockReturnValueOnce(refresh.promise);
+    act(() => void client.refetchQueries(readQuery(guide)));
+    await waitFor(() => expect(readFile).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText("Couldn't refresh file")).toBeNull();
+
+    await act(async () => refresh.reject(unavailable()));
+    const feedback = (await screen.findByText("Couldn't refresh file")).closest('[role="status"]')!;
+    expect(feedback.textContent).toContain("Showing the last loaded content.");
+    expect(host.contains(feedback)).toBe(false);
+    expect(screen.getByRole("region", { name: guide })).toBe(host);
+    expect(sourceView()).toBe(view);
+    expect(view.textContent).toContain("Accepted line");
+    expect(screen.getByRole("tab", { name: "Source", selected: true })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Back to files" })).toBe(back);
+    expect(screen.getByRole("button", { name: "Go to line" })).toBeTruthy();
+    expect(document.activeElement).toBe(host);
+    expect(host.scrollTop).toBe(713);
+
+    for (const { typing, settle } of [
+      {
+        typing: false,
+        settle: (read: PromiseWithResolvers<WorkspaceFileContent>) => read.reject(unavailable()),
+      },
+      {
+        typing: true,
+        settle: (read: PromiseWithResolvers<WorkspaceFileContent>) =>
+          read.resolve({ content: "# Guide\nUpdated line", startLine: 1, totalLines: 2 }),
+      },
+    ]) {
+      const retry = await screen.findByRole("button", { name: "Retry" });
+      act(() => retry.focus());
+      const read = Promise.withResolvers<WorkspaceFileContent>();
+      readFile.mockReturnValueOnce(read.promise);
+
+      fireEvent.click(retry);
+      expect(document.activeElement).toBe(host);
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Retry" })).toBeNull());
+      const pending = screen.getByRole("status");
+      expect(pending.textContent).toContain("Loading");
+      expect(host.contains(pending)).toBe(false);
+      expect(sourceView()).toBe(view);
+      expect(document.activeElement).toBe(host);
+      if (typing) {
+        act(() => draft.focus());
+        fireEvent.change(draft, { target: { value: "Retained message draft, continued" } });
+      }
+
+      await act(async () => settle(read));
+      await waitFor(() => expect(client.isFetching()).toBe(0));
+      expect(screen.getByRole("region", { name: guide })).toBe(host);
+      expect(sourceView()).toBe(view);
+      expect(document.activeElement).toBe(typing ? draft : host);
+      expect(host.scrollTop).toBe(713);
+    }
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(view.textContent).toContain("Updated line");
+    expect(view.textContent).not.toContain("Accepted line");
+    expect(screen.getByRole("tab", { name: "Source", selected: true })).toBeTruthy();
+    expect(draft.value).toBe("Retained message draft, continued");
+    expect(readFile.mock.calls).toEqual(
+      Array.from({ length: 4 }, () => [{ cwd: undefined, path: guide }]),
+    );
+  });
+
+  it.each([
+    {
+      label: "a selected Preview",
+      path: guide,
+      content: "# Guide",
+      updated: "# Updated guide",
+      mode: "Preview",
+      shown: () => screen.getByTestId("rendered-markdown"),
+    },
+    {
+      label: "accepted empty text",
+      path: "src/empty.go",
+      content: "",
+      updated: "package empty",
+      mode: undefined,
+      shown: sourceView,
+    },
+  ])(
+    "keeps $label mounted through a failed refresh until updated content arrives",
+    async ({ path, content, updated, mode, shown }) => {
+      readFile.mockResolvedValueOnce({ content, startLine: 1, totalLines: 1 });
+      openWorkspaceFile(path);
+      mount(<FileWorkspace />);
+      const node = await waitFor(shown);
+      const host = screen.getByRole("region", { name: path });
+      const text = node.textContent;
+
+      readFile.mockRejectedValueOnce(unavailable());
+      await act(() => client.refetchQueries(readQuery(path)));
+      await screen.findByText("Couldn't refresh file");
+      expect(screen.queryByText("Couldn't open file")).toBeNull();
+      expect(screen.getByRole("region", { name: path })).toBe(host);
+      expect(shown()).toBe(node);
+      expect(node.textContent).toBe(text);
+      expect(screen.queryByRole("tab", { selected: true })?.textContent).toBe(mode);
+
+      readFile.mockResolvedValueOnce({ content: updated, startLine: 1, totalLines: 1 });
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      await waitFor(() => expect(node.textContent).toContain(updated));
+      expect(shown()).toBe(node);
+      expect(screen.getByRole("region", { name: path })).toBe(host);
+      expect(screen.queryByText("Couldn't refresh file")).toBeNull();
+      expect(screen.queryByRole("tab", { selected: true })?.textContent).toBe(mode);
+    },
+  );
+
+  it("explains an unsupported refresh beside the accepted source without a retry", async () => {
+    openWorkspaceFile("src/main.go");
+    mount(<FileWorkspace />);
+    await screen.findByText("package main");
+    const host = screen.getByRole("region", { name: "src/main.go" });
+    const view = sourceView();
+    readFile.mockRejectedValueOnce(
+      new RpcError({ message: "method not found", data: { type: "method_not_found" } }),
+    );
+    await act(() => client.refetchQueries(readQuery("src/main.go")));
+
+    const feedback = (await screen.findByText("Not supported by this runtime")).closest(
+      '[role="status"]',
+    )!;
+    expect(feedback.textContent).toContain("Showing the last loaded content.");
+    expect(host.contains(feedback)).toBe(false);
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(sourceView()).toBe(view);
+    expect(view.textContent).toContain("package main");
+  });
+
+  it.each([
+    { path: "assets/logo.png", title: "No image preview here yet", hasMode: false },
+    { path: guide, title: "This file isn't text", hasMode: true },
+  ])(
+    "keeps the native classification when cached $path becomes unsupported",
+    async ({ path, title, hasMode }) => {
+      isLocal = true;
+      selection.current = { status: "ready", cwd: "/work/project" };
+      readFile.mockResolvedValueOnce({ content: "cached pixels", startLine: 1, totalLines: 1 });
+      openWorkspaceFile(path);
+      mount(<FileWorkspace />);
+      await screen.findByText("cached pixels");
+      expect(screen.getByText("1 line")).toBeTruthy();
+      if (hasMode) fireEvent.click(screen.getByRole("tab", { name: "Source" }));
+      readFile.mockRejectedValueOnce(
+        new RpcError({ code: -32602, message: "binary", data: { type: "unsupported_mime" } }),
+      );
+      await act(() => client.refetchQueries(readQuery(path, "/work/project")));
+
+      expect(await screen.findByText(title)).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Open" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Show in Finder" })).toBeTruthy();
+      expect(screen.queryByText("cached pixels")).toBeNull();
+      expect(screen.queryByText("Couldn't refresh file")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Go to line" })).toBeNull();
+      expect(screen.queryByRole("tab", { name: "Source" })).toBeNull();
+      expect(screen.queryByRole("tab", { name: "Preview" })).toBeNull();
+      expect(screen.queryByText(/^\d+ lines?$/)).toBeNull();
+    },
+  );
+
+  it.each([
+    { label: "another file", change: "path", next: { cwd: "/work/one", path: "src/other.go" } },
+    { label: "another workspace", change: "cwd", next: { cwd: "/work/two", path: "src/main.go" } },
+  ])(
+    "drops the previous read's content when $label opens under refresh feedback",
+    async ({ change, next }) => {
+      selection.current = { status: "ready", cwd: "/work/one" };
+      openWorkspaceFile("src/main.go");
+      const view = mount(<FileWorkspace />);
+      await screen.findByText("package main");
+      readFile.mockRejectedValueOnce(unavailable());
+      await act(() => client.refetchQueries(readQuery("src/main.go", "/work/one")));
+      await screen.findByText("Couldn't refresh file");
+
+      const read = Promise.withResolvers<WorkspaceFileContent>();
+      readFile.mockReturnValueOnce(read.promise);
+      selection.current = { status: "ready", cwd: next.cwd };
+      if (change === "path") {
+        act(() => openWorkspaceFile(next.path));
+      } else {
+        view.rerender(
+          <QueryClientProvider client={client}>
+            <FileWorkspace />
+          </QueryClientProvider>,
+        );
+      }
+      expect(screen.queryByText("Couldn't refresh file")).toBeNull();
+      expect(screen.queryByText("package main")).toBeNull();
+      expect(screen.getByRole("status").textContent).toContain("Loading");
+
+      await act(async () => read.resolve({ content: "package next", startLine: 1, totalLines: 1 }));
+      expect(await screen.findByText("package next")).toBeTruthy();
+      expect(readFile).toHaveBeenLastCalledWith(next);
+    },
+  );
+
+  it("keeps the ordinary read failure for a new line window without accepted data", async () => {
+    readFile.mockResolvedValueOnce(lineWindow(100, 500, 600));
+    openWorkspaceFile("src/big.go");
+    mount(<FileWorkspace />);
+    await waitFor(() => expect(row(500)).toBeTruthy());
+    readFile.mockRejectedValueOnce(unavailable());
+    await act(() => client.refetchQueries(readQuery("src/big.go")));
+    await screen.findByText("Couldn't refresh file");
+    expect(row(100)).toBeTruthy();
+
+    const later = Promise.withResolvers<WorkspaceFileContent>();
+    readFile.mockReturnValueOnce(later.promise);
+    fireEvent.click(screen.getByRole("button", { name: /more/i }));
+    expect(row(100)).toBeTruthy();
+    expect(screen.queryByText("Couldn't refresh file")).toBeNull();
+
+    await act(async () => later.reject(unavailable()));
+    expect(await screen.findByText("Couldn't open file")).toBeTruthy();
+    expect(row(100)).toBeNull();
+    expect(screen.queryByText("Couldn't refresh file")).toBeNull();
+    expect(readFile).toHaveBeenLastCalledWith({
+      cwd: undefined,
+      path: "src/big.go",
+      startLine: 100,
+      endLine: 700,
+    });
+  });
+});
+
 describe("workspace file tree keyboard model", () => {
   const readme: WorkspaceFileEntry = { name: "README.md", path: "README.md", type: "file" };
 

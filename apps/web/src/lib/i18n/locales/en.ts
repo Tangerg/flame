@@ -796,6 +796,8 @@ export const en: Record<string, string> = {
   "file.empty.sub": "This directory has no visible files.",
   "file.refreshError.title": "Couldn't refresh files",
   "file.refreshError.sub": "Showing the last loaded files.",
+  "file.readRefreshError.title": "Couldn't refresh file",
+  "file.readRefreshError.sub": "Showing the last loaded content.",
   "file.error.title": "Couldn't open file",
   "file.error.sub": "It may have moved or live outside the workspace.",
 
