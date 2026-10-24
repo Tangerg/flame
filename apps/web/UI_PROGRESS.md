@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. The file-range focus milestone is the user's requested stopping point; further UI work is paused pending an explicit resume. Loading earlier or later lines now hands the activated control's focus to the existing named reader before requesting content. Reaching the first or last line no longer loses keyboard reading when that control disappears, and later Composer focus remains untouched. Native English/light/14 px and Chinese/dark/18 px/blue acceptance covers both edges, continued drafting, file-list return and 200% zoom. All 40 focused tests, 3,260 Web tests, 20 of 22 post-test gates and the supported native check pass. Both remaining guards also fail on the clean baseline. Delivery retains exact-source verification and guarded cleanup.
+Updated: 2026-10-24. The user's explicit resume integrates current main `f5af47969` and continues the desktop UI work. Shared read-error Retry now hands only its own current focus to the existing nearest focusable host before invoking the read callback. Repeated failure and successful recovery preserve keyboard reading, while later authoring keeps its focus. All 51 focused tests, 3,262 Web tests, 25 non-test Web gates and the supported native check pass. Actual English/light/14 px and Chinese/dark/18 px/custom-blue flows qualify reading, return and continued drafts, including half-screen sizing and native 200% zoom. Owned processes and new checkout/Library outputs are cleaned; final delivery archives and removes the remaining private evidence root.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user's latest instruction is to finish this batch, deliver it and pause. This overrides the earlier continuous-work instruction; no next batch is started. The owned checkout is `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/desktop-ui-continuation`. This milestone starts from remote main `11d9712b7` and changes only `FileWorkspace.tsx`, its regression tests and this record. The existing reader, query, scroll anchor, navigation and Composer remain the owners; the range action transfers only its own current focus synchronously, with no completion-time focus action. Delivery uses an independent checkout on `main`, followed by a non-forced push and fast-forward of the owned checkout to that same commit. The primary checkout `/Users/tangerg/Desktop/flame`, its active branch and unrelated code/documentation changes remain untouched. Literal Markdown quote preservation remains integrated. A later explicit resume must first read current remote state and this record, then choose a complete task with fresh evidence; the pause does not authorize another investigation.
+The user's latest instruction explicitly resumes continuous work. The read-error batch starts from remote main `f5af479697e1880d9b7b83499a74675e93722ad9` in `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` on `codex/ui-data-retry-1024`. Its product change is confined to `DataError`; the existing DataView and file-workspace suites add four regressions. The shared error entry retires only focus currently on its Retry button, synchronously before the original callback. Existing hosts, queries, navigation, source rendering and Composer retain ownership; there is no completion-time focus action. Verification and guarded output cleanup are complete. Delivery switches this owned checkout to `main`, fast-forwards the reviewed commit, makes a normal push and confirms the exact remote hash before deleting its private evidence root. The primary checkout `/Users/tangerg/Desktop/flame`, its branch and unrelated work remain untouched. A read-only check requested by the user found no unpublished commits or modified code there; only the untracked `docs/ui打磨优化.md` document was present. The next evidence candidate is the separate directory-read Retry and tree-cursor path, which still needs native qualification before a change is chosen.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -90,7 +90,7 @@ hidden and frame callbacks stayed paused. Do not repeat that activation request
 or add a component workaround from these inconsistent signals. Those completed
 isolation roots and their new caches are also cleaned; details follow.
 
-The 2026-10-23 goal resumed the earlier work; the user's subsequent request now ends that run at this milestone. Any future explicitly resumed batch still requires native acceptance, relevant gates, explicit-path integration and push to `main`, cleanup and in-place handoff updates. Native page zoom and the single Dock width projection remain integrated. Open workspace views retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
+The 2026-10-23 goal resumed the earlier work and the subsequent pause ended that run at the file-range milestone. The explicit 2026-10-24 resume restores continuous batches. Each batch still requires native acceptance, relevant gates, explicit-path integration and push to `main`, cleanup and in-place handoff updates. Native page zoom and the single Dock width projection remain integrated. Open workspace views retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
 
 Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The subsequent native focus investigation qualified the existing keyboard resize path and isolated clicked-label reverse navigation to a WebKit behavior also reproduced by a bare HTML button. No host preference or component workaround was added. The precise scenarios and limits are below.
 
@@ -2826,6 +2826,97 @@ and the then-current 3,069-test Web suite. Current native acceptance below
 qualifies negative failure, warning unsupported and ordinary empty presentation
 in the Approvals page. The MCP follow-up below qualifies its named recovery
 states. The earlier subagent-unavailable path is not newly qualified here.
+
+### Data read Retry focus
+
+`DataError` now retires focus from its exact active Retry button to the nearest
+existing `[tabindex]` ancestor with `preventScroll`, before calling the original
+`onRetry`. No extra wrapper, public prop, state, effect, timer or automatic retry
+is introduced. A missing host still allows the callback to run. Another control's
+focus, recovered child focus and later authoring retain their own owners. The
+callback is invoked once with its declared zero-argument contract; read failures
+and query policy are unchanged. This shared entry covers direct `DataError` and
+`DataView` consumers without per-pane overrides.
+
+Unchanged `f5af47969` actual Wails reproduced the failure: keyboard Retry removed
+its focused error tree, leaving `BODY` after both a repeated failure and a
+successful file read. Page Down then left the recovered file at **0 px**.
+`PluginBoundary` and `TurnErrorBoundary` already implement the same local
+retirement principle for their independently owned error trees. The
+[WAI keyboard-interface focus guidance](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/#kbd_focus_discernable_predictable)
+and better-accessibility support a surviving logical destination. Read-only
+ZCode `ErrorBoundary.tsx` and `ChatErrorBanner.tsx` inform compact failure identity
+and explicit recovery, but do not establish this focus rule. Existing neutral
+planes, Orange/custom accents, typography and shared surfaces remain unchanged.
+
+Verification and limits:
+
+- Bounded Claude Code CLI (`claude-opus-5-5`, **138.79 s**, **18** reported turns,
+  no permission denials) changes only the allowed source/test trio. Primary
+  review inspects the actual diff and callback/host contracts. The unchanged
+  focused baseline passes **47** tests. Four new regressions plus existing cases
+  pass **51 / 51** in **5.05 s**. Restoring the original production source under
+  those final tests produces **2 failures / 49 passes** at the intended focus
+  boundary; the candidate is restored by exact hash. Cases cover nearest nested
+  hosts, callback order, pending replacement, repeated failure, successful same-
+  reader recovery, later draft focus, recovered child focus and a missing host.
+- The complete `npm run check --workspace @flame/web` passes **397 files /
+  3,262 tests**, **168.89 s** for tests and **201.08 s** overall, with all **25**
+  non-test gates passed. Current main's API-consumer and plugin-resource guards
+  are green; historical failures below remain records of their revisions.
+  Non-failing loopback connection-refused diagnostics remain unclassified.
+- The serial `make check-native` passes Desktop test/vet/build and the supported
+  production Wails arm64 build in **23.62 s**, with minimum macOS **13.0** and SDK
+  **26.5**. The existing duplicate `-lobjc` warning is non-failing. Final private
+  fixture assets build in **2.48 s**; English/Chinese private hosts build in
+  **2.59 / 3.19 s**. No browser visual suite or performance baseline is started.
+- Actual Wails uses production React components, the real read/query/navigation/
+  Composer owners, canonical in-memory transport and private data. Only the
+  fixture `go.mod` read supplies 600 synthetic lines and two deterministic
+  failures. Private query auto-retry is off. Initial/failing reads wait **2.2 s**;
+  the final accepted-read trial waits **30 s** to expose later focus. This does
+  not qualify live filesystem or Runtime failure injection.
+- English/light/**14 px**/Orange/full motion, **1440 × 900**, **523 px** Dock:
+  native Tab/Enter and Tab/Space retry keep the same named reader and its existing
+  **1.5 px** orange outline. Repeated failure remains readable. After recovery,
+  keyboard Page Down advances **0 → 718 px** and native wheel advances to
+  **1,476 px**. Back restores the selected `go.mod` row; keyboard selection of
+  README, its rendered content and return restore that related row. The same
+  original input continues from **22 to 68 characters**, preserving its full
+  draft through reading and return.
+- A separate English timing trial explicitly captures the **49-character** draft
+  `Pending read draft 保留 — edited before completion.` while the file still shows
+  Loading and has no source rows. Successful acceptance then shows lines
+  **1–400** with the same input, exact text/caret and Composer focus. Subsequent
+  native writing reaches **64 characters**. Earlier short-delay observations had
+  already settled before their post-input captures and are excluded from this
+  completion-order claim; no timing workaround enters product code.
+- Chinese/dark/**18 px**/custom **#007BFF**/motion off: native Left window
+  placement settles at **1122 × 1051**. Actual Size and twenty separately
+  observed Zoom In actions give **561 × 525 CSS px** at **200%**. The existing
+  full-width material entry presents Files. Space Retry after failure and Enter
+  on the later Retry retain the same reader through loading, repeated failure
+  and success, with the existing blue **1.5 px** outline. The final reader is
+  **561 × 372.5 px**; Page Down advances **0 → 353 px**, then wheel to **725 px**.
+  Back restores the selected file row, explicit Close returns to Conversation,
+  and the same input continues from **10 to 19 characters** as
+  `核对重试后继续讨论。恢复阅读后继续写。`. Actual Size preserves text, caret and focus.
+- VoiceOver speech, OS IME, other-platform GUIs, live providers, Send, durable
+  Runtime writes and unrelated standalone Runtime/CLI suites are not newly
+  qualified. Directory Retry/cursor handoff is a separate native qualification;
+  this acceptance does not claim every shared consumer was exercised natively.
+  No protocol, storage, dependency or external-consumer migration is required.
+
+All **1,697** accepted product/source/resource inputs remain unchanged through
+checks and acceptance. Native apps are quit and their exact bundles unregistered.
+Seven newly created checkout outputs and six unique Cache/WebKit directories are
+removed. The preexisting native-check binary is restored by exact original hash;
+its directory, the existing Vite config directory and shared UI Vite cache are
+preserved. Four copied public/font/icon-preview files retained older source birth
+metadata; source-byte equality qualifies only those known copies for cleanup.
+Dependencies, references, user data and unrelated processes remain intact. The
+remaining private bundles, fixture/logs and evidence root are removed after its
+archive and exact remote confirmation. Continue only with fresh task evidence.
 
 ### Plugin render recovery
 
@@ -6018,7 +6109,7 @@ beside a visible value.
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
-- The latest goal asks the primary agent to own the overall task model and prefer a `gpt-6-astra` subagent with `max` reasoning for bounded implementation details. Historical CLI reports in this file describe earlier work. The primary agent owns reference research, decisions, diff review, real Wails acceptance, verification, commits, pushes and cleanup; a subagent report does not replace that acceptance.
+- Implementation handoffs follow the current goal. This resumed run uses bounded Claude Code CLI for scoped detail work; the prior file-range milestone used a GPT-6 Astra subagent under its then-current instruction. The primary agent owns reference research, decisions, actual diff review, real Wails acceptance, verification, commits, pushes and cleanup. A delegated completion report never replaces that acceptance.
 - Apply relevant better-series skills and inspect the references in depth. Preserve StyleX, Base UI, semantic tokens and one fact/one owner. Runtime owns durable product semantics; layout work does not authorize rebuilding those state machines in the client.
 - Batch meaningful changes, then review their combined visual and interaction result. Prioritize development and actual native computer use. The user explicitly asked not to run visual/browser suites and to avoid meaningless tests; retain necessary regression coverage and module checks, and reuse valid results when source and dependencies have not changed.
 - A `plugins/*/component` change is not verified by `cd plugins && npm run check` alone: `apps/web/visual/*.test.tsx` imports several plugin sources directly (`../../../plugins/<name>/component/component`) and encodes their behavioural contracts (diff, schedules, memory, usage, …). Run `vitest run visual` (or the affected `visual/*.test.tsx`) for any dock plugin edit before committing; treat a broken contract as a signal to reconsider the change, not just to update the test.

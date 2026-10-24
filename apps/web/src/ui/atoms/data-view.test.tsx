@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { RpcError, RpcTransportError } from "@flame/runtime-client";
 import { DataView } from "@/ui/atoms/data-view";
@@ -41,6 +41,89 @@ describe("DataView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("hands a focused Retry to its nearest host before the error gives way", () => {
+    const focusAtRetry: (Element | null)[] = [];
+    const onRetry = vi.fn(() => {
+      focusAtRetry.push(document.activeElement);
+    });
+    const panel = (state: { isLoading: boolean; failure?: unknown; items?: string[] }) => (
+      <div role="group" tabIndex={-1} aria-label="Panel">
+        <div role="group" tabIndex={-1} aria-label="Reader">
+          <div>
+            <DataView
+              items={state.items}
+              isLoading={state.isLoading}
+              failure={state.failure}
+              onRetry={onRetry}
+            >
+              {() => <input aria-label="Recovered filter" ref={(node) => node?.focus()} />}
+            </DataView>
+          </div>
+        </div>
+      </div>
+    );
+    const view = render(panel({ isLoading: false, failure: broke }));
+    const outer = screen.getByLabelText("Panel");
+    const reader = screen.getByLabelText("Reader");
+    const focusPanel = vi.spyOn(outer, "focus");
+    const focusReader = vi.spyOn(reader, "focus");
+    const retry = screen.getByRole("button", { name: "Retry" });
+    act(() => retry.focus());
+
+    fireEvent.click(retry);
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(focusAtRetry).toEqual([reader]);
+    expect(focusReader).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
+    expect(focusPanel).not.toHaveBeenCalled();
+
+    view.rerender(panel({ isLoading: true }));
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(document.activeElement).toBe(reader);
+
+    view.rerender(panel({ isLoading: false, items: ["recovered"] }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Recovered filter"));
+  });
+
+  it("leaves focus Retry does not own with its owner", () => {
+    const onRetry = vi.fn();
+    render(
+      <>
+        <button>Another control</button>
+        <div role="group" tabIndex={-1} aria-label="Reader">
+          <DataView items={undefined} isLoading={false} failure={broke} onRetry={onRetry}>
+            {rows}
+          </DataView>
+        </div>
+      </>,
+    );
+    const focusReader = vi.spyOn(screen.getByLabelText("Reader"), "focus");
+    const other = screen.getByRole("button", { name: "Another control" });
+    act(() => other.focus());
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(other);
+    expect(focusReader).not.toHaveBeenCalled();
+  });
+
+  it("retries without a surviving host and keeps the focus its callback claims", () => {
+    const onRetry = vi.fn(() => screen.getByRole("textbox", { name: "Message" }).focus());
+    render(
+      <>
+        <textarea aria-label="Message" />
+        <DataView items={undefined} isLoading={false} failure={broke} onRetry={onRetry}>
+          {rows}
+        </DataView>
+      </>,
+    );
+    const retry = screen.getByRole("button", { name: "Retry" });
+    act(() => retry.focus());
+
+    fireEvent.click(retry);
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Message" }));
   });
 
   it("keeps the failure glyph even when the caller renames the failure", () => {

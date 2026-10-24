@@ -20,7 +20,20 @@ export function DataError({ onRetry, title, sub, size }: Props) {
       size={size}
       action={
         onRetry && (
-          <Button variant="outline" size={size === "compact" ? "xs" : "sm"} onClick={onRetry}>
+          <Button
+            variant="outline"
+            size={size === "compact" ? "xs" : "sm"}
+            onClick={(event) => {
+              // Retrying replaces this error, so hand owned focus to its surviving host first.
+              const retiring = event.currentTarget;
+              if (retiring === retiring.ownerDocument.activeElement) {
+                retiring.parentElement
+                  ?.closest<HTMLElement>("[tabindex]")
+                  ?.focus({ preventScroll: true });
+              }
+              onRetry();
+            }}
+          >
             {t("common.retry")}
           </Button>
         )

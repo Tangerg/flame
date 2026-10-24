@@ -650,6 +650,55 @@ describe("workspace files panel", () => {
     expect(listFiles).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps a retried file read's focus in the reader through failure and recovery", async () => {
+    readFile.mockRejectedValueOnce(new Error("file unavailable"));
+    openWorkspaceFile("src/main.go");
+    mount(
+      <>
+        <textarea aria-label="Message" defaultValue="Retained message draft" />
+        <FileWorkspace />
+      </>,
+    );
+    const host = screen.getByRole("region", { name: "src/main.go" });
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+    const fail = (read: PromiseWithResolvers<WorkspaceFileContent>) =>
+      read.reject(new Error("file unavailable"));
+
+    for (const { typeWhileReading, settle } of [
+      { typeWhileReading: false, settle: fail },
+      { typeWhileReading: true, settle: fail },
+      {
+        typeWhileReading: false,
+        settle: (read: PromiseWithResolvers<WorkspaceFileContent>) =>
+          read.resolve({ content: "package main", startLine: 1, totalLines: 1 }),
+      },
+    ]) {
+      const retry = await screen.findByRole("button", { name: "Retry" });
+      act(() => retry.focus());
+      const read = Promise.withResolvers<WorkspaceFileContent>();
+      readFile.mockReturnValueOnce(read.promise);
+
+      fireEvent.click(retry);
+      expect(document.activeElement).toBe(host);
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Retry" })).toBeNull());
+      expect(document.activeElement).toBe(host);
+      if (typeWhileReading) {
+        act(() => draft.focus());
+        fireEvent.change(draft, { target: { value: "Retained message draft, continued" } });
+      }
+
+      await act(async () => settle(read));
+      await waitFor(() => expect(client.isFetching()).toBe(0));
+      expect(screen.getByRole("region", { name: "src/main.go" })).toBe(host);
+      expect(document.activeElement).toBe(typeWhileReading ? draft : host);
+    }
+    expect(host.textContent).toContain("package main");
+    expect(draft.value).toBe("Retained message draft, continued");
+    expect(readFile.mock.calls).toEqual(
+      Array.from({ length: 4 }, () => [{ cwd: undefined, path: "src/main.go" }]),
+    );
+  });
+
   it("finds the file it last opened in the tree, with its folders open", async () => {
     const listing = Promise.withResolvers<WorkspaceFileEntry[]>();
     listFiles.mockImplementation(async (query) => (query.path ? [file] : listing.promise));
