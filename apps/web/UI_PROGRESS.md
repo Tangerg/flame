@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Transient notifications now use a bounded reading region outside the Composer and jump control. Empty and populated conversations retain their original inputs while long drafts shrink internally. Final Web checks pass 401 files / 3,411 tests and all 25 non-test gates; supported native checks pass. Actual English/Chinese Wails tasks qualify narrow 200% composing, notification actions, scrolling, question answers and source return. Notification overlap with an expanded model menu remains HIGH, so broader overlay acceptance is Block. Delivery and cleanup evidence is recorded under Notifications audit.
+Updated: 2026-10-25. Transient notifications now use a bounded reading region outside the Composer and jump control. Empty and populated conversations retain their original inputs while long drafts shrink internally. Final Web checks pass 401 files / 3,411 tests and all 25 non-test gates; supported native checks pass. Actual English/Chinese Wails tasks qualify narrow 200% composing, notification actions, scrolling, question answers and source return. Notification overlap with an expanded model menu remains HIGH, so broader overlay acceptance is Block. Implementation `299c0f09085e9cdcabb73f82786d7d1cf20d332c` is pushed to remote main. Owned resources and the exact private root are cleaned; verified evidence is retained. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/notification-composer-clearance-1024`, based on remote main `848699fdf7b495aa93950b614b823c167a163147`. Repeated fresh fetches found no incoming remote commit during implementation and final native checks. The Composer/notification batch is verified; its delivery receipt follows in Notifications audit. Primary parallel work stays preserved: the last read-only observation found nine local commits absent from origin/main and one untracked UI document. Those unpublished commits are outside this batch. Retain the existing import/export, navigation, draft, notification-log and Runtime command owners. The next observed priority is notification overlap with an open model menu; the continuous goal is not complete.
+The continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/notification-composer-clearance-1024`, based on remote main `848699fdf7b495aa93950b614b823c167a163147`. Repeated fresh fetches found no incoming remote commit during implementation and final native checks. The Composer/notification implementation `299c0f09085e9cdcabb73f82786d7d1cf20d332c` is pushed to remote main, verified by exact remote hash, a clean owned checkout and zero commits ahead or behind. All owned outputs are cleaned and the exact private root is absent; the verified archive retains 232 UTF-8 evidence files and fourteen screenshot digests. Detailed coverage, retained failures and continuation priorities are in Notifications audit. Primary parallel work stays preserved: the last read-only observation found nine local commits absent from origin/main and one untracked UI document. Those unpublished commits are outside this batch. Retain the existing import/export, navigation, draft, notification-log and Runtime command owners. The next observed priority is notification overlap with an open model menu; the continuous goal is not complete.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -7766,9 +7766,20 @@ apps are unregistered. All seventeen output-presence baselines and three origina
 file hashes/inventories are restored, including the native-check binary. Copied
 assets with old file timestamps are proven against their unchanged source bytes
 before cleanup. Primary parallel work and read-only reference resources remain.
-The exact private root is retained only until its verified evidence archive and
-remote-delivery check; its final retirement receipt follows here. Continue with
-the captured notification/model-menu overlap after this delivery.
+Implementation `299c0f09085e9cdcabb73f82786d7d1cf20d332c` is pushed to remote
+main. Normal formatter, all-workspace lint and commit-message hooks pass. A fresh
+fetch, exact remote hash, clean owned checkout and zero commits ahead or behind
+qualify delivery. All nineteen accepted private inputs, **1,189** compiled inputs,
+eight module artifacts and five native binaries retain accepted bytes through
+retirement. The compressed archive round-trips exactly: **232 UTF-8 files** and
+**fourteen screenshot digests**, gzip SHA-256
+`5ca237366a6787e983bf7d2221beb1c929f949e9f50b97d7341d4529eda6fa2d`.
+The exact private root is deleted after archive, remote, source and ownership
+verification. Independent checks after deletion again confirm all 5,728 source
+hashes, eleven resource hashes, seventeen output-presence baselines, three
+original file hashes and inventories, and absent owned Library paths. This
+documentation receipt changes no tested source. Continue with the captured
+notification/model-menu overlap; the goal remains active.
 
 ### Notification history and current action focus
 
