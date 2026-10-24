@@ -1,4 +1,4 @@
-import { parseJSON } from "@flame/runtime-client";
+import { parseJSON } from "@flame/runtime-client/json";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { createPublicationSlot } from "@/lib/publicationSlot";

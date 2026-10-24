@@ -146,9 +146,8 @@ for (const file of scanned) {
     // leaks the same dependency to every plugin handler. These were once spread
     // across live events, durable snapshots, cancel responses, and HITL reads,
     // so guard every inward/public ring and both neutral SDK event contracts.
-    const importsRuntimeWire = /from\s+["']@flame\/runtime-client(?:\/[^"']*)?["']/.test(
-      code(text),
-    );
+    const importsRuntimeWire =
+      /from\s+["']@flame\/runtime-client(?:\/(?!json["'])[^"']*)?["']/.test(code(text));
     if (importsRuntimeWire && /^features\/agent\/(?:application|domain|public)\//.test(rel)) {
       violations.push({
         file: rel,

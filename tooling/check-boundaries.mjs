@@ -1,6 +1,23 @@
 import { run, root, workspaces } from "./workspace.mjs";
-import { join } from "node:path";
-import { readSourceGraph } from "../apps/web/scripts/source-graph.mjs";
+import { join, resolve } from "node:path";
+import {
+  assertSourceClosure,
+  readSourceGraph,
+} from "../apps/web/scripts/source-graph.mjs";
+
+const runtimeClient = (await workspaces()).find(
+  (pkg) => pkg.name === "@flame/runtime-client",
+);
+const jsonEntry = resolve(
+  runtimeClient.directory,
+  runtimeClient.exports["./json"],
+);
+const runtimeEntries = new Set(
+  Object.entries(runtimeClient.exports)
+    .filter(([name, path]) => name !== "./json" && !path.includes("*"))
+    .map(([, path]) => resolve(runtimeClient.directory, path)),
+);
+assertSourceClosure(runtimeClient.directory, jsonEntry, runtimeEntries);
 const dependencies = (...targets) =>
   run(
     "go",

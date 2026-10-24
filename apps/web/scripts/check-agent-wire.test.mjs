@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { test } from "node:test";
 import { inspectAgentWireTypes } from "./check-agent-wire.mjs";
+import { assertSourceClosure } from "./source-graph.mjs";
 
 function fixture(publicSource, inspect) {
   const root = mkdtempSync(join(tmpdir(), "flame-agent-wire-"));
@@ -108,4 +109,29 @@ test("rejects a local interface that inherits wire authority", () => {
       assert.match(inspectAgentWireTypes(root).join("\n"), /Inherited exposes.*runtime-client/);
     },
   );
+});
+
+test("accepts an independent JSON codec closure", () => {
+  fixture("export interface View { key: string }", (root) => {
+    const entry = join(root, "src/json.ts");
+    writeFileSync(entry, 'export { encode } from "./codec";');
+    writeFileSync(join(root, "src/codec.ts"), "export const encode = String;");
+    assert.doesNotThrow(() =>
+      assertSourceClosure(root, entry, new Set([join(root, "src/wire.ts")])),
+    );
+  });
+});
+
+test("rejects a JSON codec that imports Runtime authority transitively", () => {
+  fixture("export interface View { key: string }", (root) => {
+    const entry = join(root, "src/json.ts");
+    const wire = join(root, "src/wire.ts");
+    writeFileSync(entry, 'export { encode } from "./codec";');
+    writeFileSync(join(root, "src/codec.ts"), 'export { encode } from "./wire";');
+    writeFileSync(wire, "export const encode = String;");
+    assert.throws(
+      () => assertSourceClosure(root, entry, new Set([wire])),
+      /source closure reaches forbidden entry: src\/wire\.ts/,
+    );
+  });
 });

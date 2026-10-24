@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./json": "./src/json.ts",
     "./wire": "./src/generated/wire.generated.ts",
     "./methods": "./src/generated/wire.methods.generated.ts",
     "./validation": "./src/validation/index.ts",

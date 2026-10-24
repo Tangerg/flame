@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { equalJSON, isJSONNumber, parseJSON } from "@flame/runtime-client";
+import { equalJSON, isJSONNumber, parseJSON } from "@flame/runtime-client/json";
 export interface ApprovalArgsEditor {
   editing: boolean;
   setEditing: (editing: boolean) => void;

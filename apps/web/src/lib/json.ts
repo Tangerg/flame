@@ -1,4 +1,4 @@
-import { stringifyJSON } from "@flame/runtime-client";
+import { stringifyJSON } from "@flame/runtime-client/json";
 import { applyEdits, format } from "jsonc-parser";
 
 export function prettyJSON(value: unknown): string {
