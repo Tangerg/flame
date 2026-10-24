@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Question choices now stay editable until explicit Next / Submit answers. Empty radio selections remain controlled, selected-question return retains its Tab entry, and acknowledgement focuses the replacement Composer with its prior draft intact. The owned branch is synchronized to remote main `08daa7a7c`. All 45 focused tests, the complete Web check (398 files / 3,333 tests plus 25 non-test gates), supported native check and actual English/Chinese native task flows pass. Native acceptance covers a 320 px Dock, 18 px Chinese long content, 200% full-pane file return and continued drafts. Owned native processes and new checkout/Library outputs are cleaned; all three preexisting output files retain their original bytes. Implementation `0bc2a5c9d` is pushed to remote main, verified by exact hash and a clean owned checkout with zero unpushed commits. The private evidence root is archived and removed.
+Updated: 2026-10-24. Approval arguments now become read-only after decision admission while blocked actions retain keyboard focus. Offline local drafting remains available. Final focused coverage passes 73 tests, all 25 non-test Web gates and the supported native check pass, and English/Chinese actual Wails task flows pass. The full Web run retains one Memory MCP-readiness failure (3,346 passed); the complete isolated integration file retains one Schedules readiness failure (48 passed). Both causes remain unclassified. The owned branch contains remote main `e9c30806d`; primary parallel work is untouched. Owned native processes and new checkout/Library outputs are cleaned, with all three preexisting output files preserved. Explicit-path integration and remote delivery follow this verified state.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/question-navigation-1024`. At the user's latest synchronization request it fast-forwarded from delivered main `a2a6ba1d4` to `08daa7a7cf5a8a1ea1954717c46fbcb6688aa688`, preserving all fourteen active paths without conflict. The primary checkout and its user-owned work remain outside this batch. Question selection, page-focus registration, empty controlled values and question-to-Composer focus now each have one responsible owner. Focused regressions, complete Web gates, supported native build and main-synchronized English/Chinese native tasks pass. At implementation delivery, all 5,723 accepted non-Markdown source inputs, eleven plugin resources and nineteen private inputs retain their accepted bytes. A subsequent static review migrates five existing browser behavior files to explicit question confirmation without any production change. Nine owned CLI/native PIDs are dead; seven new checkout directories and six unique Library Cache/WebKit directories are removed, all bundles are unregistered, and three preexisting output files retain their original bytes. Implementation `0bc2a5c9d0b3c1c5c7b78ae37048ae2899e99fcf` is committed with normal hooks and pushed to remote main. Exact remote hash, clean owned checkout and zero unpushed commits pass before this receipt. The guarded private root is archived and removed; session memory retains 296 UTF-8 evidence files and 17 screenshot hashes, gzip SHA-256 `46c8f23e5d4da602caafe77055e3ef0af2628c171ffcaac56c36f36a8f574d99`. Continue from the resulting main revision and select the next batch only from a new evidenced defect.
+The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/approval-arguments-1024`, based on delivered main `e9c30806d60bedb99bbc3be5b4ec1f9b5a5108a4`. A fresh fetch at the user's synchronization request confirms that revision is current; no incoming commit is omitted. The primary checkout and its user-owned work remain outside this batch. Approval argument editability now projects existing pending/submitted admission facts separately from Runtime command availability. No Runtime lifecycle, command owner, parameter snapshot, focus effect or styling was added. Focused regressions, all non-test Web gates, supported native build and actual English/Chinese task flows pass; the two recorded MCP-readiness failures remain unclassified. All 5,723 accepted non-Markdown source inputs, eleven plugin resources and sixteen private inputs retain their accepted bytes. Six owned CLI/native PIDs are dead; seven new checkout directories and six unique Library Cache/WebKit directories are removed, all three bundles are unregistered, and three preexisting output files retain their original bytes. The five source/test paths and this sole progress file are ready for explicit integration; archive and remote receipts follow delivery.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -1962,6 +1962,149 @@ system. Better-writing guidance favors the existing localized action over an
 indefinite loading signal; better-accessibility/layout review retains Base UI's
 keyboard/focus behavior, shared chip sizing, semantic surfaces and Orange/custom
 accent roles. Static Ace references supply no selection or focus evidence.
+
+## Approval argument review and submission
+
+At main `e9c30806d`, native approval reproduced two related interruptions. After
+Allow once admitted `docs/accepted.md`, its native-disabled button lost focus to
+body. The argument textarea remained editable, and a later native paste displayed
+`docs/late.md` while the captured request still contained `docs/accepted.md`.
+The form therefore suggested that already-admitted parameters could still change.
+The original Composer draft survived; that owner did not need replacement.
+
+The existing submission owner now supplies both projections in
+`message/application/approvalCardActions.ts:83`: command availability still
+includes Runtime availability, while `argsReadOnly` derives only from existing
+pending/submitted facts. Offline local drafting remains possible. This distinction
+corrects the CLI candidate's unnecessary offline editing restriction. No second
+pending flag, command admission, parameter snapshot or recovery owner was added.
+
+`message/ui/cards/ApprovalCard.tsx:127` passes that admission projection into the
+editor. Deny, Allow once and the scope trigger use the existing shared Button
+`focusableWhenDisabled` contract (`:139`). Blocked controls preserve their Tab and
+focus positions but refuse activation. `ApprovalArgsEditor.tsx:42` applies the
+same contract to Edit; its open native textarea becomes read-only and
+`aria-disabled` (`:59`) while remaining enabled, focusable, selectable and
+scrollable. Invalid JSON still refuses admission and remains editable. The
+existing MessageBlock retirement already focuses the Assistant row when the
+focused approval content disappears, and preserves later outside focus. Native
+acceptance passed that behavior without changing MessageBlock.
+
+[Base UI Button guidance](https://base-ui.com/react/components/button) recommends
+keeping loading controls focusable through its existing disabled-focus option.
+[WCAG 2.4.3](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html) supports
+retaining a meaningful reading and operation order. Read-only ZCode
+`packages/ui/src/PermissionDialog.tsx:633` refuses another response while
+responding, and `:878` projects the same responding fact into workflow settings.
+HeroUI's actual `apps/docs/src/demos/en/textarea/controlled.tsx` demonstrates one
+controlled value/change owner; it does not establish pending behavior. Existing
+ChatGPT, Radix and Ace research remains applicable; static references supply no
+new focus or submission evidence. Flame retains its existing Base UI components,
+tokens, Orange/custom accent roles, typography and geometry.
+
+| Severity | Root cause                                                                                | Corrected behavior                                                                                      | Acceptance                                                                                      |
+| -------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| High     | Editor availability ignored admitted decision state.                                      | Closed Edit refuses entry; open parameters remain readable but cannot diverge from the admitted draft.  | Real native paste refused in English and Chinese; pending and staged regressions pass.          |
+| High     | Native disabling removed the active decision control from keyboard focus.                 | Existing shared focusable-disabled semantics retain focus and refuse repeated actions or scope opening. | Native pointer/keyboard approve, deny and scoped approval pass; WCAG 2.4.3 task order retained. |
+| Medium   | Combining connection availability with draft availability would remove offline authoring. | Only pending/submitted facts lock parameters; Runtime availability still gates decisions.               | Two candidate regressions fail before the primary correction and pass afterward.                |
+
+Better-accessibility's scoped result is Approve for these inspected approval
+tasks, supported by focused behavior tests and actual native input. Better-ui,
+layout, typography and writing review found no additional change needed within
+this boundary: the existing field/primary-action hierarchy, names, error text,
+semantic states and narrow layout remain. No new decoration or motion was added.
+This is not a product-wide or assistive-technology certification.
+
+The bounded Claude Code CLI implementation completed in 170.30 s, with no
+permission denials and four allowed Card/Editor paths changed. Its configured
+24-turn limit produced 44 reported turns; record the actual report. Primary
+review added the existing action projection, preserved offline drafting and
+covered invalid-to-valid recovery. Final focused coverage passes 73 tests in
+five files (3.76 s). Restoring the original three production files against the
+final two regression files fails 11 and passes 38 tests (1.77 s); accepted source
+bytes are restored afterward. The candidate's offline regression failed two and
+passed 43 tests before correction. Targeted typecheck (1.52 s), lint (0.38 s) and
+format checks pass.
+
+The complete Web command fails one Memory MCP-readiness case in portable-package
+admission and passes 3,346 tests in 397 files (398 files / 3,347 tests total;
+184.13 s test time, 191.94 s command). The complete isolated 49-test integration
+file then fails one Schedules MCP-readiness case after the compaction SIGKILL
+restart and passes 48 tests (48.25 s test time, 48.89 s command). Both failures
+remain recorded; their cause is unclassified. This file does not import the
+changed approval presentation. No further rerun, timeout increase, assertion
+weakening or Runtime repair is used to manufacture a passing aggregate. All
+twenty-two later Web gates pass serially (24.64 s), so all twenty-five non-test
+gates pass. `make check-native` passes in 25.32 s, including supported Desktop
+test/vet/build and Wails production build. The duplicate `-lobjc` linker warning
+is non-failing.
+
+Actual Wails v3 acceptance uses production sources in isolated homes. The
+canonical editable control explicitly carries Runtime category `unknown` and
+two arguments. The initial shell control intentionally exposes no editable
+arguments and is excluded. A private adapter holds the existing resume callback
+for 45 seconds to expose waiting behavior, then runs its original commit and
+settlement path. Only the canonical fixture and harness are overlaid; no debug
+route, production fixture, live tool invocation or remembered-policy write is
+introduced.
+
+- English/light/14 px/Orange at 1440 × 900: keyboard-resize the Dock to 320 px,
+  edit and approve the exact two-argument snapshot, retain Allow once focus,
+  reverse-Tab to the read-only field, select and refuse a replacement paste,
+  refuse repeated Return and scope opening, then receive the exact response.
+  Existing retirement focuses Assistant. Open the accepted tool arguments,
+  reach their named reader, continue the original draft, read a file and return
+  to selected `resizer.ts`. The same Composer input ends with
+  `Draft before approval. Continued. Returned.` at caret 43.
+- A separate English closed-editor Deny flow retains its action focus and
+  refuses Edit through actual Enter/Space. Later Composer focus survives the
+  exact deny acknowledgement with `Draft before approval. Independent.` at
+  caret 35. The initial combined pointer/reverse-Tab probe did not reach Edit;
+  its following paste was also misfocused. Those probes are excluded. A
+  separately observed five-stop reverse traversal qualifies Edit before the
+  successful refusal and draft continuation.
+- Chinese/dark/18 px UI/custom blue/reduced motion: system-resize to settled
+  1122 × 1051, then use twenty individually observed native Zoom In commands
+  to reach 561 × 525 at 200%. Invalid JSON shows the existing correction message
+  without admission. Correct it to a twelve-line Chinese path/checklist, approve
+  for this Session, and verify the complete captured arguments and scope. The
+  scope trigger retains focus; the same field refuses a later paste, preserves
+  selection `0..161`, and scrolls from `0/268/314` to `47/268/314` while read-only.
+  Its existing mono font is 15 px; the UI preference is 18 px.
+- During that pending scoped approval, enter the full-pane eight-line file
+  reader. Acknowledgement removes the approval while reader identity 12 and its
+  focus remain unchanged. Back retains selected `resizer.ts`; close returns to
+  Conversation. Open the accepted Chinese arguments and reach their named
+  reader, then continue the same Composer. Restore Actual Size and append again:
+  `审批前保留的草稿。 继续核对。 已返回。` remains in input 2 at caret 20.
+
+The passive observer records existing values, focus identities and local scroll;
+it adds no focus or input transitions. Native AX normalizes pretty-JSON spaces,
+so qualification compares parsed objects and the actual selection. The settled
+Chinese combined command report is truncated by AX: its complete captured
+request, resumed-item identity and accepted tool arguments qualify the observed
+settlement; a complete Chinese response string is not claimed. Some read-only
+AX leaves omit the focused-element footer; actual native keys, focus rings and
+the passive focus record qualify those steps. An early English capture named
+acknowledged-focus was still pending; the later settled capture controls receipt
+acceptance. Fixture time is not wall-clock time. Parent scroll invariance,
+VoiceOver, OS IME, RTL, the other locale GUIs, other native platforms, live
+provider/tool execution, persisted Session policy and Runtime recovery remain
+unverified. Browser visual suites, performance benchmarks and unrelated
+standalone Runtime/CLI suites were not run.
+
+The final accepted aggregate covers 5,723 non-Markdown tracked sources,
+SHA-256 `06d2440ab283eb6da2be15a24eb373bbdb28b294c473cea5f99bb9119d9977c3`,
+eleven unchanged plugin resources and sixteen private inputs. Only the
+invalid-to-valid recovery regression changed after English acceptance; its
+production bytes remained identical for final Chinese acceptance. All six owned
+CLI/native PIDs have exited. Guarded cleanup removes seven new checkout outputs
+and six unique Library Cache/WebKit directories, unregisters three bundles and
+restores the replaced native-check binary. All three preexisting output files
+retain their original hashes. The primary checkout, user data, reference trees
+and shared toolchain caches remain untouched. The private evidence root is kept
+only until verified remote delivery and archival. Continue from that resulting
+main with a newly evidenced defect, preserving the two unresolved gate records.
 
 ## Question review and confirmation
 

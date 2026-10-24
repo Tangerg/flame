@@ -66,7 +66,7 @@ export function ApprovalCard({
   const argsEditor = useApprovalArgsEditor({
     originalArgs: hasArgs ? JSON.stringify(args, null, 2) : "",
   });
-  const { disabled, approve, decline } = useApprovalCardActions({
+  const { disabled, argsReadOnly, approve, decline } = useApprovalCardActions({
     sessionId,
     resumeRunId,
     itemId,
@@ -128,6 +128,7 @@ export function ApprovalCard({
               editing={argsEditor.editing}
               argsText={argsEditor.argsText}
               invalid={argsEditor.invalid}
+              disabled={argsReadOnly}
               onEditToggle={argsEditor.setEditing}
               onTextChange={argsEditor.setArgsText}
             />
@@ -136,7 +137,13 @@ export function ApprovalCard({
       )}
 
       <div {...stylex.props(ms.cardActions)}>
-        <Button variant="outline" size="sm" disabled={disabled} onClick={decline}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          focusableWhenDisabled
+          onClick={decline}
+        >
           {t("approval.action.deny")}
         </Button>
         <div
@@ -148,6 +155,7 @@ export function ApprovalCard({
             variant="primary"
             size="sm"
             disabled={disabled}
+            focusableWhenDisabled
             join={rememberable ? "start" : undefined}
             onClick={() => approve()}
           >
@@ -161,6 +169,7 @@ export function ApprovalCard({
                     variant="primary"
                     size="icon-sm"
                     disabled={disabled}
+                    focusableWhenDisabled
                     aria-label={t("approval.action.allowOptions")}
                     join="end"
                   >

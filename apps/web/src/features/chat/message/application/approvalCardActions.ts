@@ -8,6 +8,7 @@ export interface ApprovalArgsCommitter {
 
 export interface ApprovalCardActionState {
   disabled: boolean;
+  argsReadOnly: boolean;
   approve: (rememberScope?: RememberScope) => void;
   decline: () => void;
 }
@@ -82,6 +83,7 @@ export function useApprovalCardActions({
   return {
     disabled:
       !runtimeAvailable || submitted || !canSubmitApproval({ resumeRunId, itemId, pending }),
+    argsReadOnly: pending !== null || submitted,
     approve,
     decline,
   };

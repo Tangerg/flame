@@ -16,12 +16,14 @@ export function ApprovalArgsEditor({
   editing,
   argsText,
   invalid,
+  disabled,
   onEditToggle,
   onTextChange,
 }: {
   editing: boolean;
   argsText: string;
   invalid: boolean;
+  disabled: boolean;
   onEditToggle: (editing: boolean) => void;
   onTextChange: (text: string) => void;
 }) {
@@ -43,6 +45,8 @@ export function ApprovalArgsEditor({
             shape="link"
             tone="accent"
             size="xs"
+            disabled={disabled}
+            focusableWhenDisabled
             onClick={() => onEditToggle(true)}
             className={stylex.props(vocab.strong).className}
           >
@@ -57,6 +61,8 @@ export function ApprovalArgsEditor({
             font="mono"
             invalid={invalid}
             value={argsText}
+            readOnly={disabled}
+            aria-disabled={disabled || undefined}
             aria-label={t("approval.args.label")}
             aria-describedby={invalid ? errorId : undefined}
             spellCheck={false}
