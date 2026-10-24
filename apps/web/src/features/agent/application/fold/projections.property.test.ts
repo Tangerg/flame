@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ExactNumber } from "@flame/runtime-client";
 import { type AgentToolInvocation } from "@/features/agent/public/events";
 import { TOOL_FAMILIES } from "@/lib/toolFamilies";
 import { Arbitrary, forEachSeed } from "@/test/arbitrary";
@@ -17,11 +18,15 @@ const TOOL_NAMES = [
   "UNKNOWN_TOOL",
 ];
 
+function wireText(a: Arbitrary): string {
+  return a.text().toWellFormed();
+}
+
 function hostileValue(a: Arbitrary, depth = 0): unknown {
-  const pick = a.int(depth > 2 ? 6 : 10);
+  const pick = a.int(depth > 2 ? 6 : 12);
   switch (pick) {
     case 0:
-      return a.text();
+      return wireText(a);
     case 1:
       return a.int(1000);
     case 2:
@@ -31,13 +36,17 @@ function hostileValue(a: Arbitrary, depth = 0): unknown {
     case 4:
       return undefined;
     case 5:
-      return a.text().repeat(3);
+      return wireText(a).repeat(3);
     case 6:
       return [hostileValue(a, depth + 1), hostileValue(a, depth + 1)];
     case 7:
-      return { [a.text()]: hostileValue(a, depth + 1) };
+      return { [wireText(a)]: hostileValue(a, depth + 1) };
     case 8:
       return Object.assign(Object.create(null), { question: hostileValue(a, depth + 1) });
+    case 10:
+      return 9007199254740993n + BigInt(a.int(1000));
+    case 11:
+      return new ExactNumber(a.pick(["1.0", "-0", "1e+25", "1e99999"]));
     default:
       return { nested: { deeper: hostileValue(a, depth + 1) } };
   }
@@ -66,7 +75,7 @@ const READ_KEYS = [
 function hostileTool(a: Arbitrary): AgentToolInvocation {
   const args: Record<string, unknown> = {};
   for (const key of READ_KEYS) if (a.bool(0.45)) args[key] = hostileValue(a);
-  if (a.bool(0.3)) args[a.text()] = hostileValue(a);
+  if (a.bool(0.3)) args[wireText(a)] = hostileValue(a);
   return {
     name: a.pick(TOOL_NAMES),
     arguments: args,
