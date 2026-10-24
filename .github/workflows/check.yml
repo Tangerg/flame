@@ -4,9 +4,14 @@ on:
   pull_request:
 jobs:
   workspace:
-    runs-on: macos-15
+    strategy:
+      matrix:
+        os: [macos-15, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.work
@@ -14,13 +19,17 @@ jobs:
         with:
           node-version: 22.22.1
           cache: npm
+      - run: npm install --global npm@11.12.1
       - run: make setup
       - run: make check
-      - run: make check-author
+      - if: runner.os == 'macOS'
+        run: make check-author
   native:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.work
@@ -28,6 +37,7 @@ jobs:
         with:
           node-version: 22.22.1
           cache: npm
+      - run: npm install --global npm@11.12.1
       - run: make setup
       - run: go install github.com/wailsapp/wails/v3/cmd/wails3@$(cd apps/desktop && go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)
       - run: make check-native

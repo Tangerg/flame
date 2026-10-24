@@ -38,7 +38,7 @@ An optional provider capability remains separate from the ordinary chat contract
 
 ## Verification and toolchains
 
-Use the Go version declared in `go.work` (currently 1.27.0), npm 11 or newer,
+Use the Go version declared in `go.work`, npm 11 or newer,
 and a Node release accepted by the root `engines` constraint. CI selects Node
 22.22.1. Desktop uses the exact Wails v3 version selected in its module; macOS
 is the supported native verification and distribution platform.
@@ -58,7 +58,8 @@ Run from the repository root:
 
 The coordinator discovers Go members from `go.work` and npm members from root
 `workspaces`. Native requirements classify the Desktop member explicitly; a
-non-native check does not claim that member passed. CI requires both jobs.
+non-native check does not claim that member passed. CI runs clean workspace
+installation and checks on macOS and Linux, plus the macOS native job.
 Each Go member runs test/vet/build with `GOWORK=off` and read-only manifests, so
 workspace substitution cannot hide missing dependencies. Package tests run
 serially; process-backed fixtures own their compiler and backend concurrency,
