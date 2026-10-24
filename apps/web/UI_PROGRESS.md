@@ -7877,11 +7877,35 @@ package entry builds successfully. An oversized CUA zoom group times out; fresh
 state and short native groups establish the final 200% viewports. None of these
 attempts substitutes for accepted evidence.
 
+**Integration and resource retirement**
+
+Implementation `d6cf7a6f7b2fc332c110bb7acc1fc09d15d4d79e` and batch-boundary merge
+`73b1c6c67fc45f9949b77689ff4fbbe0ff3dfc5b` are pushed to remote main. The merge
+includes the three incoming main commits through `1e7b76720`. Their actual delta
+from the common ancestor changes SDK/author/build files; comparing branch tips
+alone would incorrectly describe the older branch's absent UI work as incoming
+deletions. The accepted Web/UI/native-host source hashes remain identical.
+The integrated **5,765** non-Markdown sources have aggregate
+`d153e124531857ad1c8407f0c779f657e264bdffa076fba814b7f1db77daaa14`.
+Unchanged UI evidence is reused; no check matrix is repeated for this merge.
+
+All sixteen recorded processes are dead and both private apps are unregistered.
+Seven newly created checkout outputs, four owned Library directories and two
+owned bundle-temp directories are removed. All thirty-six output-presence
+baselines, three original file hashes/inventories and eleven product resource
+hashes are preserved. Ten private inputs, **596** compiled files, eight module
+artifact files and two native binaries retain their accepted bytes through
+retirement. The evidence archive round-trips exactly: **135 UTF-8 files** and
+**fourteen screenshot digests**, gzip SHA-256
+`0294d2f30003b2bc5cfe752a8626ca1d9e0896034385a003bbd776cb6b30cfd6`.
+The exact private root `flame-ui-popup-task-order-1025-9PFidw` is deleted after
+publication, source, artifact and ownership verification. Primary parallel work
+and read-only references are preserved. This receipt changes no tested source.
+
 Next observed refinement: the directory task's explanatory paragraph crowds its
 Runtime scope at large type when error revelation scrolls the body. Reduce that
 copy while keeping the target endpoint identifiable; preserve this batch's error,
-retry and return behavior. Delivery, integration and cleanup receipts follow
-after the batch-boundary merge; the goal remains active.
+retry and return behavior. The goal remains active.
 
 ### Notification history and current action focus
 
