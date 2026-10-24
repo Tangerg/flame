@@ -6,6 +6,7 @@ import {
   useWorkingDirectorySelection,
 } from "@/features/navigation/adapters/workingDirectorySelection";
 import { WorkingDirectoryDialog } from "@/features/navigation/ui/WorkingDirectoryDialog";
+import { t } from "@/lib/i18n/index";
 const runtime = vi.hoisted(() => ({
   create: vi.fn(),
   browse: vi.fn(),
@@ -70,11 +71,93 @@ describe("Runtime workspace selection", () => {
     await waitFor(() =>
       expect(useWorkingDirectorySelection.getState().selection?.busy).toBe(false),
     );
+    expect(screen.getByRole("alert").textContent).toContain(t("session.error.create"));
     expect((screen.getByLabelText("Runtime workspace directory") as HTMLInputElement).value).toBe(
       "/missing",
     );
     expect(runtime.focus).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Create session" }));
+    await waitFor(() => expect(runtime.create).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(useWorkingDirectorySelection.getState().selection?.busy).toBe(false),
+    );
+    expect(runtime.create).toHaveBeenLastCalledWith({ cwd: "/missing" });
   });
+
+  it("clears creation feedback when the path is edited", async () => {
+    runtime.create.mockResolvedValue(null);
+    open();
+    const field = screen.getByLabelText("Runtime workspace directory");
+    fireEvent.change(field, { target: { value: "/missing" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create session" }));
+    await screen.findByRole("alert");
+    fireEvent.change(field, { target: { value: "/srv/project" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(useWorkingDirectorySelection.getState().selection?.error).toBeNull();
+  });
+
+  it("reports chooser failure inside the dialog and clears it on retry", async () => {
+    runtime.local = true;
+    runtime.browse
+      .mockRejectedValueOnce(new Error("permission denied"))
+      .mockResolvedValueOnce("/picked");
+    open();
+    fireEvent.click(screen.getByRole("button", { name: "Browse this computer" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(t("session.error.chooseWorkingDirectory"));
+    expect(alert.textContent).toContain("permission denied");
+    const field = screen.getByLabelText("Runtime workspace directory");
+    expect(field.getAttribute("aria-invalid")).toBeNull();
+    expect(field.getAttribute("aria-describedby")).toBe(alert.id);
+
+    await waitFor(() =>
+      expect(useWorkingDirectorySelection.getState().selection?.busy).toBe(false),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Browse this computer" }));
+    await waitFor(() => expect((field as HTMLInputElement).value).toBe("/picked"));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(runtime.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps an old chooser failure out of the successor dialog", async () => {
+    runtime.local = true;
+    const native = Promise.withResolvers<string>();
+    runtime.browse.mockReturnValue(native.promise);
+    open();
+    fireEvent.click(screen.getByRole("button", { name: "Browse this computer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    act(() => workingDirectoryPicker().open());
+    await act(async () => native.reject(new Error("stale chooser")));
+    expect(useWorkingDirectorySelection.getState().selection).toMatchObject({
+      busy: false,
+      error: null,
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it.each([null, "session-old"])(
+    "keeps an old creation outcome (%s) out of the successor dialog",
+    async (outcome) => {
+      const pending = Promise.withResolvers<string | null>();
+      runtime.create.mockReturnValue(pending.promise);
+      open();
+      fireEvent.change(screen.getByLabelText("Runtime workspace directory"), {
+        target: { value: "/old" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Create session" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      act(() => workingDirectoryPicker().open());
+      await act(async () => pending.resolve(outcome));
+      expect(useWorkingDirectorySelection.getState().selection).toMatchObject({
+        path: "",
+        busy: false,
+        error: null,
+      });
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(runtime.focus).not.toHaveBeenCalled();
+    },
+  );
 
   it("cancels without a Session mutation", () => {
     open();

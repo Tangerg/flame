@@ -5,6 +5,7 @@ export interface CommandActionConfig {
   wasRetired?: (error: unknown) => boolean;
   fallback: string;
   source?: NotifySource;
+  onError?: (message: string) => void;
 }
 
 export interface CommandAction {
@@ -16,6 +17,7 @@ export function useCommandAction({
   wasRetired,
   fallback,
   source,
+  onError,
 }: CommandActionConfig): CommandAction {
   const inFlight = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -28,14 +30,16 @@ export function useCommandAction({
       command()
         .catch((error: unknown) => {
           if (wasRetired?.(error)) return;
-          notifyError(rpcErrorText(error) ?? fallback, source ? { source } : undefined);
+          const message = rpcErrorText(error) ?? fallback;
+          if (onError) onError(message);
+          else notifyError(message, source ? { source } : undefined);
         })
         .finally(() => {
           inFlight.current = false;
           setBusy(false);
         });
     },
-    [fallback, source, wasRetired],
+    [fallback, onError, source, wasRetired],
   );
 
   return { busy, run };

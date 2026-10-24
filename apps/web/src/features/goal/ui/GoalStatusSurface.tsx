@@ -117,6 +117,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   const t = useT();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(goal.objective);
+  const [editorError, setEditorError] = useState<string>();
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const active = goalIsActive(goal);
   const canChangeStatus = goalCanChangeStatus(goal);
@@ -135,6 +136,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   const editAction = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("goal.error.update"),
+    onError: setEditorError,
   });
   const busy = clearAction.busy || statusAction.busy || editAction.busy;
   const createdAt = goalCreatedAtMillis(goal.createdAt);
@@ -156,7 +158,12 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   };
 
   const save = () => {
-    if (!canSave || !admitted(t("goal.error.update"))) return;
+    if (!canSave) return;
+    if (!runtimeCommandsAvailable()) {
+      setEditorError(t("goal.error.update"));
+      return;
+    }
+    setEditorError(undefined);
     editAction.run(async () => {
       await updateGoal({ sessionId: goal.sessionId, objective: nextObjective });
       setEditing(false);
@@ -166,7 +173,12 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   const controlsDisabled = busy || !runtimeAvailable;
   const openEditor = () => {
     setDraft(goal.objective);
+    setEditorError(undefined);
     setEditing(true);
+  };
+  const editDraft = (value: string) => {
+    setDraft(value);
+    setEditorError(undefined);
   };
 
   return (
@@ -256,12 +268,13 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
         closeLabel={t("common.close")}
         label={t("goal.edit.label")}
         value={draft}
-        onChange={setDraft}
+        onChange={editDraft}
         cancelLabel={t("common.cancel")}
         saveLabel={t("goal.edit.save")}
         savingLabel={t("goal.edit.saving")}
         busy={editAction.busy}
-        saveDisabled={!canSave}
+        error={editorError}
+        saveDisabled={!canSave || controlsDisabled}
         onSave={save}
       />
     </>

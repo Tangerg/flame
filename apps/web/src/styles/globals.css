@@ -316,9 +316,9 @@
   --layer-card: 15;
   --layer-resizer: 25;
   --layer-chrome-control: 30;
+  --layer-notification: 40;
   --layer-floating: 50;
   --layer-modal: 100;
-  --layer-notification: 110;
 
   --shadow-control: 0 1px 2px color-mix(in oklab, var(--shadow-cast) 20%, transparent);
   --shadow-ring: 0 0 0 0.5px var(--seam-line);

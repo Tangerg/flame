@@ -1,7 +1,6 @@
 import { workingDirectoryPicker } from "@/features/navigation/application/ports/workingDirectoryPicker";
 import { useT } from "@/lib/i18n/index";
 import { InputDialog } from "@/ui/index";
-import { notifyError } from "@/features/notifications/public/notifications";
 import { useCreateSession } from "@/features/agent/public/session";
 import { focusComposer } from "@/features/composer/public/focus";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
@@ -17,14 +16,14 @@ export function WorkingDirectoryDialog() {
   const browse = async () => {
     const current = useWorkingDirectorySelection.getState().selection;
     if (current?.owner !== selection.owner || current.busy) return;
-    updateWorkingDirectorySelection(selection, { busy: true });
+    updateWorkingDirectorySelection(selection, { busy: true, error: null });
     try {
       await workingDirectoryPicker().browse(selection.owner);
     } catch (error) {
-      if (useWorkingDirectorySelection.getState().selection?.owner !== selection.owner) return;
-      notifyError(t("session.error.chooseWorkingDirectory"), {
-        description: error instanceof Error ? error.message : undefined,
-        source: "session",
+      const title = t("session.error.chooseWorkingDirectory");
+      const detail = error instanceof Error ? error.message : "";
+      updateWorkingDirectorySelection(selection, {
+        error: detail ? `${title}\n${detail}` : title,
       });
     } finally {
       updateWorkingDirectorySelection(selection, { busy: false });
@@ -33,11 +32,12 @@ export function WorkingDirectoryDialog() {
   const submit = async () => {
     const current = useWorkingDirectorySelection.getState().selection;
     if (!runtimeCommandsAvailable() || current?.owner !== selection.owner || current.busy) return;
-    updateWorkingDirectorySelection(selection, { busy: true });
+    updateWorkingDirectorySelection(selection, { busy: true, error: null });
     const session = await create({ cwd: selection.path.trim() });
     if (session) {
       if (updateWorkingDirectorySelection(selection, null)) focusComposer();
-    } else updateWorkingDirectorySelection(selection, { busy: false });
+    } else
+      updateWorkingDirectorySelection(selection, { busy: false, error: t("session.error.create") });
   };
   return (
     <InputDialog
@@ -46,7 +46,8 @@ export function WorkingDirectoryDialog() {
       label={t("session.directory.path")}
       value={selection.path}
       busy={selection.busy}
-      onChange={(path) => updateWorkingDirectorySelection(selection, { path })}
+      error={selection.error}
+      onChange={(path) => updateWorkingDirectorySelection(selection, { path, error: null })}
       onConfirm={() => void submit()}
       onClose={() => updateWorkingDirectorySelection(selection, null)}
       confirmLabel={t("session.directory.create")}

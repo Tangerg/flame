@@ -1,11 +1,13 @@
-import { useRef, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { Button, FormField, ModalDialog, TextField } from "@flame/ui";
+import { SystemMessage } from "@/ui/atoms/system-message";
 interface InputDialogProps {
   title: string;
   description: ReactNode;
   label: string;
   value: string;
   busy: boolean;
+  error?: string | null;
   confirmLabel: string;
   cancelLabel: string;
   onChange(value: string): void;
@@ -16,6 +18,11 @@ interface InputDialogProps {
 
 export function InputDialog(props: InputDialogProps) {
   const field = useRef<HTMLInputElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const errorId = useId();
+  useLayoutEffect(() => {
+    if (props.error) errorRef.current?.scrollIntoView({ block: "nearest" });
+  }, [props.error]);
   return (
     <ModalDialog
       open
@@ -58,6 +65,7 @@ export function InputDialog(props: InputDialogProps) {
           font="mono"
           size="lg"
           aria-label={props.label}
+          aria-describedby={props.error ? errorId : undefined}
           value={props.value}
           pending={props.busy}
           onChange={(event) => props.onChange(event.target.value)}
@@ -65,6 +73,11 @@ export function InputDialog(props: InputDialogProps) {
           spellCheck={false}
         />
       </FormField>
+      {props.error && (
+        <SystemMessage ref={errorRef} id={errorId} variant="error">
+          {props.error}
+        </SystemMessage>
+      )}
     </ModalDialog>
   );
 }

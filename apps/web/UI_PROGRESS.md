@@ -7699,16 +7699,16 @@ better-accessibility and better-ui guide reading order, 200% reachability, norma
 keyboard access and retained approved surfaces; the React review preserves the
 existing lifetime rather than remounting an input to change layout.
 
-| Principle                        | Severity                             | Root cause and current result                                                                                                                                                              |
-| -------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Keep critical controls reachable | HIGH, repaired in the qualified task | Window-anchored toast stacking obscured composing controls. The measured reading band and bounded editor keep input and footer usable.                                                     |
-| Adapt to actual component space  | HIGH, repaired before delivery       | Empty-layout double reservation and an unshrinkable editor clipped controls at short heights. Container adaptation and the editor/footer flex boundary pass the actual native cases below. |
-| Full keyboard support            | MEDIUM, repaired                     | WebKit's ordinary Tab order skipped default toast buttons. Explicit zero tabindex restores the existing controls; custom tabindex remains unchanged.                                       |
-| Keep critical overlays reachable | HIGH, open                           | At 200%, long toast feedback can still cover an expanded model menu because notification and floating-menu layers share the same reading area. This is the next observed task.             |
+| Principle                        | Severity                              | Root cause and current result                                                                                                                                                              |
+| -------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Keep critical controls reachable | HIGH, repaired in the qualified task  | Window-anchored toast stacking obscured composing controls. The measured reading band and bounded editor keep input and footer usable.                                                     |
+| Adapt to actual component space  | HIGH, repaired before delivery        | Empty-layout double reservation and an unshrinkable editor clipped controls at short heights. Container adaptation and the editor/footer flex boundary pass the actual native cases below. |
+| Full keyboard support            | MEDIUM, repaired                      | WebKit's ordinary Tab order skipped default toast buttons. Explicit zero tabindex restores the existing controls; custom tabindex remains unchanged.                                       |
+| Keep critical overlays reachable | HIGH, repaired in the follow-up below | The original 200% model-menu obstruction is repaired by task ordering and local modal feedback. The follow-up qualifies pointer selection in the actual overlapping reading band.          |
 
-Overall overlay review: **Block** while the last HIGH remains. The qualified
-Composer repair is not a claim that all notification/menu/modal combinations,
-keyboard focus handoffs or all components are ready.
+The original overlay review was **Block** until the task-ordering follow-up below.
+Its scoped acceptance does not qualify all notification/menu/modal combinations,
+keyboard focus handoffs or all components.
 
 **Actual verification**
 
@@ -7794,8 +7794,94 @@ The exact private root is deleted after archive, remote, source and ownership
 verification. Independent checks after deletion again confirm all 5,728 source
 hashes, eleven resource hashes, seventeen output-presence baselines, three
 original file hashes and inventories, and absent owned Library paths. This
-documentation receipt changes no tested source. Continue with the captured
-notification/model-menu overlap; the goal remains active.
+documentation receipt changes no tested source. Its then-open model-menu overlap
+is addressed by the follow-up below; the goal remains active.
+
+### Task menus, notifications and modal feedback
+
+This batch stays on accepted main `e2028234a` while improving UI. Following the
+user's cadence correction, incoming main commits do not trigger repeated merges
+or full verification. Synchronize at a UI batch boundary, inspect actual overlap
+and reuse unaffected evidence.
+
+The native obstruction came from notification layer 110 painting over floating
+tasks at 50. `globals.css` now puts notifications at 40. The shared modal portal
+retains its isolated stacking context at 100; nested menus still belong to that
+context. Sonner retains its existing queue, timing, IDs, actions and dismissal.
+No second overlay owner, focus policy or notification queue is introduced.
+
+Primary review rejected a token-only change: directory selection, objective
+editing and image saving could leave an open modal with its only error behind
+it. Those tasks now render their failure locally. Directory feedback uses the
+existing expected-owner selection record, preserving the entered path, retry
+guard and stale-completion checks. `InputDialog` links its field to the error
+and reveals it without moving focus. The existing Session creation notification
+and history remain; chooser failures belong to the chooser task.
+
+`useCommandAction` accepts an optional error sink while preserving its existing
+default notification, RPC copy, retirement and single-flight behavior. Goal
+editing uses that sink and the existing editor error surface; offline controls
+remain unavailable. Image feedback captures the originating image label and
+gallery lifetime, so navigation cannot relabel a failure and a closed preview
+cannot receive it later. Cancellation remains quiet. Its existing scroll region
+bounds long feedback above image controls. An opaque theme canvas beneath the
+semantic error wash keeps arbitrary image pixels out of its color background.
+
+| Severity         | Location                             | Before                                                    | After                                                                 | Basis                                                                                           |
+| ---------------- | ------------------------------------ | --------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| HIGH, repaired   | Global notification/task layers      | A long notification covers a model option.                | The option paints above it and receives a trusted coordinate click.   | Actual Wails overlap at 200%; better-layout and better-ui task reachability.                    |
+| HIGH, repaired   | Open directory, Goal and image tasks | A rejected command relies on a global transient error.    | Failure stays with its object, draft and retry path inside the modal. | Traced failure owners and native task completion/return; better-accessibility focus continuity. |
+| MEDIUM, repaired | Image feedback surface               | A translucent error wash inherits arbitrary image colors. | The existing theme canvas gives the wash a stable background.         | Native visual review and existing semantic color ownership.                                     |
+
+The scoped review has no remaining HIGH in these qualified paths. Existing
+brand, home surfaces, control geometry, type roles, radii and motion stay intact;
+there is no decorative status stripe or new helper copy.
+
+**Verification**
+
+- Ten focused files pass **90 tests**. The frontend project passes **400 files /
+  3,380 tests**. Typecheck, lint, formatting, design-system/token, authored/dead
+  style, shorthand, interactive-chrome, style-invalidation and production bundle
+  checks pass together in **77.36 s**. No backend matrix is rerun for this UI work.
+- Native visual review then adds only the image feedback's canvas and matching
+  radius. The two affected files pass **16 tests**; final typecheck, lint,
+  formatting, tokens and production bundle pass in **14.68 s**. Unchanged command
+  and layout evidence remains valid. Final **5,763** non-Markdown source hashes:
+  `69b180e41dc5cfd3c636f343aefd2e1d88492e5eec8072205b2979352ab748e8`.
+- Private assets and Wails binaries build serially. CUA owns every native
+  click, key, paste, scroll and window operation; probes only observe. No browser
+  visual suite or performance benchmark runs.
+
+| Native scene                                                   | Observed result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| EN/light/14 px/Orange/full motion, **561 × 365 CSS px / 200%** | Six notifications remain in a 78 px band with a Goal tray. The model option center lies inside that band, passes hit testing and receives a trusted pointer click at screenshot `(1040, 328)`; all six entries and input ID 2 remain. Reasoning entries pass hit testing; Escape then Tab reaches Approval mode. Chooser and creation failures retain the exact path; browse retry clears feedback. A rejected Goal edit keeps its draft, clears feedback on edit, retries and returns to its opener. Image failure keeps its original image identity after navigation, zoom still reaches 125%, and Escape returns to the source. Confirmed caret 27 then native paste continues input ID 2 to `Draft before notifications. Continued.`, caret 38. |
+| ZH/dark/18 px/custom blue/reduced motion, **561 × 365 / 200%** | The 71 px notification band and model option overlap, but the trusted coordinate click reaches the option. Local chooser, Goal and image failures stay readable with their actions available; browse retry succeeds. Long image feedback is keyboard reachable and End reveals `预览仍然可用。` while close, navigation and zoom remain visible. Return retains input ID 2; observed caret 11 then paste extends the same draft to `通知检查前保留的草稿。 已继续。`, caret 16.                                                                                                                                                                                                                                                                     |
+
+Final light-theme image feedback also passes native Tab/End reading through
+`The original preview stays available.` with the opaque canvas in place. Both
+apps restore native Actual Size before Quit; all sixteen recorded processes are
+dead. This verifies production views with deterministic private feedback/Runtime
+ports. It does not claim live provider execution, Runtime mutation persistence,
+OS folder/save dialogs, actual file export, VoiceOver speech, OS IME, RTL, other
+platforms or fresh 320 px window/Dock acceptance. The shared modal stacking
+implementation is preserved rather than broadly requalified.
+
+Bounded Claude CLI supplied the detail edits; the second task reached its
+240-second limit after writing partial changes. Primary reviewed the complete
+diff and finished verification and native acceptance. An initial native Goal
+attempt is excluded: the visual fixture's reread omitted its seeded Goal, so
+the view correctly retired that editor. Repairing only that private projection
+produces the retained-draft evidence above. A private long-error build first
+fails to resolve a package from outside the checkout; its corrected explicit
+package entry builds successfully. An oversized CUA zoom group times out; fresh
+state and short native groups establish the final 200% viewports. None of these
+attempts substitutes for accepted evidence.
+
+Next observed refinement: the directory task's explanatory paragraph crowds its
+Runtime scope at large type when error revelation scrolls the body. Reduce that
+copy while keeping the target endpoint identifiable; preserve this batch's error,
+retry and return behavior. Delivery, integration and cleanup receipts follow
+after the batch-boundary merge; the goal remains active.
 
 ### Notification history and current action focus
 

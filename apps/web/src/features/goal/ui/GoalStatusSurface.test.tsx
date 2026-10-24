@@ -1,5 +1,6 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { RpcError } from "@flame/runtime-client";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { type GoalReadModel } from "@/features/goal/application/goalReadModel";
 import { GoalStatusSurface } from "@/features/goal/ui/GoalStatusSurface";
@@ -140,6 +141,88 @@ describe("Goal status surface", () => {
         objective: "Ship beta",
       }),
     );
+  });
+
+  const rejected = () =>
+    new RpcError({ message: "objective rejected", data: { type: "invalid_request" } });
+
+  async function saveSettled() {
+    await vi.waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save" }).hasAttribute("disabled")).toBe(false),
+    );
+  }
+
+  it("keeps a rejected objective edit in its editor and saves it on retry", async () => {
+    model.updateGoal.mockRejectedValueOnce(rejected());
+    render(<GoalStatusSurface />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
+    const objective = screen.getByRole("textbox", { name: "Goal" }) as HTMLTextAreaElement;
+    fireEvent.change(objective, { target: { value: "Ship beta" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Edit goal" });
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert.textContent).toContain("objective rejected");
+    expect(objective.getAttribute("aria-describedby")).toBe(alert.id);
+    expect(objective.value).toBe("Ship beta");
+    await saveSettled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Edit goal" })).toBeNull());
+    expect(model.updateGoal).toHaveBeenCalledTimes(2);
+    expect(model.updateGoal).toHaveBeenLastCalledWith({
+      sessionId: "session-a",
+      objective: "Ship beta",
+    });
+  });
+
+  it("clears an editor failure when the draft changes or the editor reopens", async () => {
+    model.updateGoal.mockRejectedValueOnce(rejected()).mockRejectedValueOnce(rejected());
+    render(<GoalStatusSurface />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
+    const objective = screen.getByRole("textbox", { name: "Goal" });
+    fireEvent.change(objective, { target: { value: "Ship beta" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByRole("alert");
+    await saveSettled();
+
+    fireEvent.change(objective, { target: { value: "Ship gamma" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByRole("alert");
+    await saveSettled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Edit goal" })).toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
+    expect(screen.getByRole("dialog", { name: "Edit goal" })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps an offline objective save in the editor without invoking the command", async () => {
+    model.runtimeAvailable = false;
+    const { rerender } = render(<GoalStatusSurface />);
+    fireEvent.click(screen.getByRole("button", { name: "Pursuing goal Ship alpha" }));
+    const objective = screen.getByRole("textbox", { name: "Goal" });
+    fireEvent.change(objective, { target: { value: "Ship beta" } });
+
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(save);
+    fireEvent.keyDown(objective, { key: "Enter", code: "Enter", ctrlKey: true });
+    expect(model.updateGoal).not.toHaveBeenCalled();
+
+    model.runtimeAvailable = true;
+    rerender(<GoalStatusSurface />);
+    model.runtimeAvailable = false;
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Edit goal" });
+    expect(within(dialog).getByRole("alert")).toBeTruthy();
+    expect((objective as HTMLTextAreaElement).value).toBe("Ship beta");
+    expect(model.updateGoal).not.toHaveBeenCalled();
   });
 
   it("refuses to save an objective that is only whitespace", () => {

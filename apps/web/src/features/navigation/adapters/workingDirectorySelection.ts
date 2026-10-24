@@ -7,6 +7,7 @@ interface DirectorySelection {
   readonly canBrowse: boolean;
   readonly path: string;
   readonly busy: boolean;
+  readonly error: string | null;
 }
 
 export const useWorkingDirectorySelection = create<{ selection: DirectorySelection | null }>(
@@ -17,7 +18,7 @@ export const useWorkingDirectorySelection = create<{ selection: DirectorySelecti
 
 export function updateWorkingDirectorySelection(
   expected: DirectorySelection,
-  update: { path?: string; busy?: boolean } | null,
+  update: { path?: string; busy?: boolean; error?: string | null } | null,
 ): boolean {
   const current = useWorkingDirectorySelection.getState().selection;
   if (current?.owner !== expected.owner) return false;
@@ -61,6 +62,7 @@ export function installWorkingDirectoryPicker(
           canBrowse: canBrowse(),
           path: "",
           busy: false,
+          error: null,
         },
       });
     },
