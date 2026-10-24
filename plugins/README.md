@@ -110,7 +110,9 @@ node plugins/scripts/build-author-kit.mjs --plugin usagereports --output /absolu
 Go authors own their explicit module namespace. TypeScript authors need no Go
 module, DTO source or compiler. Their kit carries packed `@flame/backend-sdk`,
 the public UI/client packages, its own npm lock and prebuilt development-only
-contract/ZIP tools. New features publish one owned descriptor; implementations of
+contract/ZIP tools. Backend and component sources use separate TypeScript programs
+projected from this repository's respective compiler configurations.
+New features publish one owned descriptor; implementations of
 existing consumer contracts reuse the
 published exact schemas. Memory uses the public
 [`plugin-sdk/memory`](../packages/plugin-sdk/memory/README.md) contract, so its
