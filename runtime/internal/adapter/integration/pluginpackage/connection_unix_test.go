@@ -104,7 +104,7 @@ func TestRepairedReleaseReconnectsThroughItsCurrentDefinition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Rename(root, root+"-retired"); err != nil {
+	if err := relocateTestRelease(root, root+"-retired"); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.CopyFS(root, os.DirFS(source)); err != nil {

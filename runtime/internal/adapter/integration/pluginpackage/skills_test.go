@@ -13,11 +13,11 @@ import (
 
 	sdk "github.com/Tangerg/scope/skills"
 
+	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/fileinput"
 )
 
 func mustPackageSkills(t testing.TB, releases *Releases, installations skillInstallations) *Skills {
@@ -180,7 +180,7 @@ func TestSkillDiscoveryDistinguishesUnavailablePackagesFromNameConflicts(t *test
 					t.Fatal(err)
 				}
 			case "replaced release directory":
-				if err := os.Rename(root, root+"-retired"); err != nil {
+				if err := relocateTestRelease(root, root+"-retired"); err != nil {
 					t.Fatal(err)
 				}
 				if err := os.Mkdir(root, 0700); err != nil {

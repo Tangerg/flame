@@ -8,6 +8,7 @@ env:
 jobs:
   workspace:
     strategy:
+      fail-fast: false
       matrix:
         os: [macos-15, ubuntu-24.04]
     runs-on: ${{ matrix.os }}

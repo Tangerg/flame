@@ -43,6 +43,23 @@ func testReleases(t *testing.T) *Releases {
 	return releases
 }
 
+func relocateTestRelease(source, destination string) error {
+	info, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+	mode := info.Mode().Perm()
+	// macOS 15 requires owner write to rename a sealed directory. Restore the
+	// original permissions so the fixture changes location, not release policy.
+	if err := os.Chmod(source, mode|0200); err != nil {
+		return err
+	}
+	if err := os.Rename(source, destination); err != nil {
+		return errors.Join(err, os.Chmod(source, mode))
+	}
+	return os.Chmod(destination, mode)
+}
+
 func TestStartupRecoversSealedStagingAndNormalReclaimPreservesCandidates(t *testing.T) {
 	r := testReleases(t)
 	stage := filepath.Join(r.directory, ".stage-abandoned")
@@ -292,7 +309,7 @@ func TestCachedIntegrityRefusesAReleaseRootAlias(t *testing.T) {
 		t.Fatal(err)
 	}
 	retained := root + "-retained"
-	if err := os.Rename(root, retained); err != nil {
+	if err := relocateTestRelease(root, retained); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(retained, root); err != nil {
@@ -378,7 +395,7 @@ func TestMCPRegistryRetainsUnavailableDeclaredSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Rename(root, root+"-retired"); err != nil {
+	if err := relocateTestRelease(root, root+"-retired"); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Mkdir(root, 0700); err != nil {
@@ -555,7 +572,7 @@ func TestVerifiedResourceRetainsItsDirectoryAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Rename(directory, directory+"-retired"); err != nil {
+	if err := relocateTestRelease(directory, directory+"-retired"); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Mkdir(directory, 0700); err != nil {

@@ -75,7 +75,7 @@ func TestLaunchExecutesAdmittedContentAfterPublishedBytesChange(t *testing.T) {
 				}
 				wrapped := &replaceAfterAdmissionRegistry{Registry: registry, replace: func() error {
 					if mutation == "replace directory" {
-						if err := os.Rename(root, root+"-retired"); err != nil {
+						if err := relocateTestRelease(root, root+"-retired"); err != nil {
 							return err
 						}
 						if err := os.Mkdir(root, 0700); err != nil {
