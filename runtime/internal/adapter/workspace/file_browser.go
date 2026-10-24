@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/runtime/fileinput"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
-	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/scope/tools/textread"
 )
 
@@ -113,6 +113,6 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 	}
 	return workspaceapp.FileReadResult{
 		Content: result.Content, TotalLines: result.TotalLines, StartLine: result.StartLine,
-		EndLine: result.EndLine, Truncated: result.Truncated, OutputTruncated: result.OutputTruncated,
+		EndLine: result.EndLine, Truncated: result.Truncated,
 	}, nil
 }

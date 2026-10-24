@@ -1,3 +1,4 @@
+// Package ownership holds Runtime's exclusive physical data-directory lifetime.
 package ownership
 
 import (

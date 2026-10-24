@@ -25,11 +25,9 @@ import type {
   ExportTrajectoryResponse,
   FeedbackRequest,
   FileContent,
-  FileHead,
   ForgetApprovalRuleRequest,
   ForkSessionRequest,
   GetDiffRequest,
-  GetFileHeadRequest,
   GetPlanRequest,
   GetRunAcceptanceRequest,
   GetRunRequest,
@@ -207,7 +205,6 @@ const METHOD_NAMES = [
   "workspaces.list",
   "workspace.changes.list",
   "workspace.diff.get",
-  "workspace.files.head",
   "workspace.files.search",
   "workspace.files.list",
   "workspace.files.read",
@@ -333,7 +330,6 @@ const VALUE_METHOD_NAMES = [
   "workspaces.list",
   "workspace.changes.list",
   "workspace.diff.get",
-  "workspace.files.head",
   "workspace.files.search",
   "workspace.files.list",
   "workspace.files.read",
@@ -619,13 +615,6 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "workspace.diff.get": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "none",
-  },
-  "workspace.files.head": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1400,7 +1389,6 @@ export interface WireShapes {
   "workspaces.list": { params: Record<string, never>; result: PageOfWorkspaceSummary };
   "workspace.changes.list": { params: WorkspaceQuery; result: PageOfWorkspaceFileChange };
   "workspace.diff.get": { params: GetDiffRequest; result: Diff };
-  "workspace.files.head": { params: GetFileHeadRequest; result: FileHead };
   "workspace.files.search": { params: GrepRequest; result: GrepResult };
   "workspace.files.list": { params: ListFilesRequest; result: PageOfFileEntry };
   "workspace.files.read": { params: ReadFileRequest; result: FileContent };

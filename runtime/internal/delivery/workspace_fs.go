@@ -57,27 +57,6 @@ func presentFileEntryType(kind workspaceapp.FileEntryKind) (protocol.FileEntryTy
 	}
 }
 
-// GetWorkspaceFileHead projects the application file preview onto wire lines.
-func (s *Handler) GetWorkspaceFileHead(ctx context.Context, in protocol.GetFileHeadRequest) (*protocol.FileHead, error) {
-	lineLimit := workspaceapp.DefaultHeadLineLimit()
-	if in.Lines != nil {
-		explicit, err := workspaceapp.NewHeadLineLimit(*in.Lines)
-		if err != nil {
-			return nil, wireWorkspaceError(err)
-		}
-		lineLimit = explicit
-	}
-	head, err := s.workspaceFiles.Head(ctx, in.Workspace.Path, in.Path, lineLimit)
-	if err != nil {
-		return nil, wireWorkspaceError(err)
-	}
-	lines := make([]protocol.FileLine, 0, len(head.Lines))
-	for _, line := range head.Lines {
-		lines = append(lines, protocol.FileLine{LineNumber: line.Number, Text: line.Text})
-	}
-	return &protocol.FileHead{Lines: lines}, nil
-}
-
 // ReadWorkspaceFile maps the application file read onto the protocol response.
 func (s *Handler) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileRequest) (*protocol.FileContent, error) {
 	lineRange, err := fileLineRangeFromWire(in.StartLine, in.EndLine)

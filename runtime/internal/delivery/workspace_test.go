@@ -166,9 +166,7 @@ func newWorkspaceHandlerWithConfig(cwd string, cfg workspaceTestConfig) *Handler
 	return s
 }
 
-// TestWorkspaceGetFileHead reads the first N lines of a cwd-relative file,
-// numbers them 1-based, and refuses a path that climbs out of the root.
-func TestWorkspaceGetFileHead(t *testing.T) {
+func TestWorkspaceReadPreviewUsesTheFileReadWindowAndBudget(t *testing.T) {
 	dir := t.TempDir()
 	lines := make([]string, 500)
 	for index := range lines {
@@ -182,25 +180,31 @@ func TestWorkspaceGetFileHead(t *testing.T) {
 	}
 	s := newWorkspaceHandler(dir)
 
-	got, err := s.GetWorkspaceFileHead(context.Background(), protocol.GetFileHeadRequest{Path: "f.txt", Lines: valuePtr(2)})
+	got, err := s.ReadWorkspaceFile(t.Context(), protocol.ReadFileRequest{Path: "f.txt", StartLine: valuePtr(1), EndLine: valuePtr(2)})
 	if err != nil {
-		t.Fatalf("getFileHead: %v", err)
+		t.Fatal(err)
 	}
-	if len(got.Lines) != 2 || got.Lines[0].LineNumber != 1 || got.Lines[0].Text != "line-001" || got.Lines[1].LineNumber != 2 {
-		t.Fatalf("lines = %+v, want first two lines numbered 1,2", got.Lines)
+	if got.Content != "line-001\nline-002" || got.StartLine != 1 || got.EndLine != 2 || got.TotalLines != 500 || !got.Truncated {
+		t.Fatalf("preview = %+v, want first two lines of the complete file", got)
 	}
-	capped, err := s.GetWorkspaceFileHead(context.Background(), protocol.GetFileHeadRequest{Path: "f.txt", Lines: valuePtr(1000)})
+	full, err := s.ReadWorkspaceFile(t.Context(), protocol.ReadFileRequest{Path: "f.txt", StartLine: valuePtr(1), EndLine: valuePtr(1000)})
 	if err != nil {
-		t.Fatalf("get capped file head: %v", err)
+		t.Fatal(err)
 	}
-	if len(capped.Lines) != 400 || capped.Lines[399].LineNumber != 400 {
-		t.Fatalf("capped head has %d lines, want 400", len(capped.Lines))
+	if full.EndLine != 500 || full.Truncated || full.Content != strings.Join(lines, "\n") {
+		t.Fatalf("read window = %+v, want all 500 lines", full)
 	}
-	if _, err := s.GetWorkspaceFileHead(context.Background(), protocol.GetFileHeadRequest{Path: "wide.txt", Lines: valuePtr(1)}); !errors.Is(err, protocol.ErrInvalidParams) {
-		t.Fatalf("byte-truncated head error = %v, want invalid_params", err)
+	bounded, err := s.ReadWorkspaceFile(t.Context(), protocol.ReadFileRequest{
+		Path: "wide.txt", StartLine: valuePtr(1), EndLine: valuePtr(1), MaxBytes: valuePtr(1 << 20),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bounded.Truncated || len(bounded.Content) != 1<<20 {
+		t.Fatalf("byte-bounded preview = (%d bytes, truncated %v)", len(bounded.Content), bounded.Truncated)
 	}
 
-	if _, err := s.GetWorkspaceFileHead(context.Background(), protocol.GetFileHeadRequest{Path: "../escape"}); !errors.Is(err, protocol.ErrPathOutsideRoot) {
+	if _, err := s.ReadWorkspaceFile(t.Context(), protocol.ReadFileRequest{Path: "../escape", StartLine: valuePtr(1), EndLine: valuePtr(1)}); !errors.Is(err, protocol.ErrPathOutsideRoot) {
 		t.Errorf("escape path err = %v, want ErrPathOutsideRoot", err)
 	}
 }

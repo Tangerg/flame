@@ -104,7 +104,7 @@ func mapGoalErr(err error) error {
 		return nil
 	}
 	switch {
-	case errors.Is(err, goals.ErrGoalActive), errors.Is(err, goals.ErrGoalOwned):
+	case errors.Is(err, goals.ErrGoalActive):
 		return protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), err.Error())
 	case errors.Is(err, goals.ErrNoGoal),
 		errors.Is(err, goal.ErrNotResumable),

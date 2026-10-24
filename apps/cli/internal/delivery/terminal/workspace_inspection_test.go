@@ -22,16 +22,17 @@ type workspaceServiceStub struct {
 	changes     []workspace.Change
 	calls       map[string]int
 	diffRequest workspace.DiffRequest
-	headRequest workspace.HeadRequest
 	search      workspace.SearchRequest
 	files       workspace.FilesRequest
-	read        workspace.ReadRequest
+	reads       []workspace.ReadRequest
+	content     workspace.FileContent
 }
 
 func newWorkspaceServiceStub() *workspaceServiceStub {
 	return &workspaceServiceStub{
 		changes: []workspace.Change{{Path: "main.go", Status: protocol.FileStatusModified}},
 		calls:   make(map[string]int),
+		content: workspace.FileContent{Content: "package main\n", TotalLines: 1},
 	}
 }
 
@@ -88,14 +89,6 @@ func (w *workspaceServiceStub) lastDiffRequest() workspace.DiffRequest {
 	return w.diffRequest
 }
 
-func (w *workspaceServiceStub) Head(_ context.Context, request workspace.HeadRequest) (workspace.FileHead, error) {
-	w.called("head")
-	w.mu.Lock()
-	w.headRequest = request
-	w.mu.Unlock()
-	return workspace.FileHead{Lines: []protocol.FileLine{{LineNumber: 1, Text: "package main"}}}, nil
-}
-
 func (w *workspaceServiceStub) Search(_ context.Context, request workspace.SearchRequest) (workspace.SearchResult, error) {
 	w.called("search")
 	w.mu.Lock()
@@ -119,15 +112,16 @@ func (w *workspaceServiceStub) Files(_ context.Context, request workspace.FilesR
 func (w *workspaceServiceStub) Read(_ context.Context, request workspace.ReadRequest) (workspace.FileContent, error) {
 	w.called("read")
 	w.mu.Lock()
-	w.read = request
+	w.reads = append(w.reads, request)
+	content := w.content
 	w.mu.Unlock()
-	return workspace.FileContent{Content: "package main\n", TotalLines: 1}, nil
+	return content, nil
 }
 
-func (w *workspaceServiceStub) inspectionRequests() (workspace.HeadRequest, workspace.SearchRequest, workspace.FilesRequest, workspace.ReadRequest) {
+func (w *workspaceServiceStub) inspectionRequests() (workspace.SearchRequest, workspace.FilesRequest, []workspace.ReadRequest) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	return w.headRequest, w.search, w.files, w.read
+	return w.search, w.files, slices.Clone(w.reads)
 }
 
 type changeSourceStub struct {
@@ -205,7 +199,7 @@ func TestWorkspaceCommandsConsumeEveryInspectionRead(t *testing.T) {
 		{input: "/workspaces", show: "Runtime workspaces", call: "list"},
 		{input: "/changes", show: "Workspace changes", call: "changes"},
 		{input: "/diff main.go", show: "Workspace diff", call: "diff"},
-		{input: "/preview main.go", show: "File preview", call: "head"},
+		{input: "/preview main.go", show: "File preview", call: "read"},
 		{input: "/grep package", show: "Workspace search", call: "search"},
 		{input: "/browse", show: "Workspace files", call: "files"},
 		{input: "/read main.go", show: "Workspace file", call: "read"},
@@ -237,9 +231,9 @@ func TestWorkspaceDiffConsumesModeFormatLimitAndPath(t *testing.T) {
 	host.Shows(t, "base · rows · dir with spaces/main.go")
 	host.Shows(t, "Merge base "+strings.Repeat("1", 40))
 	request := service.lastDiffRequest()
-	rows, explicit, err := request.RowLimit.Rows()
+	rows := request.RowLimit.Rows()
 	if request.Mode != protocol.DiffModeBase || request.Format != protocol.DiffFormatRows ||
-		err != nil || !explicit || rows != 50 || request.Path != "dir with spaces/main.go" {
+		rows != 50 || request.Path != "dir with spaces/main.go" {
 		t.Fatalf("diff request = %+v", request)
 	}
 	stop()
@@ -289,22 +283,49 @@ func TestWorkspaceCommandsConsumeEveryPublishedQueryOption(t *testing.T) {
 		host.Shows(t, "Ask flame")
 	}
 
-	head, search, files, read := service.inspectionRequests()
-	headLines, headErr := head.LineLimit.Lines()
-	if headErr != nil || head.Path != "dir with spaces/main.go" || headLines != 25 {
-		t.Errorf("head request = %+v", head)
+	search, files, reads := service.inspectionRequests()
+	if len(reads) != 2 {
+		t.Fatalf("file reads = %v, want preview and explicit read", reads)
 	}
-	searchLimit, searchErr := search.Limit.Matches()
-	if searchErr != nil || search.Path != "internal" || searchLimit != 75 || search.Query != "transition conflict" {
+	preview, read := reads[0], reads[1]
+	previewStart, previewEnd := preview.Range.Bounds()
+	if preview.Path != "dir with spaces/main.go" || previewStart != 1 || previewEnd != 25 {
+		t.Errorf("preview request = %+v", preview)
+	}
+	searchLimit := search.Limit.Matches()
+	if search.Path != "internal" || searchLimit != 75 || search.Query != "transition conflict" {
 		t.Errorf("search request = %+v", search)
 	}
 	if files.Path != "dir with spaces" || files.Glob != "*.go" || !files.Recursive || !files.IncludeIgnored {
 		t.Errorf("files request = %+v", files)
 	}
-	start, end, rangeErr := read.Range.Bounds()
-	bytes, byteErr := read.ByteLimit.Bytes()
-	if rangeErr != nil || byteErr != nil || read.Path != "dir with spaces/main.go" || start != 10 || end != 20 || bytes != 4096 {
+	start, end := read.Range.Bounds()
+	bytes := read.ByteLimit.Bytes()
+	if read.Path != "dir with spaces/main.go" || start != 10 || end != 20 || bytes != 4096 {
 		t.Errorf("read request = %+v", read)
+	}
+	stop()
+}
+
+func TestWorkspacePreviewRendersTheAcceptedWindowAndTruncation(t *testing.T) {
+	service := newWorkspaceServiceStub()
+	service.content = workspace.FileContent{
+		Content: "package main", TotalLines: 1200, StartLine: 1, EndLine: 1, Truncated: true,
+	}
+	host, stop := runUIWithWorkspaceBackend(t, service, nil)
+	host.Shows(t, "Ask flame")
+	host.Type("/preview --lines 1000 main.go")
+	host.Press(input.Enter)
+	host.Shows(t, "File preview")
+	host.Shows(t, "main.go · lines 1-1/1200 · truncated")
+	host.Shows(t, "package main")
+	_, _, reads := service.inspectionRequests()
+	if len(reads) != 1 {
+		t.Fatalf("reads = %v, want one preview read", reads)
+	}
+	start, end := reads[0].Range.Bounds()
+	if start != 1 || end != 1000 {
+		t.Fatalf("preview range = (%d, %d), want requested range without a second clamp", start, end)
 	}
 	stop()
 }
@@ -317,7 +338,7 @@ func TestWorkspaceQueryOptionsFailBeforeStartingARead(t *testing.T) {
 		parse func(string) error
 		input string
 	}{
-		{name: "preview duplicate", input: "--lines 2 --lines 3 main.go", parse: func(value string) error { _, err := parseWorkspaceHeadSelection(value); return err }},
+		{name: "preview duplicate", input: "--lines 2 --lines 3 main.go", parse: func(value string) error { _, err := parseWorkspacePreviewSelection(value); return err }},
 		{name: "search missing query", input: "--limit 5", parse: func(value string) error { _, err := parseWorkspaceSearchSelection(value); return err }},
 		{name: "browse missing glob", input: "--glob", parse: func(value string) error { _, err := parseWorkspaceFilesSelection(value); return err }},
 		{name: "read incomplete range", input: "--end 5 main.go", parse: func(value string) error { _, err := parseWorkspaceReadSelection(value); return err }},

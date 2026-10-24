@@ -54,13 +54,11 @@ including all workspace pages, renderers and the ten compiled backends.
 The same build copies each backend's generated contracts and declared resources.
 GitHub uses the same package path with a declared optional secret token input;
 its unset configuration supports public reads without blocking catalog initialization.
-Memory/Schedules package namespaces also contain canonical contracts generated
-from the typed methods registered by their actual backends. Run
-`go generate ./memory/backend/rpc ./schedules/backend/rpc`
-from `plugins` after changing those methods; the package builder copies the
-namespace resources into the output.
-Regenerate consumer projections with `go generate ./...` from Runtime and CLI,
-then rebuild component resources before packaging.
+Package namespaces contain projections of their owner's canonical contracts.
+Memory binds the public SDK contract; Schedules defines its own feature methods.
+Run `make generate` from the repository root after changing definitions. It
+publishes consumer contracts before backend, CLI and component projections;
+the package builder copies those namespace resources into the output.
 Runtime and CLI build targets place it in `plugins` beside their executable.
 Runtime installs and enables this catalog only when initializing a fresh
 database. Restart preserves user decisions. Package updates still require explicit
@@ -104,7 +102,11 @@ Export one complete plugin outside the checkout:
 node plugins/scripts/build-author-kit.mjs --plugin guardrails --module-path example.com/author/guardrails --output /absolute/new/author --offline
 ```
 
-The author owns its explicit module namespace and regenerates its schemas. Go
+The author owns its explicit module namespace. New feature contracts derive from
+their owner's types; implementations of existing consumer contracts reuse the
+published exact schemas. Memory uses the public
+[`plugin-sdk/memory`](../packages/plugin-sdk/memory/README.md) contract, so its
+author namespace cannot redefine the host's role. Go
 production and tool dependencies are vendored from immutable standard root/nested
 module artifacts; SDK source and manifests are never rewritten or trimmed.
 [Consumer distribution](../docs/reference/consumers.md) explains frozen candidate
@@ -135,9 +137,12 @@ Choose the Runtime host's OS/architecture; native sandbox availability follows t
 actual confinement mechanism. Package acquisition from a registry/URL and automatic
 updates remain separate work.
 
-Module relocation changes the generated schema reference identities. Regenerate
-plugin contracts, host/CLI projections and component resources together. Existing
-installations must explicitly admit/select rebuilt packages. Original pending work
+The exporter includes `backend`, `component`, `package` and the plugin README.
+Contract definition tools stay with their publisher; the author's pinned public
+dependencies carry existing consumer contracts. Local generation refreshes package
+and UI projections without deriving a replacement role from relocated Go types.
+New author-owned features may define their own schemas and consumers explicitly.
+Existing installations must explicitly admit/select rebuilt packages. Original pending work
 retains its old release and receipt route; finish it with the matching original
 host/binary before upgrading. Private business schemas and core accounting ownership
 are unchanged. No compatibility reader or automatic data conversion is supplied.
@@ -162,9 +167,11 @@ or backend process.
 Build `icons` and `ui` first, then run:
 
 ```sh
-npm ci --prefix plugins
-npm run build --prefix plugins
-npm run check --prefix plugins
+npm ci
+npm run build --workspace @flame/icons
+npm run build --workspace @flame/ui
+npm run build --workspace @flame/plugins
+npm run check --workspace @flame/plugins
 ```
 
 `build-components.mjs` uses the public SDK to build each `component/component.tsx` as

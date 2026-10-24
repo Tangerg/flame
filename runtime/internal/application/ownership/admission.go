@@ -1,3 +1,4 @@
+// Package ownership owns Runtime's Run admission and ordered recovery boundaries.
 package ownership
 
 import (
@@ -5,45 +6,37 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/dependency"
 	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // Gate serializes one writer per session, records live Runs, and coordinates
-// their working-tree admissions with destructive workspace mutations. Construct
-// it with NewGate so every admission uses the ownership backend.
+// their working-tree admissions with destructive workspace mutations. Runtime's
+// data-directory lease excludes other processes; this registry owns admission
+// for every use case inside that lifetime.
 type Gate struct {
 	mu            sync.Mutex
 	runs          map[string]reservedRun
 	pending       map[*runAdmissionLease]reservedRun
 	maintenance   map[*maintenanceReservation]struct{}
-	claims        map[string]map[*sessionClaim]struct{}
+	claims        map[string]sessionClaimKind
 	treeMutations map[string]struct{}
 	changed       chan struct{}
-	ownership     AdmissionBackend
+	resolveTree   func(string) (string, error)
 }
 
-// AdmissionBackend maps product identities to non-blocking cross-process leases.
-// Acquired=false with no error means contention. Operational failures must
-// return their cause so callers never present them as ordinary contention.
-type AdmissionBackend interface {
-	TrySession(sessionID string) (Lease, bool, error)
-	TryWorkingTree(cwd string, shared bool) (Lease, bool, error)
-}
-
-// NewGate constructs a Gate whose single-writer and working-tree invariants span
-// every Runtime process sharing the required ownership backend.
-func NewGate(ownership AdmissionBackend) (*Gate, error) {
-	if dependency.Missing(ownership) {
-		return nil, errors.New("session admission: ownership backend is required")
+// NewGate uses the workspace owner's physical identity for both Run admission
+// and destructive mutations, so aliases cannot create independent reservations.
+func NewGate(resolveTree func(string) (string, error)) (*Gate, error) {
+	if resolveTree == nil {
+		return nil, errors.New("session admission: working-tree resolver is required")
 	}
 	return &Gate{
-		ownership:     ownership,
+		resolveTree:   resolveTree,
 		runs:          make(map[string]reservedRun),
 		pending:       make(map[*runAdmissionLease]reservedRun),
 		maintenance:   make(map[*maintenanceReservation]struct{}),
-		claims:        make(map[string]map[*sessionClaim]struct{}),
+		claims:        make(map[string]sessionClaimKind),
 		treeMutations: make(map[string]struct{}),
 		changed:       make(chan struct{}),
 	}, nil
@@ -55,7 +48,6 @@ func NewGate(ownership AdmissionBackend) (*Gate, error) {
 type reservedRun struct {
 	sessionID string
 	cwd       string
-	leases    []Lease
 }
 
 // maintenanceReservation is a run in terminal maintenance. Its address is the
@@ -75,13 +67,6 @@ type RunAdmission struct {
 type runAdmissionLease struct {
 	gate *Gate
 	once sync.Once
-}
-
-// sessionClaim is one process-local ownership registration. Its address is the
-// registry identity because the claim never crosses the Gate boundary.
-type sessionClaim struct {
-	sessionID string
-	kind      sessionClaimKind
 }
 
 type sessionClaimKind uint8
@@ -125,12 +110,11 @@ func (r RunAdmission) Release() {
 	r.lease.once.Do(func() {
 		g := r.lease.gate
 		g.mu.Lock()
-		pending, ok := g.pending[r.lease]
+		_, ok := g.pending[r.lease]
 		if !ok {
 			g.mu.Unlock()
 			return
 		}
-		releaseLeases(pending.leases)
 		delete(g.pending, r.lease)
 		g.notifyLocked()
 		g.mu.Unlock()
@@ -156,27 +140,32 @@ func (g *Gate) AcquireRecoverySession(sessionID string) (release func(), ok bool
 }
 
 func (g *Gate) acquireSessionLocked(sessionID string, kind sessionClaimKind) (release func(), ok bool, err error) {
+	if sessionID == "" {
+		return nil, false, errors.New("session admission: session identity is required")
+	}
 	if g.activeSessionLocked(sessionID) {
 		return nil, false, nil
 	}
-	lease, ok, err := g.ownership.TrySession(sessionID)
-	if err != nil || !ok {
-		return nil, false, err
-	}
-	releaseLocal := g.addClaimLocked(sessionID, kind)
-	var once sync.Once
-	return func() {
-		once.Do(func() {
-			lease.Release()
-			releaseLocal()
-		})
-	}, true, nil
+	return g.addClaimLocked(sessionID, kind), true, nil
 }
 
 // AcquireRun atomically reserves a fresh run's session and working tree. The
 // returned admission must be either admitted after the durable opening commit
 // or released when admission fails.
 func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmission, bool, error) {
+	if sessionID == "" {
+		return RunAdmission{}, false, errors.New("session admission: session identity is required")
+	}
+	if err := cancellation.Err(ctx); err != nil {
+		return RunAdmission{}, false, err
+	}
+	if cwd != "" {
+		var err error
+		cwd, err = g.resolveTree(cwd)
+		if err != nil {
+			return RunAdmission{}, false, err
+		}
+	}
 	if err := g.lockForegroundSession(ctx, sessionID); err != nil {
 		return RunAdmission{}, false, err
 	}
@@ -184,25 +173,13 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmiss
 	if g.activeSessionLocked(sessionID) {
 		return RunAdmission{}, false, nil
 	}
-	sessionLease, ok, err := g.ownership.TrySession(sessionID)
-	if err != nil || !ok {
-		return RunAdmission{}, false, err
-	}
-	leases := []Lease{sessionLease}
 	if cwd != "" {
 		if _, busy := g.treeMutations[cwd]; busy {
-			releaseLeases(leases)
 			return RunAdmission{}, false, nil
 		}
-		treeLease, acquired, err := g.ownership.TryWorkingTree(cwd, true)
-		if err != nil || !acquired {
-			releaseLeases(leases)
-			return RunAdmission{}, false, err
-		}
-		leases = append(leases, treeLease)
 	}
 	admission := &runAdmissionLease{gate: g}
-	g.pending[admission] = reservedRun{sessionID: sessionID, cwd: cwd, leases: leases}
+	g.pending[admission] = reservedRun{sessionID: sessionID, cwd: cwd}
 	return RunAdmission{lease: admission}, true, nil
 }
 
@@ -224,7 +201,6 @@ func (g *Gate) BeginMaintenance(runID string) (release func(), ok bool) {
 		once.Do(func() {
 			g.mu.Lock()
 			defer g.mu.Unlock()
-			releaseLeases(run.leases)
 			delete(g.maintenance, reservation)
 			g.notifyLocked()
 		})
@@ -238,30 +214,17 @@ func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, 
 	if cwd == "" {
 		return func() {}, true, nil
 	}
+	cwd, err = g.resolveTree(cwd)
+	if err != nil {
+		return nil, false, err
+	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if _, busy := g.treeMutations[cwd]; busy || g.treeReservedLocked(cwd) {
 		return nil, false, nil
 	}
-	lease, ok, err := g.ownership.TryWorkingTree(cwd, false)
-	if err != nil || !ok {
-		return nil, false, err
-	}
 	g.treeMutations[cwd] = struct{}{}
-	releaseLocal := g.releaseTreeMutation(cwd)
-	var once sync.Once
-	return func() {
-		once.Do(func() {
-			lease.Release()
-			releaseLocal()
-		})
-	}, true, nil
-}
-
-func releaseLeases(leases []Lease) {
-	for index := len(leases) - 1; index >= 0; index-- {
-		leases[index].Release()
-	}
+	return g.releaseTreeMutation(cwd), true, nil
 }
 
 // ActiveSessions snapshots every session with a pending or live Run, or a held
@@ -312,6 +275,16 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 	if ctx == nil {
 		return errors.New("session admission: wait context is required")
 	}
+	if err := cancellation.Err(ctx); err != nil {
+		return err
+	}
+	if cwd != "" {
+		var err error
+		cwd, err = g.resolveTree(cwd)
+		if err != nil {
+			return err
+		}
+	}
 	for {
 		g.mu.Lock()
 		if err := cancellation.Err(ctx); err != nil {
@@ -343,14 +316,7 @@ func (g *Gate) lockForegroundSession(ctx context.Context, sessionID string) erro
 			g.mu.Unlock()
 			return err
 		}
-		recovering := false
-		for claim := range g.claims[sessionID] {
-			if claim.kind == sessionRecovery {
-				recovering = true
-				break
-			}
-		}
-		if !recovering {
+		if kind, held := g.claims[sessionID]; !held || kind != sessionRecovery {
 			return nil
 		}
 		changed := g.changed
@@ -394,24 +360,14 @@ func (g *Gate) treeReservedLocked(cwd string) bool {
 }
 
 func (g *Gate) addClaimLocked(sessionID string, kind sessionClaimKind) func() {
-	claim := &sessionClaim{sessionID: sessionID, kind: kind}
-	owners := g.claims[sessionID]
-	if owners == nil {
-		owners = map[*sessionClaim]struct{}{}
-		g.claims[sessionID] = owners
-	}
-	owners[claim] = struct{}{}
+	g.claims[sessionID] = kind
 
 	var once sync.Once
 	return func() {
 		once.Do(func() {
 			g.mu.Lock()
 			defer g.mu.Unlock()
-			owners := g.claims[claim.sessionID]
-			delete(owners, claim)
-			if len(owners) == 0 {
-				delete(g.claims, claim.sessionID)
-			}
+			delete(g.claims, sessionID)
 			g.notifyLocked()
 		})
 	}

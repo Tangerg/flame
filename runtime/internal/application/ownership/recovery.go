@@ -14,12 +14,6 @@ import (
 
 const recoveryInterval = time.Second
 
-// RecoveryBackend serializes Runtime's recovery sweeps.
-type RecoveryBackend interface {
-	TryRecoverySweep() (Lease, bool, error)
-	AcquireRecoverySweep(ctx context.Context) (Lease, error)
-}
-
 // RunRecovery reconciles abandoned Run trees and their Goal accounting.
 type RunRecovery interface {
 	Reconcile(ctx context.Context) (int, error)
@@ -35,22 +29,18 @@ type GoalRecovery interface {
 type RecoveryCoordinator struct {
 	runs      RunRecovery
 	goals     GoalRecovery
-	ownership RecoveryBackend
+	sweepSlot chan struct{}
 }
 
-// NewRecovery constructs the ordered recovery use case with both reconcilers and
-// the ownership backend required by every Runtime.
-func NewRecovery(runs RunRecovery, goals GoalRecovery, ownership RecoveryBackend) (*RecoveryCoordinator, error) {
+// NewRecovery constructs the single ordered recovery owner for one Runtime.
+func NewRecovery(runs RunRecovery, goals GoalRecovery) (*RecoveryCoordinator, error) {
 	if dependency.Missing(runs) {
 		return nil, errors.New("ownership recovery: Run reconciler is required")
 	}
 	if dependency.Missing(goals) {
 		return nil, errors.New("ownership recovery: Goal reconciler is required")
 	}
-	if dependency.Missing(ownership) {
-		return nil, errors.New("ownership recovery: ownership backend is required")
-	}
-	return &RecoveryCoordinator{runs: runs, goals: goals, ownership: ownership}, nil
+	return &RecoveryCoordinator{runs: runs, goals: goals, sweepSlot: make(chan struct{}, 1)}, nil
 }
 
 // Reconcile performs one non-blocking recovery sweep. acquired is false when
@@ -60,14 +50,13 @@ func (c *RecoveryCoordinator) Reconcile(ctx context.Context) (acquired bool, err
 	if err := recoveryContextError(ctx); err != nil {
 		return false, err
 	}
-	lease, ok, err := c.ownership.TryRecoverySweep()
-	if err != nil {
-		return false, fmt.Errorf("ownership recovery: acquire sweep: %w", errors.Join(err, cancellation.Err(ctx)))
-	}
-	if !ok {
+	select {
+	case c.sweepSlot <- struct{}{}:
+		defer func() { <-c.sweepSlot }()
+	default:
 		return false, cancellation.Err(ctx)
 	}
-	return true, c.reconcileOwned(ctx, lease)
+	return true, c.reconcileOwned(ctx)
 }
 
 // ReconcileStartup joins any current recovery sweep, then reconciles Runs before
@@ -76,17 +65,17 @@ func (c *RecoveryCoordinator) ReconcileStartup(ctx context.Context) error {
 	if err := recoveryContextError(ctx); err != nil {
 		return err
 	}
-	lease, err := c.ownership.AcquireRecoverySweep(ctx)
-	if err != nil {
-		return fmt.Errorf("ownership recovery: acquire startup sweep: %w", errors.Join(err, cancellation.Err(ctx)))
+	select {
+	case <-ctx.Done():
+		return cancellation.Err(ctx)
+	case c.sweepSlot <- struct{}{}:
+		defer func() { <-c.sweepSlot }()
 	}
-	return c.reconcileOwned(ctx, lease)
+	return c.reconcileOwned(ctx)
 }
 
-// RunWorker reconciles ownerless Run and Goal state through the same kernel
-// leases held by live logical owners. A contended lease is definitive
-// liveness evidence; no heartbeat or expiry clock participates. A failed sweep
-// remains observable and is retried at the next interval.
+// RunWorker reconciles state abandoned by the actual Run and Goal owners.
+// A failed sweep remains observable and is retried at the next interval.
 func (c *RecoveryCoordinator) RunWorker(ctx context.Context) {
 	ticker := time.NewTicker(recoveryInterval)
 	defer ticker.Stop()
@@ -123,8 +112,7 @@ func (c *RecoveryCoordinator) sweep(ctx context.Context) (err error) {
 	return err
 }
 
-func (c *RecoveryCoordinator) reconcileOwned(ctx context.Context, lease Lease) error {
-	defer lease.Release()
+func (c *RecoveryCoordinator) reconcileOwned(ctx context.Context) error {
 	if err := cancellation.Err(ctx); err != nil {
 		return err
 	}

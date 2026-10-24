@@ -46,7 +46,6 @@ type Workspaces interface {
 	Resolve(context.Context, workspace.ResolveRequest) (workspace.Workspace, error)
 	List(context.Context) ([]workspace.Summary, error)
 	Diff(context.Context, workspace.DiffRequest) (workspace.Diff, error)
-	Head(context.Context, workspace.HeadRequest) (workspace.FileHead, error)
 	Search(context.Context, workspace.SearchRequest) (workspace.SearchResult, error)
 	Files(context.Context, workspace.FilesRequest) (workspace.FileListing, error)
 	Read(context.Context, workspace.ReadRequest) (workspace.FileContent, error)

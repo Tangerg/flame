@@ -143,6 +143,15 @@ select their directory. Moving or replacing a live data root is unsupported and
 fails directory validation. Startup removes abandoned unpublished release staging;
 ordinary reclamation preserves live candidates.
 
+Inside that lifetime, the admission Gate owns Session writers and physical
+working-tree reservations. The shared Session mutation coordinator owns Goal
+drive lifetimes; recovery reads that registry under the same command lock.
+Ordered recovery has one process-local sweep slot. Internal Session, working-tree,
+Goal and recovery lock files are no longer created or consulted; old empty lock
+files carry no product state and may remain on disk. No stored product data changes.
+The unused `advisorylock.TryFile` and `TrySharedFile` APIs are removed. Plugin
+backend processes continue to own their directories through `AcquireDirectory`.
+
 Stop the original binary before this breaking cut. Retain its directory separately
 and complete unresolved work using that binary; an older process does not honor
 the new lifetime lease. Opening does not migrate or discard unknown commands.
@@ -811,8 +820,8 @@ canceled caller even when a reservation just released. Durable Run reads
 retain both their own failure and concurrent cancellation before permitting
 a continuation. Observation cleanup retires only that waiter's subscription;
 the next Start still acquires its own admission.
-Startup and survivor recovery share one coordinator that acquires the sweep
-lease, then reconciles Runs before Goals. It checks its lifetime before taking
+Startup and periodic recovery share one coordinator that serializes each sweep,
+then reconciles Runs before Goals. It checks its lifetime before taking
 ownership and before starting each phase, releases acquired ownership on every
 exit, and retains a failed phase's cause alongside concurrent cancellation.
 Cancellation stops unstarted phases; an already completed recovery retains its
@@ -821,11 +830,9 @@ Before abandoned Running Runs are classified, startup acquires the ordinary
 Run admission for each accepted Resume handoff and attempts its bounded revival.
 An inconclusive storage or dependency failure stops startup with the binding
 retained; an incompatible head follows the existing Run-lost policy.
-File advisory leases consume their opened descriptor. Acquisition failure or
+Unix directory leases consume their opened descriptor. Acquisition failure or
 contention closes it immediately; an acquired lease owns both unlock and close,
 retains their combined diagnostic, and never retries a retired descriptor.
-Application ownership reports cleanup failures without discarding them or
-replacing a completed use case's result.
 
 ## Attach without owning the Runtime
 
@@ -1143,6 +1150,13 @@ Portable Session artifacts preserve unresolved effects on every terminal outcome
 Unknown-effect termination closes every unfinished member in Run-tree postorder, retaining the same evidence on each lost Run. Completed members keep their outcomes. Each terminal commit settles open model attempts as unknown and abandons unfinished Tool Items without inventing model-visible results; the executor is released only after the terminal publication sequence.
 
 ## Workspace observations
+
+Workspace file content has one read operation, `workspace.files.read`. A preview
+requests a window starting at line 1 and consumes the same byte budget, source
+validation and truncation result as any other read. Core `2026-10-23.1` removes
+`workspace.files.head` and its Go request/result types. Rebuild clients and
+replace former calls with `ReadWorkspaceFile` and an explicit line window.
+This changes the public protocol, not stored content.
 
 `runtime.subscribe` accepts exact workspace-relative `watches[].paths`; `"."` names the workspace directory. Omitted paths request only Git HEAD/index observation. Explicit paths observe ordinary external writes, atomic replacements, removal, and recreation in Git and non-Git workspaces. A directory target observes its immediate entry names and metadata; it does not recursively watch children or follow their symlinks. An opened file needs its own target to observe content changes.
 

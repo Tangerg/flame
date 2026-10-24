@@ -82,18 +82,6 @@ func TestFilesReadNormalizesBudgetBeforeCallingPort(t *testing.T) {
 	}
 }
 
-func TestFilesHeadRejectsByteTruncatedPortResult(t *testing.T) {
-	port := &fileReadPort{result: FileReadResult{
-		Content: "prefix", TotalLines: 2, EndLine: 1, Truncated: true, OutputTruncated: true,
-	}}
-	files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
-
-	_, err := files.Head(t.Context(), "", "file.txt", mustHeadLineLimit(t, 1))
-	if !errors.Is(err, ErrFileReadTooLarge) {
-		t.Fatalf("Head error = %v, want ErrFileReadTooLarge", err)
-	}
-}
-
 func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 	t.Run("invalid regex", func(t *testing.T) {
 		port := &fileReadPort{}
@@ -147,15 +135,6 @@ func TestFilesGrepPreservesCustomCancellationBeforeAdmission(t *testing.T) {
 	if port.grepCalled {
 		t.Fatal("canceled query reached the filesystem port")
 	}
-}
-
-func mustHeadLineLimit(t *testing.T, lines int) HeadLineLimit {
-	t.Helper()
-	limit, err := NewHeadLineLimit(lines)
-	if err != nil {
-		t.Fatalf("NewHeadLineLimit(%d): %v", lines, err)
-	}
-	return limit
 }
 
 func mustGrepResultLimit(t *testing.T, matches int) GrepResultLimit {

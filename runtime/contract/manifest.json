@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-16.2",
+  "protocolVersion": "2026-10-23.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -441,19 +441,6 @@
       ],
       "features": [
         "git"
-      ]
-    },
-    {
-      "name": "workspace.files.head",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "workspace_unavailable",
-        "path_outside_root",
-        "unsupported_mime"
       ]
     },
     {
@@ -1766,7 +1753,6 @@
         "methods": [
           "tools.invoke",
           "workspace.diff.get",
-          "workspace.files.head",
           "workspace.files.list",
           "workspace.files.read",
           "workspace.files.search"
@@ -2109,7 +2095,6 @@
         "recoveryAction": "promptUser",
         "methods": [
           "runs.start",
-          "workspace.files.head",
           "workspace.files.read"
         ]
       },
@@ -2140,7 +2125,6 @@
           "tools.invoke",
           "workspace.changes.list",
           "workspace.diff.get",
-          "workspace.files.head",
           "workspace.files.list",
           "workspace.files.read",
           "workspace.files.search",
@@ -8373,15 +8357,6 @@
       ]
     },
     {
-      "type": "FileLine",
-      "rules": [
-        {
-          "field": "lineNumber",
-          "constraint": "positive"
-        }
-      ]
-    },
-    {
       "type": "GrepResult",
       "rules": [
         {
@@ -8464,19 +8439,6 @@
       "rules": [
         {
           "field": "limit",
-          "constraint": "positive"
-        }
-      ]
-    },
-    {
-      "type": "GetFileHeadRequest",
-      "rules": [
-        {
-          "field": "path",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "lines",
           "constraint": "positive"
         }
       ]
@@ -10521,10 +10483,6 @@
     {
       "file": "ws.fileChange.json",
       "shape": "WorkspaceFileChange"
-    },
-    {
-      "file": "ws.fileHead.json",
-      "shape": "FileHead"
     },
     {
       "file": "ws.grepResult.json",

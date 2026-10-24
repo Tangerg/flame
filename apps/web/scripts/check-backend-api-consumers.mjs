@@ -40,11 +40,6 @@ const terminalOperations = new Set([
   "workspace.files.search",
   "agentDocs.list",
 ]);
-// Desktop stopped reading `workspace.files.head`: a tool preview shows the recorded
-// result, and the file view reads ranges through `workspace.files.read`. The method is
-// Runtime's to retire; drop this entry in the same change that removes it there.
-const awaitingRuntimeRemoval = new Set(["workspace.files.head"]);
-const notDesktopOperations = new Set([...terminalOperations, ...awaitingRuntimeRemoval]);
 const sidecarEndpoints = new Set(
   manifest.httpEndpoints
     .filter((endpoint) => endpoint.kind === "sidecar")
@@ -228,11 +223,11 @@ for (const [operation, locations] of Object.entries(headlessCalls)) {
     errors.push(`Go product calls non-manifest operation ${operation}`);
     continue;
   }
-  if (consumers.size > 0 || notDesktopOperations.has(operation)) continue;
+  if (consumers.size > 0 || terminalOperations.has(operation)) continue;
   for (const location of locations) consumers.add(`${location} (Go product binding)`);
   headlessOperations.add(operation);
 }
-checkOperationConsumers(operationConsumers, implementationMap, notDesktopOperations, errors);
+checkOperationConsumers(operationConsumers, implementationMap, terminalOperations, errors);
 
 checkSidecarConsumers(sidecarEndpoints, sidecarMethodMap, sidecarConsumerCalls, errors);
 
@@ -247,7 +242,7 @@ const callCount =
   [...sidecarConsumerCalls.values()].reduce((total, locations) => total + locations.size, 0);
 closeCompiler();
 console.log(
-  `check-backend-api-consumers: ${operations.size - notDesktopOperations.size}/${operations.size - notDesktopOperations.size} Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct graphical operations, ${headlessOperations.size} Go headless operations, ${materializedOperations.size} materialized through server composites, ${httpProjectedOperations.size} through consumed HTTP projections), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
+  `check-backend-api-consumers: ${operations.size - terminalOperations.size}/${operations.size - terminalOperations.size} Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct graphical operations, ${headlessOperations.size} Go headless operations, ${materializedOperations.size} materialized through server composites, ${httpProjectedOperations.size} through consumed HTTP projections), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
 );
 
 function consumedHTTPEndpoints(call) {
@@ -270,18 +265,7 @@ function consumedHTTPEndpoints(call) {
       ts.isPropertyAccessExpression(node.expression) &&
       ts.isIdentifier(node.expression.expression)
     ) {
-      let symbol = checker.getSymbolAtLocation(node.expression.expression);
-      if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-      if (
-        declarationsOf(symbol).some(
-          (declaration) =>
-            ts.isVariableDeclaration(declaration) &&
-            ts.isIdentifier(declaration.name) &&
-            declaration.name.text === "HTTP_ENDPOINTS" &&
-            resolve(declaration.getSourceFile().fileName) === WIRE_PATH,
-        )
-      )
-        found.add(node.expression.name.text);
+      if (isHTTPEndpointCatalog(node.expression.expression)) found.add(node.expression.name.text);
       return;
     }
     if (ts.isIdentifier(node)) {
@@ -312,6 +296,18 @@ function consumedHTTPEndpoints(call) {
   }
   scan(call.arguments[0]);
   return found;
+}
+
+function isHTTPEndpointCatalog(expression) {
+  let symbol = checker.getSymbolAtLocation(expression);
+  if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+  return declarationsOf(symbol).some(
+    (declaration) =>
+      ts.isVariableDeclaration(declaration) &&
+      ts.isIdentifier(declaration.name) &&
+      declaration.name.text === "HTTP_ENDPOINTS" &&
+      resolve(declaration.getSourceFile().fileName) === WIRE_PATH,
+  );
 }
 
 function creditHTTPOperationConsumers(endpoints, methods, calls, consumers, targetErrors) {
@@ -383,37 +379,91 @@ function creditMaterializedOperationConsumers(methods, consumersByOperation, tar
 }
 
 function mappedSidecarMethods() {
-  let declaration;
-  for (const statement of sidecarSource.statements) {
-    if (!ts.isVariableStatement(statement)) continue;
-    declaration = statement.declarationList.declarations.find(
-      (candidate) => ts.isIdentifier(candidate.name) && candidate.name.text === "SIDECAR_METHODS",
-    );
-    if (declaration) break;
-  }
-  const initializer = declaration?.initializer && unwrapExpression(declaration.initializer);
-  if (!initializer || !ts.isObjectLiteralExpression(initializer)) {
-    fail(["SIDECAR_METHODS must be an object literal in sidecar.ts"]);
-  }
+  const factory = sidecarSource.statements.find(
+    (node) => ts.isFunctionDeclaration(node) && node.name?.text === "createSidecarClient",
+  );
+  const returned = factory?.body?.statements.find(ts.isReturnStatement);
+  const object = returned?.expression && unwrapExpression(returned.expression);
+  if (!object || !ts.isObjectLiteralExpression(object))
+    fail(["createSidecarClient must return its client implementation"]);
   const mapped = new Map();
-  for (const property of initializer.properties) {
-    if (!ts.isPropertyAssignment(property)) continue;
-    const endpoint = propertyName(property.name);
-    const method = constantString(property.initializer);
-    if (endpoint && method) mapped.set(endpoint, method);
+  for (const property of object.properties) {
+    const method = property.name && propertyName(property.name);
+    const implementation = ts.isPropertyAssignment(property)
+      ? unwrapExpression(property.initializer)
+      : property;
+    if (
+      !method ||
+      (!ts.isArrowFunction(implementation) &&
+        !ts.isFunctionExpression(implementation) &&
+        !ts.isMethodDeclaration(implementation)) ||
+      !implementation.body
+    )
+      fail(["SidecarClient members must have inspectable implementations"]);
+    const endpoints = new Set();
+    const scanCalls = (node) => {
+      if (
+        ts.isFunctionDeclaration(node) ||
+        ts.isArrowFunction(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isMethodDeclaration(node)
+      )
+        return;
+      if (ts.isCallExpression(node)) {
+        let symbol = checker.getSymbolAtLocation(node.expression);
+        if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+        for (const declaration of declarationsOf(symbol)) {
+          if (
+            !ts.isFunctionDeclaration(declaration) ||
+            !declaration.body ||
+            resolve(declaration.getSourceFile().fileName) !== SIDECAR_PATH
+          )
+            continue;
+          const scanLookup = (lookup) => {
+            if (
+              ts.isFunctionDeclaration(lookup) ||
+              ts.isArrowFunction(lookup) ||
+              ts.isFunctionExpression(lookup) ||
+              ts.isMethodDeclaration(lookup)
+            )
+              return;
+            if (ts.isElementAccessExpression(lookup) && isHTTPEndpointCatalog(lookup.expression)) {
+              const argument = lookup.argumentExpression;
+              const parameters = declarationsOf(checker.getSymbolAtLocation(argument));
+              const index = declaration.parameters.findIndex((parameter) =>
+                parameters.includes(parameter),
+              );
+              const value = index < 0 ? argument : node.arguments[index];
+              const endpoint = value && constantString(value);
+              if (!endpoint) fail([`SidecarClient.${method} has a dynamic HTTP endpoint`]);
+              endpoints.add(endpoint);
+            }
+            lookup.forEachChild(scanLookup);
+          };
+          scanLookup(declaration.body);
+        }
+      }
+      node.forEachChild(scanCalls);
+    };
+    scanCalls(implementation.body);
+    if (endpoints.size === 0) fail([`SidecarClient.${method} has no canonical HTTP endpoint call`]);
+    for (const endpoint of endpoints) {
+      const methods = mapped.get(endpoint) ?? new Set();
+      methods.add(method);
+      mapped.set(endpoint, methods);
+    }
   }
   return mapped;
 }
 
 function checkSidecarConsumers(expected, methods, calls, targetErrors) {
   for (const endpoint of expected) {
-    const method = methods.get(endpoint);
-    if (!method) {
+    const implementations = methods.get(endpoint);
+    if (!implementations?.size) {
       targetErrors.push(`${endpoint} has no typed SidecarClient method mapping`);
       continue;
     }
-    const consumers = calls.get(method);
-    if (!consumers?.size) {
+    if (![...implementations].some((method) => calls.get(method)?.size)) {
       targetErrors.push(
         `${endpoint} has no non-test frontend consumer (the SidecarClient implementation and tests do not count)`,
       );

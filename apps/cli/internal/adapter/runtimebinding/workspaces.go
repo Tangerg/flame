@@ -14,7 +14,6 @@ type workspaceBinding interface {
 	ListWorkspaces(context.Context, protocol.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)
 	ListWorkspaceFileChanges(context.Context, protocol.WorkspaceQuery, protocol.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error)
 	GetWorkspaceDiff(context.Context, protocol.GetDiffRequest, protocol.CallOptions) (*protocol.Diff, error)
-	GetWorkspaceFileHead(context.Context, protocol.GetFileHeadRequest, protocol.CallOptions) (*protocol.FileHead, error)
 	SearchWorkspaceFiles(context.Context, protocol.GrepRequest, protocol.CallOptions) (*protocol.GrepResult, error)
 	ListWorkspaceFiles(context.Context, protocol.ListFilesRequest, protocol.CallOptions) (*protocol.Page[protocol.FileEntry], error)
 	ReadWorkspaceFile(context.Context, protocol.ReadFileRequest, protocol.CallOptions) (*protocol.FileContent, error)
@@ -106,17 +105,9 @@ func (r *Connection) Diff(ctx context.Context, request workspace.DiffRequest) (w
 	if err := r.requireFeature(protocol.FeatureGit); err != nil {
 		return workspace.Diff{}, err
 	}
-	var rowLimit *int
-	rows, explicit, err := request.RowLimit.Rows()
-	if err != nil {
-		return workspace.Diff{}, err
-	}
-	if explicit {
-		rowLimit = protocolPositiveInt(rows)
-	}
 	value, err := r.workspaces.GetWorkspaceDiff(ctx, protocol.GetDiffRequest{
 		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Path: request.Path,
-		Mode: request.Mode, Format: request.Format, Limit: rowLimit,
+		Mode: request.Mode, Format: request.Format, Limit: protocolOptionalPositiveInt(request.RowLimit.Rows()),
 	}, r.callOptions())
 	if err != nil {
 		return workspace.Diff{}, classifyError(err)
@@ -131,41 +122,13 @@ func (r *Connection) Diff(ctx context.Context, request workspace.DiffRequest) (w
 	return projected, nil
 }
 
-func (r *Connection) Head(ctx context.Context, request workspace.HeadRequest) (workspace.FileHead, error) {
-	if err := request.Validate(); err != nil {
-		return workspace.FileHead{}, err
-	}
-	lines, err := request.LineLimit.Lines()
-	if err != nil {
-		return workspace.FileHead{}, err
-	}
-	value, err := r.workspaces.GetWorkspaceFileHead(ctx, protocol.GetFileHeadRequest{
-		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Path: request.Path, Lines: protocolPositiveInt(lines),
-	}, r.callOptions())
-	if err != nil {
-		return workspace.FileHead{}, classifyError(err)
-	}
-	if value == nil {
-		return workspace.FileHead{}, runtimeContractViolation("get workspace file head returned nil")
-	}
-	result := workspace.FileHead{Lines: value.Lines}
-	if err := result.Validate(); err != nil {
-		return workspace.FileHead{}, runtimeContractViolation("get workspace file head returned an invalid projection: %v", err)
-	}
-	return result, nil
-}
-
 func (r *Connection) Search(ctx context.Context, request workspace.SearchRequest) (workspace.SearchResult, error) {
 	if err := request.Validate(); err != nil {
 		return workspace.SearchResult{}, err
 	}
-	limit, err := request.Limit.Matches()
-	if err != nil {
-		return workspace.SearchResult{}, err
-	}
 	value, err := r.workspaces.SearchWorkspaceFiles(ctx, protocol.GrepRequest{
 		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Query: request.Query,
-		Path: request.Path, Limit: protocolPositiveInt(limit),
+		Path: request.Path, Limit: protocolOptionalPositiveInt(request.Limit.Matches()),
 	}, r.callOptions())
 	if err != nil {
 		return workspace.SearchResult{}, classifyError(err)
@@ -250,24 +213,11 @@ func (r *Connection) Read(ctx context.Context, request workspace.ReadRequest) (w
 	if err := request.Validate(); err != nil {
 		return workspace.FileContent{}, err
 	}
-	start, end, err := request.Range.Bounds()
-	if err != nil {
-		return workspace.FileContent{}, err
-	}
-	maxBytes, err := request.ByteLimit.Bytes()
-	if err != nil {
-		return workspace.FileContent{}, err
-	}
-	var startLine, endLine *int
-	if start > 0 {
-		startLine = protocolPositiveInt(start)
-	}
-	if end > 0 {
-		endLine = protocolPositiveInt(end)
-	}
+	start, end := request.Range.Bounds()
 	value, err := r.workspaces.ReadWorkspaceFile(ctx, protocol.ReadFileRequest{
 		Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Path: request.Path,
-		StartLine: startLine, EndLine: endLine, MaxBytes: protocolPositiveInt(maxBytes),
+		StartLine: protocolOptionalPositiveInt(start), EndLine: protocolOptionalPositiveInt(end),
+		MaxBytes: protocolOptionalPositiveInt(request.ByteLimit.Bytes()),
 	}, r.callOptions())
 	if err != nil {
 		return workspace.FileContent{}, classifyError(err)

@@ -60,7 +60,6 @@ export const WIRE_SAMPLES: readonly WireSample[] = [
   { file: "rtevent.resync.json", shape: "RuntimeEvent" },
   { file: "ws.diff.json", shape: "Diff" },
   { file: "ws.fileChange.json", shape: "WorkspaceFileChange" },
-  { file: "ws.fileHead.json", shape: "FileHead" },
   { file: "ws.grepResult.json", shape: "GrepResult" },
   { file: "ws.fileContent.json", shape: "FileContent" },
   { file: "method.getDiff.req.json", shape: "GetDiffRequest" },

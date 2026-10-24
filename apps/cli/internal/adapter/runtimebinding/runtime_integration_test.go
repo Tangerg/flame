@@ -418,18 +418,16 @@ func requireWorkspaceInspection(t *testing.T, runtime *Connection, path string) 
 	if err != nil || len(files.Entries) != 2 || files.Entries[1].SizeBytes == nil || *files.Entries[1].SizeBytes != size {
 		t.Fatalf("caller mutation changed Runtime file size: (%+v, %v)", files, err)
 	}
-	headLimit, err := workspaceapi.NewHeadLineLimit(2)
+	previewRange, err := workspaceapi.NewReadLineRange(1, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	head, err := runtime.Head(t.Context(), workspaceapi.HeadRequest{Workspace: path, Path: "main.go", LineLimit: headLimit})
-	if err != nil || len(head.Lines) != 2 || head.Lines[0].Text != "package main" {
-		t.Fatalf("Head = (%+v, %v)", head, err)
-	}
-	head.Lines[0].Text = "caller mutation"
-	head, err = runtime.Head(t.Context(), workspaceapi.HeadRequest{Workspace: path, Path: "main.go", LineLimit: headLimit})
-	if err != nil || len(head.Lines) != 2 || head.Lines[0].Text != "package main" {
-		t.Fatalf("caller mutation changed Runtime file preview: (%+v, %v)", head, err)
+	preview, err := runtime.Read(t.Context(), workspaceapi.ReadRequest{
+		Workspace: path, Path: "main.go", Range: previewRange,
+		ByteLimit: workspaceapi.DefaultReadByteLimit(),
+	})
+	if err != nil || preview.StartLine != 1 || preview.EndLine != 2 || !strings.HasPrefix(preview.Content, "package main\n") {
+		t.Fatalf("Preview = (%+v, %v)", preview, err)
 	}
 	searchLimit, err := workspaceapi.NewSearchResultLimit(20)
 	if err != nil {

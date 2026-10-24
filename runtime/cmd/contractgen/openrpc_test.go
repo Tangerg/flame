@@ -96,7 +96,6 @@ func TestOpenRPCParamsPreserveRequestFieldConstraints(t *testing.T) {
 		{method: "sessions.update", param: "expectedRevision", minimum: new(int64(1))},
 		{method: "sessions.list", param: "limit", minimum: new(int64(1))},
 		{method: "workspace.diff.get", param: "limit", minimum: new(int64(1))},
-		{method: "workspace.files.head", param: "lines", minimum: new(int64(1))},
 		{method: "workspace.files.search", param: "limit", minimum: new(int64(1))},
 		{method: "workspace.files.read", param: "startLine", minimum: new(int64(1))},
 		{method: "workspace.files.read", param: "endLine", minimum: new(int64(1))},

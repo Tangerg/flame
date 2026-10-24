@@ -26,6 +26,20 @@ type StreamValue[C, R any] struct {
 
 type StreamingMethod[P, C, R any] struct{ contract *capability.Method }
 
+func ImplementStreamingMethod[P, C, R any](owner *capability.Contract, name string) (*StreamingMethod[P, C, R], error) {
+	if owner == nil {
+		return nil, errors.New("plugin: method contract is required")
+	}
+	method, ok := owner.Method(name)
+	if !ok {
+		return nil, fmt.Errorf("plugin: contract does not publish method %q", name)
+	}
+	if len(method.Descriptor().Stream) == 0 {
+		return nil, errors.New("plugin: unary contract requires a unary implementation")
+	}
+	return &StreamingMethod[P, C, R]{contract: method}, nil
+}
+
 func NewStreamingMethod[P, C, R any](config MethodConfig) (*StreamingMethod[P, C, R], error) {
 	base, err := NewMethod[P, R](config)
 	if err != nil {

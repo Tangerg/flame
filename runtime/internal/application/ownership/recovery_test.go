@@ -14,46 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 )
 
-type testLease struct{ release func() }
-
-func (t testLease) Release() { t.release() }
-
-type testOwnership struct {
-	err      error
-	acquired bool
-	released int
-	claims   int
-	claim    func()
-}
-
-func (t *testOwnership) TryRecoverySweep() (ownership.Lease, bool, error) {
-	t.claims++
-	if t.claim != nil {
-		t.claim()
-	}
-	if t.err != nil {
-		return nil, false, t.err
-	}
-	if !t.acquired {
-		return nil, false, nil
-	}
-	return testLease{release: func() { t.released++ }}, true, nil
-}
-
-func (t *testOwnership) AcquireRecoverySweep(context.Context) (ownership.Lease, error) {
-	t.claims++
-	if t.claim != nil {
-		t.claim()
-	}
-	if t.err != nil {
-		return nil, t.err
-	}
-	if !t.acquired {
-		return nil, errors.New("contended")
-	}
-	return testLease{release: func() { t.released++ }}, nil
-}
-
 type runReconciler func(context.Context) (int, error)
 
 func (r runReconciler) Reconcile(ctx context.Context) (int, error) {
@@ -67,25 +27,18 @@ func (g goalReconciler) Reconcile(ctx context.Context) error { return g(ctx) }
 func TestNewRecoveryRequiresCompleteComposition(t *testing.T) {
 	validRuns := runReconciler(func(context.Context) (int, error) { return 0, nil })
 	validGoals := goalReconciler(func(context.Context) error { return nil })
-	validOwnership := &testOwnership{acquired: true}
-	var typedNilOwnership *testOwnership
-
-	tests := []struct {
-		name      string
-		runs      ownership.RunRecovery
-		goals     ownership.GoalRecovery
-		ownership ownership.RecoveryBackend
+	for _, test := range []struct {
+		name  string
+		runs  ownership.RunRecovery
+		goals ownership.GoalRecovery
 	}{
-		{name: "missing Run reconciler", goals: validGoals, ownership: validOwnership},
-		{name: "missing Goal reconciler", runs: validRuns, ownership: validOwnership},
-		{name: "missing ownership backend", runs: validRuns, goals: validGoals},
-		{name: "Run reconciler", runs: runReconciler(nil), goals: validGoals, ownership: validOwnership},
-		{name: "Goal reconciler", runs: validRuns, goals: goalReconciler(nil), ownership: validOwnership},
-		{name: "ownership backend", runs: validRuns, goals: validGoals, ownership: typedNilOwnership},
-	}
-	for _, test := range tests {
+		{name: "missing Run reconciler", goals: validGoals},
+		{name: "missing Goal reconciler", runs: validRuns},
+		{name: "typed nil Run reconciler", runs: runReconciler(nil), goals: validGoals},
+		{name: "typed nil Goal reconciler", runs: validRuns, goals: goalReconciler(nil)},
+	} {
 		t.Run(test.name, func(t *testing.T) {
-			coordinator, err := ownership.NewRecovery(test.runs, test.goals, test.ownership)
+			coordinator, err := ownership.NewRecovery(test.runs, test.goals)
 			if err == nil || coordinator != nil {
 				t.Fatalf("NewRecovery = %#v, %v", coordinator, err)
 			}
@@ -93,9 +46,8 @@ func TestNewRecoveryRequiresCompleteComposition(t *testing.T) {
 	}
 }
 
-func TestCoordinatorElectsOneWinnerAndOrdersRunBeforeGoalRecovery(t *testing.T) {
+func TestCoordinatorOrdersRunBeforeGoalRecovery(t *testing.T) {
 	var order []string
-	backend := &testOwnership{acquired: true}
 	coordinator, err := ownership.NewRecovery(
 		runReconciler(func(context.Context) (int, error) {
 			order = append(order, "runs")
@@ -105,7 +57,6 @@ func TestCoordinatorElectsOneWinnerAndOrdersRunBeforeGoalRecovery(t *testing.T) 
 			order = append(order, "goals")
 			return nil
 		}),
-		backend,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -113,56 +64,53 @@ func TestCoordinatorElectsOneWinnerAndOrdersRunBeforeGoalRecovery(t *testing.T) 
 	if err := coordinator.ReconcileStartup(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(order, []string{"runs", "goals"}) || backend.released != 1 {
-		t.Fatalf("order=%v releases=%d", order, backend.released)
+	if !reflect.DeepEqual(order, []string{"runs", "goals"}) {
+		t.Fatalf("order = %v", order)
 	}
 }
 
 func TestCoordinatorSkipsContendedSweepAndReleasesAfterFailure(t *testing.T) {
-	backend := &testOwnership{}
-	calls := 0
-	coordinator, err := ownership.NewRecovery(
-		runReconciler(func(context.Context) (int, error) {
-			calls++
-			return 0, errors.New("failed")
-		}),
-		goalReconciler(func(context.Context) error {
-			t.Fatal("reconciled Goals after failed Run recovery")
-			return nil
-		}),
-		backend,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	acquired, err := coordinator.Reconcile(t.Context())
-	if err != nil || acquired || calls != 0 {
-		t.Fatalf("contended sweep: acquired=%t calls=%d err=%v", acquired, calls, err)
-	}
-	backend.acquired = true
-	acquired, err = coordinator.Reconcile(t.Context())
-	if !acquired || err == nil || backend.released != 1 {
-		t.Fatalf("failed sweep: acquired=%t releases=%d err=%v", acquired, backend.released, err)
-	}
-}
-
-func TestRecoveryReportsOwnershipFailureBeforeReconciliation(t *testing.T) {
-	cause := errors.New("lock storage failed")
-	coordinator, err := ownership.NewRecovery(
-		runReconciler(func(context.Context) (int, error) { t.Fatal("reconciled without ownership"); return 0, nil }),
-		goalReconciler(func(context.Context) error {
-			t.Fatal("reconciled Goals without ownership")
-			return nil
-		}),
-		&testOwnership{err: cause},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	acquired, err := coordinator.Reconcile(t.Context())
-	if acquired || !errors.Is(err, cause) {
-		t.Fatalf("Reconcile = (%t, %v), want ownership cause", acquired, err)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		hold := make(chan struct{})
+		calls := 0
+		cause := errors.New("run recovery failed")
+		coordinator, err := ownership.NewRecovery(
+			runReconciler(func(context.Context) (int, error) {
+				calls++
+				<-hold
+				return 0, cause
+			}),
+			goalReconciler(func(context.Context) error {
+				t.Error("reconciled Goals after failed Run recovery")
+				return nil
+			}),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		first := make(chan error, 1)
+		go func() { first <- coordinator.ReconcileStartup(t.Context()) }()
+		synctest.Wait()
+		if acquired, err := coordinator.Reconcile(t.Context()); err != nil || acquired || calls != 1 {
+			t.Fatalf("contended sweep: acquired=%t calls=%d err=%v", acquired, calls, err)
+		}
+		second := make(chan error, 1)
+		go func() { second <- coordinator.ReconcileStartup(t.Context()) }()
+		synctest.Wait()
+		if calls != 1 {
+			t.Fatal("startup sweep crossed the active sweep")
+		}
+		close(hold)
+		if err := <-first; !errors.Is(err, cause) {
+			t.Fatal(err)
+		}
+		if err := <-second; !errors.Is(err, cause) {
+			t.Fatal(err)
+		}
+		if acquired, err := coordinator.Reconcile(t.Context()); !acquired || !errors.Is(err, cause) || calls != 3 {
+			t.Fatalf("recovery after failure: acquired=%t calls=%d err=%v", acquired, calls, err)
+		}
+	})
 }
 
 func TestRecoveryWorkerReportsFailuresAndResumes(t *testing.T) {
@@ -173,7 +121,6 @@ func TestRecoveryWorkerReportsFailuresAndResumes(t *testing.T) {
 		t.Cleanup(func() { slog.SetDefault(previous) })
 		ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 		defer cancel()
-		backend := &testOwnership{acquired: true}
 		cause := errors.New("recovery store unavailable")
 		var attempts, goalSweeps int
 		coordinator, err := ownership.NewRecovery(
@@ -193,7 +140,6 @@ func TestRecoveryWorkerReportsFailuresAndResumes(t *testing.T) {
 				goalSweeps++
 				return nil
 			}),
-			backend,
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -201,8 +147,8 @@ func TestRecoveryWorkerReportsFailuresAndResumes(t *testing.T) {
 
 		coordinator.RunWorker(ctx)
 
-		if attempts != 5 || backend.released != 5 || goalSweeps != 1 {
-			t.Fatalf("attempts=%d releases=%d Goal sweeps=%d, want 5, 5, 1", attempts, backend.released, goalSweeps)
+		if attempts != 5 || goalSweeps != 1 {
+			t.Fatalf("attempts=%d Goal sweeps=%d, want 5, 1", attempts, goalSweeps)
 		}
 		if got := output.String(); strings.Count(got, "level=ERROR") != 2 || strings.Count(got, cause.Error()) != 2 {
 			t.Fatalf("diagnostics = %q, want one error per outage and none for shutdown", got)

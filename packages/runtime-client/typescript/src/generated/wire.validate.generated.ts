@@ -83,14 +83,11 @@ export type WireTypeName =
   | "FileDiff"
   | "FileEntry"
   | "FileEntryType"
-  | "FileHead"
-  | "FileLine"
   | "FileStatus"
   | "ForgetApprovalRuleRequest"
   | "ForkSessionRequest"
   | "GenerationParams"
   | "GetDiffRequest"
-  | "GetFileHeadRequest"
   | "GetPlanRequest"
   | "GetRunAcceptanceRequest"
   | "GetRunRequest"
@@ -1145,13 +1142,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     type: ref(() => CHECKS.FileEntryType),
   }, ["modifiedAt", "name", "path", "type"]),
   FileEntryType: enumOf(["file", "dir", "symlink"]),
-  FileHead: object({
-    lines: array(ref(() => CHECKS.FileLine)),
-  }, ["lines"]),
-  FileLine: object({
-    lineNumber: allOf([integer(), minimum(1)]),
-    text: text(),
-  }, ["lineNumber", "text"]),
   FileStatus: enumOf(["added", "modified", "deleted", "renamed", "untracked"]),
   ForgetApprovalRuleRequest: object({
     id: allOf([text(), minLength(1)]),
@@ -1184,11 +1174,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, []),
     ),
   ]),
-  GetFileHeadRequest: object({
-    lines: allOf([integer(), minimum(1)]),
-    path: allOf([text(), minLength(1)]),
-    workspace: ref(() => CHECKS.WorkspaceRef),
-  }, ["path", "workspace"]),
   GetPlanRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -4458,7 +4443,6 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "workspaces.list": object({}, []),
   "workspace.changes.list": ref(() => CHECKS.WorkspaceQuery),
   "workspace.diff.get": ref(() => CHECKS.GetDiffRequest),
-  "workspace.files.head": ref(() => CHECKS.GetFileHeadRequest),
   "workspace.files.search": ref(() => CHECKS.GrepRequest),
   "workspace.files.list": ref(() => CHECKS.ListFilesRequest),
   "workspace.files.read": ref(() => CHECKS.ReadFileRequest),
@@ -4570,7 +4554,6 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "workspaces.list": ref(() => CHECKS.PageOfWorkspaceSummary),
   "workspace.changes.list": ref(() => CHECKS.PageOfWorkspaceFileChange),
   "workspace.diff.get": ref(() => CHECKS.Diff),
-  "workspace.files.head": ref(() => CHECKS.FileHead),
   "workspace.files.search": ref(() => CHECKS.GrepResult),
   "workspace.files.list": ref(() => CHECKS.PageOfFileEntry),
   "workspace.files.read": ref(() => CHECKS.FileContent),

@@ -17,12 +17,12 @@ import (
 	json "encoding/json/v2"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
-	"io/fs"
-	"github.com/Tangerg/flame/runtime/contract/samples"
 
+	"github.com/Tangerg/flame/runtime/contract/samples"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -119,7 +119,9 @@ func run(dir, validatorDir, tsDir string) error {
 	generated := filepath.Join(tsDir, "src", "generated")
 	testing := filepath.Join(tsDir, "testing", "generated")
 	for _, directory := range []string{generated, filepath.Join(testing, "samples")} {
-		if err := os.MkdirAll(directory, 0o755); err != nil { return err }
+		if err := os.MkdirAll(directory, 0o755); err != nil {
+			return err
+		}
 	}
 	// What a TypeScript client needs to hold the protocol: the shapes, the checks that say an
 	// arriving frame really is one of them, the method surface that carries them, and
@@ -131,18 +133,43 @@ func run(dir, validatorDir, tsDir string) error {
 		{tsSamplesFileName, newWireSamples()},
 	} {
 		directory := generated
-		if artifact.name == tsSamplesFileName { directory = testing }
+		if artifact.name == tsSamplesFileName {
+			directory = testing
+		}
 		path = filepath.Join(directory, artifact.name)
 		if err := os.WriteFile(path, []byte(artifact.content), 0o644); err != nil {
 			return fmt.Errorf("write %s: %w", path, err)
 		}
 	}
+	return writeSamples(filepath.Join(testing, "samples"))
+}
+
+func writeSamples(directory string) error {
 	files, err := fs.Glob(samples.Files, "*.json")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
+	retained := make(map[string]bool, len(files))
 	for _, name := range files {
 		encoded, err := samples.Files.ReadFile(name)
-		if err != nil { return err }
-		if err := os.WriteFile(filepath.Join(testing,"samples",name),encoded,0o644); err != nil { return err }
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(directory, name), encoded, 0o644); err != nil {
+			return err
+		}
+		retained[name] = true
+	}
+	previous, err := filepath.Glob(filepath.Join(directory, "*.json"))
+	if err != nil {
+		return err
+	}
+	for _, path := range previous {
+		if !retained[filepath.Base(path)] {
+			if err := os.Remove(path); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

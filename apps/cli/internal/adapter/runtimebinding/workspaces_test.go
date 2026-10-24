@@ -14,19 +14,20 @@ import (
 )
 
 type workspaceBindingStub struct {
-	resolved     *protocol.WorkspaceInfo
-	known        *protocol.Page[protocol.WorkspaceSummary]
-	changes      *protocol.Page[protocol.WorkspaceFileChange]
-	changesErr   error
-	changesCalls int
-	diff         *protocol.Diff
-	diffCalls    int
-	head         *protocol.FileHead
-	search       *protocol.GrepResult
-	files        *protocol.Page[protocol.FileEntry]
-	filePages    map[string]*protocol.Page[protocol.FileEntry]
-	fileCalls    []protocol.ListFilesRequest
-	content      *protocol.FileContent
+	resolved       *protocol.WorkspaceInfo
+	known          *protocol.Page[protocol.WorkspaceSummary]
+	changes        *protocol.Page[protocol.WorkspaceFileChange]
+	changesErr     error
+	changesCalls   int
+	diff           *protocol.Diff
+	diffCalls      int
+	search         *protocol.GrepResult
+	searchRequests []protocol.GrepRequest
+	readRequests   []protocol.ReadFileRequest
+	files          *protocol.Page[protocol.FileEntry]
+	filePages      map[string]*protocol.Page[protocol.FileEntry]
+	fileCalls      []protocol.ListFilesRequest
+	content        *protocol.FileContent
 }
 
 func (w *workspaceBindingStub) ResolveWorkspace(context.Context, protocol.ResolveWorkspaceRequest, protocol.CallOptions) (*protocol.WorkspaceInfo, error) {
@@ -102,16 +103,8 @@ func (w *workspaceBindingStub) GetWorkspaceDiff(context.Context, protocol.GetDif
 	return &value, nil
 }
 
-func (w *workspaceBindingStub) GetWorkspaceFileHead(context.Context, protocol.GetFileHeadRequest, protocol.CallOptions) (*protocol.FileHead, error) {
-	if w.head == nil {
-		return nil, nil
-	}
-	value := *w.head
-	value.Lines = slices.Clone(value.Lines)
-	return &value, nil
-}
-
-func (w *workspaceBindingStub) SearchWorkspaceFiles(context.Context, protocol.GrepRequest, protocol.CallOptions) (*protocol.GrepResult, error) {
+func (w *workspaceBindingStub) SearchWorkspaceFiles(_ context.Context, request protocol.GrepRequest, _ protocol.CallOptions) (*protocol.GrepResult, error) {
+	w.searchRequests = append(w.searchRequests, request)
 	if w.search == nil {
 		return nil, nil
 	}
@@ -154,7 +147,8 @@ func cloneInt64(value *int64) *int64 {
 	return new(*value)
 }
 
-func (w *workspaceBindingStub) ReadWorkspaceFile(context.Context, protocol.ReadFileRequest, protocol.CallOptions) (*protocol.FileContent, error) {
+func (w *workspaceBindingStub) ReadWorkspaceFile(_ context.Context, request protocol.ReadFileRequest, _ protocol.CallOptions) (*protocol.FileContent, error) {
+	w.readRequests = append(w.readRequests, request)
 	if w.content == nil {
 		return nil, nil
 	}
@@ -176,7 +170,6 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 			Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed,
 			Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: new("package main")}},
 		}}},
-		head:   &protocol.FileHead{Lines: []protocol.FileLine{{LineNumber: 1, Text: "package main"}}},
 		search: &protocol.GrepResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1},
 		filePages: map[string]*protocol.Page[protocol.FileEntry]{
 			"": protocol.NewPageWithCursor([]protocol.FileEntry{{Path: "internal", Name: "internal", Type: protocol.FileEntryDir}}, "next"),
@@ -219,16 +212,6 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	*stub.diff.Files[0].Rows[0].Code = "mutated"
 	if diff.Text() != "diff -- main.go (modified)\n+package main" {
 		t.Fatal("workspace diff projection aliases runtime row storage")
-	}
-	head, err := runtime.Head(t.Context(), workspace.HeadRequest{
-		Workspace: "/workspace", Path: "main.go", LineLimit: workspace.DefaultHeadLineLimit(),
-	})
-	if err != nil || len(head.Lines) != 1 {
-		t.Fatalf("Head = (%+v, %v)", head, err)
-	}
-	stub.head.Lines[0].Text = "mutated"
-	if head.Lines[0].Text != "package main" {
-		t.Fatal("file head projection aliases runtime line storage")
 	}
 	search, err := runtime.Search(t.Context(), workspace.SearchRequest{
 		Workspace: "/workspace", Query: "main", Limit: workspace.DefaultSearchResultLimit(),
@@ -420,5 +403,70 @@ func TestWorkspaceAdapterRejectsNilResponses(t *testing.T) {
 		ByteLimit: workspace.DefaultReadByteLimit(),
 	}); err == nil {
 		t.Fatal("nil file content was accepted")
+	}
+}
+
+func TestWorkspaceDefaultRequestsLeaveRuntimePoliciesUnspecified(t *testing.T) {
+	stub := &workspaceBindingStub{
+		search: &protocol.GrepResult{}, content: &protocol.FileContent{},
+	}
+	connection := &Connection{workspaces: stub, meta: requestMeta("test")}
+	if _, err := connection.Search(t.Context(), workspace.SearchRequest{
+		Workspace: "/workspace", Query: "pattern", Limit: workspace.DefaultSearchResultLimit(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := connection.Read(t.Context(), workspace.ReadRequest{
+		Workspace: "/workspace", Path: "main.go", Range: workspace.WholeFileReadRange(),
+		ByteLimit: workspace.DefaultReadByteLimit(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(stub.searchRequests) != 1 || stub.searchRequests[0].Limit != nil {
+		t.Errorf("default search = %+v, want omitted Runtime policy", stub.searchRequests)
+	}
+	if len(stub.readRequests) != 1 {
+		t.Fatalf("default read calls = %d", len(stub.readRequests))
+	}
+	read := stub.readRequests[0]
+	if read.StartLine != nil || read.EndLine != nil || read.MaxBytes != nil {
+		t.Errorf("default read = %+v, want omitted Runtime policies", read)
+	}
+}
+
+func TestWorkspaceExplicitReadPoliciesReachRuntimeUnchanged(t *testing.T) {
+	stub := &workspaceBindingStub{search: &protocol.GrepResult{}, content: &protocol.FileContent{}}
+	connection := &Connection{workspaces: stub, meta: requestMeta("test")}
+	matches, err := workspace.NewSearchResultLimit(10000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bytes, err := workspace.NewReadByteLimit(32 << 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	window, err := workspace.NewReadLineRange(7, 11)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := connection.Search(t.Context(), workspace.SearchRequest{
+		Workspace: "/workspace", Query: "pattern", Limit: matches,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := connection.Read(t.Context(), workspace.ReadRequest{
+		Workspace: "/workspace", Path: "main.go", Range: window, ByteLimit: bytes,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(stub.searchRequests) != 1 || stub.searchRequests[0].Limit == nil || *stub.searchRequests[0].Limit != 10000 {
+		t.Fatalf("explicit search = %+v, want original request", stub.searchRequests)
+	}
+	if len(stub.readRequests) != 1 {
+		t.Fatalf("explicit read calls = %d", len(stub.readRequests))
+	}
+	read := stub.readRequests[0]
+	if read.StartLine == nil || *read.StartLine != 7 || read.EndLine == nil || *read.EndLine != 11 || read.MaxBytes == nil || *read.MaxBytes != 32<<20 {
+		t.Fatalf("explicit read = %+v, want original request", read)
 	}
 }

@@ -127,47 +127,39 @@ func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error
 		}
 	}
 	selection.path = cursor.Rest()
-	_, explicit, err := selection.limit.Rows()
-	if err != nil {
-		return workspaceDiffSelection{}, err
-	}
-	if explicit && selection.format != protocol.DiffFormatRows {
+	if selection.limit.Rows() > 0 && selection.format != protocol.DiffFormatRows {
 		return workspaceDiffSelection{}, errors.New("workspace diff --limit requires --rows")
 	}
 	return selection, nil
 }
 
-type workspaceHeadSelection struct {
+type workspacePreviewSelection struct {
 	path  string
-	lines workspace.HeadLineLimit
+	lines int
 }
 
-func parseWorkspaceHeadSelection(argument string) (workspaceHeadSelection, error) {
-	selection := workspaceHeadSelection{lines: workspace.DefaultHeadLineLimit()}
+func parseWorkspacePreviewSelection(argument string) (workspacePreviewSelection, error) {
+	selection := workspacePreviewSelection{lines: 80}
 	cursor := newCommandOptionCursor(argument)
 	for {
 		option, ok, err := cursor.Next()
 		if err != nil {
-			return workspaceHeadSelection{}, err
+			return workspacePreviewSelection{}, err
 		}
 		if !ok {
 			break
 		}
 		if option != "--lines" {
-			return workspaceHeadSelection{}, fmt.Errorf("unknown file preview option %q", option)
+			return workspacePreviewSelection{}, fmt.Errorf("unknown file preview option %q", option)
 		}
-		lines, parseErr := cursor.PositiveInt(option)
-		if parseErr != nil {
-			return workspaceHeadSelection{}, parseErr
-		}
-		selection.lines, err = workspace.NewHeadLineLimit(lines)
+		selection.lines, err = cursor.PositiveInt(option)
 		if err != nil {
-			return workspaceHeadSelection{}, err
+			return workspacePreviewSelection{}, err
 		}
 	}
 	selection.path = cursor.Rest()
 	if selection.path == "" {
-		return workspaceHeadSelection{}, errors.New("usage: /preview [--lines N] <path>")
+		return workspacePreviewSelection{}, errors.New("usage: /preview [--lines N] <path>")
 	}
 	return selection, nil
 }

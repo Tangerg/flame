@@ -37,6 +37,20 @@ relabel commands as queries. Server admission retains and validates original inp
 so typed decoding cannot hide missing fields. Invalid output remains a protocol failure,
 preserving uncertainty about an already committed effect.
 
+An implementation of an existing consumer contract uses
+`ImplementMethod[P, R](contract, name)` or
+`ImplementStreamingMethod[P, C, R](contract, name)`. These bindings retain the
+published method's exact identity and validators. Local types supply codecs;
+they do not derive another Schema or relax the consumer's constraints. Missing
+methods and mismatched unary/streaming delivery are construction errors. Typed
+input admission, original command evidence, output validation and receipts use
+the same dispatch path as author-defined methods.
+
+[`memory`](memory/README.md) publishes the Memory contract consumed by Runtime.
+Independent implementations import that pinned contract instead of regenerating
+it from their own module names. Go definition names inside Schema are opaque
+contract data; structural similarity never substitutes for exact identity.
+
 `Binding.ValidateInput(ctx, input)` checks the exact backend's complete structural
 contract without a command identity or business dispatch. Schema cannot express
 every Go decoder constraint, including integer token spelling and custom JSON

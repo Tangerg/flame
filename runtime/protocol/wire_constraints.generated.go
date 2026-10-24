@@ -251,13 +251,6 @@ func (g GetDiffRequest) ValidateWire() error {
 	)
 }
 
-func (g GetFileHeadRequest) ValidateWire() error {
-	return collectWireViolations("GetFileHeadRequest",
-		requiredText("path", g.Path),
-		optionalPositiveNumber("lines", g.Lines),
-	)
-}
-
 func (g GrepRequest) ValidateWire() error {
 	return collectWireViolations("GrepRequest",
 		requiredText("query", g.Query),
@@ -2498,12 +2491,6 @@ func (f FileEntry) ValidateWire() error {
 		requiredText("name", f.Name),
 		optionalNonNegativeNumber("sizeBytes", f.SizeBytes),
 		closedEnum("type", string(f.Type), []string{"file", "dir", "symlink"}, false),
-	)
-}
-
-func (f FileLine) ValidateWire() error {
-	return collectWireViolations("FileLine",
-		positiveNumber("lineNumber", f.LineNumber),
 	)
 }
 

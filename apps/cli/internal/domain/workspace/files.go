@@ -62,11 +62,7 @@ func (r ReadRequest) Validate() error {
 	case strings.TrimSpace(r.Path) == "":
 		return errors.New("file read path is empty")
 	default:
-		if _, _, err := r.Range.Bounds(); err != nil {
-			return err
-		}
-		_, err := r.ByteLimit.Bytes()
-		return err
+		return nil
 	}
 }
 
@@ -98,35 +94,6 @@ func (f FileContent) Window() string {
 	return fmt.Sprintf("lines %d-%d/%d", f.StartLine, f.EndLine, f.TotalLines)
 }
 
-type HeadRequest struct {
-	Workspace string
-	Path      string
-	LineLimit HeadLineLimit
-}
-
-func (h HeadRequest) Validate() error {
-	if strings.TrimSpace(h.Workspace) == "" || strings.TrimSpace(h.Path) == "" {
-		return errors.New("file head requires workspace and path")
-	}
-	_, err := h.LineLimit.Lines()
-	return err
-}
-
-type FileHead struct {
-	Lines []protocol.FileLine
-}
-
-func (f FileHead) Validate() error {
-	previous := 0
-	for index, line := range f.Lines {
-		if line.LineNumber <= previous {
-			return fmt.Errorf("file head line %d is not strictly ordered", index)
-		}
-		previous = line.LineNumber
-	}
-	return nil
-}
-
 type SearchRequest struct {
 	Workspace string
 	Query     string
@@ -138,8 +105,7 @@ func (s SearchRequest) Validate() error {
 	if strings.TrimSpace(s.Workspace) == "" || strings.TrimSpace(s.Query) == "" {
 		return errors.New("workspace search requires workspace and query")
 	}
-	_, err := s.Limit.Matches()
-	return err
+	return nil
 }
 
 type SearchResult struct {

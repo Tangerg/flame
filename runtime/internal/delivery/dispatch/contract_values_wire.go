@@ -495,10 +495,6 @@ func registerWorkspaceValues(s *Shapes) {
 			{Field: "sizeBytes", Kind: ConstraintNonNegative},
 		},
 	})
-	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.FileLine](),
-		Constraints: []FieldConstraint{{Field: "lineNumber", Kind: ConstraintPositive}},
-	})
 	nonNegative[protocol.GrepResult](s, "total")
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.GrepMatch](),
@@ -533,13 +529,6 @@ func registerWorkspaceValues(s *Shapes) {
 		GoType: typeOf[protocol.GetDiffRequest](),
 		Constraints: []FieldConstraint{
 			{Field: "limit", Kind: ConstraintPositive},
-		},
-	})
-	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.GetFileHeadRequest](),
-		Constraints: []FieldConstraint{
-			{Field: "path", Kind: ConstraintNonEmpty},
-			{Field: "lines", Kind: ConstraintPositive},
 		},
 	})
 	s.valueConstraint(FieldConstraintSpec{

@@ -302,6 +302,20 @@ func TestFeatureGoProjectionPreservesTypedFramesAndIntegerBounds(t *testing.T) {
 		t.Fatal(err)
 	}
 	ast.Inspect(file, func(node ast.Node) bool {
+		if declared, ok := node.(*ast.ValueSpec); ok && len(declared.Names) == 1 && declared.Names[0].Name == "ExampleCapabilityJSON" {
+			encoded, err := strconv.Unquote(declared.Values[0].(*ast.BasicLit).Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			published, err := capability.Parse([]byte(encoded))
+			if err != nil || published.Identity() != artifacts.capability.Identity() {
+				t.Fatalf("Go projection changed the published contract: %v", err)
+			}
+			member, _ := published.Method(method.Name())
+			if member.Descriptor().Description != method.Descriptor().Description {
+				t.Fatal("Go projection discarded published method documentation")
+			}
+		}
 		if declared, ok := node.(*ast.TypeSpec); ok && declared.Assign.IsValid() {
 			t.Errorf("consumer boundary reexports an alias: %s", declared.Name.Name)
 		}

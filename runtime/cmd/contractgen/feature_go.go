@@ -39,7 +39,11 @@ func buildFeatureGo(artifacts featureArtifacts, output featureGoOutput) ([]byte,
 		fmt.Fprintf(&body, "type %s %s\n\n", emitter.names[name], value)
 	}
 	prefix := output.Prefix
-	fmt.Fprintf(&body, "const %sCapabilityJSON = %s\n\n", prefix, strconv.Quote(string(artifacts.capability.Identity().JSON())))
+	descriptor, err := json.Marshal(artifacts.capability.Descriptor(), json.Deterministic(true))
+	if err != nil {
+		return nil, err
+	}
+	fmt.Fprintf(&body, "const %sCapabilityJSON = %s\n\n", prefix, strconv.Quote(string(descriptor)))
 	seen := map[string]bool{}
 	for _, method := range artifacts.methods {
 		name := method.Name[strings.LastIndex(method.Name, "/")+1:]

@@ -100,37 +100,35 @@ func (a *app) ShowWorkspaceDiff(argument string) error {
 }
 
 func (a *app) PreviewWorkspaceFile(argument string) error {
-	selection, err := parseWorkspaceHeadSelection(argument)
+	selection, err := parseWorkspacePreviewSelection(argument)
 	if err != nil {
 		return err
 	}
-	previewLines, err := selection.lines.Lines()
+	lineRange, err := workspace.NewReadLineRange(1, selection.lines)
 	if err != nil {
 		return err
 	}
-	request := workspace.HeadRequest{Workspace: a.session.current.Workspace.Path, Path: selection.path, LineLimit: selection.lines}
+	request := workspace.ReadRequest{
+		Workspace: a.session.current.Workspace.Path, Path: selection.path,
+		Range: lineRange, ByteLimit: workspace.DefaultReadByteLimit(),
+	}
 	a.runWorkspaceQuery("loading file preview",
 		func(ctx context.Context) (readerDocument, error) {
-			head, err := a.workspaces.Head(ctx, request)
+			content, err := a.workspaces.Read(ctx, request)
 			if err != nil {
 				return readerDocument{}, err
 			}
-			lines := make([]string, 0, len(head.Lines))
-			for _, line := range head.Lines {
-				lines = append(lines, line.Text)
+			detail := fmt.Sprintf("%s · %s", request.Path, content.Window())
+			if content.Truncated {
+				detail += " · truncated"
 			}
-			detail := fmt.Sprintf("%s · up to %d lines", request.Path, previewLines)
-			return codeDocument("File preview", detail, strings.Join(lines, "\n"), request.Path, true), nil
+			return codeDocument("File preview", detail, content.Content, request.Path, true), nil
 		}, workspaceReaderNone)
 	return nil
 }
 
 func (a *app) SearchWorkspace(argument string) error {
 	selection, err := parseWorkspaceSearchSelection(argument)
-	if err != nil {
-		return err
-	}
-	matchLimit, err := selection.limit.Matches()
 	if err != nil {
 		return err
 	}
@@ -151,7 +149,6 @@ func (a *app) SearchWorkspace(argument string) error {
 			if request.Path != "" {
 				detail += " · " + request.Path
 			}
-			detail += fmt.Sprintf(" · limit %d", matchLimit)
 			return paragraphDocument("Workspace search · "+request.Query, detail, lines), nil
 		}, workspaceReaderNone)
 	return nil

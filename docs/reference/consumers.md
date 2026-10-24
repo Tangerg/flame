@@ -5,6 +5,7 @@
 | Local Go host              | `github.com/Tangerg/flame/runtime`                                              |
 | Remote Go client           | `github.com/Tangerg/flame/packages/runtime-client/go` (package `runtimeclient`) |
 | Go backend author          | `github.com/Tangerg/flame/packages/plugin-sdk`                                  |
+| Memory role implementation | `github.com/Tangerg/flame/packages/plugin-sdk/memory`                           |
 | Shared wire/options        | `github.com/Tangerg/flame/runtime/protocol`                                     |
 | TypeScript Runtime client  | `@flame/runtime-client`                                                         |
 | Installed React component  | `@flame/component-sdk`                                                          |
@@ -36,10 +37,16 @@ node plugins/scripts/build-author-kit.mjs \
 ```
 
 Use an author's own module namespace; the Flame first-party prefix overlaps the
-root module and is rejected. Only that author's imports/generation identity are
-rewritten. Its Go manifest declares actual generator tools and includes their
+root module and is rejected. Only that author's backend imports/generation identity
+are rewritten. Public consumer contracts retain their publisher's namespace and
+exact schemas. Its Go manifest declares actual generator tools and includes their
 vendor dependencies. The standard SDK module retains its identity and manifest.
 The author uses the same `backend/component/package` layout and explicit builder.
+Contract-definition tools stay with the publisher. Memory author exports bind the
+public `packages/plugin-sdk/memory` contract, including after regeneration, and
+can be selected by the unchanged host consumer. Source relocation is not a new
+capability identity. Build scripts convert file URLs with Node's `fileURLToPath`;
+author directories may contain spaces, Unicode and URL-reserved characters.
 
 `--offline` resolves Go artifacts from the prepared file proxy and verified Go
 cache with `GONOPROXY=none`, local toolchain and candidate-only `GONOSUMDB`. Missing
@@ -47,6 +54,9 @@ materials fail. `make check-author` additionally denies network and checkout
 reads, empties build/module caches and runs test/generate/build using vendor.
 Only that isolated verified-vendor phase disables checksum database requests.
 The Go toolchain must already be installed; it is not vendored.
+The check includes a Memory author directory with spaces and Unicode, then installs
+the independent release ZIP, selects its exact Memory role, invokes it and verifies
+its original private command outcome after Runtime/backend restart.
 
 JS author projects consume real packed SDK/UI/icons archives, their own manifest
 and lock, and are checked outside the workspace. Their independent npm install

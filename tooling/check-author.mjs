@@ -19,7 +19,10 @@ async function snapshot(directory) {
 try {
   await buildShared();
   for (const name of ["memory", "guardrails"]) {
-    const project = join(scratch, name);
+    const project = join(
+      scratch,
+      name === "memory" ? "memory author 作者" : name,
+    );
     run("node", [
       "plugins/scripts/build-author-kit.mjs",
       "--plugin",

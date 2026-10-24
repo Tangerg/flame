@@ -26,14 +26,12 @@ const (
 	goalRunCleanupTimeout = 5 * time.Second
 )
 
-// goalDrive is the local execution of one cross-process-owned active Goal
-// incarnation. The durable Goal remains authoritative; this value owns its
-// lease, goroutine, cancellation boundary, and completion result.
+// goalDrive owns one active Goal incarnation's goroutine, cancellation and
+// completion. The durable Goal remains authoritative for product state.
 type goalDrive struct {
 	incarnationID string
 	cancel        context.CancelFunc
 	done          chan struct{}
-	lease         DriveLease
 	err           error
 }
 
@@ -73,22 +71,9 @@ func (g *goalDrive) quiesce() {
 func (d *Driver) launchLocked(
 	parent context.Context,
 	sessionID, incarnationID string,
-	lease DriveLease,
 ) error {
-	if lease == nil {
-		var acquired bool
-		var err error
-		lease, acquired, err = d.ownership.TryGoalDrive(sessionID)
-		if err != nil {
-			return err
-		}
-		if !acquired {
-			return ErrGoalOwned
-		}
-	}
 	owner, release, ok := d.tasks.Attach(parent)
 	if !ok {
-		lease.Release()
 		return ErrClosed
 	}
 	ctx, cancel := context.WithCancel(owner)
@@ -96,7 +81,6 @@ func (d *Driver) launchLocked(
 		incarnationID: incarnationID,
 		cancel:        cancel,
 		done:          make(chan struct{}),
-		lease:         lease,
 	}
 
 	d.mutations.launch(sessionID, drive)
@@ -104,9 +88,6 @@ func (d *Driver) launchLocked(
 	go func() {
 		defer release()
 		defer func() {
-			// Joining this drive must also release its ownership. A successor may
-			// acquire the lease as soon as done closes or the registry forgets it.
-			drive.lease.Release()
 			close(drive.done)
 			if drive.err == nil {
 				d.mutations.forget(sessionID, drive)
@@ -153,13 +134,7 @@ func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID, incarnationID
 			return nil
 		}
 	}
-	if err := d.launchLocked(ctx, sessionID, incarnationID, nil); err != nil {
-		if errors.Is(err, ErrGoalOwned) {
-			return nil
-		}
-		return err
-	}
-	return nil
+	return d.launchLocked(ctx, sessionID, incarnationID)
 }
 
 // drive runs autonomous Runs until the goal leaves active. Cancellation quiesces

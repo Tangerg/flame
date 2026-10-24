@@ -91,9 +91,9 @@ test("fails a manifest sidecar with no product callsite", () => {
   checkSidecarConsumers(
     new Set(["info", "liveness", "readiness"]),
     new Map([
-      ["info", "info"],
-      ["liveness", "liveness"],
-      ["readiness", "readiness"],
+      ["info", new Set(["info"])],
+      ["liveness", new Set(["liveness"])],
+      ["readiness", new Set(["readiness"])],
     ]),
     new Map([
       ["info", new Set(["runtimeServiceInspector.ts:1"])],
@@ -103,6 +103,155 @@ test("fails a manifest sidecar with no product callsite", () => {
   );
   assert.deepEqual(errors, [
     "readiness has no non-test frontend consumer (the SidecarClient implementation and tests do not count)",
+  ]);
+});
+
+const sidecarImplementation = readFileSync(
+  new URL("../../../packages/runtime-client/typescript/src/sidecar.ts", import.meta.url),
+  "utf8",
+);
+
+function sidecarCoverage(sourceText, called = ["info", "liveness", "readiness"]) {
+  const dir = mkdtempSync(join(tmpdir(), "api-sidecar-consumer-"));
+  try {
+    const fileName = join(dir, "sidecar.ts");
+    const wire = join(dir, "wire.generated.ts");
+    writeFileSync(join(dir, "package.json"), '{"type":"module"}\n');
+    writeFileSync(
+      fileName,
+      sourceText.replaceAll('"@flame/runtime-client/wire"', '"./wire.generated"'),
+    );
+    writeFileSync(
+      wire,
+      "export const HTTP_ENDPOINTS = { info: {}, liveness: {}, readiness: {} };\n",
+    );
+    const helpers = [
+      ["function mappedSidecarMethods()", "\nfunction mapReturnedObject"],
+      ["function isHTTPEndpointCatalog(expression)", "\nfunction creditHTTPOperationConsumers"],
+      ["function constantString(expression)", "\nfunction wrapperPath"],
+      ["function propertyName(node)", "\nfunction isProductSource"],
+      ["function declarationsOf(symbol)", "\nfunction fail"],
+    ].map(([first, last]) => {
+      const start = script.indexOf(first);
+      const end = script.indexOf(last, start);
+      assert.ok(start >= 0 && end > start, `${first} was not found`);
+      return script.slice(start, end);
+    });
+    writeFileSync(
+      join(dir, "probe.mjs"),
+      `import { resolve } from "node:path";
+import { API, SymbolFlags } from ${JSON.stringify(import.meta.resolve("typescript/unstable/sync"))};
+import * as ts from ${JSON.stringify(import.meta.resolve("typescript/unstable/ast"))};
+const compiler = new API({ cwd: ${JSON.stringify(dir)} });
+try {
+  const SIDECAR_PATH = ${JSON.stringify(fileName)};
+  const WIRE_PATH = ${JSON.stringify(wire)};
+  const snapshot = compiler.updateSnapshot({ openFiles: [SIDECAR_PATH] });
+  const project = snapshot.getDefaultProjectForFile(SIDECAR_PATH);
+  const checker = project.checker;
+  const sidecarSource = project.program.getSourceFile(SIDECAR_PATH);
+  class ScannerFailure extends Error {}
+  function fail(messages) { throw new ScannerFailure(messages.join("; ")); }
+  ${helpers.join("\n")}
+  let methods = new Map();
+  const errors = [];
+  try {
+    methods = mappedSidecarMethods();
+    const calls = new Map(${JSON.stringify(called)}.map((method) => [method, new Set(["product.ts:1"])]));
+    checkSidecarConsumers(new Set(["info", "liveness", "readiness"]), methods, calls, errors);
+  } catch (error) {
+    if (!(error instanceof ScannerFailure)) throw error;
+    errors.push(error.message);
+  }
+  console.log(JSON.stringify({ methods: [...methods].map(([endpoint, members]) => [endpoint, [...members]]), errors }));
+} finally { compiler.close(); }
+`,
+    );
+    return JSON.parse(
+      execFileSync(process.execPath, [join(dir, "probe.mjs")], { encoding: "utf8" }),
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("maps the actual Sidecar implementation without a second endpoint table", () => {
+  assert.deepEqual(sidecarCoverage(sidecarImplementation), {
+    methods: [
+      ["info", ["info"]],
+      ["liveness", ["liveness"]],
+      ["readiness", ["readiness"]],
+    ],
+    errors: [],
+  });
+});
+
+test("follows renamed Sidecar methods, transport helpers and catalog imports", () => {
+  const source = sidecarImplementation
+    .replaceAll("getJson", "requestEndpoint")
+    .replace("  HTTP_ENDPOINTS,", "  HTTP_ENDPOINTS as endpoints,")
+    .replace("HTTP_ENDPOINTS[endpoint]", "endpoints[endpoint]")
+    .replace("liveness:", "health:");
+  assert.deepEqual(sidecarCoverage(source, ["info", "health", "readiness"]), {
+    methods: [
+      ["info", ["info"]],
+      ["liveness", ["health"]],
+      ["readiness", ["readiness"]],
+    ],
+    errors: [],
+  });
+});
+
+test("checks actual Sidecar routes rather than matching member names", () => {
+  const source = sidecarImplementation.replace(
+    'getJson("liveness", signal)',
+    'getJson("readiness", signal)',
+  );
+  assert.deepEqual(sidecarCoverage(source).errors, [
+    "liveness has no typed SidecarClient method mapping",
+  ]);
+});
+
+test("accepts any consumed Sidecar method that actually calls an endpoint", () => {
+  const source = sidecarImplementation.replace(
+    'liveness: (signal) => getJson("liveness", signal),',
+    'liveness: (signal) => getJson("liveness", signal), health: (signal) => getJson("liveness", signal),',
+  );
+  assert.deepEqual(sidecarCoverage(source, ["info", "liveness", "readiness"]).errors, []);
+  assert.deepEqual(sidecarCoverage(source, ["info", "health", "readiness"]).errors, []);
+});
+
+test("does not credit unused Sidecar callbacks or a local lookalike catalog", () => {
+  const unused = sidecarImplementation.replace(
+    'liveness: (signal) => getJson("liveness", signal),',
+    'liveness: () => { const unused = () => getJson("liveness"); return Promise.resolve({}); },',
+  );
+  assert.deepEqual(sidecarCoverage(unused).errors, [
+    "SidecarClient.liveness has no canonical HTTP endpoint call",
+  ]);
+  const local =
+    sidecarImplementation.replace("  HTTP_ENDPOINTS,\n", "") +
+    "\nconst HTTP_ENDPOINTS = { info: {}, liveness: {}, readiness: {} };\n";
+  assert.deepEqual(sidecarCoverage(local).errors, [
+    "SidecarClient.info has no canonical HTTP endpoint call",
+  ]);
+});
+
+test("rejects dynamic and non-manifest Sidecar endpoint dispatch", () => {
+  const dynamic = sidecarImplementation.replace(
+    'getJson("info", signal)',
+    "getJson(config.baseUrl, signal)",
+  );
+  assert.deepEqual(sidecarCoverage(dynamic).errors, [
+    "SidecarClient.info has a dynamic HTTP endpoint",
+  ]);
+  const stale = sidecarImplementation.replace(
+    'getJson("info", signal)',
+    'getJson("retired", signal)',
+  );
+  assert.deepEqual(sidecarCoverage(stale).errors, [
+    "info has no typed SidecarClient method mapping",
+    "SidecarClient maps retired, which is absent from the Runtime manifest",
   ]);
 });
 
