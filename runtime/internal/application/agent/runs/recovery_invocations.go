@@ -21,7 +21,7 @@ func (o OpenModelInvocation) Validate() error {
 		return err
 	}
 	if o.Endpoint != nil {
-		return validateRecoveryEndpoint(o.Endpoint, o.SessionID, o.RunID, o.CallID, o.StartedAt, maxRecoveryEndpointTime(o.Endpoint), o.Purpose)
+		return validateRecoveryEndpoint(o.Endpoint, o.SessionID, o.RunID, o.CallID, o.StartedAt, maxRecoveryEndpointTime(o.Endpoint))
 	}
 	return nil
 }

@@ -104,6 +104,55 @@ func TestFailedOuterModelRetainsKnownResponseAndAccounting(t *testing.T) {
 	}
 }
 
+func TestModelFailureAccountsOnlyDispatchedEndpoints(t *testing.T) {
+	for _, dispatched := range []bool{false, true} {
+		t.Run(fmt.Sprint(dispatched), func(t *testing.T) {
+			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "model-evidence.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer db.Close()
+			journal := sqlite.NewModelInvocationStore(db)
+			calls := 0
+			provider := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+				calls++
+				return nil, errors.New("response lost after dispatch")
+			})
+			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			outer := interactionChatResolverFunc(func(ctx context.Context, selection modelchoice.Selection) (modeladapter.ResolvedChat, error) {
+				resolved, err := recorded.ResolveChat(ctx, selection)
+				if err != nil {
+					return modeladapter.ResolvedChat{}, err
+				}
+				return modeladapter.NewResolvedChat(chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+					if !dispatched {
+						return nil, errors.New("preparation failed before dispatch")
+					}
+					return resolved.Model().Call(ctx, request)
+				}), nil)
+			})
+			executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{Lifetime: t.Context(), BuildID: interactionTestBuildID, ChatResolver: outer, ModelEvidence: journal})
+			if err != nil {
+				t.Fatal(err)
+			}
+			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+			failed := payloadsOf[runs.ModelCallFailed](events)
+			if len(failed) != 1 || failed[0].KnownResponse != nil || failed[0].Observation != (runs.ModelObservation{}) || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
+				t.Fatalf("failure invented a response: %+v", failed)
+			}
+			if (calls == 1) != dispatched || (failed[0].Accounting != nil) != dispatched {
+				t.Fatalf("consumption differs from dispatch: calls=%d failure=%+v", calls, failed[0])
+			}
+			if consumption := failed[0].Accounting; consumption != nil && (consumption.ReportedUsage != nil || consumption.Cost.OptionalUSD() != nil || consumption.ContextTokens != 0 || consumption.Message != nil) {
+				t.Fatalf("unknown call invented consumption or conversation state: %+v", consumption)
+			}
+		})
+	}
+}
+
 func TestFailedOuterStreamRetainsCompletedInnerResponse(t *testing.T) {
 	message := chat.NewAssistantMessage(chat.NewTextPart("known streamed answer"))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3}}}
@@ -157,7 +206,7 @@ func TestUnavailableModelStreamClosesAttemptWithoutInventingResponse(t *testing.
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: true})
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
 			failed := payloadsOf[runs.ModelCallFailed](events)
-			if len(failed) != 1 || failed[0].Observation != (runs.ModelObservation{}) ||
+			if len(failed) != 1 || failed[0].Accounting == nil || failed[0].Accounting.ReportedUsage != nil || failed[0].Accounting.Cost.OptionalUSD() != nil || failed[0].Observation != (runs.ModelObservation{}) ||
 				failed[0].FirstOutputLatencyMillis != nil || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
 				t.Fatalf("unavailable stream failed to close its model attempt: %+v", failed)
 			}

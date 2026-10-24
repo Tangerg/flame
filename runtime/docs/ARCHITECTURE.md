@@ -102,6 +102,14 @@ Cold stream recovery uses `runs.subscribe` with `snapshot: true`. The tree owner
 
 Usage accumulates across the execution tree for accounting. Each member retains its own terminal outcome.
 
+Physical dispatch evidence admits a call into Run accounting regardless of its
+conversation or independent purpose. `Steps` counts these calls even when their
+outcome is unknown; a preparation failure without dispatch contributes nothing.
+The Run reducer preserves reported tokens but cannot publish an exact total price
+after an unknown call. Recovery follows the same rule, committing logical
+settlement, Run metrics and Goal consumption atomically. Purpose still controls
+conversation content and primary context calibration.
+
 A structurally valid Scope model response completes its invocation and commits reported usage even when it contains no portable message. It creates no assistant Item or conversation message. Scope Interaction owns the resulting `interaction.model.invalid_response` rejection; Runtime projects a failed Run with `provider_rejected`, retaining the completed call and its accounting instead of inventing an unknown outcome.
 
 A human-input barrier first proves an externally addressed wait, then uses Scope's `CaptureTree` to drain external work and obtain an acknowledged safe cut. Runtime submits each running member's pause once; pause acceptance is an intent receipt, not an updated snapshot. Scope owns capture quiescence and commit ordering; Runtime owns the persistent product pause. A parked Interaction holds new Effect dispatch until the next product Segment activates. Canceling a waiting child can wake its parent in Scope before that activation; the execution adapter keeps that Effect behind the same continuation boundary. Activation releases it before reconciling the parent Tool results and reducing model context. Scope cancellation unblocks the waiter through the dispatch context; Runtime release also opens the local wait boundary.

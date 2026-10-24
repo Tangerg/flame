@@ -284,7 +284,7 @@ func validateRecoveryModelInvocations(
 		); err != nil {
 			return fmt.Errorf("runs: recovery commit model invocation[%d]: %w", index, err)
 		}
-		if err := validateRecoveryEndpoint(invocation.Endpoint, invocation.SessionID, invocation.RunID, invocation.CallID, invocation.StartedAt, invocation.FinishedAt, invocation.Purpose); err != nil {
+		if err := validateRecoveryEndpoint(invocation.Endpoint, invocation.SessionID, invocation.RunID, invocation.CallID, invocation.StartedAt, invocation.FinishedAt); err != nil {
 			return err
 		}
 		if _, duplicate := seen[invocation.CallID]; duplicate {
@@ -597,7 +597,7 @@ func cloneRecoveryModels(values []ModelInvocationRecovery) []ModelInvocationReco
 	return cloned
 }
 
-func validateRecoveryEndpoint(source *modelref.EndpointObservation, sessionID, runID, callID string, startedAt, finishedAt time.Time, purpose rundomain.ModelCallPurpose) error {
+func validateRecoveryEndpoint(source *modelref.EndpointObservation, sessionID, runID, callID string, startedAt, finishedAt time.Time) error {
 	if source == nil {
 		return nil
 	}
@@ -605,8 +605,8 @@ func validateRecoveryEndpoint(source *modelref.EndpointObservation, sessionID, r
 		return err
 	}
 	if !source.HasResponse() {
-		if purpose != rundomain.ModelIndependent || source.CostUSD != nil || (source.State != "started" && source.State != "failed" && source.State != "unknown") {
-			return errors.New("runs: recovery endpoint has no admitted independent outcome")
+		if source.Usage != nil || source.CostUSD != nil || (source.State != "started" && source.State != "failed" && source.State != "unknown") {
+			return errors.New("runs: recovery endpoint has no admitted outcome")
 		}
 	} else {
 		if source.State != "completed" && source.State != "failed" {

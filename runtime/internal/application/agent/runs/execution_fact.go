@@ -146,9 +146,10 @@ type ModelObservation struct {
 }
 
 // ModelCallFailed closes an unsuccessful outer model operation. KnownResponse
-// retains an already validated inner response; Accounting projects its known
-// consumption without allowing Tool calls or messages into continuation. Otherwise
-// Observation is incomplete transcript content and cannot assert a final response.
+// retains an already validated inner response. Accounting exists exactly when
+// physical dispatch evidence exists, including unknown consumption. Neither can
+// introduce Tool calls or messages into continuation. Observation is incomplete
+// transcript content and cannot assert a final response.
 // If this fact cannot be durably committed, the dispatcher must instead leave
 // the invocation open and reconcile the Effect as unknown.
 type ModelCallFailed struct {

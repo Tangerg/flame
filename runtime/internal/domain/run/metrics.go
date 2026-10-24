@@ -98,7 +98,7 @@ func (m Metrics) Cost() (accounting.Cost, error) {
 	return accounting.CostFromOptional(m.usage.Total.CostUSD)
 }
 
-// Steps returns the cumulative model-call count.
+// Steps counts physically dispatched model calls, including unknown outcomes.
 func (m Metrics) Steps() int { return m.steps }
 
 // ActiveDuration returns the cumulative time spent executing.

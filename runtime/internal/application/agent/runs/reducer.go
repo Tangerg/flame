@@ -411,7 +411,7 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 		}
 	}
 	if failed.Accounting != nil {
-		if failed.Accounting.CallID != failed.CallID || (failed.KnownResponse == nil && (call.purpose != run.ModelIndependent || failed.Accounting.ReportedUsage != nil || failed.Accounting.Cost.OptionalUSD() != nil)) {
+		if failed.Accounting.CallID != failed.CallID || (failed.KnownResponse == nil && (failed.Accounting.ReportedUsage != nil || failed.Accounting.Cost.OptionalUSD() != nil || failed.Accounting.ContextTokens != 0 || failed.Accounting.Message != nil)) {
 			return factReduction{}, errExecutorContract
 		}
 		progressEvents, err := r.modelUsageProgress(*failed.Accounting)

@@ -192,10 +192,8 @@ func (p *Persistence) ListOpenModelInvocations(ctx context.Context) ([]runs.Open
 		if source.SessionID != invocation.SessionID || source.RunID != invocation.RunID || source.Invocation.Caller.ID != invocation.CallID {
 			return nil, errors.New("recovery: endpoint differs from its logical call ownership")
 		}
-		if source.HasResponse() || invocation.Purpose == run.ModelIndependent {
-			value := source.Clone()
-			invocations[index].Endpoint = &value
-		}
+		value := source.Clone()
+		invocations[index].Endpoint = &value
 	}
 	return invocations, nil
 }

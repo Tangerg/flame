@@ -1995,6 +1995,42 @@ func TestIndependentModelFactsPreservePrimaryStreamingAndUnknownConsumption(t *t
 	}
 }
 
+func TestFailedModelConsumptionDependsOnDispatchEvidence(t *testing.T) {
+	for _, purpose := range []run.ModelCallPurpose{run.ModelConversation, run.ModelIndependent} {
+		for _, dispatched := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/dispatched=%t", purpose, dispatched), func(t *testing.T) {
+				reducer := newReducer(testReducerConfig())
+				mustReduce(t, reducer, ModelCallStarted{CallID: "known"})
+				mustReduce(t, reducer, ModelCallCompleted{CallID: "known", Model: "model", ReportedUsage: &corechat.Usage{InputTokens: 7, OutputTokens: 2}, Cost: mustReducerCost(t, .25), ContextTokens: 7})
+				mustReduce(t, reducer, ModelCallStarted{CallID: "failed", Purpose: purpose})
+				failure := ModelCallFailed{CallID: "failed"}
+				if dispatched {
+					failure.Accounting = &ModelCallCompleted{CallID: "failed", Model: "model"}
+				}
+				reduced := mustReduce(t, reducer, failure)
+				if len(committedConversationMessages(reduced)) != 0 || len(completedItems(reduced)) != 0 {
+					t.Fatal("unknown consumption invented content")
+				}
+				mustReduce(t, reducer, ModelCallStarted{CallID: "later"})
+				mustReduce(t, reducer, ModelCallCompleted{CallID: "later", Model: "model", ReportedUsage: &corechat.Usage{InputTokens: 3, OutputTokens: 1}, Cost: mustReducerCost(t, .25)})
+				finished := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeCompleted, nil, 0))
+				record := finished[len(finished)-1].Event.(SegmentFinished).Run
+				usage, reported := record.Metrics().Usage()
+				steps := 2
+				if dispatched {
+					steps++
+				}
+				if !reported || record.Metrics().Steps() != steps || usage.Total.InputTokens != 10 || usage.Total.OutputTokens != 3 || record.ContextTokens() != 7 {
+					t.Fatalf("failed call changed reported consumption/context: %+v", record.Snapshot())
+				}
+				if (usage.Total.CostUSD == nil) != dispatched || (!dispatched && *usage.Total.CostUSD != .5) {
+					t.Fatalf("cost certainty differs from physical evidence: %+v", usage.Total)
+				}
+			})
+		}
+	}
+}
+
 func TestIndependentModelCompletionCannotAdvanceConversation(t *testing.T) {
 	for name, completion := range map[string]ModelCallCompleted{
 		"message": {CallID: "independent_invalid", Model: "model", Message: new(corechat.NewAssistantMessage(corechat.NewTextPart("foreign")))},

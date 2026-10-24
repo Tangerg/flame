@@ -14,8 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -145,7 +143,7 @@ func (o *observedInteractionModel) Stream(
 			}
 		}
 		if stopped {
-			if err := o.settleStoppedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis); err != nil {
+			if err := o.settleFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis); err != nil {
 				// Preserve the settlement failure locally; yielding again violates the stream.
 				o.session.effectFailures.record(invocation.EffectID(), err)
 			}
@@ -177,21 +175,12 @@ func (o *observedInteractionModel) finishFailedCall(
 	firstOutputLatencyMillis *int64,
 	cause error,
 ) error {
-	response, err := o.knownEndpoint(ctx, callID)
-	if err != nil {
-		return o.stopFailedCall(ctx, invocation, cause, err)
-	}
-	if response != nil {
-		return o.finishKnownFailedCall(ctx, invocation, callID, response.Response, firstOutputLatencyMillis, cause)
-	}
-	projectionErr := o.fail(ctx, invocation, callID, observation, firstOutputLatencyMillis)
+	projectionErr := o.settleFailedCall(ctx, invocation, callID, observation, firstOutputLatencyMillis)
 	return o.stopFailedCall(ctx, invocation, cause, projectionErr)
 }
 
-func (o *observedInteractionModel) knownEndpoint(ctx context.Context, callID string) (*modelref.EndpointObservation, error) {
-	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
-	defer cancel()
-	row, found, err := o.session.modelEvidence.EndpointForCaller(projectionCtx, callID)
+func (o *observedInteractionModel) endpoint(ctx context.Context, callID string) (*modelref.EndpointObservation, error) {
+	row, found, err := o.session.modelEvidence.EndpointForCaller(ctx, callID)
 	if err != nil {
 		return nil, err
 	}
@@ -201,29 +190,16 @@ func (o *observedInteractionModel) knownEndpoint(ctx context.Context, callID str
 	if row.Invocation.Caller.ID != callID || row.Invocation.Provider != o.session.start.ModelSelection.Provider() || row.Invocation.Model != o.session.start.ModelSelection.Model() {
 		return nil, errors.New("execution: physical model evidence differs from captured call")
 	}
-	if row.Response == nil {
-		return nil, nil
-	}
-	if err := row.Response.Validate(); err != nil {
-		return nil, err
-	}
 	value := row.Clone()
 	return &value, nil
 }
 
-func (o *observedInteractionModel) accountEndpoint(ctx context.Context, invocation interaction.ModelInvocation, callID string) (runs.ModelCallCompleted, error) {
-	response, err := o.knownEndpoint(ctx, callID)
+func (o *observedInteractionModel) accountEndpoint(invocation interaction.ModelInvocation, callID string, source modelref.EndpointObservation) (runs.ModelCallCompleted, error) {
+	consumption, err := accountModelEndpoint(callID, source)
 	if err != nil {
 		return runs.ModelCallCompleted{}, err
 	}
-	if response == nil {
-		return runs.ModelCallCompleted{}, errors.New("execution: completed model operation has no known physical endpoint evidence")
-	}
-	cost, err := accounting.CostFromOptional(response.CostUSD)
-	if err != nil {
-		return runs.ModelCallCompleted{}, err
-	}
-	return o.session.accounting.accountModelCall(invocation, callID, response.Response, cost)
+	return o.session.accounting.accountModelCall(invocation, consumption)
 }
 
 func (o *observedInteractionModel) stopFailedCall(ctx context.Context, invocation interaction.ModelInvocation, cause, projectionErr error) error {
@@ -236,69 +212,42 @@ func (o *observedInteractionModel) stopFailedCall(ctx context.Context, invocatio
 	return errors.Join(cause, projectionErr)
 }
 
-func (o *observedInteractionModel) finishKnownFailedCall(ctx context.Context, invocation interaction.ModelInvocation, callID string, response *corechat.Response, latency *int64, cause error) error {
-	err := o.settleKnownFailedCall(ctx, invocation, callID, response, latency)
-	return o.stopFailedCall(ctx, invocation, cause, err)
-}
-
-// settleKnownFailedCall commits the failure fact carrying the physical response,
-// usage and price, and nothing else. It owns the fact only; whether and how the
-// model process ends is the caller's decision.
-func (o *observedInteractionModel) settleKnownFailedCall(ctx context.Context, invocation interaction.ModelInvocation, callID string, response *corechat.Response, latency *int64) error {
+// Settlement uses dispatch evidence even when no response survived. Scope owns
+// the process outcome, including a consumer's capacity stop.
+func (o *observedInteractionModel) settleFailedCall(ctx context.Context, invocation interaction.ModelInvocation, callID string, observation runs.ModelObservation, latency *int64) error {
 	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
 	defer cancel()
 	if err := o.session.flushDeltas(projectionCtx); err != nil {
 		return err
 	}
-	accounted, err := o.accountEndpoint(projectionCtx, invocation, callID)
+	source, err := o.endpoint(projectionCtx, callID)
 	if err != nil {
 		return err
 	}
-	var observation runs.ModelObservation
-	if response.Output.Message != nil {
-		for _, part := range response.Output.Message.Parts {
-			switch part.Kind {
-			case corechat.PartText, corechat.PartRefusal:
-				observation.Text += part.Text
-			case corechat.PartReasoning:
-				observation.Reasoning += part.Text
+	failed := runs.ModelCallFailed{CallID: callID, Observation: observation, FirstOutputLatencyMillis: latency}
+	if source != nil {
+		accounted, err := o.accountEndpoint(invocation, callID, *source)
+		if err != nil {
+			return err
+		}
+		failed.Accounting = &accounted
+		failed.KnownResponse = source.Response.Clone()
+		if source.Response != nil && source.Response.Output.Message != nil {
+			failed.Observation = runs.ModelObservation{}
+			for _, part := range source.Response.Output.Message.Parts {
+				switch part.Kind {
+				case corechat.PartText, corechat.PartRefusal:
+					failed.Observation.Text += part.Text
+				case corechat.PartReasoning:
+					failed.Observation.Reasoning += part.Text
+				}
 			}
 		}
-	}
-	return o.session.commitFact(projectionCtx, o.session.executorMember(invocation.Relation()), runs.ModelCallFailed{CallID: callID, Observation: observation, KnownResponse: response.Clone(), Accounting: &accounted, FirstOutputLatencyMillis: latency})
-}
-
-// settleStoppedCall records the fact after the consumer stopped reading and the
-// physical stream has settled: the known response, usage and price when the
-// provider completed, unknown otherwise. It settles only the fact — Scope owns the
-// capacity-stop outcome, so this never stops the model process.
-func (o *observedInteractionModel) settleStoppedCall(ctx context.Context, invocation interaction.ModelInvocation, callID string, observation runs.ModelObservation, latency *int64) error {
-	response, err := o.knownEndpoint(ctx, callID)
-	if err != nil {
-		return err
-	}
-	if response != nil {
-		return o.settleKnownFailedCall(ctx, invocation, callID, response.Response, latency)
-	}
-	return o.fail(ctx, invocation, callID, observation, latency)
-}
-
-func (o *observedInteractionModel) fail(
-	ctx context.Context,
-	invocation interaction.ModelInvocation,
-	callID string,
-	observation runs.ModelObservation,
-	firstOutputLatencyMillis *int64,
-) error {
-	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
-	defer cancel()
-	if err := o.session.flushDeltas(projectionCtx); err != nil {
-		return err
 	}
 	return o.session.commitFact(
 		projectionCtx,
 		o.session.executorMember(invocation.Relation()),
-		runs.ModelCallFailed{CallID: callID, Observation: observation, FirstOutputLatencyMillis: firstOutputLatencyMillis},
+		failed,
 	)
 }
 
@@ -357,7 +306,14 @@ func (o *observedInteractionModel) complete(
 	if err := o.session.flushDeltas(projectionCtx); err != nil {
 		return err
 	}
-	fact, err := o.accountEndpoint(projectionCtx, invocation, callID)
+	source, err := o.endpoint(projectionCtx, callID)
+	if err != nil {
+		return err
+	}
+	if source == nil || source.Response == nil {
+		return errors.New("execution: completed model operation has no known physical endpoint evidence")
+	}
+	fact, err := o.accountEndpoint(invocation, callID, *source)
 	if err != nil {
 		return err
 	}
@@ -394,32 +350,6 @@ func newObservedInteractionModel(
 // Streams reports whether this boundary can serve the Dispatcher's streaming
 // capability.
 func (o *observedInteractionModel) Streams() bool { return !dependency.Missing(o.streamer) }
-
-func modelUsage(
-	response *corechat.Response,
-	selection modelchoice.Selection,
-	cost accounting.Cost,
-) (accounting.ModelUsage, error) {
-	var metadata corechat.ResponseMetadata
-	if response.Metadata != nil {
-		metadata = *response.Metadata
-	}
-	servedModel := metadata.Model
-	if servedModel == "" {
-		servedModel = selection.Model()
-	}
-	var reported corechat.Usage
-	if metadata.Usage != nil {
-		reported = *metadata.Usage
-	}
-	tokens, err := accounting.NewTokens(reported)
-	if err != nil {
-		return accounting.ModelUsage{}, fmt.Errorf("execution: model usage: %w", err)
-	}
-	return accounting.ModelUsage{
-		Model: servedModel, Tokens: tokens, Cost: cost, Calls: 1,
-	}, nil
-}
 
 // Called only after accumulator validation. Opaque reasoning state and citation
 // attachments are replay/annotation data, not the first generated output.
