@@ -816,7 +816,8 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 	termination := result.Termination()
 	duration := i.segmentClock.duration(result.StartedAt(), result.FinishedAt())
 	end := segmentEndFromTermination(termination, duration)
-	if termination.Cause() == agent.TerminationCauseHostCancellation && termination.Reason() == modelProcessStopReason {
+	if termination.Cause() == agent.TerminationCauseExternalFailure ||
+		termination.Cause() == agent.TerminationCauseHostCancellation && termination.Reason() == modelProcessStopReason {
 		if classified, found := i.modelFailures.lookup(result.ProcessID()); found {
 			end.reason = run.OutcomeFailed
 			end.failure = &classified

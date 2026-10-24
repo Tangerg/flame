@@ -59,7 +59,7 @@ func (o *observedInteractionTool) ConcurrencyPolicy() func(toolcontract.Invocati
 	return o.concurrent.ConcurrencyPolicy()
 }
 
-func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.Invocation) (returned toolcontract.Result, returnedErr error) {
+func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.Invocation) (toolcontract.Result, error) {
 	invocation, reference, arguments, err := o.attributedInvocation(ctx, bound)
 	if err != nil {
 		return toolcontract.Result{}, err
@@ -70,17 +70,6 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		return toolcontract.Result{}, err
 	}
 	callID := identity.String()
-	// Scope settles a non-Failure error as an unknown effect and an InputRequest
-	// as a suspension; only those unknown effects become Run effect failures.
-	defer func() {
-		if returnedErr == nil {
-			return
-		}
-		if _, known := errors.AsType[*toolcontract.Failure](returnedErr); known {
-			return
-		}
-		o.session.effectFailures.record(invocation.EffectID(), returnedErr)
-	}()
 	member, hasCaller := o.session.toolCallMember(invocation.Relation())
 	if !hasCaller {
 		return toolcontract.Result{}, errors.New("execution: Tool call has no calling Interaction member")
@@ -89,9 +78,6 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	ctx = o.session.modelCallContext(ctx, member, callID)
 	ctx = operation.Adopt(ctx, callID, capability.Model, member.MemberID)
 	ctx = runinput.WithCapabilities(ctx, o.start.InterruptKinds)
-	if err := o.session.awaitDispatchSegment(ctx); err != nil {
-		return toolcontract.Result{}, err
-	}
 	// Scope carries any re-entry answer on bound; a Tool child restored from it
 	// receives the same continuation the question or approval parked on.
 	var continuation *toolcontract.Continuation
@@ -152,9 +138,6 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		}
 		callErr = failure
 	} else {
-		ctx = toolset.WithToolAdvertiser(ctx, func(names ...string) error {
-			return interaction.AdvertiseTools(ctx, names...)
-		})
 		ctx = toolset.WithMutationRecorder(ctx, func(paths []string) {
 			mutatedPaths = append(mutatedPaths, paths...)
 		})

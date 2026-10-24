@@ -4,13 +4,12 @@ import (
 	"context"
 
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
 // Scope owns definite settlements and unknown dispatch outcomes. Runtime gates
 // dispatch on the active product Segment and retains local failure diagnostics.
 type interactionDispatcher struct {
-	inner   *interaction.Dispatcher
+	inner   agent.Dispatcher
 	session *interactionSession
 }
 

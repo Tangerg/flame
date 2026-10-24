@@ -4,6 +4,16 @@ Flame Runtime is the local product backend for Flame. It owns durable agent sema
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
+Scope's public contracts own framework behavior. Tool discovery implements
+`interaction.AdvertisingTool`, Tool child dispatch uses
+`ToolSetConfig.DecorateDispatcher`, and restoration reads
+`interaction.DelegateAttributions` alongside the captured tree's statuses.
+Definite model failures settle through Scope without synthetic cancellation;
+an unacknowledged initial commit retains Scope's `StartError` evidence.
+Scope owns external wait acceptance and its checkpoint encoding. Finish earlier
+waiting work with its matching executable and retain that data directory;
+the existing exact BuildID admission boundary rejects incompatible checkpoints.
+
 Managed Node entries use the same installed MCP activation as native backends.
 The package owns only `managedBackends: [{id, runtime: "node", entry}]`; the
 distribution owns the pinned companion, launch flags and execution environment

@@ -95,10 +95,14 @@
                 "type": "string"
               },
               "format": {
-                "enum": [
-                  "markdown",
-                  "html",
-                  "text"
+                "allOf": [
+                  {
+                    "enum": [
+                      "markdown",
+                      "html",
+                      "text"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -154,10 +158,14 @@
             "type": "string"
           },
           "format": {
-            "enum": [
-              "markdown",
-              "html",
-              "text"
+            "allOf": [
+              {
+                "enum": [
+                  "markdown",
+                  "html",
+                  "text"
+                ]
+              }
             ],
             "type": "string"
           },
@@ -217,12 +225,16 @@
             "additionalProperties": false,
             "properties": {
               "format": {
-                "description": "Content format: markdown (default and best for readable structure), html, or text.",
-                "enum": [
-                  "markdown",
-                  "html",
-                  "text"
+                "allOf": [
+                  {
+                    "enum": [
+                      "markdown",
+                      "html",
+                      "text"
+                    ]
+                  }
                 ],
+                "description": "Content format: markdown (default and best for readable structure), html, or text.",
                 "type": "string"
               },
               "url": {
@@ -241,12 +253,16 @@
         "additionalProperties": false,
         "properties": {
           "format": {
-            "description": "Content format: markdown (default and best for readable structure), html, or text.",
-            "enum": [
-              "markdown",
-              "html",
-              "text"
+            "allOf": [
+              {
+                "enum": [
+                  "markdown",
+                  "html",
+                  "text"
+                ]
+              }
             ],
+            "description": "Content format: markdown (default and best for readable structure), html, or text.",
             "type": "string"
           },
           "url": {
@@ -269,10 +285,14 @@
                 "type": "string"
               },
               "format": {
-                "enum": [
-                  "markdown",
-                  "html",
-                  "text"
+                "allOf": [
+                  {
+                    "enum": [
+                      "markdown",
+                      "html",
+                      "text"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -328,10 +348,14 @@
             "type": "string"
           },
           "format": {
-            "enum": [
-              "markdown",
-              "html",
-              "text"
+            "allOf": [
+              {
+                "enum": [
+                  "markdown",
+                  "html",
+                  "text"
+                ]
+              }
             ],
             "type": "string"
           },
@@ -424,14 +448,18 @@
                 "type": "string"
               },
               "recency": {
-                "description": "Optional time window: hour, day, week, month, or year.",
-                "enum": [
-                  "hour",
-                  "day",
-                  "week",
-                  "month",
-                  "year"
+                "allOf": [
+                  {
+                    "enum": [
+                      "hour",
+                      "day",
+                      "week",
+                      "month",
+                      "year"
+                    ]
+                  }
                 ],
+                "description": "Optional time window: hour, day, week, month, or year.",
                 "type": "string"
               }
             },
@@ -478,14 +506,18 @@
             "type": "string"
           },
           "recency": {
-            "description": "Optional time window: hour, day, week, month, or year.",
-            "enum": [
-              "hour",
-              "day",
-              "week",
-              "month",
-              "year"
+            "allOf": [
+              {
+                "enum": [
+                  "hour",
+                  "day",
+                  "week",
+                  "month",
+                  "year"
+                ]
+              }
             ],
+            "description": "Optional time window: hour, day, week, month, or year.",
             "type": "string"
           }
         },

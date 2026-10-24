@@ -6,15 +6,14 @@
 // the initial manifest. The withheld
 // tools stay resolvable in the Run's registry but are not advertised, so the
 // prompt does not carry every deferred JSON schema every round. The model
-// calls search_tools to find the ones it needs; each match is staged through a
-// strategy-supplied [ToolAdvertiser] and becomes callable on the next safe model
-// boundary.
+// calls search_tools to find the ones it needs; Scope commits the successful
+// result's exact matches through its AdvertisingTool capability.
 package toolset
 
 import (
 	"cmp"
 	"context"
-	"errors"
+	json "encoding/json/v2"
 	"fmt"
 	"slices"
 	"strings"
@@ -58,22 +57,6 @@ type discoverableTool struct {
 	descLower  string
 }
 
-type toolAdvertiserContextKey struct{}
-
-// ToolAdvertiser stages exact deferred Tool names for later model visibility. It
-// changes visibility only; the Resolver has already frozen executable authority.
-type ToolAdvertiser func(names ...string) error
-
-// WithToolAdvertiser binds the execution strategy's visibility callback to one
-// Tool invocation. Toolset remains framework-neutral: the callback decides how
-// a successful discovery result is committed by that strategy.
-func WithToolAdvertiser(ctx context.Context, advertiser ToolAdvertiser) context.Context {
-	if advertiser == nil {
-		return ctx
-	}
-	return context.WithValue(ctx, toolAdvertiserContextKey{}, advertiser)
-}
-
 // Discovery is the search_tools meta-tool over a fixed set of withheld tools. It is
 // built per Run from the resolver's complete deferred set, so its rendered
 // catalog and promotable definitions never drift.
@@ -84,6 +67,11 @@ type Discovery struct {
 }
 
 var _ toolcontract.Tool = (*Discovery)(nil)
+
+type discoveryResult struct {
+	Names   []string `json:"names"`
+	Message string   `json:"message"`
+}
 
 // NewDiscovery builds a search_tools tool over withheld. It returns nil when withheld is
 // empty so the caller simply omits the tool — there is nothing to search.
@@ -181,13 +169,37 @@ func (d *Discovery) Catalog() string {
 }
 
 func (d *Discovery) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
-	return d.inner.Call(ctx, invocation)
+	result, err := d.inner.Call(ctx, invocation)
+	if err != nil {
+		return toolcontract.Result{}, err
+	}
+	matched, err := decodeDiscoveryResult(result)
+	if err != nil {
+		return toolcontract.Result{}, err
+	}
+	result.Output.Content = chat.NewTextToolOutput(matched.Message).Content
+	return result, nil
 }
 
-func (d *Discovery) search(ctx context.Context, args discoveryArgs) (string, error) {
+// The result carries the names actually selected after any argument rewrite.
+// Repeating a search from the original invocation would advertise a different set.
+func (d *Discovery) AdvertiseDeferred(_ context.Context, _ toolcontract.Invocation, result toolcontract.Result) ([]string, error) {
+	matched, err := decodeDiscoveryResult(result)
+	return matched.Names, err
+}
+
+func decodeDiscoveryResult(result toolcontract.Result) (discoveryResult, error) {
+	var matched discoveryResult
+	if err := json.Unmarshal(result.Output.Details, &matched, json.RejectUnknownMembers(true)); err != nil {
+		return discoveryResult{}, fmt.Errorf("search_tools: decode selected matches: %w", err)
+	}
+	return matched, nil
+}
+
+func (d *Discovery) search(_ context.Context, args discoveryArgs) (discoveryResult, error) {
 	query := strings.TrimSpace(args.Query)
 	if query == "" {
-		return "", toolfailure.Definite(ErrEmptyQuery)
+		return discoveryResult{}, toolfailure.Definite(ErrEmptyQuery)
 	}
 	limit := optional.Value(args.Limit, discoveryDefaultLimit)
 
@@ -198,21 +210,14 @@ func (d *Discovery) search(ctx context.Context, args discoveryArgs) (string, err
 		matches = d.searchByKeyword(query, limit)
 	}
 	if len(matches) == 0 {
-		return d.renderNoMatch(query), nil
+		return discoveryResult{Message: d.renderNoMatch(query)}, nil
 	}
 
-	advertise, ok := ctx.Value(toolAdvertiserContextKey{}).(ToolAdvertiser)
-	if !ok || advertise == nil {
-		return "", errors.New("search_tools: Tool advertisement is unavailable")
-	}
 	names := make([]string, len(matches))
 	for index, match := range matches {
 		names[index] = match.definition.Name
 	}
-	if err := advertise(names...); err != nil {
-		return "", fmt.Errorf("search_tools: advertise matches: %w", err)
-	}
-	return d.renderMatches(matches), nil
+	return discoveryResult{Names: names, Message: d.renderMatches(matches)}, nil
 }
 
 // selectByName resolves an exact "select:a,b,c" list, preserving request order

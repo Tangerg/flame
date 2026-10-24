@@ -25,10 +25,14 @@
           "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_5fselectionJSON_5bstring_5d"
         },
         "use": {
-          "enum": [
-            "interaction",
-            "utility",
-            "independent"
+          "allOf": [
+            {
+              "enum": [
+                "interaction",
+                "utility",
+                "independent"
+              ]
+            }
           ],
           "type": "string"
         }
@@ -97,9 +101,13 @@
       "additionalProperties": false,
       "properties": {
         "inputKind": {
-          "enum": [
-            "text",
-            "request"
+          "allOf": [
+            {
+              "enum": [
+                "text",
+                "request"
+              ]
+            }
           ],
           "type": "string"
         },

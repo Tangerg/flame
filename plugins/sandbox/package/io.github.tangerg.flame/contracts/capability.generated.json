@@ -73,9 +73,13 @@
                 "type": "string"
               },
               "encoding": {
-                "enum": [
-                  "utf8",
-                  "base64"
+                "allOf": [
+                  {
+                    "enum": [
+                      "utf8",
+                      "base64"
+                    ]
+                  }
                 ],
                 "type": "string"
               }
@@ -109,9 +113,13 @@
                 "type": "integer"
               },
               "status": {
-                "enum": [
-                  "completed",
-                  "timed_out"
+                "allOf": [
+                  {
+                    "enum": [
+                      "completed",
+                      "timed_out"
+                    ]
+                  }
                 ],
                 "type": "string"
               },
@@ -155,9 +163,13 @@
             "type": "integer"
           },
           "status": {
-            "enum": [
-              "completed",
-              "timed_out"
+            "allOf": [
+              {
+                "enum": [
+                  "completed",
+                  "timed_out"
+                ]
+              }
             ],
             "type": "string"
           },

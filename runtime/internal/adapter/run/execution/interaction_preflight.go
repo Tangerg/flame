@@ -147,7 +147,7 @@ func continuationRetiredProcesses(cut interactionHandoff, head agent.TreeSnapsho
 	}
 	retiredRoots := make(map[agent.ProcessID]bool)
 	for id := range survivors {
-		children, _, err := interaction.ActiveDelegateChildren(snapshots[id])
+		children, _, err := interaction.DelegateAttributions(snapshots[id])
 		if err != nil {
 			return nil, fmt.Errorf("%w: inspect continuation delegates: %w", runs.ErrExecutorStateLost, err)
 		}

@@ -50,7 +50,7 @@ const UNGUARDED_ROOTS = new Set(["styles", "test"]);
 
 function layerOf(path) {
   if (path === RUNTIME_CLIENT_EDGE) return "rpc";
-  if (path === RUNTIME_JSON_EDGE) return "external";
+  if (path === RUNTIME_JSON_EDGE) return "foundation";
   for (const [prefix, layer] of LAYER_PREFIXES) if (path.startsWith(prefix)) return layer;
   return "other";
 }
@@ -60,7 +60,7 @@ function layerOf(path) {
  *  prevent, so it is reported rather than defaulted to "unguarded". */
 function undeclaredRoot(path) {
   const [root, ...rest] = path.split("/");
-  if (path === RUNTIME_CLIENT_EDGE) return null;
+  if (path === RUNTIME_CLIENT_EDGE || path === RUNTIME_JSON_EDGE) return null;
   if (rest.length === 0) return null; // bare entry file at src/ root
   if (root === "..") return null; // outside src/ — the runtime contract's sample fixtures
   if (UNGUARDED_ROOTS.has(root)) return null;

@@ -58,7 +58,7 @@ func catalog() []toolcontract.Tool {
 func call(t *testing.T, tool *toolset.Discovery, query string) string {
 	t.Helper()
 	args, _ := json.Marshal(map[string]any{"query": query})
-	ctx := toolset.WithToolAdvertiser(context.Background(), func(...string) error { return nil })
+	ctx := context.Background()
 	out, err := callTextTool(ctx, tool, string(args))
 	if err != nil {
 		t.Fatalf("Call(%q): %v", query, err)
@@ -143,7 +143,7 @@ func TestRoundRobinSpreadsAcrossServers(t *testing.T) {
 	}
 	tool := newSearch(t, many)
 	args, _ := json.Marshal(map[string]any{"query": "issue", "limit": 2})
-	ctx := toolset.WithToolAdvertiser(context.Background(), func(...string) error { return nil })
+	ctx := context.Background()
 	out, err := callTextTool(ctx, tool, string(args))
 	if err != nil {
 		t.Fatal(err)
@@ -252,47 +252,50 @@ func TestDiscoveryRejectsUndecodableIntegersAtAdmission(t *testing.T) {
 	}
 }
 
-func TestAdvertisementUsesExactFrozenToolNames(t *testing.T) {
-	search := newSearch(t, catalog())
-	var advertised []string
-	ctx := toolset.WithToolAdvertiser(context.Background(), func(names ...string) error {
-		advertised = append(advertised, names...)
-		return nil
-	})
-	if _, err := callTextTool(ctx, search, `{"query":"select:github_open_pr,linear_list_issues"}`); err != nil {
+func discover(t *testing.T, search *toolset.Discovery, arguments string) (toolcontract.Invocation, toolcontract.Result) {
+	t.Helper()
+	binding, err := toolcontract.Bind(search)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(advertised, ",") != "github_open_pr,linear_list_issues" {
-		t.Fatalf("advertised = %v", advertised)
+	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: "search_tools", Arguments: arguments}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := binding.Call(t.Context(), invocation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return invocation, result
+}
+
+func TestAdvertisementUsesExactExecutedMatches(t *testing.T) {
+	search := newSearch(t, catalog())
+	original, _ := discover(t, search, `{"query":"select:github_open_pr"}`)
+	_, result := discover(t, search, `{"query":"select:linear_list_issues,slack_send_message"}`)
+	advertised, err := search.AdvertiseDeferred(t.Context(), original, result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(advertised, ",") != "linear_list_issues,slack_send_message" {
+		t.Fatalf("advertised = %v, want the executed result after an argument rewrite", advertised)
 	}
 }
 
 func TestDiscoveryDoesNotInferRemainingVisibilityFromOneSearch(t *testing.T) {
 	search := newSearch(t, catalog())
-	advertised := make(map[string]bool)
-	ctx := toolset.WithToolAdvertiser(context.Background(), func(names ...string) error {
-		for _, name := range names {
-			advertised[name] = true
-		}
-		return nil
-	})
 	for _, name := range search.DeferredToolNames() {
 		arguments, err := json.Marshal(map[string]string{"query": "select:" + name})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := callTextTool(ctx, search, string(arguments)); err != nil {
-			t.Fatal(err)
+		invocation, result := discover(t, search, string(arguments))
+		advertised, err := search.AdvertiseDeferred(t.Context(), invocation, result)
+		if err != nil || len(advertised) != 1 || advertised[0] != name {
+			t.Fatalf("selected %q: advertisement = %v, %v", name, advertised, err)
 		}
 	}
-	if len(advertised) != len(catalog()) {
-		t.Fatalf("advertised = %v, want the complete catalog", advertised)
-	}
-
-	output, err := callTextTool(ctx, search, `{"query":"select:github_open_pr"}`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	output := call(t, search, "select:github_open_pr")
 	if !strings.Contains(output, "github_open_pr") {
 		t.Fatalf("selected Tool missing from result: %s", output)
 	}
@@ -301,9 +304,19 @@ func TestDiscoveryDoesNotInferRemainingVisibilityFromOneSearch(t *testing.T) {
 	}
 }
 
-func TestAdvertisementFailsClosedWithoutExecutionBinding(t *testing.T) {
+func TestAdvertisementRequiresTheStructuredExecutedResult(t *testing.T) {
 	search := newSearch(t, catalog())
-	if _, err := callTextTool(context.Background(), search, `{"query":"create issue"}`); err == nil {
-		t.Fatal("search_tools claimed a loaded Tool without an execution advertiser")
+	invocation, _ := discover(t, search, `{"query":"create issue"}`)
+	if _, err := search.AdvertiseDeferred(t.Context(), invocation, toolcontract.Result{Output: chat.NewTextToolOutput("linear_create_issue")}); err == nil {
+		t.Fatal("advertisement inferred matches from display text")
+	}
+}
+
+func TestUnmatchedDiscoveryAdvertisesNothing(t *testing.T) {
+	search := newSearch(t, catalog())
+	invocation, result := discover(t, search, `{"query":"select:missing"}`)
+	advertised, err := search.AdvertiseDeferred(t.Context(), invocation, result)
+	if err != nil || len(advertised) != 0 {
+		t.Fatalf("unmatched advertisement = %v, %v", advertised, err)
 	}
 }
