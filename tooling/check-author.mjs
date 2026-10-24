@@ -1,4 +1,11 @@
-import { mkdtemp, mkdir, readdir, readFile, rm } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
@@ -18,7 +25,8 @@ async function snapshot(directory) {
 }
 try {
   await buildShared();
-  for (const name of ["memory", "guardrails"]) {
+  for (const name of ["memory", "guardrails", "usagereports"]) {
+    const managed = name === "usagereports";
     const project = join(
       scratch,
       name === "memory" ? "memory author 作者" : name,
@@ -27,8 +35,9 @@ try {
       "plugins/scripts/build-author-kit.mjs",
       "--plugin",
       name,
-      "--module-path",
-      `example.com/flame-author/${name}`,
+      ...(!managed
+        ? ["--module-path", `example.com/flame-author/${name}`]
+        : []),
       "--output",
       project,
       "--offline",
@@ -54,19 +63,52 @@ try {
         "offline author verification requires the supported macOS network sandbox",
       );
     const policy = `(version 1) (allow default) (deny network*) (deny file-read* (subpath ${JSON.stringify(root)}))`;
-    for (const command of ["test", "generate", "build"])
-      run(
-        "/usr/bin/sandbox-exec",
-        ["-p", policy, "go", command, "./..."],
-        project,
-        env,
+    if (!managed)
+      for (const command of ["test", "generate", "build"])
+        run(
+          "/usr/bin/sandbox-exec",
+          ["-p", policy, "go", command, "./..."],
+          project,
+          env,
+        );
+    if (managed) {
+      if (existsSync(join(project, "go.mod")))
+        throw new Error(
+          "managed author project retains a Go compiler prerequisite",
+        );
+      const noGo = join(scratch, "no-go");
+      await mkdir(noGo);
+      await writeFile(
+        join(noGo, "go"),
+        '#!/bin/sh\necho "Go is unavailable in the TypeScript author environment" >&2\nexit 97\n',
+        { mode: 0o755 },
       );
+      env.PATH = noGo + ":" + process.env.PATH;
+    }
+    const npmCommands = managed
+      ? [
+          ["ci", "--ignore-scripts", "--offline"],
+          ["run", "generate"],
+          ["run", "typecheck"],
+          ["test"],
+          ["run", "build"],
+          [
+            "run",
+            "package",
+            "--",
+            "--output",
+            join(scratch, name + "-release"),
+            "--archives",
+            join(scratch, name + "-archives"),
+          ],
+        ]
+      : [
+          ["ci", "--ignore-scripts", "--offline"],
+          ["run", "typecheck"],
+          ["run", "build"],
+        ];
     if (existsSync(join(project, "package.json")))
-      for (const command of [
-        ["ci", "--ignore-scripts", "--offline"],
-        ["run", "typecheck"],
-        ["run", "build"],
-      ])
+      for (const command of npmCommands)
         run(
           "/usr/bin/sandbox-exec",
           ["-p", policy, "npm", ...command],

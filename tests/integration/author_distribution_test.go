@@ -13,13 +13,14 @@ import (
 
 	memorycontract "github.com/Tangerg/flame/packages/plugin-sdk/memory"
 	guardrailsrpc "github.com/Tangerg/flame/plugins/guardrails/backend/rpc"
+	reports "github.com/Tangerg/flame/plugins/usagereports"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestStandalonePluginArchiveRetainsItsContractAndPrivateCommandOwner(t *testing.T) {
-	for _, name := range []string{"guardrails", "memory"} {
+	for _, name := range []string{"guardrails", "memory", "usagereports"} {
 		t.Run(name, func(t *testing.T) {
 			verifyStandalonePlugin(t, name)
 		})
@@ -42,13 +43,24 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 			t.Fatalf("%s %v: %v\n%s", command, args, err, output)
 		}
 	}
-	execute(repository, os.Environ(), "node", "plugins/scripts/build-author-kit.mjs", "--plugin", name, "--module-path", "example.com/flame-author/"+name, "--output", author, "--offline")
+	export := []string{"plugins/scripts/build-author-kit.mjs", "--plugin", name, "--output", author, "--offline"}
+	if name != "usagereports" {
+		export = append(export, "--module-path", "example.com/flame-author/"+name)
+	}
+	execute(repository, os.Environ(), "node", export...)
 	env := append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local", "GOPROXY=off", "GONOPROXY=none", "GOSUMDB=off", "GOFLAGS=-mod=vendor", "GOMODCACHE="+filepath.Join(root, "module-cache"))
 	output, archives := filepath.Join(root, "package"), filepath.Join(root, "archives")
-	execute(author, env, "node", "build.mjs", "--source", author, "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", output, "--archives", archives)
+	if name == "usagereports" {
+		execute(author, env, "npm", "run", "package", "--", "--output", output, "--archives", archives)
+	} else {
+		execute(author, env, "node", "build.mjs", "--source", author, "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", output, "--archives", archives)
+	}
 	files, err := filepath.Glob(filepath.Join(archives, "*.zip"))
 	if err != nil || len(files) != 1 {
 		t.Fatalf("release archive = %v, %v", files, err)
+	}
+	if name == "usagereports" && filepath.Base(files[0]) != "plugin-flame.usagereports-1.0.0.zip" {
+		t.Fatal("portable author artifact acquired a platform identity")
 	}
 	cfg := flameruntime.Config{DataDirectory: tempRuntimeDirectory(t), UserHomePath: tempRuntimeDirectory(t), ConfigDirectories: []string{tempRuntimeDirectory(t)}}
 	host, err := flameruntime.Open(t.Context(), cfg)
@@ -89,7 +101,7 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 	wait()
 	contract := ""
 	for _, contribution := range installed.Selected.Contributions {
-		if contribution.ID == name+"-policy" || contribution.ID == name+"-provider" {
+		if contribution.ID == name+"-policy" || contribution.ID == name+"-provider" || name == "usagereports" && contribution.ID == "usage-reports" {
 			contract = contribution.Contract
 		}
 	}
@@ -121,6 +133,16 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		request.Contribution = "memory-provider"
 		request.Method = memorycontract.AddV1Method
 		request.Input = `{"Scope":"user","CWD":"","Content":"independent author fact"}`
+	}
+	if name == "usagereports" {
+		published, err := reports.NewContracts[protocol.UsageSummary]()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if published.Capability.Identity().String() != contract {
+			t.Fatal("independent TypeScript author changed the original usage contract")
+		}
+		request.Contribution, request.Method, request.Input = "usage-reports", published.Capture.Name(), `{"period":"daily"}`
 	}
 	options := protocol.PluginCallOptions{IdempotencyKey: "standalone-command"}
 	original, err := host.CallPlugin(t.Context(), request, options)
