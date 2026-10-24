@@ -135,4 +135,4 @@ try {
   await rm(scratch, { recursive: true, force: true });
 }
 
-run("go", ["test", "-tags", "author", "./tests/integration"]);
+run("go", ["test", "-count=1", "-tags", "author", "./tests/integration"]);
