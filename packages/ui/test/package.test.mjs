@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createConsumerLock } from "../../../tooling/npm-consumer-lock.mjs";
 
 test("packed UI and icons work without the host or a StyleX compiler", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "flame-ui-consumer-"));
@@ -22,11 +23,9 @@ test("packed UI and icons work without the host or a StyleX compiler", async () 
         await readFile(path.join(directory, "package.json")),
       );
       return {
-        version: manifest.version,
+        manifest,
         resolved: `file:${path.join(dir, packed[0].filename)}`,
         integrity: packed[0].integrity,
-        dependencies: manifest.dependencies,
-        peerDependencies: manifest.peerDependencies,
       };
     };
     const icons = await archive(new URL("../../icons", import.meta.url));
@@ -37,33 +36,17 @@ test("packed UI and icons work without the host or a StyleX compiler", async () 
       dependencies: {
         "@flame/ui": ui.resolved,
         "@flame/icons": icons.resolved,
-        react: ui.peerDependencies.react,
-        "react-dom": ui.peerDependencies["react-dom"],
+        react: ui.manifest.peerDependencies.react,
+        "react-dom": ui.manifest.peerDependencies["react-dom"],
       },
     };
     const rootLock = JSON.parse(
       await readFile(new URL("../../../package-lock.json", import.meta.url)),
     );
-    // npm ci caches tarballs without registry metadata. Resolve the offline
-    // consumer from the root lock, excluding the host's workspace links.
-    const packages = Object.fromEntries(
-      Object.entries(rootLock.packages).filter(
-        ([name, entry]) => name.startsWith("node_modules/") && !entry.link,
-      ),
-    );
     await writeFile(path.join(dir, "package.json"), JSON.stringify(consumer));
     await writeFile(
       path.join(dir, "package-lock.json"),
-      JSON.stringify({
-        lockfileVersion: rootLock.lockfileVersion,
-        requires: true,
-        packages: {
-          "": consumer,
-          ...packages,
-          "node_modules/@flame/icons": icons,
-          "node_modules/@flame/ui": ui,
-        },
-      }),
+      JSON.stringify(createConsumerLock(rootLock, consumer, [icons, ui])),
     );
     execFileSync(
       "npm",

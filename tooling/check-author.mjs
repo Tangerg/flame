@@ -61,6 +61,18 @@ try {
         project,
         env,
       );
+    if (existsSync(join(project, "package.json")))
+      for (const command of [
+        ["ci", "--ignore-scripts", "--offline"],
+        ["run", "typecheck"],
+        ["run", "build"],
+      ])
+        run(
+          "/usr/bin/sandbox-exec",
+          ["-p", policy, "npm", ...command],
+          project,
+          env,
+        );
     const after = new Map(await snapshot(project));
     if (
       before.size !== after.size ||

@@ -59,6 +59,12 @@ the independent release ZIP, selects its exact Memory role, invokes it and verif
 its original private command outcome after Runtime/backend restart.
 
 JS author projects consume real packed SDK/UI/icons archives, their own manifest
-and lock, and are checked outside the workspace. Their independent npm install
-requires ordinary dependency availability; this does not claim all JS transitive
-or platform dependencies are included for a fully offline install.
+and lock, and are checked outside the workspace. The initial lock projects external
+selections from the frozen root lock and replaces workspace links with packed
+artifacts. npm prunes unused dependencies during installation, so export works
+with the tarball cache populated by a clean root `npm ci`, without relying on
+registry metadata from earlier installs. `make check-author` reinstalls from the
+exported lock and checks types and builds while network and checkout reads are
+denied. Independent installation still requires ordinary dependency availability;
+this does not claim all JS transitive or platform dependencies are included for a
+fully offline install.

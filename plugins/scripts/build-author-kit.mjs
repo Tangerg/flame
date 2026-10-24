@@ -11,6 +11,7 @@ import {
 } from "node:fs/promises";
 import { isAbsolute, join, sep } from "node:path";
 import { parseArgs } from "node:util";
+import { createConsumerLock } from "../../tooling/npm-consumer-lock.mjs";
 import { moduleArtifacts, root, run } from "../../tooling/workspace.mjs";
 import { prepareGoKit } from "./build-go-kit.mjs";
 import { validateDestination } from "./build.mjs";
@@ -207,6 +208,7 @@ try {
     await rm(frozenTar);
     await symlink(join(root, "node_modules"), join(frozenTree, "node_modules"));
     const dependencies = {};
+    const packedDependencies = [];
     for (const directory of [
       "packages/icons",
       "packages/ui",
@@ -237,6 +239,11 @@ try {
       if (packed.files.some((file) => /\.test\.[cm]?[jt]sx?$/.test(file.path)))
         throw new Error(`${packed.name} ships ordinary test source`);
       dependencies[packed.name] = `file:./artifacts/npm/${packed.filename}`;
+      packedDependencies.push({
+        manifest,
+        resolved: dependencies[packed.name],
+        integrity: packed.integrity,
+      });
     }
     const lock = JSON.parse(
       await readFile(join(frozenTree, "package-lock.json"), "utf8"),
@@ -257,20 +264,25 @@ try {
       "rolldown",
     ])
       devDependencies[name] = version(name);
+    const consumer = {
+      name: `${plugin}-author`,
+      private: true,
+      type: "module",
+      scripts: {
+        typecheck: "tsc --noEmit",
+        build: "node build-component.mjs",
+      },
+      dependencies,
+      devDependencies,
+    };
     await writeFile(
       join(output, "package.json"),
+      JSON.stringify(consumer, null, 2) + "\n",
+    );
+    await writeFile(
+      join(output, "package-lock.json"),
       JSON.stringify(
-        {
-          name: `${plugin}-author`,
-          private: true,
-          type: "module",
-          scripts: {
-            typecheck: "tsc --noEmit",
-            build: "node build-component.mjs",
-          },
-          dependencies,
-          devDependencies,
-        },
+        createConsumerLock(lock, consumer, packedDependencies),
         null,
         2,
       ) + "\n",
