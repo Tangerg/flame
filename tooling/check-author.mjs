@@ -9,8 +9,25 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { run, root, buildShared } from "./workspace.mjs";
 const scratch = await mkdtemp(join(tmpdir(), "flame-author-check-"));
+function isolated(policy, command, directory, env) {
+  // Pipes keep the sandbox from inheriting a repository-local redirected log
+  // descriptor. Its source-read denial also applies to descriptor metadata.
+  const result = spawnSync(
+    "/usr/bin/sandbox-exec",
+    ["-p", policy, ...command],
+    { cwd: directory, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+  );
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  if (result.error) throw result.error;
+  if (result.status !== 0)
+    throw new Error(
+      `isolated author command failed (${result.signal ?? result.status}): ${command.join(" ")}`,
+    );
+}
 async function snapshot(directory) {
   const entries = [];
   for (const item of await readdir(directory, { withFileTypes: true })) {
@@ -65,12 +82,7 @@ try {
     const policy = `(version 1) (allow default) (deny network*) (deny file-read* (subpath ${JSON.stringify(root)}))`;
     if (!managed)
       for (const command of ["test", "generate", "build"])
-        run(
-          "/usr/bin/sandbox-exec",
-          ["-p", policy, "go", command, "./..."],
-          project,
-          env,
-        );
+        isolated(policy, ["go", command, "./..."], project, env);
     if (managed) {
       if (existsSync(join(project, "go.mod")))
         throw new Error(
@@ -109,12 +121,7 @@ try {
         ];
     if (existsSync(join(project, "package.json")))
       for (const command of npmCommands)
-        run(
-          "/usr/bin/sandbox-exec",
-          ["-p", policy, "npm", ...command],
-          project,
-          env,
-        );
+        isolated(policy, ["npm", ...command], project, env);
     const after = new Map(await snapshot(project));
     if (
       before.size !== after.size ||

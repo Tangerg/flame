@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,7 +51,8 @@ func run() error {
 		return err
 	}
 	var archive bytes.Buffer
-	if err := modzip.CreateFromVCS(&archive, module.Version{Path: *modulePath, Version: *version}, *repository, *revision, *subdir); err != nil {
+	commit, err := archiveModule(&archive, module.Version{Path: *modulePath, Version: *version}, *repository, *revision, *subdir)
+	if err != nil {
 		return err
 	}
 	source := "go.mod"
@@ -62,11 +64,11 @@ func run() error {
 		command.Dir = *repository
 		return command.Output()
 	}
-	mod, err := read("show", *revision+":"+source)
+	mod, err := read("show", commit+":"+source)
 	if err != nil {
 		return err
 	}
-	timestamp, err := read("show", "-s", "--format=%cI", *revision)
+	timestamp, err := read("show", "-s", "--format=%cI", commit)
 	if err != nil {
 		return err
 	}
@@ -98,6 +100,29 @@ func run() error {
 	}
 	slices.Sort(versions)
 	return os.WriteFile(filepath.Join(directory, "list"), []byte(strings.Join(versions, "\n")+"\n"), 0o644)
+}
+
+func archiveModule(writer io.Writer, version module.Version, repository, revision, subdir string) (string, error) {
+	resolve := exec.Command("git", "rev-parse", revision+"^{commit}")
+	resolve.Dir = repository
+	frozen, err := resolve.Output()
+	if err != nil {
+		return "", fmt.Errorf("module proxy: resolve frozen source: %w", err)
+	}
+	commit := strings.TrimSpace(string(frozen))
+	command := exec.Command("git", "rev-parse", "--path-format=absolute", "--git-common-dir")
+	command.Dir = repository
+	data, err := command.Output()
+	if err != nil {
+		return "", fmt.Errorf("module proxy: locate Git source store: %w", err)
+	}
+	common := strings.TrimSpace(string(data))
+	if !filepath.IsAbs(common) || filepath.Base(common) != ".git" {
+		return "", errors.New("module proxy: source must belong to a standard Git checkout")
+	}
+	// x/mod recognizes the primary checkout, while linked worktrees identify a
+	// private Git directory. The shared store owns the same immutable commit.
+	return commit, modzip.CreateFromVCS(writer, version, filepath.Dir(common), commit, subdir)
 }
 
 // The archive and manifest must still match this frozen source byte for byte.
