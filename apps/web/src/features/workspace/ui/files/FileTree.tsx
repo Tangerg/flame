@@ -92,6 +92,9 @@ function TreeNode({
   const change = isDir ? undefined : tree.changes.get(entry.path);
   const dirChanged = isDir && changedBelow(tree.changes, entry.path);
   const statusId = useId();
+  // The row and its group stay DOM siblings so the context menu trigger wraps only the row;
+  // ownership restores the tree hierarchy while the group is mounted.
+  const groupId = `${statusId}group`;
   const status = change
     ? change.change === "renamed"
       ? t("file.change.renamed", { path: change.previousPath ?? "" })
@@ -140,9 +143,10 @@ function TreeNode({
       ref={rowRef}
       level={depth + 1}
       expanded={isDir ? expanded : undefined}
-      selected={selected}
+      selected={isDir ? undefined : selected}
       focusable={focusable}
       onActivate={activate}
+      aria-owns={expanded ? groupId : undefined}
       aria-posinset={pos}
       aria-setsize={size}
       aria-label={entry.name}
@@ -208,7 +212,7 @@ function TreeNode({
         </ContextMenu.Content>
       </ContextMenu.Root>
       {expanded && (
-        <Tree.Group>
+        <Tree.Group id={groupId}>
           <DataView
             items={children}
             isLoading={isLoading}

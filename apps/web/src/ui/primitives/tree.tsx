@@ -73,7 +73,8 @@ function TreeRoot({ onFocus, onKeyDown, ...props }: DivProps) {
 export type TreeItemPrimitiveProps = Omit<DivProps, "onClick" | "role"> & {
   level: number;
   expanded?: boolean;
-  selected: boolean;
+  // Omitted for items that cannot be selected; branches may still be selectable for other callers.
+  selected?: boolean;
   focusable: boolean;
   onActivate: () => void;
 };

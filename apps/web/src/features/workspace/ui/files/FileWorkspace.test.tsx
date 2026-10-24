@@ -135,6 +135,18 @@ function row(line: number) {
   return document.querySelector(`[data-quote-line="${line}"]`);
 }
 
+// A branch exposes its children by containing or owning their group; every owned ID must resolve.
+function ownedGroup(item: HTMLElement): HTMLElement | null {
+  const owned = item.getAttribute("aria-owns")?.split(/\s+/).filter(Boolean) ?? [];
+  const targets = owned.map((id) => document.getElementById(id));
+  expect(targets).not.toContain(null);
+  const groups = [
+    ...new Set([item.querySelector<HTMLElement>('[role="group"]'), ...targets]),
+  ].filter((group): group is HTMLElement => group?.getAttribute("role") === "group");
+  expect(groups.length).toBeLessThanOrEqual(1);
+  return groups[0] ?? null;
+}
+
 function mount(children: React.ReactNode) {
   return render(<QueryClientProvider client={client}>{children}</QueryClientProvider>);
 }
@@ -1081,6 +1093,8 @@ describe("expanded directory refresh continuity", () => {
     const tree = screen.getByRole("tree", { name: "Files" });
     const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
     expect(child.getAttribute("aria-current")).toBe("true");
+    const group = ownedGroup(folder)!;
+    expect(group.contains(child)).toBe(true);
 
     const refresh = Promise.withResolvers<WorkspaceFileEntry[]>();
     listFiles.mockReturnValueOnce(refresh.promise);
@@ -1093,6 +1107,7 @@ describe("expanded directory refresh continuity", () => {
     expect(feedback.textContent).toContain("Couldn't refresh files");
     expect(feedback.textContent).toContain("Showing the last loaded files in src.");
     expect(child.closest('[role="group"]')!.lastElementChild).toBe(feedback);
+    expect(ownedGroup(folder)).toBe(group);
     expect(labels()).toEqual(["src", "main.go", "README.md"]);
     expect(screen.getByRole("tree", { name: "Files" })).toBe(tree);
     expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
@@ -1141,6 +1156,8 @@ describe("expanded directory refresh continuity", () => {
       expect(child.tabIndex).toBe(0);
       expect(child.getAttribute("aria-current")).toBe("true");
       expect(folder.getAttribute("aria-expanded")).toBe("true");
+      expect(ownedGroup(folder)).toBe(group);
+      expect(group.contains(child)).toBe(true);
       expect(document.activeElement).toBe(typing ? draft : child);
     }
     expect(screen.queryByRole("status")).toBeNull();
@@ -1266,7 +1283,7 @@ describe("expanded directory refresh continuity", () => {
       </QueryClientProvider>
     );
     const view = render(tree("/work/one"));
-    await expandWithCursorInChild();
+    const { folder } = await expandWithCursorInChild();
     listFiles.mockRejectedValueOnce(unavailable());
     await act(() => client.refetchQueries(directoryQuery("/work/one")));
     await screen.findByText("Couldn't refresh files");
@@ -1277,9 +1294,11 @@ describe("expanded directory refresh continuity", () => {
     expect(screen.queryByRole("treeitem", { name: "main.go" })).toBeNull();
     expect(screen.queryByText("Couldn't refresh files")).toBeNull();
     expect(screen.getByRole("status").textContent).toContain("Loading");
+    expect(ownedGroup(folder)!.contains(screen.getByRole("status"))).toBe(true);
 
     await act(async () => next.resolve([util]));
-    expect(await screen.findByRole("treeitem", { name: "util.go" })).toBeTruthy();
+    const added = await screen.findByRole("treeitem", { name: "util.go" });
+    expect(ownedGroup(folder)!.contains(added)).toBe(true);
     expect(listFiles).toHaveBeenLastCalledWith({ cwd: "/work/two", path: "src" });
   });
 });
@@ -1640,6 +1659,80 @@ describe("workspace file tree keyboard model", () => {
     expect((await screen.findByRole("treeitem", { name: "main.go" })).tabIndex).toBe(0);
     expect(screen.getByRole("treeitem", { name: "src" }).tabIndex).toBe(-1);
     expect(document.activeElement).toBe(control);
+  });
+
+  it("declares each shown branch's children and keeps folders out of file selection", async () => {
+    const nested: WorkspaceFileEntry = { name: "nested", path: "src/nested", type: "dir" };
+    const deep: WorkspaceFileEntry = { name: "deep.go", path: "src/nested/deep.go", type: "file" };
+    listFiles.mockImplementation(async (query) =>
+      query.path === directory.path ? [nested, file] : query.path ? [deep] : [directory],
+    );
+    useContextDockStore.setState({ memory: { expandedDirs: [], lastFilePath: file.path } });
+    const onSelectFile = vi.fn();
+    mount(<FileTree entries={[directory, readme]} onSelectFile={onSelectFile} />);
+    const src = screen.getByRole("treeitem", { name: "src" });
+    const readmeRow = screen.getByRole("treeitem", { name: "README.md" });
+    expect(ownedGroup(src)).toBeNull();
+    expect(ownedGroup(readmeRow)).toBeNull();
+    expect(src.hasAttribute("aria-selected")).toBe(false);
+    expect(readmeRow.getAttribute("aria-selected")).toBe("false");
+
+    fireEvent.click(src);
+    const branch = await screen.findByRole("treeitem", { name: "nested" });
+    const child = screen.getByRole("treeitem", { name: "main.go" });
+    expect(ownedGroup(src)!.contains(branch)).toBe(true);
+    expect(ownedGroup(src)!.contains(child)).toBe(true);
+    expect(ownedGroup(branch)).toBeNull();
+    expect(ownedGroup(child)).toBeNull();
+    expect(src.hasAttribute("aria-selected")).toBe(false);
+    expect(branch.hasAttribute("aria-selected")).toBe(false);
+    expect(child.getAttribute("aria-selected")).toBe("true");
+    expect(child.getAttribute("aria-current")).toBe("true");
+
+    for (let opening = 1; opening <= 2; opening += 1) {
+      fireEvent.click(branch);
+      const leaf = await screen.findByRole("treeitem", { name: "deep.go" });
+      const group = ownedGroup(branch)!;
+      expect(group.contains(leaf)).toBe(true);
+      expect(ownedGroup(src)!.contains(group)).toBe(true);
+      expect(leaf.getAttribute("aria-level")).toBe("3");
+      expect(leaf.getAttribute("aria-selected")).toBe("false");
+
+      fireEvent.click(branch);
+      expect(screen.queryByRole("treeitem", { name: "deep.go" })).toBeNull();
+      expect(ownedGroup(branch)).toBeNull();
+      expect(ownedGroup(src)!.contains(branch)).toBe(true);
+    }
+
+    fireEvent.click(src);
+    expect(screen.queryByRole("treeitem", { name: "nested" })).toBeNull();
+    expect(ownedGroup(src)).toBeNull();
+    expect(onSelectFile).not.toHaveBeenCalled();
+    expect(useContextDockStore.getState().memory.lastFilePath).toBe(file.path);
+    fireEvent.click(readmeRow);
+    expect(onSelectFile).toHaveBeenCalledExactlyOnceWith("README.md");
+  });
+
+  it("keeps each tree's branch owning only its own group for the same paths", async () => {
+    useContextDockStore.setState({ memory: { expandedDirs: ["src"], lastFilePath: null } });
+    mount(
+      <>
+        <FileTree entries={[directory]} cwd="/work/one" onSelectFile={() => {}} />
+        <FileTree entries={[directory]} cwd="/work/two" onSelectFile={() => {}} />
+      </>,
+    );
+    const groups: HTMLElement[] = [];
+    for (const tree of screen.getAllByRole("tree")) {
+      const child = await within(tree).findByRole("treeitem", { name: "main.go" });
+      const group = ownedGroup(within(tree).getByRole("treeitem", { name: "src" }))!;
+      expect(tree.contains(group)).toBe(true);
+      expect(group.contains(child)).toBe(true);
+      groups.push(group);
+    }
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).not.toBe(groups[1]);
+    expect(listFiles).toHaveBeenCalledWith({ cwd: "/work/one", path: "src" });
+    expect(listFiles).toHaveBeenCalledWith({ cwd: "/work/two", path: "src" });
   });
 });
 

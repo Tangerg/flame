@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. A failed background read of an expanded directory now keeps that query's accepted children, current child cursor and selection available with recovery feedback naming the directory. The batch starts from synchronized remote main `07ecd97db`. All 88 focused tests, the final complete Web command (397 files / 3,297 tests plus 25 non-test gates) and the supported native check pass. English/light/14 px/Orange and Chinese/dark/18 px/custom-blue native flows qualify repeated retry, long-list scrolling, reading/return and continued drafts at a 320 px Dock and native 200% zoom. Earlier MCP-readiness failures remain qualified below. Owned processes and new checkout/Library outputs are cleaned; all three preexisting output files retain their original bytes. The private evidence root is archived and removed. Implementation `bbd5f9161` is pushed to remote main and its exact hash is verified.
+Updated: 2026-10-24. Expanded file-tree branches now expose their child-group ownership, and expand-only folders omit selectable state. The batch starts from synchronized remote main `26a891365`. All 85 focused tests, the complete Web command (397 files / 3,300 tests plus 25 non-test gates) and the supported native check pass. Actual English/light/14 px/Orange and Chinese/dark/18 px/custom-blue native flows qualify two directory levels, menus, refresh/retry, reading/return and continued drafts at a 320 px Dock and native 200% zoom. VoiceOver speech remains unverified. Owned processes and new checkout/Library outputs are cleaned; all three preexisting output files retain their original bytes. Implementation is ready for explicit-path delivery, with the private evidence root retained until archival.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user's latest instruction explicitly resumes continuous work. The expanded-directory batch starts from delivered remote main `07ecd97db1e6e63a79b368f44c0e0591eba19d6c`, retaining the root-list and file-reader work plus the user's `9789132a1` integration. Later fetches before complete verification and implementation delivery find no newer remote commit. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/directory-refresh-continuity-1024`; the primary checkout occupies local `main`, so delivery uses the verified feature HEAD as the remote main update without changing the primary's files or checked-out branch. Implementation `bbd5f916188a9e99c13f391d799d51e05d5f6e72` is pushed to remote main; its exact remote hash, clean owned checkout and zero unpushed commits are verified before this receipt. The current directory query remains the sole accepted-child owner; existing memory and row focus own expansion, selection and cursor. Focused, final complete Web, supported native and actual English/Chinese acceptance pass. Two earlier complete runs fail the already-recorded Runtime MCP-readiness case; its complete 49-test file passes alone, and the complete command passes after owned native apps retire. That sequence does not establish the readiness cause. All 5,721 accepted non-Markdown tracked inputs and ten private acceptance inputs remain unchanged. Four owned CLI/native PIDs are dead, seven new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. The private evidence root is archived and removed; the retained session archive contains 148 UTF-8 evidence files and six screenshot hashes, with gzip SHA-256 `7fdbef4f4c52ce31f40a94f3afca503d0ac31e0a9b0e768305a6ee2770408d83`. Next, inspect the remaining tree semantics and context actions before selecting another evidence-backed batch.
+The user's latest instruction explicitly resumes continuous work and requests timely main synchronization. The tree-semantics batch starts from delivered remote main `26a891365ff4db15925e76c092abf9afa72c4dea`, retaining the root-list, file-reader and expanded-directory work plus the user's `9789132a1` integration. Fetches before native acceptance, complete verification and delivery preparation find no newer remote commit. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/tree-semantics-1024`; the primary checkout occupies local `main`, so delivery uses the verified feature HEAD as the remote main update without changing the primary's files or checked-out branch. Existing query, selected-file, expansion and cursor owners retain their behavior; React node identity supplies each child-group association. Focused, complete Web, supported native and actual English/Chinese acceptance pass. All 5,721 accepted non-Markdown tracked inputs, eleven plugin resources and sixteen private acceptance/build inputs remain unchanged. Four owned CLI/native PIDs are dead, seven new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. Implementation delivery and evidence-root removal remain to be recorded. Next, inspect remaining object-menu and pane-return flows, selecting only a new evidenced defect.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -2187,6 +2187,137 @@ inform persistent identity, task grouping and quiet supporting detail. Static
 artwork supplies no keyboard evidence. The six better-series domains apply to
 this file-browse/read/return flow; unchanged colors, typography and control
 surfaces retain their existing owners.
+
+### File-tree hierarchy and selectability
+
+The actual Wails baseline at `26a891365` exposes two separate semantic gaps.
+Expanded `apps` and `nested` rows render their child groups as DOM siblings,
+without containment or an `aria-owns` association. Each directory also exposes
+`aria-selected=false`, although its activation only changes expansion.
+Declared level/position/size metadata does not supply the missing ownership.
+
+`FileTree.tsx:95` now derives a group ID from the node's existing React
+`useId` stem. The row references that group under the same expansion condition
+that mounts it. Collapsed branches and leaves have no owned-group reference;
+separate trees with the same paths resolve their own groups. The interactive
+row and ContextMenu trigger keep their existing sibling layout. Files retain
+their selected/current projection; folders omit selection state.
+`ui/primitives/tree.tsx:77` accepts an omitted `selected` value without
+inferring selectability from expansion, so a generic caller can still select
+branches. The fix adds no mutable state, ref, effect, timer, query policy or
+navigation owner.
+
+Read-only ZCode's actual `WorkspaceFileTreeRowView.tsx:213` is useful for
+separate row activation and selected-object styling, but its flat row declarations
+are not evidence for a complete accessible hierarchy. The normative source is
+[WAI's tree pattern](https://www.w3.org/WAI/ARIA/apg/patterns/treeview/):
+parent rows contain or own child groups, and nodes that cannot be selected omit
+selection state. Existing remembered cursor and selected-file behavior remain
+separate; this scope does not add keyboard features or replace the navigation
+model. The better-accessibility review is scoped to these declarations and
+the exercised keyboard paths.
+
+| Severity | Location                                        | Before                                                       | After                                                                                             | Why                                                                               |
+| -------- | ----------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| MEDIUM   | `FileTree.tsx:148`, `FileTree.tsx:214`          | Child groups had no semantic parent association.             | Each expanded row owns its mounted child group with a unique ID.                                  | WCAG 1.3.1: expose the visible parent/child relationship to assistive technology. |
+| MEDIUM   | `FileTree.tsx:146`, `ui/primitives/tree.tsx:77` | Expand-only folders declared an unselected selectable state. | Folders omit selection state; selectable files and generic selectable branches retain false/true. | WCAG 4.1.2: reflect the control's actual supported state.                         |
+
+The pre-edit focused baseline passes 68 tests in the two matched owner files.
+The initial command also named two absent test paths; those names contribute
+no coverage. A later three-file 82-test run overlaps CLI implementation and is
+not claimed as a pre-edit baseline. The final three-file suite passes 85 tests
+in 4.80 s; typecheck passes in 1.43 s and lint in 0.34 s. Regressions cover
+both hierarchy levels, collapse/reopen, actual target resolution, separate
+trees/CWDs, selection semantics and unchanged associations through accepted
+refresh failure/retry. They accept containment or ownership rather than freezing
+React ID spellings. Restoring the original FileTree produces four failures /
+81 passes (4.48 s); restoring folder selection alone produces one / 84
+(4.61 s); the old required-selection type produces three compiler diagnostics
+(1.41 s). All accepted source bytes are restored before native validation.
+
+The bounded Claude Code CLI finishes in 149.25 s, reports 26 turns and no
+permission denial, and changes only the four permitted source/test files.
+Its configured turn argument is 24; that is not a claim about the reported
+turn count. Only Read/Glob/Grep/Edit/Write are enabled. The primary reviews the
+diff, deduplicates the test helper's equivalent containment/ownership targets,
+formats the four files and independently verifies the result. The CLI's
+completion text is not acceptance evidence.
+
+Actual Wails acceptance uses the current production host with private
+`FLAME_HOME`, assets, unique bundle IDs and deterministic providers. The
+passive native observer reports declared associations, DOM identities, query
+state, focus, draft/caret and geometry. F8 only replaces the existing `apps`
+query. The private fixture adds a second directory level and 24 long-list rows
+for Chinese; no provider or observer change is shipped.
+
+- English/light/14 px/Flame Orange at a real keyboard-resized 320 px Dock:
+  Tab and arrows enter both levels, Left/Right explicitly collapse/reopen,
+  Shift+F10 and right-click identify their exact object path, and Escape
+  returns focus to that row. Failure, repeated failure and recovery retain
+  the parent/group associations and nine visible tree rows. Later typing
+  continues the original textarea from 21 to 32 characters during recovery.
+  Success is first observed after an explicit transition into the canonical
+  `apps/web/src/features/shell/workbench/panel/DockResizer.tsx` reader; this
+  is not an English completion-focus observation. Go to line, Escape, reader
+  Tab, Back to the same selected row and continued 48-character draft pass.
+  Explicitly closing/reopening the parent intentionally remounts descendants
+  while retaining selected-file identity and correct fresh associations.
+- Chinese/dark/18 px/custom `#007BFF`/motion off: system Move & Resize → Left,
+  twenty individually observed native Zoom In actions and a 561×525 CSS
+  viewport qualify 200%. The fixture navigation is explicitly collapsed to
+  give the product Files pane a 480 px scrollport. Both directory levels,
+  33 tree rows and the keyboard menu pass. An unselected `review-24.md`
+  cursor remains distinct from selected `resizer.ts`; its DOM ID and both
+  group identities survive failure and recovery. Tab reaches the complete
+  error/retry feedback at scroll 882; retry returns to the same visible child
+  at 704. Request 3 is already idle in the captured snapshot, so it supplies
+  no pending-state claim. During request 4, an actual 300 px wheel movement
+  changes 704 → 404 and intentionally leaves the cursor offscreen. After
+  closing Files and explicitly activating the original input, typing changes
+  8 → 18 characters while pending. Success keeps that same input ID, focus
+  and 18..18 caret. Reopening retains scroll 404; only explicit Tab into
+  the current row reveals it at 704. Canonical file reading, Go to line /
+  Escape, reader Tab, Back, Close and continued 24-character draft pass.
+  Native Actual Size returns to 1122×1051 CSS with the same caret and text.
+
+Geometry is interpreted while Files is active; hidden retained views can keep
+nonzero bounds. The first deliberate-scroll snapshot is already a settled
+failure; request 4 independently demonstrates pending scroll-away. A stale
+automation menu index is rejected before input; the fresh observed menu path
+passes. Baseline AX text truncates its oversized single observer projection,
+but both missing associations and false directory selection remain visible.
+The native evidence parser independently validates 26 full observer snapshots
+and six screenshot hashes.
+
+**Not verified:** VoiceOver speech, native IME, forced RTL, the other six
+locales, other platforms, live filesystem/provider faults, provider Send or
+durable writes. The deterministic native fixture is not a real business backend.
+No browser visual suite, benchmark or unrelated standalone Runtime/CLI suite
+is started.
+
+The complete Web command passes all 397 files / 3,300 tests (169.17 s in
+Vitest) and all 25 non-test gates, taking 200.99 s overall. Owned native
+acceptance apps are retired before that complete command. No MCP-readiness
+failure occurs in this batch; the earlier directory-batch qualification remains
+in its own record. The supported `make check-native` passes in 32.85 s.
+The supported and private binaries report macOS 13.0 minimum / SDK 26.5;
+duplicate `-lobjc` warnings are non-failing. All 5,721 accepted non-Markdown
+tracked inputs, eleven plugin resources and sixteen frozen acceptance/build
+inputs retain their accepted bytes. The aggregate source SHA-256 is
+`cb6434e28e6939101c22a7e69f796f0590cb5c7352b9b2b53b50207c2cac4cac`.
+
+Guarded cleanup confirms all four recorded CLI/native PIDs are dead, unregisters
+three owned bundles, removes seven new checkout output directories and six
+unique Library Cache/WebKit directories, and restores the known native-check
+binary. The other two preexisting output files never change; all three retain
+their original bytes. Four old-birth copied assets are qualified against exact
+source bytes. The primary checkout, its parallel work, user data, references,
+shared dependency caches and global tool configuration are preserved. The
+private root remains only until its text evidence and six screenshot hashes
+are archived; delivery and root-removal verification belong to the receipt.
+
+**Approve** for the inspected declarations and exercised keyboard scope;
+the listed unverified scenarios are outside that approval.
 
 ### Tree entry after directory Retry
 

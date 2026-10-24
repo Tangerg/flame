@@ -2,6 +2,38 @@ import { type ComponentProps } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { TreePrimitive } from "@/ui/primitives/tree";
+describe("tree item selection semantics", () => {
+  it("declares selection for selectable branches and omits it for nonselectable items", () => {
+    render(
+      <TreePrimitive.Root>
+        <TreePrimitive.Item level={1} expanded selected focusable onActivate={vi.fn()}>
+          Selectable branch
+        </TreePrimitive.Item>
+        <TreePrimitive.Group>
+          <TreePrimitive.Item level={2} selected={false} focusable={false} onActivate={vi.fn()}>
+            Selectable leaf
+          </TreePrimitive.Item>
+        </TreePrimitive.Group>
+        <TreePrimitive.Item level={1} expanded={false} focusable={false} onActivate={vi.fn()}>
+          Nonselectable branch
+        </TreePrimitive.Item>
+        <TreePrimitive.Item level={1} focusable={false} onActivate={vi.fn()}>
+          Nonselectable leaf
+        </TreePrimitive.Item>
+      </TreePrimitive.Root>,
+    );
+    const selection = (name: string) =>
+      screen.getByRole("treeitem", { name }).getAttribute("aria-selected");
+    expect(selection("Selectable branch")).toBe("true");
+    expect(selection("Selectable leaf")).toBe("false");
+    expect(selection("Nonselectable branch")).toBeNull();
+    expect(selection("Nonselectable leaf")).toBeNull();
+    expect(
+      screen.getByRole("treeitem", { name: "Nonselectable branch" }).getAttribute("aria-expanded"),
+    ).toBe("false");
+  });
+});
+
 describe("tree keyboard navigation", () => {
   it("does not enter the next sibling when an expanded branch has no visible children", () => {
     render(
