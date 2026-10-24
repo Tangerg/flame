@@ -170,6 +170,8 @@ The SDK owns shared-module externalization and the prebuilt ESM/relative-asset
 format. The former implicit compiler lookup is removed; all in-repository build
 callers supply the compiler explicitly. Private dependencies are bundled. `HOST_MODULES` names shared React,
 React DOM, JSX runtimes, SDK and UI modules; UI subpath imports are also external.
+Unresolved imports, including Node built-ins, fail the browser build instead of
+becoming undeclared runtime dependencies.
 The graphical client must map those imports to its actual shared instances before
 evaluating an entry. The workbench emits an import map to its actual shared ESM exports. Core resource
 subscriptions and exact-release asset queries provide package-relative URLs. The

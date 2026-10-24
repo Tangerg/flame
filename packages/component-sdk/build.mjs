@@ -23,6 +23,11 @@ export async function buildComponent({ input, directory, compiler }) {
     },
     onwarn(warning, report) {
       if (
+        warning.code === "UNRESOLVED_IMPORT" ||
+        warning.code === "UNRESOLVED_ENTRY"
+      )
+        throw new Error(warning.message);
+      if (
         warning.code === "MODULE_LEVEL_DIRECTIVE" &&
         warning.message.includes("use client")
       )
