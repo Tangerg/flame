@@ -7,11 +7,12 @@ This user-requested file is the maintained progress and handoff record for the d
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-continues on `codex/run-settlement-1025` from the frozen accepted base
-`199bd8a77f04690bba94940ad2db0dece7da6545`. Run-settlement reading and disclosure
-engagement are verified; publication and evidence retirement are being recorded
-below. Captured-text implementation `48277ecc2cdcc9aba2018b2f9d59b7289f80aa20`
-and its evidence receipt are already published. The last integration interval
+is clean on `codex/run-settlement-1025`. Run-settlement implementation
+`4c4e28045a3d865f885a8bef1aa0a92a2a8d56cd` is published to remote main from
+the frozen accepted base `199bd8a77f04690bba94940ad2db0dece7da6545`. Its
+evidence retirement is complete. Captured-text implementation
+`48277ecc2cdcc9aba2018b2f9d59b7289f80aa20` and its receipt remain published.
+The last integration interval
 includes incoming main through `1e7b76720`; the former pending author/bootstrap
 commits are already integrated. The primary checkout remains user-owned.
 
@@ -4312,8 +4313,18 @@ suite or benchmark ran. Web asset variants are built serially; the final native
 host builds retain their verified binaries. All 18 recorded processes are dead,
 seven owned checkout outputs, four Library paths and two bundle-temp paths are
 removed, and both apps are unregistered. All 36 output baselines, three original
-files and 11 product resources are restored or unchanged. Final publication and
-the private evidence-root retirement receipt follow this verified source.
+files and 11 product resources are restored or unchanged. Implementation
+`4c4e28045a3d865f885a8bef1aa0a92a2a8d56cd` is pushed to remote main, verified
+against its exact remote hash with a clean owned checkout and no unpushed work.
+There was no fetch or merge in this batch. The independently verified evidence
+archive retains **108 UTF-8 files** and **25 screenshot digests**, gzip SHA-256
+`a269e6df6db08944af3a4f3b8900ddd89a8436c4b0e9f6930fc1680cf0878fc6`.
+Its 607 accepted artifacts comprise 597 compiled assets, eight module-proxy
+files and two native binaries. The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-settlement-1025-OfCvvT`
+is absent after publication and archive verification. This documentation receipt
+changes no tested source. Continue from a new observed task while preserving
+the frozen-base cadence and all primary parallel work.
 
 ## Conversation reading axis ownership
 
