@@ -817,9 +817,13 @@ export const en: Record<string, string> = {
   "convExport.trajectory": "Export complete Session trajectory",
   "convExport.import": "Import conversation from JSON",
   "convExport.unsupported": "This runtime doesn't support session export or import.",
-  "convExport.notJson": "Not a JSON file.",
+  "convExport.readFailed":
+    "Couldn't read the selected file. Select it again or choose another JSON file.",
+  "convExport.notJson":
+    "The selected file isn't valid JSON. Choose a conversation JSON file exported from Flame.",
   "convExport.exportFailed": "Couldn't export the conversation.",
-  "convExport.importFailed": "Couldn't import the conversation.",
+  "convExport.importFailed":
+    "Couldn't import the conversation. Try again with a conversation JSON file exported from Flame.",
   "convExport.importSuccess": 'Imported "{{title}}".',
 
   "connection.error.token": "Enter a valid access token without spaces or control characters.",

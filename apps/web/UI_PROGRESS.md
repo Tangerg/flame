@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Conversation archive exports now use the composed host and an attached native save panel on Desktop. Implementation `2f6dfadf56b270191c8f681c4b1141669dd5c0be` is pushed to remote main. All 399 Web files / 3,390 tests, all 25 non-test gates and supported native checks pass. Actual English/Chinese Wails save/cancel/source-return tasks pass, including 200%, exact bytes in all three formats and a separate keyboard-only save. Owned processes, new checkout/Library outputs and the private evidence root are cleaned; source/output/archive guards pass. Primary parallel work is untouched.
+Updated: 2026-10-24. Conversation imports preserve selected-file read failures instead of treating them as cancellation. Existing import ownership publishes localized recovery guidance in all eight locales; cancellation stays quiet and explicit retries remain available. All 399 Web files / 3,399 tests, all 25 non-test gates and supported native checks pass. Actual English/Chinese Wails tasks qualify real NotReadableError feedback, cancellation, retry, selected bytes, source return and continued drafts, including native 200%. The narrow bottom-toast stack still overlaps composing content and is the next shared-layout task. Owned processes and new checkout/Library/bundle-temp outputs are cleaned; delivery and guarded evidence retirement follow. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-export-native-1024`. Implementation `2f6dfadf56b270191c8f681c4b1141669dd5c0be`, based on main `7b33ef5c06fed980757e29fb43638ae64cc77d21`, is pushed to remote main and verified by exact remote hash, a clean owned checkout and zero unpushed commits. Fresh fetches found no further incoming commit. One injected host effect now owns archive file handoff; Browser download, captured Session/material, Runtime generations, import, image saving and established focus/navigation contracts retain their owners. All 399 Web files / 3,390 tests and 25 non-test gates pass, as do supported native checks and the qualified EN/ZH actual Wails tasks. All 5,725 accepted non-Markdown sources, eleven resources, nine private inputs and 599 compiled inputs retain accepted bytes. Thirteen owned PIDs are dead; all new checkout/Library outputs and the exact private root are absent; original output bytes and inventories are preserved. The verified compressed archive retains 242 UTF-8 files and 8 screenshot digests. Earlier aggregate Runtime timeouts retain their own unclassified history. Continue with fresh evidence for the remaining complete task paths; do not repeat completed export, notification, Find or Approval work.
+The continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-import-read-1024`, based on delivered main `1fa1826f7b2a5dc8f1f3b45ced1703c584a1f965`. Fresh fetches found no incoming commit at batch start. Real native selection of an owned mode-000 file reproduced an unreported NotReadableError. FileTransfer now preserves that failure, while the existing import generation owns feedback, release and retirement; exact text, JSON parsing, Runtime admission, native export, image saving and established navigation retain their owners. Thirty-four focused tests, two failures against the original production sources, all 399 Web files / 3,399 tests, 25 non-test gates and supported native checks qualify the repair. EN/light/14 px and ZH/dark/18 px/custom-blue/200% native tasks preserve original input identities and continued drafts. All 5,725 accepted non-Markdown sources, eleven resources, fifteen private inputs, 595 compiled inputs and eight private module artifacts retain accepted bytes. Twenty-one owned PIDs are dead; new checkout, Library and bundle-temp outputs are removed, and original output files are restored. This verified boundary repair is ready for explicit-path main delivery and guarded archive retirement. The observed narrow toast/composer overlap remains open and takes priority in the following batch; broader notification-layout readiness is unproven. Prior export, notification, Find, Approval and Runtime-timeout records retain their own qualifications.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -525,6 +525,154 @@ browser download behavior.
   The private archive retains 67 UTF-8 evidence files and 21 capture hashes outside
   the repository. No migration is needed. That earlier checkpoint ended at the user's
   requested pause; the current explicit resume governs subsequent work.
+
+### Conversation import file reads
+
+A selected file could fail to read without any visible result. The native Wails
+baseline selects an owned `unreadable.json` with POSIX mode `000`: the actual
+`File.text()` rejects with `NotReadableError: The I/O read operation failed.`,
+but the adapter resolves `null`, which the application correctly interprets as
+cancellation. No Runtime import or error notification follows. The original
+textarea and its draft survive. This is a real filesystem read failure, with no
+injected exception or simulated picker.
+
+**Ownership and resulting behavior**
+
+- `adapters/fileTransfer.ts` has one once-only settlement/cleanup path for text,
+  cancellation and rejection. Cancel or an empty selection resolves `null`;
+  successful text, including an empty string, remains exact; a failed read
+  rejects with its original cause. Saving through the composed host is unchanged.
+- `application/conversationExport.ts` handles the selection/read stage inside
+  its existing generation. A current failure publishes `convExport.readFailed`
+  through the established import notification source. Retired work stays quiet.
+  The existing operation promise still owns repeated intent and releases the next
+  explicit import. JSON parsing, Runtime admission, rehydration, collection repair
+  and selection/success keep their established contracts.
+- All eight locale files add the read-failure message and give the existing
+  invalid-JSON and import-failure messages a concrete recovery step. Raw
+  filesystem/Runtime diagnostics remain outside user-facing text. No new host
+  method, picker, busy state, retry mechanism, error hierarchy, style or theme
+  owner was introduced.
+
+The [File API text algorithm](https://w3c.github.io/FileAPI/#blob-text) preserves
+read rejections, and its [read-error contract](https://w3c.github.io/FileAPI/#dfn-error-codes)
+covers unreadable underlying storage. The
+[HTML input cancellation event](https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement/cancel_event)
+describes user cancellation separately. ZCode's actual
+`packages/desktop/src/main/desktopMainIpcPlatform.ts:118–150` similarly keeps
+cancelled native selection separate from selected paths; it supplies no Flame
+read-generation policy. HeroUI's actual
+`apps/docs/src/demos/en/toast/promise.tsx` and `toast/variants.tsx` separate
+failure feedback from successful work and name a recovery action. Flame retains
+its existing notification, reader, theme and source-return owners.
+
+**Better-series review**
+
+| Severity | Location                                                     | Before                                                                    | After / remaining scope                                                                    | Why                                                                                          |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| HIGH     | `adapters/fileTransfer.ts:23`                                | A selected-file read error appears to be cancellation.                    | Preserve the original rejection; the import generation reports it once.                    | The import task otherwise ends with no result or recovery cue.                               |
+| HIGH     | `locales/*.ts`, `convExport.*`                               | A failure or invalid-JSON message names no next action.                   | Whole localized messages explain reselecting or choosing a Flame conversation JSON export. | Error recovery uses the existing product vocabulary.                                         |
+| MEDIUM   | Existing `notifications/toaster/index.tsx`, narrow workspace | At native 200%, the bottom toast stack covers part of the composing task. | Open for the next shared-layout batch; screenshots retain the overlap.                     | A magnified drafting task needs readable feedback and reachable composing controls together. |
+
+Approve the inspected file-transfer outcome and recovery-copy repair. The shared
+narrow notification/composer layout remains unqualified. Actual native names,
+pointer/keyboard choices, visible messages and return focus were inspected;
+VoiceOver speech, OS IME, other locale GUIs and a new 320 CSS-pixel layout were
+not verified.
+
+**Implementation and verification**
+
+A restricted Claude Code CLI implementation pass edited exactly the twelve
+allowed Web source/test/locale files. It completed in **171.51 s**, exit 0,
+without permission denials. The requested turn cap was 28 and its reported count
+was 43; the 300 s process deadline was the actual outer bound. It had file tools
+only, no shell/network/MCP/subagents, and ran no checks. The primary reviewed the
+complete diff, translations, ownership and actual results.
+
+- Baseline: **2 files / 25 tests**, command **2.44 s**, test time **1.48 s**.
+- Accepted focused run: **2 files / 34 tests**, command **2.02 s**, test time
+  **1.36 s**. Added cases expose exact read rejection, exact Unicode/empty text,
+  empty/cancelled selection, late completion/failure, another picker, real
+  adapter-to-import feedback/retry and retired-generation rejection.
+- Negative control restores the two original production files under the new
+  regressions/messages: **2 selected failures**, **32 filtered cases**, command
+  **0.98 s**. The full accepted source map is restored in `finally` and verified.
+- Complete `npm run check --workspace @flame/web`: exit 0, **399 files / 3,399
+  tests**, test time **109.00 s**, command **140.79 s**; all **25 non-test gates**
+  pass. Connection-refusal diagnostics occur in the passing process-backed
+  tests; no failing result is reclassified or suppressed.
+- `make check-native`: exit 0, **27.99 s**, including Desktop test/vet/build and
+  the supported Wails production build. Formatting and `git diff --check` pass.
+  No browser visual/performance suite or standalone Runtime/CLI suite ran.
+
+The private acceptance composition initially registered an extra toaster over the
+workspace fixture's existing `AppToaster`; it was removed before the qualified
+baseline. A direct private Chinese build later failed to resolve the candidate
+local-runtime version. Preparing its proxy from the linked worktree also failed:
+the module ZIP helper did not recognize the worktree gitfile. The existing
+`moduleArtifacts`/`proxyEnvironment` functions then packaged pinned historical
+commits through the canonical Git repository read-only, with output wholly under
+the private root; `GOWORK=off` and read-only manifests make the Chinese build pass
+in **20.09 s**. These preparation failures remain recorded. Parallel primary
+working files and product tooling were not edited. This packaging limitation is
+a separate tooling concern when that owner is next changed.
+
+**Actual Wails task qualification**
+
+Both builds use the production command menu/default commands, real file picker,
+real `createFileTransfer` and `ConversationArchiveOwner`, actual selected files
+and passive observations. The captured gateway accepts one exact 96-byte JSON
+artifact and returns the existing fixture Session; a different valid JSON file
+deliberately exercises its admission-error path. These controlled outcomes do
+not qualify live Runtime import/persistence or cross-Session draft semantics.
+
+- **English / light / 14 px / Orange / full motion / 1440×900:** keyboard command,
+  native Escape cancellation, actual unreadable-file error, invalid JSON,
+  captured admission rejection and another explicit valid import all work.
+  Pointer Open and keyboard Return are both used. A further native picker opens
+  after admission without another error. Native scrolling and the original
+  `runtime/internal/session/store.go` eight-line reader are exercised; Tab then
+  Return on Back restores source focus. Original input **id 2**, caret **20**,
+  continues to **`Draft before import. Continued.`**, caret **31**. The success
+  toast itself was not captured in English; the subsequent picker and unchanged
+  error count establish release without expanding the Runtime qualification.
+- **Chinese / dark / 18 px / custom blue / motion off:** the native Window → Left
+  action settles at **1122×1051**. Twenty separately observed native Zoom In
+  operations reach **561×525 at 200%**, retaining input **id 2**, caret **9**.
+  The localized command, Cancel, actual unreadable file, invalid JSON, 96-byte
+  captured admission and **`已导入「Captured import」。`** feedback work. Another
+  picker opens and cancels quietly. The original draft continues to caret **15**,
+  survives the full-pane eight-line reader, and Shift+Tab then Return on
+  `返回对话` restores source focus. The same input ends with
+  **`导入前保留的草稿。 继续核对。 已返回。`**, caret **20**; native Actual Size restores
+  **1122×1051**. The bottom toast overlap remains visible in the recorded 200%
+  screenshots. Fixture-sidebar collapse is not production-sidebar qualification.
+
+No fresh 320-pixel Dock, OS IME, screen-reader speech, other platforms or live
+archive roundtrip is claimed. An early Go To Folder shortcut sent before the
+chooser was ready was excluded and repeated after observing the actual panel.
+No source-reader scroll-distance claim is inferred from its short file.
+
+**Integrity, cleanup and next step**
+
+All **5,725** accepted non-Markdown source hashes retain aggregate
+`4fcc363ab07ebeb72c20fa85ab35db1f5cdef62b409b9ff27fef6d0643d68ed5`.
+Eleven plugin resources, fifteen accepted private inputs, **595** compiled
+inputs and eight private module artifacts retain accepted bytes. After native
+tasks, the owned unreadable fixture returns to mode `0600` solely for evidence
+verification and retirement.
+
+All **21** owned PIDs are dead. Seven new checkout paths, nine bundle Library
+paths and three exact bundle temporary directories are removed; all three apps
+are unregistered. The original native-check binary is restored and original
+output files/directories are preserved. Dependencies, toolchains, reference
+resources, user data and parallel primary work remain intact. The private root
+remains only for guarded archive retirement; exact main delivery receipts follow.
+
+The next priority is the directly observed narrow notification/composer overlap:
+make feedback readable alongside the ongoing drafting task through its shared
+layout owner. Preserve the just-verified file-transfer, generation and navigation
+contracts while establishing that layout's complete native acceptance.
 
 ### Native conversation archive export
 

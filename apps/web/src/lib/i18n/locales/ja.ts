@@ -615,9 +615,13 @@ export const ja: Record<string, string> = {
   "convExport.import": "JSON から会話をインポート",
   "convExport.unsupported":
     "このランタイムはセッションのエクスポートとインポートをサポートしていません。",
-  "convExport.notJson": "JSON ファイルではありません。",
+  "convExport.readFailed":
+    "選択したファイルを読み取れませんでした。もう一度選択するか、別の JSON ファイルを選択してください。",
+  "convExport.notJson":
+    "選択したファイルは有効な JSON ではありません。Flame からエクスポートした会話 JSON ファイルを選択してください。",
   "convExport.exportFailed": "会話をエクスポートできませんでした。",
-  "convExport.importFailed": "会話をインポートできませんでした。",
+  "convExport.importFailed":
+    "会話をインポートできませんでした。Flame からエクスポートした会話 JSON ファイルでもう一度お試しください。",
   "convExport.importSuccess": "「{{title}}」をインポートしました。",
   "connection.error.token": "空白や制御文字を含まない有効なアクセストークンを入力してください。",
   "connection.error.urlScheme": "http:// または https:// で始める必要があります",

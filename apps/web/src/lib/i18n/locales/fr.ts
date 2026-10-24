@@ -653,9 +653,13 @@ export const fr: Record<string, string> = {
   "convExport.import": "Importer une conversation depuis JSON",
   "convExport.unsupported":
     "Ce runtime ne prend pas en charge l'exportation ni l'importation de session.",
-  "convExport.notJson": "Ce n'est pas un fichier JSON.",
+  "convExport.readFailed":
+    "Impossible de lire le fichier sélectionné. Sélectionnez-le à nouveau ou choisissez un autre fichier JSON.",
+  "convExport.notJson":
+    "Le fichier sélectionné n'est pas un JSON valide. Choisissez un fichier JSON de conversation exporté depuis Flame.",
   "convExport.exportFailed": "Impossible d'exporter la conversation.",
-  "convExport.importFailed": "Impossible d'importer la conversation.",
+  "convExport.importFailed":
+    "Impossible d'importer la conversation. Réessayez avec un fichier JSON de conversation exporté depuis Flame.",
   "convExport.importSuccess": "« {{title}} » importée.",
   "connection.error.token": "Saisissez un jeton valide sans espaces ni caractères de contrôle.",
   "connection.error.urlScheme": "Doit commencer par http:// ou https://",

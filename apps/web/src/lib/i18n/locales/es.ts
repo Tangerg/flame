@@ -651,9 +651,13 @@ export const es: Record<string, string> = {
   "convExport.trajectory": "Exportar la trayectoria completa de la sesión",
   "convExport.import": "Importar conversación desde JSON",
   "convExport.unsupported": "Este runtime no admite la exportación ni la importación de sesiones.",
-  "convExport.notJson": "No es un archivo JSON.",
+  "convExport.readFailed":
+    "No se pudo leer el archivo seleccionado. Vuelve a seleccionarlo o elige otro archivo JSON.",
+  "convExport.notJson":
+    "El archivo seleccionado no es un JSON válido. Elige un archivo JSON de conversación exportado desde Flame.",
   "convExport.exportFailed": "No se pudo exportar la conversación.",
-  "convExport.importFailed": "No se pudo importar la conversación.",
+  "convExport.importFailed":
+    "No se pudo importar la conversación. Inténtalo de nuevo con un archivo JSON de conversación exportado desde Flame.",
   "convExport.importSuccess": "«{{title}}» importada.",
   "connection.error.token": "Introduce un token válido sin espacios ni caracteres de control.",
   "connection.error.urlScheme": "Debe comenzar con http:// o https://",

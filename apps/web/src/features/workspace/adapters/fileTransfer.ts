@@ -1,24 +1,28 @@
 import { type ClientHost } from "@/platform/host";
 import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
+// Cancellation and an empty selection resolve null; a failed read of a selected file rejects.
 function pickTextFile(accept: string): Promise<string | null> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const input = document.createElement("input");
     let pending = true;
-    const settle = (text: string | null) => {
+    const settle = (publish: () => void) => {
       if (!pending) return;
       pending = false;
       input.onchange = null;
       input.removeEventListener("cancel", cancel);
-      resolve(text);
+      publish();
     };
-    const cancel = () => settle(null);
+    const cancel = () => settle(() => resolve(null));
     input.type = "file";
     input.accept = accept;
     input.addEventListener("cancel", cancel, { once: true });
     input.onchange = () => {
       const file = input.files?.[0];
-      if (!file) return settle(null);
-      void file.text().then(settle, () => settle(null));
+      if (!file) return cancel();
+      void file.text().then(
+        (text) => settle(() => resolve(text)),
+        (error: unknown) => settle(() => reject(error)),
+      );
     };
     input.click();
   });

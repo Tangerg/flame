@@ -102,7 +102,15 @@ class ConversationArchiveGeneration {
         notifyError(t("convExport.unsupported"), { source: "import" });
         return;
       }
-      const text = await this.#cohort.run(() => this.#files.pickText("application/json,.json"));
+      let text: string | null;
+      try {
+        text = await this.#cohort.run(() => this.#files.pickText("application/json,.json"));
+      } catch (error) {
+        if (this.#cohort.retired) return;
+        console.error("[import] selected file read failed:", error);
+        notifyError(t("convExport.readFailed"), { source: "import" });
+        return;
+      }
       if (text === null) return;
 
       let artifact: unknown;

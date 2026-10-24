@@ -8,6 +8,7 @@ import {
 } from "@/features/workspace/application/conversationExport";
 import { type ConversationArchiveGateway } from "@/features/workspace/application/ports/conversationArchiveGateway";
 import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
+import { createFileTransfer } from "@/features/workspace/adapters/fileTransfer";
 const mocks = vi.hoisted(() => ({
   sessionExport: true,
   activeSessionId: "session-current" as string | undefined,
@@ -397,6 +398,97 @@ describe("conversation archive generation", () => {
     expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
+  it("reports an unreadable selection and admits the next explicit import", async () => {
+    const click = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const importConversation = vi
+      .fn<ConversationArchiveGateway["importConversation"]>()
+      .mockResolvedValue({ id: "imported", title: "Imported" });
+    const unreadable = new File([validArtifact("unreadable")], "unreadable.json");
+    vi.spyOn(unreadable, "text").mockRejectedValue(
+      new DOMException("The I/O read operation failed.", "NotReadableError"),
+    );
+    installFiles(createFileTransfer({ saveTextFile: vi.fn().mockResolvedValue(true) }));
+    installGateway(completeGateway(importConversation));
+
+    const failed = importConversationJson();
+    await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+    choose(click.mock.instances[0] as HTMLInputElement, unreadable);
+    await failed;
+
+    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
+      "Couldn't read the selected file. Select it again or choose another JSON file.",
+      { source: "import" },
+    );
+    expect(importConversation).not.toHaveBeenCalled();
+    expect(mocks.rehydrateSessionView).not.toHaveBeenCalled();
+    expect(mocks.invalidateAgentSessions).not.toHaveBeenCalled();
+    expect(mocks.selectAgentSession).not.toHaveBeenCalled();
+    expect(mocks.success).not.toHaveBeenCalled();
+
+    const artifact = validArtifact("imported");
+    const retried = importConversationJson();
+    await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(2));
+    choose(click.mock.instances[1] as HTMLInputElement, new File([artifact], "readable.json"));
+    await retried;
+
+    expect(importConversation).toHaveBeenCalledExactlyOnceWith(JSON.parse(artifact));
+    expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith("imported");
+    expect(mocks.success).toHaveBeenCalledOnce();
+    expect(mocks.notifyError).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a cancelled selection quiet", async () => {
+    const click = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
+    const importConversation = vi.fn<ConversationArchiveGateway["importConversation"]>();
+    installFiles(createFileTransfer({ saveTextFile: vi.fn().mockResolvedValue(true) }));
+    installGateway(completeGateway(importConversation));
+
+    const cancelled = importConversationJson();
+    await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+    (click.mock.instances[0] as HTMLInputElement).dispatchEvent(new Event("cancel"));
+    await cancelled;
+
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(importConversation).not.toHaveBeenCalled();
+    expect(mocks.success).not.toHaveBeenCalled();
+  });
+
+  it("keeps a retired read failure quiet without blocking the successor import", async () => {
+    const click = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
+    const read = Promise.withResolvers<string>();
+    const slow = new File([validArtifact("retired")], "slow.json");
+    vi.spyOn(slow, "text").mockReturnValue(read.promise);
+    const retiredImport = vi.fn<ConversationArchiveGateway["importConversation"]>();
+    const successorImport = vi
+      .fn<ConversationArchiveGateway["importConversation"]>()
+      .mockResolvedValue({ id: "successor-session", title: "Successor" });
+    installFiles(createFileTransfer({ saveTextFile: vi.fn().mockResolvedValue(true) }));
+    const owner = installGateway(completeGateway(retiredImport));
+
+    const retired = importConversationJson();
+    await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+    choose(click.mock.instances[0] as HTMLInputElement, slow);
+    owner.replaceRuntimeGeneration(() => completeGateway(successorImport));
+    await retired;
+    read.reject(new DOMException("The I/O read operation failed.", "NotReadableError"));
+    await drainMicrotasks();
+
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(retiredImport).not.toHaveBeenCalled();
+
+    const artifact = validArtifact("successor-session");
+    const current = importConversationJson();
+    await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(2));
+    choose(click.mock.instances[1] as HTMLInputElement, new File([artifact], "current.json"));
+    await current;
+
+    expect(successorImport).toHaveBeenCalledExactlyOnceWith(JSON.parse(artifact));
+    expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith("successor-session");
+    expect(mocks.success).toHaveBeenCalledOnce();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
   it("owns repeated import intent as one picker and one mutation", async () => {
     const picker = Promise.withResolvers<string | null>();
     const importConversation = vi.fn().mockResolvedValue({ id: "imported" });
@@ -427,6 +519,21 @@ function installGateway(gateway: Partial<ConversationArchiveGateway>): Conversat
 
 function installFiles(next: FileTransferPort): void {
   files = next;
+}
+
+function completeGateway(
+  importConversation: ConversationArchiveGateway["importConversation"],
+): ConversationArchiveGateway {
+  return {
+    exportConversation: vi.fn().mockResolvedValue("unused conversation"),
+    exportTrajectory: vi.fn().mockResolvedValue("unused evidence"),
+    importConversation,
+  };
+}
+
+function choose(picker: HTMLInputElement, file: File): void {
+  Object.defineProperty(picker, "files", { configurable: true, value: [file] });
+  picker.dispatchEvent(new Event("change"));
 }
 
 function validArtifact(id: string): string {
