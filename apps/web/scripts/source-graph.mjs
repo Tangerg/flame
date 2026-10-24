@@ -7,7 +7,7 @@ import typescriptPreset from "@babel/preset-typescript";
 import * as ts from "typescript/unstable/ast";
 
 export const RUNTIME_CLIENT_EDGE = "@flame/runtime-client";
-const RUNTIME_JSON_EDGE = "@flame/runtime-client/json";
+export const RUNTIME_JSON_EDGE = "@flame/runtime-client/json";
 const runtimeJSON = realpathSync(fileURLToPath(import.meta.resolve(RUNTIME_JSON_EDGE)));
 const runtimeClientRoot = dirname(
   dirname(realpathSync(fileURLToPath(import.meta.resolve(RUNTIME_CLIENT_EDGE)))),

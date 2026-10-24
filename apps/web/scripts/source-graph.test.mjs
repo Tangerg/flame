@@ -9,6 +9,7 @@ import {
   findCycles,
   readSourceGraph,
   RUNTIME_CLIENT_EDGE,
+  RUNTIME_JSON_EDGE,
 } from "./source-graph.mjs";
 import { builtinContext, isPublishedContextFile } from "./builtin-contexts.mjs";
 
@@ -162,34 +163,42 @@ test("TSX component imports remain runtime dependencies", () => {
 });
 
 test("resolved Runtime SDK paths and aliases keep the client boundary", () => {
-  const sdk = fileURLToPath(import.meta.resolve("@flame/runtime-client"));
-  fixture(
-    {
-      "tsconfig.json": JSON.stringify({
-        compilerOptions: {
-          module: "ESNext",
-          moduleResolution: "Bundler",
-          paths: { "@runtime-client": [sdk] },
-          types: [],
-        },
-        include: ["src"],
-      }),
-      "src/direct.ts": "",
-      "src/aliased.ts": 'export { asRunId } from "@runtime-client";',
-    },
-    (root) => {
-      const specifier = relative(join(root, "src"), sdk).split(sep).join("/").replace(/\.ts$/, "");
-      writeFileSync(
-        join(root, "src/direct.ts"),
-        `export { asRunId } from ${JSON.stringify(specifier)};`,
-      );
-      const { graph, values } = readSourceGraph(root);
-      for (const file of ["direct.ts", "aliased.ts"]) {
-        assert.deepEqual(graph[file], [RUNTIME_CLIENT_EDGE]);
-        assert.deepEqual(values[file], [RUNTIME_CLIENT_EDGE]);
-      }
-    },
-  );
+  for (const [entry, member] of [
+    [RUNTIME_CLIENT_EDGE, "asRunId"],
+    [RUNTIME_JSON_EDGE, "parseJSON"],
+  ]) {
+    const sdk = fileURLToPath(import.meta.resolve(entry));
+    fixture(
+      {
+        "tsconfig.json": JSON.stringify({
+          compilerOptions: {
+            module: "ESNext",
+            moduleResolution: "Bundler",
+            paths: { "@runtime-client": [sdk] },
+            types: [],
+          },
+          include: ["src"],
+        }),
+        "src/direct.ts": "",
+        "src/aliased.ts": `export { ${member} } from "@runtime-client";`,
+      },
+      (root) => {
+        const specifier = relative(join(root, "src"), sdk)
+          .split(sep)
+          .join("/")
+          .replace(/\.ts$/, "");
+        writeFileSync(
+          join(root, "src/direct.ts"),
+          `export { ${member} } from ${JSON.stringify(specifier)};`,
+        );
+        const { graph, values } = readSourceGraph(root);
+        for (const file of ["direct.ts", "aliased.ts"]) {
+          assert.deepEqual(graph[file], [entry]);
+          assert.deepEqual(values[file], [entry]);
+        }
+      },
+    );
+  }
 });
 
 test("static template dynamic imports retain runtime cycles", () => {
