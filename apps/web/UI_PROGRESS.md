@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Conversation Find now follows its visible Conversation, preserves current input focus/selection on explicit return, retires with hidden content and honors motion preferences. Final focused checks pass 125 tests; the complete Web check passes 399 files / 3,370 tests and all 25 non-test gates. Supported native checks and actual English/Chinese Wails tasks pass, including narrow windows and 200%. Primary parallel work is untouched. Owned native processes and new checkout/Library outputs are cleaned, and all three preexisting output files retain their original bytes. Exact main delivery and the private archive receipt follow in this file.
+Updated: 2026-10-24. Conversation Find now follows its visible Conversation, preserves current input focus/selection on return, retires with hidden content and honors motion preferences. Final focused checks pass 125 tests; complete Web passes 399 files / 3,370 tests and all 25 non-test gates. Supported native checks and actual English/Chinese Wails tasks pass, including narrow windows and 200%. Implementation `7ea0d2996` is pushed to main and verified by exact hash, a clean owned checkout and zero unpushed commits. Primary parallel work is untouched. Owned outputs are cleaned, preexisting files preserved, and private evidence is archived with its guarded root removed.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-find-1024`, based on delivered main `13a4cef050ee41b16254237e99b402ac6dc85b8c`. The user's latest synchronization request was checked with fresh fetches; remote main has no further incoming commit at this checkpoint. Primary parallel work remains outside the batch. Conversation Find now belongs to the existing visible Conversation and reading axis; query scope, local keyboard closure, current-caret return, status semantics and motion preferences follow their existing owners. No Runtime lifecycle, navigation state, indexing subsystem or theme palette is added. Final focused, complete Web, native build and actual English/Chinese task checks pass. The two earlier unclassified MCP-readiness failures remain recorded in the Approval section. All 5,724 accepted non-Markdown sources, eleven plugin resources and sixteen private inputs retain their accepted bytes. Six owned CLI/native PIDs are dead; seven new checkout directories and six unique Library directories are removed, all three bundles are unregistered, and three preexisting output files retain their original bytes. The implementation is ready for explicit-path commit and push to main, followed by exact remote/clean/unpushed checks and guarded private evidence retirement. Continue from that receipt with a newly evidenced issue.
+The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-find-1024`. Fresh fetches at the user's synchronization request retained delivered main `13a4cef050ee41b16254237e99b402ac6dc85b8c` with no incoming commit; the verified Find implementation is now `7ea0d2996c6423386dd0b4cd980ff473742dcae0`. Primary parallel work remains outside this batch. Find belongs to the existing visible Conversation and reading axis; local query scope, keyboard closure, current-caret return, status semantics and motion preferences follow their existing owners. Final focused, complete Web, native build and actual English/Chinese task checks pass. The two earlier unclassified MCP-readiness failures remain recorded in the Approval section. All 5,724 accepted non-Markdown sources, eleven plugin resources and sixteen private inputs retain their accepted bytes through checks, hooks and cleanup. Six owned CLI/native PIDs are dead; seven new checkout directories and six unique Library directories are removed, all three bundles are unregistered, and three preexisting output files retain their original bytes. Implementation `7ea0d2996c6423386dd0b4cd980ff473742dcae0` is committed with normal formatter, workspace-lint and commit-message hooks and pushed to remote main. Exact remote hash, clean owned checkout and zero unpushed commits are verified before this documentation receipt. The guarded private root is removed after archival; session memory retains 208 UTF-8 files and 26 screenshot hashes, gzip SHA-256 `a2c87e64ac1a71c6ef0304d27c180ef929f49f3213410575cb28c93607ce1f64`. Continue with a newly evidenced issue; dynamic search updates and the other explicit exclusions below remain unqualified rather than assumed defects.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -2076,8 +2076,17 @@ The three preexisting output files retain their original bytes, including the
 restored native-check binary. The primary worktree, dependencies, shared tools
 and read-only references are untouched. A final fetch still reports remote main
 `13a4cef050ee41b16254237e99b402ac6dc85b8c` with no incoming commits.
-This record accompanies the explicit-path implementation commit; exact remote
-delivery and the guarded private archive retirement are recorded in the receipt.
+Implementation `7ea0d2996c6423386dd0b4cd980ff473742dcae0` is committed with
+normal formatter, workspace-lint and commit-message hooks and pushed to remote
+main. Exact remote hash, clean owned checkout, zero unpushed commits, all source/
+resource/private hashes and all seventeen output baselines are verified before
+this receipt. The guarded private root is removed after archiving 208 UTF-8
+files and 26 screenshot hashes in session memory; gzip SHA-256
+`a2c87e64ac1a71c6ef0304d27c180ef929f49f3213410575cb28c93607ce1f64`.
+The actual six-source harness, manifest, native qualifications, source freezes,
+cleanup and delivery proofs are retained with that archive. Continue from this
+main revision with a new observed task defect, without repeating the completed
+Find or earlier approval work.
 
 ## Composer model catalog recovery
 
