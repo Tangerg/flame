@@ -358,6 +358,7 @@ export function ChatPanel({ onSend, ref }: Props) {
               <Slot name="chat.header.meta" />
               <HeaderDiffStat />
             </AgentSurfaceHeader>
+            <Slot name="chat.search" />
             <ChatStream onSend={onSend} />
             <RunAnnouncer />
           </ContentVisibility>

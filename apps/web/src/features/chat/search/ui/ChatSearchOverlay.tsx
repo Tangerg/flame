@@ -1,40 +1,36 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useRef, useState } from "react";
-import { IconButton, isImeKey, TextField, vocab } from "@flame/ui";
+import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent } from "react";
+import { IconButton, isImeKey, TextField, useContentVisible, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
+import { motionScale } from "@/lib/appearance";
 import { useActiveSessionId } from "@/features/agent/public/session";
+import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import {
   clearChatSearchHighlights,
   paintChatSearchHighlights,
 } from "@/features/chat/search/adapters/searchHighlights";
 import { setChatSearchOpener } from "@/features/chat/search/application/openChatSearch";
 import { findMessageRanges } from "@/features/chat/search/adapters/messageRanges";
-import { face, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
+import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const cs = stylex.create({
-  field: { height: space.s7, width: "calc(var(--spacing) * 56)", paddingInline: space.s2 },
-  count: { paddingInline: space.s1_5 },
-  pill: {
-    position: "fixed",
-    top: space.s3,
-    right: space.s4,
-    zIndex: "var(--layer-floating)",
-    display: "inline-flex",
+  bar: {
+    display: "flex",
     alignItems: "center",
     gap: space.s1,
-    borderRadius: radius.lg,
-    backgroundColor: surface.card,
-    paddingInline: space.s2,
+    minWidth: 0,
+    flexShrink: 0,
     paddingBlock: space.s1_5,
-    boxShadow: "var(--shadow-overlay)",
   },
-  undraggable: { "-webkit-app-region": "no-drag", "--wails-draggable": "no-drag" },
+  field: { flex: 1, minWidth: 0 },
+  count: { flexShrink: 0, paddingInline: space.s1_5, whiteSpace: "nowrap" },
 });
 
 export function ChatSearchOverlay() {
   const activeSessionId = useActiveSessionId();
+  const visible = useContentVisible();
 
-  return <SessionChatSearchOverlay key={activeSessionId || "no-session"} />;
+  return visible ? <SessionChatSearchOverlay key={activeSessionId || "no-session"} /> : null;
 }
 
 type SearchState = {
@@ -52,10 +48,25 @@ const EMPTY_SEARCH: SearchState = {
 function SessionChatSearchOverlay() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState<SearchState>(EMPTY_SEARCH);
+  const barRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const focusReturn = useRef<HTMLElement | null>(null);
+
+  const requestOpen = useEffectEvent(() => {
+    // Repeated Find from inside the bar keeps the original opener.
+    if (!open || !barRef.current?.contains(document.activeElement)) {
+      focusReturn.current = captureFocusReturn();
+    }
+    if (!open) {
+      setOpen(true);
+      return;
+    }
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  });
 
   useEffect(() => {
-    setChatSearchOpener(() => setOpen(true));
+    setChatSearchOpener(() => requestOpen());
     return () => setChatSearchOpener(null);
   }, []);
 
@@ -67,14 +78,26 @@ function SessionChatSearchOverlay() {
     inputRef.current?.select();
   }, [open]);
 
-  const close = () => {
+  const reset = () => {
     clearChatSearchHighlights();
+    focusReturn.current = null;
     setSearch(EMPTY_SEARCH);
     setOpen(false);
   };
 
+  const close = () => {
+    const bar = barRef.current;
+    const active = document.activeElement;
+    const ownsFocus = !active || active === document.body || !!bar?.contains(active);
+    const target = focusReturn.current;
+    const region = owningRegion(bar);
+    reset();
+    if (ownsFocus) restoreFocus(target, region);
+  };
+
   const changeQuery = (query: string) => {
-    const found = findMessageRanges(query);
+    const root = owningRegion(barRef.current);
+    const found = root ? findMessageRanges(query, root) : [];
     setSearch({ query, matches: found, activeIndex: 0 });
     paintChatSearchHighlights(found, 0);
     scrollRangeIntoView(found[0]);
@@ -89,6 +112,18 @@ function SessionChatSearchOverlay() {
     scrollRangeIntoView(matches[nextIndex]);
   };
 
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.defaultPrevented || isImeKey(event.nativeEvent)) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    } else if (event.key === "Enter" && event.currentTarget === inputRef.current) {
+      event.preventDefault();
+      move(event.shiftKey ? -1 : 1);
+    }
+  };
+
   const t = useT();
   if (!open) return null;
 
@@ -96,28 +131,23 @@ function SessionChatSearchOverlay() {
   const total = matches.length;
 
   return (
-    <div role="search" {...stylex.props(cs.pill, cs.undraggable)}>
+    <div
+      ref={barRef}
+      role="search"
+      aria-label={t("chatSearch.label")}
+      {...stylex.props(rc.box, rc.gutter, cs.bar)}
+    >
       <TextField
         ref={inputRef}
-        variant="bare"
-        size="lg"
+        size="sm"
         aria-label={t("chatSearch.label")}
         value={query}
         onChange={(event) => changeQuery(event.target.value)}
         placeholder={t("chatSearch.placeholder")}
-        className={stylex.props(cs.field).className}
-        onKeyDown={(event) => {
-          if (isImeKey(event.nativeEvent)) return;
-          if (event.key === "Escape") {
-            event.preventDefault();
-            close();
-          } else if (event.key === "Enter") {
-            event.preventDefault();
-            move(event.shiftKey ? -1 : 1);
-          }
-        }}
+        styles={cs.field}
+        onKeyDown={onKeyDown}
       />
-      <span {...stylex.props(cs.count, vocab.faint, typeStep.uiSm, face.mono)}>
+      <span role="status" {...stylex.props(cs.count, vocab.faint, typeStep.uiSm, face.mono)}>
         {total > 0 ? `${activeIndex + 1} / ${total}` : query ? "0 / 0" : ""}
       </span>
       <IconButton
@@ -126,6 +156,7 @@ function SessionChatSearchOverlay() {
         title={`${t("chatSearch.prev")} (⇧⏎)`}
         aria-label={t("chatSearch.prev")}
         disabled={total === 0}
+        onKeyDown={onKeyDown}
         onClick={() => move(-1)}
       />
       <IconButton
@@ -134,6 +165,7 @@ function SessionChatSearchOverlay() {
         title={`${t("chatSearch.next")} (⏎)`}
         aria-label={t("chatSearch.next")}
         disabled={total === 0}
+        onKeyDown={onKeyDown}
         onClick={() => move(1)}
       />
       <IconButton
@@ -141,15 +173,37 @@ function SessionChatSearchOverlay() {
         size="xs"
         title={`${t("common.close")} (Esc)`}
         aria-label={t("common.close")}
+        onKeyDown={onKeyDown}
         onClick={close}
       />
     </div>
   );
 }
 
+function owningRegion(bar: HTMLElement | null): HTMLElement | null {
+  return bar?.closest<HTMLElement>('[role="region"]') ?? null;
+}
+
+function captureFocusReturn(): HTMLElement | null {
+  const element = document.activeElement;
+  return element instanceof HTMLElement && element !== document.body ? element : null;
+}
+
+function restoreFocus(target: HTMLElement | null, region: HTMLElement | null): void {
+  if (target?.isConnected && !target.closest("[hidden], [inert]")) {
+    target.focus({ preventScroll: true });
+    // A focus call on unrendered material is a no-op; only a landed focus counts.
+    if (document.activeElement === target) return;
+  }
+  region?.focus({ preventScroll: true });
+}
+
 function scrollRangeIntoView(range: Range | undefined): void {
-  range?.startContainer.parentElement?.scrollIntoView({
+  if (!range) return;
+  const reduced =
+    motionScale() === 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  range.startContainer.parentElement?.scrollIntoView({
     block: "center",
-    behavior: "smooth",
+    behavior: reduced ? "instant" : "smooth",
   });
 }

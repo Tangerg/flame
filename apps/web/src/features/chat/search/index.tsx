@@ -6,9 +6,9 @@ import { ChatSearchOverlay } from "@/features/chat/search/ui/ChatSearchOverlay";
 export default definePlugin({
   name: "flame.builtin.chat-search",
   setup(ctx) {
-    contributeLayout(ctx, "app.overlay", {
+    contributeLayout(ctx, "chat.search", {
       id: "chat-search",
-      order: 50,
+      order: 0,
       component: ChatSearchOverlay,
     });
     ctx.contribute(COMMAND, {

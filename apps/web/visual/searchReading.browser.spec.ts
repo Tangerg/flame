@@ -60,8 +60,8 @@ for (const [theme, accent] of [
     await page.goto(`/visual/?fixture=agent&state=long-content&theme=${theme}${accent}`);
     await page.locator("html[data-visual-ready]").waitFor();
     const pairs = await page.evaluate(async () => {
-      const rangesPath = "/src/features/chat/chat-search/adapters/messageRanges.ts";
-      const paintPath = "/src/features/chat/chat-search/adapters/searchHighlights.ts";
+      const rangesPath = "/src/features/chat/search/adapters/messageRanges.ts";
+      const paintPath = "/src/features/chat/search/adapters/searchHighlights.ts";
       const { findMessageRanges } = await import(rangesPath);
       const { paintChatSearchHighlights } = await import(paintPath);
       const ranges: Range[] = findMessageRanges("Runtime");
@@ -100,7 +100,7 @@ for (const [theme, accent] of [
         WCAG_AA_TEXT,
       );
     await page.evaluate(async () => {
-      const path = "/src/features/chat/chat-search/adapters/searchHighlights.ts";
+      const path = "/src/features/chat/search/adapters/searchHighlights.ts";
       const { clearChatSearchHighlights } = await import(path);
       clearChatSearchHighlights();
     });

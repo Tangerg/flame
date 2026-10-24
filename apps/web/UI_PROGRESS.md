@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Approval arguments now become read-only after decision admission while blocked actions retain keyboard focus. Offline local drafting remains available. Final focused coverage passes 73 tests, all 25 non-test Web gates and the supported native check pass, and English/Chinese actual Wails task flows pass. The full Web run retains one Memory MCP-readiness failure (3,346 passed); the complete isolated integration file retains one Schedules readiness failure (48 passed). Both causes remain unclassified. Implementation `bbac4c90d` is pushed to remote main and verified by exact hash, a clean owned checkout and zero unpushed commits. Primary parallel work is untouched. Owned native processes and new checkout/Library outputs are cleaned, with all three preexisting output files preserved. Private evidence is archived and its guarded root removed.
+Updated: 2026-10-24. Conversation Find now follows its visible Conversation, preserves current input focus/selection on explicit return, retires with hidden content and honors motion preferences. Final focused checks pass 125 tests; the complete Web check passes 399 files / 3,370 tests and all 25 non-test gates. Supported native checks and actual English/Chinese Wails tasks pass, including narrow windows and 200%. Primary parallel work is untouched. Owned native processes and new checkout/Library outputs are cleaned, and all three preexisting output files retain their original bytes. Exact main delivery and the private archive receipt follow in this file.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/approval-arguments-1024`, based on delivered main `e9c30806d60bedb99bbc3be5b4ec1f9b5a5108a4`. A fresh fetch at the user's synchronization request confirms that revision is current; no incoming commit is omitted. The primary checkout and its user-owned work remain outside this batch. Approval argument editability now projects existing pending/submitted admission facts separately from Runtime command availability. No Runtime lifecycle, command owner, parameter snapshot, focus effect or styling was added. Focused regressions, all non-test Web gates, supported native build and actual English/Chinese task flows pass; the two recorded MCP-readiness failures remain unclassified. All 5,723 accepted non-Markdown source inputs, eleven plugin resources and sixteen private inputs retain their accepted bytes. Six owned CLI/native PIDs are dead; seven new checkout directories and six unique Library Cache/WebKit directories are removed, all three bundles are unregistered, and three preexisting output files retain their original bytes. Implementation `bbac4c90de2356be89fbf7d5958ca747e2159682` is committed with normal formatter, workspace-lint and commit-message hooks and pushed to remote main. Exact remote hash, clean owned checkout, zero unpushed commits and accepted source hashes are verified before this documentation receipt. The guarded private root is archived and removed; session memory retains 144 UTF-8 evidence files and 15 screenshot hashes, gzip SHA-256 `6aef6ca64ba03aabffc644d8f584d0980654aa8d03366cdfe3d40efbe8132607`. Continue from the resulting main revision with a new evidenced defect; retain the two unresolved MCP gate records.
+The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-find-1024`, based on delivered main `13a4cef050ee41b16254237e99b402ac6dc85b8c`. The user's latest synchronization request was checked with fresh fetches; remote main has no further incoming commit at this checkpoint. Primary parallel work remains outside the batch. Conversation Find now belongs to the existing visible Conversation and reading axis; query scope, local keyboard closure, current-caret return, status semantics and motion preferences follow their existing owners. No Runtime lifecycle, navigation state, indexing subsystem or theme palette is added. Final focused, complete Web, native build and actual English/Chinese task checks pass. The two earlier unclassified MCP-readiness failures remain recorded in the Approval section. All 5,724 accepted non-Markdown sources, eleven plugin resources and sixteen private inputs retain their accepted bytes. Six owned CLI/native PIDs are dead; seven new checkout directories and six unique Library directories are removed, all three bundles are unregistered, and three preexisting output files retain their original bytes. The implementation is ready for explicit-path commit and push to main, followed by exact remote/clean/unpushed checks and guarded private evidence retirement. Continue from that receipt with a newly evidenced issue.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -1920,6 +1920,164 @@ focus and layout guidance retains the existing modal, semantic surfaces, query
 field, reading/list rhythm and Orange/custom-blue focus roles. Existing Radix
 Dialog and HeroUI modal references inform the bounded task model; static Ace
 artwork supplies no keyboard evidence.
+
+## Conversation Find and reading return
+
+At delivered main `13a4cef05`, actual Wails reproduced a globally fixed Find
+bar covering the Dock header, Escape from the query losing focus to body,
+Escape on a Find button doing nothing, and repeated Cmd+F leaving Close focused.
+At 200%, the source file occupied the existing full pane while Find still
+searched the hidden Conversation and retained six highlights. The existing
+Composer and inspection owners preserved their data; neither needed replacement.
+
+`chat/search/index.tsx:9` now contributes to the dedicated `chat.search` Slot.
+`shell/workbench/panel/ChatPanel.tsx:361` renders it immediately after the
+Conversation header inside the existing `ContentVisibility`. The bar follows the
+shared reading column and gutters, stays inside its Conversation, and leaves no
+closed wrapper or spacing. The prior fixed position, floating layer, extra card
+surface and shadow are removed. Shared TextField/IconButton, typography, semantic
+colors, Flame Orange and custom-accent ownership remain.
+
+`chat/search/ui/ChatSearchOverlay.tsx:31` derives the inner lifetime directly
+from content visibility and retains the existing Session key. Hiding retires the
+opener, query and CSS highlights; revealing mounts closed. Query changes pass the
+owning Conversation region into the existing DOM finder (`:98`), with no
+document-wide fallback when that root is absent. No second visibility fact,
+navigation transition, index, cache or Runtime state is added.
+
+Repeated Find focuses and selects the current query while preserving its opener
+when a Find control owns focus (`:55`). Each interactive control handles its own
+Escape; query Enter/Shift+Enter navigate, while buttons retain native activation
+(`:115`). Composing and already-handled keys remain with their owner. Explicit
+close clears the current Find and restores a connected, visible opener only
+while Find/body still owns focus (`:88`). A refused focus call falls back to the
+current focusable Conversation (`:192`). Later outside focus and host focus on
+retirement are preserved. Find retains only the opener element; the original
+textarea remains the sole owner of its current selection and later edits.
+
+The named nonmodal search contains a stable status node (`:150`), so match
+updates do not move focus. Each scroll request reads existing `motionScale()`
+and the system reduced-motion media query (`:201`): application motion off or
+system reduce requests instantaneous positioning; otherwise smooth navigation
+remains. There is no additional preference, subscription or motion state.
+
+Read-only ZCode `packages/ui/src/v4/useConversationTimelineFind.ts:65` supplies
+an actual owned timeline root; its history loading, virtual navigation and cache
+are outside this task. HeroUI's actual controlled and full-width SearchField
+demos demonstrate one query owner and container-owned width. Existing ChatGPT,
+Radix, Arc and Ace research remains applicable without supplying new native
+focus evidence. [WCAG focus order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html),
+[status messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html)
+and the [search landmark example](https://www.w3.org/WAI/ARIA/apg/patterns/landmarks/examples/search.html)
+inform the local interaction model.
+[Reduced-motion technique C39](https://www.w3.org/WAI/WCAG22/Techniques/css/C39.html)
+supports the preference review; its associated 2.3.3 criterion is AAA.
+
+| Severity | Root cause                                                                                               | Corrected behavior and acceptance                                                                                                                                         |
+| -------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| High     | Global placement/lifetime ignored the presented Conversation.                                            | Local reading-axis bar, root-scoped matching, hidden retirement and no hidden reopening; native EN/ZH, narrow and 200% pass.                                              |
+| High     | Close did not preserve a meaningful return destination; button Escape and repeated Find were incomplete. | Per-control keyboard handling and origin-sensitive return retain current textarea selection and later host/outside focus; regression and native task checks pass (2.4.3). |
+| Medium   | Match feedback had no status semantics.                                                                  | Stable named-search/status structure retains input/button focus; DOM and native AX qualify semantics (4.1.3), without a VoiceOver speech claim.                           |
+| Medium   | Find forced smooth scrolling despite existing motion preferences.                                        | Event-time preference reads preserve the existing owner; four regressions and actual native request traces pass (2.3.3 AAA reference).                                    |
+
+Better-accessibility and better-layout give a scoped Approve for the observed
+Find task. This covers the recorded keyboard, focus, geometry and state paths,
+not a product-wide accessibility certification or unobserved viewport.
+
+The bounded Claude Code CLI returned a partial three-production-file candidate
+after 186.85 s: exit 1, maximum-turn error, 24 configured and 25 reported turns,
+no permission denials and no tests written. Primary review exposed its competing
+caret snapshot: one test failed and 21 passed when later caret 22 was replaced
+by old selection 5..10. Removing the snapshot restored the textarea's ownership.
+An initial lint run also exposed five real issues; per-control handlers and
+derived visibility replaced them without suppressions.
+
+Final focused coverage passes 125 tests in five files (7.99 s command / 7.54 s
+test time). Restoring the original three production files against the final
+Find regression files fails 21 and passes six tests (27 total; 3.57 s command /
+2.77 s test time), then restores the exact accepted bytes in a finally block.
+The late motion tests first fail three and pass 23 (1.96 s command); all four
+new cases pass after repair, including system reduce and a later application
+preference change. Typecheck (1.38 s), lint (0.39 s) and formatting pass.
+Three obsolete dynamic imports in `visual/searchReading.browser.spec.ts` now
+point to `chat/search`, with the existing assertions preserved. No browser
+visual/performance suite ran.
+
+The final complete Web command passes all 399 files / 3,370 tests (171.04 s
+test time, 204.07 s command) and all twenty-five non-test gates. The earlier
+pre-motion complete run passes 399 files / 3,366 tests (172.13 s test time,
+205.21 s command). These green runs do not reclassify the two unclassified
+MCP-readiness failures retained under Approval argument review and submission.
+`make check-native` passes in 25.55 s, including Desktop test/vet/build and the
+supported Wails production build. Its duplicate `-lobjc` warning is non-failing.
+Native applications are exited before those final serial checks.
+
+Actual Wails v3 acceptance uses isolated homes and the canonical long-content
+workspace, source files and sole Composer owner. A private bootstrap adds the
+real shortcut provider/search plugin to that fixture. Native snapshots, keys,
+pointer actions and passive focus/selection/geometry reports qualify the first
+complete task. After the motion-only change, fresh assets are served by the
+unchanged native OSDirFS overlays and the final task is requalified in both
+languages. The final observer records and forwards each real scrollIntoView
+request unchanged; this is private instrumentation, not an untouched observer.
+No synthetic input/focus, product debug route, live Send, provider/tool execution
+or Runtime mutation is involved.
+
+- Initial English/light/14 px/Orange at 1440 × 900: Runtime 1/6 → 2/6 → 1/6,
+  repeated Cmd+F selection 0..7, Escape from Close and pointer close, no-match
+  feedback, later Composer edits, keyboard Dock resize to 320 px, separator
+  focus return, file read and Back to selected canonical `resizer.ts`.
+  The original textarea finishes `Draft before find. Continued. Independent.
+Returned. After file.` at caret 64.
+- Initial Chinese/dark/18 px/custom blue/motion off: native resize settles at
+  1122 × 1051; twenty separately observed Zoom In commands reach 561 × 525 at
+  200%. Hidden Find/highlights retire, hidden Cmd+F refuses, file focus remains,
+  canonical selected-file Back and source return pass. Reopened Chinese Find
+  fits inside the 561 px Conversation; Space on Next and Escape retain their
+  respective local/Composer focus. Actual Size returns without reopening Find.
+  The original draft ends `查找前保留的草稿。 继续核对。 已返回。` at caret 20.
+- Final English repeats navigation, repeated Find, Close Escape and later-caret
+  continuation on the same textarea, ending `Draft before find. Continued.
+Independent. Returned.` at caret 52. Real scroll requests are smooth at scale
+  1 with system reduce false.
+- Final Chinese repeats local search, Previous Escape, source inspection,
+  a separately observed twenty-step native zoom, hidden retirement/refusal,
+  named file reader scroll, source return, 200% Next Space/Escape and current
+  caret continuation. Real requests are instant at scale 0 with system reduce
+  false. The first final 200% open already has current caret 13; return preserves
+  it and paste inserts at 13..18. This is not an end-append qualification.
+  A separately captured Select All/Right establishes end caret 20, then Find/
+  Escape/paste appends to 24. Final text is
+  `查找前保留的草稿。 继续核 已返回。对。 续写。`. Actual Size restores
+  1122 × 1051 with the same textarea focused and Find/highlights absent.
+
+The initial source path is absent from the canonical file listing, so that
+Back correctly falls to `apps`; a separate canonical browse qualifies selected
+`resizer.ts`. An initial Chinese pointer-entered reverse-Tab probe stayed in the
+reader and is excluded; three separately observed forward stops qualified Back.
+One final stale native menu index entered fullscreen; that transient is excluded
+and native Toggle Full Screen restored the window before the qualified zoom.
+The first resize frame is transient 1125 × 1050, not the settled size.
+
+Native 561 CSS px at 200% and a separate 320 px Dock are covered; a fresh 320 CSS
+px viewport is not. System reduce true is covered by unit tests, not a changed OS
+setting. Native paste does not qualify OS IME. VoiceOver speech, RTL mirroring,
+other locale GUIs/platforms, fresh rendered contrast, dynamic streaming indexes
+and matches spanning separate inline text nodes remain unverified. Preserve
+the existing finder until those separate requirements are evidenced.
+
+All 5,724 tracked non-Markdown inputs retain accepted aggregate SHA-256
+`5c11ed9a094d4e93664ad216bc9dc61275675bb4cf3cbaf44f670eadcc02dafb`;
+eleven plugin resources and sixteen actual private inputs are unchanged through
+the final checks. The final private visual build takes 2.54 s. Six owned CLI/
+native PIDs are dead; cleanup removes seven new checkout directories and six
+unique Library Cache/WebKit directories and unregisters all three bundles.
+The three preexisting output files retain their original bytes, including the
+restored native-check binary. The primary worktree, dependencies, shared tools
+and read-only references are untouched. A final fetch still reports remote main
+`13a4cef050ee41b16254237e99b402ac6dc85b8c` with no incoming commits.
+This record accompanies the explicit-path implementation commit; exact remote
+delivery and the guarded private archive retirement are recorded in the receipt.
 
 ## Composer model catalog recovery
 
