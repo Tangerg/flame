@@ -100,14 +100,26 @@ func generate() error {
 		}
 		vectors = append(vectors, map[string]string{"source": source, "canonical": input.String(), "digest": input.Digest()})
 	}
+	astral, bmp := receipt.Descriptor(), receipt.Descriptor()
+	astral.Name, bmp.Name = "\U0001f600", "\uffff"
+	contract, err := capability.New(capability.Config{Reference: "\ufeffcontract", Composition: capability.Collection, Scope: "installation"}, astral, bmp)
+	if err != nil {
+		return err
+	}
+	contractJSON, err := jsoninput.Encode(contract.Descriptor())
+	if err != nil {
+		return err
+	}
 	data, err := json.Marshal(struct {
-		Constants       map[string]string   `json:"constants"`
-		Receipt         string              `json:"receipt"`
-		ReceiptIdentity string              `json:"receiptIdentity"`
-		ToolReceipt     string              `json:"toolReceipt"`
-		StreamDelivery  string              `json:"streamDelivery"`
-		Inputs          []map[string]string `json:"inputs"`
-	}{constants, receiptJSON.String(), receiptContract(receipt.Descriptor()), toolReceiptJSON.String(), deliveryJSON.String(), vectors}, jsontext.WithIndent("  "), json.Deterministic(true))
+		Constants          map[string]string   `json:"constants"`
+		Receipt            string              `json:"receipt"`
+		ReceiptIdentity    string              `json:"receiptIdentity"`
+		ToolReceipt        string              `json:"toolReceipt"`
+		StreamDelivery     string              `json:"streamDelivery"`
+		Inputs             []map[string]string `json:"inputs"`
+		Capability         string              `json:"capability"`
+		CapabilityIdentity string              `json:"capabilityIdentity"`
+	}{constants, receiptJSON.String(), receiptContract(receipt.Descriptor()), toolReceiptJSON.String(), deliveryJSON.String(), vectors, contractJSON.String(), contract.Identity().Digest()}, jsontext.WithIndent("  "), json.Deterministic(true))
 	if err != nil {
 		return err
 	}

@@ -18,6 +18,12 @@ func TestMain(tests *testing.M) {
 	}
 	_, source, _, _ := runtime.Caller(0)
 	repository := filepath.Clean(filepath.Join(filepath.Dir(source), "../.."))
+	companion := exec.Command("node", filepath.Join(repository, "tooling/node-companion.mjs"), "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", filepath.Dir(executable), "--offline")
+	companion.Stdout, companion.Stderr = os.Stdout, os.Stderr
+	if err := companion.Run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	packages := filepath.Join(filepath.Dir(executable), "plugins")
 	command := exec.Command("node", filepath.Join(repository, "plugins/scripts/build-packages.mjs"), "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", packages)
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
@@ -31,6 +37,10 @@ func TestMain(tests *testing.M) {
 	}
 	status := tests.Run()
 	if err := os.RemoveAll(packages); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		status = 1
+	}
+	if err := os.RemoveAll(filepath.Join(filepath.Dir(executable), "runtimes")); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		status = 1
 	}

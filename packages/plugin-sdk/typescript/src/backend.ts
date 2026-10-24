@@ -15,10 +15,12 @@ import {
   Method,
   PROTOCOL,
   canonicalJSON,
+  compareTokens,
   digestJSON,
   exactFields,
   freezeJSON,
   validCommand,
+  validToken,
   type MethodDescriptor,
 } from "./contract";
 import {
@@ -183,13 +185,13 @@ export class Backend {
           protocol: PROTOCOL,
           methods: [...this.#methods.values()]
             .map(({ method }) => method.descriptor)
-            .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
+            .sort((a, b) => compareTokens(a.name, b.name)),
           capabilities: [...this.#capabilities]
             .map(([name, contract]) => ({
               name,
               contract: contract.descriptor,
             }))
-            .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
+            .sort((a, b) => compareTokens(a.name, b.name)),
         },
       };
     });
@@ -691,10 +693,6 @@ export class Backend {
     })();
     return this.#closing;
   }
-}
-
-function validToken(value: unknown): value is string {
-  return validCommand(value) && !/[\s\p{Cc}]/u.test(value);
 }
 
 function decodeReceipt(value: unknown): ReceiptRequest {

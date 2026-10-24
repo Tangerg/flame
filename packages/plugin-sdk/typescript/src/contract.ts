@@ -38,14 +38,6 @@ export function freezeJSON<T>(value: T): T {
   freeze(copy);
   return copy;
 }
-function token(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.length > 0 &&
-    Buffer.byteLength(value) <= 256 &&
-    !/[\s\p{Cc}]/u.test(value)
-  );
-}
 export function validCommand(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -53,6 +45,13 @@ export function validCommand(value: unknown): value is string {
     Buffer.byteLength(value) <= 256 &&
     !/\p{Surrogate}/u.test(value)
   );
+}
+export function validToken(value: unknown): value is string {
+  return validCommand(value) && !/[\p{White_Space}\p{Cc}]/u.test(value);
+}
+export function compareTokens(left: string, right: string): number {
+  // Go orders protocol tokens by UTF-8 bytes, independently of JSON key order.
+  return Buffer.compare(Buffer.from(left), Buffer.from(right));
 }
 export function exactFields(
   value: unknown,
@@ -85,8 +84,8 @@ export class Method {
       ["stream"],
     );
     if (
-      !token(descriptor.name) ||
-      !token(descriptor.target) ||
+      !validToken(descriptor.name) ||
+      !validToken(descriptor.target) ||
       !["query", "command"].includes(descriptor.kind) ||
       typeof descriptor.description !== "string"
     )
@@ -123,8 +122,8 @@ export class Capability {
     ]);
     if (
       descriptor.protocol !== PROTOCOL ||
-      !token(descriptor.reference) ||
-      !token(descriptor.scope) ||
+      !validToken(descriptor.reference) ||
+      !validToken(descriptor.scope) ||
       !["collection", "selection", "decoration"].includes(
         descriptor.composition,
       ) ||
@@ -134,13 +133,7 @@ export class Capability {
       throw new Error("plugin: invalid capability contract");
     const methods = descriptor.methods
       .map((value) => new Method(value))
-      .sort((a, b) =>
-        a.descriptor.name < b.descriptor.name
-          ? -1
-          : a.descriptor.name > b.descriptor.name
-            ? 1
-            : 0,
-      );
+      .sort((a, b) => compareTokens(a.descriptor.name, b.descriptor.name));
     this.#methods = new Map(
       methods.map((method) => [method.descriptor.name, method]),
     );

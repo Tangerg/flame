@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ExactNumber, parseJSON } from "@flame/runtime-client";
 import {
+  Capability,
   canonicalJSON,
   digestJSON,
   Method,
   type MethodDescriptor,
+  type CapabilityDescriptor,
 } from "./contract";
 import { compileSchema } from "./schema";
 import wire from "./protocol.generated.json";
@@ -16,6 +18,17 @@ describe("published Go contract conformance", () => {
       expect(canonicalJSON(value)).toBe(vector.canonical);
       expect(digestJSON(value)).toBe(vector.digest);
     });
+  it("retains Go token admission and Unicode method ordering", () => {
+    const descriptor = parseJSON(wire.capability) as CapabilityDescriptor;
+    const contract = new Capability({
+      ...descriptor,
+      methods: [...descriptor.methods].reverse(),
+    });
+    expect(contract.identity).toBe(wire.capabilityIdentity);
+    expect(contract.descriptor.methods.map((method) => method.name)).toEqual(
+      descriptor.methods.map((method) => method.name),
+    );
+  });
   it("retains exact method identity and excludes presentation prose", () => {
     const descriptor = parseJSON(wire.receipt) as MethodDescriptor;
     const original = new Method(descriptor);
