@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. A failed background file-list refresh now keeps accepted files, the existing tree cursor, selection and expanded directories available with persistent recovery feedback. All 73 focused tests, 3,282 Web tests, 25 non-test Web gates and the supported native check pass. Actual English/light/14 px/Orange and Chinese/dark/18 px/custom-blue flows qualify repeated retry, long-list visibility, deliberate scrolling, reading/return and continued drafts, including a 320 px Dock and native 200% zoom. Owned processes, new checkout/Library outputs are cleaned; preexisting output files are restored. The private evidence root remains until exact remote delivery verification.
+Updated: 2026-10-24. A failed background file-list refresh now keeps accepted files, the existing tree cursor, selection and expanded directories available with persistent recovery feedback. All 73 focused tests, 3,282 Web tests, 25 non-test Web gates and the supported native check pass. Actual English/light/14 px/Orange and Chinese/dark/18 px/custom-blue flows qualify repeated retry, long-list visibility, deliberate scrolling, reading/return and continued drafts, including a 320 px Dock and native 200% zoom. Owned processes, new checkout/Library outputs are cleaned; preexisting output files are restored. The private evidence root is archived and removed. Implementation `4cfc60e57` is pushed to remote main and its exact hash is verified.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user's latest instruction explicitly resumes continuous work. The root-file refresh batch starts from remote main `454cd3b9ea9018564cf8a5f5695adf9404ca86bd`, retaining the delivered read-error and tree-entry work. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/files-refresh-continuity-1024` for this batch. The current query cache remains the sole accepted-list owner; the existing FileTree owns its cursor, expansion and selected-file projection. A local pre-mutation layout snapshot preserves a visible active row when recovery feedback reduces its viewport, while later draft focus and deliberate scrolling remain authoritative. Focused, complete Web, supported native and actual English/Chinese acceptance pass. All 1,697 accepted product/source/resource inputs and 11 private acceptance inputs remain unchanged. Six owned PIDs are dead, seven new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. The private evidence root remains for the delivery receipt. Read-only primary-checkout inspection found branch `codex/repository-ownership-cleanup` at `c5d818374`, with 11 commits absent from every fetched remote branch, no modified/staged code and only untracked `docs/ui打磨优化.md`; none of that parallel work was changed. Next, inspect the surrounding file-browse/read task before selecting another evidence-backed batch.
+The user's latest instruction explicitly resumes continuous work. The root-file refresh batch starts from remote main `454cd3b9ea9018564cf8a5f5695adf9404ca86bd`, retaining the delivered read-error and tree-entry work. Implementation `4cfc60e576535f318a8fa7ff180f359840490d41` is delivered to remote `main`. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `main`; exact remote hash, clean status and zero unpushed commits were verified before the receipt. The current query cache remains the sole accepted-list owner; the existing FileTree owns its cursor, expansion and selected-file projection. A local pre-mutation layout snapshot preserves a visible active row when recovery feedback reduces its viewport, while later draft focus and deliberate scrolling remain authoritative. Focused, complete Web, supported native and actual English/Chinese acceptance pass. Before evidence removal, all 1,697 accepted product/source/resource inputs and 11 private acceptance inputs matched the accepted bytes. Six owned PIDs are dead, seven new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. The private evidence root, bundles, data and logs are archived and removed after exact remote confirmation. The session archive retains 211 UTF-8 evidence files and ten screenshot hashes; its gzip SHA-256 is `5fc59e7a931fe5ccf1d99963a398fc4dc889b05c966e915e0528bd3dc8f94186`. Read-only primary-checkout inspection found branch `codex/repository-ownership-cleanup` at `c5d818374`, with 11 commits absent from every fetched remote branch, no modified/staged code and only untracked `docs/ui打磨优化.md`; none of that parallel work was changed. Next, inspect the surrounding file-browse/read task before selecting another evidence-backed batch.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -2410,8 +2410,17 @@ unregistered. Seven new checkout output directories and six unique Library
 Cache/WebKit directories are removed. The preexisting native binary is restored;
 all three preexisting output files retain their original bytes. Four older-birth
 build copies were qualified against their exact read-only source bytes. The
-private bundles, data and evidence root remain until exact remote delivery and
-session-archive verification.
+retained session archive contains 211 UTF-8 evidence files and ten screenshot
+hashes (344,276 base64 characters; gzip SHA-256
+`5fc59e7a931fe5ccf1d99963a398fc4dc889b05c966e915e0528bd3dc8f94186`).
+The guarded private bundles, data, logs and evidence root are removed after exact
+remote confirmation and archive verification. Implementation
+`4cfc60e576535f318a8fa7ff180f359840490d41` is pushed to remote `main`;
+its exact remote hash, clean owned checkout, zero unpushed commits, unchanged
+accepted inputs and restored preexisting outputs are verified. The accepted
+1,697-input aggregate SHA-256 is
+`7ed8edb0e69f8d0e657d841a088382f4278a983e792b48a78d5a5dc85e09dd43`.
+Continue from fresh evidence at the surrounding browse/read task boundary.
 
 ### Long-file targets and prepend ownership
 
