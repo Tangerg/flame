@@ -318,6 +318,7 @@
   --layer-chrome-control: 30;
   --layer-floating: 50;
   --layer-modal: 100;
+  --layer-notification: 110;
 
   --shadow-control: 0 1px 2px color-mix(in oklab, var(--shadow-cast) 20%, transparent);
   --shadow-ring: 0 0 0 0.5px var(--seam-line);
@@ -522,6 +523,17 @@ html.theme-dark {
   --dock-control-span: calc(var(--control-height-sm) + var(--spacing) * 2.5);
   --dock-tab-inset: calc(var(--spacing) * 2);
   --surface-header-height: 46px;
+  --notification-gutter: 1rem;
+  --notification-list-padding: calc(var(--spacing) * 2);
+  --notification-toast-padding: 16px;
+  /* Keep a control row readable after the list and leading toast padding. */
+  --notification-min-reading-height: calc(
+    max(var(--control-height-md), var(--control-target-min)) + 2 *
+      var(--notification-list-padding) + var(--notification-toast-padding)
+  );
+  --notification-reading-space: calc(
+    var(--notification-min-reading-height) + 2 * var(--notification-gutter)
+  );
   --dur-drawer: calc(var(--dur-drawer-base) * var(--motion-scale));
   --ease-drawer: linear(
     0,
@@ -584,6 +596,27 @@ html.theme-dark {
   min-height: 0;
   overflow: hidden;
   background: var(--app-drawer-surface);
+}
+
+.agent-shell:has([data-sonner-toast]) [data-slot="composer-overlay"][data-floating] {
+  --notification-composer-clearance: var(--notification-reading-space);
+}
+
+.agent-shell:has([data-sonner-toast]) [data-slot="composer-overlay"]:not([data-floating]) {
+  --notification-empty-composer-limit: calc(100% - 2 * var(--notification-reading-space));
+}
+
+@container empty-conversation (max-height: 20rem) {
+  .agent-shell:has([data-sonner-toast]) [data-slot="empty-conversation-layout"] {
+    --notification-empty-inset: 0px;
+  }
+
+  .agent-shell:has([data-sonner-toast]) [data-slot="composer-overlay"]:not([data-floating]) {
+    --notification-empty-composer-limit: calc(100% - var(--notification-min-reading-height));
+    position: sticky;
+    top: var(--notification-min-reading-height);
+    bottom: 0;
+  }
 }
 
 .agent-window-sidebar-control {
@@ -714,6 +747,25 @@ html.theme-dark {
   syntax: "<color>";
   inherits: false;
   initial-value: transparent;
+}
+
+/* Resolve these expressions at the consumer; typed lengths compound native WebKit page zoom. */
+@property --notification-composer-clearance {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --notification-empty-composer-limit {
+  syntax: "*";
+  inherits: false;
+  initial-value: none;
+}
+
+@property --notification-empty-inset {
+  syntax: "*";
+  inherits: false;
+  initial-value: 6vh;
 }
 
 .agent-content-card {

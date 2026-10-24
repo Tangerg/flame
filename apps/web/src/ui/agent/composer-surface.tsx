@@ -5,6 +5,9 @@ import { cn } from "@/lib/classNames";
 const styles = stylex.create({
   surface: {
     position: "relative",
+    display: "flex",
+    minHeight: 0,
+    flexDirection: "column",
     containerType: "inline-size",
     containerName: "composer",
     overflow: "hidden",
@@ -15,6 +18,7 @@ const styles = stylex.create({
   },
   footer: {
     display: "flex",
+    flexShrink: 0,
     flexWrap: "nowrap",
     alignItems: "center",
     gap: space.s1_5,

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactNode, type RefObject } from "react";
+import { type ReactNode, type Ref, type RefObject } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useT } from "@/lib/i18n/index";
 import { disclosureExitTransition, disclosureTransition } from "@/lib/motion";
@@ -30,7 +30,15 @@ const fc = stylex.create({
     zIndex: 2,
     display: "flex",
     // Keep the jump control, its gap, and focus clearance inside the conversation.
-    maxHeight: "calc(100% - max(var(--control-height-md), var(--control-target-min)) - 1rem)",
+    maxHeight:
+      "calc(100% - max(var(--control-height-md), var(--control-target-min)) - 1rem - var(--notification-composer-clearance, 0px))",
+    flexDirection: "column",
+  },
+  bounded: {
+    display: "flex",
+    minHeight: 0,
+    maxHeight: "var(--notification-empty-composer-limit, none)",
+    flexShrink: 0,
     flexDirection: "column",
   },
   holder: {
@@ -106,18 +114,25 @@ function ComposerStack({ children }: { children: ReactNode }) {
 
 export function FloatingComposer({
   overlayRef,
+  jumpRef,
   floating,
   children,
 }: {
   overlayRef: RefObject<HTMLDivElement | null>;
+  jumpRef?: Ref<HTMLDivElement>;
   floating: boolean;
   children: ReactNode;
 }) {
   return (
-    <div ref={overlayRef} {...stylex.props(rc.box, floating && fc.overlay)}>
+    <div
+      ref={overlayRef}
+      data-slot="composer-overlay"
+      data-floating={floating ? "" : undefined}
+      {...stylex.props(rc.box, floating ? fc.overlay : fc.bounded)}
+    >
       <div {...stylex.props(rc.gutter, fc.floor, floating && fc.floatingFloor)}>
         <div {...stylex.props(fc.holder)}>
-          {floating && <JumpToBottomButton />}
+          {floating && <JumpToBottomButton dockRef={jumpRef} />}
           <ComposerStack>{children}</ComposerStack>
         </div>
       </div>

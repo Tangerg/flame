@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { type Ref } from "react";
 import { IconButton } from "@flame/ui";
 import { space } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n/index";
@@ -22,15 +23,18 @@ export function AgentJumpToBottom({
   visible,
   onClick,
   placement,
+  dockRef,
 }: {
   visible: boolean;
   onClick: () => void;
   placement: JumpDockPlacement;
+  dockRef?: Ref<HTMLDivElement>;
 }) {
   const t = useT();
   const label = t("chat.jumpToBottom");
   return (
     <div
+      ref={dockRef}
       {...stylex.props(
         styles.dock,
         placement === "above-composer" ? styles.aboveComposer : styles.insideReader,

@@ -26,9 +26,16 @@ import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { vocab } from "@flame/ui";
 import { useContentVisible } from "@/ui/index";
+import { useAgentShellElement } from "@/ui/agent/index";
+import {
+  NOTIFICATION_BOTTOM_PROPERTY,
+  NOTIFICATION_TOP_PROPERTY,
+  notificationInsets,
+} from "@/features/shell/workbench/panel/notificationSpace";
 const cst = stylex.create({
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
   queryable: { containerType: "inline-size", "--transcript-jump-gap": space.s2 },
+  emptyQuery: { containerType: "size", containerName: "empty-conversation" },
   rail: {
     position: "absolute",
     top: 0,
@@ -53,11 +60,11 @@ const cst = stylex.create({
     flex: 1,
     flexDirection: "column",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "safe center",
     gap: space.s5,
     overflowY: "auto",
     overscrollBehavior: "contain",
-    paddingBottom: "6vh",
+    paddingBottom: "var(--notification-empty-inset)",
   },
   heading: {
     marginInline: "auto",
@@ -125,31 +132,58 @@ export function ChatStream({ onSend }: Props) {
   const started = rows.length > 0;
 
   const paneRef = useRef<HTMLDivElement>(null);
+  const layoutRef = useRef<HTMLDivElement>(null);
   const composerOverlayRef = useRef<HTMLDivElement>(null);
+  const jumpRef = useRef<HTMLDivElement>(null);
+  const emptyHeadingRef = useRef<HTMLDivElement>(null);
+  const emptyFooterRef = useRef<HTMLDivElement>(null);
 
   const visible = useContentVisible();
+  const shell = useAgentShellElement();
 
   useLayoutEffect(() => {
-    if (!started || !visible) return;
+    if (!visible) return;
     const pane = paneRef.current;
+    const layout = layoutRef.current;
     const overlay = composerOverlayRef.current;
-    if (!pane || !overlay) return;
+    if (!pane || !layout || !overlay) return;
+    const jump = jumpRef.current;
 
-    const publishHeight = (height = overlay.getBoundingClientRect().height) => {
-      pane.style.setProperty(COMPOSER_OVERLAY_PROPERTY, `${height}px`);
+    const publish = () => {
+      const overlayRect = overlay.getBoundingClientRect();
+      if (started) pane.style.setProperty(COMPOSER_OVERLAY_PROPERTY, `${overlayRect.height}px`);
+      if (!shell) return;
+      const jumpRect = jump?.getBoundingClientRect();
+      const footprint = jumpRect
+        ? {
+            top: Math.min(overlayRect.top, jumpRect.top),
+            bottom: Math.max(overlayRect.bottom, jumpRect.bottom),
+          }
+        : overlayRect;
+      const insets = notificationInsets(
+        layout.getBoundingClientRect(),
+        footprint,
+        document.documentElement.clientHeight,
+      );
+      shell.style.setProperty(NOTIFICATION_TOP_PROPERTY, `${insets.top}px`);
+      shell.style.setProperty(NOTIFICATION_BOTTOM_PROPERTY, `${insets.bottom}px`);
     };
 
-    publishHeight();
-    const observer = new ResizeObserver(([entry]) => {
-      const borderBox = entry?.borderBoxSize[0];
-      publishHeight(borderBox?.blockSize);
-    });
-    observer.observe(overlay);
+    publish();
+    const observer = new ResizeObserver(publish);
+    for (const node of [layout, overlay, jump, emptyHeadingRef.current, emptyFooterRef.current]) {
+      if (node) observer.observe(node);
+    }
+    // The empty layout centers and scrolls its siblings, moving the composer without resizing it.
+    if (!started) layout.addEventListener("scroll", publish, { passive: true, capture: true });
     return () => {
       observer.disconnect();
+      layout.removeEventListener("scroll", publish, true);
       pane.style.removeProperty(COMPOSER_OVERLAY_PROPERTY);
+      shell?.style.removeProperty(NOTIFICATION_TOP_PROPERTY);
+      shell?.style.removeProperty(NOTIFICATION_BOTTOM_PROPERTY);
     };
-  }, [started, visible]);
+  }, [started, visible, shell]);
 
   // Only this host survives the question-to-Composer replacement.
   const questionFocusRef = useRef<{ element: Element; sessionId: string } | null>(null);
@@ -191,34 +225,39 @@ export function ChatStream({ onSend }: Props) {
       {...stylex.props(sh.paneAnchored, cst.queryable)}
     >
       <ChatBanners sessionId={sessionId} />
-      <div {...stylex.props(sh.paneAnchored, !started && cst.empty)}>
-        {started && (
-          <>
-            <div data-slot="chat-rail" {...stylex.props(cst.rail)}>
-              <Slot name="chat.rail.start" />
+      <div ref={layoutRef} {...stylex.props(sh.paneAnchored, !started && cst.emptyQuery)}>
+        <div
+          data-slot={!started ? "empty-conversation-layout" : undefined}
+          {...stylex.props(sh.paneAnchored, !started && cst.empty)}
+        >
+          {started && (
+            <>
+              <div data-slot="chat-rail" {...stylex.props(cst.rail)}>
+                <Slot name="chat.rail.start" />
+              </div>
+              <div {...stylex.props(sh.paneAnchored)}>
+                <ChatErrorBoundary resetKey={sessionId} label={`session:${sessionId}`}>
+                  <MessageStream rows={rows} ctx={ctx} sessionId={sessionId} />
+                </ChatErrorBoundary>
+              </div>
+            </>
+          )}
+          {!started && (
+            <div ref={emptyHeadingRef} {...stylex.props(rc.box, rc.gutter)}>
+              <h2 {...stylex.props(cst.heading, typeStep.displayMd)}>
+                <EmptyChatHeading />
+              </h2>
             </div>
-            <div {...stylex.props(sh.paneAnchored)}>
-              <ChatErrorBoundary resetKey={sessionId} label={`session:${sessionId}`}>
-                <MessageStream rows={rows} ctx={ctx} sessionId={sessionId} />
-              </ChatErrorBoundary>
+          )}
+          <FloatingComposer overlayRef={composerOverlayRef} jumpRef={jumpRef} floating={started}>
+            {composer}
+          </FloatingComposer>
+          {!started && (
+            <div ref={emptyFooterRef} {...stylex.props(rc.box, rc.gutter, cst.hideWhenEmpty)}>
+              <Slot name="chat.empty" />
             </div>
-          </>
-        )}
-        {!started && (
-          <div {...stylex.props(rc.box, rc.gutter)}>
-            <h2 {...stylex.props(cst.heading, typeStep.displayMd)}>
-              <EmptyChatHeading />
-            </h2>
-          </div>
-        )}
-        <FloatingComposer overlayRef={composerOverlayRef} floating={started}>
-          {composer}
-        </FloatingComposer>
-        {!started && (
-          <div {...stylex.props(rc.box, rc.gutter, cst.hideWhenEmpty)}>
-            <Slot name="chat.empty" />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

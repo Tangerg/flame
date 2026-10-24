@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Conversation import read failures now produce localized recovery guidance; cancellation stays quiet and explicit retries remain available. Implementation `436253d1098381dbbfd85dbca985fde474b84e49` is pushed to remote main. All 399 Web files / 3,399 tests, 25 non-test gates and supported native checks pass. Actual English/Chinese Wails tasks qualify real NotReadableError feedback, cancellation, retry, selected bytes, source return and continued drafts, including 200%. The observed narrow toast/composer overlap remains the next shared-layout priority. All owned processes, new checkout/Library/bundle-temp outputs and the exact private root are cleaned; source/output/archive guards pass. Primary parallel work is preserved.
+Updated: 2026-10-25. Transient notifications now use a bounded reading region outside the Composer and jump control. Empty and populated conversations retain their original inputs while long drafts shrink internally. Final Web checks pass 401 files / 3,411 tests and all 25 non-test gates; supported native checks pass. Actual English/Chinese Wails tasks qualify narrow 200% composing, notification actions, scrolling, question answers and source return. Notification overlap with an expanded model menu remains HIGH, so broader overlay acceptance is Block. Delivery and cleanup evidence is recorded under Notifications audit.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-import-read-1024`. Implementation `436253d1098381dbbfd85dbca985fde474b84e49`, based on main `1fa1826f7b2a5dc8f1f3b45ced1703c584a1f965`, is pushed to remote main and verified by exact remote hash, a clean checkout and zero unpushed commits. Fresh fetches at batch start and delivery found no incoming commit. Real native selection of an owned mode-000 file reproduced the silent read error; FileTransfer now preserves its rejection and the existing import generation owns recovery feedback, release and retirement. All 399 Web files / 3,399 tests, 25 non-test gates and supported native checks pass. EN/light/14 px and ZH/dark/18 px/custom-blue/200% native tasks qualify outcomes and original input continuity. All 5,725 accepted non-Markdown sources, eleven resources, fifteen private inputs, 595 compiled inputs and eight private module artifacts retain accepted bytes. Twenty-one owned PIDs are dead; new checkout, Library, bundle-temp outputs and the exact private root are absent; original output bytes/inventories are preserved. The verified compressed archive contains 179 UTF-8 evidence files and 12 screenshot digests. The observed narrow toast/composer overlap is open and takes priority next; broader notification-layout readiness remains unproven. Retain the just-qualified file-transfer, generation and navigation contracts and the earlier export, notification, Find, Approval and Runtime-timeout qualifications.
+The continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/notification-composer-clearance-1024`, based on remote main `848699fdf7b495aa93950b614b823c167a163147`. Repeated fresh fetches found no incoming remote commit during implementation and final native checks. The Composer/notification batch is verified; its delivery receipt follows in Notifications audit. Primary parallel work stays preserved: the last read-only observation found nine local commits absent from origin/main and one untracked UI document. Those unpublished commits are outside this batch. Retain the existing import/export, navigation, draft, notification-log and Runtime command owners. The next observed priority is notification overlap with an open model menu; the continuous goal is not complete.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -7614,6 +7614,161 @@ popover. The bell's accessible name now carries the full unread count, while
 its visual badge retains the existing capped presentation. Those contracts
 remain. The following current review qualifies retained history interaction;
 timed toast and system-notification behavior are outside this native batch.
+
+### Transient notifications and Composer clearance
+
+**Task, ownership and implementation**
+
+At main `848699fdf`, actual Wails at 200% reproduced transient feedback
+covering the Add/model/reasoning/approval controls; six long messages also
+covered the input. The previous import-read batch recorded the same obstruction.
+The shared Sonner host positioned and stacked cards against the window without
+knowing the Composer footprint. Reducing message length or adding offsets in
+individual producers would leave the shared failure intact.
+
+`notifications/toaster/index.tsx` now renders the same Sonner list as a bounded,
+normal-flow vertical scroller. All existing toast entries remain readable;
+Sonner still owns IDs, queue transitions, duration, actions, dismissal and swipe.
+The public list/toast styles neutralize stacking while preserving swipe transform
+composition. Its existing 4,000 ms duration and presentation tokens remain. The
+notification region and dismissal names use existing localized strings. New-front
+scrolling respects an already hovered or focused reader. Default action and close
+buttons explicitly join ordinary Tab order in Wails; explicit custom tabindex,
+including -1, remains authoritative. No competing queue, timer or key handler
+was introduced. Activating an action still removes its node and can leave focus
+on BODY; this existing medium follow-up is not a focus-restoration qualification.
+
+`ChatStream.tsx` extends its existing ResizeObserver to measure the available
+conversation layout and the union of Composer and visible jump-control bounds.
+The pure `notificationSpace.ts` projection chooses the larger free vertical band,
+clamped to the layout and viewport; above wins ties. The existing AppShell DOM
+identity is exposed through context, and the projection writes only two geometry
+properties to that element. Hiding/unmounting the conversation removes them;
+there is no second geometry state or observer. Empty-heading/footer resizing and
+captured inner-scroll events also update the projection. Composer, question,
+Session and draft identities retain their existing owners.
+
+Live-toast presence comes from the actual Sonner nodes. Local, non-inheriting
+CSS properties reserve reading room on their consuming Composer element; no
+root state variable propagates through the conversation subtree. A real empty
+layout regression at 561 × 365 / 200% with its fixture sidebar expanded exposed
+negative available height. The empty layout now has an unconditional container
+wrapper, safe centering and content-derived compact-height adaptation. A short
+pane reserves one reading band and keeps the Composer sticky in its normal flow;
+the normal roomy layout keeps its centered composition. The toast's vertical
+gutter contracts only when the measured band needs its control-reading minimum.
+`composer-surface.tsx` and `composerStyles.ts` complete the flex/min-height boundary:
+long editor content can shrink and scroll while the footer retains its space.
+No draft replacement, welcome-content removal or clipping mask hides the failure.
+
+Two native-only implementation failures were corrected before acceptance.
+Direct global max-height lost to StyleX's generated specificity; the StyleX
+consumer now reads its local property. Registering those expressions as typed
+lengths compounded WebKit page zoom and clipped controls. Universal syntax keeps
+the token stream until the consuming property resolves it, while retaining
+`inherits: false`. This matches the
+[CSS Properties and Values specification](https://drafts.css-houdini.org/css-properties-values-api/#calculation)
+and the independently reported
+[WebKit native zoom issue 314485](https://bugs.webkit.org/show_bug.cgi?id=314485).
+The evidence supports this local diagnosis, not an upstream fixed-version claim.
+
+**Reference and design review**
+
+The installed Sonner implementation and published style/props contract establish
+its actual lifetime and focus ownership. Read-only HeroUI toast implementation
+and styles inform bounded geometry and visible feedback without copying another
+queue or component system. The previously recorded ZCode, ChatGPT, Radix and Ace
+studies remain the broader task/navigation references. better-layout,
+better-accessibility and better-ui guide reading order, 200% reachability, normal
+keyboard access and retained approved surfaces; the React review preserves the
+existing lifetime rather than remounting an input to change layout.
+
+| Principle                        | Severity                             | Root cause and current result                                                                                                                                                              |
+| -------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Keep critical controls reachable | HIGH, repaired in the qualified task | Window-anchored toast stacking obscured composing controls. The measured reading band and bounded editor keep input and footer usable.                                                     |
+| Adapt to actual component space  | HIGH, repaired before delivery       | Empty-layout double reservation and an unshrinkable editor clipped controls at short heights. Container adaptation and the editor/footer flex boundary pass the actual native cases below. |
+| Full keyboard support            | MEDIUM, repaired                     | WebKit's ordinary Tab order skipped default toast buttons. Explicit zero tabindex restores the existing controls; custom tabindex remains unchanged.                                       |
+| Keep critical overlays reachable | HIGH, open                           | At 200%, long toast feedback can still cover an expanded model menu because notification and floating-menu layers share the same reading area. This is the next observed task.             |
+
+Overall overlay review: **Block** while the last HIGH remains. The qualified
+Composer repair is not a claim that all notification/menu/modal combinations,
+keyboard focus handoffs or all components are ready.
+
+**Actual verification**
+
+- New owner-level coverage includes bounded six-message presentation, existing
+  duration and input lifetime, action/dismissal admission, ordinary tabindex,
+  same-ID loading-to-success actions, explicit custom -1, engaged versus idle
+  reading, measured layout/jump clearance and hidden/scroll retirement. The
+  three focused files pass 21 tests. Two selected regressions fail against the
+  original production files, which are restored with verified hashes afterward.
+- The final normal Web check, with supported worker concurrency bounded to two,
+  passes **401 files / 3,411 tests** and **all 25 non-test gates** in **354.06 s**
+  (Vitest 303.55 s). Timeouts, assertions and file coverage are unchanged.
+  `make check-native` passes in **29.99 s**. Its duplicate `-lobjc` warning is
+  non-fatal. No Go, Runtime, SDK, protocol, dependency or business command changes
+  are part of this batch.
+- Earlier aggregate failures remain recorded: the first full run passed all then
+  3,410 tests but correctly rejected two inherited CSS state properties; those
+  properties were fixed. Separate later runs had one Runtime HTTP readiness
+  failure and one 5-second icon-test timeout. The complete unchanged 49-test HTTP
+  file passes separately, and both complete final bounded-concurrency runs pass.
+  Their causes are not claimed resolved by this UI change.
+- Bounded Claude CLI attempts did not qualify delivery: read-only diagnosis hit
+  its turn limit, one implementation attempt denied three writes, and a second
+  ended at its 300-second bound with partial edits. Primary completed the changes,
+  regressions, diff review, normal checks and all native acceptance directly.
+
+Final native acceptance uses the actual Wails v3 beta.34 host, production views
+and deterministic private producers. CUA performs every click, key, paste,
+wheel and native window/menu action; passive probes only observe actual DOM,
+rectangles, hit testing, input identity, owner value, caret and admitted effects.
+No browser visual suite or performance benchmark was started.
+
+| Native task                                                | Qualified result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| EN/light/14 px/Flame Orange                                | At 1440 × 900 and the actual **561 × 365 CSS px / 200%** window, nine-line draft length 218, six long messages, a 72 px bounded list and all five composing controls remain reachable. Ordinary Alt+T/Tab reaches Confirm and admits action 6 once. A separate step-observed source return retains input ID 2 and the exact 35-character draft; confirmed caret 35 then paste extends it to `Draft before notifications. Review. Returned.`, caret 45.                                                                               |
+| ZH/dark/18 px/custom blue/reduced motion                   | At normal size and **561 × 365 / 200%**, the seven-line draft length 59 and all composing controls survive six long messages in a 71 px list. Keyboard action 6 and pointer action 1 each admit once; wheel reaches the oldest complete card, four localized keyboard dismissals empty the list. Source read/return retains ID 2 and exact draft/caret 59; confirmed activation then paste extends to 64. The original timed toast closes once during native resizing, with the unchanged 4,000 ms clock qualified by the unit test. |
+| Empty conversation, expanded and collapsed fixture sidebar | At **561 × 365 / 200%**, a 15-line draft grows from 549 to 560 and then 576 characters in the same input ID 2. With the sidebar expanded, the 123.6 px Composer, 69.6 px textarea, 64 px toast scroller and every composing control remain reachable. Keyboard and pointer actions admit once; four ordinary keyboard dismissals empty the queue. Sidebar collapse retains draft and caret.                                                                                                                                          |
+| Question card, ZH/dark/18 px/blue                          | At **561 × 365 / 200%**, two initial selections survive notification arrival. A third lower option and `保留补充答案。` can be authored in the bounded reader; ordinary Tab reaches Submit and both footer controls remain hit-testable. File-list/go.mod reading and return retain all three selections and the custom answer. No live answer submission is claimed.                                                                                                                                                                |
+
+Each final app restores native Actual Size before Quit. Earlier EN/ZH single-toast,
+source-hidden and narrower-height failures are retained separately, with their
+actual source freeze; they are not substituted for final-source acceptance.
+The open model-menu overlap has its own native capture.
+
+One combined EN source-return/Select-All/Right/paste attempt replaced the text
+with only the pasted suffix. It is excluded from successful continuity evidence;
+the intervening selection state was not observed. A separate final run records
+the exact draft before activation, collapsed end caret and successful append.
+Native select-text also could not locate the textarea's exposed text and is not
+used as evidence. No speculative selection workaround was added. An initial
+wheel at the wrong screenshot location did not scroll the list; the corrected
+location reaches the oldest message. Short Chinese native pastes establish text
+entry, not OS IME composition. Earlier multiline paste folding into an attachment
+is not textarea-growth evidence; final growth uses actual Shift+Return lines.
+
+This isolates presentation, existing toast admission and deterministic navigation.
+It does not qualify live provider/tool execution, Send, import admission,
+Runtime answer persistence, OS notifications, VoiceOver speech, OS IME, RTL,
+other locale GUIs/platforms, a fresh 320 CSS px viewport or fresh 320 px Dock.
+Expanded-sidebar minimum-height question/toast combinations are not verified.
+
+**Integrity, delivery and continuation**
+
+All **5,728** accepted non-Markdown source hashes retain aggregate SHA-256
+`b43ad2f0d74d6b4922a23f56ae4cabb63970c3521ac0992b25ca56e201d32a49`;
+exactly fourteen source/test files differ from the baseline, with no source
+removal. Eleven plugin resource hashes retain their original bytes. All 54
+recorded CLI/check/native PIDs are dead. Seven new checkout outputs, ten owned
+Library outputs and five owned bundle-temp directories are removed; five owned
+apps are unregistered. All seventeen output-presence baselines and three original
+file hashes/inventories are restored, including the native-check binary. Copied
+assets with old file timestamps are proven against their unchanged source bytes
+before cleanup. Primary parallel work and read-only reference resources remain.
+The exact private root is retained only until its verified evidence archive and
+remote-delivery check; its final retirement receipt follows here. Continue with
+the captured notification/model-menu overlap after this delivery.
 
 ### Notification history and current action focus
 

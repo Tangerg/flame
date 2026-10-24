@@ -12,6 +12,8 @@ import {
 import { focusComposer } from "@/features/composer/public/focus";
 import { ChatStream } from "@/features/shell/workbench/panel/ChatStream";
 import { ContentVisibility } from "@/ui/index";
+import { AgentAppShell } from "@/ui/agent/index";
+import { COMPOSER_OVERLAY_PROPERTY } from "@/features/shell/workbench/panel/composerOverlay";
 
 const material = vi.hoisted(() => ({ rows: [] as TranscriptRow[] }));
 
@@ -76,12 +78,24 @@ function questionRow(itemId: string): TranscriptRow {
 
 function Harness({ visible = true }: { visible?: boolean }) {
   return (
-    <>
-      <button>Later control</button>
-      <ContentVisibility visible={visible}>
-        <ChatStream onSend={() => true} />
-      </ContentVisibility>
-    </>
+    <AgentAppShell
+      sidebarLabel="Navigation"
+      sidebarResizeLabel="Resize navigation"
+      sidebarOpen={false}
+      sidebarWidth={275}
+      onResize={() => undefined}
+      onSidebarToggle={() => undefined}
+      sidebarExpandLabel="Expand navigation"
+      sidebarCollapseLabel="Collapse navigation"
+      main={
+        <>
+          <button>Later control</button>
+          <ContentVisibility visible={visible}>
+            <ChatStream onSend={() => true} />
+          </ContentVisibility>
+        </>
+      }
+    />
   );
 }
 
@@ -112,6 +126,128 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+function measureStream() {
+  const observers: TestResizeObserver[] = [];
+  class TestResizeObserver {
+    readonly nodes = new Set<Element>();
+    active = true;
+    constructor(private readonly callback: ResizeObserverCallback) {
+      observers.push(this);
+    }
+    observe(node: Element) {
+      this.nodes.add(node);
+    }
+    unobserve(node: Element) {
+      this.nodes.delete(node);
+    }
+    disconnect() {
+      this.active = false;
+    }
+    notify(entries: ResizeObserverEntry[] = []) {
+      act(() => this.callback(entries, this as unknown as ResizeObserver));
+    }
+  }
+  vi.stubGlobal("ResizeObserver", TestResizeObserver);
+  vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(600);
+  return (input: Element) => {
+    const observer = observers.find(
+      (entry) => entry.active && [...entry.nodes].filter((node) => node.contains(input)).length > 1,
+    )!;
+    expect(observer).toBeTruthy();
+    const ancestors = [...observer.nodes].filter((node) => node.contains(input));
+    const layout = ancestors.find((node) => ancestors.every((other) => node.contains(other)))!;
+    const overlay = ancestors.find(
+      (node) => !ancestors.some((other) => other !== node && node.contains(other)),
+    )!;
+    const jump = [...observer.nodes].find(
+      (node) => !node.contains(input) && node.querySelector('[aria-label="Jump to bottom"]'),
+    );
+    return { observer, layout, overlay, jump };
+  };
+}
+
+function measuredRect(node: Element, top: number, bottom: number) {
+  return vi
+    .spyOn(node, "getBoundingClientRect")
+    .mockReturnValue(new DOMRect(0, top, 600, bottom - top));
+}
+
+describe("ChatStream notification space", () => {
+  it("publishes space outside the composer and jump control, then retires hidden measurements", () => {
+    const measured = measureStream();
+    const view = mount();
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const shell = view.container.querySelector<HTMLElement>(".agent-shell")!;
+    expect(shell.style.getPropertyValue("--notification-top")).not.toBe("");
+    const { observer, layout, overlay, jump } = measured(draft);
+    expect(jump).toBeTruthy();
+    measuredRect(layout, 46, 600);
+    const overlayRect = measuredRect(overlay, 460, 600);
+    const jumpRect = measuredRect(jump!, 420, 452);
+    act(() => {
+      draft.focus();
+      draft.setSelectionRange(5, 10);
+    });
+    observer.notify();
+
+    expect(shell.style.getPropertyValue("--notification-top")).toBe("46px");
+    expect(shell.style.getPropertyValue("--notification-bottom")).toBe("180px");
+    const pane = view.container.querySelector<HTMLElement>('[style*="--composer-overlay:"]')!;
+    expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("140px");
+
+    overlayRect.mockReturnValue(new DOMRect(0, 300, 600, 300));
+    jumpRect.mockReturnValue(new DOMRect(0, 260, 600, 32));
+    observer.notify();
+    expect(shell.style.getPropertyValue("--notification-bottom")).toBe("340px");
+    expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("300px");
+    expect(document.activeElement).toBe(draft);
+    expect([draft.selectionStart, draft.selectionEnd]).toEqual([5, 10]);
+
+    view.showRows([userRow()], false);
+    expect(shell.style.getPropertyValue("--notification-top")).toBe("");
+    expect(shell.style.getPropertyValue("--notification-bottom")).toBe("");
+    expect(pane.style.getPropertyValue(COMPOSER_OVERLAY_PROPERTY)).toBe("");
+
+    view.showRows([userRow()]);
+    expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
+    expect(draft.value).toBe("Keep this authored draft");
+    expect(shell.style.getPropertyValue("--notification-bottom")).toBe("340px");
+    view.unmount();
+    expect(shell.style.getPropertyValue("--notification-top")).toBe("");
+    expect(shell.style.getPropertyValue("--notification-bottom")).toBe("");
+  });
+
+  it("follows a centered composer's scrolling position and sibling layout changes", () => {
+    material.rows = [];
+    const measured = measureStream();
+    const view = mount();
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const shell = view.container.querySelector<HTMLElement>(".agent-shell")!;
+    const { observer, layout, overlay } = measured(draft);
+    measuredRect(layout, 46, 600);
+    const overlayRect = measuredRect(overlay, 200, 300);
+    observer.notify();
+    expect(shell.style.getPropertyValue("--notification-top")).toBe("300px");
+    expect(shell.style.getPropertyValue("--notification-bottom")).toBe("0px");
+
+    overlayRect.mockReturnValue(new DOMRect(0, 420, 600, 100));
+    const scroller = view.container.querySelector('[data-slot="empty-conversation-layout"]')!;
+    expect(scroller).not.toBe(layout);
+    fireEvent.scroll(scroller, { bubbles: false });
+    expect(shell.style.getPropertyValue("--notification-top")).toBe("46px");
+    expect(shell.style.getPropertyValue("--notification-bottom")).toBe("180px");
+
+    overlayRect.mockReturnValue(new DOMRect(0, 160, 600, 100));
+    const heading = [...observer.nodes].find((node) => node.querySelector("h2"))!;
+    observer.notify([{ target: heading } as ResizeObserverEntry]);
+    expect(shell.style.getPropertyValue("--notification-top")).toBe("260px");
+    expect(shell.style.getPropertyValue("--notification-bottom")).toBe("0px");
+    expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
+    expect(draft.value).toBe("Keep this authored draft");
+  });
 });
 
 describe("ChatStream composer lifetime", () => {
