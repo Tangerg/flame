@@ -522,6 +522,7 @@ export const de: Record<string, string> = {
   "question.action.next": "Nächste Frage",
   "question.action.skip": "Überspringen",
   "question.action.advance": "Weiter",
+  "question.action.submit": "Antworten senden",
   "question.settled.asked": "Gefragt",
   "question.settled.question_one": "{{count}} Frage",
   "question.settled.question_other": "{{count}} Fragen",

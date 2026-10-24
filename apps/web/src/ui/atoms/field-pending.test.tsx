@@ -31,35 +31,39 @@ describe("field pending", () => {
     expect(field.getAttribute("aria-disabled")).toBeNull();
   });
 
-  it("keeps a choice list focusable and refuses a second answer while pending", () => {
-    const onValueChange = vi.fn();
-    render(
-      <ChoiceList
-        multiple={false}
-        value={["a"]}
-        values={["a", "b"]}
-        labelledBy="q"
-        pending
-        onValueChange={onValueChange}
-      >
-        <ChoiceOption
+  it.each([{ value: ["a"] }, { value: [] }])(
+    "keeps a pending choice list immutable with initial $value",
+    ({ value }) => {
+      const onValueChange = vi.fn();
+      render(
+        <ChoiceList
           multiple={false}
-          value="b"
-          selected={false}
-          ordinal={2}
-          label="Second"
+          value={value}
+          values={["a", "b"]}
+          labelledBy="q"
           pending
+          onValueChange={onValueChange}
         >
-          Second
-        </ChoiceOption>
-      </ChoiceList>,
-    );
+          <ChoiceOption
+            multiple={false}
+            value="b"
+            selected={false}
+            ordinal={2}
+            label="Second"
+            pending
+          >
+            Second
+          </ChoiceOption>
+        </ChoiceList>,
+      );
 
-    const option = screen.getByRole("radio", { name: "Second" });
-    expect((option as HTMLButtonElement).disabled).toBe(false);
-    expect(option.getAttribute("aria-disabled")).toBe("true");
+      const option = screen.getByRole("radio", { name: "Second" });
+      expect((option as HTMLButtonElement).disabled).toBe(false);
+      expect(option.getAttribute("aria-disabled")).toBe("true");
 
-    fireEvent.click(option);
-    expect(onValueChange).not.toHaveBeenCalled();
-  });
+      fireEvent.click(option);
+      expect(onValueChange).not.toHaveBeenCalled();
+      expect(option.getAttribute("aria-checked")).toBe("false");
+    },
+  );
 });

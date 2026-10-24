@@ -70,11 +70,26 @@ export function ChoiceList({
   children,
 }: ChoiceListProps) {
   const selectNumberedChoice = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (multiple || !numbered || !/^[1-9]$/.test(event.key)) return;
-    const selected = values[Number(event.key) - 1];
+    if (
+      multiple ||
+      !numbered ||
+      disabled ||
+      event.defaultPrevented ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      event.shiftKey ||
+      event.nativeEvent.isComposing ||
+      event.nativeEvent.keyCode === 229 ||
+      !/^[1-9]$/.test(event.key)
+    )
+      return;
+    const index = Number(event.key) - 1;
+    const selected = values[index];
     if (selected === undefined) return;
     event.preventDefault();
     onValueChange([selected]);
+    event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]')[index]?.focus();
   };
 
   const shared = {
@@ -96,8 +111,10 @@ export function ChoiceList({
   ) : (
     <RadioGroupPrimitive
       {...shared}
-      value={value[0]}
-      onValueChange={pending ? undefined : (selected) => onValueChange([selected])}
+      value={value[0] ?? null}
+      onValueChange={
+        pending ? undefined : (selected) => onValueChange(selected === null ? [] : [selected])
+      }
     >
       {children}
     </RadioGroupPrimitive>
@@ -114,7 +131,6 @@ interface ChoiceOptionProps {
   disabled?: boolean;
   pending?: boolean;
   busy?: boolean;
-  onReselect?: () => void;
   children: ReactNode;
 }
 
@@ -128,7 +144,6 @@ export function ChoiceOption({
   disabled,
   pending,
   busy,
-  onReselect,
   children,
 }: ChoiceOptionProps) {
   const className = ({ checked }: { checked: boolean }) =>
@@ -142,9 +157,6 @@ export function ChoiceOption({
     nativeButton: true,
     "aria-label": label,
     "aria-description": description || undefined,
-    onClick: () => {
-      if (!disabled && !pending && !multiple && selected) onReselect?.();
-    },
     render: <Pressable />,
   };
 

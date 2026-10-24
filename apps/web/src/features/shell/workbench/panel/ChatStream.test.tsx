@@ -11,6 +11,7 @@ import {
 } from "@/features/composer/public/draft";
 import { focusComposer } from "@/features/composer/public/focus";
 import { ChatStream } from "@/features/shell/workbench/panel/ChatStream";
+import { ContentVisibility } from "@/ui/index";
 
 const material = vi.hoisted(() => ({ rows: [] as TranscriptRow[] }));
 
@@ -73,11 +74,13 @@ function questionRow(itemId: string): TranscriptRow {
   };
 }
 
-function Harness() {
+function Harness({ visible = true }: { visible?: boolean }) {
   return (
     <>
       <button>Later control</button>
-      <ChatStream onSend={() => true} />
+      <ContentVisibility visible={visible}>
+        <ChatStream onSend={() => true} />
+      </ContentVisibility>
     </>
   );
 }
@@ -93,9 +96,9 @@ function mount() {
   });
   return {
     ...view,
-    showRows(rows: TranscriptRow[]) {
+    showRows(rows: TranscriptRow[], visible = true) {
       material.rows = rows;
-      view.rerender(<Harness />);
+      view.rerender(<Harness visible={visible} />);
     },
   };
 }
@@ -212,5 +215,81 @@ describe("ChatStream composer lifetime", () => {
     expect(
       screen.getByRole("checkbox", { name: "Visual suite" }).getAttribute("aria-checked"),
     ).toBe("false");
+  });
+});
+
+describe("ChatStream question focus handoff", () => {
+  function focusQuestion() {
+    const answer = screen.getByRole("checkbox", { name: "Visual suite" });
+    act(() => answer.focus());
+    expect(document.activeElement).toBe(answer);
+  }
+
+  beforeEach(() => {
+    material.rows = [userRow(), questionRow("question-1")];
+  });
+
+  it("moves focus from a retired question to the Composer that replaces it", () => {
+    const view = mount();
+    focusQuestion();
+
+    view.showRows([userRow()]);
+
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    expect(document.activeElement).toBe(draft);
+    expect(draft.value).toBe("Keep this authored draft");
+
+    act(() => draft.blur());
+    view.showRows([userRow()]);
+
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("keeps later outside focus when the question retires", () => {
+    const view = mount();
+    focusQuestion();
+    const outside = screen.getByRole("button", { name: "Later control" });
+    act(() => outside.focus());
+
+    view.showRows([userRow()]);
+
+    expect(document.activeElement).toBe(outside);
+  });
+
+  it("does not hand the old question's focus to another Session's Composer", () => {
+    mount();
+    focusQuestion();
+
+    act(() => {
+      material.rows = [userRow()];
+      selectAgentSession("other-session");
+    });
+
+    expect(screen.getByRole("textbox", { name: "Message composer" })).toBeTruthy();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("does not move focus into hidden content or replay it on reveal", () => {
+    const view = mount();
+    focusQuestion();
+
+    view.showRows([userRow()], false);
+    expect(document.activeElement).toBe(document.body);
+
+    view.showRows([userRow()]);
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("retires hidden question focus even while the question stays pending", () => {
+    const view = mount();
+    focusQuestion();
+    const answer = screen.getByRole("checkbox", { name: "Visual suite" });
+
+    view.showRows([userRow(), questionRow("question-1")], false);
+    act(() => answer.blur());
+    view.showRows([userRow(), questionRow("question-1")]);
+    view.showRows([userRow()]);
+
+    expect(document.activeElement).toBe(document.body);
   });
 });

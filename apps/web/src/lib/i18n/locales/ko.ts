@@ -500,6 +500,7 @@ export const ko: Record<string, string> = {
   "question.action.next": "다음 질문",
   "question.action.skip": "건너뛰기",
   "question.action.advance": "다음",
+  "question.action.submit": "답변 제출",
   "question.settled.asked": "질문함",
   "question.settled.question_other": "질문 {{count}}개",
   "question.settled.noAnswer": "답변 없음",

@@ -161,7 +161,7 @@ export function QuestionCard({
   const [questionIndex, setQuestionIndex] = useState(0);
   const [settledOpen, setSettledOpen] = useState(false);
   const requestRef = useRef<HTMLDivElement>(null);
-  const focusQuestionOnChange = useRef(false);
+  const questionFocusIntent = useRef<{ origin: Element | null } | null>(null);
   const activeQuestionRef = useRef<HTMLDivElement>(null);
   const composition = useCompositionCommitGuard();
   const actions = useQuestionCardActions({ sessionId, resumeRunId, itemId, questions, draft });
@@ -171,24 +171,39 @@ export function QuestionCard({
   const activeQuestionComplete = activeQuestion
     ? questionDraftComplete([activeQuestion], [activeDraft])
     : false;
+  const explicitFreeform = activeDraft.text.trim().length > 0;
   const isLastQuestion = activeIndex >= questions.length - 1;
 
   useLayoutEffect(() => {
-    if (!focusQuestionOnChange.current) {
+    const intent = questionFocusIntent.current;
+    if (!intent) {
       requestRef.current?.focus();
       return;
     }
-    focusQuestionOnChange.current = false;
-    activeQuestionRef.current
-      ?.querySelector<HTMLElement>('[role="radio"], [role="checkbox"], textarea, input')
-      ?.focus();
+    questionFocusIntent.current = null;
+    const question = activeQuestionRef.current;
+    let cancelled = false;
+    // Let composite items publish their roving indexes before moving page focus.
+    queueMicrotask(() => {
+      const active = document.activeElement;
+      const ownsFocus =
+        active === intent.origin || (!intent.origin?.isConnected && active === document.body);
+      if (cancelled || !question?.isConnected || !ownsFocus) return;
+      const target =
+        question.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]') ??
+        question.querySelector<HTMLElement>('[role="radio"], [role="checkbox"], textarea, input');
+      target?.focus();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [activeIndex]);
 
   const navigateQuestion = (nextIndex: number) => {
     const bounded = Math.min(Math.max(nextIndex, 0), Math.max(questions.length - 1, 0));
     if (bounded === activeIndex) return;
     composition.reset();
-    focusQuestionOnChange.current = true;
+    questionFocusIntent.current = { origin: document.activeElement };
     setQuestionIndex(bounded);
   };
 
@@ -237,13 +252,12 @@ export function QuestionCard({
     );
   }
 
+  const actionsBlocked = actions.disabled || !runtimeAvailable;
+
   const submitOrAdvance = (nextDraft: QuestionDraft) => {
     setDraft(nextDraft);
-    if (isLastQuestion) {
-      if (runtimeAvailable && !actions.disabled) actions.submit(nextDraft);
-      return;
-    }
-    navigateQuestion(activeIndex + 1);
+    if (isLastQuestion) actions.submit(nextDraft);
+    else navigateQuestion(activeIndex + 1);
   };
 
   const selectOptions = (
@@ -251,21 +265,16 @@ export function QuestionCard({
     selected: string[],
   ) => {
     if (!runtimeAvailable || actions.pending) return;
-    const nextDraft = setQuestionOptions(draft, activeIndex, question, selected);
-    if (question.multiple) {
-      setDraft(nextDraft);
-      return;
-    }
-    submitOrAdvance(nextDraft);
+    setDraft((previous) => setQuestionOptions(previous, activeIndex, question, selected));
   };
 
   const skipCurrent = () => {
-    if (!runtimeAvailable || actions.pending) return;
+    if (actionsBlocked) return;
     submitOrAdvance(clearQuestionAnswer(draft, activeIndex));
   };
 
-  const advanceCurrent = () => {
-    if (!runtimeAvailable || actions.pending) return;
+  const confirmCurrent = () => {
+    if (actionsBlocked || !activeQuestionComplete) return;
     submitOrAdvance(draft);
   };
 
@@ -300,18 +309,12 @@ export function QuestionCard({
       return;
     }
     event.preventDefault();
-    if (activeQuestionComplete) advanceCurrent();
-    else skipCurrent();
+    if (explicitFreeform) confirmCurrent();
   };
 
   if (!activeQuestion) return null;
 
   const promptId = `${questionCardId}-prompt-${activeIndex}`;
-  const isSingleChoice = activeQuestion.type === "choice" && !activeQuestion.multiple;
-  const explicitFreeform = activeDraft.text.trim().length > 0;
-  const explicitMultiChoice =
-    activeQuestion.type === "choice" && activeQuestion.multiple && activeDraft.selected.length > 0;
-  const actionSkips = isSingleChoice || (!explicitFreeform && !explicitMultiChoice);
 
   return (
     <Surface
@@ -384,7 +387,6 @@ export function QuestionCard({
                     description={option.description}
                     disabled={!runtimeAvailable}
                     pending={actions.pending}
-                    onReselect={() => selectOptions(activeQuestion, [option.label])}
                   >
                     <span {...stylex.props(qc.optionLine)}>
                       <span {...stylex.props(qc.optionLabel, typeStep.uiMd)}>{label}</span>
@@ -463,13 +465,16 @@ export function QuestionCard({
         </div>
       </div>
       <div {...stylex.props(ms.cardActions, qc.footerShrink)}>
+        <Button variant="outline" size="sm" disabled={actionsBlocked} onClick={skipCurrent}>
+          {t("question.action.skip")}
+        </Button>
         <Button
-          variant={actionSkips ? "outline" : "primary"}
+          variant="primary"
           size="sm"
-          disabled={actions.disabled || !runtimeAvailable}
-          onClick={actionSkips ? skipCurrent : advanceCurrent}
+          disabled={actionsBlocked || !activeQuestionComplete}
+          onClick={confirmCurrent}
         >
-          {t(actionSkips ? "question.action.skip" : "question.action.advance")}
+          {t(isLastQuestion ? "question.action.submit" : "question.action.advance")}
         </Button>
       </div>
     </Surface>

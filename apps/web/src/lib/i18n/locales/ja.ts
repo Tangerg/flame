@@ -502,6 +502,7 @@ export const ja: Record<string, string> = {
   "question.action.next": "次の質問",
   "question.action.skip": "スキップ",
   "question.action.advance": "次へ",
+  "question.action.submit": "回答を送信",
   "question.settled.asked": "質問済み",
   "question.settled.question_other": "{{count}} 件の質問",
   "question.settled.noAnswer": "回答なし",

@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Session identity now offers a visible keyboard menu beside its heading, preserving the existing right-click actions and clipboard boundary. The batch starts from synchronized remote main `5602c6382`. All 119 focused tests pass. The aggregate Web command retains one Memory MCP-readiness failure (3,314 pass); its complete 49-test file passes in isolation, all 25 non-test gates pass, and the supported native check passes. Actual English/light/14 px/Orange and Chinese/dark/18 px/custom-blue flows qualify menu entry/return, long-title retreat, file reading/return and continued drafts at a 320 px Dock and native 200%. Owned processes and new checkout/Library outputs are cleaned; all three preexisting output files retain their original bytes. Implementation `36dff4086` is pushed to remote main and its exact hash is verified. The private evidence root is archived and removed.
+Updated: 2026-10-24. Question choices now stay editable until explicit Next / Submit answers. Empty radio selections remain controlled, selected-question return retains its Tab entry, and acknowledgement focuses the replacement Composer with its prior draft intact. The owned branch is synchronized to remote main `08daa7a7c`. All 45 focused tests, the complete Web check (398 files / 3,333 tests plus 25 non-test gates), supported native check and actual English/Chinese native task flows pass. Native acceptance covers a 320 px Dock, 18 px Chinese long content, 200% full-pane file return and continued drafts. Owned native processes and new checkout/Library outputs are cleaned; all three preexisting output files retain their original bytes. Explicit-path main integration and private evidence retirement are next.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user's latest instruction requests timely main synchronization within the resumed continuous goal. This Session-identity batch starts from delivered remote main `5602c6382d2fdc786cf0147d22a2ac99264ff470`; repeated fetches through delivery preparation find no newer remote commit. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/session-identity-keyboard-1024`. At the read-only primary checkpoint, `/Users/tangerg/Desktop/flame` is on `codex/ownership-deep-review` at `f28598e391bd694d8ba4451435c58ff747c9bb81`: its exact remote branch matches, with two commits absent from main and no unpushed commits. Its untracked `docs/ui打磨优化.md` is user-owned and untouched. Delivery updates remote main from this verified feature HEAD without changing those parallel files or branch. One caller-owned action list supplies both Session menus; existing visibility and focus owners remain authoritative. Four material-modal tests precisely expect the new first tabbable fallback. Focused, actual English/Chinese native acceptance, the isolated failed Web file, all 25 non-test Web gates and supported native check pass; the initial aggregate retains one unclassified MCP-readiness failure. All 5,722 accepted non-Markdown inputs, eleven plugin resources and sixteen private inputs remain unchanged. Four owned CLI/native PIDs are dead, seven new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. Implementation `36dff40864fa8b4d1aa8f7a1dc7def11c53fa43e` is pushed to remote main; its exact remote hash, clean owned checkout and zero unpushed commits are verified before this receipt. The private evidence root is archived and removed. The retained session archive contains 157 UTF-8 evidence files and 7 screenshot hashes, with gzip SHA-256 `d9a16bece98ddf1d61aa7fea771d807186ddbde9f984bbd742be47ef5596cf82`. Next, inspect remaining recorded-material and management paths, selecting only a new evidenced defect.
+The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/question-navigation-1024`. At the user's latest synchronization request it fast-forwarded from delivered main `a2a6ba1d4` to `08daa7a7cf5a8a1ea1954717c46fbcb6688aa688`, preserving all fourteen active paths without conflict. The primary checkout and its user-owned work remain outside this batch. Question selection, page-focus registration, empty controlled values and question-to-Composer focus now each have one responsible owner. Focused regressions, complete Web gates, supported native build and main-synchronized English/Chinese native tasks pass. All 5,723 accepted non-Markdown source inputs, eleven plugin resources and nineteen private inputs retain their accepted bytes. Nine owned CLI/native PIDs are dead; seven new checkout directories and six unique Library Cache/WebKit directories are removed, all bundles are unregistered, and three preexisting output files retain their original bytes. The accepted private evidence root remains only until explicit-path main integration and guarded archival are complete. Continue from the resulting main revision and select the next batch only from a new evidenced defect.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -1962,6 +1962,163 @@ system. Better-writing guidance favors the existing localized action over an
 indefinite loading signal; better-accessibility/layout review retains Base UI's
 keyboard/focus behavior, shared chip sizing, semantic surfaces and Orange/custom
 accent roles. Static Ace references supply no selection or focus evidence.
+
+## Question review and confirmation
+
+The native baseline at `a2a6ba1d4` exposed a task interruption: ArrowDown in the
+first radio question immediately advanced to the text question. `QuestionCard`
+routed a draft selection into `submitOrAdvance`, so reviewing a choice could
+change context or submit the final answer. This batch intentionally makes pointer,
+arrow and numbered selection draft-only. Every active question exposes Skip and
+an explicit primary Next / Submit answers action. Empty Enter in a custom answer
+field does not silently skip or submit. Existing nonempty Enter, composition,
+modified-key, command admission, pending and recovery owners remain.
+
+The user requested another synchronization during acceptance. The owned branch
+fast-forwarded from `a2a6ba1d4` to remote main `08daa7a7c`, integrating four commits
+across thirteen paths without conflicts or changing the fourteen active paths.
+The accepted English/Chinese native hosts were rebuilt against that main. The
+primary checkout and its user-owned work were not edited or staged.
+
+Ownership and implementation:
+
+- `QuestionCard.tsx:263` updates only the existing draft. `:276` confirms complete
+  active answers, and `:468` presents both actions. The last-page label is added
+  in all eight existing locale catalogs. Removing the sole `onReselect` consumer
+  also removes that obsolete ChoiceOption API; no duplicate click transition remains.
+- `ui/atoms/choice-list.tsx:72` keeps numbered navigation in its existing shared
+  handler, scopes it to enabled, unprevented, unmodified, noncomposing keys and
+  focuses the selected radio. `:114` projects an empty single selection as `null`,
+  preserving controlledness from the first render. Installed Base UI's
+  `useControlled` fixes controlledness at mount; passing `undefined` for `[]`
+  had allowed a skipped/custom answer or an initially empty pending control to
+  retain or originate its own selection. The adapter maps nullable changes back
+  to the sole array draft owner.
+- `QuestionCard.tsx:177` schedules one cancellable microtask after the composite
+  items register, choosing the checked radio before the first input. Explicit
+  navigation captures its originating element (`:206`); the handoff runs only
+  while that origin still owns focus or its removal has left body focused.
+  Later outside focus wins. There is no timer, retry or manual roving-tabindex override.
+- `ChatStream.tsx:155` owns question-to-Composer replacement focus. Its existing
+  pane captures focus only within the visible question overlay. One scoped
+  record is consumed after the replacement input registers through its existing
+  public focus port. Connected/later focus, another Session and hidden content
+  suppress recovery; hiding clears the record even while the question remains
+  pending. No question answer, draft, command or Runtime lifecycle has another owner.
+
+[APG radio guidance](https://www.w3.org/WAI/ARIA/apg/patterns/radio/) keeps arrows
+within the radio group. [WCAG 3.2.2](https://www.w3.org/WAI/WCAG22/Understanding/on-input.html)
+supports predictable input without an unexpected context change. Flame keeps its
+existing [Base UI RadioGroup](https://base-ui.com/react/components/radio-group)
+and explicit task actions. Read-only ZCode `packages/ui/src/ElicitationDialog.tsx:605`
+distinguishes option navigation from continuation; its custom Tab trapping is
+not copied. HeroUI's actual `apps/docs/src/demos/en/radio-group/validation.tsx`
+separates fields from Form submission. ZCode's `ask-question.tsx` is a recorded
+result renderer, and ChatGPT filename hits are icons; neither establishes active
+keyboard behavior. Earlier visual/reference research above remains applicable.
+
+| Severity | Location                   | Before                                                                           | After                                                                                 | Reason                                     |
+| -------- | -------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------ |
+| HIGH     | QuestionCard selection     | Arrow/pointer selection changes question or submits.                             | Selection stays editable until explicit confirmation.                                 | WCAG 3.2.2, predictable input.             |
+| HIGH     | ChoiceList empty selection | An undefined value permits a second selection owner.                             | Null keeps the primitive controlled, including pending empty values.                  | One draft authority; UI and payload agree. |
+| HIGH     | Question page return       | Focus can target an unchecked item or leave every radio outside Tab order.       | Registration completes, then selected radio receives focus and remains the Tab entry. | WCAG 2.4.3, coherent focus order.          |
+| HIGH     | ChatStream replacement     | Answer acknowledgement removes the focused card and leaves body focused.         | The replacement Composer receives focus with its prior draft intact.                  | WCAG 2.4.3, task continuation.             |
+| MEDIUM   | Numbered shortcut          | A changed radio need not receive focus; modified/composing keys can be consumed. | Unmodified direct selection moves focus; other keys retain their owner.               | APG radio focus/selection relationship.    |
+
+The better-accessibility review is **Approve within this scope**. The better-ui,
+better-layout, better-typography and better-writing passes find no further
+required change in the inspected task: existing spacing, surfaces, radii,
+semantic theme tokens, option wrapping, hierarchy and focus styles supply both
+native scenes. No animation values or new decorative treatment are introduced.
+A 10% animation replay, VoiceOver speech, OS IME, RTL, the other six locale UIs
+and other platforms are not exercised; synthetic IME/modifier regressions pass.
+
+Verification and rejected candidates:
+
+- The baseline four-file suite passes 23 tests (2.94 s). Final focused coverage
+  passes 45 tests in five files (3.88 s), typecheck (1.40 s) and lint (0.35 s).
+  It uses actual question/list controls and focus registration, with external
+  command/service boundaries isolated. The original QuestionCard fails 15 / passes
+  6 (2.87 s); restoring the original ChoiceList fails 7 / passes 14 (2.97 s).
+  The original ChatStream fails 1 / passes 8 (1.78 s). Accepted bytes are restored.
+- Native inspection exposed unchecked-target return, then all-radio `tabIndex=-1`
+  after selection-target-only focus. Reentry fails 1 / passes 18 (2.40 s);
+  changing only layout to passive effect still fails (1 / 18, 1.76 s). The first
+  microtask candidate passes reentry but fails later-outside-focus ownership
+  (1 / 19, 2.71 s). Capturing origin at explicit navigation repairs that boundary.
+- The host review adds a hidden-but-still-pending regression (1 / 8, 2.21 s before
+  correction). Empty controlledness regressions fail 2 / pass 24 (2.60 s) before
+  the null projection. These failures remain evidence, rather than claimed passes.
+- Two bounded Claude Code CLI invocations implement the permitted question/list/
+  locale and host portions: 152.99 s / 32 reported turns and 112.52 s / 23 turns,
+  both with no permission denials. Each configured max-turn argument is 24;
+  reported turns are recorded separately. Only Read/Glob/Grep/Edit/Write are
+  enabled. The primary reviews, adds the ownership regressions, corrects the
+  shared handler/focus/empty-control cases and independently verifies the result.
+
+Actual Wails acceptance uses private FLAME_HOME, production native hosts, assets
+and deterministic canonical providers. A passive five-part observer reads focus,
+radio state/tab order, actions, drafts/carets, response and viewport. It never
+changes focus or business state. Private Chinese source text supplies long CJK
+questions/options, and each locale seeds a prior draft at the existing store's
+owner. These are harness-only changes; no debug route or provider is committed.
+
+- English/light/14 px/Flame Orange, 1440 × 900, keyboard-resized 320 px Dock:
+  Skip → Back has no checked radio and a disabled Next; numeric/arrow selection
+  stays on page 1. Explicit Next enters page 2; empty Enter stays there. Previous
+  returns to checked Visual suite, Tab reaches Skip and Shift+Tab reenters the
+  same checked radio with tabIndex 0. Revising to Race detector preserves the
+  other answer and exact final payload. Acknowledgement automatically focuses
+  the new Composer with `Draft before question.` still intact. Answer record →
+  canonical eight-line file reader → selected file return → continued original
+  Composer ends with `Draft before question. Continued. Returned.` and caret 43.
+- Chinese/dark/18 px/custom blue `#007BFF`, system Move & Resize → Left:
+  settled actual-size viewport is 1122 × 1051. Twenty individually observed native
+  Zoom In commands reach 561 × 525 at 200%. Long prompt/options wrap, both actions
+  remain visible, pointer/arrow/numeric choice remains a draft, and empty Enter
+  does not submit. Opening full-pane Files hides the same answer textarea without
+  losing its 24-character draft. Keyboard file read → selected tree return → Close
+  returns to Conversation; the same question textarea is visible with its value
+  intact. Previous/Tab reentry restores the checked radio, revision preserves the
+  text answer, and explicit Submit answers focuses the new Composer with
+  `提问前保留的草稿。`. Its continued draft survives Actual Size and ends as
+  `提问前保留的草稿。 继续核对。 已返回。`, same input and caret 20.
+
+The final main-synchronized acceptance qualifies 40 complete AX captures, exact
+response payloads, retained input identities, selected returns and twenty zoom
+commands. Appends explicitly move the caret to the end: Tab traversal reset the
+stored caret in some captures, so this is not a claim of caret retention across
+navigation. The first system-resize capture is transitional (1327 × 954); the
+separate settled capture controls acceptance. Earlier failed candidate captures
+are retained and excluded from final pass claims. The initial private build used
+a relative script path against run.py's repo cwd and failed before compilation;
+the corrected absolute invocation passes. The initial single observer text was
+AX-truncated and its disabled projection omitted aria-disabled; final reports
+are split and include both. A runtime/build log-name collision was fixed in the
+private launcher. No production fix is inferred from those harness corrections.
+The canonical in-memory Run stays waiting and Send remains disabled: continued
+text proves authoring, not a live provider Send or full Runtime recovery lifecycle.
+
+The complete main-synchronized Web command passes all 398 files / 3,333 tests
+(196.06 s test duration, 230.06 s whole command) and all 25 non-test gates,
+including resource comparisons, bundle and module checks. Supported
+`make check-native` passes in 24.27 s, serially after the Web check and with
+all native apps closed. Duplicate `-lobjc` linker warnings are non-failing.
+Earlier Session-identity MCP-readiness failures remain qualified in their own
+section; this passing run does not establish their cause. No standalone Runtime
+or CLI suite, browser visual suite or performance benchmark is run for this batch.
+
+All 5,723 accepted non-Markdown inputs, eleven installed plugin resources and
+nineteen private inputs retain their accepted hashes. The additional source is
+main's new `tooling/npm-consumer-lock.mjs`. Nine owned CLI/native PIDs are dead.
+Path, UID, birth-time, symlink and tracked-file guards remove seven new checkout
+output/cache directories and six unique Library Cache/WebKit directories;
+three exact bundles are unregistered. Four copied outputs with older birth times
+match their exact source bytes. The preexisting native-check executable is restored,
+and both preexisting shared-UI cache files retain their original bytes. No user
+primary files, dependencies, shared compiler/package caches or reference resources
+are cleaned. Explicit-path commit/push, exact-main verification and guarded
+private-root archival follow before the delivery receipt.
 
 ## Captured Session naming task
 

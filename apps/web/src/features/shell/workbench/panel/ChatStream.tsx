@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { tupleKey } from "@/lib/tupleKey";
 import { type AgentInput } from "@/features/agent/public/input";
-import { memo, useLayoutEffect, useMemo, useRef } from "react";
+import { type FocusEvent, memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useActiveConversationRows } from "@/features/agent/public/conversation";
 import { useActiveSessionId } from "@/features/agent/public/session";
 import { Slot } from "@/extensions/host/Slot";
@@ -10,6 +10,7 @@ import {
   useToggleWorkspaceTool,
 } from "@/features/workspace/public/navigation";
 import { useStreamRevealStore } from "@/features/chat/public/message/streamReveal";
+import { focusComposer } from "@/features/composer/public/focus";
 import { ChatErrorBoundary } from "@/features/shell/workbench/panel/ChatErrorBoundary";
 import { ComposerSurface } from "@/features/shell/workbench/panel/ComposerSurface";
 import { FloatingComposer } from "@/features/shell/workbench/panel/FloatingComposer";
@@ -150,8 +151,45 @@ export function ChatStream({ onSend }: Props) {
     };
   }, [started, visible]);
 
+  // Only this host survives the question-to-Composer replacement.
+  const questionFocusRef = useRef<{ element: Element; sessionId: string } | null>(null);
+  const questionPending = pendingQuestion !== null;
+
+  const rememberQuestionFocus = (event: FocusEvent) => {
+    questionFocusRef.current =
+      visible && questionPending && composerOverlayRef.current?.contains(event.target)
+        ? { element: event.target, sessionId }
+        : null;
+  };
+
+  const forgetQuestionFocus = (event: FocusEvent) => {
+    const next = event.relatedTarget;
+    if (next && !composerOverlayRef.current?.contains(next)) questionFocusRef.current = null;
+  };
+
+  // Passive so it runs after the new Composer input registers its focus target.
+  useEffect(() => {
+    const handoff = questionFocusRef.current;
+    if (!handoff) return;
+    if (!visible || handoff.sessionId !== sessionId) {
+      questionFocusRef.current = null;
+      return;
+    }
+    if (questionPending) return;
+    questionFocusRef.current = null;
+    if (handoff.element.isConnected || document.activeElement !== document.body) {
+      return;
+    }
+    focusComposer();
+  }, [questionPending, sessionId, visible]);
+
   return (
-    <div ref={paneRef} {...stylex.props(sh.paneAnchored, cst.queryable)}>
+    <div
+      ref={paneRef}
+      onFocusCapture={rememberQuestionFocus}
+      onBlurCapture={forgetQuestionFocus}
+      {...stylex.props(sh.paneAnchored, cst.queryable)}
+    >
       <ChatBanners sessionId={sessionId} />
       <div {...stylex.props(sh.paneAnchored, !started && cst.empty)}>
         {started && (

@@ -528,6 +528,7 @@ export const es: Record<string, string> = {
   "question.action.next": "Pregunta siguiente",
   "question.action.skip": "Omitir",
   "question.action.advance": "Siguiente",
+  "question.action.submit": "Enviar respuestas",
   "question.settled.asked": "Preguntó",
   "question.settled.question_one": "{{count}} pregunta",
   "question.settled.question_many": "{{count}} de preguntas",
