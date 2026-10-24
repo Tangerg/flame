@@ -6,7 +6,7 @@ import {
   RpcConnectionError,
 } from "./errors";
 import { checkRequest, requestRequiresIdempotency } from "./request";
-import { projectJSON, stringifyJSON } from "./json";
+import { stringifyJSON } from "./json";
 import {
   MAXIMUM_RUN_EVENT_ID_CHARACTERS,
   PROBLEM_CODES,
@@ -32,6 +32,9 @@ import {
 } from "@flame/runtime-client/methods";
 import {
   isWireNotificationName,
+  projectMethodResult,
+  projectNotificationParams,
+  projectWire,
   validateMethodResult,
   validateNotificationParams,
   validateWire,
@@ -203,7 +206,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
         }
         let problem: ProblemData;
         try {
-          problem = projectJSON(payload.data) as ProblemData;
+          problem = projectWire("ProblemData", payload.data) as ProblemData;
         } catch (cause) {
           const error = new RpcProtocolError(
             `${entry.method} error`,
@@ -250,7 +253,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
             entry.exactJSON
               ? stringifyJSON(result, true)
               : wireMethodReturnsValue(entry.method)
-                ? projectJSON(result)
+                ? projectMethodResult(entry.method, result)
                 : undefined,
           );
         } catch (cause) {
@@ -274,7 +277,10 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       try {
         violations = validateNotificationParams(msg.method, msg.params);
         if (violations.length === 0)
-          params = projectJSON(msg.params) as WireNotificationParams[typeof msg.method];
+          params = projectNotificationParams(
+            msg.method,
+            msg.params,
+          ) as WireNotificationParams[typeof msg.method];
       } catch {
         violations = [
           { path: "$", detail: "number cannot be represented by the typed wire projection" },

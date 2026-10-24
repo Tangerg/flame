@@ -1060,6 +1060,16 @@ for await (const line of lines) {
     runtimeExecutable = join(environmentRoot, "flame-e2e");
     cliExecutable = join(environmentRoot, "flame-cli-e2e");
     await Promise.all([
+      execFileAsync(process.execPath, [
+        resolve(runtimeDirectory, "../tooling/node-companion.mjs"),
+        "--os",
+        process.platform === "win32" ? "windows" : process.platform,
+        "--arch",
+        process.arch === "x64" ? "amd64" : process.arch,
+        "--output",
+        environmentRoot,
+        "--offline",
+      ]),
       execFileAsync("go", ["build", "-o", runtimeExecutable, "./cmd/flame-runtime"], {
         cwd: runtimeDirectory,
       }),

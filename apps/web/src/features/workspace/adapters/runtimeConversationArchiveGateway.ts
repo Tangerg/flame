@@ -2,13 +2,14 @@ import { asSessionId, type FlameClient, type SessionArtifact } from "@flame/runt
 import { ConversationArchiveOwner } from "@/features/workspace/application/conversationExport";
 import { type ConversationArchiveGateway } from "@/features/workspace/application/ports/conversationArchiveGateway";
 import { browserFileTransfer } from "@/features/workspace/adapters/browserFileTransfer";
+import { prettyJSON } from "@/lib/json";
 function runtimeConversationArchiveGateway(client: FlameClient): ConversationArchiveGateway {
   return {
     async exportConversation(sessionId, format) {
       const response = await client.sessions.export(asSessionId(sessionId), format);
       if (format === "md" && response.markdown !== undefined) return response.markdown;
       if (format === "json" && response.artifact !== undefined) {
-        return JSON.stringify(response.artifact, null, 2);
+        return prettyJSON(response.artifact);
       }
       throw new Error(`runtime contract violation: sessions.export omitted its ${format} result`);
     },
@@ -16,7 +17,7 @@ function runtimeConversationArchiveGateway(client: FlameClient): ConversationArc
       const response = await client.sessions.exportTrajectory({
         sessionId: asSessionId(sessionId),
       });
-      return JSON.stringify(response.trajectory, null, 2);
+      return prettyJSON(response.trajectory);
     },
     async importConversation(artifact) {
       const { session } = await client.sessions.import(artifact as SessionArtifact);

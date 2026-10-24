@@ -38,10 +38,6 @@ function validateJSON(text: string): void {
   );
 }
 
-export function parseWireJSON(text: string): unknown {
-  return projectJSON(parseJSON(text));
-}
-
 // A feature owns arbitrary numeric ranges and receipt lexemes. Values that a
 // JS number cannot round-trip stay textual without expanding huge exponents.
 export class ExactNumber {
@@ -110,7 +106,8 @@ export function equalJSON(left: unknown, right: unknown): boolean {
 
 // A typed wire DTO promises JavaScript numbers. Exact query JSON retains the
 // received evidence; this projection refuses values the DTO cannot represent.
-export function projectJSON(value: unknown): unknown {
+export function projectNumber(value: unknown): number {
+  if (!isJSONNumber(value)) throw new TypeError("wire projection requires a JSON number");
   if (
     typeof value === "number" &&
     (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value)))
@@ -126,12 +123,12 @@ export function projectJSON(value: unknown): unknown {
       throw new RangeError("wire number is not exactly representable; consume exact query JSON");
     return projected;
   }
-  if (Array.isArray(value)) return value.map(projectJSON);
-  if (value !== null && typeof value === "object")
-    return Object.fromEntries(
-      Object.entries(value).map(([key, field]) => [key, projectJSON(field)]),
-    );
   return value;
+}
+
+// Structured cloning strips ExactNumber's encoding from captured JSON evidence.
+export function cloneJSON<T>(value: T): T {
+  return value === undefined ? value : (parseJSON(stringifyJSON(value)) as T);
 }
 
 export function parseJSON(text: string): unknown {

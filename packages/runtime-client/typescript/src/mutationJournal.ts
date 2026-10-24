@@ -1,3 +1,4 @@
+import { cloneJSON } from "./json";
 import {
   MutationJournalError,
   MutationJournalOwnershipError,
@@ -147,7 +148,7 @@ class MutationAuthority implements MutationJournal {
       .map((identity) => ({
         idempotencyKey: identity.entry.idempotencyKey,
         namespace: this.#journal.lookupNamespace(identity),
-        binding: structuredClone(identity.entry.installed!.route),
+        binding: cloneJSON(identity.entry.installed!.route),
         reserve: () => {
           this.#assertCurrent();
           if (this.#claims.has(identity.entry.idempotencyKey))
@@ -174,7 +175,7 @@ class MutationAuthority implements MutationJournal {
       throw new MutationJournalOwnershipError("plugin command intent is already being prepared");
     this.#preparing.add(intent);
     try {
-      const preparedInput = structuredClone(input);
+      const preparedInput = cloneJSON(input);
       let captured = this.#journal.findPluginCommand(intent, preparedInput, (key) =>
         this.#claims.has(key),
       );
@@ -198,7 +199,7 @@ class MutationAuthority implements MutationJournal {
       .pendingCommands()
       .filter((identity) => !this.#claims.has(identity.entry.idempotencyKey))
       .map((identity) => ({
-        ...structuredClone(identity.entry.command!),
+        ...cloneJSON(identity.entry.command!),
         idempotencyKey: identity.entry.idempotencyKey,
         namespace: this.#journal.lookupNamespace(identity),
         steerItemId: identity.entry.steerItemId,
@@ -248,7 +249,7 @@ class MutationAuthority implements MutationJournal {
         this.#journal.bindSteerItem(identity, userItemId);
       },
       get requestMeta() {
-        return structuredClone(identity.entry.command?.requestMeta ?? null);
+        return cloneJSON(identity.entry.command?.requestMeta ?? null);
       },
       lookupNamespace: () => {
         this.#assertClaim(identity);
@@ -323,8 +324,8 @@ class MutationAuthority implements MutationJournal {
 export function createMutationJournal(options: MutationJournalOptions): MutationJournal {
   const values = new Map<string, unknown>();
   const storage = options.storage ?? {
-    get: (key: string) => structuredClone(values.get(key)),
-    set: (key: string, value: unknown) => void values.set(key, structuredClone(value)),
+    get: (key: string) => cloneJSON(values.get(key)),
+    set: (key: string, value: unknown) => void values.set(key, cloneJSON(value)),
     remove: (key: string) => void values.delete(key),
     keys: () => [...values.keys()],
   };

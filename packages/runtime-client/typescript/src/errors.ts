@@ -1,6 +1,6 @@
 import type { ProblemData } from "@flame/runtime-client/wire";
 import type { WireViolation } from "./validation/wireCheck";
-import { parseWireJSON } from "./json";
+import { isJSONNumber, parseJSON } from "./json";
 
 type ProblemOf<Type extends ProblemData["type"]> = Type extends `plugin:${string}/${string}`
   ? Extract<ProblemData, { type: `plugin:${string}/${string}` }>
@@ -91,8 +91,9 @@ interface TransportProblem {
 
 export function parseTransportProblem(text: string): TransportProblem | undefined {
   try {
-    const value = parseWireJSON(text);
-    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    const value = parseJSON(text);
+    if (!value || typeof value !== "object" || Array.isArray(value) || isJSONNumber(value))
+      return undefined;
     const fields = value as Record<string, unknown>;
     return {
       type: typeof fields.type === "string" ? fields.type : undefined,

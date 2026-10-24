@@ -1,9 +1,10 @@
 import { expect, it } from "vitest";
 import { createFlameClient } from "./sdk";
 import { createHttpTransport } from "./transports/http";
-import { parseJSON } from "./json";
+import { parseJSON, stringifyJSON } from "./json";
 import { maximum } from "./validation/wireCheck";
 import summary from "@flame/runtime-client/testing/samples/usageSummary.json";
+import server from "@flame/runtime-client/testing/samples/mcpServer.json";
 
 it("keeps original accounting numbers for archival queries and refuses lossy typed results", async () => {
   const value = JSON.stringify({ ...summary, total: { inputTokens: "WIDE", costUsd: "DECIMAL" } })
@@ -43,4 +44,42 @@ it("validates exact machine bounds without rounding the bound", () => {
   expect(out).toEqual([]);
   check(parseJSON("9223372036854775808"), "$", out);
   expect(out).toHaveLength(1);
+});
+
+it("preserves opaque tool schemas while projecting declared DTO numbers", async () => {
+  const schema = '{"maximum":9223372036854775807,"multipleOf":1.0,"examples":[1e+25]}';
+  const tool = {
+    name: "read",
+    modelName: "example_read",
+    nameConflicts: [],
+    server: { origin: { type: "user" }, name: "example" },
+    inputSchema: "SCHEMA",
+  };
+  const client = createFlameClient(
+    createHttpTransport({
+      baseUrl: "http://host.test",
+      fetch: (async (_url, options) => {
+        const request = JSON.parse(options!.body as string) as { id: string; method: string };
+        const result =
+          request.method === "mcp.servers.list"
+            ? JSON.stringify({
+                data: [{ ...server, status: { type: "connected", toolCount: "COUNT" } }],
+                nextCursor: "",
+              }).replace('"COUNT"', "1.0")
+            : JSON.stringify({ data: [tool], nextCursor: "" }).replace('"SCHEMA"', schema);
+        return new Response(
+          '{"jsonrpc":"2.0","id":' + JSON.stringify(request.id) + ',"result":' + result + "}",
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }) as typeof fetch,
+    }),
+  );
+  try {
+    const result = await client.mcp.listTools();
+    expect(stringifyJSON(result.data[0]!.inputSchema)).toBe(schema);
+    const servers = await client.mcp.list();
+    expect(servers.data[0]!.status).toEqual({ type: "connected", toolCount: 1 });
+  } finally {
+    await client.close();
+  }
 });

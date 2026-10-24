@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { parseJSON, stringifyJSON } from "@flame/runtime-client";
+import { cloneJSON, stringifyJSON } from "@flame/runtime-client";
 import { compileSchema } from "./schema";
 import wire from "./protocol.generated.json";
 
@@ -28,7 +28,7 @@ export function digestJSON(value: unknown): string {
   return createHash("sha256").update(canonicalJSON(value)).digest("hex");
 }
 export function freezeJSON<T>(value: T): T {
-  const copy = parseJSON(stringifyJSON(value)) as T;
+  const copy = cloneJSON(value);
   const freeze = (value: unknown): void => {
     if (value === null || typeof value !== "object" || Object.isFrozen(value))
       return;

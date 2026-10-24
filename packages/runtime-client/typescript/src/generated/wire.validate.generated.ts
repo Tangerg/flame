@@ -7,7 +7,7 @@
 // What each call MEANS lives in wireCheck.ts. This file only says which rule
 // applies where.
 
-import { absent, allOf, anyOf, anything, array, distinctViolations, enumOf, fields, flag, ifThen, integer, literal, maxItems, maxLength, maximum, minItems, minLength, minProperties, minimum, nullable, numeric, object, oneOf, pattern, propertyNames, record, ref, text, uniqueItems } from "../validation/wireCheck";
+import { absent, allOf, anyOf, anything, array, distinctViolations, enumOf, fields, flag, ifThen, integer, literal, maxItems, maxLength, maximum, minItems, minLength, minProperties, minimum, nullable, numeric, object, oneOf, pattern, projectWireValue, propertyNames, record, ref, text, uniqueItems } from "../validation/wireCheck";
 import type { WireCheck, WireViolation } from "../validation/wireCheck";
 
 import type { WireMethodName } from "./wire.methods.generated";
@@ -4648,6 +4648,11 @@ export function validateMethodResult(method: WireMethodName, value: unknown): Wi
   return distinctViolations(out);
 }
 
+/** Project an already validated method result into its declared DTO. */
+export function projectMethodResult(method: WireMethodName, value: unknown): unknown {
+  return projectWireValue(METHOD_RESULTS[method], value);
+}
+
 const HTTP_RESPONSES: Record<Wire.HTTPSidecarEndpointName, WireCheck> = {
   "info": ref(() => CHECKS.RuntimeInfo),
   "liveness": ref(() => CHECKS.LivenessStatus),
@@ -4662,6 +4667,11 @@ export function validateHTTPSidecarResponse(
   const out: WireViolation[] = [];
   HTTP_RESPONSES[endpoint](value, `${endpoint}.response`, out);
   return out;
+}
+
+/** Project already validated operational sidecar fields into their DTO. */
+export function projectHTTPSidecarResponse(endpoint: Wire.HTTPSidecarEndpointName, value: unknown): unknown {
+  return projectWireValue(HTTP_RESPONSES[endpoint], value);
 }
 
 export const WIRE_NOTIFICATION_NAMES = [
@@ -4700,6 +4710,11 @@ export function validateNotificationParams(
   return distinctViolations(out);
 }
 
+/** Project already validated notification fields into their declared DTO. */
+export function projectNotificationParams(method: WireNotificationName, value: unknown): unknown {
+  return projectWireValue(NOTIFICATION_PARAMS[method], value);
+}
+
 /**
  * validateWire reports every way a value fails the published shape, and an empty
  * list when it satisfies it.
@@ -4711,4 +4726,9 @@ export function validateWire(type: WireTypeName, value: unknown, boundary?: "req
   const out: WireViolation[] = [];
   CHECKS[type](value, type, out, boundary);
   return distinctViolations(out);
+}
+
+/** Project already validated DTO fields while retaining opaque JSON values. */
+export function projectWire(type: WireTypeName, value: unknown): unknown {
+  return projectWireValue(CHECKS[type], value);
 }

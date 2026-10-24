@@ -1,3 +1,4 @@
+import { cloneJSON } from "@flame/runtime-client";
 import { configureRuntimeOpeningRetries } from "./runtimeOpeningRetries";
 import type { RuntimeAgentDriver } from "./runtimeDriver";
 import { type MCPServerID } from "@flame/runtime-client/wire";
@@ -139,7 +140,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
                   ...(command.params.input
                     ? { input: contentBlocksToAgentInput(command.params.input) }
                     : {}),
-                  responses: structuredClone(command.params.responses),
+                  responses: cloneJSON(command.params.responses),
                 };
           if (belongs) {
             generation.retries.set(command.idempotencyKey, async (retrySignal: AbortSignal) => {

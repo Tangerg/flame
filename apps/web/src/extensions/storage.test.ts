@@ -1,8 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createStorage } from "@/extensions/storage";
+import { parseJSON, stringifyJSON } from "@flame/runtime-client";
 afterEach(() => vi.restoreAllMocks());
 
 describe("createStorage", () => {
+  it("retains wide numbers and numeric lexemes for original command evidence", () => {
+    const source = '{"wide":9007199254740993,"decimal":1.0,"exponent":1e+25}';
+    const storage = createStorage("exact");
+    storage.set("command", parseJSON(source));
+    expect(stringifyJSON(storage.get("command"))).toBe(source);
+  });
   it("round-trips JSON values under a namespaced key", () => {
     const s = createStorage("alpha");
     s.set("config", { x: 1, y: "hi" });

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { commitApprovalArgs } from "@/features/chat/message/application/approvalArgsEditor";
+import { stringifyJSON } from "@flame/runtime-client";
 describe("commitApprovalArgs", () => {
+  it("preserves an exact edited value and distinguishes neighboring wide integers", () => {
+    const original = '{"wide":9007199254740993,"decimal":1.0}';
+    const changed = '{"wide":9007199254740994,"decimal":1.0}';
+    expect(commitApprovalArgs(original, original)).toBeUndefined();
+    expect(stringifyJSON(commitApprovalArgs(original, changed))).toBe(changed);
+    expect(commitApprovalArgs("{}", "1.0")).toBeNull();
+  });
   it("returns undefined when the JSON value is unchanged", () => {
     expect(
       commitApprovalArgs(

@@ -6,8 +6,11 @@ import {
   RpcProtocolError,
   RpcTransportError,
 } from "./errors";
-import { parseWireJSON } from "./json";
-import { validateHTTPSidecarResponse } from "@flame/runtime-client/validation";
+import { parseJSON } from "./json";
+import {
+  projectHTTPSidecarResponse,
+  validateHTTPSidecarResponse,
+} from "@flame/runtime-client/validation";
 import {
   HTTP_ENDPOINTS,
   type HTTPSidecarEndpointName,
@@ -86,7 +89,7 @@ export function createSidecarClient(config: SidecarClientConfig): SidecarClient 
     }
     let json: unknown;
     try {
-      json = parseWireJSON(text);
+      json = parseJSON(text);
     } catch (err) {
       throw new RpcProtocolError(
         `sidecar ${path} response`,
@@ -98,7 +101,17 @@ export function createSidecarClient(config: SidecarClientConfig): SidecarClient 
     if (violations.length > 0) {
       throw new RpcProtocolError(`sidecar ${path} response`, violations, requestId);
     }
-    return json as HTTPSidecarResponses[Endpoint];
+    try {
+      return projectHTTPSidecarResponse(endpoint, json) as HTTPSidecarResponses[Endpoint];
+    } catch (cause) {
+      const error = new RpcProtocolError(
+        `sidecar ${path} response`,
+        [{ path: "$", detail: "number cannot be represented by the typed wire projection" }],
+        requestId,
+      );
+      error.cause = cause;
+      throw error;
+    }
   }
 
   return {

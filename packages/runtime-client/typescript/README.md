@@ -17,9 +17,10 @@ and unit tests are not exports. `testing` supplies the deliberate memory-transpo
 fixture and sample index. Its raw sample JSON is an exact generated copy of
 `runtime/contract/samples`; edit canonical samples at that Runtime owner.
 
-Transport receives JSON losslessly before method validation. Ordinary typed
-results project into JavaScript numbers and reject values they cannot represent
-exactly. For evidence such as accounting archives, `client.queryJSON(method,
+Transport receives JSON losslessly before method validation. Schema-declared
+numeric DTO fields project into JavaScript numbers and reject values they cannot
+represent exactly. Opaque JSON, including Tool schemas, retains exact numbers.
+For evidence such as accounting archives, `client.queryJSON(method,
 params, { signal })` returns canonical JSON with the original numeric lexemes,
 wide integers, null and missing members retained. It uses the same request,
 generated validation and cancellation path. It accepts only unary queries;

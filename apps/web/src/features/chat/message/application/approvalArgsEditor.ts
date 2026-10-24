@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { equalJSON, isJSONNumber, parseJSON } from "@flame/runtime-client";
 export interface ApprovalArgsEditor {
   editing: boolean;
   setEditing: (editing: boolean) => void;
@@ -16,7 +17,7 @@ export function commitApprovalArgs(
   if (!parsed.ok) return null;
   const original = parseArgs(originalArgs);
   if (!original.ok) return parsed.value;
-  return sameJsonValue(original.value, parsed.value) ? undefined : parsed.value;
+  return equalJSON(original.value, parsed.value) ? undefined : parsed.value;
 }
 
 export function useApprovalArgsEditor({
@@ -44,7 +45,7 @@ export function useApprovalArgsEditor({
 
 function parseArgs(value: string): { ok: true; value: Record<string, unknown> } | { ok: false } {
   try {
-    const parsed: unknown = JSON.parse(value);
+    const parsed = parseJSON(value);
     if (!isRecord(parsed)) return { ok: false };
     return { ok: true, value: parsed };
   } catch {
@@ -53,21 +54,7 @@ function parseArgs(value: string): { ok: true; value: Record<string, unknown> } 
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function sameJsonValue(left: unknown, right: unknown): boolean {
-  if (Object.is(left, right)) return true;
-  if (Array.isArray(left) || Array.isArray(right)) {
-    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
-    return left.every((value, index) => sameJsonValue(value, right[index]));
-  }
-  if (isRecord(left) || isRecord(right)) {
-    if (!isRecord(left) || !isRecord(right)) return false;
-    const leftKeys = Object.keys(left).sort();
-    const rightKeys = Object.keys(right).sort();
-    if (!sameJsonValue(leftKeys, rightKeys)) return false;
-    return leftKeys.every((key) => sameJsonValue(left[key], right[key]));
-  }
-  return false;
+  return (
+    typeof value === "object" && value !== null && !Array.isArray(value) && !isJSONNumber(value)
+  );
 }
