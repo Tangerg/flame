@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/spf13/viper"
 )
@@ -34,7 +35,7 @@ func Load(configDirectories []string) (Settings, error) {
 	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
 	v.SetConfigType("yaml")
 
-	v.SetDefault("server.listen", "127.0.0.1:17171")
+	v.SetDefault("server.listen", localruntime.DefaultListenAddress)
 	v.SetDefault("server.noLocalToken", false)
 	v.SetDefault("toolResultOffload.enabled", true)
 	v.SetDefault("toolResultOffload.threshold", DefaultToolResultOffloadThreshold)

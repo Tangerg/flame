@@ -19,7 +19,7 @@ func mustDesktopHost(t *testing.T, home string) *DesktopHost {
 	if err != nil {
 		t.Fatal(err)
 	}
-	host, err := newDesktopHost(root, defaultLocalRuntimeEndpoint)
+	host, err := newDesktopHost(root, localruntime.DefaultOrigin)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestDesktopHostBootstrap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bootstrap.LocalRuntime.Endpoint != defaultLocalRuntimeEndpoint || bootstrap.LocalRuntime.LocalToken != value {
+	if bootstrap.LocalRuntime.Endpoint != localruntime.DefaultOrigin || bootstrap.LocalRuntime.LocalToken != value {
 		t.Fatalf("local runtime = %#v", bootstrap.LocalRuntime)
 	}
 }
@@ -173,7 +173,7 @@ func TestDesktopBootstrapUsesConfiguredProductRoot(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if bootstrap.LocalRuntime.Endpoint != defaultLocalRuntimeEndpoint || bootstrap.LocalRuntime.LocalToken != expected {
+			if bootstrap.LocalRuntime.Endpoint != localruntime.DefaultOrigin || bootstrap.LocalRuntime.LocalToken != expected {
 				t.Fatal("Bootstrap did not use only the configured product root")
 			}
 		})
@@ -185,7 +185,7 @@ func TestDesktopBootstrapPairsConfiguredEndpointWithProductRootToken(t *testing.
 		configured string
 		want       string
 	}{
-		"default":            {configured: "", want: "http://127.0.0.1:17171"},
+		"default":            {configured: "", want: localruntime.DefaultOrigin},
 		"alternate loopback": {configured: "http://127.0.0.1:17172", want: "http://127.0.0.1:17172"},
 		"root slash":         {configured: "http://127.0.0.1:17172/", want: "http://127.0.0.1:17172"},
 		"https":              {configured: "https://127.0.0.1:17172", want: "https://127.0.0.1:17172"},

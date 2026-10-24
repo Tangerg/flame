@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
 const (
@@ -112,7 +113,7 @@ type Plugins struct {
 
 func Default() Config {
 	return Config{
-		Runtime:  Runtime{Mode: RuntimeRemote, Endpoint: "http://127.0.0.1:17171"},
+		Runtime:  Runtime{Mode: RuntimeRemote, Endpoint: localruntime.DefaultOrigin},
 		Approval: Approval{Remember: RememberNone},
 		UI:       UI{Mouse: true, Notifications: true, ToolDetails: false, TranscriptRetain: 24},
 		Keys: map[string][]string{

@@ -3,6 +3,7 @@
     "v0.1.0-layout.20261023.2": "55d80fa2383310e0959d641aa72fc3e1acb37549"
   },
   "github.com/Tangerg/flame/packages/local-runtime": {
-    "v0.1.0-layout.20261021.2": "f22a9d783054855de40eb9b1e07cd1ac9d27881b"
+    "v0.1.0-layout.20261021.2": "f22a9d783054855de40eb9b1e07cd1ac9d27881b",
+    "v0.1.0-layout.20261024.1": "ce8357e57bfb463ff93c0f188cb3dbed91ef82a2"
   }
 }
