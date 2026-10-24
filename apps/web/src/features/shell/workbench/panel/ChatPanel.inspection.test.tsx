@@ -2015,7 +2015,7 @@ describe("bounded material tasks", () => {
       const conversation = screen.getByRole("region", { name: "Conversation" });
       await vi.waitFor(() =>
         expect(document.activeElement).toBe(
-          within(conversation).getByRole("button", { name: "src/main.ts:4" }),
+          within(conversation).getByRole("button", { name: "More actions for New session" }),
         ),
       );
 

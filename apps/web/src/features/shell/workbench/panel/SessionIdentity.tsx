@@ -1,10 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactElement } from "react";
 import { basename } from "@/lib/path";
-import { ContextMenu } from "@/ui/index";
+import { ContextMenu, DropdownMenu, Icon } from "@/ui/index";
+import { iconGlyph } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
 import { writeToClipboard } from "@/lib/clipboard";
-import { vocab } from "@flame/ui";
+import { IconButton, vocab } from "@flame/ui";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 const si = stylex.create({
   bar: { display: "flex", minWidth: 0, flexShrink: 1, alignItems: "center", gap: space.s2 },
@@ -38,58 +39,86 @@ interface Props {
 
 export function SessionIdentity({ sessionId, title, workspacePath }: Props): ReactElement {
   const t = useT();
-
-  return (
-    <ContextMenu.Root>
-      <ContextMenu.Trigger
-        render={
-          <div {...stylex.props(si.bar)}>
-            {workspacePath && (
-              <>
-                <span
-                  title={workspacePath}
-                  className={stylex.props(si.cwd, vocab.truncate, typeStep.uiSm).className}
-                >
-                  {basename(workspacePath)}
-                </span>
-                <span aria-hidden {...stylex.props(si.sep, typeStep.uiSm)}>
-                  /
-                </span>
-              </>
-            )}
-            <h1
-              title={title}
-              className={stylex.props(si.title, vocab.truncate, typeStep.uiMd).className}
-            >
-              {title}
-            </h1>
-          </div>
-        }
-      />
-      <ContextMenu.Content aria-label={title}>
-        {workspacePath && (
-          <ContextMenu.IconItem
-            icon="copy"
-            onSelect={() =>
+  const copies: { id: string; label: string; copy: () => void }[] = [
+    ...(workspacePath
+      ? [
+          {
+            id: "cwd",
+            label: t("session.identity.copyCwd"),
+            copy: () =>
               void writeToClipboard(workspacePath, {
                 successLabel: t("session.identity.copiedCwd"),
-              })
-            }
+              }),
+          },
+        ]
+      : []),
+    ...(sessionId !== ""
+      ? [
+          {
+            id: "id",
+            label: t("session.identity.copyId"),
+            copy: () =>
+              void writeToClipboard(sessionId, { successLabel: t("session.identity.copiedId") }),
+          },
+        ]
+      : []),
+  ];
+
+  const identity = (
+    <div {...stylex.props(si.bar)}>
+      {workspacePath && (
+        <>
+          <span
+            title={workspacePath}
+            className={stylex.props(si.cwd, vocab.truncate, typeStep.uiSm).className}
           >
-            {t("session.identity.copyCwd")}
-          </ContextMenu.IconItem>
-        )}
-        {sessionId !== "" && (
-          <ContextMenu.IconItem
-            icon="copy"
-            onSelect={() =>
-              void writeToClipboard(sessionId, { successLabel: t("session.identity.copiedId") })
-            }
-          >
-            {t("session.identity.copyId")}
-          </ContextMenu.IconItem>
-        )}
-      </ContextMenu.Content>
-    </ContextMenu.Root>
+            {basename(workspacePath)}
+          </span>
+          <span aria-hidden {...stylex.props(si.sep, typeStep.uiSm)}>
+            /
+          </span>
+        </>
+      )}
+      <h1 title={title} className={stylex.props(si.title, vocab.truncate, typeStep.uiMd).className}>
+        {title}
+      </h1>
+    </div>
+  );
+
+  if (copies.length === 0) return identity;
+  // Session ID keys both menus so an open menu retires with its Session instead of
+  // retargeting its copy actions to the next one.
+  return (
+    <div key={sessionId} {...stylex.props(si.bar)}>
+      <ContextMenu.Root>
+        <ContextMenu.Trigger render={identity} />
+        <ContextMenu.Content aria-label={title}>
+          {copies.map((item) => (
+            <ContextMenu.IconItem key={item.id} icon="copy" onSelect={item.copy}>
+              {item.label}
+            </ContextMenu.IconItem>
+          ))}
+        </ContextMenu.Content>
+      </ContextMenu.Root>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          render={
+            <IconButton
+              icon={iconGlyph("more")}
+              size="sm"
+              aria-label={t("session.row.more", { title })}
+            />
+          }
+        />
+        <DropdownMenu.Content align="start" sideOffset={4} aria-label={title}>
+          {copies.map((item) => (
+            <DropdownMenu.Item key={item.id} layout="glyph" onClick={item.copy}>
+              <Icon name="copy" size="md" />
+              <span {...stylex.props(vocab.truncate)}>{item.label}</span>
+            </DropdownMenu.Item>
+          ))}
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+    </div>
   );
 }
