@@ -163,7 +163,8 @@ Choose the Runtime host's OS/architecture; native sandbox availability follows t
 actual confinement mechanism. Package acquisition from a registry/URL and automatic
 updates remain separate work.
 
-The exporter includes `backend`, `component`, owned `contracts`, `package` and the plugin README.
+The exporter includes `backend`, `component`, owned `contracts` and `package`,
+and generates the project README with its selected author commands.
 Contract definition tools stay with their publisher; the author's pinned public
 dependencies carry existing consumer contracts. Local generation refreshes package
 and UI projections without deriving a replacement role from relocated Go types.
