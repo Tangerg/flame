@@ -13,6 +13,7 @@ import {
   runtimeRunFact,
 } from "@/features/agent/adapters/runtimeAgentFacts";
 import { type AgentSessionSnapshot } from "@/features/agent/application/ports/runtimeGateway";
+import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
 import { type GoalReadModel } from "@/features/goal/application/goalReadModel";
 import { VISUAL_CONTEXT_TOKENS } from "./agentFixtureFacts";
 export const VISUAL_AGENT_STATES = [
@@ -1128,7 +1129,12 @@ function narrativeTool(
     durationMillis: 120,
     finishedAt: "2026-07-31T08:01:04.120Z",
     safetyClass: safetyClassOf(name),
-    tool: { name, arguments: args, ...(result === undefined ? {} : { result }) },
+    tool: {
+      name,
+      category: toolCategoryForName(name),
+      arguments: args,
+      ...(result === undefined ? {} : { result }),
+    },
   };
 }
 
@@ -1761,7 +1767,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         "item_n_read_2",
         "read",
         {
-          file_path: "/Users/visual/scope/apps/web/src/features/chat/tools/ui/ToolGroup.tsx",
+          path: "/Users/visual/scope/apps/web/src/features/chat/tools/ui/ToolGroup.tsx",
         },
         { content: "export function ToolGroup() {\n  …\n}\n", total_lines: 148 },
       ),

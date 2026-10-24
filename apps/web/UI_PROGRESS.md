@@ -7,9 +7,9 @@ This user-requested file is the maintained progress and handoff record for the d
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is clean on `codex/catalog-search-1025`. Catalog implementation
-`b5a641224a1324515ab41150036830a3ef692a39` is published to remote main from frozen
-accepted base `c9b9d729f753007073e896387cf7429daadd4de1`. The last integration interval
+is on `codex/tool-evidence-1025`, starting from published main
+`c5537a0bae207ffb5436aa8e85fd3a275bd07f55`. That accepted base stays frozen for
+this complete tool-evidence task. The last integration interval
 includes incoming main through `1e7b76720`; the former pending author/bootstrap
 commits are already integrated. The primary checkout remains user-owned.
 
@@ -23,7 +23,10 @@ Catalog clear/selection/return is implemented and natively qualified, including
 compact model height and a single visible full-pane title. Its original-source
 regression and final scoped verification are recorded under the shared catalog
 section below. Publication and final evidence retirement are complete.
-The next review must start from a concrete remaining task observation.
+Member disclosure clarity and canonical narrative evidence are now implemented
+and natively qualified. Their scope, counterexample, 26 passing regressions and
+full reading/file/return path are recorded under Tool group reading continuity.
+Publication and evidence retirement finish the current batch.
 
 ### Earlier integration evidence
 
@@ -5486,6 +5489,106 @@ bounded focus-engagement repair without evidence.
 Delivery: implementation `2d96c7a37699e0ef83489689ceda61e52a891871` is pushed
 to remote `main`. A fresh `ls-remote` matched that exact commit; the owned checkout
 was clean with zero unpushed commits. This in-place receipt adds no product change.
+
+### Member disclosure and canonical narrative evidence
+
+`ToolGroupMember.tsx` now projects its existing `disclosable` / `disclosed`
+facts into the same small chevron used by standalone activity rows. The indicator
+sits between the operation and object, remains decorative and lets pointer input
+reach the existing native button. Denied static summaries receive no indicator.
+Category icons, path detail, status/meta, actions, parent engagement, result mounts
+and controlled expansion keep their owners. No state, focus handler, copy, token,
+new animation or business transition is added.
+
+The original narrative fixture also omitted Runtime's tool categories and used
+`file_path` for its second Read. Real `presentToolCategory` already supplies
+those categories. `narrativeTool` now uses the existing test-only
+`toolCategoryForName` and canonical `path`, so the real fold retains all three
+file identities, source bodies, line counts and current-file actions. This repairs
+acceptance data; no product inference or Runtime mapping is introduced. Other
+fixture constructors are not requalified. Before using one for a later task,
+check its category and argument shape against the current Runtime presenter.
+
+Read-only ZCode `ToolSummaryRow.tsx` separates toggleable and static summaries;
+HeroUI's actual Disclosure demo composes Trigger and Indicator. Arc Accordion
+retains an open/closed visual cue under reduced motion. Those establish the task
+principle; Flame keeps its own native buttons, Base UI, StyleX and shared motion.
+A bounded Read/Edit-only Claude CLI completes the exact three-file detail task in
+128.93 s (exit 0); primary reviews its diff, counterexample, checks and native flow.
+
+#### Scope and coverage
+
+This better-interface review covers group/member expansion, captured source
+reading, current-file inspection, source return and continued composing in the
+existing workbench. Recon uses AGENTS, PROJECT_RULES, DEVELOPMENT, Web/native
+READMEs and existing design/ownership records. It does not certify every tool
+renderer or infer live execution from deterministic presentation fixtures.
+
+| Domain        | Evidence inspected                                                                                                                          | Result                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Accessibility | Native member buttons, expansion relationships, keyboard actions, named file return and visible focus; existing failure/denied action tests | Changed flow passes; VoiceOver speech not verified |
+| Layout        | Member operation/object/status/actions; actual 320 px Dock and 561 × 365 CSS px at 200%; long path available in the current-file header     | Missing disclosure cue resolved                    |
+| Writing       | Existing EN/ZH operation, Source, current-file and return labels compared with invoked actions                                              | Clear; no new copy                                 |
+| Typography    | Actual member 13 px / 21.125 px leading and 17 px / 27.625 px leading, weight 400; original source text and full path reading               | Clear within this flow                             |
+| Colors        | Rendered neutral row/path pairs against #f5f5f5 and #0f0f0f; measured 7.88:1 and 7.60:1                                                     | Both exceed 4.5:1; no palette change               |
+| UI polish     | Shared chevron placement, category icon, open/closed state, hover/action separation; native reduced-motion scene                            | Clear; slow timing replay not run                  |
+
+#### Findings
+
+| Severity | Domain | Location                                            | Before                                                                      | After                                                                        | Why                                                           |
+| -------- | ------ | --------------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| HIGH     | Layout | `src/features/chat/tools/ui/ToolGroupMember.tsx:83` | Result content sits behind member text with no visible disclosure indicator | Existing chevron projects the same controlled open fact beside the operation | Hidden supporting content needs a discoverable disclosure cue |
+
+The product finding is resolved in the final implementation. The separate
+fixture correction above strengthens the acceptance evidence.
+
+#### Verification
+
+The new real-fold regression fails on original fixture data (**1 failed / 6
+passed**, 2.07 s), showing all three lost paths and JSON-wrapped bodies. Restoring
+the candidate byte-for-byte yields **4 files / 26 tests passed**. Web type, lint,
+format, context/public/layer boundaries, design-system, token, chrome, dead-style,
+authored-class and production bundle checks pass in 29.36 s. No assertion, schema,
+deadline or check was weakened. English and Chinese Wails builds (6.45 s / 7.04 s)
+and final private assets (2.70 s) run serially. Full Web, unchanged shared-UI,
+Runtime/backend, author, live-provider, browser visual and benchmark suites are
+not rerun for these three files.
+
+Actual final Wails/CUA qualifies EN/light/14 px/Orange and
+ZH/dark/18 px/custom blue/reduced motion. Group entry exposes identifiable Read,
+Search and Patch records. Keyboard Return opens source, the current-file action
+enters the exact object, and Escape returns to that same action while its group
+and source remain expanded. Space closes the original member. A direct trusted
+pointer click on the Chinese indicator likewise closes its member without opening
+another view. Normal cue rotations are -90 degrees closed and no rotation open;
+reduced-motion captures keep the same static meanings. A normal-motion capture
+caught an in-flight -5.85-degree rotation; it is not treated as a wrong final state.
+
+Chinese pointer resizing establishes a **320 px Dock**. Its long ToolGroup path
+wraps completely in the file header, while current-file and source return remain
+reachable. Both locales reach **561 × 365 CSS px at 200%** using twenty native
+Zoom In commands. Full-pane file reading and Escape return pass; Chinese native
+Tab reaches the named Result reader at [45, 118.5, 495, 85.5], visibly focused and
+unobscured. Both exact draft owners survive: EN textarea 2 extends **27 → 38**
+characters, ZH textarea 2 **11 → 16**. Both restore Actual Size before Quit.
+The oversized fixture navigation is collapsed for content reading; its initial
+zoom displacement is not attributed to production disclosure behavior.
+
+#### Verdict
+
+Approve within the coverage above. Native VoiceOver/IME, RTL, other platforms,
+slow animation replay, live tool execution and real filesystem reads remain
+unverified. The fixture's canned current-file body proves target/header/return
+presentation, not the source on disk. Existing historical error and denied states
+are covered by source and regressions, not fresh native scenes.
+
+All ten recorded processes exit. Seven new checkout outputs, four owned Library
+paths and two bundle-temp paths are removed; 36 output-presence baselines, three
+original files and eleven accepted product resources are preserved. The two
+missing Vitest baseline files are restored from captured originals. Accepted
+5,765 non-Markdown sources have aggregate SHA-256
+`53bf7918e5f527c89612adeb2731f0d453c748b7cc1a244147203ee1ef447484`.
+Publication and exact private-root evidence retirement are pending below.
 
 ## Tool row action context
 

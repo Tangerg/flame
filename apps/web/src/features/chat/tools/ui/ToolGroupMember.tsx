@@ -4,6 +4,7 @@ import { type ToolCall } from "@/features/agent/public/sessionView";
 import { Icon } from "@/ui/index";
 import { Pressable } from "@/ui/index";
 import { reveal } from "@/ui/index";
+import { chevron } from "@/ui/index";
 import { DiffStat, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import {
@@ -48,6 +49,12 @@ const gm = stylex.create({
     width: space.s4,
     height: space.s4,
   },
+  chevron: {
+    pointerEvents: "none",
+    display: "flex",
+    alignSelf: "center",
+    marginInlineStart: "calc(var(--spacing) * -1)",
+  },
   actions: { display: "flex", flexShrink: 0, alignItems: "center" },
   rowExpanded: { color: color.fg },
   meta: { flexShrink: 0, fontVariantNumeric: "tabular-nums" },
@@ -73,6 +80,14 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
         <Icon name={toolCallIconFor(tool)} size="sm" />
       </span>
       <ToolText value={model.intent.label} styles={[vocab.hold, gm.inherit]} />
+      {disclosable && (
+        <span
+          aria-hidden
+          {...stylex.props(chevron.base, gm.chevron, vocab.faint, !disclosed && chevron.shut)}
+        >
+          <Icon name="chevron-down" size="xs" />
+        </span>
+      )}
       {model.detail && <ToolText value={model.detail} styles={[vocab.fill, vocab.faint]} />}
       {model.diffStat && <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />}
       {headline && (

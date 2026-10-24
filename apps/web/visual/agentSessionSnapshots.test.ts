@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-client/validation";
+import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
 import {
   RUNTIME_AGENT_SESSION_SNAPSHOTS,
   RUNTIME_AGENT_SESSION_TAIL_EVENTS,
   VISUAL_AGENT_STATES,
   delegatedApprovalSnapshot,
+  projectRuntimeAgentSnapshot,
 } from "./agentSessionSnapshots";
 describe("the visual agent fixtures", () => {
   it("parks the delegated tree before offering its root resume", () => {
@@ -24,6 +26,34 @@ describe("the visual agent fixtures", () => {
     expect(snapshot.runs.find((run) => run.id === group.rootRunId)).toMatchObject({
       status: "waiting",
     });
+  });
+
+  it("project the narrative's reads with their file paths and original bodies", () => {
+    const view = projectAgentSessionSnapshot(
+      projectRuntimeAgentSnapshot(RUNTIME_AGENT_SESSION_SNAPSHOTS.narrative),
+    );
+    const reads = ["item_n_read", "item_n_read_2", "item_n_read_3"].map((id) => {
+      const tool = view.toolCalls[id];
+      return { label: tool?.fn, kind: tool?.fnKind, output: tool?.result };
+    });
+
+    expect(reads).toEqual([
+      {
+        label: "src/checkout/checkout.tsx",
+        kind: "path",
+        output: "export function Checkout() {\n  …\n}\n",
+      },
+      {
+        label: "/Users/visual/scope/apps/web/src/features/chat/tools/ui/ToolGroup.tsx",
+        kind: "path",
+        output: "export function ToolGroup() {\n  …\n}\n",
+      },
+      {
+        label: "src/checkout/api/pay.ts",
+        kind: "path",
+        output: "export async function pay() {\n  …\n}\n",
+      },
+    ]);
   });
 
   it("hold only items the Runtime could have sent", () => {
