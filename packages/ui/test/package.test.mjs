@@ -9,28 +9,59 @@ import { fileURLToPath } from "node:url";
 test("packed UI and icons work without the host or a StyleX compiler", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "flame-ui-consumer-"));
   try {
-    const archive = (url) => {
+    const archive = async (url) => {
+      const directory = fileURLToPath(url);
       const packed = JSON.parse(
         execFileSync(
           "npm",
           ["pack", "--ignore-scripts", "--json", "--pack-destination", dir],
-          { cwd: fileURLToPath(url), encoding: "utf8" },
+          { cwd: directory, encoding: "utf8" },
         ),
       );
-      return path.join(dir, packed[0].filename);
+      const manifest = JSON.parse(
+        await readFile(path.join(directory, "package.json")),
+      );
+      return {
+        version: manifest.version,
+        resolved: `file:${path.join(dir, packed[0].filename)}`,
+        integrity: packed[0].integrity,
+        dependencies: manifest.dependencies,
+        peerDependencies: manifest.peerDependencies,
+      };
     };
-    const icons = archive(new URL("../../icons", import.meta.url));
-    const ui = archive(new URL("../", import.meta.url));
+    const icons = await archive(new URL("../../icons", import.meta.url));
+    const ui = await archive(new URL("../", import.meta.url));
+    const consumer = {
+      private: true,
+      type: "module",
+      dependencies: {
+        "@flame/ui": ui.resolved,
+        "@flame/icons": icons.resolved,
+        react: ui.peerDependencies.react,
+        "react-dom": ui.peerDependencies["react-dom"],
+      },
+    };
+    const rootLock = JSON.parse(
+      await readFile(new URL("../../../package-lock.json", import.meta.url)),
+    );
+    // npm ci caches tarballs without registry metadata. Resolve the offline
+    // consumer from the root lock, excluding the host's workspace links.
+    const packages = Object.fromEntries(
+      Object.entries(rootLock.packages).filter(
+        ([name, entry]) => name.startsWith("node_modules/") && !entry.link,
+      ),
+    );
+    await writeFile(path.join(dir, "package.json"), JSON.stringify(consumer));
     await writeFile(
-      path.join(dir, "package.json"),
+      path.join(dir, "package-lock.json"),
       JSON.stringify({
-        private: true,
-        type: "module",
-        dependencies: {
-          "@flame/ui": `file:${ui}`,
-          "@flame/icons": `file:${icons}`,
-          react: "^19.3.0",
-          "react-dom": "^19.3.0",
+        lockfileVersion: rootLock.lockfileVersion,
+        requires: true,
+        packages: {
+          "": consumer,
+          ...packages,
+          "node_modules/@flame/icons": icons,
+          "node_modules/@flame/ui": ui,
         },
       }),
     );
@@ -39,6 +70,12 @@ test("packed UI and icons work without the host or a StyleX compiler", async () 
       ["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund"],
       { cwd: dir, stdio: "pipe" },
     );
+    for (const name of ["@flame/web", "@stylexjs/babel-plugin"]) {
+      await assert.rejects(
+        readFile(path.join(dir, "node_modules", name, "package.json")),
+        { code: "ENOENT" },
+      );
+    }
     await writeFile(
       path.join(dir, "consumer.mjs"),
       `import { createElement } from 'react';
