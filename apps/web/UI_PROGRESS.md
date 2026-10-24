@@ -7,10 +7,10 @@ This user-requested file is the maintained progress and handoff record for the d
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/unconfirmed-operations-1025`. Individual unconfirmed-operation
-reading and the focused close-return policy are accepted on frozen base
-`b5f59809cb7b31d31b0e2f6ff563e8097153aac6`; publication and private evidence
-retirement are the remaining delivery steps. Run-settlement implementation
+is clean on `codex/unconfirmed-operations-1025`. Individual unconfirmed-operation
+implementation `486d4ef2f6f12a6b248032d3a516e99ceb55265b` is published to
+remote main from frozen base `b5f59809cb7b31d31b0e2f6ff563e8097153aac6`.
+Its private evidence retirement is complete. Run-settlement implementation
 `4c4e28045a3d865f885a8bef1aa0a92a2a8d56cd` and its evidence retirement are
 already published to remote main. Captured-text implementation
 `48277ecc2cdcc9aba2018b2f9d59b7289f80aa20` and its receipt remain published.
@@ -4403,8 +4403,18 @@ activity. Serial native builds and final asset builds retain their accepted
 artifacts. All **20** recorded processes are dead; seven owned checkout outputs,
 four Library paths and two bundle-temp paths are removed. Both apps are
 unregistered; all 36 output baselines, three original files and 11 product
-resources are preserved. Publication and exact private-root retirement are
-pending the delivery receipt.
+resources are preserved. Implementation
+`486d4ef2f6f12a6b248032d3a516e99ceb55265b` is published to remote main,
+verified against its exact remote hash with a clean owned checkout and no
+unpushed work. The independently verified evidence archive retains **130 UTF-8
+files** and **23 screenshot digests**, gzip SHA-256
+`7e5b8318da774f386ae4a07dc6428c84dbf6ceab5f1f4441a1976a751b297951`.
+Its 607 accepted artifacts comprise 597 compiled assets, eight module-proxy
+files and two native binaries. The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-operation-reading-1025-V4AHku`
+is absent after publication and archive verification. This documentation receipt
+changes no tested source. Continue from a new observed UI task on the frozen
+base, preserving the interval-based main cadence and primary parallel work.
 
 ## Conversation reading axis ownership
 
