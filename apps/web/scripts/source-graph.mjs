@@ -7,7 +7,7 @@ import typescriptPreset from "@babel/preset-typescript";
 import * as ts from "typescript/unstable/ast";
 
 export const RUNTIME_CLIENT_EDGE = "@flame/runtime-client";
-export const RUNTIME_JSON_EDGE = "@flame/runtime-client/json";
+const RUNTIME_JSON_EDGE = "@flame/runtime-client/json";
 const runtimeJSON = realpathSync(fileURLToPath(import.meta.resolve(RUNTIME_JSON_EDGE)));
 const runtimeClientRoot = dirname(
   dirname(realpathSync(fileURLToPath(import.meta.resolve(RUNTIME_CLIENT_EDGE)))),
@@ -38,7 +38,7 @@ export function visit(node, callback) {
   node.forEachChild((child) => visit(child, callback));
 }
 
-export function importEdges(source) {
+function importEdges(source) {
   const edges = [];
   visit(source, (node) => {
     if (ts.isImportDeclaration(node)) {
