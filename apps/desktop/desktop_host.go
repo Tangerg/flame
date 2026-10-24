@@ -15,8 +15,6 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
-const defaultLocalRuntimeEndpoint = "http://127.0.0.1:17171"
-
 type LocalRuntimeConnection struct {
 	Endpoint   string `json:"endpoint"`
 	LocalToken string `json:"localToken,omitempty"`
@@ -151,7 +149,7 @@ func defaultDesktopHost() (*DesktopHost, error) {
 	}
 	endpoint := os.Getenv("FLAME_LOCAL_RUNTIME_URL")
 	if endpoint == "" {
-		endpoint = defaultLocalRuntimeEndpoint
+		endpoint = localruntime.DefaultOrigin
 	}
 	return newDesktopHost(root, endpoint)
 }

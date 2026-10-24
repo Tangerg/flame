@@ -123,7 +123,8 @@ type RunProtocolProfile struct {
 // of one number.
 type RunMetrics struct {
 	Usage *Usage `json:"usage,omitzero"`
-	Steps int    `json:"steps"`
+	// Steps counts physically dispatched model calls, including unknown outcomes.
+	Steps int `json:"steps"`
 	// ActiveDurationMillis is time spent executing, summed over the run's segments.
 	// Waiting on a person is not execution, so a run parked overnight and then
 	// answered reports the seconds it worked rather than the hours it existed.

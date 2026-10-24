@@ -43,10 +43,11 @@ The CLI uses four responsibility rings:
 
 Application depends on Domain. Adapters and Delivery depend inward on the consumer contracts they satisfy. Cobra and Viper remain in command delivery; Oolong remains in terminal delivery. The concrete Runtime binding remains in `adapter/runtimebinding`; public Protocol values may cross consumer ports directly so CLI does not create synonymous DTOs.
 
-The separate `localruntime` module owns product-root resolution and local deployment
-handoff paths. Process composition uses it to resolve `FLAME_HOME` before constructing
-the binding and authoring store; the binding adapter derives Runtime's data directory
-from that root. Only those two boundaries may import it.
+The separate `localruntime` module owns the default local endpoint, product-root
+resolution and local deployment handoff paths. Settings reads its default HTTP
+origin. Process composition uses it to resolve `FLAME_HOME` before constructing
+the binding and authoring store; the binding adapter derives Runtime's data
+directory from that root. These are the only CLI consumers of that contract.
 
 Domain contains no I/O interfaces and no `context.Context`. A narrow port is declared beside the Application or Delivery behavior that consumes it. Composition supplies the concrete implementation.
 
@@ -67,8 +68,9 @@ The remote terminal detaches on exit without canceling an observed or newly acce
 Runtime's public `exactint` and `exactjson` packages own the shared numeric
 vocabulary. Filesystem adapters may use the existing `storage/advisorylock`
 primitive for their own partition lifetime; Domain and Application do not import
-that I/O capability. Only process composition and the binding adapter may import
-the independent `packages/local-runtime` deployment contract.
+that I/O capability. Settings may read the independent `packages/local-runtime`
+deployment defaults; only process composition and the binding adapter use its
+filesystem capabilities.
 
 The Runtime delivery endpoint is the single authority for the wire contract: both bindings validate request parameters, responses, and events with the generated protocol validators before a result reaches the CLI. The adapter therefore does not revalidate a Runtime result, and CLI projections do not restate Runtime rules such as identity syntax, closed enums, conditional field presence, numeric bounds, or lifecycle field agreement. What the adapter still checks is what Runtime cannot answer for it: a present and complete response, that the response answers the exact request it made, and that a catalog page keeps its requested filter, order, cursor continuity, and identity uniqueness. CLI-authored input is validated before it is sent, and a CLI value object validates its own construction.
 

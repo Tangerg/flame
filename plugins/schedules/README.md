@@ -87,7 +87,10 @@ The backend executable connects through the public `ConnectCallback` and ordinar
 Runtime Client. `runs.start.newSession` carries the captured Session/Run identities;
 `runs.getAcceptance` checks that same original request before submission or
 reconciliation. A retired acceptance still proves the original opening. Core
-observation detachment does not cancel an accepted Run. The backend completes
+observation detachment does not cancel an accepted Run. Each admission owns a
+child observation context and releases it on return, including invalid or lost
+acknowledgements, while retaining the original request for acceptance recovery.
+The backend completes
 pending work and its dispatch reply in one private transaction, with Runtime I/O
 outside that transaction. A pending dispatch may reconcile again; a completed
 receipt never invokes Runtime again.

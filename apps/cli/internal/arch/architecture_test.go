@@ -128,7 +128,7 @@ func mayImportRuntime(relative, imported string) bool {
 		ring := ringOf(relative)
 		return ring == ringAdapter || ring == ringDelivery
 	case localRuntimePath:
-		return ringOf(relative) == ringComposition
+		return ringOf(relative) == ringComposition || strings.HasPrefix(relative, "internal/application/settings/")
 	default:
 		return false
 	}
@@ -140,6 +140,7 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		allowed            bool
 	}{
 		{consumer: "main.go", imported: localRuntimePath, allowed: true},
+		{consumer: "internal/application/settings/config.go", imported: localRuntimePath, allowed: true},
 		{consumer: "internal/application/installedcommand/command.go", imported: runtimePath + "/capability", allowed: true},
 		{consumer: "internal/application/workbench/installed_commands.go", imported: runtimePath + "/capability", allowed: true},
 		{consumer: "internal/delivery/cmd/plugins.go", imported: runtimePath + "/capability", allowed: true},

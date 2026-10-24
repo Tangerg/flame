@@ -127,7 +127,7 @@ price beside the existing Run/Goal replacement, never another billing ledger. Th
 same transaction validates original source JSON, association, state, served-model
 and usage projections. Completed logical Models are excluded from that collection.
 
-Unknown independent attempts count as admitted work while their usage and exact
+Unknown dispatched attempts count as admitted work while their usage and exact
 cost remain unknown. They cannot invent zero usage or a known exact price. Child
 consumption does not recalibrate the primary model context. A recovered terminal
 Run is excluded from later recovery, and a failed replacement transaction advances
@@ -135,7 +135,9 @@ neither its totals nor Goal. Live accounting must converge on this ownership;
 adding live child accrual without changing its original accounting classification
 would introduce double counting and is not an accepted design.
 
-Run consumption advances from individual completed or known-failed model calls.
+Run consumption advances from individual physically dispatched model calls,
+including calls whose outcome is unknown. Preparation failures without physical
+evidence do not originate consumption.
 The fact carries the actual model, original reported usage and that call's captured
 price; the Run reducer alone accrues cumulative usage and steps. Segment termination
 adds duration and outcome without accepting a replacement invoice. Scope process
@@ -151,8 +153,8 @@ when its outer call fails or is canceled. The common model capture enforces this
 for selected and auxiliary calls; a provider replay or a second metering ledger is
 not introduced. Logical settlement and Run metrics commit together, and recovery
 uses the same persisted purpose so a different independent model cannot replace
-primary context. Unknown independent attempts count admitted work with unknown
-price. A missing publisher under an executing owner is a composition error;
+primary context. Purpose controls conversation projection, never whether dispatched
+consumption counts. A missing publisher under an executing owner is a composition error;
 unattached/Session-only captures make no Run claim.
 
 Model selection, context and input contributors receive call-scoped host RPC

@@ -32,6 +32,9 @@ npm run check --workspace @flame/ui
 
 The package is private and is consumed through repository-local `file:` dependencies. Package verification installs locally packed UI and icon archives into an independent consumer. It never publishes to npm. Source owns styling; generated `dist` and token-name outputs are not committed. Changes to shared components require the Desktop gate and the portable resource build and component lifecycle acceptance.
 
+The offline consumer derives external dependency selections from the root lock,
+then installs packed artifacts without workspace links or the StyleX compiler.
+
 `Panel` owns the content measure and container-responsive gutters.
 It accepts the native section ref and events, so local navigation can keep its
 focus and scroll path without adding another reading-plane wrapper.

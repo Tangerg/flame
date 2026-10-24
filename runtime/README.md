@@ -4,15 +4,20 @@ Flame Runtime is the local product backend for Flame. It owns durable agent sema
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
-Run accounting facts now report one actual model call, including original usage and
-captured per-call price. The Run reducer owns accumulation across calls and resumed
+Run accounting facts report every physically dispatched model call, including
+unknown outcomes, original reported usage and captured per-call price. `Steps`
+counts these calls; preparation failures without dispatch evidence do not count.
+The Run reducer owns accumulation across calls and resumed
 segments; terminal segment facts contain outcome, unresolved effects and duration.
 `SegmentUsage` and cumulative completion fields are removed. Scope process snapshots
 retain their checkpoint/calibration purpose. Unknown consumption cannot become an
 exact priced total because a later response is known. Captured selected and
 auxiliary calls now publish through the original execution member, with a persisted conversation/independent purpose. Independent outcomes
-cannot write primary output or context, and original unknown consumption remains
-unknown through recovery. Each calling operation supplies its actual resource
+cannot write primary output or context. Both purposes retain unknown consumption
+through live settlement and recovery, so known token counts survive while exact
+total cost remains absent. Goal consumption derives from the same committed Run
+metrics. Existing settled historical totals are not recalculated on read or restart.
+Each calling operation supplies its actual resource
 limits; no universal Run/Goal cost ceiling is inferred from accounting totals. The journal now requires logical_purpose for logical
 rows; old database shapes are refused unchanged by strict schema admission, without
 a migration or an old-row reader. Public wire/export epochs are unchanged.

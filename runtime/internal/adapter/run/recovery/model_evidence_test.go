@@ -36,11 +36,12 @@ func endpointRecovery(t *testing.T, db *sql.DB) *runs.Recovery {
 	return recovery
 }
 
-func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T) {
+func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testing.T) {
 	for _, test := range []struct {
 		name            string
 		known, reported bool
 		independent     bool
+		undispatched    bool
 		input           int64
 		price           *float64
 		wantCost        *float64
@@ -49,10 +50,12 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 		{name: "unpriced", known: true, reported: true, input: 12},
 		{name: "reported zero", known: true, reported: true, input: 0, price: new(0.0), wantCost: new(0.5)},
 		{name: "unreported", known: true},
-		{name: "unknown", wantCost: new(0.5)},
+		{name: "unknown"},
+		{name: "not dispatched", undispatched: true, wantCost: new(0.5)},
 		{name: "independent route", independent: true, known: true, reported: true, input: 999, price: new(.25), wantCost: new(.75)},
 		{name: "independent unreported", independent: true, known: true},
 		{name: "independent unknown", independent: true},
+		{name: "independent not dispatched", independent: true, undispatched: true, wantCost: new(0.5)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "recovery.db")
@@ -66,7 +69,22 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 				t.Fatal(err)
 			}
 			selection := testsupport.MustModelSelection("anthropic", "captured-model")
-			draft := run.Draft{RunID: "run_source", SessionID: "ses_source", SegmentID: "seg_source", ModelSelection: selection, CreatedAt: at}
+			goalValue, err := goal.New("ses_source", "retain original consumption", selection, run.Capabilities{}, "goal_source", at)
+			if err != nil {
+				t.Fatal(err)
+			}
+			unwritten, err := goal.Unwritten("ses_source")
+			if err != nil {
+				t.Fatal(err)
+			}
+			opening, err := goal.NewReplacement(unwritten.Version(), goalValue)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if applied, err := sqlite.NewGoalStore(db).Save(t.Context(), opening); err != nil || !applied {
+				t.Fatalf("seed Goal: %v", err)
+			}
+			draft := run.Draft{RunID: "run_source", SessionID: "ses_source", SegmentID: "seg_source", ModelSelection: selection, GoalIncarnationID: goalValue.IncarnationID(), CreatedAt: at}
 			runsStore := sqlite.NewRunStore(db)
 			if err := runsStore.Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
@@ -101,8 +119,10 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 				invocation.Provider = "openai"
 				invocation.Model = "independent-model"
 			}
-			if err := journal.StartEndpointInvocation(t.Context(), invocation, "logical_pending"); err != nil {
-				t.Fatal(err)
+			if !test.undispatched {
+				if err := journal.StartEndpointInvocation(t.Context(), invocation, "logical_pending"); err != nil {
+					t.Fatal(err)
+				}
 			}
 			if test.known {
 				message := chat.NewAssistantMessage(chat.NewTextPart("known provider answer"))
@@ -136,6 +156,11 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 			if err != nil || !unchanged.Metrics().Equal(active.Metrics()) {
 				t.Fatalf("failed recovery changed usage: %v", err)
 			}
+			goalStore := sqlite.NewGoalStore(db)
+			unchangedGoal, err := goalStore.Get(t.Context(), draft.SessionID)
+			if err != nil || unchangedGoal.Version() != goalValue.Version() {
+				t.Fatalf("failed recovery changed Goal: %+v %v", unchangedGoal, err)
+			}
 			calls, err := journal.PageModelInvocations(t.Context(), draft.RunID, 0, "", 10)
 			if err != nil || len(calls) != 1 || calls[0].State != "started" {
 				t.Fatalf("failed recovery settled logical evidence: %+v %v", calls, err)
@@ -153,7 +178,7 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 			usage, ok := recovered.Metrics().Usage()
 			wantInput := int64(5)
 			wantSteps := 1
-			if test.known || test.independent {
+			if !test.undispatched {
 				wantSteps++
 				if test.reported {
 					wantInput += test.input
@@ -167,6 +192,15 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 			}
 			if (usage.Total.CostUSD == nil) != (test.wantCost == nil) || (test.wantCost != nil && *usage.Total.CostUSD != *test.wantCost) {
 				t.Fatalf("recovery repriced or guessed cost: %+v", usage.Total.CostUSD)
+			}
+			loadedGoal, err := goalStore.Get(t.Context(), draft.SessionID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			accounted, found := loadedGoal.Goal()
+			cost, err := recovered.Metrics().Cost()
+			if err != nil || !found || accounted.Used().Runs != 1 || accounted.Used().Steps != wantSteps || accounted.Used().Cost != cost {
+				t.Fatalf("Goal differs from committed Run consumption: %+v %v", accounted.Used(), err)
 			}
 			calls, err = journal.PageModelInvocations(t.Context(), draft.RunID, 0, "", 10)
 			if err != nil {
@@ -185,6 +219,10 @@ func TestRecoveryAccruesOnlyUncommittedKnownEndpointsAcrossRestart(t *testing.T)
 			again, _, err := sqlite.NewRunStore(db).Run(t.Context(), draft.RunID)
 			if err != nil || !again.Metrics().Equal(recovered.Metrics()) {
 				t.Fatal("restart charged the same source twice")
+			}
+			againGoal, err := goalStore.Get(t.Context(), draft.SessionID)
+			if err != nil || againGoal.Version() != loadedGoal.Version() {
+				t.Fatalf("repeated recovery changed Goal: %+v %v", againGoal, err)
 			}
 		})
 	}

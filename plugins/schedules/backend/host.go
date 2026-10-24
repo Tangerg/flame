@@ -57,7 +57,9 @@ func (h runHost) Admit(ctx context.Context, request schedule.RunRequest) error {
 	default:
 		return protocol.ErrInvalidResponse
 	}
-	ack, _, err := h.client.StartRun(ctx, start, protocol.RunCommandOptions{IdempotencyKey: key})
+	observation, cancel := context.WithCancel(ctx)
+	defer cancel()
+	ack, _, err := h.client.StartRun(observation, start, protocol.RunCommandOptions{IdempotencyKey: key})
 	if err != nil {
 		return err
 	}

@@ -14,7 +14,6 @@ import (
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
-	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 // interactionAccounting retains Scope process checkpoints and context calibration.
@@ -32,16 +31,6 @@ type preparedModelContext struct {
 	effectID  agent.EffectID
 	sequence  uint64
 	estimated int
-}
-
-type modelCallAccountingInput struct {
-	message *corechat.Message
-	delta   accounting.ModelUsage
-	// reported is the provider's own usage value, retained beside the folded
-	// counters so a dimension the provider does not support stays absent in the
-	// durable per-call record.
-	reported      *corechat.Usage
-	contextTokens int64
 }
 
 func newInteractionAccounting(
@@ -252,49 +241,21 @@ func (i *interactionSession) interactionCheckpointPayload(
 
 func (i *interactionAccounting) accountModelCall(
 	invocation interaction.ModelInvocation,
-	callID string,
-	response *corechat.Response,
-	cost accounting.Cost,
+	consumption runs.ModelCallCompleted,
 ) (runs.ModelCallCompleted, error) {
-	input, err := newModelCallAccountingInput(response, i.selection, cost)
-	if err != nil {
-		return runs.ModelCallCompleted{}, err
+	delta := accounting.ModelUsage{Model: consumption.Model, Cost: consumption.Cost, Calls: 1}
+	if consumption.ReportedUsage != nil {
+		var err error
+		delta.Tokens, err = accounting.NewTokens(*consumption.ReportedUsage)
+		if err != nil {
+			return runs.ModelCallCompleted{}, err
+		}
+	}
+	if err := delta.Validate(); err != nil {
+		return runs.ModelCallCompleted{}, fmt.Errorf("execution: account model call: %w", err)
 	}
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	return i.accountModelCallLocked(invocation, callID, input)
-}
-
-func newModelCallAccountingInput(
-	response *corechat.Response,
-	selection modelchoice.Selection,
-	cost accounting.Cost,
-) (modelCallAccountingInput, error) {
-	if response == nil || response.Output == nil {
-		return modelCallAccountingInput{}, errors.New("execution: account model call without a response output")
-	}
-	var message *corechat.Message
-	if response.Output.Message != nil {
-		message = new(response.Output.Message.Clone())
-	}
-	delta, err := modelUsage(response, selection, cost)
-	if err != nil {
-		return modelCallAccountingInput{}, err
-	}
-	if err := delta.Validate(); err != nil {
-		return modelCallAccountingInput{}, fmt.Errorf("execution: account model call: %w", err)
-	}
-	return modelCallAccountingInput{
-		message: message, delta: delta, contextTokens: delta.InputTokens,
-		reported: reportedResponseUsage(response),
-	}, nil
-}
-
-func (i *interactionAccounting) accountModelCallLocked(
-	invocation interaction.ModelInvocation,
-	callID string,
-	input modelCallAccountingInput,
-) (runs.ModelCallCompleted, error) {
 	processID := invocation.Relation().ProcessID()
 	prepared, preparedFound := i.preparedContextByProcess[processID]
 	if preparedFound && (prepared.effectID != invocation.EffectID() ||
@@ -302,20 +263,16 @@ func (i *interactionAccounting) accountModelCallLocked(
 		return runs.ModelCallCompleted{}, errors.New("execution: model response has no matching prepared context")
 	}
 	nextUsage, _, _, err := advanceProcessUsage(
-		i.usageByProcess[processID], input.delta, invocation.ModelCallSequence(),
+		i.usageByProcess[processID], delta, invocation.ModelCallSequence(),
 	)
 	if err != nil {
 		return runs.ModelCallCompleted{}, err
 	}
-	calibration, calibrated, err := calibrateModelContext(prepared, preparedFound, input.contextTokens)
+	calibration, calibrated, err := calibrateModelContext(prepared, preparedFound, delta.InputTokens)
 	if err != nil {
 		return runs.ModelCallCompleted{}, err
 	}
-	completed := runs.ModelCallCompleted{
-		CallID: callID, Message: input.message, Model: input.delta.Model, Cost: input.delta.Cost,
-		ContextTokens: input.contextTokens,
-	}
-	completed.ReportedUsage = input.reported
+	consumption.ContextTokens = delta.InputTokens
 	i.usageByProcess[processID] = nextUsage
 	if preparedFound {
 		delete(i.preparedContextByProcess, processID)
@@ -323,7 +280,7 @@ func (i *interactionAccounting) accountModelCallLocked(
 	if calibrated {
 		i.contextByProcess[processID] = calibration
 	}
-	return completed, nil
+	return consumption, nil
 }
 
 func calibrateModelContext(
@@ -339,14 +296,4 @@ func calibrateModelContext(
 		return ModelContextTokenCalibration{}, false, err
 	}
 	return calibration, true, nil
-}
-
-// reportedResponseUsage detaches the provider's own usage value so the durable
-// per-call record keeps an unsupported breakdown absent.
-func reportedResponseUsage(response *corechat.Response) *corechat.Usage {
-	if response == nil || response.Metadata == nil || response.Metadata.Usage == nil {
-		return nil
-	}
-	usage := accounting.CloneReportedUsage(*response.Metadata.Usage)
-	return &usage
 }

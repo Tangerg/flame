@@ -95,7 +95,7 @@ func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) 
 	}
 	before := maps.Clone(ledger.usageByProcess[processID])
 
-	_, err := ledger.accountModelCall(invocation, "duplicate", interactionUsageTextResponse("duplicate", 3, 1), accounting.Cost{})
+	_, err := ledger.accountModelCall(invocation, runs.ModelCallCompleted{CallID: "duplicate", Model: "test-model", ReportedUsage: &chat.Usage{InputTokens: 3, OutputTokens: 1}})
 	if err == nil || !strings.Contains(err.Error(), "differs from accounted calls") {
 		t.Fatalf("account duplicate call error = %v", err)
 	}
