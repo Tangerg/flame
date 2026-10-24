@@ -7,9 +7,10 @@ This user-requested file is the maintained progress and handoff record for the d
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/native-note-reading-1025`. Native footnote reading is qualified on
+is clean on `codex/native-note-reading-1025`. Native footnote reading is qualified on
 frozen base `dc1d0163d32e2e20671dd37553896fa87e4e0117` without changing
-product sources. Publication and private evidence retirement are pending below.
+product sources. Qualification `c882bdc8d97fc369c6efcc4a2c687f7fe52dad68` is
+published to remote main, and private evidence retirement is complete.
 Individual unconfirmed-operation
 implementation `486d4ef2f6f12a6b248032d3a516e99ceb55265b` is published to
 remote main from frozen base `b5f59809cb7b31d31b0e2f6ff563e8097153aac6`.
@@ -4672,7 +4673,17 @@ the action. No product defect or workaround is inferred from these harness event
 All **seven** recorded processes are dead. Six owned checkout outputs, four
 Library paths and two bundle-temp paths are removed; both apps are unregistered.
 All 36 output baselines, three original files and 11 product resources remain
-preserved. Publication and exact private-root retirement are pending the receipt.
+preserved. Qualification `c882bdc8d97fc369c6efcc4a2c687f7fe52dad68` is
+published to remote main, verified against its exact remote hash with a clean
+owned checkout and no unpushed work. The verified archive retains **59 UTF-8
+files** and **eight screenshot digests**, gzip SHA-256
+`b34661fe52c2856e88fc252b635a182f9cc6832530954fbbc57842c943af5c06`.
+Its 607 accepted artifacts comprise 597 compiled assets, eight module-proxy
+files and two native binaries. The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-note-reading-1025-J6K89u`
+is absent after publication and archive verification. This receipt changes no
+tested source. Continue with another observed material-reading task; preserve
+the native fragment/link navigation and avoid repeating this qualified path.
 
 ## Empty, error and unsupported state ownership
 
