@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. Conversation Find now follows its visible Conversation, preserves current input focus/selection on return, retires with hidden content and honors motion preferences. Final focused checks pass 125 tests; complete Web passes 399 files / 3,370 tests and all 25 non-test gates. Supported native checks and actual English/Chinese Wails tasks pass, including narrow windows and 200%. Implementation `7ea0d2996` is pushed to main and verified by exact hash, a clean owned checkout and zero unpushed commits. Primary parallel work is untouched. Owned outputs are cleaned, preexisting files preserved, and private evidence is archived with its guarded root removed.
+Updated: 2026-10-24. Notification history now retains the same focusable action after dismissal and associates it with its own message. Ten focused regressions, all 25 non-test Web gates, supported native checks and English/Chinese actual Wails tasks pass, including 200%. The complete Web command retains two unclassified Runtime integration timeouts (3,373 passed); the complete isolated integration file passes all 49 tests. Primary parallel work is untouched. Owned native processes and new checkout/Library outputs are cleaned, all three preexisting output files are preserved, and exact main delivery/archive receipts follow.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/conversation-find-1024`. Fresh fetches at the user's synchronization request retained delivered main `13a4cef050ee41b16254237e99b402ac6dc85b8c` with no incoming commit; the verified Find implementation is now `7ea0d2996c6423386dd0b4cd980ff473742dcae0`. Primary parallel work remains outside this batch. Find belongs to the existing visible Conversation and reading axis; local query scope, keyboard closure, current-caret return, status semantics and motion preferences follow their existing owners. Final focused, complete Web, native build and actual English/Chinese task checks pass. The two earlier unclassified MCP-readiness failures remain recorded in the Approval section. All 5,724 accepted non-Markdown sources, eleven plugin resources and sixteen private inputs retain their accepted bytes through checks, hooks and cleanup. Six owned CLI/native PIDs are dead; seven new checkout directories and six unique Library directories are removed, all three bundles are unregistered, and three preexisting output files retain their original bytes. Implementation `7ea0d2996c6423386dd0b4cd980ff473742dcae0` is committed with normal formatter, workspace-lint and commit-message hooks and pushed to remote main. Exact remote hash, clean owned checkout and zero unpushed commits are verified before this documentation receipt. The guarded private root is removed after archival; session memory retains 208 UTF-8 files and 26 screenshot hashes, gzip SHA-256 `a2c87e64ac1a71c6ef0304d27c180ef929f49f3213410575cb28c93607ce1f64`. Continue with a newly evidenced issue; dynamic search updates and the other explicit exclusions below remain unqualified rather than assumed defects.
+The resumed continuous UI goal remains active. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/notification-review-1024`, based on delivered main `8fdd3be864f8492b22775914e8f3fcae87468117`. Fresh fetches retain that main with no incoming commit. Primary parallel work remains outside this batch. Notification history now preserves the current retained-row action through dismissal with the existing shared focusable-disabled contract, and each action has its own message description. No second dismissal/count owner, focus restoration mechanism, routing, shared style or Runtime change is added. Ten focused tests, actual EN/ZH native tasks, all 25 non-test Web gates and supported native checks pass. The complete Web command's Memory readiness and CLI provider-dispatch timeouts remain unclassified; one separate complete 49-test integration run passes. The earlier Approval failures retain their own history. All 5,724 accepted non-Markdown sources, eleven plugin resources and sixteen private inputs retain their accepted bytes. Six owned CLI/native PIDs are dead; seven new checkout directories and six unique Library directories are removed, all three bundles are unregistered, and three preexisting output files/inventories are preserved. The verified implementation is ready for explicit-path commit and push to main, followed by exact remote/clean/unpushed checks and guarded private evidence retirement. Continue from that receipt with a new evidenced task issue.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -7294,17 +7294,148 @@ reading stays retained; preserve these qualifications.
 
 ## Notifications audit
 
-The notifications surface is clean: the toaster delegates to `sonner` (live
-region, auto-dismiss, hover-pause handled by the library); the store is a single
-owner (id-sequenced log trimmed to 200, `dismiss`/`clearAll` as projections, the
-toast a transient echo); the badge list is id-keyed, the clear-all button is
-`focusableWhenDisabled`, and the popover is labelled. One a11y gap was fixed: the
-bell button carried the unread count only in its visual badge and `title`
-tooltip, while its accessible name was the static "Notifications", so a screen
-reader never heard the count. The count is now in the `aria-label`
-(`N unread notifications`), which also drives the tooltip (`IconButton` falls back
-to the aria-label), so the redundant `title` was dropped — one count-aware label
-serves the badge, the tooltip, and the accessible name.
+The earlier notification audit established one id-sequenced global log capped
+at 200, exact dismissal/clear projections, a transient toast echo and a named
+popover. The bell's accessible name now carries the full unread count, while
+its visual badge retains the existing capped presentation. Those contracts
+remain. The following current review qualifies retained history interaction;
+timed toast and system-notification behavior are outside this native batch.
+
+### Notification history and current action focus
+
+At main `8fdd3be86`, actual Wails reproduced a local focus interruption:
+Tab to the seventh Dismiss in twelve retained messages, then Return. The
+selected entry becomes dismissed and unread count falls from 12 to 11, but
+removing its button leaves focus on BODY. A second dismissal repeats it.
+The next Tab still reaches the next sibling, Escape returns to the bell, list
+scrollTop remains 312, and the Composer draft survives. This is lost current
+action feedback, not a blocked whole keyboard flow or lost notification data.
+
+`NotificationsBadge.tsx:110` now keeps each entry's original IconButton.
+Its unavailable state derives directly from `entry.dismissed`, through the
+same shared `focusableWhenDisabled` contract already used by Clear all.
+The button retains its node, focus and row position; repeated activation is
+refused. Existing dimmed message text, exact entry keys, newest-first order and
+the notification store's sole log/count/dismissal ownership remain. No focus
+effect, timer, listener, restoration ref, extra state or shared-control change
+was added. A React `useId` prefix and the existing entry identity associate
+each Dismiss with its own message through `aria-describedby` (`:101`, `:115`),
+including duplicate message strings.
+
+| Severity | Location                                      | Before                                                              | After                                                                                                | Why                                                                                                                               |
+| -------- | --------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Medium   | `notifications/ui/NotificationsBadge.tsx:110` | A retained message loses its active Dismiss node and native focus.  | The same disabled, focusable control preserves current action context and refuses repeat activation. | Focus-continuity review informed by 2.4.3; the observed next-Tab path already worked, so no broader keyboard blockage is claimed. |
+| Medium   | `notifications/ui/NotificationsBadge.tsx:101` | Identically named actions have no programmatic message description. | Each action references its own complete message while retaining the localized Dismiss name.          | Additional context under the 1.3.1 advisory relationship described by ARIA1; names were already present.                          |
+
+[Base UI Button guidance](https://base-ui.com/react/components/button)
+documents focusable disabled controls.
+[Popover guidance](https://base-ui.com/react/components/popover) retains
+opening/dismissal ownership.
+[WCAG focus order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html)
+and [ARIA1](https://www.w3.org/WAI/WCAG22/Techniques/aria/ARIA1.html) inform the
+local focus and message relationship. Installed Base UI 1.9.0's
+`PopoverPopup.mjs:105` requests `restoreFocus: "popup"`; its native removal
+fallback did not preserve this action, so the repair removes the cause rather
+than adding another restoration policy. Read-only HeroUI Popover basic and
+Button loading examples retain a trigger/content task and one control across
+states. ZCode's actual task-notification hook carries Session/task targets to
+the platform, while its transient toast removes messages. Neither is a reason
+to copy routing or removal into Flame's retained text-only history, which has
+no target/navigation protocol.
+
+Better-accessibility and better-layout give a scoped Approve for the observed
+notification task. Existing typography, row spacing, panel sizing, status tones,
+Orange/custom accent and popup geometry stay unchanged. No decoration or motion
+was added. This is not a product-wide accessibility or screen-reader claim.
+
+The bounded Claude Code CLI edits only the two authorized Badge/test files,
+finishing in 98.29 s with exit 0, no permission denials, 16 configured and 20
+reported turns. Its four added regressions initially fail two and pass seven:
+the enabled shared control explicitly exposes `aria-disabled=false`, and a
+single unread notification uses a singular label. Primary review corrects
+those test assumptions, ensures subscription cleanup in a finally block, checks
+computed accessible descriptions and adds later outside-draft focus coverage.
+No production workaround or valid assertion is weakened.
+
+Final focused coverage passes ten tests in three files (1.43 s test time /
+1.86 s command). Against the original Badge production source, those final tests
+fail three and pass seven (1.72 s test time / 2.44 s command); the accepted bytes
+are restored in a finally block. Typecheck (1.88 s), lint (0.53 s) and formatting
+pass. Baseline checks passed five tests before the added coverage.
+
+The complete Web command retains two failures in the unchanged Runtime HTTP
+integration file: portable-package Memory MCP readiness and CLI-owned Run
+provider dispatch. It passes 3,373 of 3,375 tests in 398 files (399 total;
+198.55 s test time, 207.24 s command). That file does not import the changed
+notification presentation. One separate run of the complete file passes all
+49 tests (40.23 s test time, 40.93 s command); the two aggregate failures and
+their unclassified cause remain recorded. No further rerun, timeout increase
+or assertion weakening is used. All twenty-two subsequent Web gates pass
+serially in 28.17 s, completing all twenty-five non-test gates. Supported
+`make check-native` passes in 25.35 s, including Desktop test/vet/build and the
+Wails production build; duplicate `-lobjc` remains a non-failing warning.
+No browser visual/performance suite ran.
+
+Actual Wails v3 uses isolated homes, canonical long-content and read-only
+workspace providers, twelve seeded history entries, the real Badge and its
+shared controls. A private visual bootstrap places that component in the
+fixture footer, adds the actual shortcut provider/default commands, and seeds
+the original Composer owner. Passive reports read focus, canonical log identities,
+popup/list geometry, scrolling and textarea selection. No synthetic focus/input,
+product debug route, notification navigation, live Send, provider/tool call or
+Runtime mutation is introduced.
+
+- English/light/14 px/Orange at 1440 × 900: seven separately observed Tab stops
+  reach entry 6; dismissal retains its same button and scrollTop 312, with
+  unread 12 → 11. Repeated Return/Space refuse another change. Tab and reverse
+  Tab preserve local order. Pointer dismissal of entry 7 retains its action;
+  Escape returns to the count-aware bell. Reopening retains both dismissed
+  messages, Clear all keeps its disabled focus on the empty state, and Escape
+  returns to the zero-count entry.
+- The first final English input probe still had selection 0..38 after a
+  combined Select All/Right sequence; its subsequent paste correctly replaced
+  the selected isolated draft. That append is excluded. A fresh native instance
+  repeats notification dismissal and separately observes end carets 27 and 38,
+  then qualifies original draft → source file reader → source return → append.
+  The same textarea finishes `Draft before notifications. Continued. Returned.`
+  at caret 48. The notification fix does not alter native selection behavior.
+- Chinese/dark/18 px/custom blue/motion off: native resize settles at
+  1122 × 1051. Entry 6 dismissal retains button focus and scrollTop 253.
+  Twenty separately observed native Zoom In commands reach 561 × 525 at 200%
+  while retaining that same disabled action. The complete 360 × 480 popup fits
+  at (50, 41); repeated Return/Space refuse changes, Tab reveals the next row
+  at scrollTop 619 and reverse Tab returns to the dismissed action. Reopening
+  retains history, native wheel reads from scrollTop 0 to 480, and Clear all/
+  Escape preserve their expected control/entry focus.
+- The static fixture sidebar is then collapsed for the complete reading task.
+  Separately observed native end positions qualify original Chinese draft
+  9 → 15 → 20 through file inspection, full-pane reading and source return.
+  Final text is `通知前保留的草稿。 继续核对。 已返回。`. Actual Size restores
+  1122 × 1051 with the original textarea focused and the notification popup shut.
+
+The native Next-key probe did not move the list and is excluded from page-scroll
+acceptance; Tab reveal and the separate wheel provide the recorded reading
+evidence. The first resize frame (1125 × 1050) is transient. Native coverage
+establishes 561 CSS px at 200%, not a fresh 320 CSS px viewport or a separate
+320 px Dock for this batch. The fixture footer is not production-sidebar
+navigation evidence. Actual shared-control unit queries qualify the accessible
+description relationship; native AX qualifies names/disabled states, without a
+VoiceOver speech claim. OS IME, RTL, other locale GUIs/platforms, fresh contrast
+measurements, live OS notifications, timed toasts and eviction of a focused oldest
+row at the existing 200-entry cap remain unverified.
+
+All 5,724 tracked non-Markdown inputs retain accepted aggregate SHA-256
+`6addf613632186792133e6c21d69ef57beb68756b3c2478b456de74697351cbd`;
+eleven plugin resources and sixteen actual private inputs retain their bytes
+through final checks. The accepted private visual build takes 2.37 s. Six owned
+CLI/native PIDs are dead; seven new checkout directories and six unique Library
+Cache/WebKit directories are removed and three bundles unregistered. All three
+preexisting output files are preserved, including the restored native-check
+binary; preexisting cache file inventories are exact. Primary parallel work,
+dependencies, shared tools and read-only references are untouched. Fresh fetch
+still finds main `8fdd3be864f8492b22775914e8f3fcae87468117` with no incoming
+commits. This record accompanies explicit-path implementation delivery; exact
+remote hash and guarded private archive retirement follow in the receipt.
 
 ## HITL approval surface audit
 

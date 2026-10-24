@@ -1,5 +1,6 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
+import { useId } from "react";
 import { Popover } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
@@ -44,6 +45,7 @@ export function NotificationsBadge() {
   const dismiss = useNotificationStore((state) => state.dismiss);
   const clearAll = useNotificationStore((state) => state.clearAll);
   const unread = unreadNotificationCount(log);
+  const messageIdPrefix = useId();
 
   return (
     <Popover.Root>
@@ -96,6 +98,7 @@ export function NotificationsBadge() {
               />
               <div {...stylex.props(vocab.fill)}>
                 <div
+                  id={`${messageIdPrefix}-${entry.id}`}
                   {...stylex.props(vocab.wrapText, entry.dismissed && vocab.faint, typeStep.uiMd)}
                 >
                   {entry.message}
@@ -104,14 +107,16 @@ export function NotificationsBadge() {
                   {formatRelative(entry.timestamp)}
                 </div>
               </div>
-              {!entry.dismissed && (
-                <IconButton
-                  icon={iconGlyph("x")}
-                  size="xs"
-                  aria-label={t("notifications.dismiss")}
-                  onClick={() => dismiss(entry.id)}
-                />
-              )}
+              {/* A dismissed entry keeps its control so keyboard focus is not dropped on removal. */}
+              <IconButton
+                icon={iconGlyph("x")}
+                size="xs"
+                aria-label={t("notifications.dismiss")}
+                aria-describedby={`${messageIdPrefix}-${entry.id}`}
+                disabled={entry.dismissed === true}
+                focusableWhenDisabled
+                onClick={() => dismiss(entry.id)}
+              />
             </div>
           ))}
         </div>
