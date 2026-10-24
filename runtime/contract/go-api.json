@@ -2,6 +2,18 @@
   "packages": [
     {
       "path": "github.com/Tangerg/flame/packages/local-runtime",
+      "constants": [
+        {
+          "name": "DefaultListenAddress",
+          "type": "untyped string",
+          "value": "\"127.0.0.1:17171\""
+        },
+        {
+          "name": "DefaultOrigin",
+          "type": "untyped string",
+          "value": "\"http://127.0.0.1:17171\""
+        }
+      ],
       "variables": [
         {
           "name": "ErrInvalidDataDirectory",
