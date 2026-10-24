@@ -828,6 +828,7 @@ export const ko: Record<string, string> = {
   "file.empty.sub": "이 디렉터리에는 표시할 파일이 없습니다.",
   "file.refreshError.title": "파일을 새로 고칠 수 없습니다",
   "file.refreshError.sub": "마지막으로 불러온 파일을 표시하고 있습니다.",
+  "file.directoryRefreshError.sub": "{{path}}에서 마지막으로 불러온 파일을 표시하고 있습니다.",
   "file.readRefreshError.title": "파일을 새로 고칠 수 없습니다",
   "file.readRefreshError.sub": "마지막으로 불러온 내용을 표시하고 있습니다.",
   "file.error.title": "파일을 열 수 없습니다",

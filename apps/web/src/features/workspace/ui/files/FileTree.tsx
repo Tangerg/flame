@@ -3,7 +3,7 @@ import { type Ref, useCallback, useId, useLayoutEffect, useRef, useState } from 
 import { copyText } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { ContextMenu } from "@/ui/index";
-import { DataView } from "@/ui/index";
+import { DataError, DataView, SkeletonList } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { Tree } from "@/ui/index";
 import { chevron } from "@/ui/index";
@@ -102,10 +102,13 @@ function TreeNode({
   const {
     data: children,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useWorkspaceListFiles(expanded ? { cwd: tree.cwd, path: entry.path } : undefined);
-  const shown = expanded && !isLoading && error == null ? children : undefined;
+  // A failed refresh of this directory's accepted children keeps them and their cursor in place.
+  const retained = expanded && children !== undefined && children.length > 0;
+  const shown = expanded && !isLoading && (error == null || retained) ? children : undefined;
   const childCursor =
     cursor !== entry.path && shown?.some((child) => holds(child, cursor)) ? cursor : null;
   const focusable = cursor !== null && childCursor === null;
@@ -209,7 +212,7 @@ function TreeNode({
           <DataView
             items={children}
             isLoading={isLoading}
-            failure={error}
+            failure={retained ? undefined : error}
             onRetry={refetch}
             skeletonCount={1}
             error={{ title: t("dataView.error.title"), size: "compact" }}
@@ -229,6 +232,26 @@ function TreeNode({
               ))
             }
           </DataView>
+          {retained &&
+            error != null &&
+            (isFetching ? (
+              <SkeletonList count={1} variant="compact" label={t("common.loading")} />
+            ) : (
+              <div role="status">
+                <DataError
+                  failure={error}
+                  unsupported={{
+                    icon: "folder",
+                    sub: t("file.directoryRefreshError.sub", { path: entry.path }),
+                    size: "compact",
+                  }}
+                  onRetry={refetch}
+                  title={t("file.refreshError.title")}
+                  sub={t("file.directoryRefreshError.sub", { path: entry.path })}
+                  size="compact"
+                />
+              </div>
+            ))}
         </Tree.Group>
       )}
     </div>

@@ -1,12 +1,12 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-24. A failed background file read now keeps the current query's accepted content, selected renderer mode, reader and scroll position available with persistent recovery feedback. The latest remote main `9789132a1` is integrated. On its new dependency graph, all 82 focused tests, 3,291 Web tests, 25 non-test Web gates and the supported native check pass. Actual English/light/14 px/Orange and Chinese/dark/18 px/custom-blue flows qualify repeated retry, deliberate scrolling, reading/return and continued drafts, including a 320 px Dock and native 200% zoom. Owned processes and new checkout/Library outputs are cleaned; three preexisting output files are restored. The private evidence root is archived and removed. Implementation `76370618c` is pushed to remote main and its exact hash is verified.
+Updated: 2026-10-24. A failed background read of an expanded directory now keeps that query's accepted children, current child cursor and selection available with recovery feedback naming the directory. Remote main is rechecked at `07ecd97db`. All 88 focused tests, the final complete Web command (397 files / 3,297 tests plus 25 non-test gates) and the supported native check pass. English/light/14 px/Orange and Chinese/dark/18 px/custom-blue native flows qualify repeated retry, long-list scrolling, reading/return and continued drafts at a 320 px Dock and native 200% zoom. Earlier MCP-readiness failures remain qualified below. Owned processes and new checkout/Library outputs are cleaned; all three preexisting output files retain their original bytes. Delivery and evidence removal are the remaining final steps.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
-The user's latest instruction explicitly resumes continuous work. The file-read refresh batch starts from the delivered root-list receipt `6868279a2`, then fast-forwards to remote main `9789132a1e03129e6612dfbbe1ef85f0207d9e2b` at the user's request. All ten UI work files retain their bytes through that merge. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/file-read-refresh-continuity-1024`; the primary checkout occupies local `main`, so delivery uses the verified feature HEAD as the remote main update without changing the primary's files or checked-out branch. Implementation `76370618ce658224248c26e03ed607c7ce2d83c7` is pushed to remote main; its exact remote hash, clean owned checkout and zero unpushed commits are verified before this receipt. The current query cache remains the sole accepted-content owner. No last-good copy or completion-time focus action is introduced. Focused, complete Web, supported native and actual English/Chinese acceptance pass on the merged graph. All 5,721 accepted non-Markdown tracked inputs and ten private acceptance inputs remain unchanged. Four owned CLI/native PIDs are dead, eight new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. The private evidence root is archived and removed; the retained session archive contains 163 UTF-8 evidence files and six screenshot hashes, with gzip SHA-256 `bd22366bb4cfc00dcbc6b9bc10c3726024d2dbb6d5210c6e0b17ca068fdabaf8`. Next, inspect the expanded-directory browse/read boundary before selecting another evidence-backed batch.
+The user's latest instruction explicitly resumes continuous work. The expanded-directory batch starts from delivered remote main `07ecd97db1e6e63a79b368f44c0e0591eba19d6c`, retaining the root-list and file-reader work plus the user's `9789132a1` integration. Later fetches before complete verification and delivery find no newer remote commit. The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame` is on `codex/directory-refresh-continuity-1024`; the primary checkout occupies local `main`, so delivery uses the verified feature HEAD as the remote main update without changing the primary's files or checked-out branch. The current directory query remains the sole accepted-child owner; existing memory and row focus own expansion, selection and cursor. Focused, final complete Web, supported native and actual English/Chinese acceptance pass. Two earlier complete runs fail the already-recorded Runtime MCP-readiness case; its complete 49-test file passes alone, and the complete command passes after owned native apps retire. That sequence does not establish the readiness cause. All 5,721 accepted non-Markdown tracked inputs and ten private acceptance inputs remain unchanged. Four owned CLI/native PIDs are dead, seven new checkout directories and six unique Library Cache/WebKit directories are removed, and all three preexisting output files retain their original bytes. The private evidence root remains only for exact delivery confirmation and archive/removal. Next, inspect the remaining tree semantics and context actions before selecting another evidence-backed batch.
 
 The shared product now lives in `apps/web`; `apps/desktop` owns the Wails v3 native host, and `packages/ui` owns shared presentation. This file was recovered from `12d67d324^:apps/web/UI_PROGRESS.md` after the repository cleanup removed it. It remains the sole UI progress and handoff file at the user's explicit request. Historical path examples and gate counts below describe their recorded revisions; verify current source and tooling before reuse.
 
@@ -2421,6 +2421,143 @@ accepted inputs and restored preexisting outputs are verified. The accepted
 1,697-input aggregate SHA-256 is
 `7ed8edb0e69f8d0e657d841a088382f4278a983e792b48a78d5a5dc85e09dd43`.
 Continue from fresh evidence at the surrounding browse/read task boundary.
+
+### Expanded-directory refresh continuity
+
+Actual Wails at `07ecd97db` reproduces the remaining directory case. Expand
+`apps`, move into its accepted `resizer.ts` child and replace that directory's
+read. On failure the query still owns one accepted child and the root still
+owns six entries, but the original `TreeNode` guard and `DataView` remove the
+child. The same Tree loses its seventh row and the cursor/focus fall back to
+`apps`. This is distinct from a failed first read that has no accepted child.
+
+`FileTree.tsx:110` now derives child visibility and cursor routing from the same
+current query's accepted nonempty children while expanded. `DataView` keeps
+those rows through refresh failure and retry. Recovery follows that directory's
+existing child block inside its group, so inserting it does not displace the
+preceding rows. `file.directoryRefreshError.sub` names the literal directory in
+all eight locales; the title and compact error/loading components are reused.
+Unsupported methods retain the warning presentation and no Retry.
+
+No state, ref, effect, timer, second cursor, last-good list or query policy is
+added. The existing focused-Retry handoff reaches the nearest `Tree.Root`, whose
+single tab-stop projection enters the current child before zero-argument
+refetch. Later drafting keeps its focus. Initial failure, accepted empty lists,
+explicit collapse and CWD changes retain their contracts. A real successful
+child removal still uses the existing parent fallback. List queries have no
+placeholder policy; the separate continuous-window option belongs to file reads.
+
+Read-only ZCode's actual
+`workspace-file-tree/useWorkspaceFileTreeData.ts:286–301` records a directory
+error without replacing its accepted children. Flame uses its current query
+cache and existing cursor rather than copying ZCode's maps, watchers or toast.
+The earlier WAI tree/keyboard references and better-accessibility, layout,
+typography and writing guidance inform continued browsing and scoped recovery.
+Existing surfaces, type, indentation, Orange/custom accent and focus tokens stay
+in use. The shared error component and Tree primitive need no further changes.
+
+Bounded Claude Code CLI (`claude-opus-5-5`, 201.82 seconds, 42 reported turns,
+no permission denials or spawned agents) supplies the ten-file candidate and
+five regressions. Its available tools are only Read/Glob/Grep/Edit/Write. The
+primary reviews the actual diff and adds a nested-directory collapse/reopen/
+read/return case. An initial return assertion incorrectly pins old error copy
+while the public query trace shows a new active read. The final regression
+controls that pending completion, retains the same branch and retires feedback
+when the authoritative read succeeds. No product workaround or weakened timeout
+is introduced.
+
+Verification:
+
+- The original 55-test workspace suite passes before editing. The final four
+  focused files pass 88 tests (4.68 seconds), plus typecheck and lint. Keeping
+  final tests, the original FileTree yields four failures / 84 passes; restoring
+  only the error-based child-cursor guard yields two / 86; moving feedback before
+  accepted children yields one / 87. Exact accepted source is restored after
+  each control. New coverage includes deferred repeated failure/success, updated
+  children, a different current selection, later drafting, request payloads,
+  nested branch recovery, actual removal, accepted empty data, unsupported
+  methods and a different CWD. Prior first-read recovery tests remain unchanged.
+- The first two complete Web commands pass 396 files / 3,296 tests and fail
+  the same portable-package Memory MCP-readiness case, taking 207.67 and
+  224.61 seconds overall. The complete 49-test Runtime file passes alone in
+  45.32 seconds. Runtime, its integration file, resources, dependencies and
+  deadlines are unchanged by this batch. This failure category was previously
+  reproduced on clean `475555981`, recorded under pasted-text verification.
+  After all four owned CLI/native PIDs retire, the final complete command passes
+  397 files / 3,297 tests (169.73 seconds), all 25 non-test gates and production
+  module linking, in 202.34 seconds overall. Earlier failures and non-failing
+  loopback diagnostics remain unclassified; no readiness repair is claimed.
+- `make check-native` passes Desktop test/vet/build and the supported production
+  Wails arm64 build in 25.79 seconds. `vtool` confirms macOS 13.0 minimum /
+  SDK 26.5; duplicate `-lobjc` is non-failing.
+- English/light/14 px/Flame Orange: the real Tab path and separator Home set a
+  320 px Dock. Background failure and repeated keyboard Retry keep the same
+  seven-row Tree, exact child DOM, cursor and expansion; Down/Up continue across
+  the child/root boundary. During request four's private 30-second delay, the
+  original draft grows from 23 to 40 characters. Success preserves that input,
+  exact text, focus and `40..40` caret. Reading the canonical full-path
+  `apps/web/src/features/shell/workbench/panel/DockResizer.tsx`, keyboard entry
+  through Go to line/Copy path, Back and explicit collapse/re-expansion pass.
+  Back keeps the original child; explicit collapse intentionally recreates it
+  without another list request. Continued typing reaches 53 characters.
+- Chinese/dark/18 px/custom `#007BFF`/motion off: native Window Left gives
+  1122 × 1051; Actual Size and 20 individually observed Zoom In actions give
+  561 × 525 CSS pixels at 200%. The private long-list fixture has 25 accepted
+  children / 31 rendered rows. Selected `resizer.ts` remains separate from
+  unselected `review-24.md` cursor. Background failure retains both and exactly
+  565 px scroll, with the focused row visible. The following feedback provides
+  a scroll continuation cue; Tab reveals the complete error and Retry at
+  811 px, and repeated Retry returns to the same visible child at 633 px.
+  Its request-three capture has already settled, so it is not counted as an
+  extra pending observation. During the genuine fourth pending request, a
+  deliberate wheel scroll changes 633 → 583 px; Close returns to Conversation,
+  and activating the original input grows its draft from 8 to 16 characters.
+  Success and reopening retain 583 px, both identities, exact input, focus and
+  `16..16` caret. Tab enters the remembered child, Home/Right open the canonical
+  file, and Back/Close/continued typing reach 22 characters. Actual Size retains
+  that same input and `22..22` caret. Geometric row visibility is interpreted
+  only while Files is active, not as physical visibility of hidden material.
+
+Writing review (Approve for inspected copy):
+
+| Severity       | Location                                                                                                              | Before                                                | After                                                                   | Why                                                                           |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| HIGH, resolved | `apps/web/src/features/workspace/ui/files/FileTree.tsx:235` and `file.directoryRefreshError.sub` in all eight locales | A generic first-read error replaces accepted children | Refresh feedback names the directory and explains the last loaded files | Identifies the failed task and the displayed scope beside its recovery action |
+
+Layout review (Approve for inspected scenes):
+
+| Severity       | Location                                                               | Before                                                               | After                                                               | Why                                                                                                              |
+| -------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| HIGH, resolved | `apps/web/src/features/workspace/ui/files/FileTree.tsx:110` and `:235` | Background error removes the current child and its browsing position | Same child block precedes contextual recovery in the existing group | Preserves reading order and the active row, with a visible continuation cue and keyboard-reachable Retry at 200% |
+
+English and Chinese rendered copy is native-qualified; the other six strings are
+source-reviewed and pass locale/type gates. Other-locale native rendering,
+forced RTL mirroring, VoiceOver speech, native IME and other platforms are not
+claimed. The private fixture substitutes only `apps` listing outcome/timing,
+adds 24 deterministic Chinese child entries, disables that query's automatic
+retry and passively observes identities/geometry. F8 invokes production read
+replacement. Wails, product UI/navigation and the canonical file reader remain
+in use. Unit tests prove changed successful lists and actual removal; native
+success reuses the canonical list and proves continuity. No live filesystem
+fault, provider/Send/durable-write native flow, browser visual suite, performance
+benchmark or standalone Go Runtime/CLI suite is claimed.
+
+All 5,721 accepted non-Markdown tracked inputs and ten private acceptance inputs
+remain unchanged; all 11 generated plugin resources retain their base bytes.
+The accepted aggregate SHA-256 is
+`b216d7ccbe1e195112ca961ff0be883dc09b249b82b8d256139905d9dfde15fe`.
+Four owned CLI/native PIDs are dead and three exact bundles are unregistered.
+Seven new checkout output directories and six unique Library Cache/WebKit
+directories are removed. The preexisting native binary is restored; all three
+preexisting output files retain their original bytes. Four older build copies
+are qualified against their exact read-only source bytes. The private evidence
+root is retained only until delivery confirmation and archival.
+
+Keep the existing MCP-readiness qualification visible for the next Runtime MCP
+startup/lifetime change. Retire owned native acceptance apps before complete
+Web verification to keep that step isolated; the observed ordering does not
+establish the earlier failure's cause. Next, inspect remaining tree semantics
+and context actions before choosing another evidence-backed UI change.
 
 ### File read refresh continuity
 

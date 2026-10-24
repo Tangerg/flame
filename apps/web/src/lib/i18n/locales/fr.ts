@@ -883,6 +883,7 @@ export const fr: Record<string, string> = {
   "file.empty.sub": "Ce dossier ne contient aucun fichier visible.",
   "file.refreshError.title": "Impossible d'actualiser les fichiers",
   "file.refreshError.sub": "Les derniers fichiers chargés sont affichés.",
+  "file.directoryRefreshError.sub": "Les derniers fichiers chargés de {{path}} sont affichés.",
   "file.readRefreshError.title": "Impossible d'actualiser le fichier",
   "file.readRefreshError.sub": "Le dernier contenu chargé est affiché.",
   "file.error.title": "Impossible d'ouvrir le fichier",

@@ -741,6 +741,7 @@ export const zh: Record<string, string> = {
   "file.empty.sub": "此目录中没有可显示的文件。",
   "file.refreshError.title": "文件刷新失败",
   "file.refreshError.sub": "当前显示上次加载的文件。",
+  "file.directoryRefreshError.sub": "当前显示 {{path}} 中上次加载的文件。",
   "file.readRefreshError.title": "文件刷新失败",
   "file.readRefreshError.sub": "当前显示上次加载的内容。",
   "file.error.title": "无法打开文件",

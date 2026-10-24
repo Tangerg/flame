@@ -1050,6 +1050,240 @@ describe("root file listing refresh continuity", () => {
   });
 });
 
+describe("expanded directory refresh continuity", () => {
+  const readme: WorkspaceFileEntry = { name: "README.md", path: "README.md", type: "file" };
+  const util: WorkspaceFileEntry = { name: "util.go", path: "src/util.go", type: "file" };
+  const directoryQuery = (cwd?: string) => ({
+    queryKey: [WORKSPACE_LIST_FILES_KEY, { cwd, path: "src" }],
+    exact: true,
+  });
+  const unavailable = () => new Error("directory unavailable");
+  const labels = () => screen.getAllByRole("treeitem").map((row) => row.getAttribute("aria-label"));
+
+  async function expandWithCursorInChild() {
+    const folder = await screen.findByRole("treeitem", { name: "src" });
+    fireEvent.click(folder);
+    const child = await screen.findByRole("treeitem", { name: "main.go" });
+    act(() => child.focus());
+    return { folder, child };
+  }
+
+  it("keeps the directory's accepted children, cursor and focus through failed refreshes and retries", async () => {
+    listFiles.mockImplementation(async (query) => (query.path ? [file] : [directory, readme]));
+    useContextDockStore.setState({ memory: { expandedDirs: [], lastFilePath: file.path } });
+    mount(
+      <>
+        <textarea aria-label="Message" defaultValue="Retained message draft" />
+        <FileWorkspace />
+      </>,
+    );
+    const { folder, child } = await expandWithCursorInChild();
+    const tree = screen.getByRole("tree", { name: "Files" });
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
+    expect(child.getAttribute("aria-current")).toBe("true");
+
+    const refresh = Promise.withResolvers<WorkspaceFileEntry[]>();
+    listFiles.mockReturnValueOnce(refresh.promise);
+    act(() => void client.refetchQueries(directoryQuery()));
+    await waitFor(() => expect(listFiles).toHaveBeenCalledTimes(3));
+    expect(screen.queryByRole("status")).toBeNull();
+
+    await act(async () => refresh.reject(unavailable()));
+    const feedback = await screen.findByRole("status");
+    expect(feedback.textContent).toContain("Couldn't refresh files");
+    expect(feedback.textContent).toContain("Showing the last loaded files in src.");
+    expect(child.closest('[role="group"]')!.lastElementChild).toBe(feedback);
+    expect(labels()).toEqual(["src", "main.go", "README.md"]);
+    expect(screen.getByRole("tree", { name: "Files" })).toBe(tree);
+    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
+    expect(child.tabIndex).toBe(0);
+    expect(folder.tabIndex).toBe(-1);
+    expect(folder.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(child);
+
+    for (const { typing, settle } of [
+      {
+        typing: false,
+        settle: (listing: PromiseWithResolvers<WorkspaceFileEntry[]>) =>
+          listing.reject(unavailable()),
+      },
+      {
+        typing: true,
+        settle: (listing: PromiseWithResolvers<WorkspaceFileEntry[]>) =>
+          listing.reject(unavailable()),
+      },
+      {
+        typing: true,
+        settle: (listing: PromiseWithResolvers<WorkspaceFileEntry[]>) =>
+          listing.resolve([file, util]),
+      },
+    ]) {
+      const retry = await screen.findByRole("button", { name: "Retry" });
+      act(() => retry.focus());
+      const listing = Promise.withResolvers<WorkspaceFileEntry[]>();
+      listFiles.mockReturnValueOnce(listing.promise);
+
+      fireEvent.click(retry);
+      expect(document.activeElement).toBe(child);
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Retry" })).toBeNull());
+      expect(screen.getByRole("status").textContent).toContain("Loading");
+      expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
+      expect(document.activeElement).toBe(child);
+      if (typing) {
+        act(() => draft.focus());
+        fireEvent.change(draft, { target: { value: "Retained message draft, continued" } });
+      }
+
+      await act(async () => settle(listing));
+      await waitFor(() => expect(client.isFetching()).toBe(0));
+      expect(screen.getByRole("tree", { name: "Files" })).toBe(tree);
+      expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
+      expect(child.tabIndex).toBe(0);
+      expect(child.getAttribute("aria-current")).toBe("true");
+      expect(folder.getAttribute("aria-expanded")).toBe("true");
+      expect(document.activeElement).toBe(typing ? draft : child);
+    }
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(labels()).toEqual(["src", "main.go", "util.go", "README.md"]);
+    expect(draft.value).toBe("Retained message draft, continued");
+    expect(listFiles.mock.calls).toEqual([
+      [{ cwd: undefined }],
+      ...Array.from({ length: 5 }, () => [{ cwd: undefined, path: "src" }]),
+    ]);
+
+    act(() => tree.focus());
+    expect(document.activeElement).toBe(child);
+    fireEvent.keyDown(child, { key: "ArrowDown" });
+    const added = screen.getByRole("treeitem", { name: "util.go" });
+    expect(document.activeElement).toBe(added);
+    fireEvent.keyDown(added, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(folder);
+  });
+
+  it("keeps a loaded nested branch usable when its parent refresh fails", async () => {
+    const nested: WorkspaceFileEntry = { name: "nested", path: "src/nested", type: "dir" };
+    const deep: WorkspaceFileEntry = { name: "main.go", path: "src/nested/main.go", type: "file" };
+    listFiles.mockImplementation(async (query) =>
+      query.path === "src" ? [nested] : query.path === nested.path ? [deep] : [directory],
+    );
+    mount(<FileWorkspace />);
+    const folder = await screen.findByRole("treeitem", { name: "src" });
+    fireEvent.click(folder);
+    const branch = await screen.findByRole("treeitem", { name: "nested" });
+    fireEvent.click(branch);
+    const child = await screen.findByRole("treeitem", { name: "main.go" });
+    act(() => child.focus());
+
+    listFiles.mockRejectedValueOnce(unavailable());
+    await act(() => client.refetchQueries(directoryQuery()));
+    await screen.findByText("Showing the last loaded files in src.");
+    expect(screen.getByRole("treeitem", { name: "nested" })).toBe(branch);
+    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
+    expect(child.tabIndex).toBe(0);
+    expect(branch.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(child);
+
+    fireEvent.keyDown(child, { key: "ArrowLeft" });
+    fireEvent.keyDown(branch, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(branch);
+    expect(branch.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("treeitem", { name: "main.go" })).toBeNull();
+    fireEvent.keyDown(branch, { key: "ArrowRight" });
+    const reopened = await screen.findByRole("treeitem", { name: "main.go" });
+    fireEvent.keyDown(branch, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(reopened);
+    expect(screen.getByText("Showing the last loaded files in src.")).toBeTruthy();
+    fireEvent.keyDown(reopened, { key: "Enter" });
+    await screen.findByText("package main");
+    expect(readFile).toHaveBeenCalledWith({ cwd: undefined, path: deep.path });
+    const returning = Promise.withResolvers<WorkspaceFileEntry[]>();
+    listFiles.mockReturnValueOnce(returning.promise);
+    fireEvent.click(screen.getByRole("button", { name: "Back to files" }));
+    const returned = await screen.findByRole("treeitem", { name: "main.go" });
+    expect(returned).toBe(reopened);
+    expect(returned.getAttribute("aria-current")).toBe("true");
+    expect(screen.getByRole("status").textContent).toContain("Loading");
+    await act(async () => returning.resolve([nested]));
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(returned);
+    expect(document.activeElement).toBe(returned);
+  });
+
+  it("explains an unsupported directory refresh beside its accepted children without a retry", async () => {
+    mount(<FileTree entries={[directory, readme]} onSelectFile={() => {}} />);
+    const { child } = await expandWithCursorInChild();
+    listFiles.mockRejectedValueOnce(
+      new RpcError({ message: "method not found", data: { type: "method_not_found" } }),
+    );
+    await act(() => client.refetchQueries(directoryQuery()));
+
+    const feedback = await screen.findByRole("status");
+    expect(feedback.textContent).toContain("Not supported by this runtime");
+    expect(feedback.textContent).toContain("Showing the last loaded files in src.");
+    expect(feedback.querySelector('[data-icon-name="folder"]')).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(screen.getByRole("treeitem", { name: "main.go" })).toBe(child);
+    expect(document.activeElement).toBe(child);
+  });
+
+  it("moves focus to the folder when a retried refresh actually removes the cursor's child", async () => {
+    mount(<FileTree entries={[directory, readme]} onSelectFile={() => {}} />);
+    const { folder } = await expandWithCursorInChild();
+    listFiles.mockRejectedValueOnce(unavailable());
+    await act(() => client.refetchQueries(directoryQuery()));
+    const retry = await screen.findByRole("button", { name: "Retry" });
+    act(() => retry.focus());
+    listFiles.mockResolvedValueOnce([util]);
+
+    fireEvent.click(retry);
+    await screen.findByRole("treeitem", { name: "util.go" });
+    expect(screen.queryByRole("treeitem", { name: "main.go" })).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(folder.tabIndex).toBe(0);
+    expect(document.activeElement).toBe(folder);
+  });
+
+  it("keeps ordinary failure recovery after an accepted empty directory", async () => {
+    listFiles.mockResolvedValueOnce([]);
+    mount(<FileTree entries={[directory]} onSelectFile={() => {}} />);
+    fireEvent.click(screen.getByRole("treeitem", { name: "src" }));
+    await screen.findByText("No files");
+    listFiles.mockRejectedValueOnce(unavailable());
+    await act(() => client.refetchQueries(directoryQuery()));
+
+    const retry = await screen.findByRole("button", { name: "Retry" });
+    expect(screen.getByText("Couldn't load")).toBeTruthy();
+    expect(screen.queryByText("Couldn't refresh files")).toBeNull();
+    fireEvent.click(retry);
+    expect(await screen.findByRole("treeitem", { name: "main.go" })).toBeTruthy();
+  });
+
+  it("drops the previous workspace's children when the workspace changes under refresh feedback", async () => {
+    const tree = (cwd: string) => (
+      <QueryClientProvider client={client}>
+        <FileTree entries={[directory]} cwd={cwd} onSelectFile={() => {}} />
+      </QueryClientProvider>
+    );
+    const view = render(tree("/work/one"));
+    await expandWithCursorInChild();
+    listFiles.mockRejectedValueOnce(unavailable());
+    await act(() => client.refetchQueries(directoryQuery("/work/one")));
+    await screen.findByText("Couldn't refresh files");
+
+    const next = Promise.withResolvers<WorkspaceFileEntry[]>();
+    listFiles.mockReturnValueOnce(next.promise);
+    view.rerender(tree("/work/two"));
+    expect(screen.queryByRole("treeitem", { name: "main.go" })).toBeNull();
+    expect(screen.queryByText("Couldn't refresh files")).toBeNull();
+    expect(screen.getByRole("status").textContent).toContain("Loading");
+
+    await act(async () => next.resolve([util]));
+    expect(await screen.findByRole("treeitem", { name: "util.go" })).toBeTruthy();
+    expect(listFiles).toHaveBeenLastCalledWith({ cwd: "/work/two", path: "src" });
+  });
+});
+
 describe("file read refresh continuity", () => {
   const guide = "docs/reading-guide.md";
   const readQuery = (path: string, cwd?: string) => ({
