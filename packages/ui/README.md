@@ -16,6 +16,10 @@ application owns paper choices, strength, theme adaptation and persistence.
 `ButtonPrimitive` keeps command labels outside native text selection. Dragging a
 navigation or action button cannot begin selecting the surrounding document.
 Reading content and editable fields retain their native selection behavior.
+Focusable disabled buttons retain their focus and disabled semantics. Base UI
+still blocks activation and submission; unrelated keys remain available to parent
+navigation and native commands. The shared render boundary preserves that policy
+for native buttons and custom renderers without a command-specific override.
 
 Filled primary buttons, selected checkboxes and switches keep their focus
 perimeter on the surrounding surface. Their `data-focus-outset` marker takes

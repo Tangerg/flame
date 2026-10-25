@@ -1,17 +1,18 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Native source return now uses absolute instant scrolling after in-reader window/page-zoom changes. The earlier SVG layout/pixel discrepancy is resolved in EN, ZH and clean DE acceptance below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. Shared focusable disabled buttons now preserve native commands and parent navigation while retaining activation protection. Native image and diagram return paths qualify the change below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/reader-geometry-1026`. Native source return after page zoom is
-qualified on frozen base `8c3bd32655b6d1f785d9bbd3c65cadd4a2100bac`. The observed
-cross-geometry layout/pixel discrepancy is resolved by absolute instant delivery
-in the existing shared reading owner. Publication and resource retirement follow
-in that section. The primary parallel checkout remains outside this batch.
+is on `codex/zoom-commands-1026`. The shared disabled-command boundary is
+qualified on frozen base `f0787cfc47bad54616b66133ea4aef6b0f95f712`; publication
+and resource retirement follow in that section. Native source return implementation
+`e99eb58c800cae12f831e9756607b3c24505f9fd` and receipt
+`f0787cfc47bad54616b66133ea4aef6b0f95f712` remain published and retired.
+The primary parallel checkout remains outside this batch.
 Earlier SVG implementation `99dfe135b582dbfa767bda46ab230629768a7e42`, merge
 `fa7e9ce01c5f0866f85113c7976802d8727ca879` and receipt
 `8c3bd32655b6d1f785d9bbd3c65cadd4a2100bac` remain published and retired. Recorded Tool failure implementation
@@ -1848,6 +1849,98 @@ This documentation-only receipt changes no tested product source. The subsequent
 Native source return after page zoom qualification resolves that checkpoint’s
 remaining geometry boundary.
 
+### Native commands from focusable disabled buttons
+
+The shared `packages/ui/src/primitives/button.tsx` now leaves unrelated keys
+with parent navigation and native commands while a disabled button retains focus.
+Base UI remains the disabled-state and activation owner. Its Enter/Space, click,
+pointer and submission protection stay in place. A stable render boundary uses
+Base UI's public `useRender` to preserve custom elements, render callbacks, refs,
+state attributes and existing enabled/pending behavior. It adds no DOM wrapper,
+command handler, zoom state, timer or key-specific exception.
+
+On frozen base `f0787cfc47bad54616b66133ea4aef6b0f95f712`, native Cmd+0 works
+in a plain Wails input/dialog and in the image reader before gallery navigation.
+After 400% image zoom, native drag/local pan and related-image switching reset
+image zoom to 100%, focus stays on disabled Zoom out. Cmd+0 then never reaches
+the existing native zoom handler; native View → Actual Size still works. The
+installed Base UI `useFocusableWhenDisabled` cancels every key except Tab.
+Eight of thirteen new shared regressions fail on that unchanged implementation.
+This supplies the shared cause; the native menu and reader need no local repair.
+
+Better-accessibility and better-layout guide retained focus, command scope and
+actual visible return. HeroUI's read-only Button implementation keeps disabled
+interaction with its primitive and presentation with its wrapper; existing
+Radix/ZCode task-return research remains applicable. Flame keeps its own Base UI,
+StyleX and semantic tokens. No dependency, native Go, Runtime or theme changes.
+
+- Shared UI `npm run check` passes **8 files / 128 tests** and its independently
+  packed UI/icons consumer. The **13 new cases** cover native commands, parent
+  arrows/Escape, Tab/Shift+Tab, disabled activation/submission, custom rendering,
+  refs/state, re-enabling and cancellation by an earlier owner.
+- Focused Web checks pass **11 files / 154 tests**, covering the Button, image/SVG,
+  Mermaid, Lightbox, reading follow/visibility, Approval, Question and notification
+  consumers. All **16 selected Web gates**, `make check-native`, portable plugin
+  check/build and component SDK check pass. Portable checks include **nine** release,
+  **seven** backend and **four** SDK cases; all **11** ESM resources reproduce
+  exactly and retain their original bytes.
+- The initial serial run passes UI/native gates, then the unrelated portable
+  backend check lacks its selected Node 24.22.1 artifact. The existing checksum
+  owner prepares it only in this checkout's disposable output. Resuming the failed
+  and remaining checks passes **25 commands in 57.66 s**. The failed log is retained;
+  no assertion or check is weakened. Existing linker/loader/chunk warnings remain.
+- Final EN/light/14 px/Orange/full motion: visible source → open → native left-half
+  window → page 200% → image 400% → drag/local Down/Right → image 2/3 → SVG 3/3.
+  Focus remains on disabled Zoom out at 100%; Enter/Space do nothing, Cmd+0 restores
+  native Actual Size, and Escape restores the visible source. Passive observation
+  records Cmd+0 unprevented and **1122 × 950 CSS px**, matching document width.
+  Keyboard reopen → disabled Next → native enlargement/reset → left/right
+  switching → Tab navigation → keyboard Close also returns correctly. The exact
+  draft continues as `Continue after native reset — verified`.
+- Final ZH/dark/18 px/custom blue/motion off repeats the 400%/pan/image-switch task
+  in the native left-half 200% window. Disabled Zoom out preserves Cmd+0, source
+  focus and the draft at **1122 × 950 CSS px**. The separate Mermaid reader reaches
+  its disabled 50% Zoom out; native zoom commands still work, Enter/Space remain
+  blocked, Cmd+0 resets and Escape returns to Enlarge diagram. Keyboard Tab/Return
+  supplies the qualified Mermaid entry; the initial AX activation only focused
+  its source and is not counted as a successful pointer entry. The exact draft
+  continues as `恢复缩放后继续核对，已返回`.
+- Final clean DE/18 px/warm custom canvas/purple/motion off omits passive command
+  observers and native tracing. Native resize/page 200%, image 400%/pan/switch,
+  focused disabled Zoom out, Enter/Space refusal, Cmd+0 and Escape all pass in
+  actual pixels/AX. Keyboard reopen and pointer Close restore the source; native
+  wheel reading and draft continuation produce `Nach dem Zoom weiterlesen — weiter`.
+  Each final native app restores Actual Size before Quit.
+
+The `useRender` boundary is verified across the recorded image and diagram tasks;
+this does not certify every unchanged disabled-control caller or platform. Early
+minimal-probe asset/TMPDIR corrections and wrong-app captures are diagnostic setup
+failures, not passing product evidence. The earlier verbose key-history AX text
+was truncated and observed before React completion; only final compact records
+and actual native pixels qualify command delivery. Live Runtime/provider Send,
+native Save permissions, VoiceOver speech, OS IME, fresh child GUI geometry and
+other-platform GUIs remain unverified. No persisted migration is required. Existing
+portable installations obtain rebuilt shared UI through their normal host owner;
+this batch does not mutate an installed package or pending business command.
+
+| Check             | Scoped result                                                          |
+| ----------------- | ---------------------------------------------------------------------- |
+| Typography        | Existing labels/readers remain legible at 14/18 px and page 200%.      |
+| Whitespace        | Source and continuing draft retain the existing reading clearances.    |
+| Hierarchy         | Gallery identity, local image zoom and native page zoom stay distinct. |
+| Color             | Orange, custom blue, purple and warm canvas remain host-owned.         |
+| Motion            | Full/reduced-motion focus and command paths pass.                      |
+| Micro-interaction | Disabled activation is blocked without swallowing unrelated commands.  |
+| Responsive        | In-reader native resize/zoom/reset retains reachable controls/return.  |
+| Originality       | Existing Flame surfaces and shared primitive remain the owners.        |
+
+The **5,784** accepted non-Markdown files have SHA-256
+`1533cd3bd4dee33ed1122d1637a4121666432c0d96eb73ac1c3b39682ef3ded9`.
+Claude CLI, subagents and browser visual/performance suites were not invoked.
+This is **progress**, not whole-product or award-tier completion. Continue from
+fresh reading/Dock evidence after publication; the Actual Size accelerator is now
+qualified for the tested focused-disabled paths.
+
 ### Native source return after page zoom
 
 The existing `ui/agent/readingFollow.ts` now delivers an absolute instant scroll
@@ -1925,8 +2018,8 @@ accepted maps cover **1,794** compiled assets, **30** native inputs, **eight** m
 artifacts, **four** read-only references and **11** product resources. No persisted
 migration is required. Claude CLI, subagents and browser visual/performance suites
 were not invoked. This is **progress**, not whole-product or award-tier completion.
-Continue from new reading/Dock evidence; separately confirm the Actual Size
-accelerator before treating the CUA key result as a product defect.
+The focused-disabled Actual Size accelerator investigation and shared repair
+are qualified in the preceding section.
 
 **Delivery receipt**
 
