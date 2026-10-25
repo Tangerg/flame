@@ -8,8 +8,9 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/file-reading-identity-1025`. File-preview identity is accepted on
-frozen base `2d87f694bf75fe03186ce934a38b21e6f73a2232`; publication and owned
-evidence retirement are pending. See Bounded file-preview identity below.
+frozen base `2d87f694bf75fe03186ce934a38b21e6f73a2232`; implementation
+`619352444a87a5d2d75c80b7a5d0d03b9972b342` is published to remote main, and
+owned evidence retirement is complete. See Bounded file-preview identity below.
 Diff reading identity and shared list sizing
 are accepted on frozen base `d0ace817fd61cf4834ec259853a97094e16d96cb`; implementation
 `8c870b082a8336677963fa86da93335ab86bd3ea` is published to remote main and
@@ -3825,9 +3826,23 @@ Verification (2026-10-25):
   and exact hidden-scroll pixels are not newly qualified. Existing regressions
   retain window/range/failure and navigation contracts; no migration is needed.
 
-**Approve** for this complete file-reading/source-return task. Publication and
-owned evidence retirement remain pending. Preserve the file request, reading,
-comparison, Composer and Runtime owners for the next batch.
+**Approve** for this complete file-reading/source-return task. Implementation
+`619352444a87a5d2d75c80b7a5d0d03b9972b342` is published to remote main. The
+publication sync finds main unchanged from the frozen base and does not repeat
+unrelated validation. Independent retirement verifies the exact remote commit,
+a clean owned checkout with zero commits ahead/behind, all **19 recorded processes
+dead**, **four apps** unregistered, **36 output-presence baselines**, **three
+original file hashes** and **11 unchanged product resources** preserved. Cleanup
+removes **seven checkout outputs**, **eight owned Library paths** and **four
+bundle-temp paths**. The original native-check binary is restored byte-for-byte;
+both original UI Vitest files already match. The exact private root
+`flame-ui-file-identity-1025-5Sl1Fa` is absent. Independent archive comparison and
+gzip round trip verify **93 UTF-8 files / four screenshot digests**, SHA-256
+`09f539d534de31402b230a558f6e4ee25a8257c9aeaa3944f3c3723a269b0c02`; accepted
+maps bind **1,209 final artifacts** and **12 native input files**. This Markdown-only
+receipt changes no accepted product source. Preserve the file request, reading,
+comparison, Composer and Runtime owners for the next batch. The continuous goal
+remains active.
 
 ### File-tree hierarchy and selectability
 
