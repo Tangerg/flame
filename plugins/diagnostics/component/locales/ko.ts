@@ -1,6 +1,5 @@
 export const ko: Record<string, string> = {
   "panel.title": "클라이언트 진단",
-  "panel.description": "이 워크벤치의 로컬 추적, 지표 및 로그입니다.",
   "controls.label": "진단 컨트롤",
   refresh: "새로 고침",
   "actions.label": "진단 작업",
@@ -9,13 +8,11 @@ export const ko: Record<string, string> = {
   "signal.spans": "추적",
   "signal.metrics": "지표",
   "signal.logs": "로그",
-  "counts.label": "로컬 텔레메트리 개수",
+  "signal.count": "{{signal}} · {{count}}",
   "observations.title": "로컬 관측 기록",
-  "observations.summary_other":
-    "최근 버퍼 읽기에 {{count}}개의 관측 기록이 있습니다. 오래된 관측 기록은 제거되었을 수 있습니다.",
+  "observations.accepted": "최근 버퍼 읽기",
+  "observations.stale": "마지막으로 읽은 내용을 표시합니다.",
   "observations.empty.title": "이번 읽기에는 로컬 관측 기록이 없습니다.",
-  "observations.empty.sub":
-    "다른 신호를 선택하거나 워크벤치를 사용한 후 새로 고치세요.",
   "span.meta": "{{ms}} ms · {{kind}}",
   "fact.started": "시작 시각",
   "fact.duration": "지속 시간",
@@ -34,7 +31,7 @@ export const ko: Record<string, string> = {
   "raw.label": "로컬 관측 기록 세부 정보",
   "about.title": "클라이언트 진단 정보",
   "about.note":
-    "이 클라이언트의 로컬 버퍼만 표시됩니다. 새로 고침은 최신 내용을 읽고, 지우기는 로컬 관측 기록을 제거합니다. Runtime 집계와 원격 텔레메트리는 변경되지 않습니다.",
+    "이 클라이언트의 로컬 버퍼만 표시됩니다. 새로 고침은 최신 내용을 읽고, 지우기는 로컬 관측 기록을 제거합니다. Runtime 집계와 원격 텔레메트리는 변경되지 않습니다. 오래된 관측 기록은 제거되었을 수 있습니다.",
   "read.failed": "로컬 관측 기록을 읽을 수 없습니다.",
   "clear.failed": "로컬 관측 기록을 지울 수 없습니다.",
 };

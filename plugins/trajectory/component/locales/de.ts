@@ -4,6 +4,7 @@ export const de: Record<string, string> = {
   "controls.label": "Verlaufssteuerung",
   "search.label": "Diese Seite filtern",
   "search.placeholder": "Erfasster Text oder ID",
+  "filters.clear": "Filter zurücksetzen",
   "search.clear": "Filter löschen",
   refresh: "Aktualisieren",
   "kind.label": "Beobachtungstyp",
@@ -23,32 +24,24 @@ export const de: Record<string, string> = {
   "status.error":
     "Die angeforderte Seite konnte nicht gelesen werden: {{error}}",
   "read.failed": "Erfasste Beobachtungen konnten nicht gelesen werden.",
-  "summary.loaded_one":
-    "{{count}} erfasste Beobachtung auf Seite {{page}} geladen.",
-  "summary.loaded_other":
-    "{{count}} erfasste Beobachtungen auf Seite {{page}} geladen.",
   "summary.stale": "Zeigt die zuletzt akzeptierte Seite.",
   "pages.label": "Verlaufsseiten",
   "pages.newer": "Neuere Datensätze",
   "pages.older": "Ältere Datensätze",
-  "activity.title": "Erfasste Aktivität",
   "records.label": "Verlaufsbeobachtungen",
-  "records.onPage_one": "{{count}} Datensatz auf dieser Seite",
-  "records.onPage_other": "{{count}} Datensätze auf dieser Seite",
+  "records.onPage_one": "Seite {{page}} · {{count}} Datensatz",
+  "records.onPage_other": "Seite {{page}} · {{count}} Datensätze",
   "records.ofTotal_one":
-    "{{matching}} von {{count}} Datensatz auf dieser Seite",
+    "Seite {{page}} · {{matching}} von {{count}} Datensatz",
   "records.ofTotal_other":
-    "{{matching}} von {{count}} Datensätzen auf dieser Seite",
+    "Seite {{page}} · {{matching}} von {{count}} Datensätzen",
   toolCalls_one: "{{count}} Tool-Aufruf",
   toolCalls_other: "{{count}} Tool-Aufrufe",
   attention_one: "{{count}} erfordert Aufmerksamkeit",
   attention_other: "{{count}} erfordern Aufmerksamkeit",
   "empty.filtered.title":
     "Kein Datensatz auf dieser Seite entspricht diesem Filter.",
-  "empty.filtered.sub":
-    "Lösche den Filter oder wähle Alle Beobachtungen und Alle Läufe.",
-  "empty.none.title": "Keine erfassten Verlaufsbeobachtungen.",
-  "empty.none.sub": "Aktualisiere, nachdem ein Lauf Beobachtungen erfasst hat.",
+  "empty.none.title": "Keine Datensätze auf dieser Seite.",
   "modelActivity.title": "Modellaktivität",
   "fact.logicalModelCalls": "Logische Modellaufrufe",
   "fact.modelEndpoints": "Modellendpunkte",

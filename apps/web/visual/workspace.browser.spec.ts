@@ -155,7 +155,7 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
   if (state === "dock-runs" || state === "dock-trajectory") {
     const view = pluginView(page);
     await expect(view.getByRole("heading", { name: "Session trajectory" })).toBeVisible();
-    await expect(view.getByText(/recorded observations loaded on page 1/)).toBeVisible();
+    await expect(view.getByText(/Page 1 · \d+ records/)).toBeVisible();
     await expect(view.locator('[data-trajectory-kind="run"]')).toHaveCount(
       state === "dock-runs" ? 7 : 1,
     );
@@ -197,9 +197,9 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   if (state === "dock-diagnostics") {
-    await expect(
-      pluginView(page, "diagnostics").getByText(/observations in the last buffer read/),
-    ).toContainText("observations in the last buffer read");
+    await expect(pluginView(page, "diagnostics").getByRole("status")).toHaveText(
+      "Last buffer read",
+    );
     return;
   }
   const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {

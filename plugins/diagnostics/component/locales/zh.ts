@@ -1,6 +1,5 @@
 export const zh: Record<string, string> = {
   "panel.title": "客户端诊断",
-  "panel.description": "来自此工作台的本地追踪、指标和日志。",
   "controls.label": "诊断控制项",
   refresh: "刷新",
   "actions.label": "诊断操作",
@@ -9,12 +8,11 @@ export const zh: Record<string, string> = {
   "signal.spans": "追踪",
   "signal.metrics": "指标",
   "signal.logs": "日志",
-  "counts.label": "本地遥测计数",
+  "signal.count": "{{signal}} · {{count}}",
   "observations.title": "本地观测记录",
-  "observations.summary_other":
-    "最近一次缓冲区读取中有 {{count}} 条观测记录。较早的观测记录可能已被淘汰。",
+  "observations.accepted": "最近一次读取",
+  "observations.stale": "当前显示上次成功读取的内容。",
   "observations.empty.title": "本次读取没有本地观测记录。",
-  "observations.empty.sub": "请选择其他信号，或在使用工作台后刷新。",
   "span.meta": "{{ms}} ms · {{kind}}",
   "fact.started": "开始时间",
   "fact.duration": "持续时间",
@@ -33,7 +31,7 @@ export const zh: Record<string, string> = {
   "raw.label": "本地观测记录详情",
   "about.title": "关于客户端诊断",
   "about.note":
-    "仅显示此客户端的本地缓冲区。刷新会读取其最新内容；清除会移除本地观测记录。Runtime 计量和远程遥测不受影响。",
+    "仅显示此客户端的本地缓冲区。刷新会读取其最新内容；清除会移除本地观测记录。Runtime 计量和远程遥测不受影响。 较早的观测记录可能已被淘汰。",
   "read.failed": "无法读取本地观测记录。",
   "clear.failed": "无法清除本地观测记录。",
 };

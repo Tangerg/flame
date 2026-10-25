@@ -1,7 +1,5 @@
 export const fr: Record<string, string> = {
   "panel.title": "Diagnostic du client",
-  "panel.description":
-    "Traces, métriques et journaux locaux de ce plan de travail.",
   "controls.label": "Contrôles de diagnostic",
   refresh: "Actualiser",
   "actions.label": "Actions de diagnostic",
@@ -10,17 +8,11 @@ export const fr: Record<string, string> = {
   "signal.spans": "Traces",
   "signal.metrics": "Métriques",
   "signal.logs": "Journaux",
-  "counts.label": "Décomptes de télémétrie locale",
+  "signal.count": "{{signal}} · {{count}}",
   "observations.title": "Observations locales",
-  "observations.summary_one":
-    "{{count}} observation lors de la dernière lecture du tampon. Les observations plus anciennes ont pu être supprimées.",
-  "observations.summary_many":
-    "{{count}} observations lors de la dernière lecture du tampon. Les observations plus anciennes ont pu être supprimées.",
-  "observations.summary_other":
-    "{{count}} observations lors de la dernière lecture du tampon. Les observations plus anciennes ont pu être supprimées.",
+  "observations.accepted": "Dernière lecture du tampon",
+  "observations.stale": "Dernière lecture acceptée affichée.",
   "observations.empty.title": "Aucune observation locale dans cette lecture.",
-  "observations.empty.sub":
-    "Sélectionnez un autre signal ou actualisez après avoir utilisé le plan de travail.",
   "span.meta": "{{ms}} ms · {{kind}}",
   "fact.started": "Démarré",
   "fact.duration": "Durée",
@@ -39,7 +31,7 @@ export const fr: Record<string, string> = {
   "raw.label": "Détails de l’observation locale",
   "about.title": "À propos du diagnostic du client",
   "about.note":
-    "Seul le tampon local de ce client est affiché. Actualiser lit son contenu le plus récent ; Effacer supprime les observations locales. Le décompte du Runtime et la télémétrie distante restent inchangés.",
+    "Seul le tampon local de ce client est affiché. Actualiser lit son contenu le plus récent ; Effacer supprime les observations locales. Le décompte du Runtime et la télémétrie distante restent inchangés. Les observations plus anciennes ont pu être supprimées.",
   "read.failed": "Impossible de lire les observations locales.",
   "clear.failed": "Impossible d’effacer les observations locales.",
 };

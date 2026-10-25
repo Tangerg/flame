@@ -1,7 +1,5 @@
 export const es: Record<string, string> = {
   "panel.title": "Diagnóstico del cliente",
-  "panel.description":
-    "Trazas, métricas y registros locales de este banco de trabajo.",
   "controls.label": "Controles de diagnóstico",
   refresh: "Actualizar",
   "actions.label": "Acciones de diagnóstico",
@@ -10,17 +8,11 @@ export const es: Record<string, string> = {
   "signal.spans": "Trazas",
   "signal.metrics": "Métricas",
   "signal.logs": "Registros",
-  "counts.label": "Recuentos de telemetría local",
+  "signal.count": "{{signal}} · {{count}}",
   "observations.title": "Observaciones locales",
-  "observations.summary_one":
-    "{{count}} observación en la última lectura del búfer. Es posible que se hayan descartado observaciones más antiguas.",
-  "observations.summary_many":
-    "{{count}} observaciones en la última lectura del búfer. Es posible que se hayan descartado observaciones más antiguas.",
-  "observations.summary_other":
-    "{{count}} observaciones en la última lectura del búfer. Es posible que se hayan descartado observaciones más antiguas.",
+  "observations.accepted": "Última lectura del búfer",
+  "observations.stale": "Se muestra la última lectura aceptada.",
   "observations.empty.title": "No hay observaciones locales en esta lectura.",
-  "observations.empty.sub":
-    "Selecciona otra señal o actualiza después de usar el banco de trabajo.",
   "span.meta": "{{ms}} ms · {{kind}}",
   "fact.started": "Iniciado",
   "fact.duration": "Duración",
@@ -39,7 +31,7 @@ export const es: Record<string, string> = {
   "raw.label": "Detalles de la observación local",
   "about.title": "Acerca del diagnóstico del cliente",
   "about.note":
-    "Solo se muestra el búfer local de este cliente. Actualizar lee su contenido más reciente; Borrar elimina las observaciones locales. El recuento de Runtime y la telemetría remota no cambian.",
+    "Solo se muestra el búfer local de este cliente. Actualizar lee su contenido más reciente; Borrar elimina las observaciones locales. El recuento de Runtime y la telemetría remota no cambian. Es posible que se hayan descartado observaciones más antiguas.",
   "read.failed": "No se pudieron leer las observaciones locales.",
   "clear.failed": "No se pudieron borrar las observaciones locales.",
 };

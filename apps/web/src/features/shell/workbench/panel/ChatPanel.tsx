@@ -348,7 +348,7 @@ export function ChatPanel({ onSend, ref }: Props) {
           role="region"
           aria-label={t("shell.region.conversation")}
           data-focus-inset=""
-          {...stylex.props(sh.paneNarrow, conversationPane.container)}
+          {...stylex.props(sh.paneNarrow, paneStyles.conversation)}
         >
           <ContentVisibility visible={!presentedMain} fallbackFocus={presentationRef}>
             <AgentSurfaceHeader corner="window">
@@ -407,26 +407,27 @@ export function ChatPanel({ onSend, ref }: Props) {
                   />
                 </div>
               </Activity>
-              {[...mountedViewIds].map((viewId) => (
-                <div
-                  key={viewId}
-                  hidden={viewId !== presentedViewId}
-                  data-dock-view-id={activeMainView === null ? viewId : undefined}
-                  {...stylex.props(sh.overlay)}
-                >
-                  <ContentVisibility
-                    visible={viewId === presentedViewId && (presentedMain || dockVisible)}
-                    fallbackFocus={presentationRef}
+              {[...mountedViewIds].map((viewId) => {
+                const visible = viewId === presentedViewId && (presentedMain || dockVisible);
+                return (
+                  <div
+                    key={viewId}
+                    inert={!visible}
+                    aria-hidden={!visible || undefined}
+                    data-dock-view-id={activeMainView === null ? viewId : undefined}
+                    {...stylex.props(sh.overlay, !visible && paneStyles.inactiveView)}
                   >
-                    <PanelHost density={presentedMain ? "page" : "compact"}>
-                      <WorkspaceViewBody
-                        ref={viewId === fullPaneViewId ? mainViewRef : undefined}
-                        viewId={viewId}
-                      />
-                    </PanelHost>
-                  </ContentVisibility>
-                </div>
-              ))}
+                    <ContentVisibility visible={visible} fallbackFocus={presentationRef}>
+                      <PanelHost density={presentedMain ? "page" : "compact"}>
+                        <WorkspaceViewBody
+                          ref={viewId === fullPaneViewId ? mainViewRef : undefined}
+                          viewId={viewId}
+                        />
+                      </PanelHost>
+                    </ContentVisibility>
+                  </div>
+                );
+              })}
             </div>
           </AgentContextDock>
         </SessionOwnedWorkspaceState>
@@ -449,6 +450,8 @@ export function ChatPanel({ onSend, ref }: Props) {
   );
 }
 
-const conversationPane = stylex.create({
-  container: { containerType: "inline-size", containerName: "conversation" },
+const paneStyles = stylex.create({
+  conversation: { containerType: "inline-size", containerName: "conversation" },
+  // Removing layout makes WebKit reset the retained scrollport's reading position.
+  inactiveView: { visibility: "hidden" },
 });

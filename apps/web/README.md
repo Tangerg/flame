@@ -44,6 +44,22 @@ Palette themes include the material's opacity bound in their existing text and
 focus contrast calculations. Forced colors suppress the image. No texture layer
 intercepts input or selection.
 
+The workspace host retains mounted view layout when switching Dock tabs. Inactive
+views are invisible, inert and excluded from the accessibility tree. The existing
+viewport keeps its native reading position without a second scroll-state cache;
+Session changes and view retirement retain their existing lifetime boundaries.
+
+Background-task progress keeps complete names, messages and errors in one named
+keyboard reader. The popup and its scrolling body fit the available viewport;
+progress updates retain the same reader and native position. Task lifecycle
+and automatic retirement remain with the producing task store; the existing readout
+owns percentage clamping.
+
+Recorded Tool failures retain their original line breaks, blank lines and indentation
+in both standalone and grouped rows, with long values wrapping inside the reading
+column. Captured text, status, disclosure, actions and source-return ownership stay
+with their existing owners.
+
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested
 submenus keep their primitive's relationship to the controlling item instead of
@@ -60,6 +76,12 @@ copies that complete range from the current accepted content. Source cells carry
 literal line separators so native partial selection retains blank lines and
 indentation. Rendered previews and editable controls retain native commands;
 loading more rows or refreshing does not create a second selection owner.
+
+Plugin provider roles remain available from installation contributions and accepted
+selection facts when their independent selection read fails. Until a selection read
+succeeds, each role stays unread; a successful empty read confirms it is unselected.
+A failed refresh identifies retained selections as the last read. Candidate drafts,
+explicit selection and command recovery keep their existing owners.
 
 MCP server rows read their own tools directly, independent of configuration
 editing and server origin. Reconnect runs in the same exact-ID serial mutation

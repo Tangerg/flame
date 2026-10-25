@@ -4,6 +4,7 @@ export const es: Record<string, string> = {
   "controls.label": "Controles de trayectoria",
   "search.label": "Filtrar esta página",
   "search.placeholder": "Texto registrado o ID",
+  "filters.clear": "Restablecer filtros",
   "search.clear": "Borrar filtro",
   refresh: "Actualizar",
   "kind.label": "Tipo de observación",
@@ -22,24 +23,19 @@ export const es: Record<string, string> = {
   "status.reading": "Leyendo las observaciones registradas…",
   "status.error": "No se pudo leer la página solicitada: {{error}}",
   "read.failed": "No se pudieron leer las observaciones registradas.",
-  "summary.loaded_one":
-    "{{count}} observación registrada cargada en la página {{page}}.",
-  "summary.loaded_many":
-    "{{count}} observaciones registradas cargadas en la página {{page}}.",
-  "summary.loaded_other":
-    "{{count}} observaciones registradas cargadas en la página {{page}}.",
   "summary.stale": "Mostrando la última página aceptada.",
   "pages.label": "Páginas de trayectoria",
   "pages.newer": "Registros más recientes",
   "pages.older": "Registros más antiguos",
-  "activity.title": "Actividad registrada",
   "records.label": "Observaciones de trayectoria",
-  "records.onPage_one": "{{count}} registro en esta página",
-  "records.onPage_many": "{{count}} registros en esta página",
-  "records.onPage_other": "{{count}} registros en esta página",
-  "records.ofTotal_one": "{{matching}} de {{count}} registro en esta página",
-  "records.ofTotal_many": "{{matching}} de {{count}} registros en esta página",
-  "records.ofTotal_other": "{{matching}} de {{count}} registros en esta página",
+  "records.onPage_one": "Página {{page}} · {{count}} registro",
+  "records.onPage_many": "Página {{page}} · {{count}} registros",
+  "records.onPage_other": "Página {{page}} · {{count}} registros",
+  "records.ofTotal_one": "Página {{page}} · {{matching}} de {{count}} registro",
+  "records.ofTotal_many":
+    "Página {{page}} · {{matching}} de {{count}} registros",
+  "records.ofTotal_other":
+    "Página {{page}} · {{matching}} de {{count}} registros",
   toolCalls_one: "{{count}} llamada de herramienta",
   toolCalls_many: "{{count}} llamadas de herramienta",
   toolCalls_other: "{{count}} llamadas de herramienta",
@@ -48,11 +44,7 @@ export const es: Record<string, string> = {
   attention_other: "{{count}} requieren atención",
   "empty.filtered.title":
     "Ningún registro de esta página coincide con este filtro.",
-  "empty.filtered.sub":
-    "Borra el filtro o selecciona Todas las observaciones y Todas las ejecuciones.",
-  "empty.none.title": "No hay observaciones de trayectoria registradas.",
-  "empty.none.sub":
-    "Actualiza después de que una ejecución registre observaciones.",
+  "empty.none.title": "No hay registros en esta página.",
   "modelActivity.title": "Actividad del modelo",
   "fact.logicalModelCalls": "Llamadas lógicas de modelo",
   "fact.modelEndpoints": "Endpoints de modelo",

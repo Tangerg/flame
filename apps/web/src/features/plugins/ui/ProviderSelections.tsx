@@ -5,7 +5,7 @@ import { type MutationPromise } from "@flame/runtime-client";
 import { mutationSettlementIsUnknown } from "@flame/runtime-client";
 import { type PluginInstallation, type PluginProviderSelection } from "@flame/runtime-client/wire";
 import { Button, PanelSection, Select, Toolbar } from "@flame/ui";
-import { DataView } from "@/ui/index";
+import { DataError, DataView } from "@/ui/index";
 import { SystemMessage } from "@/ui/index";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { SettingsGroup } from "@/ui/settings/SettingsGroup";
@@ -25,6 +25,7 @@ export function ProviderSelections({
 }) {
   const t = useT();
   const providers = usePluginProviders();
+  const hasRead = providers.data !== undefined;
   const roles = new Set((providers.data ?? []).map((value) => value.role));
   for (const installation of installations)
     for (const contribution of installation.selected.contributions) {
@@ -50,18 +51,28 @@ export function ProviderSelections({
       }
     >
       {roles.size > 0 ? (
-        <SettingsGroup>
-          {[...roles].sort().map((role) => (
-            <ProviderRole
-              key={role}
-              role={role}
-              current={(providers.data ?? []).find((value) => value.role === role)}
-              installations={installations}
-              operations={operations}
-              refresh={providers.refetch}
+        <>
+          {providers.error != null && (
+            <DataError
+              failure={providers.error}
+              sub={hasRead ? t("packages.providers.stale") : undefined}
+              size="compact"
             />
-          ))}
-        </SettingsGroup>
+          )}
+          <SettingsGroup>
+            {[...roles].sort().map((role) => (
+              <ProviderRole
+                key={role}
+                role={role}
+                hasRead={hasRead}
+                current={(providers.data ?? []).find((value) => value.role === role)}
+                installations={installations}
+                operations={operations}
+                refresh={providers.refetch}
+              />
+            ))}
+          </SettingsGroup>
+        </>
       ) : (
         <DataView
           items={providers.data ?? []}
@@ -79,12 +90,14 @@ export function ProviderSelections({
 
 function ProviderRole({
   role,
+  hasRead,
   current,
   installations,
   operations,
   refresh,
 }: {
   role: string;
+  hasRead: boolean;
   current?: PluginProviderSelection;
   installations: PluginInstallation[];
   operations: PackageOperations;
@@ -190,12 +203,14 @@ function ProviderRole({
     <SettingRow
       label={role}
       sub={
-        current
-          ? t(active ? "packages.providers.current" : "packages.providers.unavailable", {
-              name: chosen?.installation.selected.name ?? current.installationId,
-              contribution: current.contribution,
-            })
-          : t("packages.providers.unselected")
+        !hasRead
+          ? t("packages.providers.unread")
+          : current
+            ? t(active ? "packages.providers.current" : "packages.providers.unavailable", {
+                name: chosen?.installation.selected.name ?? current.installationId,
+                contribution: current.contribution,
+              })
+            : t("packages.providers.unselected")
       }
     >
       <Toolbar label={role}>
