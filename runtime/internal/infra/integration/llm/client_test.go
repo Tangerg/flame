@@ -90,11 +90,10 @@ func TestProviderCatalogRejectsContradictoryProfiles(t *testing.T) {
 		{name: "invalid provider identity", profiles: []providerProfile{bundledProvider("broken\x00shadow", "model", "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "provider identity"},
 		{name: "invalid bundled default", profiles: []providerProfile{bundledProvider("broken", "model\x00shadow", "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "model identity"},
 		{name: "non-canonical environment", profiles: []providerProfile{bundledProvider("broken", "model", "broken_api_key", buildOpenAIResponsesModel)}, want: "not canonical"},
-		{name: "endpoint discovery without endpoint", profiles: []providerProfile{endpointProvider("broken", adapterEndpoint(), "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "resolvable endpoint"},
 		{name: "missing endpoint policy", profiles: []providerProfile{{
 			id: "broken", credential: requiredCredential("BROKEN_API_KEY"),
 			endpoint:   endpointPolicy{},
-			chatModels: openAIEndpointModels(), chatBuilder: buildOpenAIResponsesModel,
+			chatModels: endpointModels(), chatBuilder: buildOpenAIResponsesModel,
 		}}, want: "unknown endpoint policy"},
 		{name: "embedding without model policy", profiles: []providerProfile{valid.withEmbedding(modelPolicy{}, buildOpenAIEmbeddingModel)}, want: "embedding"},
 	}
@@ -104,6 +103,59 @@ func TestProviderCatalogRejectsContradictoryProfiles(t *testing.T) {
 				t.Fatal("newProviderCatalog accepted contradictory provider state")
 			} else if !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("newProviderCatalog error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestPerplexityUsesScopeResponsesAndEndpointCatalog(t *testing.T) {
+	profile, _ := LookupProvider(ProviderPerplexity)
+	if _, hasDefault := profile.DefaultChatModel(); hasDefault || !profile.DiscoversModelsAtEndpoint() || profile.RequiresConfiguredEndpoint() {
+		t.Fatal("Perplexity retained a retired default or lost its provider-owned endpoint")
+	}
+	for _, streaming := range []bool{false, true} {
+		t.Run(fmt.Sprintf("streaming=%t", streaming), func(t *testing.T) {
+			var calls atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				calls.Add(1)
+				if request.Method != http.MethodPost || request.URL.Path != "/responses" || request.Header.Get("Authorization") != "Bearer test-key" {
+					t.Errorf("unexpected Perplexity request: %s %s", request.Method, request.URL.Path)
+				}
+				var body struct {
+					Model    string           `json:"model"`
+					Input    []jsontext.Value `json:"input"`
+					Messages []jsontext.Value `json:"messages"`
+				}
+				if err := json.UnmarshalRead(request.Body, &body); err != nil || body.Model != "openai/gpt-6-sol" || len(body.Input) != 1 || body.Messages != nil {
+					t.Errorf("unexpected Responses input: %+v, %v", body, err)
+				}
+				writer.Header().Set("Content-Type", "text/event-stream")
+				_, _ = fmt.Fprint(writer, "data: {\"type\":\"response.output_text.delta\",\"item_id\":\"message-1\",\"output_index\":0,\"content_index\":0,\"delta\":\"answer\"}\n\n")
+				_, _ = fmt.Fprint(writer, "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"response-1\",\"model\":\"openai/gpt-6-sol\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"id\":\"message-1\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"answer\"}]}],\"usage\":{\"input_tokens\":0,\"output_tokens\":2,\"total_tokens\":2}}}\n\n")
+			}))
+			t.Cleanup(server.Close)
+			model, counter, err := BuildChat(t.Context(), mustClientSpec(t, ProviderPerplexity, "openai/gpt-6-sol", "test-key", server.URL))
+			if err != nil || counter != nil {
+				t.Fatalf("Perplexity construction = %v, counter=%v", err, counter)
+			}
+			request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))
+			var response *chat.Response
+			if streaming {
+				var accumulated chat.ResponseAccumulator
+				for delta, cause := range model.(chat.Streamer).Stream(t.Context(), request) {
+					if cause != nil {
+						t.Fatal(cause)
+					}
+					if err := accumulated.Add(delta); err != nil {
+						t.Fatal(err)
+					}
+				}
+				response, err = accumulated.Response()
+			} else {
+				response, err = model.Call(t.Context(), request)
+			}
+			if err != nil || response == nil || response.Text() != "answer" || response.Metadata.Usage.InputTokens != 0 || response.Metadata.Usage.OutputTokens != 2 || calls.Load() != 1 {
+				t.Fatalf("Perplexity response = %+v, %v; calls=%d", response, err, calls.Load())
 			}
 		})
 	}

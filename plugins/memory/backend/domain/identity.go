@@ -72,6 +72,6 @@ type itemIDModel string
 
 func (itemIDModel) JSONSchemaPattern() string { return ItemIDPattern }
 
-// JSONSchemaAlias projects ItemID's text encoding as its string wire model, as
+// JSONSchemaModel projects ItemID's text encoding as its string wire model, as
 // Scope's schema derivation requires for a struct with custom encoding.
-func (ItemID) JSONSchemaAlias() any { return itemIDModel("") }
+func (ItemID) JSONSchemaModel() any { return itemIDModel("") }

@@ -51,14 +51,6 @@ func (i providerClientInputs) endpoint() (string, bool) {
 	return "", false
 }
 
-func (i providerClientInputs) apiKey() string {
-	apiKey, configured := i.entry.APIKey()
-	if !configured {
-		return ""
-	}
-	return apiKey.Reveal()
-}
-
 func (i providerClientInputs) embeddingSpaceID(model string) string {
 	baseURL, _ := i.entry.BaseURL()
 	return embeddingSpaceID(string(i.profile.ID()), model, baseURL.String())

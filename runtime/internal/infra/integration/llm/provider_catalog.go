@@ -1,7 +1,6 @@
 package llm
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -18,30 +17,16 @@ const (
 	modelSourceEndpoint
 )
 
-type modelListProtocol uint8
-
-const (
-	modelListProtocolOpenAI modelListProtocol = iota + 1
-	modelListProtocolAnthropic
-)
-
 type modelPolicy struct {
 	source       modelSource
 	defaultModel string
-	listProtocol modelListProtocol
 }
 
 func bundledModels(defaultModel string) modelPolicy {
 	return modelPolicy{source: modelSourceBundled, defaultModel: defaultModel}
 }
 
-func openAIEndpointModels() modelPolicy {
-	return modelPolicy{source: modelSourceEndpoint, listProtocol: modelListProtocolOpenAI}
-}
-
-func anthropicEndpointModels() modelPolicy {
-	return modelPolicy{source: modelSourceEndpoint, listProtocol: modelListProtocolAnthropic}
-}
+func endpointModels() modelPolicy { return modelPolicy{source: modelSourceEndpoint} }
 
 func (p modelPolicy) validate() error {
 	switch p.source {
@@ -49,18 +34,12 @@ func (p modelPolicy) validate() error {
 		if p.defaultModel == "" {
 			return errors.New("bundled model policy requires a default model")
 		}
-		if p.listProtocol != 0 {
-			return errors.New("bundled model policy cannot carry a listing protocol")
-		}
 		if _, err := modelchoice.NewModelIdentity(p.defaultModel); err != nil {
 			return fmt.Errorf("bundled model policy model identity: %w", err)
 		}
 	case modelSourceEndpoint:
 		if p.defaultModel != "" {
 			return errors.New("endpoint model policy cannot carry a bundled default")
-		}
-		if p.listProtocol != modelListProtocolOpenAI && p.listProtocol != modelListProtocolAnthropic {
-			return errors.New("endpoint model policy requires a listing protocol")
 		}
 	default:
 		return fmt.Errorf("unknown model source %d", p.source)
@@ -77,13 +56,6 @@ func (p modelPolicy) defaultValue() (string, bool) {
 
 func (p modelPolicy) discoveredAtEndpoint() bool {
 	return p.source == modelSourceEndpoint
-}
-
-func (p modelPolicy) list(ctx context.Context, baseURL, apiKey string) ([]string, error) {
-	if !p.discoveredAtEndpoint() {
-		return nil, errors.New("bundled model policy does not support remote listing")
-	}
-	return listRemoteModels(ctx, baseURL, apiKey, p.listProtocol)
 }
 
 type endpointKind uint8
@@ -172,18 +144,13 @@ func bundledProvider(id Provider, defaultModel, credentialEnvironmentName string
 func endpointProvider(id Provider, endpoint endpointPolicy, credentialEnvironmentName string, builder buildFunc) providerProfile {
 	return providerProfile{
 		id: id, credential: requiredCredential(credentialEnvironmentName), endpoint: endpoint,
-		chatModels: openAIEndpointModels(), chatBuilder: builder,
+		chatModels: endpointModels(), chatBuilder: builder,
 	}
 }
 
 func (p providerProfile) withEmbedding(models modelPolicy, builder embeddingBuildFunc) providerProfile {
 	profile := embeddingProviderProfile{models: models, build: builder}
 	p.embedding = &profile
-	return p
-}
-
-func (p providerProfile) withChatModels(models modelPolicy) providerProfile {
-	p.chatModels = models
 	return p
 }
 
@@ -199,9 +166,6 @@ func (p providerProfile) validate() error {
 	}
 	if err := p.chatModels.validate(); err != nil {
 		return fmt.Errorf("chat models: %w", err)
-	}
-	if p.chatModels.discoveredAtEndpoint() && p.endpoint.kind == endpointOwnedByAdapter {
-		return errors.New("endpoint-discovered models require a resolvable endpoint policy")
 	}
 	if p.chatBuilder == nil {
 		return errors.New("chat builder is nil")

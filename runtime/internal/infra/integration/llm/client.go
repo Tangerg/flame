@@ -144,8 +144,8 @@ var providers = mustProviderCatalog(
 	bundledProvider(ProviderOpenRouter, openrouter.ModelAuto, "OPENROUTER_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return openrouter.NewChatCompletions(ctx, openrouter.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 	}),
-	bundledProvider(ProviderPerplexity, perplexity.ModelSonar, "PERPLEXITY_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
-		return perplexity.NewChatCompletions(ctx, perplexity.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+	endpointProvider(ProviderPerplexity, adapterEndpoint(), "PERPLEXITY_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
+		return perplexity.NewResponses(ctx, perplexity.ResponsesConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 	}),
 	bundledProvider(ProviderTogether, together.ModelGPTOSS120B, "TOGETHER_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return together.NewChatCompletions(ctx, together.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
@@ -164,12 +164,11 @@ var providers = mustProviderCatalog(
 	// the model id is a deployment name. Both are user-supplied.
 	endpointProvider(ProviderAzureOpenAI, configuredEndpoint(), "AZURE_OPENAI_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return azureopenai.NewChatCompletions(ctx, azureopenai.ChatCompletionsConfig{Config: azureopenai.Config{APIKey: s.sdkAPIKey(), BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()}, DefaultOptions: o})
-	}).withEmbedding(openAIEndpointModels(), buildAzureOpenAIEmbeddingModel),
+	}).withEmbedding(endpointModels(), buildAzureOpenAIEmbeddingModel),
 
 	// Generic bring-your-own-endpoint providers: direct adapter + caller URL.
 	endpointProvider(ProviderOpenAICompatible, configuredEndpoint(), "OPENAI_COMPATIBLE_API_KEY", buildOpenAICompatibleModel),
-	endpointProvider(ProviderAnthropicCompatible, configuredEndpoint(), "ANTHROPIC_COMPATIBLE_API_KEY", buildAnthropicModel).
-		withChatModels(anthropicEndpointModels()),
+	endpointProvider(ProviderAnthropicCompatible, configuredEndpoint(), "ANTHROPIC_COMPATIBLE_API_KEY", buildAnthropicModel),
 )
 
 func buildAnthropicModel(ctx context.Context, spec ClientSpec, opts chat.Options) (chat.Model, error) {

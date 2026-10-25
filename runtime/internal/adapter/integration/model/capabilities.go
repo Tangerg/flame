@@ -118,8 +118,7 @@ func (Capabilities) ListModels(ctx context.Context, entry provider.Provider) ([]
 }
 
 func remoteModelIDs(ctx context.Context, inputs providerClientInputs) ([]string, error) {
-	baseURL, hasBaseURL := inputs.endpoint()
-	if !hasBaseURL {
+	if _, hasBaseURL := inputs.endpoint(); !hasBaseURL && inputs.profile.RequiresConfiguredEndpoint() {
 		return nil, fmt.Errorf("%w: provider %q", modelsapp.ErrProviderBaseURLRequired, inputs.entry.ID())
 	}
 	spec, err := inputs.clientSpec(configurationProbeModel)
@@ -129,10 +128,7 @@ func remoteModelIDs(ctx context.Context, inputs providerClientInputs) ([]string,
 		}
 		return nil, err
 	}
-	if _, _, err := llm.BuildChat(ctx, spec); err != nil {
-		return nil, err
-	}
-	ids, err := inputs.profile.ListModels(ctx, baseURL, inputs.apiKey())
+	ids, err := llm.ListModels(ctx, spec)
 	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		return nil, fmt.Errorf("%w: %w", modelsapp.ErrModelDiscoveryFailed, err)
 	}

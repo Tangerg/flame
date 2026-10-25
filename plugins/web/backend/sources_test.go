@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/scope/tools/web"
 	"github.com/Tangerg/scope/tools/web/jina"
 
-	"github.com/Tangerg/flame/runtime/transport/httpredirect"
+	scopehttp "github.com/Tangerg/scope/core/httpclient"
 )
 
 func TestProviderHTTPClientBoundsProviderResponseBeforeSDKDecode(t *testing.T) {
@@ -23,7 +23,7 @@ func TestProviderHTTPClientBoundsProviderResponseBeforeSDKDecode(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client, err := jina.NewClient(jina.Config{
+	client, err := jina.NewClient(t.Context(), jina.Config{
 		APIKey: "test-key", FetchBaseURL: server.URL, HTTPClient: newProviderHTTPClient(),
 	})
 	if err != nil {
@@ -42,7 +42,7 @@ func TestProviderFailureKeepsItsCauseWithoutPublishingCredentials(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	source, err := jinaSource(key, &http.Client{Transport: sourceTransport(func(*http.Request) (*http.Response, error) { return nil, cause })})
+	source, err := jinaSource(t.Context(), key, &http.Client{Transport: sourceTransport(func(*http.Request) (*http.Response, error) { return nil, cause })})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,15 +70,15 @@ func TestProviderHTTPClientBlocksCredentialRedirectAcrossOrigins(t *testing.T) {
 	}))
 	t.Cleanup(source.Close)
 
-	client, err := jina.NewClient(jina.Config{
+	client, err := jina.NewClient(t.Context(), jina.Config{
 		APIKey: "test-key", FetchBaseURL: source.URL, HTTPClient: newProviderHTTPClient(),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, err = client.Fetch(t.Context(), &web.FetchRequest{URL: "https://example.test"})
-	if !errors.Is(err, httpredirect.ErrCrossOriginRedirect) {
-		t.Fatalf("Fetch error = %v, want ErrCrossOriginRedirect", err)
+	if !errors.Is(err, scopehttp.ErrOriginNotAllowed) {
+		t.Fatalf("Fetch error = %v, want Scope origin refusal", err)
 	}
 	if targetHit.Load() {
 		t.Fatal("cross-origin online-provider redirect reached the target")

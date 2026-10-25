@@ -409,7 +409,7 @@ func (a *app) addAgentMemory(target *conversation.MemoryTarget, request memory.A
 			if !result.Changed {
 				outcome = "already present"
 			}
-			a.message("agent memory " + outcome + " · " + result.Item.ID)
+			a.message("agent memory " + outcome + " · " + string(result.Item.ID))
 			if closed && target != nil && a.session.context.current(presentation) {
 				a.showAgentMemory(*target)
 			}

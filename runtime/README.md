@@ -10,6 +10,14 @@ Scope's public contracts own framework behavior. Tool discovery implements
 `interaction.DelegateAttributions` alongside the captured tree's statuses.
 Definite model failures settle through Scope without synthetic cancellation;
 an unacknowledged initial commit retains Scope's `StartError` evidence.
+Model failures use `chat.CallFailure` and `chat.ClassifyFailure` for the complete
+invocation. Nested failures cannot replace that classification, and known
+generation remains available when later publication fails. Custom JSON codecs
+describe their wire model with `JSONSchemaModel`.
+Endpoint model discovery calls the same Scope binding's `ListModels` API;
+Scope owns authentication, HTTP admission and pagination, while Flame supplies
+its resource budgets and product identity rules. Perplexity uses its Responses
+binding and endpoint-owned model catalog without a retired Sonar default.
 Scope owns external wait acceptance and its checkpoint encoding. Finish earlier
 waiting work with its matching executable and retain that data directory;
 the existing exact BuildID admission boundary rejects incompatible checkpoints.

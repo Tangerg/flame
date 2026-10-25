@@ -115,9 +115,11 @@ func TestRuntimeQuestionsHaveAnAnswer(t *testing.T) {
 		methods map[string]bool
 	}
 	var candidates []candidate
-	for _, pkg := range loaded {
+	// Framework capabilities can be implemented by imported packages. Their
+	// concrete types belong to the build just as the module's own types do.
+	packages.Visit(loaded, func(pkg *packages.Package) bool {
 		if pkg.Types == nil {
-			continue
+			return true
 		}
 		scope := pkg.Types.Scope()
 		for _, name := range scope.Names() {
@@ -136,7 +138,8 @@ func TestRuntimeQuestionsHaveAnAnswer(t *testing.T) {
 					methods: methodSetOf(types.NewPointer(declared.Type())),
 				})
 		}
-	}
+		return true
+	}, nil)
 
 	answered := func(wanted map[string]bool) bool {
 		for _, implementor := range candidates {

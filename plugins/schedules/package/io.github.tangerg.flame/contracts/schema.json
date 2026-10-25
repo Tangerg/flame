@@ -63,7 +63,7 @@
           "type": "string"
         },
         "ModelSelection": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_5fselectionJSON_5bstring_5d"
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_5fSelection"
         },
         "Title": {
           "type": "string"
@@ -103,7 +103,7 @@
           "type": "string"
         },
         "ModelSelection": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_5fselectionJSON_5bstring_5d"
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_5fSelection"
         },
         "NextRunAt": {
           "format": "date-time",
@@ -248,6 +248,9 @@
         "ModelSelection"
       ],
       "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_5fSelection": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_5fselectionJSON_5bstring_5d"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_5fselectionJSON_5bstring_5d": {
       "additionalProperties": false,

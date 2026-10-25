@@ -11,13 +11,28 @@ import (
 	"sync/atomic"
 	"testing"
 
+	providerdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	modelchoice "github.com/Tangerg/flame/runtime/model"
-	"github.com/Tangerg/flame/runtime/transport/httpredirect"
+	scopehttp "github.com/Tangerg/scope/core/httpclient"
 )
+
+type remoteModelList struct {
+	Data []remoteModel `json:"data"`
+}
+
+type remoteModel struct {
+	ID string `json:"id"`
+}
+
+func probeModels(t *testing.T, baseURL, apiKey string, provider Provider) ([]string, error) {
+	t.Helper()
+	return ListModels(t.Context(), mustClientSpec(t, provider, "probe", apiKey, baseURL))
+}
 
 func TestListRemoteModels(t *testing.T) {
 	var gotPath, gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		gotPath = r.URL.Path
 		gotAuth = r.Header.Get("Authorization")
 		_, _ = w.Write([]byte(`{"object":"list","data":[{"id":"qwen2.5"},{"id":"llama3.2"},{"id":"llama3.2"}]}`))
@@ -25,7 +40,7 @@ func TestListRemoteModels(t *testing.T) {
 	defer srv.Close()
 
 	// A trailing slash on the base URL must not double up before /models.
-	ids, err := listRemoteModels(t.Context(), srv.URL+"/v1/", "sk-test", modelListProtocolOpenAI)
+	ids, err := probeModels(t, srv.URL+"/v1/", "sk-test", ProviderOpenAICompatible)
 	if err != nil {
 		t.Fatalf("ListRemoteModels: %v", err)
 	}
@@ -58,11 +73,12 @@ func TestListRemoteModelsRejectsInvalidAdvertisedIdentity(t *testing.T) {
 				t.Fatal(err)
 			}
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write(body)
 			}))
 			defer srv.Close()
 
-			if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
+			if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
 				t.Fatalf("ListRemoteModels accepted invalid model identity %q", tt.id)
 			}
 		})
@@ -72,22 +88,24 @@ func TestListRemoteModelsRejectsInvalidAdvertisedIdentity(t *testing.T) {
 func TestListRemoteModelsRejectsOversizedCompleteDocument(t *testing.T) {
 	body := `{"data":[]}` + strings.Repeat(" ", maximumModelProbeResponseBytes)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(body))
 	}))
 	defer srv.Close()
 
-	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
+	if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
 		t.Fatal("ListRemoteModels accepted a document larger than its response envelope")
 	}
 }
 
 func TestListRemoteModelsRejectsTrailingJSONValue(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"data":[]}{"data":[{"id":"shadow"}]}`))
 	}))
 	defer srv.Close()
 
-	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
+	if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
 		t.Fatal("ListRemoteModels accepted a second JSON document")
 	}
 }
@@ -96,11 +114,12 @@ func TestListRemoteModelsRejectsInvalidUTF8Document(t *testing.T) {
 	body := append([]byte(`{"data":[{"id":"model-`), 0xff)
 	body = append(body, []byte(`"}]}`)...)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
 
-	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
+	if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
 		t.Fatal("ListRemoteModels normalized an invalid UTF-8 response")
 	}
 }
@@ -115,11 +134,12 @@ func TestListRemoteModelsRejectsOverfullCatalog(t *testing.T) {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
 
-	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
+	if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
 		t.Fatalf("ListRemoteModels accepted more than %d advertised models", maximumRemoteModelCount)
 	}
 }
@@ -134,11 +154,12 @@ func TestListRemoteModelsAcceptsResourceBoundaries(t *testing.T) {
 		t.Fatal(err)
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
 
-	models, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI)
+	models, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible)
 	if err != nil {
 		t.Fatalf("ListRemoteModels rejected the catalog boundary: %v", err)
 	}
@@ -152,37 +173,35 @@ func TestListRemoteModelsAcceptsResourceBoundaries(t *testing.T) {
 	}
 	exactBody := `{"data":[]}` + strings.Repeat(" ", padding)
 	exactServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(exactBody))
 	}))
 	defer exactServer.Close()
-	if _, err := listRemoteModels(t.Context(), exactServer.URL, "", modelListProtocolOpenAI); err != nil {
+	if _, err := probeModels(t, exactServer.URL, "test-key", ProviderOpenAICompatible); err != nil {
 		t.Fatalf("ListRemoteModels rejected the exact byte boundary: %v", err)
 	}
 }
 
-func TestListRemoteModelsNoKeyOmitsAuth(t *testing.T) {
-	var gotAuth string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotAuth = r.Header.Get("Authorization")
-		_, _ = w.Write([]byte(`{"data":[]}`))
+func TestListModelsRejectsMissingCredentialBeforeIO(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("model discovery reached the endpoint without a credential")
 	}))
-	defer srv.Close()
-
-	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err != nil {
-		t.Fatalf("ListRemoteModels: %v", err)
-	}
-	if gotAuth != "" {
-		t.Fatalf("auth header = %q, want none for a keyless local daemon", gotAuth)
+	defer server.Close()
+	spec := mustClientSpec(t, ProviderOpenAICompatible, "probe", "test-key", server.URL)
+	spec.credential = providerdomain.APIKey{}
+	if _, err := ListModels(t.Context(), spec); !errors.Is(err, providerdomain.ErrAPIKeyRequired) {
+		t.Fatalf("missing credential error = %v", err)
 	}
 }
 
 func TestListRemoteModelsNon200IsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
 	defer srv.Close()
 
-	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
+	if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
 		t.Fatal("expected an error on a non-200 probe, got nil")
 	}
 }
@@ -201,9 +220,9 @@ func TestListRemoteModelsBlocksCredentialRedirectAcrossOrigins(t *testing.T) {
 	}))
 	t.Cleanup(source.Close)
 
-	_, err := listRemoteModels(t.Context(), source.URL, "test-key", modelListProtocolAnthropic)
-	if !errors.Is(err, httpredirect.ErrCrossOriginRedirect) {
-		t.Fatalf("ListRemoteModels error = %v, want ErrCrossOriginRedirect", err)
+	_, err := probeModels(t, source.URL, "test-key", ProviderAnthropicCompatible)
+	if !errors.Is(err, scopehttp.ErrOriginNotAllowed) {
+		t.Fatalf("ListRemoteModels error = %v, want Scope origin refusal", err)
 	}
 	if targetHit.Load() {
 		t.Fatal("cross-origin model probe redirect reached the target")

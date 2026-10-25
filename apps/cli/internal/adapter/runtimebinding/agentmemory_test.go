@@ -396,7 +396,7 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		if result == nil {
 			result = a.item(adapterMemoryIDTwo, memory.Scope(input.Scope), input.Content, false)
 		}
-		out := memory.AddV1Output{Item: memoryFixtureRecord{ID: result.ID, Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}}
+		out := memory.AddV1Output{Item: memoryFixtureRecord{ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemID(result.ID), Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}}
 		encoded, err := jsoninput.Encode(out)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
@@ -411,7 +411,7 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		if result == nil {
 			result = a.item(input.ID, memory.ScopeProject, "edited", true)
 		}
-		output := memory.UpdateV1Output{ID: result.ID, Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}
+		output := memory.UpdateV1Output{ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemID(result.ID), Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}
 		encoded, err := jsoninput.Encode(output)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
@@ -449,7 +449,7 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		output.Capacity = a.pageCapacity(input)
 	}
 	for _, row := range page.Data {
-		output.Rows = append(output.Rows, memoryFixtureRecord{ID: row.ID, Scope: string(row.Scope), Content: row.Content, Origin: string(row.Origin), Status: string(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
+		output.Rows = append(output.Rows, memoryFixtureRecord{ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemID(row.ID), Scope: string(row.Scope), Content: row.Content, Origin: string(row.Origin), Status: string(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
 	}
 	encoded, err := jsoninput.Encode(output)
 	if err != nil {

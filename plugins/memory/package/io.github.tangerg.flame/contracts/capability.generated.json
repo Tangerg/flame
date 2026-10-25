@@ -70,6 +70,14 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemID": {
+            "allOf": [
+              {
+                "pattern": "^mem_[0-9a-f]{32}$"
+              }
+            ],
+            "type": "string"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot": {
             "additionalProperties": false,
             "properties": {
@@ -95,12 +103,7 @@
                 "type": "string"
               },
               "ID": {
-                "allOf": [
-                  {
-                    "pattern": "^mem_[0-9a-f]{32}$"
-                  }
-                ],
-                "type": "string"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemID"
               },
               "Origin": {
                 "allOf": [
@@ -305,6 +308,14 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemID": {
+            "allOf": [
+              {
+                "pattern": "^mem_[0-9a-f]{32}$"
+              }
+            ],
+            "type": "string"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot": {
             "additionalProperties": false,
             "properties": {
@@ -330,12 +341,7 @@
                 "type": "string"
               },
               "ID": {
-                "allOf": [
-                  {
-                    "pattern": "^mem_[0-9a-f]{32}$"
-                  }
-                ],
-                "type": "string"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemID"
               },
               "Origin": {
                 "allOf": [
@@ -498,6 +504,14 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemID": {
+            "allOf": [
+              {
+                "pattern": "^mem_[0-9a-f]{32}$"
+              }
+            ],
+            "type": "string"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot": {
             "additionalProperties": false,
             "properties": {
@@ -523,12 +537,7 @@
                 "type": "string"
               },
               "ID": {
-                "allOf": [
-                  {
-                    "pattern": "^mem_[0-9a-f]{32}$"
-                  }
-                ],
-                "type": "string"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemID"
               },
               "Origin": {
                 "allOf": [
@@ -905,6 +914,14 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemID": {
+            "allOf": [
+              {
+                "pattern": "^mem_[0-9a-f]{32}$"
+              }
+            ],
+            "type": "string"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot": {
             "additionalProperties": false,
             "properties": {
@@ -930,12 +947,7 @@
                 "type": "string"
               },
               "ID": {
-                "allOf": [
-                  {
-                    "pattern": "^mem_[0-9a-f]{32}$"
-                  }
-                ],
-                "type": "string"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemID"
               },
               "Origin": {
                 "allOf": [
@@ -1056,6 +1068,14 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemID": {
+            "allOf": [
+              {
+                "pattern": "^mem_[0-9a-f]{32}$"
+              }
+            ],
+            "type": "string"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemSnapshot": {
             "additionalProperties": false,
             "properties": {
@@ -1081,12 +1101,7 @@
                 "type": "string"
               },
               "ID": {
-                "allOf": [
-                  {
-                    "pattern": "^mem_[0-9a-f]{32}$"
-                  }
-                ],
-                "type": "string"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemID"
               },
               "Origin": {
                 "allOf": [
@@ -1179,12 +1194,7 @@
             "type": "string"
           },
           "ID": {
-            "allOf": [
-              {
-                "pattern": "^mem_[0-9a-f]{32}$"
-              }
-            ],
-            "type": "string"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_ItemID"
           },
           "Origin": {
             "allOf": [
