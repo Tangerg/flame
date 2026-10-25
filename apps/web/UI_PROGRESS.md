@@ -8,8 +8,9 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/subagent-return-1025`. Task return and index focus are accepted on
-frozen base `b16e9ea7190e068837d23cd634a17a2b1344d5f4`; publication and private resource
-retirement are being completed. The existing inspection and selection owners
+frozen base `b16e9ea7190e068837d23cd634a17a2b1344d5f4`; implementation
+`692b8547fa13aa28d91d934d854fd075d2578a0e` is published to remote main, and
+private resource retirement is complete. The existing inspection and selection owners
 remain authoritative. The next batch is the user-requested brand/mascot above
 the empty new-conversation input.
 
@@ -1735,6 +1736,23 @@ Verification (2026-10-25):
 **Approve** for task return and index focus in the inspected domains and native
 scenes. Publication and resource retirement are recorded below. The continuous
 goal remains active; the requested new-conversation brand introduction is next.
+
+Implementation `692b8547fa13aa28d91d934d854fd075d2578a0e` is published to
+remote main. Independent verification confirms a clean owned checkout, exact
+remote commit, all **32 recorded processes dead**, **36 output baselines**,
+**three original file hashes** and **11 product resources** preserved. Cleanup
+removed **seven checkout outputs**, **six owned Library directories** and
+**three bundle-temp directories** and unregistered three apps. The two original
+Vitest cache files were restored from their captured bytes; the original native
+binary is preserved. The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-subagent-return-1025-TFvyrY`
+is absent. The round-trip-verified archive retains **163 UTF-8 files** and
+**five screenshot digests**, gzip SHA-256
+`c42596a17e0d64f1e1e37d1d8655cf15c878720280be2879d14b5c12a49e28e3`.
+The retirement verifier rejected an abbreviated archive argument before any
+deletion; rerunning with its exact digest passed all source, artifact, native,
+publication and ownership checks. This documentation receipt changes no tested
+source. The primary checkout and its parallel work remain untouched.
 
 ## Global Composer focus and retained material
 
