@@ -2,150 +2,60 @@ package llm
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"slices"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 const (
 	probeTimeout                   = 4 * time.Second
 	maximumModelProbeResponseBytes = 1 << 20
 	maximumRemoteModelCount        = 4096
-	anthropicProtocolVersion       = "2023-06-01"
-	anthropicMaximumModelPageSize  = 1000
 )
 
-// remoteModelList is the shared model-list response shape emitted by OpenAI-compatible
-// gateways and Anthropic's list endpoint. Only the
-// ids matter here; capability/pricing are enriched from the static catalog by
-// the caller when the id is known.
-type remoteModelList struct {
-	Data    []remoteModel `json:"data"`
-	HasMore bool          `json:"has_more"`
+type modelLister interface {
+	ListModels(context.Context, int, int64) ([]string, error)
 }
 
-type remoteModel struct {
-	ID string `json:"id"`
-}
-
-// modelProbeDocument is one complete, bounded endpoint response. Admission is
-// decided before any advertised identity can escape into the model catalog.
-type modelProbeDocument struct {
-	list remoteModelList
-}
-
-func readModelProbeDocument(source io.Reader) (modelProbeDocument, error) {
-	content, err := io.ReadAll(io.LimitReader(source, maximumModelProbeResponseBytes+1))
+// ListModels uses the registered Scope binding for authentication, endpoint
+// selection, pagination and bounded response admission. Flame owns the probe
+// budget and the identities its product accepts.
+func ListModels(ctx context.Context, spec ClientSpec) ([]string, error) {
+	if err := spec.validate(); err != nil {
+		return nil, err
+	}
+	profile, _ := providers.lookup(spec.provider)
+	if !profile.chatModels.discoveredAtEndpoint() {
+		return nil, errors.New("llm: provider uses the published model catalog")
+	}
+	endpoint, err := profile.endpoint.resolve(spec.endpoint)
 	if err != nil {
-		return modelProbeDocument{}, fmt.Errorf("read response: %w", err)
+		return nil, fmt.Errorf("llm: provider %q: %w", spec.provider, err)
 	}
-	if len(content) > maximumModelProbeResponseBytes {
-		return modelProbeDocument{}, fmt.Errorf("response exceeds %d bytes", maximumModelProbeResponseBytes)
+	spec = spec.withEndpoint(endpoint)
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
+	model, err := profile.chatBuilder(ctx, spec, chat.Options{})
+	if err != nil {
+		return nil, classifyModelError(err)
 	}
-	if !utf8.Valid(content) {
-		return modelProbeDocument{}, errors.New("response is not valid UTF-8")
+	discovery, ok := model.(modelLister)
+	if !ok {
+		return nil, fmt.Errorf("llm: provider %q has no model discovery capability", spec.provider)
 	}
-
-	var list remoteModelList
-	if err := json.Unmarshal(content, &list); err != nil {
-		return modelProbeDocument{}, fmt.Errorf("decode response: %w", err)
+	ids, err := discovery.ListModels(ctx, maximumRemoteModelCount, maximumModelProbeResponseBytes)
+	if err != nil {
+		return nil, classifyModelError(err)
 	}
-	if len(list.Data) > maximumRemoteModelCount {
-		return modelProbeDocument{}, fmt.Errorf(
-			"response advertises %d models; maximum is %d",
-			len(list.Data), maximumRemoteModelCount,
-		)
-	}
-	return modelProbeDocument{list: list}, nil
-}
-
-func (d modelProbeDocument) identities() ([]string, error) {
-	ids := make([]string, 0, len(d.list.Data))
-	for _, model := range d.list.Data {
-		identity, err := modelchoice.NewModelIdentity(model.ID)
-		if err != nil {
-			return nil, fmt.Errorf("advertised model identity %q: %w", model.ID, err)
+	for _, id := range ids {
+		if _, err := modelchoice.NewModelIdentity(id); err != nil {
+			return nil, fmt.Errorf("llm: advertised model identity %q: %w", id, err)
 		}
-		ids = append(ids, identity.String())
 	}
 	slices.Sort(ids)
 	return slices.Compact(ids), nil
-}
-
-// listRemoteModels probes a compatible provider endpoint with the listing
-// protocol owned by its provider profile. OpenAI-family endpoints expose
-// {baseURL}/models with bearer authentication; Anthropic-family endpoints
-// expose {baseURL}/v1/models with native headers. The response remains bounded
-// regardless of protocol.
-func listRemoteModels(ctx context.Context, baseURL, apiKey string, protocol modelListProtocol) ([]string, error) {
-	endpoint, err := protocol.modelListEndpoint(baseURL)
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-	protocol.authorize(req, apiKey)
-
-	resp, err := newModelHTTPClient().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
-		return nil, classifyHTTPFailure(resp.StatusCode, resp.Header, fmt.Errorf("llm: model probe: status %d", resp.StatusCode))
-	}
-
-	document, err := readModelProbeDocument(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("llm: model probe %s: %w", endpoint, err)
-	}
-	if protocol == modelListProtocolAnthropic && document.list.HasMore {
-		return nil, fmt.Errorf(
-			"llm: model probe %s: catalog exceeds the maximum %d-model page",
-			endpoint,
-			anthropicMaximumModelPageSize,
-		)
-	}
-	ids, err := document.identities()
-	if err != nil {
-		return nil, fmt.Errorf("llm: model probe %s: %w", endpoint, err)
-	}
-	return ids, nil
-}
-
-func (p modelListProtocol) modelListEndpoint(baseURL string) (string, error) {
-	baseURL = strings.TrimRight(baseURL, "/")
-	switch p {
-	case modelListProtocolOpenAI:
-		return baseURL + "/models", nil
-	case modelListProtocolAnthropic:
-		return fmt.Sprintf("%s/v1/models?limit=%d", baseURL, anthropicMaximumModelPageSize), nil
-	default:
-		return "", fmt.Errorf("llm: unsupported model listing protocol %d", p)
-	}
-}
-
-func (p modelListProtocol) authorize(request *http.Request, apiKey string) {
-	switch p {
-	case modelListProtocolOpenAI:
-		if apiKey != "" {
-			request.Header.Set("Authorization", "Bearer "+apiKey)
-		}
-	case modelListProtocolAnthropic:
-		request.Header.Set("x-api-key", apiKey)
-		request.Header.Set("anthropic-version", anthropicProtocolVersion)
-	}
 }

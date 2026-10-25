@@ -24,7 +24,7 @@
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_SelectionLimits"
               },
               "selection": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection"
               },
               "use": {
                 "allOf": [
@@ -71,6 +71,9 @@
               "rules"
             ],
             "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_SelectionLimits": {
             "additionalProperties": false,
@@ -177,7 +180,7 @@
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_SelectionLimits"
               },
               "selection": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection"
               },
               "use": {
                 "allOf": [
@@ -224,6 +227,9 @@
               "rules"
             ],
             "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_SelectionLimits": {
             "additionalProperties": false,
@@ -324,7 +330,7 @@
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_SelectionLimits"
               },
               "selection": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection"
               },
               "use": {
                 "allOf": [
@@ -371,6 +377,9 @@
               "rules"
             ],
             "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_SelectionLimits": {
             "additionalProperties": false,

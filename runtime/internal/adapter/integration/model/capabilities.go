@@ -26,7 +26,6 @@ type Capabilities struct{}
 const (
 	providerProbePrompt      = "ping"
 	minimumProbeOutputTokens = int64(1)
-	configurationProbeModel  = "flame-configuration-probe"
 )
 
 func (Capabilities) Supported() []modelsapp.ProviderMetadata {
@@ -82,11 +81,11 @@ func (Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
 	if !hasDefault {
 		return fmt.Errorf("model: provider %q has no probe model", entry.ID())
 	}
-	spec, err := inputs.clientSpec(defaultModel)
+	spec, err := inputs.clientSpec()
 	if err != nil {
 		return err
 	}
-	client, _, err := llm.BuildChat(ctx, spec)
+	client, _, err := llm.BuildChat(ctx, spec, defaultModel)
 	if err != nil {
 		return err
 	}
@@ -118,21 +117,17 @@ func (Capabilities) ListModels(ctx context.Context, entry provider.Provider) ([]
 }
 
 func remoteModelIDs(ctx context.Context, inputs providerClientInputs) ([]string, error) {
-	baseURL, hasBaseURL := inputs.endpoint()
-	if !hasBaseURL {
+	if _, hasBaseURL := inputs.endpoint(); !hasBaseURL && inputs.profile.RequiresConfiguredEndpoint() {
 		return nil, fmt.Errorf("%w: provider %q", modelsapp.ErrProviderBaseURLRequired, inputs.entry.ID())
 	}
-	spec, err := inputs.clientSpec(configurationProbeModel)
+	spec, err := inputs.clientSpec()
 	if err != nil {
 		if errors.Is(err, ErrCredentialUnavailable) {
 			return nil, fmt.Errorf("%w: provider %q: %w", modelsapp.ErrProviderUnconfigured, inputs.entry.ID(), err)
 		}
 		return nil, err
 	}
-	if _, _, err := llm.BuildChat(ctx, spec); err != nil {
-		return nil, err
-	}
-	ids, err := inputs.profile.ListModels(ctx, baseURL, inputs.apiKey())
+	ids, err := llm.ListModels(ctx, spec)
 	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		return nil, fmt.Errorf("%w: %w", modelsapp.ErrModelDiscoveryFailed, err)
 	}

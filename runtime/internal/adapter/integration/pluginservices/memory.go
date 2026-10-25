@@ -174,7 +174,7 @@ func memoryPromptItems(values memorycontract.ItemsV1Output) ([]execution.MemoryP
 		if value.UpdatedAt.IsZero() {
 			return nil, errors.New("memory: published prompt item has no ordering time")
 		}
-		items[i] = execution.MemoryPromptItem{ID: value.ID, Content: value.Content, Pinned: value.Pinned, UpdatedAt: value.UpdatedAt}
+		items[i] = execution.MemoryPromptItem{ID: string(value.ID), Content: value.Content, Pinned: value.Pinned, UpdatedAt: value.UpdatedAt}
 	}
 	return items, nil
 }

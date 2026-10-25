@@ -117,7 +117,7 @@ func (a *AgentMemory) DecodeUpdate(id string, reply *protocol.CallPluginResponse
 }
 
 func memoryProjection(row memory.UpdateV1Output) memory.Item {
-	return memory.Item{ID: row.ID, Scope: memory.Scope(row.Scope), Content: row.Content, Origin: memory.Origin(row.Origin), Status: memory.Status(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return memory.Item{ID: string(row.ID), Scope: memory.Scope(row.Scope), Content: row.Content, Origin: memory.Origin(row.Origin), Status: memory.Status(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
 func (a *AgentMemory) PrepareDelete(ctx context.Context, id string) (protocol.CallPluginRequest, error) {

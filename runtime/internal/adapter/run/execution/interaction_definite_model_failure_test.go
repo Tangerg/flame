@@ -2,6 +2,7 @@ package execution
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"iter"
 	"path/filepath"
@@ -96,6 +97,44 @@ func TestScopeDefiniteModelFailureSettlesWithoutHostCancellation(t *testing.T) {
 					if err != nil || result.Termination().Cause() != agent.TerminationCauseExternalFailure {
 						t.Fatalf("Scope definite failure was replaced: %s, %v", result.Termination().Cause(), err)
 					}
+				}
+			})
+		}
+	}
+}
+
+func TestScopeInvocationFailureDoesNotInheritNestedNonExecution(t *testing.T) {
+	for _, kind := range []chat.CallFailureKind{chat.CallFailureFailed, chat.CallFailureUnknown} {
+		for _, streaming := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/streaming=%t", kind, streaming), func(t *testing.T) {
+				calls := 0
+				failure := &chat.CallFailure{Kind: kind, Cause: &chat.CallFailure{
+					Kind: chat.CallFailureNotExecuted, Cause: errors.New("later operation rejected"),
+				}}
+				model := safeguardedTestModel{
+					Model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+						calls++
+						return nil, failure
+					}),
+					Streamer: chat.StreamerFunc(func(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+						return func(yield func(*chat.ResponseDelta, error) bool) {
+							calls++
+							yield(nil, failure)
+						}
+					}),
+				}
+				executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: streaming})
+				events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+				failed := payloadsOf[runs.ModelCallFailed](events)
+				if calls != 1 || len(failed) != 1 || failed[0].Accounting == nil || failed[0].Accounting.ReportedUsage != nil {
+					t.Fatalf("nested non-execution replaced dispatched evidence: calls=%d, failures=%+v", calls, failed)
+				}
+				ends := payloadsOf[runs.SegmentEnded](events)
+				if len(ends) != 1 || ends[0].Reason != run.OutcomeFailed {
+					t.Fatalf("invocation failure became success: %+v", ends)
+				}
+				if unresolved := len(ends[0].UnresolvedEffects()); (unresolved > 0) != (kind == chat.CallFailureUnknown) {
+					t.Fatalf("nested evidence changed invocation %s: unresolved=%d", kind, unresolved)
 				}
 			})
 		}

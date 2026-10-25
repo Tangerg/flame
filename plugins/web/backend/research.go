@@ -14,7 +14,6 @@ import (
 
 const (
 	maxQueryBytes          = 8192
-	defaultSearchResults   = 20
 	maxSearchResponseBytes = 128 << 10
 )
 
@@ -46,18 +45,8 @@ func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (web.
 	if err != nil {
 		return web.SearchResponse{}, err
 	}
-	if err := response.Validate(); err != nil {
+	if err := response.ValidateFor(prepared); err != nil {
 		return web.SearchResponse{}, err
-	}
-	if response.Query != prepared.Query {
-		return web.SearchResponse{}, errors.New("web: provider replaced the authored search query")
-	}
-	limit := prepared.MaxResults
-	if limit == 0 {
-		limit = defaultSearchResults
-	}
-	if len(response.Results) > limit {
-		return web.SearchResponse{}, errors.New("web: provider exceeded the requested result count")
 	}
 	encoded, err := json.Marshal(response)
 	if err != nil {

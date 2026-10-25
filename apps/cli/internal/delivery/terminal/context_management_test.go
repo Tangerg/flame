@@ -181,10 +181,10 @@ func (*agentMemoryServiceStub) DecodeUpdate(id string, reply *protocol.CallPlugi
 	if err := json.Unmarshal([]byte(reply.Output), &row); err != nil {
 		return memorycontract.Item{}, err
 	}
-	if row.ID != id {
+	if string(row.ID) != id {
 		return memorycontract.Item{}, errors.New("wrong update item")
 	}
-	return memorycontract.Item{ID: row.ID, Scope: memorycontract.Scope(row.Scope), Content: row.Content, Origin: memorycontract.Origin(row.Origin), Status: memorycontract.Status(row.Status), Pinned: row.Pinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return memorycontract.Item{ID: string(row.ID), Scope: memorycontract.Scope(row.Scope), Content: row.Content, Origin: memorycontract.Origin(row.Origin), Status: memorycontract.Status(row.Status), Pinned: row.Pinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 func (*agentMemoryServiceStub) PrepareReview(_ context.Context, id string, decision memorycontract.ReviewDecision) (protocol.CallPluginRequest, error) {
 	return boundMemoryRequest(memorycontract.ReviewV1Method, memorycontract.ReviewV1Input{ID: id, Decision: string(decision)})
@@ -218,7 +218,7 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 		if err != nil {
 			return nil, err
 		}
-		output := memorycontract.AddV1Output{Item: memoryFixtureRecord{ID: saved.ID, Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}}
+		output := memorycontract.AddV1Output{Item: memoryFixtureRecord{ID: memorycontract.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemID(saved.ID), Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}}
 		encoded, err := jsoninput.Encode(output)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
@@ -231,7 +231,7 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 		if err != nil {
 			return nil, err
 		}
-		output := memorycontract.UpdateV1Output{ID: saved.ID, Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}
+		output := memorycontract.UpdateV1Output{ID: memorycontract.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemID(saved.ID), Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}
 		encoded, err := jsoninput.Encode(output)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}

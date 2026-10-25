@@ -28,12 +28,12 @@ func resolveProviderClientInputs(expectedID string, entry provider.Provider) (pr
 	return providerClientInputs{entry: entry, profile: profile}, nil
 }
 
-func (i providerClientInputs) clientSpec(model string) (llm.ClientSpec, error) {
+func (i providerClientInputs) clientSpec() (llm.ClientSpec, error) {
 	apiKey, configured := i.entry.APIKey()
 	if !configured {
 		return llm.ClientSpec{}, ErrCredentialUnavailable
 	}
-	spec, err := llm.NewClientSpec(i.profile.ID(), model, apiKey)
+	spec, err := llm.NewClientSpec(i.profile.ID(), apiKey)
 	if err != nil {
 		return llm.ClientSpec{}, err
 	}
@@ -49,14 +49,6 @@ func (i providerClientInputs) endpoint() (string, bool) {
 		return baseURL.String(), true
 	}
 	return "", false
-}
-
-func (i providerClientInputs) apiKey() string {
-	apiKey, configured := i.entry.APIKey()
-	if !configured {
-		return ""
-	}
-	return apiKey.Reveal()
 }
 
 func (i providerClientInputs) embeddingSpaceID(model string) string {

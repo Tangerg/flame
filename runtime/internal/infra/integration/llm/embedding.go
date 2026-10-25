@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/embedding"
 
 	"github.com/Tangerg/scope/models/alibaba"
@@ -37,9 +38,13 @@ func (p embeddingProviderProfile) validate() error {
 
 // BuildEmbeddingModel wires an embedding.Model for one provider+model from
 // the provider profile, threading the credential and resolved endpoint.
-func BuildEmbeddingModel(ctx context.Context, spec ClientSpec) (embedding.Model, error) {
+func BuildEmbeddingModel(ctx context.Context, spec ClientSpec, modelID string) (embedding.Model, error) {
 	if err := spec.validate(); err != nil {
 		return nil, err
+	}
+	identity, err := modelchoice.NewModelIdentity(modelID)
+	if err != nil {
+		return nil, fmt.Errorf("llm: embedding model: %w", err)
 	}
 	provider, found := providers.lookup(spec.provider)
 	if !found || provider.embedding == nil {
@@ -51,10 +56,7 @@ func BuildEmbeddingModel(ctx context.Context, spec ClientSpec) (embedding.Model,
 	}
 	spec = spec.withEndpoint(endpoint)
 	profile := provider.embedding
-	opts := embedding.Options{Model: spec.model.String()}
-	if err := opts.Validate(); err != nil {
-		return nil, fmt.Errorf("llm: embedding options for %q: %w", spec.model.String(), err)
-	}
+	opts := embedding.Options{Model: identity.String()}
 	model, err := profile.build(ctx, spec, opts)
 	if err != nil {
 		return nil, fmt.Errorf("llm: build %s embedding model: %w", spec.provider, err)

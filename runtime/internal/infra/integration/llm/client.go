@@ -34,9 +34,9 @@ const (
 	defaultOpenAIModel    = "gpt-5.6-sol"
 )
 
+// ClientSpec owns connection policy; model selection belongs to each operation.
 type ClientSpec struct {
 	provider   Provider
-	model      modelchoice.ModelIdentity
 	credential providerdomain.APIKey
 	endpoint   providerdomain.BaseURL
 	httpClient *http.Client
@@ -44,17 +44,13 @@ type ClientSpec struct {
 
 // fmt does not invoke a nested value's Formatter through an unexported field.
 func (s ClientSpec) Format(state fmt.State, _ rune) {
-	_, _ = fmt.Fprintf(state, "{Provider:%s Model:%s Credential:%v Endpoint:%s}",
-		s.provider, s.model.String(), s.credential, s.endpoint.String())
+	_, _ = fmt.Fprintf(state, "{Provider:%s Credential:%v Endpoint:%s}",
+		s.provider, s.credential, s.endpoint.String())
 }
 
-func NewClientSpec(provider Provider, model string, credential providerdomain.APIKey) (ClientSpec, error) {
-	identity, err := modelchoice.NewModelIdentity(model)
-	if err != nil {
-		return ClientSpec{}, fmt.Errorf("llm: model: %w", err)
-	}
+func NewClientSpec(provider Provider, credential providerdomain.APIKey) (ClientSpec, error) {
 	spec := ClientSpec{
-		provider: provider, model: identity, credential: credential,
+		provider: provider, credential: credential,
 		httpClient: newModelHTTPClient(),
 	}
 	if err := spec.validate(); err != nil {
@@ -77,9 +73,6 @@ func (s ClientSpec) validate() error {
 	if !found {
 		return fmt.Errorf("llm: unsupported provider %q", s.provider)
 	}
-	if s.model.String() == "" {
-		return errors.New("llm: model identity is required")
-	}
 	if !s.credential.Present() {
 		return fmt.Errorf("llm: provider %q credential: %w", s.provider, providerdomain.ErrAPIKeyRequired)
 	}
@@ -100,7 +93,7 @@ func (s ClientSpec) withEndpoint(endpoint providerdomain.BaseURL) ClientSpec {
 	return s
 }
 
-// buildFunc constructs the scope chat adapter for one (key, model, baseURL).
+// buildFunc constructs the Scope chat adapter with its connection and options.
 // One per provider — it is the only provider-specific chat construction code.
 type buildFunc func(ctx context.Context, spec ClientSpec, opts chat.Options) (chat.Model, error)
 
@@ -144,8 +137,8 @@ var providers = mustProviderCatalog(
 	bundledProvider(ProviderOpenRouter, openrouter.ModelAuto, "OPENROUTER_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return openrouter.NewChatCompletions(ctx, openrouter.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 	}),
-	bundledProvider(ProviderPerplexity, perplexity.ModelSonar, "PERPLEXITY_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
-		return perplexity.NewChatCompletions(ctx, perplexity.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
+	endpointProvider(ProviderPerplexity, adapterEndpoint(), "PERPLEXITY_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
+		return perplexity.NewResponses(ctx, perplexity.ResponsesConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 	}),
 	bundledProvider(ProviderTogether, together.ModelGPTOSS120B, "TOGETHER_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return together.NewChatCompletions(ctx, together.ChatCompletionsConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
@@ -164,12 +157,11 @@ var providers = mustProviderCatalog(
 	// the model id is a deployment name. Both are user-supplied.
 	endpointProvider(ProviderAzureOpenAI, configuredEndpoint(), "AZURE_OPENAI_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return azureopenai.NewChatCompletions(ctx, azureopenai.ChatCompletionsConfig{Config: azureopenai.Config{APIKey: s.sdkAPIKey(), BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()}, DefaultOptions: o})
-	}).withEmbedding(openAIEndpointModels(), buildAzureOpenAIEmbeddingModel),
+	}).withEmbedding(endpointModels(), buildAzureOpenAIEmbeddingModel),
 
 	// Generic bring-your-own-endpoint providers: direct adapter + caller URL.
 	endpointProvider(ProviderOpenAICompatible, configuredEndpoint(), "OPENAI_COMPATIBLE_API_KEY", buildOpenAICompatibleModel),
-	endpointProvider(ProviderAnthropicCompatible, configuredEndpoint(), "ANTHROPIC_COMPATIBLE_API_KEY", buildAnthropicModel).
-		withChatModels(anthropicEndpointModels()),
+	endpointProvider(ProviderAnthropicCompatible, configuredEndpoint(), "ANTHROPIC_COMPATIBLE_API_KEY", buildAnthropicModel),
 )
 
 func buildAnthropicModel(ctx context.Context, spec ClientSpec, opts chat.Options) (chat.Model, error) {
@@ -203,9 +195,13 @@ func buildOpenAICompatibleModel(ctx context.Context, spec ClientSpec, opts chat.
 // provider that requires a base URL errors when one is not supplied. Pricing is
 // a separate accounting concern, so the constructed model carries no pricing
 // hook.
-func buildModel(ctx context.Context, spec ClientSpec) (chat.Model, error) {
+func buildModel(ctx context.Context, spec ClientSpec, modelID string) (chat.Model, error) {
 	if err := spec.validate(); err != nil {
 		return nil, err
+	}
+	identity, err := modelchoice.NewModelIdentity(modelID)
+	if err != nil {
+		return nil, fmt.Errorf("llm: model: %w", err)
 	}
 	profile, ok := providers.lookup(spec.provider)
 	if !ok {
@@ -217,10 +213,7 @@ func buildModel(ctx context.Context, spec ClientSpec) (chat.Model, error) {
 	}
 	spec = spec.withEndpoint(endpoint)
 
-	opts := chat.Options{Model: spec.model.String()}
-	if err := opts.Validate(); err != nil {
-		return nil, fmt.Errorf("llm: chat options for %q: %w", spec.model.String(), err)
-	}
+	opts := chat.Options{Model: identity.String()}
 
 	model, err := profile.chatBuilder(ctx, spec, opts)
 	if err != nil {
@@ -237,8 +230,8 @@ func buildModel(ctx context.Context, spec ClientSpec) (chat.Model, error) {
 // client and its optional complete-request token counter. Capability discovery
 // must happen on this exact model instance so callers never resolve credentials
 // or build a provider twice for one interaction.
-func BuildChat(ctx context.Context, spec ClientSpec) (chat.Model, InputTokenCounter, error) {
-	model, err := buildModel(ctx, spec)
+func BuildChat(ctx context.Context, spec ClientSpec, modelID string) (chat.Model, InputTokenCounter, error) {
+	model, err := buildModel(ctx, spec, modelID)
 	if err != nil {
 		return nil, nil, err
 	}

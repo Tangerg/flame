@@ -221,8 +221,12 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	limits := plugin.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20}
-	for _, mode := range []string{"echo", "missing", "late"} {
+	for _, mode := range []string{"echo", "mutated-final", "missing", "late"} {
 		input.Mode = mode
+		original, err := jsoninput.Encode(input)
+		if err != nil {
+			t.Fatal(err)
+		}
 		chunks, finals, failures := 0, 0, 0
 		for frame, err := range queryStream.StreamWithMetadata(t.Context(), queryBinding, host, limits, "", input, sdk.ParamsBase{}) {
 			if err != nil {
@@ -237,9 +241,13 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 			}
 			if frame.Result != nil {
 				finals++
+				if frame.Result.Source != original.String() {
+					t.Fatalf("stream %s changed its admitted final result: %+v", mode, frame.Result)
+				}
 			}
 		}
-		if chunks != 1 || mode == "echo" && (finals != 1 || failures != 0) || mode != "echo" && (finals != 0 || failures != 1) {
+		complete := mode == "echo" || mode == "mutated-final"
+		if chunks != 1 || complete && (finals != 1 || failures != 0) || !complete && (finals != 0 || failures != 1) {
 			t.Fatalf("stream %s: chunks=%d finals=%d failures=%d", mode, chunks, finals, failures)
 		}
 	}

@@ -3,21 +3,21 @@ module github.com/Tangerg/flame/examples/plugins/reviews/backend
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame v0.1.0-node.20261025.2
+	github.com/Tangerg/flame v0.1.0-node.20261026.2
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
-	github.com/Tangerg/scope/core v0.56.0
+	github.com/Tangerg/scope/core v0.57.1
 	github.com/invopop/jsonschema v0.14.0
 	modernc.org/sqlite v1.61.0
 )
 
 require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/Tangerg/scope/a2a v0.56.0 // indirect
-	github.com/Tangerg/scope/mcp v0.56.0 // indirect
-	github.com/Tangerg/scope/otel v0.56.0 // indirect
-	github.com/Tangerg/scope/skills v0.56.0 // indirect
-	github.com/Tangerg/scope/tools v0.56.0 // indirect
-	github.com/Tangerg/scope/tools/skills v0.56.0 // indirect
+	github.com/Tangerg/scope/a2a v0.57.1 // indirect
+	github.com/Tangerg/scope/mcp v0.57.1 // indirect
+	github.com/Tangerg/scope/otel v0.57.1 // indirect
+	github.com/Tangerg/scope/skills v0.57.1 // indirect
+	github.com/Tangerg/scope/tools v0.57.1 // indirect
+	github.com/Tangerg/scope/tools/skills v0.57.1 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/a2aproject/a2a-go/v2 v2.7.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect

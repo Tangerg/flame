@@ -3,17 +3,20 @@ package builtin
 import (
 	"bytes"
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	skillspec "github.com/Tangerg/scope/skills"
+	skillstool "github.com/Tangerg/scope/tools/skills"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
@@ -164,10 +167,17 @@ func TestBuildReadersMergesProjectOverUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	for _, want := range []string{"shared", "proj-only", "user-only"} {
-		if !strings.Contains(list, "<name>"+want+"</name>") {
-			t.Errorf("list missing %q:\n%s", want, list)
-		}
+	var page skillstool.ListPage
+	if err := json.Unmarshal([]byte(list), &page, json.RejectUnknownMembers(true)); err != nil {
+		t.Fatal(err)
+	}
+	want := []skillspec.Summary{
+		{Name: "proj-only", Description: "project only"},
+		{Name: "shared", Description: "PROJECT copy"},
+		{Name: "user-only", Description: "user only"},
+	}
+	if !slices.Equal(page.Skills, want) || page.NextCursor != nil {
+		t.Fatalf("merged skill catalog = %+v", page)
 	}
 
 	loaded, err := callTextTool(context.Background(), byName["load_skill"], `{"name":"shared"}`)

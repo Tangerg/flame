@@ -100,6 +100,8 @@ for (const name of ["fixture.query-stream", "fixture.command-stream"])
             reply: { value: output },
           });
         yield { kind: "result", value: output };
+        if (input.mode === "mutated-final")
+          output.source = "changed after yielding the final result";
         if (input.mode === "late") yield { kind: "chunk", value: "late" };
       } finally {
         if (input.mode === "wait")

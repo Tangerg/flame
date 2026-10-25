@@ -640,8 +640,7 @@ export class Backend {
     reference: unknown,
   ): Promise<unknown> {
     const ref = callbackRef(reference);
-    let final = false;
-    let result: unknown;
+    let final: { value: unknown } | undefined;
     let sequence = 0n;
     for await (const frame of bound.stream!(context, input)) {
       context.signal.throwIfAborted();
@@ -650,8 +649,7 @@ export class Backend {
         throw new Error("plugin: stream continued after its final result");
       if (frame.kind === "result") {
         bound.method.validateOutput(frame.value);
-        result = frame.value;
-        final = true;
+        final = { value: freezeJSON(frame.value) };
       } else if (frame.kind === "chunk") {
         bound.method.validateChunk!(frame.value);
         if (sequence === 18446744073709551615n)
@@ -672,7 +670,7 @@ export class Backend {
       } else throw new Error("plugin: invalid stream frame kind");
     }
     if (!final) throw new Error("plugin: stream final result is unconfirmed");
-    return result;
+    return final.value;
   }
   async #dispose(): Promise<void> {
     const errors: unknown[] = [];

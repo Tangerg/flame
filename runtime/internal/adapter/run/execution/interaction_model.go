@@ -52,12 +52,12 @@ func (o *observedInteractionModel) Call(
 	defer o.session.material.discard(invocation)
 	sent, err := o.request(invocation, request)
 	if err != nil {
-		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, fmt.Errorf("%w: %w", corechat.ErrNotExecuted, err))
+		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err})
 	}
 	ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
 	ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: capability.ScopeCall, Reference: callID}})
 	if err != nil {
-		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, fmt.Errorf("%w: %w", corechat.ErrNotExecuted, err))
+		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err})
 	}
 	response, err := o.model.Call(ctx, sent)
 	if err != nil {
@@ -70,7 +70,7 @@ func (o *observedInteractionModel) Call(
 		return response, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
 	}
 	if err := o.complete(ctx, invocation, callID, response, nil); err != nil {
-		return nil, err
+		return response, err
 	}
 	return response, nil
 }
@@ -89,14 +89,14 @@ func (o *observedInteractionModel) Stream(
 		defer o.session.material.discard(invocation)
 		sent, err := o.request(invocation, request)
 		if err != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, fmt.Errorf("%w: %w", corechat.ErrNotExecuted, err)))
+			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err}))
 			return
 		}
 		dispatchedAt := time.Now()
 		ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
 		ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: capability.ScopeCall, Reference: callID}})
 		if err != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, fmt.Errorf("%w: %w", corechat.ErrNotExecuted, err)))
+			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err}))
 			return
 		}
 		sequence := o.streamer.Stream(ctx, sent)
@@ -210,7 +210,8 @@ func (o *observedInteractionModel) stopFailedCall(ctx context.Context, invocatio
 		if cause != nil {
 			o.session.modelFailures.record(invocation.Relation().ProcessID(), cause)
 		}
-		if errors.Is(cause, corechat.ErrDefiniteFailure) {
+		kind := corechat.ClassifyFailure(cause)
+		if kind == corechat.CallFailureFailed || kind == corechat.CallFailureNotExecuted {
 			return cause
 		}
 		return errors.Join(cause, o.session.stopModelProcess(ctx, invocation.Relation().ProcessID()))
@@ -273,7 +274,7 @@ func (o *observedInteractionModel) begin(
 		if err != nil {
 			o.session.accounting.discardPreparedModelContext(preparedInvocation)
 			o.session.modelFailures.record(preparedInvocation.Relation().ProcessID(), &run.FailureError{Kind: run.FailureInternal, Err: err})
-			err = fmt.Errorf("%w: %w", corechat.ErrNotExecuted, err)
+			err = &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err}
 		}
 	}()
 	callIdentity, err := modelInvocationID(invocation)

@@ -34,7 +34,7 @@ func TestListModelsPreservesMissingCredentialCause(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	for _, providerID := range []string{"openai-compatible", "anthropic-compatible", "azureopenai"} {
+	for _, providerID := range []string{"openai-compatible", "anthropic-compatible", "azureopenai", "perplexity"} {
 		t.Run(providerID, func(t *testing.T) {
 			entry := catalogProvider(t, providerID, "test-key", server.URL)
 			entry, err := entry.Apply(provider.Patch{APIKey: provider.Clear[provider.APIKey]()})
@@ -108,7 +108,7 @@ func TestProbeUsesAnthropicProtocolForCompatibleProvider(t *testing.T) {
 			t.Errorf("authorization = %q, want absent", got)
 		}
 		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"data":[{"id":"claude-compatible"}]}`))
+		_, _ = response.Write([]byte(`{"data":[{"id":"claude-compatible"}],"has_more":false}`))
 	}))
 	t.Cleanup(server.Close)
 
@@ -128,6 +128,45 @@ func TestProbeRejectsPartialAnthropicModelCatalog(t *testing.T) {
 	err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "anthropic-compatible", "test-key", server.URL))
 	if err == nil {
 		t.Fatal("Probe accepted a partial Anthropic model catalog")
+	}
+}
+
+func TestModelDiscoveryUsesScopePaginationBeforePublishingCatalog(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		if request.URL.Path != "/v1/models" {
+			t.Errorf("model discovery used %q", request.URL.Path)
+		}
+		response.Header().Set("Content-Type", "application/json")
+		if requests == 1 {
+			_, _ = response.Write([]byte(`{"data":[{"id":"claude-z"}],"has_more":true,"last_id":"claude-z"}`))
+			return
+		}
+		if cursor := request.URL.Query().Get("after_id"); cursor != "claude-z" {
+			t.Errorf("model discovery cursor = %q", cursor)
+		}
+		_, _ = response.Write([]byte(`{"data":[{"id":"claude-a"}],"has_more":false}`))
+	}))
+	t.Cleanup(server.Close)
+	models, err := (Capabilities{}).ListModels(t.Context(), catalogProvider(t, "anthropic-compatible", "test-key", server.URL))
+	if err != nil || requests != 2 || len(models) != 2 || models[0] != "claude-a" || models[1] != "claude-z" {
+		t.Fatalf("complete endpoint catalog = %v, %v; requests=%d", models, err, requests)
+	}
+}
+
+func TestPerplexityModelDiscoveryUsesItsScopeBinding(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || request.URL.Path != "/models" || request.Header.Get("Authorization") != "Bearer test-key" {
+			t.Errorf("unexpected Perplexity catalog request: %s %s", request.Method, request.URL.Path)
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"data":[{"id":"openai/gpt-6-sol"}]}`))
+	}))
+	t.Cleanup(server.Close)
+	models, err := (Capabilities{}).ListModels(t.Context(), catalogProvider(t, "perplexity", "test-key", server.URL))
+	if err != nil || len(models) != 1 || models[0] != "openai/gpt-6-sol" {
+		t.Fatalf("Perplexity endpoint catalog = %v, %v", models, err)
 	}
 }
 

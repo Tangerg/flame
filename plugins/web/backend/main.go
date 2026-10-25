@@ -47,11 +47,11 @@ func run(ctx context.Context) (err error) {
 	defer func() { err = errors.Join(err, store.db.Close()) }()
 	client := newProviderHTTPClient()
 	defer client.CloseIdleConnections()
-	fetch, err := jinaSource(jina, client)
+	fetch, err := jinaSource(ctx, jina, client)
 	if err != nil {
 		return err
 	}
-	search, err := tavilySource(tavily, client)
+	search, err := tavilySource(ctx, tavily, client)
 	if err != nil {
 		return err
 	}

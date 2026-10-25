@@ -93,10 +93,6 @@ func (m *observedEndpoint) start(ctx context.Context, request *chat.Request) (mo
 }
 
 func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.EndpointInvocation, response *chat.Response, cause error) error {
-	if response != nil && response.Validate() != nil {
-		cause = errors.Join(cause, response.Validate())
-		response = nil
-	}
 	failure := ""
 	if cause != nil {
 		failure = cause.Error()
@@ -115,16 +111,21 @@ func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.Endpo
 func (m *observedEndpoint) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 	invocation, err := m.start(ctx, request)
 	if err != nil {
-		return nil, err
+		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
 	}
 	response, err := m.inner.Call(ctx, invocation.Request.Clone())
+	var admitted *chat.Response
 	if response != nil {
-		err = errors.Join(err, response.Validate())
+		validationErr := response.Validate()
+		err = errors.Join(err, validationErr)
+		if validationErr == nil {
+			admitted = response
+		}
 	}
 	if response == nil && err == nil {
 		err = errors.New("model: endpoint returned no response")
 	}
-	return response, errors.Join(err, m.finish(ctx, invocation, response, err))
+	return response, errors.Join(err, m.finish(ctx, invocation, admitted, err))
 }
 
 type streamedEndpoint struct {
@@ -137,7 +138,7 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 	return func(yield func(*chat.ResponseDelta, error) bool) {
 		invocation, err := m.start(ctx, frozen)
 		if err != nil {
-			yield(nil, err)
+			yield(nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
 			return
 		}
 		var accumulated chat.ResponseAccumulator
@@ -173,7 +174,9 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 		response, responseErr := accumulated.Response()
 		if responseErr != nil {
 			response = nil
-			err = errors.Join(err, responseErr)
+			if err == nil {
+				err = responseErr
+			}
 		}
 		publicationErr := m.finish(ctx, invocation, response, err)
 		settled = true
