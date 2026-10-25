@@ -10,8 +10,9 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/tool-failure-reading-1026`. Recorded Tool failure layout is qualified
 on frozen base `eb75daac0541114f16310037d354e53e4086dd06`; see Recorded Tool
 failure layout for the native counterexample, shared owner and verification limits.
-Product checks and native acceptance pass; publication and owned-resource
-retirement are pending. The primary parallel checkout remains outside this batch.
+Implementation `568848e551bd569ea48443b9a1b1ec5bc228d855` is published to remote main;
+independent publication checks observe its exact hash and a clean 0/0 checkout.
+All owned acceptance resources are retired; see the receipt below. The primary parallel checkout remains outside this batch.
 The user’s latest instruction stops further Claude CLI calls; edits and verification
 are owned directly by Codex. Provider selection implementation
 `02f697b62affd6c62c0d676771a037750958eee5` and receipt
@@ -9672,9 +9673,22 @@ used. There is no data or protocol migration.
 
 Accepted maps cover **5,781 non-Markdown files**, aggregate SHA-256
 `3dab743549c3ef98cc9949eac61ab8ffa6d20ab7ec0c349ca30e9ca9b57dec7e`, **1,794** compiled files, **14** native inputs and **two**
-read-only references. Publication and exact owned-resource retirement are pending.
-Preserve previous deliveries, primary user work, existing cache/output bytes and
-all references. Continue from fresh content/Dock task evidence after delivery.
+read-only references. Implementation `568848e551bd569ea48443b9a1b1ec5bc228d855` is published to
+remote main. The single publication fetch has no incoming delta from the frozen
+base; an independent remote lookup confirms the implementation hash with a clean
+0/0 owned checkout. All **18** recorded processes are dead; **19** owned output,
+Library and bundle-temp paths are removed, and all **four** unique apps are
+unregistered. All **36** output-presence baselines, exact inventories of the
+**three** original output files, **11** accepted resources, **5,781** source files
+and **two** read-only references match after retirement. The original native-check
+binary is restored byte-for-byte; the two preexisting Vitest cache files already
+match. The exact private root `/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-tool-failure-1026-rKA21I` is absent. The independently
+round-trip-verified archive contains **85 UTF-8 evidence files**, **20 screenshot
+digests** and the original binary metadata; gzip SHA-256
+`7e3719538a671b9f6186483c9bc0e89061d8c4a2d4fe43b8d7e6815921083d39`. The primary checkout, user data, dependencies, global caches
+and unrelated processes remain preserved. This documentation-only receipt changes
+no accepted product source. Continue from fresh content/Dock task evidence; retain
+this shared diagnostic-layout owner rather than reopening the completed repair.
 
 ## Tool row action context
 
