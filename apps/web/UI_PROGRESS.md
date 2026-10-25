@@ -3468,8 +3468,37 @@ reported interface findings are resolved. This is **progress**, not whole-produc
 or award-tier completion. The accepted **5,784 non-Markdown inputs** have SHA-256
 `dd7559328d3fdbc3ca1de0a5d65b30dcff295a1391cd5d9eced4f6f5f5daec91`.
 No Claude CLI, subagent, browser visual suite or performance benchmark was used.
-Publication and exact resource retirement follow this qualification. Continue with
-fresh reading/Dock evidence; do not restart these accepted identity/return fixes.
+Continue with fresh reading/Dock evidence; do not restart these accepted
+identity/return fixes.
+
+**Delivery receipt**
+
+Implementation `c51f370baef7e2d3ebd08dbfba5e9abde9af1c40` is published to remote
+main. The publication fetch finds no incoming commits beyond frozen main
+`d865ed638b116da41c9008d5b44ed7090c0c925e`; no unrelated integration rerun is
+started. Independent remote verification matches the implementation hash, with a
+clean owned checkout and **0 / 0** commits ahead/behind. Pre-commit formatting
+and workspace lint pass without changing the accepted product inputs.
+
+All **23** recorded processes are dead; an independent process-table check finds
+no remaining private-root or bundle command. Seven new checkout output paths,
+eight owned Library paths and four bundle-temp paths are removed. All four app
+registrations are absent from the native registration database. All **36** output
+presence baselines and the exact inventories of **three** original output files
+are restored, including the previous native-check binary. The **11** product ESM
+resources and **four** read-only reference hashes remain intact. The exact private
+root `/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-task-reading-1026-S1Q1Ac`
+is absent. Primary parallel work, user data and shared compiler/package caches
+remain preserved.
+
+The independently round-trip-verified in-memory evidence archive retains **120
+UTF-8 files**, **49 screenshot digests** and original binary metadata; gzip
+SHA-256 `84070f9ee04518bef31abd7941dec395622b6a01dafff8633b0cb15af15447e6`.
+Accepted maps retain all **1,794** compiled assets, **30** desktop source inputs,
+native binaries, immutable module artifacts and references. Post-retirement
+verification again matches all **5,784** accepted non-Markdown inputs and their
+source hash above. This documentation-only receipt changes no qualified product
+source. The continuous UI goal remains active.
 
 ### Explicit-main task return and index focus
 
