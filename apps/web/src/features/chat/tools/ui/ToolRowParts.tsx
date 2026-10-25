@@ -61,7 +61,7 @@ export function ToolStatusMarks({ model }: { model: ToolCardModel }) {
 export function ToolFailureLine({ model }: { model: ToolCardModel }) {
   if (model.error === undefined) return null;
   return (
-    <p data-slot="tool-error" {...stylex.props(styles.failureLine, typeStep.uiSm)}>
+    <p data-slot="tool-error" {...stylex.props(styles.failureLine, styles.preWrap, typeStep.uiSm)}>
       {model.error}
     </p>
   );

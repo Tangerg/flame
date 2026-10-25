@@ -55,6 +55,11 @@ progress updates retain the same reader and native position. Task lifecycle
 and automatic retirement remain with the producing task store; the existing readout
 owns percentage clamping.
 
+Recorded Tool failures retain their original line breaks, blank lines and indentation
+in both standalone and grouped rows, with long values wrapping inside the reading
+column. Captured text, status, disclosure, actions and source-return ownership stay
+with their existing owners.
+
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested
 submenus keep their primitive's relationship to the controlling item instead of

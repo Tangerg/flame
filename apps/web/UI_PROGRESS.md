@@ -1,22 +1,23 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Plugin provider selections now distinguish unread, confirmed empty and retained results after a failed refresh, while preserving contributed candidates, drafts and explicit command ownership. Native EN, ZH 18 px/200% and uninstrumented DE custom-theme recovery/selection/return tasks qualify the change. See Plugin provider selection reads. Background-task reading and the stronger optional paper material remain delivered.
+Updated: 2026-10-26. Recorded Tool failures now preserve their original diagnostic line breaks, blank lines and indentation in standalone and grouped rows. Native EN, ZH 18 px/200% and uninstrumented DE custom-theme reading/arguments/file/return tasks qualify the change. See Recorded Tool failure layout. Provider selection reads, background-task reading and the stronger optional paper material remain delivered.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/provider-selection-reading-1026`. Plugin provider selection reads
-are qualified on frozen base `98be315eb2ad16cf377e46acfbac7255e27af62e`; see
-Plugin provider selection reads for the original counterexamples, owners, native
-tasks and limits. Implementation `02f697b62affd6c62c0d676771a037750958eee5` is published to remote main;
-independent publication checks observe its exact hash and a clean 0/0 checkout.
-All owned acceptance resources are retired; see the receipt below. The primary parallel checkout remains
-outside this batch. The user’s latest instruction stops further Claude CLI calls;
-edits and verification are owned directly by Codex. Background-task progress
-implementation `09ea5578f280e4506aad0629cf0f304d2b3518d5` and receipt
-`98be315eb2ad16cf377e46acfbac7255e27af62e` remain published and retired.
+is on `codex/tool-failure-reading-1026`. Recorded Tool failure layout is qualified
+on frozen base `eb75daac0541114f16310037d354e53e4086dd06`; see Recorded Tool
+failure layout for the native counterexample, shared owner and verification limits.
+Product checks and native acceptance pass; publication and owned-resource
+retirement are pending. The primary parallel checkout remains outside this batch.
+The user’s latest instruction stops further Claude CLI calls; edits and verification
+are owned directly by Codex. Provider selection implementation
+`02f697b62affd6c62c0d676771a037750958eee5` and receipt
+`eb75daac0541114f16310037d354e53e4086dd06` remain published and retired.
+Background-task progress implementation `09ea5578f280e4506aad0629cf0f304d2b3518d5`
+and receipt `98be315eb2ad16cf377e46acfbac7255e27af62e` remain published and retired.
 Client diagnostics implementation `374e849933d9efaef7782d54602da4ceb5b476f6` and
 receipt `0714ae287a0c7e3cafbd25cfed200945e2c1d25a` remain published and retired.
 Trajectory reading implementation `92afc65f3553a6584c807b3adc882b531babceae` and
@@ -9568,6 +9569,112 @@ evidence files and 19 screenshot digests, gzip SHA-256
 `0626ff7fb2400dbb3eeb538853af88fe22d2141355da7ba331fa49e44de75e1f`.
 Primary work, user data and references remain untouched. This documentation-only
 receipt changes no tested source.
+
+### Recorded Tool failure layout
+
+The shared ToolFailureLine rendered captured errors with normal whitespace while
+its sibling action-failure presentation already retained authored layout. Both
+standalone ToolCard and grouped ToolGroupMember therefore collapsed meaningful
+paragraphs, path/cause boundaries and indentation. Actual Wails on frozen base
+`eb75daac0541114f16310037d354e53e4086dd06` reproduces both failures: ten- and
+eleven-line diagnostics, including blank lines, CJK and a long trace value, each
+collapse to an 84 px paragraph at the inspected English measure. The captured
+346/370 characters and source newlines remain present; this is a display defect,
+not lost Runtime data.
+
+`src/features/chat/tools/ui/ToolRowParts.tsx:64` now reuses the existing
+preWrap style for ToolFailureLine. Existing overflow-wrap keeps long values inside
+the reading column. The original text, failed/denied distinction, metadata, row
+summaries, disclosure state, copied arguments, action feedback, file inspection
+and source return retain their owners. No new component, state, formatting parser,
+frame, helper copy, color, font or animation is introduced. Runtime, protocol,
+commands, SDK, dependencies and installed plugin resources are unchanged.
+
+ZCode’s actual ToolCallBody imports ToolOutput, whose error branch preserves line
+breaks. Those two source files are read-only references for literal diagnostic
+layout, not evidence of native focus behavior. Existing ChatGPT, HeroUI, ArcUI,
+Radix and Ace research remains applicable to progressive detail and task returns;
+this small repair does not borrow a new component system or decorative treatment.
+The better-typography review applies to the shared diagnostic reader, with the
+existing better-layout/accessibility/writing principles retained.
+
+| Severity | Location                                             | Before                                             | After                                             | Why                                                                               |
+| -------- | ---------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Medium   | `ToolRowParts.tsx:64`, standalone and grouped errors | Authored diagnostic structure collapses into prose | Existing pre-wrap plus existing anywhere wrapping | Preserve the source’s grouping and make cause, path and next step distinguishable |
+
+Verification:
+
+- Original and final focused runs each pass **six files / 77 tests**, covering Tool
+  cards/members/actions, their presentation models and canonical fold projection.
+  The native before/after comparison qualifies the changed CSS; no class-name or
+  source-text mirror test was added. All **16** current Web gates, supported
+  **make check-native**, and final candidate/clean assets pass serially. The final
+  check script exits zero in **49.85 s**. All **11** accepted plugin resources keep
+  their original bytes.
+- Actual Wails **v3.0.0-beta.34**, EN/light/14 px/Orange at **1440 × 900**, reads the
+  seven-step summary, grouped failed read, original JSON arguments, matching file
+  identity and standalone failed patch. The diagnostics retain their exact 346/370
+  characters and ten/eleven source lines, render pre-wrap, and grow to **252/273 px**
+  at **720 px** width while remaining inside that width. Native wheel scrolling
+  reaches the complete standalone diagnostic and trace.
+- From the failed read, Open the current file enters the captured path
+  `runtime/internal/session/store.go`; Escape returns to that exact opener. The
+  existing eight-line file fixture is placeholder source, so this establishes
+  navigation/reading identity and return rather than real filesystem contents,
+  revision validation or a successful Tool retry. The other failed tool’s Arguments
+  remain independently readable, and its collapse retains its summary.
+- ZH/dark/18 px/custom blue/reduced-motion uses native Left sizing and **200%** zoom,
+  reaching **561 × 475 CSS px** without document overflow. Two diagnostic bodies
+  remain inside **473 px**, at **385/413 px** height, and can be read through native
+  scrolling. Tab/Return opens the failed read’s file in the full pane; Escape
+  restores its original source. Further native Tab/Return reaches and opens the
+  standalone failed patch. Scrolling reaches its remaining fields and trace.
+- An independent DE/18 px/warm custom background/purple/reduced-motion app omits the
+  observation script. Native Left sizing and **200%** qualify the same summary,
+  multiline diagnostic, captured Arguments, keyboard file entry/full-pane return,
+  next failed tool and diagnostic-tail path. Only visible/native AX outcomes are
+  claimed for this app: no DOM identity, computed style, numeric viewport or error
+  counter qualification is inferred.
+- Each app begins with a draft and continues that exact draft after inspection.
+  EN and ZH retain Composer ID 2, both diagnostic nodes and zero unhandled errors.
+  DE retains the complete visible text. The zoomed apps restore Actual Size before
+  Quit. All **14** recorded processes are dead at the acceptance checkpoint.
+
+The initial minimal-metadata fixture omitted category and argumentsText, making
+its argument/navigation paths unrepresentative of the current Runtime presenter.
+That observation does not establish a current product defect, and no projection
+fallback is changed. The private canonical scene was enriched with the current
+presenter’s category and original argument-text facts, then the original native
+counterexample was rebuilt and repeated before editing product source. Its two
+whitespace failures remain. The final scene uses identical data. Minimal protocol
+records omitting both optional fields remain outside this qualification; revisit
+that projection boundary only with an actual producing/consuming path.
+
+| Goal check        | Evidence and scope review                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| Typography        | Existing fonts, weights, type scale and unitless leading retained; literal diagnostic structure repaired      |
+| Whitespace        | Original blank lines and indentation survive, with long values wrapping rather than escaping                  |
+| Visual hierarchy  | Summary/status, captured arguments and diagnostic detail keep their existing distinct positions               |
+| Color             | Existing Orange, dark/custom blue and warm/purple semantic themes remain; no new numeric contrast measurement |
+| Motion            | No transition or duration changes; normal/reduced-motion scenes retain existing behavior                      |
+| Micro interaction | Native disclosure, keyboard traversal, file entry, Escape source return and continued draft pass              |
+| Responsive        | Ordinary English and narrow 200% Chinese/German tasks retain reachable content and controls                   |
+| Originality       | Existing Flame brand, reading axis and quiet unframed diagnostic treatment retained                           |
+
+**Approve for the changed diagnostic layout and recorded native tasks.** This does
+not certify the whole product has no remaining award-level improvement. Full make
+check, the complete Web suite, browser visual suite, performance benchmark,
+VoiceOver, OS IME, RTL, live provider/Runtime/Tool execution, real source reads and
+mutation/retry outcomes are not run. The unrelated earlier dock-catalog shorthand
+conflict is unchanged and is not claimed passing. Existing nonfatal chunk, macOS
+and duplicate-Objective-C warnings remain recorded. No Claude CLI or subagent is
+used. There is no data or protocol migration.
+
+Accepted maps cover **5,781 non-Markdown files**, aggregate SHA-256
+`3dab743549c3ef98cc9949eac61ab8ffa6d20ab7ec0c349ca30e9ca9b57dec7e`, **1,794** compiled files, **14** native inputs and **two**
+read-only references. Publication and exact owned-resource retirement are pending.
+Preserve previous deliveries, primary user work, existing cache/output bytes and
+all references. Continue from fresh content/Dock task evidence after delivery.
 
 ## Tool row action context
 
