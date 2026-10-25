@@ -1,13 +1,16 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Image galleries now preserve their pan and zoom controls while changing the selected image, and fit SVGs from independently decoded source dimensions. Final real Wails English/light/14 px/Orange and Chinese/dark/18 px/custom-blue paths pass, including native fullscreen, page 200%, image 400%, window changes, source return and continued drafts. The new-conversation Flame companion is delivered. The continuous goal remains active; synchronize main at batch intervals and preserve primary parallel work.
+Updated: 2026-10-25. Recorded output Find now reveals a requested match again after manual scrolling, including a sole match and a refined query selecting the same line. Final English/light/14 px/Orange and Chinese/dark/18 px/custom-blue native paths pass, including half-screen 200%, manual reading, local Find return and continued drafts. Gallery source geometry and the new-conversation Flame companion remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/fullscreen-reading-1025`. Gallery selection and source geometry are
+is on `codex/output-find-navigation-1025`. Recorded output Find navigation is
+accepted on frozen base `8f27e6cdc534281fa70bdf38dcc542d1767b2fce`; publication
+and private retirement follow the completed native acceptance. See Recorded
+output Find navigation below. Gallery selection and source geometry are
 accepted on frozen base `bafb1a0c858c631dacae8414bd102d23d3831076`. Implementation
 `cd69bfc407e42b0092b8e90694bd1fd20ff7253a` is published to remote main, and
 private evidence retirement is complete. See
@@ -4789,6 +4792,126 @@ Verification for this contract:
 - Native 200% zoom with a collapsed fixture sidebar produced a 720 × 450 CSS viewport and reachable main controls. Focus entered the named main region; Shift-Tab/Return reached Close and returned to the conversation with its unsent Composer text intact. System Move & Resize produced an approximately 1,122-point narrow window. Real pointer drags changed a 660 px Dock to 620 px and reached 320 px in the light scene, retaining the query/draft and seam. Editor Tab reached Cancel after scrolling, and Escape returned to Edit. Native keyboard resizing was not freshly qualified: the recorded tab-to-handle focus route needs investigation below.
 - These scenes use the production components and shared React graph through actual Wails asset/IPC hosting, canonical in-memory reads and bounded synthetic command observations. They qualify UI continuity and the SDK's original-handle mapping, not a live Runtime installation, durable receipt journal or provider restart. No live package selection or Runtime write was performed. No browser visual suite or performance baseline ran. VoiceOver, real OS IME composition and rendered contrast measurements remain outside this qualification.
 - Cleanup completed: all owned native/CLI/check/build processes exited. The app was unregistered; its bundle, fixture/data, overlays, production binary, logs, all four completed CLI reports and the acceptance root were removed. Newly created bundle-specific WebKit/cache paths were removed with preexistence/birth-time guards. No preview server was started. Existing shared outputs/compiler caches, read-only Ace references and unrelated worktrees/processes were retained. The primary agent owned research, boundaries, review and native acceptance; Claude Code CLI supplied the bounded implementation and regression work.
+
+### Recorded output Find navigation
+
+The complete reply → recorded command → expanded output → Find → manual reading
+→ Find again → close/collapse → continue the original draft path is accepted.
+Native Wails reproduced a real failure on the frozen source: a unique match first
+appeared at scrollTop 639, but after scrolling to 2437, Enter, Shift+Enter and a
+refined query selecting that same line all left it outside the rendered window.
+Find kept saying 1 of 1 and retained input focus, so that count did not mean the
+requested evidence had been revealed.
+
+**Cause and implementation**
+
+`plugins/tool-results/component/recorded-output.tsx:140` replaces independent
+query and match state with one local Find value. Each explicit query/navigation
+action publishes a new value, including an unchanged index. The existing reveal
+effect at line 220 observes that value and the source/row geometry. Matching,
+selected-line highlighting and the accessible counter derive from the same owner.
+Manual scrolling updates only viewport geometry and does not request a jump.
+No-match, Clear, Close/Escape and collapse retain their established behavior.
+The existing FindField composition guards, preview, virtualization, text/copy,
+styles, captured-result identity and Runtime boundaries are unchanged. No new
+counter, focus handler, cache, timer or retry is added. The component README
+records the contract and the normal plugin builder updates its shipped ESM.
+
+Read-only ZCode `v4/useConversationTimelineFind.ts` separates the selected match
+from its explicit navigation request when revealing a range. That evidence and
+better-accessibility's keyboard scope/return rules guide the behavior; Flame
+keeps its existing local Find and shared controls rather than copying ZCode's
+larger navigation model.
+
+**Verification**
+
+- Existing recorded-result baseline: **34 tests** pass. The bounded edit-only
+  Claude Code CLI changes the two allowed source/test files, returns in
+  **101.68 s**, and reports no commands or permission denials. Primary reviews
+  the actual diff, runs the builder and performs acceptance. Four new observable
+  regressions cover the three explicit same-line requests plus manual-scroll,
+  composition-key, no-match, Clear and Close boundaries. All prior tests remain.
+- Final **3 files / 45 tests** pass for recorded presentation, installed component
+  lifetime and ToolCard, plus all **18** selected Web/plugin gates in **22.74 s**.
+  Web: typecheck, lint, format, knip, design-system, tokens, chrome, styles,
+  classes, locales, layers, port-surface and bundle. Plugins: typecheck, lint,
+  format, i18n and exact resource rebuilding. The first check stops only on the
+  new test's formatting; normal scoped formatting corrects it. Final tests on
+  the original implementation produce **3 failures / 35 passes**, each expected
+  640 but staying at 2000. Exact final source bytes are restored afterward.
+- Final actual EN/light/14 px/Orange at **1440 × 900**: output region ID 6 and
+  Find input ID 8 remain the same. Each wheel scroll removes the unique match
+  from the rendered window; Enter, Shift+Enter and refining the query each
+  restore it at scrollTop **639**, with **1 of 1** and the field still focused.
+  Multiple matches cycle first/second/first at **1391 / 3569 / 1391**. Manual
+  reading, no-match Enter and Clear retain scroll **2159**. Escape returns to
+  the output region, Collapse to its original caption control and tool closure
+  to the original row. Composer ID 2 retains and continues exact draft/caret
+  **20 → 31**.
+- Final actual ZH/dark/18 px/custom-blue/reduced-motion uses the system's Left
+  window arrangement, **1122 × 1051**, then twenty native Zoom In commands to
+  **561 × 525 CSS px at 200%**. The field, counter, Close and selected line are
+  visible in the native capture. Region ID 6/input ID 8 survive all three
+  requests, each returning from **1435** to **908**, with **1 / 1**. Multi-match
+  reading cycles **1848 / 4571 / 1848**. No-match Enter and Clear retain **2375**.
+  Escape returns to the same output; Cmd+F reopens its local empty Find. Its
+  explicit Close returns to that output. Actual Size restores the half-screen
+  viewport before collapse/row return. Original Composer ID 2 continues exact
+  Chinese draft/caret **7 → 10**.
+- A separate final EN/light scene omits diagnostic DOM, observers, frame loops
+  and observation timers. All three wheel-away → explicit-request paths bring
+  the virtualized match back into AX and into view, retaining the same focused
+  Find field and 1 of 1. Escape, caption collapse and row closure return through
+  the existing controls, and the original draft continues. Native screenshots
+  and AX qualify this clean scene; it makes no private DOM-identity claim.
+- The first private shell scene lacked the Runtime-owned category and correctly
+  showed a generic JSON projection. It is excluded from Find acceptance. The
+  corrected frozen input supplies `toolCategoryForName("shell")`, matching
+  `runtime/internal/delivery/presenter_item_test.go` and existing fold fixtures.
+  The canonical command, arguments, projection, shared React installed-component
+  lifetime and recorded renderer are retained; only inert captured output and
+  fixture item membership are frozen. No command is replayed or live producer
+  contacted. Other handwritten Tool snapshots are not requalified here; audit
+  their Runtime category facts before using them as producer-equivalent native
+  evidence. An initial native submenu attempt makes no window-size claim; the
+  separately observed Left action establishes the final dimensions.
+- All **5,771** non-Markdown inputs retain aggregate SHA-256
+  `1926475b7e8397a5e71ca0257e0b612925d11bacfe749428fe83a22c37559feb`.
+  Only the reader, its regression file and normal generated Tool-result ESM
+  differ from the frozen base. All **1,810** private artifacts match through
+  acceptance; four actual Wails beta.34 hosts build serially in
+  **6.75 / 5.77 / 4.68 / 4.73 s**, and final diagnostic/clean assets in
+  **2.07 / 2.13 s**. The normal component builder also passes.
+- Not run: the broader unchanged Runtime/CLI/backend suites, another supported
+  native distribution build, browser visual suites or performance benchmarks.
+  These deterministic presentation scenes do not qualify live shell execution,
+  producer restart, installed-release replacement, VoiceOver speech, real OS IME
+  composition or other platforms. IME key guards are covered by regression tests.
+  The earlier hidden-reader page-zoom platform limitation is not reopened.
+
+**Scoped better-interface review**
+
+Scope: existing recorded command Find, manual reading and return. Stack: React
+19, public component SDK, shared UI/semantic tokens and existing native host.
+Recon used repository AGENTS.md, PROJECT_RULES.md, DEVELOPMENT.md and the Web,
+Desktop, visual-fixture, Plugins and Tool-results READMEs.
+
+| Domain        | Evidence inspected                                                                                                           | Result                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Accessibility | Native query/counter names, Enter/Shift+Enter, local Cmd+F, Clear, both Find exits, caption/row return and original Composer | Clear in inspected paths; VoiceOver and OS IME not verified |
+| Layout        | Normal and system half-screen views, 18 px/page 200%, visible query/counter/Close and selected row                           | Clear in inspected states                                   |
+| Writing       | Existing source identity, query, match/no-match status and localized actions; component README                               | Clear; no new helper copy                                   |
+| Typography    | Existing caption, mono output and control text in both native scenes                                                         | Clear in inspected states; no scale change                  |
+| Colors        | Existing Orange/custom-blue focus and selected-line treatment in native light/dark scenes                                    | Preserved; contrast not remeasured                          |
+| UI polish     | Explicit reveal versus manual scrolling, multi-match cycle, reduced-motion scene and clean native flow                       | Navigation finding fixed                                    |
+
+| Severity | Domain | Location                                                 | Before                                                                                                 | After                                                                    | Why                                                                                  |
+| -------- | ------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| MEDIUM   | UI     | `plugins/tool-results/component/recorded-output.tsx:220` | An unchanged selected line consumes no new navigation request, leaving the advertised match off-screen | Each explicit Find value requests reveal; manual viewport updates do not | Repeated Find must expose the requested evidence without resetting unrelated reading |
+
+**Approve** for the inspected states and domains above, with the stated contrast
+and assistive-technology boundaries. Continue from fresh task evidence; do not
+repeat this delivered same-line Find investigation.
 
 ## Transcript controls and floating navigation
 

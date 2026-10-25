@@ -27,7 +27,10 @@ that caption. Continuing a page reveals its first new row and returns focus to t
 named result viewport, including the last page, instead of carrying keyboard focus
 past the new evidence or dropping it when the continuation button disappears.
 Output search identifies the current matching line with the
-shared search treatment; Enter and Shift+Enter cycle matching lines. Clear empties
+shared search treatment; Enter and Shift+Enter cycle matching lines. Every query or
+navigation request reveals the selected line, including a sole match after manual
+scrolling and a refined query that still selects the same line. Manual scrolling
+alone keeps the current reading position. Clear empties
 the query and retains search focus; Close and Escape return to the output region.
 Ctrl/Cmd+A in a focused result reader selects its content rather than the workspace.
 Paged or filtered rows and collapsed output previews select the presented material.

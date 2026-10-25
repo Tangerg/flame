@@ -513,6 +513,102 @@ function expandOutput(output: string) {
   return screen.getByRole("region", { name: "Tool output" });
 }
 
+function findUniqueOutputLine() {
+  const output = Array.from({ length: 240 }, (_, index) =>
+    index === 42 ? "Boundary needle alpha" : `line ${index}`,
+  ).join("\n");
+  const reader = expandOutput(output);
+  Object.defineProperty(reader, "clientHeight", { configurable: true, value: 400 });
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  const field = screen.getByRole<HTMLInputElement>("searchbox", { name: "Find in output" });
+  fireEvent.change(field, { target: { value: "Boundary needle" } });
+  const status = () =>
+    within(screen.getByRole("search", { name: "Output search" })).queryByRole("status")
+      ?.textContent;
+  const expectRevealed = () => {
+    expect(reader.scrollTop).toBe(42 * 20 - 200);
+    expect(reader.querySelector('[data-current-match] [data-output-line="42"]')?.textContent).toBe(
+      "Boundary needle alpha",
+    );
+    expect(document.activeElement).toBe(field);
+    expect(status()).toBe("1 of 1");
+  };
+  const expectScrolledAway = () => {
+    expect(reader.scrollTop).toBe(2000);
+    expect(reader.querySelector('[data-output-line="100"]')).toBeTruthy();
+    expect(reader.querySelector('[data-output-line="42"]')).toBeNull();
+  };
+  const scrollAway = () => {
+    reader.scrollTop = 2000;
+    fireEvent.scroll(reader);
+    expectScrolledAway();
+  };
+  return { reader, field, status, expectRevealed, scrollAway, expectScrolledAway };
+}
+
+it.each([
+  {
+    action: "Enter",
+    request: (field: HTMLElement) => fireEvent.keyDown(field, { key: "Enter" }),
+  },
+  {
+    action: "Shift+Enter",
+    request: (field: HTMLElement) => fireEvent.keyDown(field, { key: "Enter", shiftKey: true }),
+  },
+  {
+    action: "a refined query",
+    request: (field: HTMLElement) =>
+      fireEvent.change(field, { target: { value: "Boundary needle alpha" } }),
+  },
+])(
+  "reveals the same unique output match again on $action after manual scrolling",
+  ({ request }) => {
+    const { field, expectRevealed, scrollAway } = findUniqueOutputLine();
+    expectRevealed();
+    scrollAway();
+    request(field);
+    expectRevealed();
+  },
+);
+
+it("keeps a manual output scroll until an explicit Find action", () => {
+  const { reader, field, status, expectRevealed, scrollAway, expectScrolledAway } =
+    findUniqueOutputLine();
+  expectRevealed();
+  scrollAway();
+
+  fireEvent.scroll(reader);
+  expectScrolledAway();
+
+  fireEvent.keyDown(field, { key: "Enter", isComposing: true });
+  fireEvent.keyDown(field, { key: "Enter", keyCode: 229 });
+  expectScrolledAway();
+  expect(document.activeElement).toBe(field);
+  expect(status()).toBe("1 of 1");
+
+  fireEvent.change(field, { target: { value: "absent needle" } });
+  expectScrolledAway();
+  expect(status()).toBe("No matches");
+  fireEvent.keyDown(field, { key: "Enter" });
+  expectScrolledAway();
+
+  fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+  expectScrolledAway();
+  expect(field.value).toBe("");
+  expect(document.activeElement).toBe(field);
+  expect(status()).toBeUndefined();
+
+  fireEvent.change(field, { target: { value: "Boundary needle" } });
+  expectRevealed();
+  scrollAway();
+
+  fireEvent.click(screen.getByRole("button", { name: "Close find" }));
+  expect(screen.queryByRole("search", { name: "Output search" })).toBeNull();
+  expect(document.activeElement).toBe(reader);
+  expectScrolledAway();
+  expect(reader.querySelector("[data-current-match]")).toBeNull();
+});
+
 it("scopes Select All to the presented result rows, outside find and caption controls", () => {
   const source = Array.from({ length: 82 }, (_, index) => `captured ${index}`).join("\n");
   render(

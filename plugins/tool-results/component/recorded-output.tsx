@@ -135,8 +135,10 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   const lines = useMemo(() => text.replace(/\n$/, "").split("\n"), [text]);
   const [expanded, setExpanded] = useState(false);
   const [finding, setFinding] = useState(false);
-  const [query, setQuery] = useState("");
-  const [match, setMatch] = useState(0);
+  // Each explicit Find action publishes a fresh value, even when it selects
+  // the same line, so it can reveal that line again after manual scrolling.
+  const [find, setFind] = useState({ query: "", match: 0 });
+  const { query, match } = find;
   const [metrics, setMetrics] = useState({ height: 0, top: 0, row: 1 });
   const viewport = useRef<HTMLDivElement>(null);
   const ruler = useRef<HTMLSpanElement>(null);
@@ -215,11 +217,11 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
       selected * metrics.row - node.clientHeight / 2,
     );
     readWindow();
-  }, [selected, metrics.row, readWindow]);
+  }, [find, selected, metrics.row, readWindow]);
 
   function closeFind() {
     setFinding(false);
-    setQuery("");
+    setFind({ query: "", match: 0 });
     viewport.current?.focus();
   }
 
@@ -269,7 +271,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
                 expansion.current = null;
                 setExpanded(false);
                 setFinding(false);
-                setQuery("");
+                setFind({ query: "", match: 0 });
               } else {
                 expansion.current = {
                   origin: event.currentTarget,
@@ -337,18 +339,16 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
                 </span>
               )
             }
-            onChange={(value) => {
-              setQuery(value);
-              setMatch(0);
-            }}
+            onChange={(value) => setFind({ query: value, match: 0 })}
             onClose={closeFind}
             onEnter={(backward) => {
               if (!matches.length) return;
-              setMatch(
-                (current) =>
-                  (current + (backward ? matches.length - 1 : 1)) %
+              setFind((current) => ({
+                query: current.query,
+                match:
+                  (current.match + (backward ? matches.length - 1 : 1)) %
                   matches.length,
-              );
+              }));
             }}
           />
         </div>
