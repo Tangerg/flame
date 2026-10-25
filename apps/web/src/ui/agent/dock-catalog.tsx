@@ -12,7 +12,8 @@ const styles = stylex.create({
     padding: space.s4,
   },
   title: {
-    margin: 0,
+    marginTop: 0,
+    marginInline: 0,
     marginBottom: space.s4,
     flexShrink: 0,
     fontWeight: weight.semibold,
