@@ -11,6 +11,8 @@ is on `codex/native-paste-insertion-1025`. Native insertion investigation uses
 frozen base `c4adfe87fd4a0be0f10722bf7e98a8c6fe5ef2a7`; its supported-system
 counterexample and rejected alternatives are recorded below. It changes no
 product source and does not claim the receiving-input defect is repaired.
+Investigation `48eedc72ea270cd68e16c0f7e55c5d2b24b3aeb0` is published to remote
+main, and its owned evidence retirement is complete.
 File-source selection and literal copying
 are accepted on frozen base `65bbbd15d70b3f621917c1830341fd06ed81cc5b`;
 implementation `c0e4231818e3ef612097d151bd4b3fb760d04fb5` is published to
@@ -4050,6 +4052,21 @@ Verification and review (2026-10-25):
 The source-selection repair and the approved new-conversation identity remain
 delivered. Continue with a fresh, concrete workspace task while retaining this
 boundary as unresolved; the continuous UI goal stays active.
+
+Publication sync finds main unchanged from the frozen base. Documentation
+`48eedc72ea270cd68e16c0f7e55c5d2b24b3aeb0` is verified on remote main with a
+clean owned checkout; commit hooks pass formatting and workspace lint. All
+**24 recorded processes** are dead and **two apps** are unregistered. Cleanup
+removes **three checkout outputs**, **five owned Library paths** and **two
+bundle-temp paths**; **36 output-presence baselines**, **three preexisting file
+hashes/inventories** and **11 product resources** remain intact. The exact owned
+root `flame-ui-native-paste-1025-WXxXJy` is absent after publication, ownership,
+source, artifact and archive guards pass. Actual-evidence comparison and gzip
+round trip verify **107 UTF-8 files / three screenshot digests**, SHA-256
+`5ee369b970c37dc9dd4d3efeef8d3c8443d5e19c9ab231580451b295aa5872f7`.
+Accepted maps bind **53 private artifacts** and **13 native input files**.
+This receipt changes no tested product source. Primary parallel work, user data
+and read-only references remain preserved.
 
 ### File-tree hierarchy and selectability
 
