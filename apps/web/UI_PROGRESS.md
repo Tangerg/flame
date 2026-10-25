@@ -1,18 +1,23 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Memory filtered results now offer a local search-and-filter reset. Both reset actions return to search, with secondary-only clearing preserving its query; open drafts, captured targets and original command recovery retain their owners. Native English, 320 px Dock, Chinese 200% and an uninstrumented build qualify the changed task. See Memory filtered-result recovery. The preceding Schedule editor hierarchy, control contrast and new-conversation brand work remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. Usage now separates the complete report from its local source controls: Period/Refresh and read feedback, then totals, then filtering/grouping with the breakdown. Redundant helper copy is removed while empty-report controls, accounting meanings and continued writing retain their owners. Native EN, 320 px Dock, ZH 200% and an uninstrumented build qualify this task. See Usage report and source scope. Earlier Memory recovery, schedule hierarchy, contrast and branding remain delivered. The next requested feature is optional paper texture with adjustable strength.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/memory-filter-recovery-1025`. Memory filtered-result recovery is
-qualified on frozen base `efd734472c9caedbea59e3aff36565b7f6346dcc`; see its
-section below for the owner, complete tasks, checks and verification limits.
-Implementation `4131befc04411529ee7e4beaaec484022972ade2` is published to remote main;
+is on `codex/usage-reading-scope-1025`. Usage report/source scope is qualified
+on frozen base `dd4ffb4a8a75d2e2ca5b1ffc8e91913150a5c332`; see its section below for
+implementation, checks, native tasks and limits. Implementation
+`6f89f24c0f5eb23667f7761237465aa266ba2032` is published to remote main, and
 owned evidence retirement is complete. The single publication-time fetch finds
-main at the frozen base, so there is no incoming delta to revalidate. The preceding
+main at the frozen base; there is no incoming delta to revalidate. Next, implement the user's requested optional
+paper texture and strength control, preserving neutral page colors, text clarity,
+approved branding and the existing appearance preference owner.
+Earlier Memory recovery implementation `4131befc04411529ee7e4beaaec484022972ade2`
+and receipt `dd4ffb4a8a75d2e2ca5b1ffc8e91913150a5c332` are published to
+remote main, and their owned resources are retired. The preceding
 Schedule editor hierarchy implementation `90887c91e95039be1c8b6d33ea6264152319f0b5`
 and receipt `efd734472c9caedbea59e3aff36565b7f6346dcc` are already published
 to remote main, with their owned resources retired. Control contrast implementation
@@ -1059,6 +1064,124 @@ processes and the primary parallel checkout remain untouched. This documentation
 receipt changes no accepted product input; its publication is followed by fresh
 remote, cleanliness and preservation checks. Continue from a fresh task observation,
 preserving Memory's local recovery and nonmodal command/draft ownership.
+
+### Usage report and source scope
+
+Period, Refresh and read/stale feedback govern the complete report. Overview,
+its totals and Accounting details now precede local Search and Group by, which
+sit inside Usage breakdown above their affected rows. The parent retains the
+same filter/group state and callbacks; its one report consumer receives the
+existing controls as a required ReactNode. Controls remain mounted for accepted
+zero reports as well as populated ones. Zero attempts and no matching sources
+keep distinct empty titles. Before the first accepted report, scope and recovery
+remain available without data-local controls.
+
+The original native page placed source filtering before totals and needed a
+footer explaining that totals did not change. Moving the controls gives that
+scope a structural boundary. Five redundant helper keys are removed in all
+eight locales, with every other value identical. The essential accounting note,
+known-subtotal/complete-total distinction, zeros, absent prices, number formatting,
+accepted-period identity and read/cancellation owners are unchanged. No style,
+state/effect, timer, shared primitive, transport or business rule is added.
+
+Read-only ZCode `settings/usage-stats/AppUsagePanel.tsx` supplies an example of
+summary and range-specific material with distinct scope; its separate queries,
+charts and truncation are not adopted. Earlier reference research remains context.
+Better-layout's grouping/order principles and better-writing's removal of repeated
+meaning guide this change in Flame's shared Panel/FilterBar/record composition.
+
+| Domain        | Evidence                                                                                                  | Result                                                       |
+| ------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Accessibility | Actual Tab, arrows, Return, Space, nested Escape, same input and later-focus regressions                  | Changed paths qualified; VoiceOver not verified              |
+| Layout        | Full view, 320 px Dock, ZH 561 × 525 CSS px / 200%, pointer resize and wheel scrolling                    | Complete-report and source scopes are distinct and reachable |
+| Writing       | Exactly 40 retired helper values across eight locales; functional accounting and recovery labels retained | Scope is expressed by placement                              |
+| Typography    | EN 14 px and ZH 18 px, complete source identity and 6/6 facts                                             | Existing type and numeric formats retained                   |
+| Color         | Dark/dim, light/pale contrast 100, light/Orange                                                           | Existing semantic roles; no new pixel contrast measurement   |
+| UI polish     | Existing controls, disclosure and record surfaces; no new motion                                          | No extra panel or decoration                                 |
+
+| Severity | Location                                    | Before                                                                           | After                                                        | Why                                                  |
+| -------- | ------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------- |
+| MEDIUM   | `plugins/usage/component/component.tsx:162` | Local source controls precede all report totals, requiring an explanatory footer | Report totals lead; local controls belong to their breakdown | Layout should make the affected scope understandable |
+
+Baseline passes **1 file / 3 tests** after building the existing icons/UI exports.
+The initial zero-test import-resolution failure is retained as a missing-prerequisite
+setup result. Restoring the nine original presentation/locale files makes the
+expanded suite fail **1** scope case and pass **3**; candidate bytes are restored
+exactly. Final scope, installed-continuity and installed-component suites pass
+**3 files / 14 tests**. They cover filtering without changed totals or RPC, range
+identity, retained reads, stable controls/query/group through populated → zero →
+populated reports, pending control behavior and preservation of later focus.
+**8 Web gates**, **5 plugin gates** and `make check-native` pass in **36.34 s**.
+All **11** ESM resources rebuild/check; only Usage changes. Existing nonfatal
+macOS linker warnings remain. No checks or valid assertions are weakened.
+
+Read/Edit/Write-only Claude CLI completes the nine allowed files in **125.52 s**,
+with no permission denials. Primary reviews the actual diff, verifies all locale
+values, adds the behavioral coverage, updates the module README, generates resources
+and performs checks and native acceptance.
+
+- EN dark, 14 px, dim accent: original full-view total top **303 → 210 px** and
+  320 px Dock top **306 → 182 px**, retaining original total heights. Model grouping
+  and `anthropic` filtering leave the complete **4.12** total above the matching
+  **1.08** source. Tab/Return opens **6/6** coverage details. Empty-period and restored
+  reads retain Search **2**, query and Model. Pointer resizing reaches **523 → 320 px**;
+  Tab/Space clearing returns to Search **2** and both rows. Back/main Close retains
+  Composer **4**, continued exactly **13 → 23 characters**.
+- ZH light, 18 px, pale accent, contrast 100 and motion off: native Left plus
+  twenty Zoom In increments reaches **561 × 525 CSS px / 200%** with document width 561. Totals end at **339.5 px**; local controls start at **446 px**. The nested
+  grouping menu opens above its trigger; Escape restores that trigger. Keyboard
+  selection, source disclosure and actual wheel scrolling expose complete **6/6**
+  facts. Empty/restored ranges retain Search **2** and Model; clearing returns input
+  focus, and wheel scrolling reveals the localized zero-report title. Actual Size
+  is restored before Quit.
+- EN light, 14 px, Orange, without private observer nodes: pointer range changes
+  retain the query, zero-report identity differs from local no matches, and restoring
+  and clearing exposes both source rows with search focused.
+
+Three input batches are interrupted by external application activity. Fresh AX and
+explicit in-window focus precede accepted actions; a defensive assertion refuses
+Space after native focus has changed. Interrupted actions supply no acceptance
+claim and require no product workaround. Accepted instrumented scenes report zero
+unhandled errors.
+
+Actual Wails beta.34 runs production Usage through InstalledComponent over canonical
+read fixtures. A private seven-day read supplies a canonical all-zero UsageSummary;
+other ranges retain the original report. This qualifies UI interpretation and control
+lifetime, not live accounting. Ordinary portable ESM is checked separately rather
+than loaded in these scenes. Native writes, live Runtime/provider work, VoiceOver,
+OS IME, RTL/forced-colors, other-platform GUIs and a standalone 320 px window are
+not newly qualified. No browser visual suite or performance benchmark runs.
+Runtime, protocol, dependencies, host sources and persisted data are unchanged.
+Existing installations need normal explicit release selection to use the new ESM.
+
+Post-native integrity confirms **5,772** accepted non-Markdown source files,
+SHA-256 `451e777dcd155f20f4a7af2e13bf630b8dc8bc9c6f5fc2cc4c8c26d18982af14`, all **11** resources,
+**1,814** actual artifact hashes and **18** native construction-input hashes.
+Baseline assets remain unchanged; original observer/build-helper bytes are preserved
+under baseline names before final read-only scope/geometry diagnostics are added.
+Scoped verdict: **Approve** for report/source hierarchy and the exercised task.
+Publication and exact resource retirement follow below.
+
+Delivery: implementation `6f89f24c0f5eb23667f7761237465aa266ba2032` is pushed to
+remote `main`, independently matched with `ls-remote` before retirement. The
+single publication-time fetch finds main at the frozen base and merge is already
+up to date. Normal formatting, workspace lint and message hooks pass without
+changing accepted product bytes.
+
+All **32** recorded PIDs are dead; all **4** bundles are unregistered. Cleanup
+removes **7** new checkout output/cache paths, **8** owned Library paths and **4**
+bundle-temporary directories. The original native-check binary is restored.
+Independent checks before and after exact-root deletion preserve **36** output
+presence baselines, **3** original file hashes and all **11** accepted resources.
+
+The exact private root `flame-ui-usage-reading-1025-xMRiK5` is absent after
+UID/device/inode/birth-time, source, artifact and native-input guards. Its verified
+compressed in-memory archive retains **131** UTF-8 files and **13** capture hashes,
+SHA-256 `e8cc011a0cbef8b15539df7880b9b5fa73edc8881814012f4c8efa0c0d4706d0`.
+User data, the primary parallel checkout, dependencies, global caches and read-only
+references remain untouched. This receipt changes no accepted product input;
+publication is followed by fresh remote, cleanliness and preservation checks.
+The user's paper-texture request is the next product batch.
 
 ### Native image save qualification
 
@@ -10270,11 +10393,11 @@ each dock view is still pending):
   in `visual/diffPresentation.test.tsx`. (An earlier attempt that hid the whole
   comparison bar including Refresh broke the file-view Refresh cases; keeping Refresh in
   the file-nav row is the fix.)
-- **usage** — merging the period Toolbar and the search/group FilterBar into one bar
-  was tried and reverted: `visual/usageScopePresentation.test.tsx` asserts the report
-  range (period) precedes the local filters, and FilterBar leads with search, which
-  inverted that order. The scope-bar-then-filter-bar split is the intended "set the
-  range, then filter within it" order and is kept.
+- **usage** — report scope stays persistent before Overview and totals. Search and
+  Group by now sit inside Usage breakdown above their affected rows, including an
+  accepted zero report. Range identity, retained reads and local control values
+  preserve their existing owners; the current native qualification is recorded
+  under Usage report and source scope above.
 - **usagereports, skills** — the detail view stacked a navigation Toolbar (Back +
   Refresh) over a second Toolbar holding only the title; collapsed into one row (Back +
   title + skills' scope badge as content, Refresh as the trailing action).

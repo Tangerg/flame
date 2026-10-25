@@ -4,9 +4,12 @@ The optional workspace component reads `usage.summary` through the public compon
 SDK's explicit Runtime client. Runtime remains the sole accounting owner. All-time,
 seven-day and thirty-day ranges are query inputs; grouping/filtering are local React
 state. Recorded zeros, absent prices and empty reports retain distinct meanings.
-The report range precedes local source filtering and grouping. Refresh and failed
-range changes keep the accepted period visibly identified in that persistent scope
-zone, so the requested range cannot mislabel retained totals.
+The persistent report scope holds Period, Refresh and read feedback. Overview and
+totals precede the breakdown, where local source filtering and grouping apply to
+its rows. Those controls remain available for an accepted empty report and retain
+their values through refresh. Refresh and failed range changes keep the accepted
+period visibly identified in the persistent scope zone, so the requested range
+cannot mislabel retained totals.
 
 Changing a range cancels the previous request. Refresh or range-read failure retains
 the last accepted snapshot and labels its actual range. Component retirement cancels

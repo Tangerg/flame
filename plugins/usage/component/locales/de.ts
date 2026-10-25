@@ -1,6 +1,5 @@
 export const de: Record<string, string> = {
   "panel.title": "Nutzung",
-  "panel.description": "Erfasste Modellnutzung und Kosten.",
   "scope.label": "Berichtsumfang",
   refresh: "Aktualisieren",
   "period.label": "Zeitraum",
@@ -44,10 +43,7 @@ export const de: Record<string, string> = {
   "accounting.note":
     "Token-Summen umfassen nur die gemeldete Nutzung. Unbekannte Ergebnisse und nicht gemeldete Nutzung können den Verbrauch erhöhen. Die Zwischensumme bekannter Preise umfasst nur Versuche mit Preis; die Gesamtkosten erfordern, dass jeder Versuch einen Preis hat. Gelöschte oder nie erfasste Aufrufe können nicht rekonstruiert werden. Null Tokens sind erfasste Werte. “Nicht gemeldet” bedeutet, dass es für diese Summe oder Gruppe keinen vollständigen Preis gibt.",
   "empty.title": "Keine behaltenen Modellversuche in diesem Zeitraum.",
-  "empty.sub":
-    "Wähle oben einen anderen Zeitraum oder aktualisiere nach Modellaktivität.",
   "breakdown.title": "Nutzungsaufschlüsselung",
-  "breakdown.by": "Erfasste Kosten nach {{group}}",
   "breakdown.group": "Erfasste Nutzung nach Quelle",
   "bucket.costUsd": "{{cost}} USD",
   "bucket.attempts": "{{calls}} Versuche",
@@ -58,7 +54,5 @@ export const de: Record<string, string> = {
   "fact.usagePerAttempts": "Nutzung / Versuche",
   "fact.pricedPerAttempts": "Mit Preis / Versuche",
   "breakdown.empty.title": "Keine passenden Zeilen.",
-  "breakdown.empty.sub": "Filter löschen, um die erfasste Nutzung anzuzeigen.",
-  "breakdown.note": "Das Filtern von Zeilen ändert die Berichtssummen nicht.",
   "cost.notReported": "Nicht gemeldet",
 };

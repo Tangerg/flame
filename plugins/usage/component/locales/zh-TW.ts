@@ -1,6 +1,5 @@
 export const zhTW: Record<string, string> = {
   "panel.title": "用量",
-  "panel.description": "已記錄的模型用量與費用。",
   "scope.label": "報告範圍",
   refresh: "重新整理",
   "period.label": "時間範圍",
@@ -44,9 +43,7 @@ export const zhTW: Record<string, string> = {
   "accounting.note":
     "權杖合計僅包含已回報的用量。未知結果與未回報的用量可能增加消耗。已知價格小計僅包含已計價的嘗試；總費用需要每次嘗試都已計價。已刪除或從未記錄的呼叫無法重建。零權杖是已記錄的值。“未回報”表示該合計或分組沒有完整價格。",
   "empty.title": "此時間範圍內沒有保留的模型嘗試。",
-  "empty.sub": "在上方選擇其他時間範圍，或在模型活動後重新整理。",
   "breakdown.title": "用量明細",
-  "breakdown.by": "依 {{group}} 記錄的費用",
   "breakdown.group": "依來源記錄的用量",
   "bucket.costUsd": "{{cost}} USD",
   "bucket.attempts": "{{calls}} 次嘗試",
@@ -57,7 +54,5 @@ export const zhTW: Record<string, string> = {
   "fact.usagePerAttempts": "用量 / 嘗試",
   "fact.pricedPerAttempts": "已計價 / 嘗試",
   "breakdown.empty.title": "沒有相符的資料列。",
-  "breakdown.empty.sub": "清除篩選以顯示已記錄的用量。",
-  "breakdown.note": "篩選資料列不會改變報告合計。",
   "cost.notReported": "未回報",
 };

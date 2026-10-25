@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   failureText,
   createTranslator,
@@ -77,12 +84,14 @@ export function UsageReport({
   report,
   group,
   filter,
+  controls,
   t,
   fmt,
 }: {
   report: UsageSummary;
   group: string;
   filter: string;
+  controls: ReactNode;
   t: Translate;
   fmt: Formatters;
 }) {
@@ -150,96 +159,89 @@ export function UsageReport({
           <Metadata>{t("accounting.note")}</Metadata>
         </Disclosure>
       </PanelSection>
-      <div id="empty" hidden={report.coverage.calls !== 0}>
-        <EmptyState
-          icon={ChartColumn}
-          size="compact"
-          title={t("empty.title")}
-          sub={t("empty.sub")}
-        />
-      </div>
       <PanelSection
         id="breakdown"
         aria-label={t("breakdown.title")}
-        hidden={report.coverage.calls === 0}
         title={t("breakdown.title")}
-        description={t("breakdown.by", {
-          group: t(`group.${group}`).toLocaleLowerCase(),
-        })}
       >
-        <RecordGroup variant="list" aria-label={t("breakdown.group")}>
-          {matching.map((bucket) => (
-            <ListRow key={bucket.key}>
-              <RecordHeading
-                title={bucket.key}
-                actions={
-                  <MetricValue>
-                    {t("bucket.costUsd", {
-                      cost: fmt.cost(bucket.recordedCostUsd),
-                    })}
-                  </MetricValue>
-                }
-                description={
-                  <RecordMeta>
-                    <span>
-                      {t("bucket.attempts", {
-                        calls: fmt.number(bucket.coverage.calls),
+        {controls}
+        <div id="empty" hidden={report.coverage.calls !== 0}>
+          <EmptyState
+            icon={ChartColumn}
+            size="compact"
+            title={t("empty.title")}
+          />
+        </div>
+        {report.coverage.calls !== 0 && (
+          <RecordGroup variant="list" aria-label={t("breakdown.group")}>
+            {matching.map((bucket) => (
+              <ListRow key={bucket.key}>
+                <RecordHeading
+                  title={bucket.key}
+                  actions={
+                    <MetricValue>
+                      {t("bucket.costUsd", {
+                        cost: fmt.cost(bucket.recordedCostUsd),
                       })}
-                    </span>
-                    <span>
-                      {t("bucket.knownInput", {
-                        tokens: fmt.number(bucket.total.inputTokens ?? 0),
-                      })}
-                    </span>
-                    <span>
-                      {t("bucket.knownOutput", {
-                        tokens: fmt.number(bucket.total.outputTokens ?? 0),
-                      })}
-                    </span>
-                  </RecordMeta>
-                }
-              />
-              {bucket.recordedCostUsd !== undefined &&
-                report.recordedCostUsd !== undefined &&
-                report.recordedCostUsd > 0 && (
-                  <ShareBar
-                    value={bucket.recordedCostUsd}
-                    total={report.recordedCostUsd}
-                  />
-                )}
-              <Disclosure title={t("bucket.details")}>
-                <Facts
-                  values={[
-                    [t("fact.knownCost"), fmt.cost(bucket.recordedCostUsd)],
-                    [
-                      t("fact.usagePerAttempts"),
-                      `${bucket.coverage.reportedCalls}/${bucket.coverage.calls}`,
-                    ],
-                    [
-                      t("fact.pricedPerAttempts"),
-                      `${bucket.coverage.pricedCalls}/${bucket.coverage.calls}`,
-                    ],
-                    ...FIELDS.map(
-                      (key) =>
-                        [
-                          t(`fact.known.${key}`),
-                          fmt.number(bucket.total[key] ?? 0),
-                        ] as const,
-                    ),
-                  ]}
+                    </MetricValue>
+                  }
+                  description={
+                    <RecordMeta>
+                      <span>
+                        {t("bucket.attempts", {
+                          calls: fmt.number(bucket.coverage.calls),
+                        })}
+                      </span>
+                      <span>
+                        {t("bucket.knownInput", {
+                          tokens: fmt.number(bucket.total.inputTokens ?? 0),
+                        })}
+                      </span>
+                      <span>
+                        {t("bucket.knownOutput", {
+                          tokens: fmt.number(bucket.total.outputTokens ?? 0),
+                        })}
+                      </span>
+                    </RecordMeta>
+                  }
                 />
-              </Disclosure>
-            </ListRow>
-          ))}
-          {!matching.length && (
-            <EmptyState
-              size="compact"
-              title={t("breakdown.empty.title")}
-              sub={t("breakdown.empty.sub")}
-            />
-          )}
-        </RecordGroup>
-        <Metadata>{t("breakdown.note")}</Metadata>
+                {bucket.recordedCostUsd !== undefined &&
+                  report.recordedCostUsd !== undefined &&
+                  report.recordedCostUsd > 0 && (
+                    <ShareBar
+                      value={bucket.recordedCostUsd}
+                      total={report.recordedCostUsd}
+                    />
+                  )}
+                <Disclosure title={t("bucket.details")}>
+                  <Facts
+                    values={[
+                      [t("fact.knownCost"), fmt.cost(bucket.recordedCostUsd)],
+                      [
+                        t("fact.usagePerAttempts"),
+                        `${bucket.coverage.reportedCalls}/${bucket.coverage.calls}`,
+                      ],
+                      [
+                        t("fact.pricedPerAttempts"),
+                        `${bucket.coverage.pricedCalls}/${bucket.coverage.calls}`,
+                      ],
+                      ...FIELDS.map(
+                        (key) =>
+                          [
+                            t(`fact.known.${key}`),
+                            fmt.number(bucket.total[key] ?? 0),
+                          ] as const,
+                      ),
+                    ]}
+                  />
+                </Disclosure>
+              </ListRow>
+            ))}
+            {!matching.length && (
+              <EmptyState size="compact" title={t("breakdown.empty.title")} />
+            )}
+          </RecordGroup>
+        )}
       </PanelSection>
     </>
   );
@@ -299,12 +301,7 @@ export function Usage({ context }: { context: ComponentContext }) {
   return (
     <Panel
       label={t("panel.title")}
-      header={
-        <PanelHeader
-          title={t("panel.title")}
-          description={t("panel.description")}
-        />
-      }
+      header={<PanelHeader title={t("panel.title")} />}
       controls={
         <>
           <Toolbar
@@ -350,32 +347,6 @@ export function Usage({ context }: { context: ComponentContext }) {
                 })}
               </Metadata>
             )}
-          <FilterBar
-            label={t("controls.label")}
-            search={
-              <SearchField
-                size="lg"
-                id="filter"
-                aria-label={t("filter.label")}
-                placeholder={t("filter.placeholder")}
-                value={filter}
-                onChange={(event) => setFilter(event.target.value)}
-                onClear={() => setFilter("")}
-                clearLabel={t("filter.clear")}
-              />
-            }
-          >
-            <Select
-              size="lg"
-              label={t("group.label")}
-              value={group}
-              onValueChange={setGroup}
-              options={GROUPS.map((value) => ({
-                value,
-                label: t(`group.${value}`),
-              }))}
-            />
-          </FilterBar>
         </>
       }
     >
@@ -392,6 +363,34 @@ export function Usage({ context }: { context: ComponentContext }) {
             report={read.accepted.report}
             group={group}
             filter={filter}
+            controls={
+              <FilterBar
+                label={t("controls.label")}
+                search={
+                  <SearchField
+                    size="lg"
+                    id="filter"
+                    aria-label={t("filter.label")}
+                    placeholder={t("filter.placeholder")}
+                    value={filter}
+                    onChange={(event) => setFilter(event.target.value)}
+                    onClear={() => setFilter("")}
+                    clearLabel={t("filter.clear")}
+                  />
+                }
+              >
+                <Select
+                  size="lg"
+                  label={t("group.label")}
+                  value={group}
+                  onValueChange={setGroup}
+                  options={GROUPS.map((value) => ({
+                    value,
+                    label: t(`group.${value}`),
+                  }))}
+                />
+              </FilterBar>
+            }
             t={t}
             fmt={fmt}
           />

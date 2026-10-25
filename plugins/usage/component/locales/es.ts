@@ -1,6 +1,5 @@
 export const es: Record<string, string> = {
   "panel.title": "Uso",
-  "panel.description": "Uso y coste de modelos registrados.",
   "scope.label": "Alcance del informe",
   refresh: "Actualizar",
   "period.label": "Periodo",
@@ -44,10 +43,7 @@ export const es: Record<string, string> = {
   "accounting.note":
     "Los totales de tokens incluyen solo el uso informado. Los resultados desconocidos y el uso no informado pueden añadir consumo. El subtotal de precio conocido incluye solo los intentos con precio; el coste total requiere que todos los intentos tengan precio. Las llamadas eliminadas o nunca registradas no se pueden reconstruir. Cero tokens es un valor registrado. “No informado” significa que no hay un precio completo para ese total o grupo.",
   "empty.title": "No hay intentos de modelo retenidos en este periodo.",
-  "empty.sub":
-    "Elige otro periodo arriba o actualiza tras la actividad del modelo.",
   "breakdown.title": "Desglose de uso",
-  "breakdown.by": "Costes registrados por {{group}}",
   "breakdown.group": "Uso registrado por fuente",
   "bucket.costUsd": "{{cost}} USD",
   "bucket.attempts": "{{calls}} intentos",
@@ -58,7 +54,5 @@ export const es: Record<string, string> = {
   "fact.usagePerAttempts": "Uso / intentos",
   "fact.pricedPerAttempts": "Con precio / intentos",
   "breakdown.empty.title": "No hay filas coincidentes.",
-  "breakdown.empty.sub": "Borra el filtro para mostrar el uso registrado.",
-  "breakdown.note": "Filtrar las filas no cambia los totales del informe.",
   "cost.notReported": "No informado",
 };

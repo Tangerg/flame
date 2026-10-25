@@ -1,6 +1,5 @@
 export const fr: Record<string, string> = {
   "panel.title": "Utilisation",
-  "panel.description": "Utilisation et coût des modèles enregistrés.",
   "scope.label": "Portée du rapport",
   refresh: "Actualiser",
   "period.label": "Période",
@@ -44,10 +43,7 @@ export const fr: Record<string, string> = {
   "accounting.note":
     "Les totaux de tokens n’incluent que l’utilisation signalée. Les résultats inconnus et l’utilisation non signalée peuvent ajouter de la consommation. Le sous-total du prix connu n’inclut que les tentatives tarifées ; le coût total exige que chaque tentative soit tarifée. Les appels supprimés ou jamais enregistrés ne peuvent pas être reconstitués. Zéro token est une valeur enregistrée. “Non signalé” signifie qu’il n’y a pas de prix complet pour ce total ou ce groupe.",
   "empty.title": "Aucune tentative de modèle conservée sur cette période.",
-  "empty.sub":
-    "Choisissez une autre période ci-dessus ou actualisez après une activité du modèle.",
   "breakdown.title": "Détail de l’utilisation",
-  "breakdown.by": "Coûts enregistrés par {{group}}",
   "breakdown.group": "Utilisation enregistrée par source",
   "bucket.costUsd": "{{cost}} USD",
   "bucket.attempts": "{{calls}} tentatives",
@@ -58,8 +54,5 @@ export const fr: Record<string, string> = {
   "fact.usagePerAttempts": "Utilisation / tentatives",
   "fact.pricedPerAttempts": "Tarifées / tentatives",
   "breakdown.empty.title": "Aucune ligne correspondante.",
-  "breakdown.empty.sub":
-    "Effacez le filtre pour afficher l’utilisation enregistrée.",
-  "breakdown.note": "Filtrer les lignes ne modifie pas les totaux du rapport.",
   "cost.notReported": "Non signalé",
 };
