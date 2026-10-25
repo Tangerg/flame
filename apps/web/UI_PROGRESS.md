@@ -8,8 +8,9 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/fullscreen-reading-1025`. Gallery selection and source geometry are
-accepted on frozen base `bafb1a0c858c631dacae8414bd102d23d3831076`; publication
-and private evidence retirement follow the completed native acceptance. See
+accepted on frozen base `bafb1a0c858c631dacae8414bd102d23d3831076`. Implementation
+`cd69bfc407e42b0092b8e90694bd1fd20ff7253a` is published to remote main, and
+private evidence retirement is complete. See
 Image gallery selection and source geometry below. New-conversation branding is
 accepted on frozen base `d3d42903d5ae669c919c3b97ece69812983d4f23`; implementation
 `ceea38aab1d8ddb5cc898e46336d83da3f89913a` is published to remote main, and
@@ -787,6 +788,27 @@ Temporary hidden frames during the native transition are excluded.
   OS IME composition, RTL or another platform. No browser visual suite,
   performance benchmark or global fullscreen/Escape workaround was introduced.
   The broader unchanged product checks were not repeated for this two-file fix.
+
+**Delivery and resource retirement**
+
+Implementation `cd69bfc407e42b0092b8e90694bd1fd20ff7253a` is pushed to remote
+main and verified against its exact remote hash with a clean owned checkout and
+zero commits ahead or behind. All **54** recorded processes are dead and all
+**three** apps are unregistered. Cleanup removes **16** new paths: seven checkout
+outputs, six bundle Library directories and three bundle-temp directories. All
+**36** output-presence baselines, the exact inventory and hashes of **three**
+original files, and all **11** product resources match; the two original Vitest
+files are restored and the original native-check binary is preserved.
+The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-fullscreen-reading-1025-rp4GTh`
+is absent. The independently round-trip-verified archive retains **285 UTF-8
+files** and **nine screenshot digests**, gzip SHA-256
+`ab0d4e3f5e257391184707ff8c1fd14211a818ba89f9af42af0ba8ec37315f99`.
+All accepted source/artifact hashes match before root retirement. The initial
+handoff-only format check flagged the new tables; the normal commit hook formats
+them and passes all workspace lint without changing accepted product bytes.
+Primary parallel work, user data and read-only references remain untouched.
+This documentation-only retirement receipt changes no tested source.
 
 **Scoped better-interface review**
 
