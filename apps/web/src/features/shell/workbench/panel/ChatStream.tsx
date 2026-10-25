@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { brandAssets } from "@/lib/brand";
 import { tupleKey } from "@/lib/tupleKey";
 import { type AgentInput } from "@/features/agent/public/input";
 import { type FocusEvent, memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
@@ -65,6 +66,28 @@ const cst = stylex.create({
     overflowY: "auto",
     overscrollBehavior: "contain",
     paddingBottom: "var(--notification-empty-inset)",
+  },
+  identity: {
+    display: "flex",
+    flexDirection: "column",
+    gap: {
+      default: space.s4,
+      "@container empty-conversation (max-height: 30rem)": space.s3,
+    },
+  },
+  companion: {
+    display: "block",
+    alignSelf: "center",
+    flexShrink: 0,
+    width: {
+      default: space.s24,
+      "@container empty-conversation (max-height: 30rem)": space.s16,
+    },
+    height: {
+      default: space.s24,
+      "@container empty-conversation (max-height: 30rem)": space.s16,
+    },
+    objectFit: "contain",
   },
   heading: {
     marginInline: "auto",
@@ -244,9 +267,19 @@ export function ChatStream({ onSend }: Props) {
           )}
           {!started && (
             <div ref={emptyHeadingRef} {...stylex.props(rc.box, rc.gutter)}>
-              <h2 {...stylex.props(cst.heading, typeStep.displayMd)}>
-                <EmptyChatHeading />
-              </h2>
+              <div {...stylex.props(cst.identity)}>
+                <img
+                  src={brandAssets.companion}
+                  alt=""
+                  width={1024}
+                  height={1024}
+                  draggable={false}
+                  {...stylex.props(cst.companion)}
+                />
+                <h2 {...stylex.props(cst.heading, typeStep.displayMd)}>
+                  <EmptyChatHeading />
+                </h2>
+              </div>
             </div>
           )}
           <FloatingComposer overlayRef={composerOverlayRef} jumpRef={jumpRef} floating={started}>

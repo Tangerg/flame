@@ -1,18 +1,20 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Explicit-main nested task inspection now preserves the parent reader and its direct return path, and All subagents returns focus to the matching index row in both Dock and main. English light/14 px/Orange and Chinese dark/18 px/custom-blue native 200% task/file/parent/draft paths pass. The requested new-conversation brand introduction is next. The continuous goal stays active on a frozen UI base; main synchronization happens at intervals and primary parallel work remains untouched.
+Updated: 2026-10-25. The empty new-conversation page now shows the approved Flame companion above its existing welcome heading and input. Actual Wails English light/14 px/Orange and Chinese dark/18 px/custom-blue scenes pass at 200%, including project/model menus, compact sizing, long-draft scrolling and continued input. Task return and index focus are delivered. The continuous goal stays active on a frozen UI base; main synchronization happens at intervals and primary parallel work remains untouched.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/subagent-return-1025`. Task return and index focus are accepted on
-frozen base `b16e9ea7190e068837d23cd634a17a2b1344d5f4`; implementation
-`692b8547fa13aa28d91d934d854fd075d2578a0e` is published to remote main, and
-private resource retirement is complete. The existing inspection and selection owners
-remain authoritative. The next batch is the user-requested brand/mascot above
-the empty new-conversation input.
+is on `codex/empty-conversation-brand-1025`. New-conversation branding is
+accepted on frozen base `d3d42903d5ae669c919c3b97ece69812983d4f23`; publication and private resource
+retirement are being completed. Existing approved artwork, welcome/project
+semantics, Composer identity and notification measurements retain their owners.
+Task return implementation `692b8547fa13aa28d91d934d854fd075d2578a0e`
+and its cleanup receipt are published to remote main. Its private resources are
+retired. Continue from fresh evidence after this brand batch; do not reopen the
+qualified task return or reading-focus fixes.
 
 Reading-focus geometry is accepted on frozen
 base `bd146d20e50ce8b7e05633296d5681d0e523757a`. Implementation
@@ -231,6 +233,86 @@ The implementation lives under `/Users/tangerg/Desktop/flame/apps/web/src/featur
 CLI slash commands preserve the editor, attachments and cursor when command lookup, availability or arguments are rejected. Contributed commands accept only after their cancellable Session operation starts. Approval normalization retains an allow or deny decision when remembered scope becomes unavailable; unknown choices cannot create an answerable form.
 
 Start each new task with the actual status and relevant diffs. Preserve any newer unrelated edits, avoid bulk formatting or staging, and do not treat the old unfinished-file inventory as current work.
+
+### New-conversation brand identity
+
+The blank conversation now presents the approved Flame companion above its
+existing welcome heading and Composer. `ChatStream.tsx` reuses
+`brandAssets.companion` in the observed empty-heading wrapper. It renders only
+while the conversation has no rows. The image is decorative, non-draggable and
+outside the Tab order. Intrinsic square dimensions reserve its shape.
+
+The named empty-conversation size container controls a **96 px** image and
+**16 px** image/title gap, reduced to **64 px / 12 px** below **30 rem** of
+available height. Existing spacing tokens provide every value. Centering,
+heading/project selection, empty-page scrolling, notification measurement,
+question focus handoff and the same Composer input retain their owners. No
+new state, effect, timer, motion, surface, slogan, color or asset is added.
+
+The user's Codex screenshot supplies the image → heading → input hierarchy;
+its captured pixel scale is illustrative, not a specification of Flame sizes.
+Read-only ZCode `v4/ConversationDraftEmptyState.tsx` establishes a product
+identity in the draft state; its time greeting, watermark and measurement
+machinery are not needed for this request. The six better-* domains guide this
+scoped review alongside the existing reference research.
+
+| Domain        | Evidence                                                                                 | Result                                                       |
+| ------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Accessibility | Empty alt, no new focus target, native Tab/Return model entry and Escape trigger returns | Keyboard flow retained; VoiceOver speech unverified          |
+| Layout        | 1440 × 900, 1122 × 730 and 561 × 365 at 200%; short/long drafts                          | Image scales with available height; input/actions reachable  |
+| Writing       | Existing localized welcome and project actions                                           | No extra slogans or labels                                   |
+| Typography    | EN 14 px / ZH 18 px, shared heading role                                                 | Heading and toolbar remain readable                          |
+| Color         | Light/Orange and dark/custom blue with approved orange artwork                           | Theme and asset identities retained; contrast not remeasured |
+| UI polish     | Same transparent artwork, normal flow, no new animation                                  | Clear center without another panel or decorated background   |
+
+| Severity | Location                                   | Before                                                 | After                                                                        | Why                                                                                |
+| -------- | ------------------------------------------ | ------------------------------------------------------ | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| MEDIUM   | `shell/workbench/panel/ChatStream.tsx:270` | Blank conversation lacks the approved product identity | Companion sits above the existing heading and input, scaling for short panes | Give a new conversation a recognizable visual center while keeping composing space |
+
+Verification (2026-10-25):
+
+- Focused baseline passes **11 tests**. Edit-only Claude CLI changes the one
+  allowed product file in **28.71 s / 7 turns**, with no permission denials or
+  delegated agents. Primary reviews the actual diff and verifies it independently.
+  No extra test is added for this reversible presentation change; existing
+  empty/started input lifetime, selection/focus, notification geometry and project
+  selection regressions cover the preserved contracts.
+- Final serial checks pass **3 files / 31 tests + 13 Web gates** in **26.14 s**:
+  typecheck, lint, formatting, knip, design-system, tokens, chrome, styles, classes,
+  locales, layers, port-surface and production bundle. Final inputs contain
+  **5,771 non-Markdown files**, SHA-256
+  `4acc1006d974220c1eb60b5337813c20c5a97acb772caf2ec275cfceba7fb4d0`. Final private
+  assets build in **2.52 s**. Native hosts build serially in **6.30 s EN / 5.14 s
+  ZH**; **608 accepted artifacts** bind the final assets, module proxy and binaries.
+- Actual Wails EN/light/14 px/Orange and ZH/dark/18 px/custom blue/motion off
+  both reach **561 × 365 at 200%**. The image changes **96 → 64 px**, retains its
+  original square artwork and leaves all six project/composing actions visible.
+  Original textarea ID **2**, draft and caret survive native resize and zoom.
+  English Tab/Return opens the production model picker; Escape returns to its
+  trigger. Both localized project menus open and Escape returns to their trigger.
+- Chinese six-line draft grows to **88 characters**. The existing empty scroller
+  moves **0 → 98 px**; wheel input reveals the brand at the top and all controls
+  at the bottom without horizontal overflow or loss of input focus/caret.
+  Native input continues English **23 → 36** and Chinese **88 → 93 characters**.
+  Actual Size restores **1122 × 730**, the 96 px image, the same input and exact
+  later draft/caret. Both apps exit with native Quit.
+- **18 final captures** record zero unhandled errors. Scenes use production views
+  and owners over canonical private inputs. The accepted workspace seed preserves
+  the empty installer's projectless route and closed Dock to expose the actual
+  project tray. The first original screenshot's private observer incorrectly read
+  `composer.input`; its repeating probe errors do not qualify product errors.
+  Accepted scenes use `composer.draft` and split AX reports below truncation.
+  A post-Quit UI read relaunched the baseline; its exact extra PID was recorded
+  and quit again, with process exit checked outside UI.
+- No live Runtime/provider execution, Send, project creation, OS folder-picker
+  operation, browser visual suite, performance benchmark, VoiceOver, OS IME,
+  RTL or other-platform GUI is claimed. Started-conversation retirement and
+  notification-inset behavior retain composed regression coverage. Runtime,
+  protocol, data, host sources and dependencies are unchanged.
+
+**Approve** for the inspected empty-page identity and task continuity. Publication
+and owned resource retirement are recorded below. The continuous UI goal remains
+active.
 
 ## Goal rail and Plan reading
 
