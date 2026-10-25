@@ -10,7 +10,9 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/settings-focus-row-1025`. Settings focus/pointer activation are
 qualified on frozen base `d20d5b3dbb67d1240fe877e604e7460b6a6c2104`; see that
 product section for ownership, regressions, final native tasks and limits.
-Publication and resource retirement follow qualification. Appearance labels/search
+Implementation `d2f5659a3165328797d86549302f4843b99a2cc0` is published to remote
+main and exact owned-resource retirement is complete. The single publication-time
+fetch finds no incoming delta from the frozen base. Appearance labels/search
 remain qualified on frozen base `35c70c0a6e7da4314e8c5c39e525dcc314412279`.
 Implementation
 `40cbae863434ef53629071cfe75ccf86c46297b6` is published to remote main, and
@@ -1109,8 +1111,31 @@ palettes, successful synthetic dragging and live Runtime/provider work are not
 newly verified. Production views use deterministic canonical reads; no saved
 MCP server or business mutation occurs. Next inspect the MCP editor's repeated
 introductory/helper copy and task hierarchy, already observed at 200%, while
-preserving its explicit save-effect, validation and recovery contracts. Publication
-and exact owned-resource retirement are recorded after delivery.
+preserving its explicit save-effect, validation and recovery contracts.
+
+Delivery: implementation `d2f5659a3165328797d86549302f4843b99a2cc0` is pushed to
+remote main and independently matched by `ls-remote`. The single publication-time
+fetch finds no incoming commits; merge is already up to date. Normal formatting,
+workspace lint and message hooks pass with all accepted product bytes unchanged.
+
+All **23** recorded PIDs are dead and all **3** native bundles are unregistered.
+Cleanup removes **8** new checkout output/cache paths, **6** bundle-specific
+Library paths and **3** bundle-temporary directories. The original native-check
+binary and shared UI Vitest results are restored exactly; the original cache tag
+already matches. Independent checks before and after exact-root deletion preserve
+all **36** output-presence baselines, **3** original file hashes and **11**
+unchanged portable resources. No exact-root or exact-bundle process matches remain.
+
+The exact private root `flame-ui-settings-focus-1025-z50dSP` is absent after
+UID/device/inode/birth-time, accepted-source, artifact and native-input guards.
+Its round-trip-verified compressed in-memory archive retains **124** UTF-8
+evidence files and **35** capture hashes, SHA-256
+`7ab638c9190740e6eafc13c6236bf9c0f932b015c796e61d95a5a0174b0b6c86`.
+The original native binary is retained by its preservation hash rather than text
+decoding. Primary parallel work, user data, installed dependencies, global caches
+and read-only references remain untouched. This documentation receipt changes no
+accepted product input; publication is followed by fresh remote, cleanliness and
+preservation checks.
 
 ### Paper texture and reading surfaces
 
