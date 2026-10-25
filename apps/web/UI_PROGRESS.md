@@ -10,9 +10,11 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/mcp-editor-clarity-1026`. MCP editor clarity, literal inputs and
 feedback visibility are qualified on frozen base
 `55e67879d29ae57168b97b3f62e9aa90902ee04b`; see that product section for ownership,
-regression counterexamples, native tasks and limits. Publication and exact owned
-resource retirement follow qualification. Main is fetched once near publication;
-the primary parallel checkout remains outside this batch.
+regression counterexamples, native tasks and limits. Implementation
+`0c2f14377d24af2c9a63c44e4153a8a296105bdf` is published to remote main and exact
+owned-resource retirement is complete. The single publication-time fetch finds
+no incoming delta from the frozen base; the primary parallel checkout remains
+outside this batch.
 Shared settings focus/pointer implementation
 `d2f5659a3165328797d86549302f4843b99a2cc0` and receipt
 `55e67879d29ae57168b97b3f62e9aa90902ee04b` remain published and retired.
@@ -8085,8 +8087,32 @@ Final integrity freezes 5,778 non-Markdown inputs, SHA-256
 1,806 actual artifact hashes and 14 native construction inputs. All remain exact
 through acceptance, and all recorded native/CLI/build processes have exited.
 Scoped result: Approve for these editor and shared feedback contracts; the
-observed JSON-import introduction is the next separate task. Publication and
-exact owned-resource retirement are recorded below when complete.
+observed JSON-import introduction is the next separate task.
+
+Delivery: implementation 0c2f14377d24af2c9a63c44e4153a8a296105bdf is pushed to
+remote main and independently matches ls-remote. The single publication fetch
+finds main at the frozen base; merge is already up to date. Normal formatting,
+workspace lint and commit-message hooks preserve the qualified product inputs.
+
+All 31 recorded PIDs are dead, all 4 bundles are unregistered and no exact-root
+or exact-bundle process matches remain. Cleanup removes 8 new checkout output
+or cache paths, 8 bundle-specific Library paths and 4 bundle temporary directories.
+It restores the original native-check binary and UI Vitest results exactly.
+Independent checks before and after exact-root removal preserve all 36 output
+presence baselines, 3 original file hashes, 11 portable resources and all source
+inputs. The three read-only reference files retain their original hashes.
+
+The exact private root flame-ui-mcp-editor-1026-c52a4h is absent after
+UID/device/inode/birth-time, source, artifact, native-input and process guards.
+Its round-trip-verified compressed in-memory archive retains 157 UTF-8 evidence
+files and 37 capture hashes, SHA-256
+04c2f2790d5264aea2589e6ae35eff3bec885497a928d7652f210d5bd24e0d3e.
+Only the specific invalid-UTF-8 result class is excluded as a preserved binary;
+that original native binary remains represented by its preservation hash.
+Installed dependencies, global caches, user data, the primary parallel checkout
+and reference repositories remain intact. This Markdown receipt changes no
+qualified product source; fresh remote, cleanliness and preservation checks
+follow publication.
 
 ### MCP tool read identity and scoped recovery
 
