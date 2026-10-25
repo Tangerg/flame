@@ -8,8 +8,9 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/empty-conversation-brand-1025`. New-conversation branding is
-accepted on frozen base `d3d42903d5ae669c919c3b97ece69812983d4f23`; publication and private resource
-retirement are being completed. Existing approved artwork, welcome/project
+accepted on frozen base `d3d42903d5ae669c919c3b97ece69812983d4f23`; implementation
+`ceea38aab1d8ddb5cc898e46336d83da3f89913a` is published to remote main, and
+private resource retirement is complete. Existing approved artwork, welcome/project
 semantics, Composer identity and notification measurements retain their owners.
 Task return implementation `692b8547fa13aa28d91d934d854fd075d2578a0e`
 and its cleanup receipt are published to remote main. Its private resources are
@@ -313,6 +314,22 @@ Verification (2026-10-25):
 **Approve** for the inspected empty-page identity and task continuity. Publication
 and owned resource retirement are recorded below. The continuous UI goal remains
 active.
+
+Implementation `ceea38aab1d8ddb5cc898e46336d83da3f89913a` is published to remote main.
+Independent retirement verifies the exact remote commit and clean owned checkout,
+all **15 recorded processes dead**, **36 output-presence baselines**, **three
+original file hashes** and **11 product resources** preserved. Cleanup removes
+**seven checkout outputs**, **six owned Library directories** and **three
+bundle-temp directories** and unregisters three apps. Both original Vitest
+cache files are restored from their captured bytes; the original native binary
+is preserved. The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-empty-brand-1025-76y2pk`
+is absent. Its round-trip-verified archive retains **73 UTF-8 files** and **five
+screenshot digests**, gzip SHA-256
+`01585aec531065178fcc723c98a0f2caf4b923a9f87d1bb8a2cd66cbe3e84ba0`.
+This documentation receipt changes no accepted product source. Primary user data,
+parallel work, dependencies, global compiler caches and reference resources are
+preserved.
 
 ## Goal rail and Plan reading
 
