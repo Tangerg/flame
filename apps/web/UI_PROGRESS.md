@@ -9,7 +9,9 @@ This user-requested file is the maintained progress and handoff record for the d
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/tool-action-feedback-1025`. Contributed Tool action outcomes are
 accepted on frozen base `8af9bc4296734751c4b275e1afe6c147f519e0c4`; publication
-and final evidence retirement are in progress. Native continuous-zoom focus
+of implementation `34fb1be4938e23129567f22e61ba49f2b4b6d05d` to remote main and
+final evidence retirement are complete. The owned checkout is clean; this
+documentation receipt changes no accepted product source. Native continuous-zoom focus
 visibility is the next observed task, with original-source qualification still
 pending. Local file action outcomes and continued
 reading are accepted on frozen base `5918ddcc976f39e77c9321caa975e3ef31d02e06`;
@@ -6233,9 +6235,20 @@ Verification (2026-10-25):
   unique Library paths and three bundle-temp directories are removed; three apps
   are unregistered. All **36** output-presence baselines, exact inventories/hashes
   of **three** original files and **11** product resources remain preserved;
-  no original output needs byte restoration. The owned private root is retained
-  only until evidence archival/publication is verified. Primary work and references
-  remain untouched. This batch does not fetch or merge main.
+  no original output needs byte restoration. Primary work and references remain
+  untouched. This batch does not fetch or merge main.
+
+Implementation `34fb1be4938e23129567f22e61ba49f2b4b6d05d` is published to remote
+main and matched by exact remote hash with a clean owned checkout and zero
+commits ahead/behind before retirement. The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-tool-actions-1025-hmqPiJ`
+is absent. Its independently round-trip-verified archive contains **97 UTF-8
+files** and **six screenshot digests**, gzip SHA-256
+`61430b839341e824f9027f082f61e72f498b7ba670d4a6c2143bb25ec0474ee9`.
+The retirement guard rechecks all 5,770 source hashes, 607 artifacts, native
+outcomes, 15 dead PIDs, 36 output baselines, three original output hashes and
+11 unchanged resources before deletion. The continuous-zoom focus observation
+remains explicitly unqualified. This receipt changes no tested product source.
 
 **Approve** for contributed Tool activation outcomes in the inspected domains.
 The recoverable continuous-zoom focus observation remains the next explicit
