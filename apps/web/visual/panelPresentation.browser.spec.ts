@@ -1,6 +1,6 @@
 import { expect, test } from "./test";
 for (const theme of ["light", "dark"]) {
-  test(`Dock panels keep a quiet outline and complete context while page headings stay visible in ${theme}`, async ({
+  test(`Hosted panels keep one visible identity and complete context at both densities in ${theme}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1472, height: 900 });
@@ -51,7 +51,12 @@ for (const theme of ["light", "dark"]) {
     await page.locator("html[data-visual-ready]").waitFor();
     const full = page.getByRole("region", { name: "Workspace diff", exact: true });
     const pageTitle = full.getByRole("heading", { name: "Workspace diff", exact: true });
-    expect((await pageTitle.boundingBox())!.height).toBeGreaterThan(1);
+    expect((await pageTitle.boundingBox())!.height).toBeLessThanOrEqual(1);
+    await expect(
+      page
+        .locator('[data-slot="workspace-window-header"]')
+        .getByText("Workspace diff", { exact: true }),
+    ).toBeVisible();
     await full.locator('header [dir="ltr"]').scrollIntoViewIfNeeded();
     await expect(full.locator('header [dir="ltr"]')).toHaveText("/Users/visual/scope");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);

@@ -167,7 +167,7 @@ describe("ChatPanel Session-owned workspace view state", () => {
   });
 });
 
-it("switches one mounted view between hosted dock and full-width panel density", () => {
+it("switches one mounted view between dock and full-width density under host identity", () => {
   nextInstance = 0;
   model.sessionId = "ses_first";
   model.activeMainView = null;
@@ -186,17 +186,25 @@ it("switches one mounted view between hosted dock and full-width panel density",
     },
   ];
   const view = render(<ChatPanel onSend={() => true} />);
-  const header = screen.getByText("Density heading").closest("header")!;
+  const windowHeader = () =>
+    view.container.querySelector<HTMLElement>('[data-slot="workspace-window-header"]');
+  const heading = screen.getByRole("heading", { name: "Density heading" });
+  const header = heading.closest("header")!;
   expect(header.classList.contains("sr-only")).toBe(true);
+  expect(windowHeader()).toBeNull();
+  expect(screen.getByText("workspace-instance:1")).toBeTruthy();
 
   model.activeMainView = "stateful";
   view.rerender(<ChatPanel onSend={() => true} />);
-  expect(screen.getByText("Density heading").closest("header")).toBe(header);
-  expect(header.classList.contains("sr-only")).toBe(false);
+  expect(within(windowHeader()!).getByText("stateful", { exact: true })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Density heading" })).toBe(heading);
+  expect(header.classList.contains("sr-only")).toBe(true);
   expect(screen.getByText("workspace-instance:1")).toBeTruthy();
 
   model.activeMainView = null;
   view.rerender(<ChatPanel onSend={() => true} />);
+  expect(windowHeader()).toBeNull();
+  expect(screen.getByRole("heading", { name: "Density heading" })).toBe(heading);
   expect(header.classList.contains("sr-only")).toBe(true);
   expect(screen.getByText("workspace-instance:1")).toBeTruthy();
 });

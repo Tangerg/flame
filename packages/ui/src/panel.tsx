@@ -52,7 +52,7 @@ const styles = stylex.create({
     },
     paddingBlock: layout.pageBlock,
   },
-  hostedContent: {
+  compactContent: {
     gap: layout.contentGap,
     paddingBlock: layout.compactGutter,
   },
@@ -237,16 +237,18 @@ const styles = stylex.create({
   formMainActions: { marginInlineStart: "auto", justifyContent: "flex-end" },
 });
 
-const PanelHostContext = createContext(false);
+type PanelDensity = "compact" | "page";
+
+const PanelHostContext = createContext<PanelDensity | null>(null);
 
 export function PanelHost({
-  hosted = true,
+  density = "compact",
   children,
 }: {
-  hosted?: boolean;
+  density?: PanelDensity;
   children: ReactNode;
 }) {
-  return <PanelHostContext value={hosted}>{children}</PanelHostContext>;
+  return <PanelHostContext value={density}>{children}</PanelHostContext>;
 }
 
 export function Panel({
@@ -264,7 +266,7 @@ export function Panel({
   controls?: ReactNode;
 }) {
   const styled = stylex.props(styles.panel, type.uiMd);
-  const hosted = useContext(PanelHostContext);
+  const compact = useContext(PanelHostContext) === "compact";
   const panelRef = useRef<HTMLElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -356,7 +358,7 @@ export function Panel({
       {...styled}
       className={clsx(styled.className, className)}
     >
-      <div {...stylex.props(styles.content, hosted && styles.hostedContent)}>
+      <div {...stylex.props(styles.content, compact && styles.compactContent)}>
         {header}
         <HeadingLevel>
           {hasControls && (
@@ -396,7 +398,9 @@ export function PanelHeader({
   context?: ReactNode;
   size?: PanelTitleSize;
 }) {
-  const hosted = useContext(PanelHostContext);
+  const density = useContext(PanelHostContext);
+  const hosted = density !== null;
+  const compact = density === "compact";
   const headingOnly = !description && !context;
   const header = stylex.props(styles.header);
   return (
@@ -413,7 +417,7 @@ export function PanelHeader({
       </PanelTitle>
       {description && (
         <p
-          {...stylex.props(styles.description, hosted ? type.uiSm : type.uiMd)}
+          {...stylex.props(styles.description, compact ? type.uiSm : type.uiMd)}
         >
           {description}
         </p>

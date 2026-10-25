@@ -82,12 +82,17 @@ text and ref. The consumer supplies the complete path in scrolling reader conten
 these components do not query files or own a second navigation model.
 `RecordSummary` owns the optional identity mark, copy and state alignment.
 `RecordBody` preserves recorded line breaks and allows selecting its complete text.
-`PanelHost` marks an embedded panel whose surrounding chrome already shows the
-view identity. Dock views use compact shared insets and quieter supporting copy;
-their `PanelHeader` title stays in the accessible outline without repeating a
-display heading. Context and descriptions remain complete and visible. Independent
-pages keep their display title and page spacing. The host selects this composition;
-portable components do not inspect viewport width or create another placement state.
+`PanelHost` always means the surrounding chrome already shows the view identity:
+the `PanelHeader` title stays in the accessible outline without repeating a
+display heading, and context and descriptions remain complete and visible.
+Its `density` chooses spacing separately from that identity. `compact`, the
+default, gives Dock views compact shared insets and quieter supporting copy;
+`page` keeps the independent page's content gutters, group spacing and supporting
+text size for a full-width view beneath its window header. Hosted context omits
+the spacing reserved for a visible display title. Standalone pages omit the
+provider and keep their display title. The former `hosted` boolean is removed;
+the host selects the density without changing the content instance.
+Portable components do not inspect viewport width or create another placement state.
 `FilterBar` owns the control zone in three meanings, in reading order: the
 growing search column, the page `actions` beside it at the inline end, and the
 refining filters as `children`. Search and actions share a row while they fit and

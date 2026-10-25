@@ -5,9 +5,10 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { createRef, useRef, useState } from "react";
 import { Brain } from "@flame/icons/react";
 import {
@@ -40,6 +41,7 @@ import {
   ModalDialog,
   Panel,
   PanelHeader,
+  PanelHost,
   PanelSection,
   RecordGroup,
   RecordHeading,
@@ -1121,6 +1123,126 @@ describe("shared controls", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
     expect(clear).toHaveBeenCalledOnce();
+  });
+});
+
+describe("hosted panel identity", () => {
+  function page(label: string, header: ReactNode) {
+    return (
+      <Panel label={label} header={header}>
+        <input aria-label={`${label} draft`} />
+      </Panel>
+    );
+  }
+  function richHeader(title: string) {
+    return (
+      <PanelHeader
+        title={title}
+        description="Review the workspace changes."
+        context={<a href="#files">All files</a>}
+      />
+    );
+  }
+  function presentation(label: string) {
+    const region = screen.getByRole("region", { name: label });
+    const panel = within(region);
+    const link = panel.getByRole("link", { name: "All files" });
+    return {
+      content: region.firstElementChild!.className,
+      description: panel.getByText("Review the workspace changes.").className,
+      context: link.parentElement!.className,
+    };
+  }
+
+  it("keeps an independent page's display heading visible", () => {
+    render(page("Changes", <PanelHeader title="Changes" />));
+    const heading = screen.getByRole("heading", { name: "Changes" });
+    expect(heading.classList.contains("sr-only")).toBe(false);
+    expect(heading.closest(".sr-only")).toBeNull();
+  });
+
+  it.each(["compact", "page"] as const)(
+    "keeps the %s hosted heading accessible without repeating its display title",
+    (density) => {
+      render(
+        <PanelHost density={density}>
+          {page("Title only", <PanelHeader title="Title only" />)}
+          {page("Rich", richHeader("Rich"))}
+        </PanelHost>,
+      );
+      const titleOnly = screen.getByRole("heading", { name: "Title only" });
+      expect(titleOnly.closest("header")!.classList.contains("sr-only")).toBe(
+        true,
+      );
+
+      const rich = within(screen.getByRole("region", { name: "Rich" }));
+      const heading = rich.getByRole("heading", { name: "Rich" });
+      expect(heading.classList.contains("sr-only")).toBe(true);
+      expect(heading.closest("header")!.classList.contains("sr-only")).toBe(
+        false,
+      );
+      expect(
+        rich.getByText("Review the workspace changes.").closest(".sr-only"),
+      ).toBeNull();
+      expect(
+        rich.getByRole("link", { name: "All files" }).closest(".sr-only"),
+      ).toBeNull();
+    },
+  );
+
+  it("keeps page spacing and supporting text without a hidden title's context gap", () => {
+    render(
+      <>
+        {page("Independent", richHeader("Independent"))}
+        <PanelHost density="page">
+          {page("Page host", richHeader("Page host"))}
+        </PanelHost>
+        <PanelHost>
+          {page("Compact host", richHeader("Compact host"))}
+        </PanelHost>
+      </>,
+    );
+    const independent = presentation("Independent");
+    const compact = presentation("Compact host");
+    const paged = presentation("Page host");
+    expect(paged.content).toBe(independent.content);
+    expect(paged.description).toBe(independent.description);
+    expect(paged.context).toBe(compact.context);
+    expect(compact.content).not.toBe(independent.content);
+    expect(compact.description).not.toBe(independent.description);
+    expect(compact.context).not.toBe(independent.context);
+  });
+
+  it("changes hosted density without remounting content or losing a draft", () => {
+    const hosted = (density: "compact" | "page") => (
+      <PanelHost density={density}>
+        {page("Changes", richHeader("Changes"))}
+      </PanelHost>
+    );
+    const view = render(hosted("compact"));
+    const field = screen.getByRole<HTMLInputElement>("textbox", {
+      name: "Changes draft",
+    });
+    const heading = screen.getByRole("heading", { name: "Changes" });
+    fireEvent.change(field, { target: { value: "unsaved draft" } });
+    field.focus();
+    const compact = presentation("Changes");
+
+    view.rerender(hosted("page"));
+    expect(screen.getByRole("textbox", { name: "Changes draft" })).toBe(field);
+    expect(screen.getByRole("heading", { name: "Changes" })).toBe(heading);
+    expect(field.value).toBe("unsaved draft");
+    expect(document.activeElement).toBe(field);
+    expect(heading.classList.contains("sr-only")).toBe(true);
+    const paged = presentation("Changes");
+    expect(paged.content).not.toBe(compact.content);
+    expect(paged.description).not.toBe(compact.description);
+
+    view.rerender(hosted("compact"));
+    expect(screen.getByRole("textbox", { name: "Changes draft" })).toBe(field);
+    expect(field.value).toBe("unsaved draft");
+    expect(document.activeElement).toBe(field);
+    expect(presentation("Changes")).toEqual(compact);
   });
 });
 

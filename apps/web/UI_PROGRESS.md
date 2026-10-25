@@ -1,13 +1,17 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Current-workspace Diff rows and file headings now render all five canonical file statuses through the eight package catalogs. Native text, rename and binary reading, comparison/filter return and continued drafts are qualified. See Diff status language and canonical identity. Earlier selection, copying and brand work remain delivered. The receiving textarea's first multiline paste still drops one trailing LF, independently reproduced in stock WKWebView; no unsafe workaround ships. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. Hosted full-width panels now keep one visible window identity while retaining page spacing; Dock keeps its compact density. Native Diff and title-only Schedules tasks preserve context, filters, expansion, source returns and continued drafts. See Hosted titles and reading density. Earlier status language, selection, copying and brand work remain delivered. The receiving textarea's first multiline paste still drops one trailing LF, independently reproduced in stock WKWebView; no unsafe workaround ships. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/diff-status-1025`. Diff status presentation is qualified on frozen
+is on `codex/panel-heading-1025`. Hosted identity and reading density are
+qualified on frozen base `0ddbb425d0cf388ac28b4ccb285ee1bcf101c605`; see Hosted
+titles and reading density for the contract, complete tasks and verification
+boundaries. Publication and evidence retirement follow native qualification.
+Earlier Diff status presentation is qualified on frozen
 base `4c3f3584fb3b4ee430888c7364b42751346c765f`; see Diff status language and
 canonical identity for the owner, complete task and verification boundaries.
 Implementation `da78b26113d5b3004d744e0b2372d819a7771be6` is published to remote
@@ -5596,9 +5600,9 @@ contexts.
 `ChatPanel.tsx` now renders one keyed body per exact Session/view ID. Its existing
 Dock tabs, active main view and distinct main sources on the inspection chain
 supply retention; there is no second state cache. A same-view return shortcut
-cannot keep a closed moved tab alive. `PanelHost` changes only its context value
-through the optional `hosted` prop, preserving full-pane and Dock density without
-moving children. The stable Dock container is neutral and non-focusable in main
+cannot keep a closed moved tab alive. `PanelHost` marks surrounding view identity
+and changes only its closed `density` value between page and compact presentation,
+preserving the same children. The stable Dock container is neutral and non-focusable in main
 mode; the named body and persistent window header keep their roles, and main
 content does not inherit Dock containment/clipping.
 
@@ -5792,6 +5796,133 @@ files** and **six screenshot digests**, gzip SHA-256
 `7e78236de5d35df17cc662f668dfaae479ff48656df0ac2c4f13cfd2030d612c`.
 This documentation receipt changes no accepted product source. Primary user data
 and parallel work remain preserved; the continuous UI goal remains active.
+
+### Hosted titles and reading density
+
+The task is reply → one material → filtered file/detail → full-width or Dock
+reading → original view/source → continued draft. Original Wails full-width Diff
+shows the same view name in its window chrome and again as a display heading.
+Moving that same instance to Dock correctly hides the repeated heading. The
+former `PanelHost.hosted` boolean coupled identity hosting with compact spacing,
+so full-width density also restored the duplicate title.
+
+| Severity | Location                                                                                         | Before                                                                    | After                                                                                                              | Why                                                          |
+| -------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| MEDIUM   | `packages/ui/src/panel.tsx:240`, `apps/web/src/features/shell/workbench/panel/ChatPanel.tsx:421` | Full-width material repeats its identity and delays its context/controls. | Provider presence owns hosted identity; closed `compact` / `page` density chooses existing spacing and text roles. | One visible view identity with a clear path into the object. |
+
+The shared Context stores only `compact`, `page`, or no host. Both hosted
+densities retain the semantic heading in the accessible outline without repeating
+its display title. A title-only header retires visually as a whole; a rich header
+keeps its complete description and context. Context omits spacing reserved for a
+visible title. Page gutters, group gaps and supporting-text size retain their
+existing roles; compact Dock keeps its existing values. Independent pages omit
+the provider and keep their display heading.
+
+`ChatPanel` changes the provider value within the same keyed body. No state,
+effect, listener, viewport query, remount, CSS value, theme token, string or
+navigation owner is added. All repository callers migrate from the removed
+`hosted` prop. Rebuilt authored consumers of this UI API use `density`; no
+persisted-data or Runtime migration is required. The existing source-selection,
+command, retained-view, popup, input and return owners remain in place.
+
+Read-only ZCode `packages/ui/src/GitPane.tsx:450–505` places scope controls before
+material instead of repeating a pane display title. Its implementation is a
+composition reference, not a copied navigation or virtualization policy. Retained
+Radix focus and Ace workspace research guide the return and reading hierarchy.
+The six better-* domains are checked against the complete native tasks:
+
+| Domain        | Evidence and outcome                                                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Layout        | One visible window identity; existing page and compact gutters; actual 320 px Dock, native resizing and 200% full-pane reading.     |
+| Typography    | Display title stays on independent pages; hosted semantic headings, file headings and complete context keep their existing roles.   |
+| Accessibility | Heading outline, first control, source-region focus, menu Escape, current-row return and exact source opener remain reachable.      |
+| Writing       | Existing catalog names, localized object state and source/return labels remain; no slogan, instruction or secondary label is added. |
+| Color         | Existing light/Orange and dark/custom-blue focus, selection and status roles remain; contrast is not freshly measured.              |
+| UI polish     | Existing surfaces, shapes and full/off motion remain; density changes preserve the same material instance and original draft owner. |
+
+Typography, whitespace, hierarchy, color, motion, interaction, responsiveness
+and originality are reviewed through those principles and actual screenshots.
+Approval covers the inspected task, not every page or an award outcome.
+
+Verification (2026-10-25):
+
+- Original focused Web baseline passes **2 files / 22 tests**. Native EN/light/
+  14 px reproduces the duplicate title with **64 px** introductory header and
+  controls at **y=166**. Its page gutters are **32 / 24 px**, group gap **24 px**;
+  the same instance in Dock uses **16 / 16 px**, gap **12 px** and a **21 px**
+  context header. Bounded edit-only Claude CLI completes in **136.11 s**, exit
+  zero, with **27 reported turns** against configured 24. Primary reviews its
+  five paths, corrects context-spacing ownership, removes a redundant comment
+  and migrates the existing browser assertion. CLI runs no checks.
+- Final serial gates pass in **62.72 s**: full shared UI (**6 files / 97 tests**,
+  build/types/lint/format and independent packed consumer), plugin build,
+  **7 Web files / 145 tests**, all **13 selected Web gates**, five plugin gates,
+  then normal **make check-native** with Desktop Go test/vet/build and supported
+  Wails build. New shared cases cover independent/hosted headings, rich context,
+  page roles and density-switch field/focus retention. The host regression keeps
+  one instance and a real window identity. No valid assertion is weakened.
+- Rebuilding the original Panel and restoring the original caller makes the
+  final shared suite fail **2 / 69 pass**, and the host suite **1 / 13 pass**.
+  All candidate sources and **123 compiled UI files** restore byte-for-byte.
+  The first private wrapper stops after restoration because inventory keys have
+  an absolute prefix; the corrected relative-key guard passes in **4.85 s** with
+  those same expected failures. This is a verifier correction, not a product fix.
+- Accepted input is **5,772 non-Markdown files**, SHA-256
+  `19c017c0626ec5594ae80938888b2bf05f040816ecf157e43bd0541cdf19f252`.
+  Exactly five non-Markdown inputs change. All **eleven** published resources
+  reproduce unchanged. Candidate/clean assets build serially in **2.52 / 2.08 s**;
+  EN/ZH/clean hosts in **6.62 / 4.69 / 4.67 s**, then the independent title-only
+  Schedules host in **6.58 s**. Clean assets contain no passive observer.
+- Actual EN Wails keeps one visible title and complete workspace context.
+  Header height is **21 px**, controls **y=123**, saving **43 px** while page
+  gutters and gap remain unchanged. Main → Dock → native Left arrangement →
+  three native Zoom In actions (**975 × 913 / 115%**) → Actual Size retains panel
+  ID **4**, the `session` query and selected Go file. Keyboard confirms the
+  **320 px Dock**. Menu Escape returns its trigger, the reader retains its
+  scoped **230-character** selection, and local Escape returns the current
+  filtered row. Source Back returns the original main view; ordinary Close
+  reveals Conversation and Dock. Textarea ID **3** continues exactly **34 → 45**.
+- A separately launched Schedules fixture qualifies the title-only case: its
+  semantic header is **1 px**, controls start at **y=78**, and keyboard Tab reaches
+  Search. `Weekly` filtering and the expanded record survive main/Dock/source
+  return on panel ID **3**. Textarea ID **2** continues exactly **17 → 28**. The
+  earlier fixed-route fixture link does not enter Schedules and is excluded;
+  no cross-fixture object identity or schedule-writing qualification is claimed.
+- ZH/dark/18 px/custom-blue/motion-off uses native Left, twenty native Zoom In
+  actions and actual fixture-sidebar collapse: **561 × 525 CSS px / 200%**.
+  The real conversation Review opener enters full-width Diff with one visible
+  window identity, complete scope and reachable filtered-file controls. Tab
+  reaches the source; native wheel input moves controls from **y=128.5 → 76.5**.
+  Local Escape restores the `session` row; source Back focuses the actual Review
+  opener. Textarea ID **3** continues exactly **8 → 12**. Actual Size restores
+  **1122 × 1051** before Quit.
+- The independent clean app visually confirms one title, then qualifies main/
+  Dock movement, filtered-file entry, current-row and original-view return,
+  ordinary Close and continued draft. Raw editable AX preserves exactly
+  **18 → 29 characters**. Its known two-line value establishes **zero** framing
+  LF; the initial one-LF assumption is excluded, and that fixed zero-frame check
+  is used afterward. No private DOM identity is inferred from this scene.
+
+Limits: shared regressions cover the presentation contract, not fresh native
+acceptance of every installed page. Hidden retained Dock geometry in the Chinese
+source-return frames is excluded from presented-layout evidence. Native scenes
+use canonical isolated providers rather than live Runtime/Git writes, provider
+execution or Send. VoiceOver, OS IME, RTL and other-platform GUIs remain
+unqualified. The browser assertion is migrated but no browser visual suite or
+performance benchmark runs. Receiving-textarea and hidden-zoom platform limits
+remain separately recorded.
+
+**Approve** for hosted identity, reading density and the inspected complete tasks.
+Publication sync finds main unchanged from the frozen base. All **22 recorded
+processes** are dead; **five apps** are unregistered. Cleanup removes **eight
+checkout outputs**, **ten owned Library paths** and **five bundle-temp paths**.
+All **36 output-presence baselines**, **three original file hashes/inventories**
+and **eleven product resources** match. The original native-check binary and UI
+Vitest results are restored byte-for-byte; the cache tag already matches. The
+private evidence root awaits publication and independent archive retirement.
+Preserve this identity/density contract and the existing retained-material,
+source-return and draft owners while continuing from fresh task evidence. The
+continuous goal remains active.
 
 ## Transcript controls and floating navigation
 

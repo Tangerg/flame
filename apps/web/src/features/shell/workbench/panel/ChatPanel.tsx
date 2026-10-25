@@ -418,7 +418,7 @@ export function ChatPanel({ onSend, ref }: Props) {
                     visible={viewId === presentedViewId && (presentedMain || dockVisible)}
                     fallbackFocus={presentationRef}
                   >
-                    <PanelHost hosted={!presentedMain}>
+                    <PanelHost density={presentedMain ? "page" : "compact"}>
                       <WorkspaceViewBody
                         ref={viewId === fullPaneViewId ? mainViewRef : undefined}
                         viewId={viewId}
