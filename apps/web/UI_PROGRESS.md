@@ -898,6 +898,30 @@ OS IME, RTL/forced-colors and a standalone 320 px native viewport are not newly
 qualified. No browser visual suite or performance benchmark runs. Publication
 and exact resource retirement are recorded below.
 
+Delivery: implementation `90887c91e95039be1c8b6d33ea6264152319f0b5` is pushed
+to remote `main`, independently matched by `ls-remote` before retirement. The
+single publication-time fetch finds main at the frozen starting commit; merging
+it is already up to date. A nonstandard commit type is rejected, then the
+conventional `fix` title passes the normal formatting, workspace lint and message
+hooks without changing accepted product bytes.
+
+All **24** recorded PIDs are dead and all **3** owned bundles are unregistered.
+Cleanup removes **7** new checkout output/cache paths, **6** bundle-specific
+Library paths and **3** bundle-specific temporary directories. The original
+native-check binary is restored exactly; all **36** output-presence baselines,
+**3** original file hashes and **11** accepted resource hashes pass independent
+checks before and after deletion. No exact-root or exact-bundle process remains.
+
+The exact private root `flame-ui-schedule-editor-1025-SZzFEl` is removed after
+UID/device/inode/birth-time, source, artifact and native-input checks. A compressed
+in-memory archive preserves **122** UTF-8 evidence files and **7** capture hashes,
+SHA-256 `3307a20dbb63593f328d82e0eee68ba245d7995104003e4a2463383ca02f099d`.
+Installed dependencies, global caches, read-only references, user data and the
+primary parallel checkout remain untouched. This documentation receipt changes
+no accepted product input; publication is followed by fresh remote, cleanliness
+and preservation checks. Continue from a fresh task observation, preserving this
+accepted hierarchy and the preceding color/focus work.
+
 ### Native image save qualification
 
 The previously unqualified native export path is now checked through the actual
