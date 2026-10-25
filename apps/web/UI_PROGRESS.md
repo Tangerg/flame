@@ -9,8 +9,9 @@ This user-requested file is the maintained progress and handoff record for the d
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/trajectory-search-1025`. Trajectory search evidence is qualified on
 frozen base `ee796a95ac88013b04d99b214f505c3903ae5d64`; see Trajectory search evidence
-boundary below for the owner, complete tasks and verification limits. Publication
-and owned evidence retirement are pending.
+boundary below for the owner, complete tasks and verification limits. Implementation
+`3005c638983a801aecf68047c82f25c88d34592a` is published to remote main; its
+owned evidence retirement is complete.
 Earlier Schedules filtered-empty recovery is
 qualified on frozen base `0e111df3568389df7f254594975ad41531931e92`; see its
 section below for the owner, complete tasks and coverage boundaries. Implementation
@@ -3883,9 +3884,21 @@ Verification (2026-10-25):
   mutations and Send are **not run**. The receiving multiline-paste limitation
   remains the separate qualified platform issue.
 
-All four native apps have quit. Publication and final resource/evidence retirement
-are pending. Preserve the accepted Trajectory ESM and all unrelated resources;
-continue from fresh task evidence after delivery.
+Implementation `3005c638983a801aecf68047c82f25c88d34592a` is independently verified
+on remote main after one interval fetch confirms no incoming change from the
+frozen base. All **24** recorded PIDs are dead; all **four** apps are unregistered.
+Cleanup removes **7** new checkout outputs, **8** owned Library paths and **4**
+bundle temp paths, restoring the original native-check binary. All **36** output
+presence baselines, exact inventories of the **three** original files and all
+**11** accepted resources pass independent checks before and after retirement.
+The exact root `/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-trajectory-search-1025-Hff7wR` is absent.
+The independently compared and gzip-round-trip-verified in-memory archive holds
+**128 UTF-8 files / 5 JPEG screenshot digests**, SHA-256
+`a5727f9cebb3cc4364a90259a483ff86dc55bbe06cc76b226ffdee80e750f29c`. Accepted maps bind
+**1,209** final compiled/proxy/binary artifacts and **13** native inputs. No
+owned orphan process remains. This receipt changes no qualified product source.
+Primary user data, parallel work and read-only references remain preserved.
+Continue from fresh task evidence; the continuous goal remains active.
 
 ## Shortcut recording and activation
 
