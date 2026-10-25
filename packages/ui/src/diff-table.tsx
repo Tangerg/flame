@@ -1,4 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
+import { useRef } from "react";
+import { selectAllInReader } from "./reader-selection";
 import { ScrollRegion } from "./scroll-region";
 import { color, space, surface, type } from "./tokens.stylex";
 
@@ -75,8 +77,14 @@ export function DiffTable({
   labels: DiffTableLabels;
 }) {
   const split = layout === "split";
+  const body = useRef<HTMLTableSectionElement>(null);
   return (
-    <ScrollRegion label={labels.region}>
+    <ScrollRegion
+      label={labels.region}
+      onKeyDown={(event) => {
+        if (body.current) selectAllInReader(event, body.current);
+      }}
+    >
       <table data-layout={layout} {...stylex.props(styles.table, type.code)}>
         <caption className="sr-only">{label}</caption>
         <thead className="sr-only">
@@ -96,7 +104,7 @@ export function DiffTable({
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody ref={body}>
           {rows.map((row, index) =>
             row.type === "hunk" ? (
               <tr key={index}>

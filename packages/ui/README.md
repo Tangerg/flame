@@ -270,6 +270,9 @@ requires consumer-supplied region and column labels, including assistive text.
 Every code cell reserves the same nonselectable marker width so context, added
 and deleted source retain a common code column in both layouts. Source text and
 its original indentation remain separate from the decorative marker.
+With its region focused, Ctrl/Cmd+A selects only the rendered difference rows,
+excluding the caption, column headings and surrounding application; partial
+selection and copy remain native.
 `ScrollRegion` defaults to a `div`; `as="span"` keeps a bounded, named keyboard
 reader valid inside a heading. Both forms retain native refs, attributes and the
 same scrolling and focus contract.

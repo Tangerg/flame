@@ -1,13 +1,16 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. File-source selection, literal copying and source return remain delivered. The receiving textarea's first multiline paste still drops one trailing LF. Independent stock WKWebView reproduces it without Wails, React or input observers; tested replacements violate literal text or undo, so no workaround ships. See Native multiline insertion boundary. Compact file identity, Diff list sizing, formatted Find, gallery source geometry and new-conversation branding remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. The focused Diff reader now scopes Select All to its current difference rows in both layouts; native whole and partial copying, related-file entry and return to the original draft are qualified. See Diff source selection and native copying. File-source selection and earlier reading/brand work remain delivered. The receiving textarea's first multiline paste still drops one trailing LF, independently reproduced in stock WKWebView; no unsafe workaround ships. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/native-paste-insertion-1025`. Native insertion investigation uses
+is on `codex/diff-selection-1025`. Diff source selection and native copying are
+qualified on frozen base `7c60586f354a64ffdbdbda332dc37f50c7c321dd`; see the
+corresponding Diff section for source, return-task and verification boundaries.
+Native insertion investigation uses
 frozen base `c4adfe87fd4a0be0f10722bf7e98a8c6fe5ef2a7`; its supported-system
 counterexample and rejected alternatives are recorded below. It changes no
 product source and does not claim the receiving-input defect is repaired.
@@ -5327,6 +5330,108 @@ maps bind **1,209 final artifacts** and **12 native input files**. This Markdown
 receipt changes no qualified product source. Preserve existing brand, Composer,
 comparison, navigation and Runtime owners for the next batch; the continuous goal
 remains active.
+
+### Diff source selection and native copying
+
+The task is reply → changed-file list/filter → one difference → select/copy →
+related file or original list → source conversation → continue its draft.
+Original actual Wails focuses the named Diff reader correctly, but Cmd+A selects
+the surrounding workspace. A separate observer-free original app confirms the
+copy defect: system Paste creates a text attachment containing the sidebar,
+original replies, path/column framing and the difference. Its review exposes
+those unrelated contents directly; no contaminated diagnostic character count
+is used as the counterexample.
+
+`packages/ui/src/diff-table.tsx:84` gives its existing ScrollRegion the existing
+shared `selectAllInReader` handler and its rendered tbody through an ordinary
+React ref. Both unified and split layouts select the current difference rows,
+excluding caption, column headings and application framing. Table semantics,
+region focus and source indentation remain intact. Copy and partial selection
+stay native; this does not introduce a Git-patch serializer. There is no new
+selection state, clipboard/history owner, global listener, UI text, style,
+dependency or Runtime change. Other ScrollRegion consumers retain their own
+gallery, diagram, Plan and dialog behavior.
+
+The established shared CodeBody, file-source and recorded-output selection
+contracts provide the direct behavioral reference. Read-only ZCode GitPane and
+GitPaneChangeCard retain object identity, related-file access and reading context;
+their separate path-copy actions do not establish a code-selection policy.
+Retained Radix focus and Ace composition research guide return and hierarchy.
+The six better-* reviews cover the actual complete native task:
+
+| Domain        | Evidence and outcome                                                                                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | MEDIUM: focused reader copied unrelated material. Scoped selection repairs the task; caption/column semantics, focus, IME guards and native Copy remain. VoiceOver speech is not qualified. |
+| Layout        | Actual 320 px Dock and 561 × 525 CSS px full pane at 200%; header/actions remain reachable and keyboard horizontal reading exposes code ends.                                               |
+| Writing       | Existing object, layout, filter and return names remain; no instructional copy or extra labels.                                                                                             |
+| Typography    | Existing EN 14 px / ZH 18 px metrics, bounded filename and wrapping path remain; both column layouts retain native table text separators.                                                   |
+| Color         | Existing light/Orange and dark/custom-blue focus and text selection remain visible; contrast is not freshly measured.                                                                       |
+| UI polish     | Existing surfaces, separators, icon states and motion remain; no decorative bar, new asset or animation.                                                                                    |
+
+Typography, whitespace, hierarchy, color, motion, interaction, responsiveness and
+originality are checked against those retained principles and actual screenshots.
+Approval is scoped to this task, not an award or product-wide certification.
+
+Verification (2026-10-25):
+
+- Focused original shared baseline passes **66 tests**. Edit-only Claude CLI
+  completes in **74.52 s**, exit 0, with **19 reported turns** against a configured
+  limit of 18. Primary reviews its three allowed files, replaces a non-null ref
+  assertion with the existing guarded convention and adds the whole-copy contract.
+- Final shared UI check passes **6 files / 92 tests**, build/types/lint/format and
+  the independent packed consumer. Rebuilding the original DiffTable makes the
+  new regression fail **four cases / five pass**; candidate source and all **123
+  compiled UI artifacts** are restored byte-for-byte. Final serial gates pass in
+  **59.28 s**: UI check, plugin build, **4 Web files / 35 tests**, all **13 selected
+  Web gates**, five plugin gates, then normal **make check-native** with Desktop
+  Go test/vet/build and the supported Wails build. Duplicate `-lobjc` is a
+  non-failing linker warning. No assertion or check is weakened.
+- Final input is **5,772 non-Markdown files**, SHA-256
+  `2ccb5a36075bbabe662e1e0b20a19d808a4221c1f7bd5be94fcb9381403018bb`.
+  Only DiffTable and its new test differ among those inputs; all **11** product
+  resources retain their original bytes. Final candidate/clean assets build in
+  **2.25 / 2.09 s**, and EN/ZH/clean hosts in **6.19 / 4.77 / 4.82 s**. A later
+  **2.47 s** build only splits long passive diagnostic output to avoid native AX
+  node truncation; production inputs and the clean app remain unchanged.
+- Actual Wails EN/light/14 px/Orange uses a keyboard-confirmed **320 px Dock**.
+  The retained `reading-boundary` filter opens the long file; whole native copy
+  and paste preserve exactly **373 unified / 466 split characters** and native
+  table separators. Each reader Escape returns to the current filtered row. Native Undo
+  retains the previous 394-character draft before the split paste. A real mouse
+  drag copies only **`const rail` / ten characters**. Clearing the filter and
+  entering `runtime/protocol/session.go` creates the correct new 293-character
+  split selection, including tabs. List return and Dock collapse retain input
+  ID 2; confirmed end-caret continuation produces the exact **881-character** draft.
+- ZH/dark/18 px/custom-blue/motion-off uses native Left arrangement, twenty native
+  Zoom In commands and actual fixture-sidebar collapse: **561 × 525 CSS px / 200%**.
+  The real conversation Review action enters full-width material. Scoped selection
+  and native Copy retain all 373 characters; list Back then source Back restores
+  that exact Review opener. Confirmed end caret, system Paste and continuation
+  retain input ID 2 and the exact **386-character** draft. Actual Size restores
+  **1122 × 1051** before Quit.
+- The independent clean app contains no observation code. Its focused reader
+  supports native keyboard horizontal reading to code ends, scoped Select All,
+  system Copy and list return. Raw native editable AX text verifies the exact
+  **393-character** copied draft and **403-character** continuation. A single
+  serialization LF is calibrated from the known pre-copy draft and excluded
+  consistently; no private DOM identity is inferred.
+
+Limits: comparisons use canonical deterministic providers and real Wails views,
+not live Git/filesystem writes, provider execution or Send. VoiceOver, OS IME,
+RTL and other-platform GUIs are not qualified. No browser visual suite or
+performance benchmark runs. Initial diagnostics recursively selected their own
+text; a later long AX node was truncated. Those counts are excluded and replaced
+by clean original evidence and length-checked chunks. An End-key probe inserted
+the exact split text at observed caret 321; it is not end-append evidence. Native
+Undo and confirmed Cmd+Down qualify the later append. A missing AX focus-summary
+read fails before input. Mouse-wheel probes show no visible horizontal movement
+and are not passing displacement evidence; the clean keyboard route visibly
+reveals code ends without changing scroll ownership. The independent receiving
+textarea limitation remains recorded above.
+
+**Approve** for the inspected selection/copy and complete source-return task.
+Preserve these reader, navigation, draft and native edit owners while continuing
+from fresh evidence; the continuous goal remains active.
 
 ## Retained workspace and result views
 
