@@ -1,8 +1,17 @@
 import * as stylex from "@stylexjs/stylex";
 import { useMemo } from "react";
-import { ShikiCodeBlock } from "@/ui/index";
+import { Pressable, ShikiCodeBlock } from "@/ui/index";
 import { useT } from "@/lib/i18n/index";
+import { ImagePreviewGallery } from "@/features/chat/message/ui/ImagePreviewGallery";
 const sa = stylex.create({
+  trigger: {
+    display: "block",
+    width: "100%",
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    padding: 0,
+    cursor: "zoom-in",
+  },
   preview: {
     display: "block",
     maxHeight: "calc(var(--spacing) * 96)",
@@ -21,7 +30,21 @@ export function SvgArtifact({ code, lang }: { code: string; lang: string }) {
       lang={lang}
       code={code}
       previewLabel={label}
-      preview={<img src={src} alt={label} {...stylex.props(sa.preview)} />}
+      preview={
+        <ImagePreviewGallery
+          item={{ src, alt: label }}
+          trigger={(previewProps) => (
+            <Pressable
+              type="button"
+              aria-label={label}
+              {...previewProps}
+              {...stylex.props(sa.trigger)}
+            >
+              <img src={src} alt={label} {...stylex.props(sa.preview)} />
+            </Pressable>
+          )}
+        />
+      }
     />
   );
 }

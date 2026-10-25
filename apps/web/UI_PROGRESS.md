@@ -1,18 +1,19 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Recorded Tool failures now preserve their original diagnostic line breaks, blank lines and indentation in standalone and grouped rows. Native EN, ZH 18 px/200% and uninstrumented DE custom-theme reading/arguments/file/return tasks qualify the change. See Recorded Tool failure layout. Provider selection reads, background-task reading and the stronger optional paper material remain delivered.
+Updated: 2026-10-26. Generated SVG fences now open the shared reader with zoom, pan and reply-scoped selection. Incoming focus reveals its source while preserving pointer activation. Fixed-geometry EN, ZH 200% and clean DE tasks pass; in-modal native geometry/pixel agreement remains an explicit follow-up under Generated SVG reading and source return.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/tool-failure-reading-1026`. Recorded Tool failure layout is qualified
-on frozen base `eb75daac0541114f16310037d354e53e4086dd06`; see Recorded Tool
-failure layout for the native counterexample, shared owner and verification limits.
-Implementation `568848e551bd569ea48443b9a1b1ec5bc228d855` is published to remote main;
-independent publication checks observe its exact hash and a clean 0/0 checkout.
-All owned acceptance resources are retired; see the receipt below. The primary parallel checkout remains outside this batch.
+is on `codex/svg-reading-1026`. Generated SVG reading and source return is
+qualified on frozen base `0352755d552526824244668f1d9ee88c2badd027` for the fixed-geometry
+native tasks below. The cross-geometry native pixel boundary remains open.
+Publication and resource retirement are recorded in that section. The primary
+parallel checkout remains outside this batch. Recorded Tool failure implementation
+`568848e551bd569ea48443b9a1b1ec5bc228d855` and receipt
+`0352755d552526824244668f1d9ee88c2badd027` remain published and retired.
 The user’s latest instruction stops further Claude CLI calls; edits and verification
 are owned directly by Codex. Provider selection implementation
 `02f697b62affd6c62c0d676771a037750958eee5` and receipt
@@ -1713,6 +1714,107 @@ browser download behavior.
   The private archive retains 67 UTF-8 evidence files and 21 capture hashes outside
   the repository. No migration is needed. That earlier checkpoint ended at the user's
   requested pause; the current explicit resume governs subsequent work.
+
+### Generated SVG reading and source return
+
+Generated SVG fences open the existing image reader. `SvgArtifact.tsx` retains
+its inert data-URI image, preview cap, code caption and complete UTF-8 code copy;
+Pressable supplies the entry and ImagePreviewGallery owns reply-scoped order,
+captured selection, zoom, pan, save and close. Code changes retain the opening's
+image until reopening captures the new source. Other replies remain separate.
+
+The shared `ui/agent/readingFollow.ts` reveals incoming keyboard/programmatic
+focus within current Composer clearance. Installed Base UI restores modal focus
+with preventScroll; that alone cannot reveal a displaced source. Document focus
+retires an activation press when it leaves the reader. Pointer focus retains its
+pressed position. Oversized focus retains its visible start through later reflow;
+integer start alignment rounds toward visible content. Main and selected-child
+readers keep their existing follow/visibility owners. No focus call, timer,
+queued-focus delivery or second follow cache is added.
+
+Read-only ZCode ImagePreviewDialog and its ConversationRowView caller inform the
+bounded reader; installed Base UI FloatingFocusManager establishes the actual
+close/focus contract. Existing Radix, HeroUI, ArcUI, ChatGPT and Ace research is
+continued through Flame components. Relevant better-layout, better-typography,
+better-writing and better-accessibility guidance applies to this complete task.
+
+Verification on frozen base `0352755d552526824244668f1d9ee88c2badd027`:
+
+- Original related baseline: **4 files / 65 tests** pass. Actual Wails renders
+  the 2400 × 1600, 48-cell captured SVG at a 384 px preview cap with no enlarge
+  trigger; click/Return leave the reader absent. Six added SVG cases reject
+  that missing entry. Three incoming-focus regressions reject the original
+  shared owner; later oversized-reflow and virtual-press cases each reject
+  their preceding candidate.
+- Final serial validation passes **10 files / 139 tests**, all **16 selected Web
+  gates** and `make check-native` in **52.03 s**, including final production and
+  private assets. Coverage includes Markdown, image/diagram/lightbox, geometry,
+  MessageStream, SubagentsPanel and MessageTranscript. It checks four SVG fence
+  labels, inert rendering, reply-scoped order, literal code copy, captured-source
+  lifetime, return/reflow, quantized oversized targets and press retirement.
+  Existing gesture, later-draft and hidden-reader cases remain passing.
+- A wrong test action label and conditional-expect lint diagnostics were
+  corrected. A queued-focus experiment did not improve the native boundary
+  below and was removed with its experiment-specific scheduler tests. Existing
+  harness/loader/link warnings remain in evidence; final lint has zero warnings
+  or errors. A final inventory prefix guard failed before publication; correct
+  relative keys were recovered from the recorded hashes and independently
+  matched against every original artifact byte. No source or check was skipped.
+- Final actual Wails beta.34 EN/light/14 px/Orange at **1440 × 900**: generated
+  SVG **3 / 3** → image 400% → native drag/local Down/Right → Inline detail
+  **2 / 3** → SVG at 100% → Escape. Original source button ID 4 returns, with
+  unchanged image ID 3, matching raw source/copy and a 776 × 384 preview at y 71.
+  Return/pointer Close work again. Original Composer ID 2 continues exactly
+  `Review the captured diagram — continue`.
+- Final ZH/dark/18 px/custom blue/motion off starts in the native left-half
+  window at page **200%**, **561 × 475 CSS px**. The same 400%/pan/selection task
+  restores source ID 4, 495 × 330 at y **70.02**. Tab/Return Close and reopening
+  retain source and Composer ID 2; its exact draft becomes `继续核对节点图，再继续`.
+- A final DE/18 px/warm custom canvas/purple scene has native chrome and **no
+  observer DOM, timers or diagnostic frame loop**. Starting at narrow/page-200%
+  geometry, the same task visibly returns the focused SVG start. Reopen/pointer
+  Close work; the draft continues to `Diagramm lesen — weiter`. This qualifies
+  AX and pixels, not private DOM identities. ZH and DE restore Actual Size before
+  Quit. The final 5,782 non-Markdown inputs have SHA-256
+  `1acc634d51131354c71c35cba056bd20d8f26f5a32b86ca2f37d2d744e15f41f`;
+  all 1,794 compiled assets, 32 native inputs, eight module artifacts, three
+  references and 11 product resources match through acceptance.
+
+**Remaining native geometry boundary**
+
+Changing window size and native page zoom while the reader is already open is
+**not fully qualified**. In DE, closing restores the focused SVG and draft but
+its captured pixels sit below the reported DOM position. A passive trace reports
+source y 68.52 while its _same screenshot_ still shows a blank upstream diagram
+and lower preview. This occurs with and without probes; timers do not explain
+it. The independently qualified fixed-geometry clean path above remains valid.
+Do not claim this cross-geometry discrepancy repaired. Continue with a focused
+native layout/paint investigation using the captured counterexample.
+
+These are production presentation tasks with deterministic data and only an
+expanded captured SVG payload. Live provider Send/Runtime image production,
+native Save/clipboard permissions, VoiceOver speech, OS IME, RTL, fresh child GUI
+geometry and other-platform GUIs are unverified here. No persisted-data/protocol
+migration is required. Browser visual/performance suites, Claude CLI and
+subagents were not invoked.
+
+| Check             | Scoped result                                                                   |
+| ----------------- | ------------------------------------------------------------------------------- |
+| Typography        | Fine diagram labels become readable through shared zoom at 14/18 px.            |
+| Whitespace        | Existing reply width, preview cap and bounded reader remain coherent.           |
+| Hierarchy         | Source/code, identity, selection count and close have distinct roles.           |
+| Color             | Existing Orange/blue/purple states; no new palette or contrast claim.           |
+| Motion            | Existing full/reduced-motion behavior remains.                                  |
+| Micro-interaction | Mouse, local/gallery keys, close and draft continuation pass at fixed geometry. |
+| Responsive        | Ordinary/page-200% paths pass; in-modal geometry remains open above.            |
+| Originality       | Flame components/brand remain; no ornamental card treatment is added.           |
+
+This is **progress**, not whole-product or award-tier completion. Preserve the
+qualified SVG entry and continue the native geometry investigation after delivery.
+
+**Delivery receipt**
+
+Publication and exact owned resource retirement are pending.
 
 ### Image gallery selection and source geometry
 

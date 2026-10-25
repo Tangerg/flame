@@ -60,6 +60,14 @@ in both standalone and grouped rows, with long values wrapping inside the readin
 column. Captured text, status, disclosure, actions and source-return ownership stay
 with their existing owners.
 
+Generated SVG fences stay inert images inside their code preview and open through
+the shared image gallery. The gallery keeps source order within the reply, owns
+zoom/pan and source return, and captures the image set for each opening. Code
+copying retains the complete original SVG text.
+Transcript viewports reveal returned keyboard/programmatic focus against the current
+Composer clearance after window or page-zoom changes. Pointer focus keeps its
+pressed position; modal completion continues to own focus restoration.
+
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested
 submenus keep their primitive's relationship to the controlling item instead of

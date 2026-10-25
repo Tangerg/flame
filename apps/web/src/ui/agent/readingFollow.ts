@@ -19,9 +19,11 @@ function withinSafeReading(target: Element, viewport: HTMLElement) {
       bottom = Math.min(bottom, clip.bottom);
     }
   }
-  return (
-    bottom > top && bounds.top >= top - EDGE_TOLERANCE && bounds.bottom <= bottom + EDGE_TOLERANCE
-  );
+  if (bottom <= top || bounds.top < top - EDGE_TOLERANCE) return false;
+  // Start alignment rounds toward visible content at integer native scroll offsets.
+  return bounds.height > bottom - top
+    ? bounds.top < top + 1
+    : bounds.bottom <= bottom + EDGE_TOLERANCE;
 }
 
 export function useReadingFocusVisibility(
@@ -39,6 +41,7 @@ export function useReadingFocusVisibility(
     if (!attached || !viewport || !content) return;
     let frame = safeReadingBounds(viewport);
     let witness: Element | null = null;
+    let pressedTarget: Element | null = null;
     const remember = () => {
       frame = safeReadingBounds(viewport);
       const active = content.ownerDocument.activeElement;
@@ -81,27 +84,57 @@ export function useReadingFocusVisibility(
       const bounds = target.getBoundingClientRect();
       const { top, bottom } = frame;
       if (bottom <= top) return;
-      const delta =
-        bounds.height > bottom - top || bounds.top < top
-          ? bounds.top - top
-          : Math.max(0, bounds.bottom - bottom);
+      const alignStart = bounds.height > bottom - top || bounds.top < top;
+      const delta = alignStart ? bounds.top - top : Math.max(0, bounds.bottom - bottom);
       if (delta === 0) return;
       if (state.isAtBottom) stopScroll();
       viewport.scrollBy({
-        top: delta > 0 ? Math.ceil(delta) : Math.floor(delta),
+        top: alignStart ? Math.floor(delta) : Math.ceil(delta),
         behavior: "instant",
       });
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      pressedTarget = event.target instanceof Element ? event.target : null;
+    };
+    const clearPress = () => {
+      pressedTarget = null;
+    };
+    const onFocus = () => {
+      const active = content.ownerDocument.activeElement;
+      const pressed = pressedTarget;
+      clearPress();
+      if (!active || active === content || !content.contains(active)) {
+        retire();
+        return;
+      }
+      const pointerFocus =
+        pressed &&
+        (active.contains(pressed) ||
+          pressed.closest("label, [data-focus-proxy]")?.contains(active));
+      // Modal return focus suppresses native scrolling. The reader owns its reserved clearance,
+      // but must not move a pointer target before the activating press completes.
+      if (!pointerFocus) {
+        witness = active;
+        reveal();
+      }
+      remember();
     };
     remember();
     const resize = new ResizeObserver(reveal);
     resize.observe(viewport);
     resize.observe(content);
-    content.addEventListener("focusin", remember);
+    content.ownerDocument.addEventListener("focusin", onFocus);
+    content.addEventListener("pointerdown", onPointerDown, true);
+    content.ownerDocument.addEventListener("pointerup", clearPress, true);
+    content.ownerDocument.addEventListener("pointercancel", clearPress, true);
     viewport.addEventListener("scroll", onScroll, { passive: true, capture: true });
     viewport.addEventListener("wheel", retire, { passive: true, capture: true });
     return () => {
       resize.disconnect();
-      content.removeEventListener("focusin", remember);
+      content.ownerDocument.removeEventListener("focusin", onFocus);
+      content.removeEventListener("pointerdown", onPointerDown, true);
+      content.ownerDocument.removeEventListener("pointerup", clearPress, true);
+      content.ownerDocument.removeEventListener("pointercancel", clearPress, true);
       viewport.removeEventListener("scroll", onScroll, true);
       viewport.removeEventListener("wheel", retire, true);
     };

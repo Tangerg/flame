@@ -195,6 +195,82 @@ describe("reading focus geometry", () => {
     },
   );
 
+  it.each([
+    { height: 24, top: 136, bottom: 160 },
+    { height: 330, top: 20, bottom: 350 },
+  ])(
+    "reveals returned focus after geometry changed outside the reader ($height px target)",
+    ({ height, top, bottom }) => {
+      const s = scenario();
+      act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+      s.shape.height = 240;
+      s.shape.top = 350;
+      s.shape.targetHeight = height;
+      s.resize();
+      expect(s.order).toEqual([]);
+
+      act(() => s.target.focus({ preventScroll: true }));
+      expect(s.bounds().top).toBe(top);
+      expect(s.bounds().bottom).toBe(bottom);
+      expect(document.activeElement).toBe(s.target);
+      expect(s.order).toEqual(["target revealed"]);
+
+      fireEvent.scroll(s.viewport);
+      s.shape.top += 40;
+      s.resize(s.content);
+      expect(s.bounds().top).toBe(top);
+      expect(s.bounds().bottom).toBe(bottom);
+      expect(document.activeElement).toBe(s.target);
+    },
+  );
+
+  it("keeps pointer focus at the pressed position and reveals a later programmatic return", () => {
+    const s = scenario();
+    const later = screen.getByRole("textbox", { name: "Later draft" });
+    act(() => later.focus());
+    s.shape.height = 240;
+    s.shape.top = 150;
+    s.shape.targetHeight = 100;
+    fireEvent.pointerDown(s.target);
+    act(() => s.target.focus());
+    expect(s.order).toEqual([]);
+    expect(s.viewport.scrollTop).toBe(0);
+    fireEvent.pointerUp(s.target);
+
+    act(() => later.focus());
+    act(() => s.target.focus({ preventScroll: true }));
+    expect(s.bounds().bottom).toBeLessThanOrEqual(160);
+    expect(s.order).toEqual(["target revealed"]);
+  });
+
+  it("keeps the start of oversized focus visible through quantized scrolling and later reflow", () => {
+    const s = scenario();
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.shape.height = 240;
+    s.shape.top = 350.75;
+    s.shape.targetHeight = 330;
+    act(() => s.target.focus({ preventScroll: true }));
+    expect(s.bounds().top).toBe(20.75);
+    fireEvent.scroll(s.viewport);
+    s.shape.top += 40.25;
+    s.resize(s.content);
+    expect(s.bounds().top).toBeGreaterThanOrEqual(20);
+    expect(s.bounds().top).toBeLessThan(21);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("retires a virtual press when focus leaves the reader before pointerup", () => {
+    const s = scenario();
+    fireEvent.pointerDown(s.target);
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.shape.height = 240;
+    s.shape.top = 350;
+    act(() => s.target.focus({ preventScroll: true }));
+    expect(s.bounds().bottom).toBeLessThanOrEqual(160);
+    expect(s.order).toEqual(["target revealed"]);
+    expect(document.activeElement).toBe(s.target);
+  });
+
   it("keeps visible focus and an ordinary content append in place", () => {
     const s = scenario();
     s.resize(s.content);
