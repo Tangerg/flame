@@ -9,8 +9,9 @@ This user-requested file is the maintained progress and handoff record for the d
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/schedule-filter-recovery-1025`. Schedules filtered-empty recovery is
 qualified on frozen base `0e111df3568389df7f254594975ad41531931e92`; see its
-section below for the owner, complete tasks and coverage boundaries. Publication
-and owned evidence retirement are pending.
+section below for the owner, complete tasks and coverage boundaries. Implementation
+`afd91ce90b4bbdb8a4a8652e432dd10cf7df3d2c` is published to remote main, and its
+owned evidence retirement is complete.
 Earlier hosted identity and reading density are
 qualified on frozen base `0ddbb425d0cf388ac28b4ccb285ee1bcf101c605`; see Hosted
 titles and reading density for the contract, complete tasks and verification
@@ -1934,10 +1935,22 @@ Verification (2026-10-25):
   execution, Schedule mutations and Send are **not run**. Pending/failure
   recovery is covered by held component reads, not native backend fault injection.
 
-All four native apps have quit.
-Publication and final output/cache/evidence retirement are pending; preserve
-the accepted final ESM rather than restoring its old resource bytes. Continue
-from fresh material or management-task evidence after delivery.
+Implementation `afd91ce90b4bbdb8a4a8652e432dd10cf7df3d2c` is published to remote
+main after one interval fetch confirms the frozen base is still current. All
+**29** recorded PIDs are dead and all **four** apps are unregistered. Cleanup
+removes **7** new checkout outputs, **8** owned Library paths and **4** bundle
+temp paths; it restores the original native-check binary. All **36** output
+presence baselines, exact inventories of the **three** original files and all
+**11** accepted resources are independently verified before and after retirement.
+The exact root `/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-schedule-filter-1025-ueOTzb` is absent.
+The independently round-trip-verified in-memory archive contains **138 UTF-8
+files** and **8 JPEG screenshot digests**, gzip SHA-256
+`cc2596e44c549b9623d92fc624ea26d4d3d0905b10a4f8e8f53f34c7eb31f4e9`. Final artifact maps cover the
+**1,209** accepted compiled/proxy/binary files and **12** native inputs. No
+owned orphan process remains. Primary user data, parallel work and read-only
+references remain preserved. This cleanup receipt changes no qualified product
+source. Continue from fresh material or management-task evidence; keep the
+continuous goal active.
 
 Memory authoring remains one local non-modal task over its retained catalog.
 `plugins/memory/src/component.tsx` shows the captured scope and stable record ID
