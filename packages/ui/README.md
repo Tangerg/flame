@@ -58,9 +58,15 @@ host: its canvas and sticky-control boundary extend through the complete content
 projects their height on its root, and uses it to keep focused content and anchors
 clear of the controls; wrapped controls update through `ResizeObserver`.
 Body focus also respects the host's clipped viewport. A wrapping native label
-and its focused control form one reading unit when they fit below the sticky
-controls and disclosure header. Taller fields still reveal the focused control's
-beginning after native autofocus or a control-zone resize.
+or a container marked `data-focus-unit` keeps its label and focused control
+together when the complete unit fits below the sticky controls and disclosure
+header. `FormGroup` and the application's `SettingRow` declare this boundary at
+their existing roots. The nearest unit wins; taller units still reveal the
+focused control's beginning after native autofocus or a control-zone resize.
+Pointer-caused focus leaves the pressed control in place so activation can
+finish before any row reveal. The body consumes the pressed target once,
+including wrapping labels and slider focus proxies; unrelated autofocus still
+reveals its own unit. Leaving the body clears an unconsumed press.
 `PanelHeader` owns the page title, description and contextual navigation.
 Its title size can use the smaller existing display roles for workbench views.
 Page actions belong to the persistent `Panel.controls` zone, alongside filters.

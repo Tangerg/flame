@@ -1,19 +1,23 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Appearance now uses direct labels and controls, with redundant descriptions and the duplicate Language heading removed. Section names remain searchable. Native EN, ZH 18 px/200% and an uninstrumented DE custom-base scene qualify the exercised task; ZH content height is about 22.4% shorter. The stronger optional paper material remains delivered. See Appearance labels and search and Paper texture and reading surfaces.
+Updated: 2026-10-26. Shared Panel focus now keeps fitting settings rows and form groups readable as a whole. Pointer-caused focus keeps the pressed control in place, preserving the first click. Final native EN, ZH 18 px/200% and an uninstrumented DE custom-base scene qualify the exercised tasks. Direct Appearance labels/search and the stronger optional paper material remain delivered. See Settings focus and pointer activation, Appearance labels and search, and Paper texture and reading surfaces.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/appearance-layout-1025`. Appearance labels/search are qualified on
-frozen base `35c70c0a6e7da4314e8c5c39e525dcc314412279`; see that product section for
-owners, before/after geometry, native tasks and limits. Implementation
+is on `codex/settings-focus-row-1025`. Settings focus/pointer activation are
+qualified on frozen base `d20d5b3dbb67d1240fe877e604e7460b6a6c2104`; see that
+product section for ownership, regressions, final native tasks and limits.
+Publication and resource retirement follow qualification. Appearance labels/search
+remain qualified on frozen base `35c70c0a6e7da4314e8c5c39e525dcc314412279`.
+Implementation
 `40cbae863434ef53629071cfe75ccf86c46297b6` is published to remote main, and
 exact resource retirement is complete. The single publication-time fetch finds
-no incoming delta from the frozen base. The next observed issue
-is whole-row visibility when a settings control receives native focus at 200%.
+no incoming delta from its frozen base. Its observed whole-row focus issue is
+resolved by Settings focus and pointer activation. The next observed scope is
+the MCP editor's repeated introductory/helper copy and task hierarchy at 200%.
 Earlier paper implementation `3c0c65e1d9b44a44600022bd56d46c1293a01ee9` and
 receipt `35c70c0a6e7da4314e8c5c39e525dcc314412279` are published to remote main,
 with owned resources retired. Its stronger material, palette bounds, shared
@@ -916,11 +920,12 @@ retained in the private native-before evidence, so no second baseline app is
 rebuilt. An initial outer-container wheel attempt in the clean scene does not
 advance and supplies no wheel claim; accepted paths use observed native focus.
 
-The clean 200% review records one next, **MEDIUM**, issue: focusing a settings
+The clean 200% review recorded one **MEDIUM** issue: focusing a settings
 control can leave its row label above the clipped body's top edge. The control
 is named and reachable, and the label remains available by scrolling; the whole
-row is not always revealed together. Trace SettingRow and SettingsPaneFrame's
-focus/scroll responsibility before changing it. This batch qualifies direct
+row was not always revealed together. The following Settings focus and pointer
+activation section records its shared-owner repair and final qualification.
+This earlier batch qualifies direct
 labels/search and the exercised paths, not every focus-reveal case or award-level
 completion of the whole product.
 
@@ -946,7 +951,7 @@ Final integrity freezes **5,775** non-Markdown source inputs, SHA-256
 `cb774ad73b692f2a6439073e4dcf797b1f65df7231a1247034142781dae883f9`, **1,205**
 artifact hashes, **11** native construction-input hashes and **11** unchanged
 portable resources. Scoped result: **Approve** for this label/search refinement
-and exercised settings task, with the next focus-row finding retained above.
+and exercised settings task; the focus-row finding is resolved below.
 Publication and exact resource retirement are recorded below.
 
 Delivery: implementation `40cbae863434ef53629071cfe75ccf86c46297b6` is pushed to remote
@@ -977,8 +982,135 @@ VoiceOver speech, full OS IME, pseudo-localization, RTL/forced-colors GUI,
 other-platform GUIs, arbitrary palettes and live Runtime/provider work are not
 newly verified. Production views use canonical deterministic read fixtures;
 no Runtime mutation or saved business data is exercised. Font-menu scroll-following
-and synthetic slider dragging are not newly qualified. Continue from the observed
-focus-row issue; do not reopen the delivered paper material or preferences.
+and synthetic slider dragging are not newly qualified by that earlier batch.
+Do not reopen the delivered paper material or preferences.
+
+### Settings focus and pointer activation
+
+**Behavior and ownership**
+
+At 18 px/200%, native focus could reveal a settings control while leaving its
+visible label above the clipped body. `Panel.keepBodyFocusVisible` recognized
+wrapping native labels, but `SettingRow` and `FormGroup` compose labels and
+controls in a div. Adding local scroll handlers would duplicate the shared
+geometry owner.
+
+Those existing roots now declare `data-focus-unit`. Panel selects the nearest
+native label or explicit unit and reveals the whole unit when it fits below the
+actual clipped viewport, sticky controls and disclosure header. Taller units
+retain the existing focused-control fallback. Shared scroll margins use the same
+clearance tokens. The application/group declares the reading boundary; Panel
+alone decides visibility. There is no preference, semantic label, ARIA, Runtime,
+dependency or public API change.
+
+Native pointer QA rejected the first candidate: revealing a row during pointer
+focus moved the font trigger between pointerdown and pointerup, swallowing its
+first click. Panel now retains only the pending pressed Element and consumes it
+on the next focus event. A press on that control, its child, wrapping native label
+or existing slider focus proxy leaves activation at the pressed position.
+Unrelated programmatic autofocus still reveals its own field; leaving the body
+clears an unconsumed press. Keyboard/programmatic reveal and geometry changes
+retain the existing shared path. No global modality owner, timer, retry, pointer
+capture or prevented native event is added.
+
+This follows better-accessibility's visible-focus/200% guidance and
+better-layout's complete reading groups, retaining the existing component and
+focus-model research above. The row-label finding is a reading-context problem;
+the original control itself was named and reachable. It is not presented as a
+newly measured WCAG failure or whole-product award qualification. Typography,
+spacing, colors, motion and skins stay with their existing owners.
+
+| Severity                       | Location                                              | Before                                                                                       | After                                                                               | Why                                                                |
+| ------------------------------ | ----------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| MEDIUM                         | ui/settings/SettingRow.tsx; packages/ui/src/panel.tsx | Focus can expose a control without its visible label                                         | Fitting label/control units reveal together; tall units retain the control fallback | Preserve the current decision's reading context at large type/zoom |
+| MEDIUM                         | packages/ui/src/panel.tsx, FormGroup                  | Composite form groups lack the same reveal boundary                                          | Shared FormGroup declares its existing complete reading unit                        | Keep a transport choice and its group name together                |
+| HIGH, resolved before delivery | packages/ui/src/panel.tsx                             | The initial candidate moves a trigger during pointer activation and consumes the first click | Causally related pointer focus keeps the pressed position; keyboard reveal remains  | A visible menu trigger must respond to its first click             |
+
+**Regressions and checks**
+
+Baseline shared UI passes **6 files / 97 tests** plus the independent packed
+consumer; the initial Web scope passes **2 files / 10 tests**. Before the first
+repair, the new complete-unit regressions fail **6** and pass **4** across UI/Web.
+The first candidate passes shared **105** and Web **34**, but the later native
+pointer counterexample disqualifies it. New pointer regressions against that
+unchanged built candidate fail **6** and pass **12**. A temporary ambiguous test
+query is corrected before that accepted counterexample run; its failure is retained
+separately rather than counted as product evidence.
+
+Final shared UI check passes **7 files / 111 tests**, including the real built
+distribution and independent offline packed consumer. The focused Web scope
+passes **6 files / 36 tests**: settings rows/search, paper preferences, MCP form,
+installed-view continuity and installed components. Regressions cover nearest
+native/explicit groups, both clipped edges, visible/tall units, sticky clearance,
+direct/child/label/proxy presses, different autofocus and stale presses after
+leaving the body. The real SettingRow with Slider/Segmented covers both input
+causes. All **16** selected Web gates, **5** plugin gates, portable resource build
+and supported **make check-native** pass serially. All **11** portable ESM hashes
+remain identical. The final combined check/asset run takes **59.81 s**; existing
+linker-target/library and chunk-size warnings are nonfatal.
+
+The previously recorded unrelated `check:shorthand` failure in
+`apps/web/src/ui/agent/dock-catalog.tsx:14` is byte-identical to the frozen base
+and is not rerun or claimed passed here. No browser visual suite or performance
+benchmark runs. The two bounded Read/Edit/Write-only Claude CLI tasks finish in
+**27.20 s** and **29.86 s**. Primary owns the regressions, actual diff review,
+checks, native acceptance and delivery; CLI reports are not acceptance evidence.
+
+**Final native task**
+
+Real Wails **v3.0.0-beta.34** hosts serve the final production-view assets with
+isolated data directories. CUA supplies all native input. The unchanged Go hosts
+serve the rebuilt asset directories; no browser screenshot substitutes for the
+native results.
+
+- EN/light/14 px/Orange/Xuan 3: MCP Add opens the real RecordForm. Native Left
+  and twenty Zoom In actions reach **561 × 525 CSS px / 200%**, document width
+  **561**, zero observed errors. Transport changes stdio/HTTP/stdio. Tab to
+  Command and reverse Tab reveal the complete Transport group at
+  **261.796875..321.296875**, inside **237.796875..525.5**. Native labels remain
+  readable. Tab reaches Cancel; Return restores the exact Add server opener.
+  No Save or Test runs. Actual Size, settings/Appearance/return and the same
+  Composer **2** continue Focus reading to Focus reading continued, with zero
+  observed errors.
+- ZH/dark/18 px/pale accent/contrast 100/motion Off/Cotton 3: the same native
+  200% scene qualifies **ten complete rows**, from strength through language.
+  The strength row is **261.796875..352.796875**; all later row bounds fit the
+  actual clipped viewport. All four font lists open and Escape restores their
+  triggers. Strength changes 3/4/3 and smoothing off/on by native keys. No
+  horizontal document overflow or observed errors occur. Actual Size restores
+  **1122 × 1051** before Quit.
+- A separate uninstrumented DE/18 px/custom warm base/Purple/motion Off build
+  qualifies long labels at native 200%. With the UI font label clipped and its
+  trigger still visible, the first physical click at **620,1020** opens the
+  menu without moving it first; Escape returns focus. Keyboard entry reveals
+  the full font/strength rows. A pointer press leaves the partly visible slider
+  in position; track click changes strength **3 → 4**, and Left restores **3**.
+  A CUA drag attempt leaves value **3** and is expressly **not** a successful
+  drag qualification. All four font lists open/return. Actual Size, Cmd+Comma,
+  close and Settings focus reading → Settings focus reading continued pass.
+  No DOM identity/geometry claim comes from this clean build. A fixture state
+  button only receives focus and is excluded as settings-entry evidence.
+
+Font sizes expose an expanded native combo/list, while font families expose a
+named menu; an initial overly narrow native assertion is corrected against those
+observed semantics. The first candidate's pointer failure and its subsequent
+countercheck remain retained evidence, not part of the final pass. All three
+final apps restore Actual Size and Quit.
+
+Final integrity freezes **5,777** non-Markdown source inputs, SHA-256
+`aa57e36feaab300a3d4e6ba47675031caa7a5ca2699f04d3cbf26ff7b3f46c9b`,
+**1,205** artifact hashes and **11** native construction inputs, with **11**
+unchanged portable resources. The source/artifact maps are preserved separately
+for the rejected first candidate and final input. Scoped result: **Approve** for
+the complete-unit/pointer contracts and exercised task paths.
+
+VoiceOver speech, full OS IME, RTL/forced-colors GUI, other-platform GUI, arbitrary
+palettes, successful synthetic dragging and live Runtime/provider work are not
+newly verified. Production views use deterministic canonical reads; no saved
+MCP server or business mutation occurs. Next inspect the MCP editor's repeated
+introductory/helper copy and task hierarchy, already observed at 200%, while
+preserving its explicit save-effect, validation and recovery contracts. Publication
+and exact owned-resource retirement are recorded after delivery.
 
 ### Paper texture and reading surfaces
 

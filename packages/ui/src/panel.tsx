@@ -278,6 +278,7 @@ export function Panel({
   const panelRef = useRef<HTMLElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const pressedTarget = useRef<Element | null>(null);
   const hasControls = Boolean(controls);
   const keepBodyFocusVisible = useCallback((target: Element | null) => {
     const panel = panelRef.current;
@@ -309,15 +310,17 @@ export function Panel({
         controls?.getBoundingClientRect().bottom ?? visibleTop,
       ) + stickyHeaderHeight;
     let focusUnit = target;
-    const label = target.closest("label");
-    if (label && body.contains(label)) {
+    const readingUnit = target.closest("label, [data-focus-unit]");
+    if (readingUnit && body.contains(readingUnit)) {
       const scrollMargin =
-        Number.parseFloat(getComputedStyle(label).scrollMarginBlockStart) || 0;
+        Number.parseFloat(
+          getComputedStyle(readingUnit).scrollMarginBlockStart,
+        ) || 0;
       if (
-        label.getBoundingClientRect().height <=
+        readingUnit.getBoundingClientRect().height <=
         visibleBottom - Math.max(focusTop, visibleTop + scrollMargin)
       ) {
-        focusUnit = label;
+        focusUnit = readingUnit;
       }
     }
     const bounds = focusUnit.getBoundingClientRect();
@@ -381,7 +384,34 @@ export function Panel({
           <div
             ref={bodyRef}
             data-slot="panel-body"
-            onFocus={(event) => keepBodyFocusVisible(event.target)}
+            onPointerDownCapture={(event) => {
+              pressedTarget.current =
+                event.target instanceof Element ? event.target : null;
+            }}
+            onFocus={(event) => {
+              const pressed = pressedTarget.current;
+              pressedTarget.current = null;
+              // Scrolling before pointerup would move the control away from the
+              // pressed position and swallow the click it is activating.
+              if (
+                pressed &&
+                (event.target.contains(pressed) ||
+                  pressed
+                    .closest("label, [data-focus-proxy]")
+                    ?.contains(event.target))
+              ) {
+                return;
+              }
+              keepBodyFocusVisible(event.target);
+            }}
+            onBlurCapture={(event) => {
+              const next = event.relatedTarget;
+              if (!(
+                next instanceof Node && event.currentTarget.contains(next)
+              )) {
+                pressedTarget.current = null;
+              }
+            }}
             {...stylex.props(styles.body)}
           >
             <PanelLayoutContext value={panelLayout}>
@@ -718,7 +748,12 @@ export function FormGroup({
 }) {
   const labelId = useId();
   return (
-    <div role="group" aria-labelledby={labelId} {...stylex.props(styles.field)}>
+    <div
+      role="group"
+      aria-labelledby={labelId}
+      data-focus-unit=""
+      {...stylex.props(styles.field)}
+    >
       <span id={labelId} {...stylex.props(styles.fieldLabel, type.uiSm)}>
         {label}
       </span>

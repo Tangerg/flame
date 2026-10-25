@@ -29,6 +29,12 @@ control labels, selected values and error feedback carry the task; the page does
 not repeat explanatory introductions or one-line descriptions. Section headings
 remain settings search terms through their existing catalog keys.
 
+`SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
+revealing that complete unit inside the clipped host when it fits; taller rows
+retain the focused control as the reading target.
+Pointer activation keeps the control at its pressed position; keyboard and
+programmatic focus retain the complete reading context.
+
 The existing appearance preference owns optional Xuan paper, cotton paper and
 fine-grain backgrounds with a retained strength from 1 to 5. The document painter
 projects a static, seamless SVG image through `--surface-texture`; shell, reading

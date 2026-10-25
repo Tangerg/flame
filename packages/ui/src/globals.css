@@ -656,7 +656,8 @@ html:not([data-pointer]) [data-focus-proxy]:focus-within {
   position: relative;
 }
 
-[data-slot="panel-body"] :where(:focus, [id], label:focus-within) {
+[data-slot="panel-body"]
+  :where(:focus, [id], label:focus-within, [data-focus-unit]:focus-within) {
   scroll-margin-block-start: calc(
     var(--panel-controls-height, 0px) + var(--disclosure-header-height, 0px) +
       var(--layout-control-gap)

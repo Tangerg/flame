@@ -46,6 +46,7 @@ export function SettingRow({
   const stacked = align === "stacked";
   return (
     <div
+      data-focus-unit=""
       {...stylex.props(
         styles.row,
         !stacked && styles.split,
