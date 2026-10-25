@@ -22,6 +22,8 @@ export const ko: Record<string, string> = {
   "packages.providers.current": "선택됨: {{name}} · {{contribution}}",
   "packages.providers.unavailable": "선택되었지만 사용할 수 없음: {{name}} · {{contribution}}",
   "packages.providers.unselected": "이 역할에 선택된 공급자가 없습니다.",
+  "packages.providers.unread": "선택을 아직 읽지 않았습니다.",
+  "packages.providers.stale": "마지막으로 읽은 선택을 표시합니다.",
   "packages.providers.choose": "공급자 선택",
   "packages.providers.apply": "선택 적용",
   "packages.providers.failed": "선택을 확인할 수 없습니다.",

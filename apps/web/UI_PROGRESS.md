@@ -1,21 +1,21 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Background-task progress now keeps complete identities and literal details inside one named keyboard reader, with viewport-bounded popup geometry and accessible state glyphs. Native EN, ZH 18 px/200% and uninstrumented DE custom-theme reading/update/return tasks qualify the change. See Background-task progress reading. The stronger optional paper material remains delivered.
+Updated: 2026-10-26. Plugin provider selections now distinguish unread, confirmed empty and retained results after a failed refresh, while preserving contributed candidates, drafts and explicit command ownership. Native EN, ZH 18 px/200% and uninstrumented DE custom-theme recovery/selection/return tasks qualify the change. See Plugin provider selection reads. Background-task reading and the stronger optional paper material remain delivered.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/task-progress-reading-1026`. Background-task progress reading,
-keyboard access and viewport containment are qualified on frozen base
-`0714ae287a0c7e3cafbd25cfed200945e2c1d25a`; see Background-task progress reading for
-owners, original counterexamples, native tasks and verification limits.
-Implementation `09ea5578f280e4506aad0629cf0f304d2b3518d5` is published to remote main;
-independent publication checks observe that exact commit and a clean 0/0 checkout.
-All owned acceptance resources are retired; see the receipt below. The primary
-parallel checkout remains outside this batch. The user's latest instruction stops further
-Claude CLI calls; edits and verification are owned directly by Codex.
+is on `codex/provider-selection-reading-1026`. Plugin provider selection reads
+are qualified on frozen base `98be315eb2ad16cf377e46acfbac7255e27af62e`; see
+Plugin provider selection reads for the original counterexamples, owners, native
+tasks and limits. Product checks and native acceptance pass; publication and
+owned-resource retirement are pending. The primary parallel checkout remains
+outside this batch. The user’s latest instruction stops further Claude CLI calls;
+edits and verification are owned directly by Codex. Background-task progress
+implementation `09ea5578f280e4506aad0629cf0f304d2b3518d5` and receipt
+`98be315eb2ad16cf377e46acfbac7255e27af62e` remain published and retired.
 Client diagnostics implementation `374e849933d9efaef7782d54602da4ceb5b476f6` and
 receipt `0714ae287a0c7e3cafbd25cfed200945e2c1d25a` remain published and retired.
 Trajectory reading implementation `92afc65f3553a6584c807b3adc882b531babceae` and
@@ -4692,6 +4692,115 @@ installation is replaced here. No protocol or persisted-data migration is needed
 VoiceOver, OS IME, measured contrast, other-platform GUIs, browser/visual suites,
 performance benchmarks and independent unchanged Runtime/CLI/SDK/shared UI
 suites were not run.
+
+## Plugin provider selection reads
+
+Provider roles can be known from installed contributions before their independent
+selection read succeeds. Previously, that known-role branch bypassed DataView and
+hid read failures; an absent selection record was always rendered as unselected.
+A refresh failure also retained selected identities without identifying the failed
+read. Canonical native counterexamples on frozen base
+`98be315eb2ad16cf377e46acfbac7255e27af62e` show two false unselected rows after
+initial failure, then selected memory/schedules rows with no failure marker after
+a later refresh fails.
+
+`features/plugins/ui/ProviderSelections.tsx` now derives read availability from
+its existing query data. Until that query has accepted data, roles say Selection
+not read. A successful empty read confirms unselected roles. The existing compact
+DataError appears alongside contributed roles on failure; a failed refresh states
+that retained identities are the last read. The persistent Refresh selections
+control remains the single recovery action in this branch. The no-role DataView
+and unsupported-method feedback retain their behavior. Eight existing catalogs
+add only the two read-state messages. This is necessary result provenance, not
+another instruction, slogan or decorative secondary label.
+
+Installation contributions own candidate availability; the selection query owns
+accepted selection facts; each existing ProviderRole owns its candidate draft.
+The public client continues to own explicit selection, idempotency, observation
+and unknown-outcome recovery. Read failure does not disable a valid explicit
+choice, infer a selected candidate or clear a draft. No shared primitive, Runtime,
+SDK, transport protocol, storage or dependency changes are required. The existing
+Plugins pane introduction is unchanged; this batch does not claim its removal.
+
+Read-only references have distinct purposes: ZCode’s actual ProviderSettingsCard
+for separating candidate configuration from accepted selection; HeroUI’s actual
+Select asynchronous-loading demo for keeping choices independent of read status;
+and its Alert basic demo for showing failure beside retained content. Existing
+Radix/color/Ace research is reused; screenshots do not establish keyboard behavior.
+The applied better-layout, better-writing and better-accessibility guidance keeps
+one persistent action and the existing grouped rows, uses short factual state
+copy and preserves the current focus owner. Flame’s Base UI, StyleX, semantic
+colors, approved branding, Orange and custom themes retain their owners.
+
+Verification:
+
+- Original Web baseline: two files / 19 tests pass. Original public-client provider
+  suite: one file / two tests pass, including command identity and unknown recovery.
+  Of the first five added presentation cases, four fail on the original source and
+  the successful-empty case passes. The later no-role and unsupported-method guard
+  cases are not claimed as original failures.
+- Final scoped Web verification: four files / 40 tests pass. Seven new presentation
+  cases cover pending/unread candidates, initial error and recovery, confirmed empty,
+  retained identities/draft/later focus, explicit selection after unavailable read,
+  no-role recovery and unsupported-method feedback. They use the actual query/kernel
+  and public command client over isolated memory transport. Tests temporarily set
+  only this query’s retry policy and restore it; native uses production retry.
+- All 16 current Web gates, supported make check-native and final candidate/clean
+  asset builds pass serially; the final check script exits zero in 52.46 s. All 11
+  accepted plugin resources remain byte-identical. The final accepted input covers
+  5,781 non-Markdown files, aggregate SHA-256
+  `42204a3aac01c6f339148f7d767d4e24eb1bcefd107c1eb873e2ffd1a4eada1d`,
+  1,806 compiled files, 24 native inputs and three read-only references.
+- Actual Wails v3.0.0-beta.34 EN/light/14 px/Orange at 1440 × 900 confirms initial
+  failure/unread, selected identities after recovery, retained candidate draft and
+  later menu focus after failed refresh, Escape back to the chooser, confirmed-empty
+  recovery and one explicit memory selection. The final reread confirms memory
+  selected and schedules unselected; the captured command has the exact role,
+  installation and contribution plus a nonempty canonical command key. Opening
+  the menu during refresh keeps it with the moved row when error content appears.
+- ZH/dark/18 px/pale yellow/high-contrast/reduced-motion uses native Left sizing and
+  200% zoom, reaching 561 × 475 CSS px without document overflow. It completes the
+  same read/recovery/selection path, exposes result and controls through scrolling,
+  and closes the menu with Escape back to its chooser. EN and ZH each record seven
+  reads, exactly one command and zero unhandled errors. These are deterministic
+  private read counts, not production business guarantees.
+- An independent DE/18 px/warm custom background/purple/reduced-motion app omits
+  the observation script. Native Left sizing and 200% zoom qualify Tab/Shift+Tab,
+  ArrowDown/Return candidate selection, refresh, retained draft and stale result,
+  Escape, known-empty recovery and explicit Apply. Its final visible rows confirm
+  memory selected and schedules unselected. No DOM-identity, numeric viewport,
+  error-counter or exact command-count claim is made for this uninstrumented app.
+- All three return to the conversation, enter a draft, reopen the same Plugins pane
+  with the production Mod+, shortcut, close and continue that draft. EN and ZH keep
+  the original Composer ID 2; DE is qualified by visible text only. No live Send is
+  performed. Zoomed apps restore Actual Size before Quit; all 14 recorded processes
+  are dead at the native acceptance checkpoint.
+
+The first private fault lacked canonical ProblemData and was rejected as a
+protocol error. Those initial native failure captures are excluded. The fixture
+was corrected to the canonical internal_error code/type/detail before acceptance.
+Nine exact original component/catalog files were pinned and hash-checked for a
+fresh original-source native build; its initial and stale counterexamples were
+requalified against that canonical fault. No product protocol workaround was added.
+One English pointer-opened menu did not commit on the first Return; the actual
+candidate click establishes the draft. DE separately qualifies ArrowDown/Return.
+The fixture’s already-selected Settings navigation button does not reopen a closed
+pane; the production Mod+, shortcut establishes all return round trips.
+
+Scope review approves truthful read-state presentation and complete recovery/
+selection/return tasks in these scenes. It does not certify the whole product has
+no remaining award-level improvement. There is no fresh numeric contrast, VoiceOver,
+OS IME, RTL, live Runtime/provider selection, release install/trust or real user-data
+write qualification. Full make check, the complete Web suite, browser visual suite,
+performance benchmark and independent unchanged Runtime/CLI/UI suites are not run.
+The unrelated earlier dock-catalog shorthand conflict is unchanged and is not
+claimed passing. Nonfatal asset/chunk, macOS and duplicate-Objective-C warnings
+remain recorded. No Claude CLI or subagent is used.
+
+Publication and exact owned-resource retirement are pending. The primary checkout,
+user data, references and preexisting output/cache bytes must remain preserved.
+Continue from fresh content/Dock task evidence after delivery; do not reopen this
+selection-read repair without a new finding.
 
 ## Background-task progress reading
 

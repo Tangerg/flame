@@ -21,6 +21,8 @@ export const zhTW: Record<string, string> = {
   "packages.providers.current": "已選擇：{{name}} · {{contribution}}",
   "packages.providers.unavailable": "已選擇但無法使用：{{name}} · {{contribution}}",
   "packages.providers.unselected": "此角色尚未選擇提供者。",
+  "packages.providers.unread": "尚未讀取選擇結果。",
+  "packages.providers.stale": "顯示上次讀取的選擇結果。",
   "packages.providers.choose": "選擇提供者",
   "packages.providers.apply": "套用選擇",
   "packages.providers.failed": "無法確認本次選擇。",

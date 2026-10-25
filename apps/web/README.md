@@ -72,6 +72,12 @@ literal line separators so native partial selection retains blank lines and
 indentation. Rendered previews and editable controls retain native commands;
 loading more rows or refreshing does not create a second selection owner.
 
+Plugin provider roles remain available from installation contributions and accepted
+selection facts when their independent selection read fails. Until a selection read
+succeeds, each role stays unread; a successful empty read confirms it is unselected.
+A failed refresh identifies retained selections as the last read. Candidate drafts,
+explicit selection and command recovery keep their existing owners.
+
 MCP server rows read their own tools directly, independent of configuration
 editing and server origin. Reconnect runs in the same exact-ID serial mutation
 generation as other server commands; its acknowledgement only admits a

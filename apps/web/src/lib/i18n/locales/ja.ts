@@ -23,6 +23,8 @@ export const ja: Record<string, string> = {
   "packages.providers.current": "選択済み：{{name}} · {{contribution}}",
   "packages.providers.unavailable": "選択済みですが利用不可：{{name}} · {{contribution}}",
   "packages.providers.unselected": "このロールのプロバイダーは未選択です。",
+  "packages.providers.unread": "選択は未取得です。",
+  "packages.providers.stale": "最後に取得した選択を表示しています。",
   "packages.providers.choose": "プロバイダーを選択",
   "packages.providers.apply": "選択を適用",
   "packages.providers.failed": "選択を確認できませんでした。",

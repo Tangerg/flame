@@ -23,6 +23,8 @@ export const es: Record<string, string> = {
   "packages.providers.current": "Seleccionado: {{name}} · {{contribution}}",
   "packages.providers.unavailable": "Seleccionado pero no disponible: {{name}} · {{contribution}}",
   "packages.providers.unselected": "No hay proveedor seleccionado para este rol.",
+  "packages.providers.unread": "La selección aún no se ha leído.",
+  "packages.providers.stale": "Se muestran las últimas selecciones leídas.",
   "packages.providers.choose": "Elegir proveedor",
   "packages.providers.apply": "Aplicar selección",
   "packages.providers.failed": "No se pudo confirmar la selección.",
