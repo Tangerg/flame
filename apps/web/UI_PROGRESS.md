@@ -4709,6 +4709,35 @@ completion. Accepted **5,784 non-Markdown inputs** have SHA-256
 Continue from a fresh reading/Dock task after publication; do not repeat the
 qualified formatting or reply-update repair without new evidence.
 
+**Delivery receipt**
+
+Implementation `ca19ef60a53d962f0f9c11fe8f489b662b71568c` is published to remote
+main. The single publication fetch finds no incoming commit beyond frozen main
+`fe9c0ae4700b880a08fb66faab8eb76bab419d8f`; no unrelated validation loop is
+started. Normal formatting and workspace-lint hooks pass while preserving every
+accepted product input. Independent `ls-remote` matches the implementation,
+the owned checkout is clean and ahead/behind is **0 / 0**.
+
+All **26** recorded processes are dead. Independent process-table and native
+registration queries find no owned command or any of the four apps. Cleanup
+removes **eight** new checkout output paths, **eight** owned Library paths and
+**four** bundle-temp paths. All **36** output-presence baselines and the exact
+inventories of **three** original files are restored; this includes the original
+native-check binary and UI test cache. The **11** product ESM resources and
+**three** read-only reference hashes match. Primary parallel work, user data,
+dependencies and shared compiler/package caches remain preserved.
+
+The guarded private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-find-updates-1026-pjQ20h`
+is absent. Its independently round-trip-verified in-memory archive retains
+**130 UTF-8 files**, **52 screenshot digests**, native/original binary metadata,
+all source/asset maps, failed experiments and delivery/retirement proofs; gzip
+SHA-256 `36058d473eb620fda3f1c391a4b3dc05b1517d8eee2a4f83092aa0074e65825d`.
+Accepted maps include **1,192** final compiled assets and **30** desktop source
+inputs. Post-retirement checks again preserve all **5,784** non-Markdown inputs
+and their hash above. This documentation-only receipt changes no qualified
+product source. The continuous UI goal remains active.
+
 ### Formatted conversation Find
 
 Find now treats continuous inline prose as one phrase, retaining the original
