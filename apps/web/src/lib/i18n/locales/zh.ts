@@ -383,7 +383,6 @@ export const zh: Record<string, string> = {
   "mcp.form.description.aria": "描述",
   "mcp.import": "从 JSON 导入",
   "mcp.import.config": "JSON 配置",
-  "mcp.import.hint": "粘贴 MCP 客户端配置块 — “mcpServers” 下的一个或多个服务器。",
   "mcp.import.confirm": "导入",
   "mcp.importing": "导入中…",
   "mcp.import.ok_other": "已导入 {{count}} 个服务器",
@@ -394,6 +393,15 @@ export const zh: Record<string, string> = {
   "mcp.import.error": "无法导入该配置。",
   "mcp.import.nameCollision":
     "服务器“<first/>”和“<second/>”都会变成“<canonical/>”，请为它们使用不同的名称",
+  "mcp.import.invalidJson": "请输入有效的 JSON。",
+  "mcp.import.invalidShape": "请使用包含“mcpServers”对象的有效 MCP 配置。",
+  "mcp.import.invalidName": "请为服务器“<server/>”使用包含 a–z 或 0–9 的名称。",
+  "mcp.import.missingTransport": "请为服务器“<server/>”添加命令或 URL。",
+  "mcp.import.missingCommand": "请为服务器“<server/>”添加命令。",
+  "mcp.import.missingUrl": "请为服务器“<server/>”添加 URL。",
+  "mcp.import.invalidTimeout":
+    "请为服务器“<server/>”设置以秒为单位的正整数超时，或省略此项表示不限时。",
+  "mcp.import.empty": "请在“mcpServers”下至少添加一个服务器。",
   "mcp.tools.title": "{{server}} 的工具",
   "mcp.tools.enabled": "启用",
   "mcp.tools.autoApprove": "自动批准",

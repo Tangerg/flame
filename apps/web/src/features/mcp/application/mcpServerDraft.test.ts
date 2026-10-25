@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as timeoutOwner from "@/features/mcp/application/mcpHandshakeTimeout";
 import { type MCPServerSettings, userMCPServer } from "@/features/mcp/application/mcpServerQueries";
 import {
   MCPServerEdit,
@@ -225,4 +226,20 @@ describe("mcpServerDraft", () => {
     expect(RetainedValue.preserved().cleared(false).disposition).toBe("preserve");
     expect(RetainedValue.preserved().submittedText()).toBeUndefined();
   });
+});
+
+it("propagates an unexpected timeout construction failure instead of reporting invalid input", () => {
+  const failure = new Error("Unexpected timeout construction failure");
+  const factory = vi
+    .spyOn(timeoutOwner, "boundedMCPHandshakeTimeout")
+    .mockImplementationOnce(() => {
+      throw failure;
+    });
+  try {
+    expect(() => editWith({ name: "local", command: "npx", timeoutSec: "15" }).isValid).toThrow(
+      failure,
+    );
+  } finally {
+    factory.mockRestore();
+  }
 });

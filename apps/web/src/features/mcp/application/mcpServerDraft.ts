@@ -3,6 +3,7 @@ import { type MCPTransport } from "@/features/mcp/application/mcpServerConfig";
 import { type MCPServerInput } from "@/features/mcp/application/mcpServerInput";
 import {
   boundedMCPHandshakeTimeout,
+  MCPHandshakeTimeoutError,
   mcpHandshakeTimeoutSeconds,
   UNBOUNDED_MCP_HANDSHAKE,
   type MCPHandshakeTimeout,
@@ -175,8 +176,9 @@ export class MCPServerEdit {
     if (!/^\d+$/.test(normalized)) return undefined;
     try {
       return boundedMCPHandshakeTimeout(Number(normalized));
-    } catch {
-      return undefined;
+    } catch (error) {
+      if (error instanceof MCPHandshakeTimeoutError) return undefined;
+      throw error;
     }
   }
 

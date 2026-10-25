@@ -840,6 +840,15 @@ export const fr: Record<string, string> = {
   "mcp.import.error": "Impossible d'importer cette configuration.",
   "mcp.import.nameCollision":
     "Les serveurs « <first/> » et « <second/> » deviennent tous deux « <canonical/> » ; donnez-leur des noms distincts",
+  "mcp.import.invalidJson": "Saisissez un JSON valide.",
+  "mcp.import.invalidShape": "Utilisez une configuration MCP valide avec un objet « mcpServers ».",
+  "mcp.import.invalidName": "Donnez au serveur « <server/> » un nom contenant a–z ou 0–9.",
+  "mcp.import.missingTransport": "Ajoutez une commande ou une URL pour le serveur « <server/> ».",
+  "mcp.import.missingCommand": "Ajoutez une commande pour le serveur « <server/> ».",
+  "mcp.import.missingUrl": "Ajoutez une URL pour le serveur « <server/> ».",
+  "mcp.import.invalidTimeout":
+    "Définissez un délai d’expiration en secondes entières positives pour le serveur « <server/> », ou omettez-le pour ne fixer aucune limite de temps.",
+  "mcp.import.empty": "Ajoutez au moins un serveur sous « mcpServers ».",
   "mcp.tools.title": "Outils de {{server}}",
   "mcp.tools.enabled": "Activé",
   "mcp.tools.autoApprove": "Approbation automatique",
@@ -879,8 +888,6 @@ export const fr: Record<string, string> = {
   "composer.key.historyPrevDesc": "Rappeler le message précédent",
   "composer.key.historyNextDesc": "Rappeler le message suivant",
   "mcp.import.config": "Configuration JSON",
-  "mcp.import.hint":
-    'Collez un bloc de configuration de client MCP — un ou plusieurs serveurs sous "mcpServers".',
 
   "rpcError.session_has_active_run":
     "Cette session a déjà une exécution en cours — orientez-la, répondez-y ou annulez-la d’abord.",

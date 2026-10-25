@@ -825,6 +825,17 @@ export const de: Record<string, string> = {
   "mcp.import.error": "Diese Konfiguration konnte nicht importiert werden.",
   "mcp.import.nameCollision":
     "Die Server „<first/>“ und „<second/>“ werden beide zu „<canonical/>“; gib ihnen unterschiedliche Namen",
+  "mcp.import.invalidJson": "Gib gültiges JSON ein.",
+  "mcp.import.invalidShape":
+    "Verwende eine gültige MCP-Konfiguration mit einem „mcpServers“-Objekt.",
+  "mcp.import.invalidName": "Gib dem Server „<server/>“ einen Namen mit a–z oder 0–9.",
+  "mcp.import.missingTransport":
+    "Füge für den Server „<server/>“ einen Befehl oder eine URL hinzu.",
+  "mcp.import.missingCommand": "Füge für den Server „<server/>“ einen Befehl hinzu.",
+  "mcp.import.missingUrl": "Füge für den Server „<server/>“ eine URL hinzu.",
+  "mcp.import.invalidTimeout":
+    "Lege für den Server „<server/>“ ein Timeout in positiven ganzen Sekunden fest oder lass es weg für kein Zeitlimit.",
+  "mcp.import.empty": "Füge unter „mcpServers“ mindestens einen Server hinzu.",
   "mcp.tools.title": "Tools von {{server}}",
   "mcp.tools.enabled": "Aktiviert",
   "mcp.tools.autoApprove": "Automatisch genehmigen",
@@ -865,8 +876,6 @@ export const de: Record<string, string> = {
   "composer.key.historyPrevDesc": "Vorherige Nachricht abrufen",
   "composer.key.historyNextDesc": "Nächste Nachricht abrufen",
   "mcp.import.config": "JSON-Konfiguration",
-  "mcp.import.hint":
-    'Füge einen MCP-Client-Konfigurationsblock ein — einen oder mehrere Server unter "mcpServers".',
 
   "rpcError.session_has_active_run":
     "Diese Sitzung hat bereits einen laufenden Durchlauf — steuere, beantworte oder brich ihn zuerst ab.",

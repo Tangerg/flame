@@ -791,6 +791,15 @@ export const ko: Record<string, string> = {
   "mcp.import.error": "해당 설정을 가져올 수 없습니다.",
   "mcp.import.nameCollision":
     '서버 "<first/>" 및 "<second/>"의 이름이 모두 "<canonical/>"(으)로 바뀝니다. 서로 다른 이름을 지정하세요',
+  "mcp.import.invalidJson": "올바른 JSON을 입력하세요.",
+  "mcp.import.invalidShape": '"mcpServers" 객체가 포함된 올바른 MCP 설정을 사용하세요.',
+  "mcp.import.invalidName": '서버 "<server/>"에 a–z 또는 0–9가 포함된 이름을 지정하세요.',
+  "mcp.import.missingTransport": '서버 "<server/>"에 명령 또는 URL을 추가하세요.',
+  "mcp.import.missingCommand": '서버 "<server/>"에 명령을 추가하세요.',
+  "mcp.import.missingUrl": '서버 "<server/>"에 URL을 추가하세요.',
+  "mcp.import.invalidTimeout":
+    '서버 "<server/>"의 타임아웃을 초 단위의 양의 정수로 설정하거나, 시간 제한을 두지 않으려면 생략하세요.',
+  "mcp.import.empty": '"mcpServers" 아래에 서버를 하나 이상 추가하세요.',
   "mcp.tools.title": "{{server}} 도구",
   "mcp.tools.enabled": "사용",
   "mcp.tools.autoApprove": "자동 승인",
@@ -828,8 +837,6 @@ export const ko: Record<string, string> = {
   "composer.key.historyPrevDesc": "이전 메시지 불러오기",
   "composer.key.historyNextDesc": "다음 메시지 불러오기",
   "mcp.import.config": "JSON 구성",
-  "mcp.import.hint":
-    'MCP 클라이언트 설정 블록을 붙여넣으세요 — "mcpServers" 아래의 서버 하나 이상.',
 
   "rpcError.session_has_active_run":
     "이 세션에는 이미 진행 중인 실행이 있습니다 — 먼저 개입하거나 응답하거나 취소하세요.",

@@ -837,6 +837,15 @@ export const es: Record<string, string> = {
   "mcp.import.error": "No se pudo importar esa configuración.",
   "mcp.import.nameCollision":
     'Los servidores "<first/>" y "<second/>" se convierten ambos en "<canonical/>"; dales nombres distintos',
+  "mcp.import.invalidJson": "Introduce un JSON válido.",
+  "mcp.import.invalidShape": 'Usa una configuración MCP válida con un objeto "mcpServers".',
+  "mcp.import.invalidName": 'Dale al servidor "<server/>" un nombre que contenga a–z o 0–9.',
+  "mcp.import.missingTransport": 'Añade un comando o una URL para el servidor "<server/>".',
+  "mcp.import.missingCommand": 'Añade un comando para el servidor "<server/>".',
+  "mcp.import.missingUrl": 'Añade una URL para el servidor "<server/>".',
+  "mcp.import.invalidTimeout":
+    'Establece un tiempo de espera en segundos enteros positivos para el servidor "<server/>", u omítelo para no fijar un límite de tiempo.',
+  "mcp.import.empty": 'Añade al menos un servidor en "mcpServers".',
   "mcp.tools.title": "Herramientas de {{server}}",
   "mcp.tools.enabled": "Activada",
   "mcp.tools.autoApprove": "Aprobar automáticamente",
@@ -876,8 +885,6 @@ export const es: Record<string, string> = {
   "composer.key.historyPrevDesc": "Recuperar el mensaje anterior",
   "composer.key.historyNextDesc": "Recuperar el mensaje siguiente",
   "mcp.import.config": "Configuración JSON",
-  "mcp.import.hint":
-    'Pega un bloque de configuración de cliente MCP: uno o varios servidores bajo "mcpServers".',
 
   "rpcError.session_has_active_run":
     "Esta sesión ya tiene una ejecución en curso: dirígela, respóndela o cancélala primero.",

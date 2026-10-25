@@ -76,6 +76,16 @@ focused action when the group fits, without moving focus or returning to a group
 the user already left.
 Configuration identifiers, commands, paths and connection values explicitly opt
 out of native capitalization, autocorrection and spelling changes at their fields.
+JSON import uses the labeled format example without a repeated introduction and
+applies the same literal-input policy. Only parsing errors mark source invalid;
+command failures retain their progress and alert without invalidating valid JSON.
+Editing the source retires its previous submission feedback while preserving the
+field, text and focus.
+The import parser preflights every entry's known source requirements before any
+create command, including the active transport's command or URL. Typed source
+issues are localized at the UI with literal source names. Timeout bounds remain
+with the existing factory, and unexpected failures propagate. Runtime still owns
+creation and final validation; external failures can report a committed prefix.
 
 Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
 `tests/integration`; visual fixtures live in `visual`. The full check includes

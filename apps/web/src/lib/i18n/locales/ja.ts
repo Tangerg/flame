@@ -795,6 +795,15 @@ export const ja: Record<string, string> = {
   "mcp.import.error": "その設定をインポートできませんでした。",
   "mcp.import.nameCollision":
     "サーバー「<first/>」と「<second/>」はどちらも「<canonical/>」になります。別々の名前を付けてください",
+  "mcp.import.invalidJson": "有効な JSON を入力してください。",
+  "mcp.import.invalidShape": "「mcpServers」オブジェクトを含む有効な MCP 設定を使用してください。",
+  "mcp.import.invalidName": "サーバー「<server/>」には a–z または 0–9 を含む名前を付けてください。",
+  "mcp.import.missingTransport": "サーバー「<server/>」にコマンドまたは URL を追加してください。",
+  "mcp.import.missingCommand": "サーバー「<server/>」にコマンドを追加してください。",
+  "mcp.import.missingUrl": "サーバー「<server/>」に URL を追加してください。",
+  "mcp.import.invalidTimeout":
+    "サーバー「<server/>」のタイムアウトを正の整数の秒数で設定するか、時間制限なしにする場合は省略してください。",
+  "mcp.import.empty": "「mcpServers」の下にサーバーを 1 つ以上追加してください。",
   "mcp.tools.title": "{{server}} のツール",
   "mcp.tools.enabled": "有効",
   "mcp.tools.autoApprove": "自動承認",
@@ -832,8 +841,6 @@ export const ja: Record<string, string> = {
   "composer.key.historyPrevDesc": "前のメッセージを呼び出す",
   "composer.key.historyNextDesc": "次のメッセージを呼び出す",
   "mcp.import.config": "JSON 設定",
-  "mcp.import.hint":
-    'MCP クライアントの設定ブロックを貼り付けてください — "mcpServers" 配下の1つ以上のサーバー。',
 
   "rpcError.session_has_active_run":
     "このセッションには実行中のランがあります — 介入・応答・キャンセルのいずれかを先に行ってください。",
