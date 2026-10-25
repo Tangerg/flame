@@ -11,8 +11,10 @@ is on `codex/diagnostics-reading-1026`. Client diagnostic navigation, snapshot
 reading and metric dimensions are qualified on frozen base
 `b03e21cf463f2a18246495c9d5d0b920d0cfc335`; see Client diagnostics reading for
 owners, original counterexamples, native tasks and verification limits.
-Publication and owned-resource retirement are pending below. The primary parallel
-checkout remains outside this batch. The user's latest instruction stops further
+Implementation `374e849933d9efaef7782d54602da4ceb5b476f6` is published to remote main;
+independent publication checks observe that exact commit and a clean 0/0 checkout.
+All owned acceptance resources are retired; see the receipt below. The primary
+parallel checkout remains outside this batch. The user's latest instruction stops further
 Claude CLI calls; edits and verification are owned directly by Codex.
 Trajectory reading implementation `92afc65f3553a6584c807b3adc882b531babceae` and
 receipt `b03e21cf463f2a18246495c9d5d0b920d0cfc335` remain published and retired.
@@ -4783,7 +4785,31 @@ existing installations obtain rebuilt ESM through their installation owner.
 
 Scoped review: **Approve** for these inspected tasks. This does not establish
 whole-product or award-level completion; the goal remains active. No Claude CLI
-or subagent was used. Publication and exact resource retirement follow delivery.
+or subagent was used. Publication and exact resource retirement are complete.
+
+Implementation `374e849933d9efaef7782d54602da4ceb5b476f6` is published to remote main.
+The one publication-time fetch finds no incoming commits beyond the frozen base;
+independent remote inspection observes that exact implementation, a clean checkout
+and 0/0 divergence. Post-hook checks preserve all **5,779 accepted non-Markdown
+source files**, aggregate SHA-256
+`8bba3a99a0bacf6021db19a27be92d5facbb692b4906b4b93a072ab9b254dfaf`,
+**1,806 private compiled artifacts**, **14 native input files** and **three read-only
+references** before retirement.
+
+Independent cleanup confirms all **17 recorded processes dead**, **36 output
+presence baselines**, **three original file hashes** and **11 product resources**
+preserved. Seven owned checkout outputs, eight owned Library directories and four
+bundle-temp homes are removed; all four unique apps are unregistered. The original
+native-check binary is restored to its captured SHA-256, and both original Vitest
+files retain their captured bytes. The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-diagnostics-reading-1026-sLV6hr`
+is absent. A round-trip-verified in-memory archive retains **104 UTF-8 files** and
+**34 screenshot digests**, gzip SHA-256
+`1ab74e2dc360802da73583d358b4931954f03411ca95e31e9970b291be20ff04`.
+This documentation receipt changes no accepted product source. Primary user data,
+parallel work, dependencies, global compiler caches and reference resources remain
+preserved. Continue with a fresh observed reading/Dock task; no pause or overall
+goal completion is implied.
 
 ## Trajectory page scope and reading continuity
 
