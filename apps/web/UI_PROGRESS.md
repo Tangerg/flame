@@ -1,15 +1,18 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. The focused Diff reader now scopes Select All to its current difference rows in both layouts; native whole and partial copying, related-file entry and return to the original draft are qualified. See Diff source selection and native copying. File-source selection and earlier reading/brand work remain delivered. The receiving textarea's first multiline paste still drops one trailing LF, independently reproduced in stock WKWebView; no unsafe workaround ships. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. Current-workspace Diff rows and file headings now render all five canonical file statuses through the eight package catalogs. Native text, rename and binary reading, comparison/filter return and continued drafts are qualified. See Diff status language and canonical identity. Earlier selection, copying and brand work remain delivered. The receiving textarea's first multiline paste still drops one trailing LF, independently reproduced in stock WKWebView; no unsafe workaround ships. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/diff-selection-1025`. Diff source selection and native copying are
-qualified on frozen base `7c60586f354a64ffdbdbda332dc37f50c7c321dd`; see the
-corresponding Diff section for source, return-task and verification boundaries.
+is on `codex/diff-status-1025`. Diff status presentation is qualified on frozen
+base `4c3f3584fb3b4ee430888c7364b42751346c765f`; see Diff status language and
+canonical identity for the owner, complete task and verification boundaries.
+Publication and evidence retirement follow the native qualification below.
+Earlier Diff source selection and native copying are qualified on frozen base
+`7c60586f354a64ffdbdbda332dc37f50c7c321dd`.
 Implementation `eb75e91bce16c804eef6bc4e064d6de00c5ac8ed` is published to remote
 main, and its owned evidence retirement is complete.
 Native insertion investigation uses
@@ -5453,6 +5456,116 @@ Fresh post-retirement checks again confirm accepted source/resource bytes and
 the original output inventories. This Markdown-only receipt changes no tested
 product source; primary parallel work, user data and read-only references remain
 preserved. No migration is needed. The continuous goal stays active.
+
+### Diff status language and canonical identity
+
+The task is reply → changed-file comparison/filter → one file and its status →
+related text, rename or binary evidence → current row/source → continued draft.
+Original actual Wails in Chinese/dark/18 px displays raw `modified` and `renamed`
+in the current-workspace overview and selected heading, while the surrounding
+controls and explanations are localized. This is a MEDIUM writing/identity gap.
+
+`plugins/diff/component/component.tsx` owns one pure `FileDiff` →
+`DiffFileSummary` display projection for both consumers. The package's existing
+eight catalogs own the five human status labels. Runtime's closed `FileStatus`
+values, accepted reads, paths, rename provenance, rows, counts and binary facts
+remain canonical. The shared UI already accepts a presentation string; it gains
+no domain knowledge or state. Recorded Tool/trajectory enum evidence retains its
+separate forensic purpose. No Runtime schema, navigation, selection, style,
+dependency or command owner changes. The normal Diff ESM resource is rebuilt.
+
+Existing host `file.change.*` captions provide the product vocabulary. Retained
+ZCode object-identity, Radix return/focus and Ace workspace research guide the
+complete task, rather than importing a component or new visual treatment. The
+six better-* domains are reviewed against actual native scenes:
+
+| Domain        | Evidence and outcome                                                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Writing       | File state uses the current language in both overview and heading; source facts and unavailable binary counts keep their meaning.       |
+| Accessibility | Row identity, heading focus, local Escape, native selection and source-opener return remain observable. VoiceOver speech is not tested. |
+| Layout        | Actual 320 px Dock and 561 × 525 CSS px full pane at 200%; mouse scrolling reaches all three branch files.                              |
+| Typography    | Existing EN 14 px / ZH 18 px roles, bounded filename and complete wrapping paths remain; status and counts stay readable.               |
+| Color         | Existing light/Orange and dark/custom-blue states remain; no accent wash, new badge color or fresh contrast measurement.                |
+| UI polish     | Existing surfaces, separators, control motion and native menu behavior remain; no decorative element or new animation.                  |
+
+Typography, whitespace, hierarchy, color, motion, interaction, responsiveness
+and originality are checked against those retained principles and complete-task
+screenshots. Approval is scoped to the observed task, not an award or a review of
+every product page.
+
+Verification (2026-10-25):
+
+- Original focused baseline passes **14 tests**. Edit-only bounded Claude CLI
+  completes in **189.36 s**, exit zero, with **52 reported turns** against a
+  configured limit of 28. Primary reviews the eleven allowed authored paths,
+  uses the canonical `FileDiff` type with an explicit glyph alias, refines the
+  Japanese state caption and makes expected labels exhaustive over `FileStatus`.
+  The CLI runs no tests or builds; its report is not acceptance evidence.
+- Final focused Diff regression passes **22 tests**. Each of eight locales
+  traverses added, modified, deleted, renamed and untracked files through the
+  public client, checking visible row/header labels, counts, provenance and
+  current-row focus. The actual SDK-returned read retains the English wire
+  values. Restoring the original component makes the final suite fail exactly
+  **eight cases / fourteen pass**; all candidate edit hashes are restored.
+- Final serial gates pass in **44.84 s**: plugin build, **4 Web files / 43 tests**,
+  all **13 selected Web gates**, five plugin gates and normal **make check-native**
+  with Desktop Go test/vet/build and the supported Wails build. Earlier attempts
+  expose an import name collision, an untyped mock result and a conditional
+  expectation; all are corrected without weakening checks. Shared UI source is
+  unchanged and retains its preceding **92-test / packed-consumer** qualification.
+  Linker warnings are non-failing; no browser visual suite or benchmark runs.
+- Accepted input is **5,772 non-Markdown files**, SHA-256
+  `7f2a78822fc2ab198f124e6e0d75a524c3a86cc40203df88d753fadf3a2c6a8f`.
+  Eleven non-Markdown inputs change, including only Diff's normally generated
+  resource among the eleven published resources. Candidate/clean assets build
+  serially in **2.51 / 2.11 s**, then EN/ZH/clean Wails hosts in
+  **6.49 / 4.81 / 4.77 s**. The clean assets omit the passive observer completely.
+- Actual Wails EN/light/14 px/Orange uses keyboard-confirmed **320 px Dock**.
+  The `session` filter opens `session.go` with **Modified +7 −3**. Reader Escape
+  restores its current filtered row. Switching to branch comparison retains the
+  query and truthfully shows **0 of 3 files match**; Clear reveals three files.
+  Renamed metadata shows **+0 −0** and the complete prior path; binary Modified
+  has no invented counts. System Copy preserves exactly **230 source characters**.
+  List return and Dock collapse retain textarea ID **3** and its newline-ended
+  draft; native Paste and continuation advance its exact length **34 → 264 → 275**.
+- ZH/dark/18 px/custom-blue/motion-off uses native Left arrangement, twenty
+  native Zoom In actions and actual fixture-sidebar collapse: **561 × 525 CSS px
+  / 200%**. The conversation Review action enters the full pane. Chinese modified
+  and renamed labels, complete prior path, metadata-only evidence and unavailable
+  binary counts remain readable. Native wheel input exposes the lower rows.
+  Local Escape restores the current file; source Back focuses the actual
+  working-tree Review opener, whose count remains distinct from branch scope.
+  Textarea ID **3** retains and continues exactly **10 → 14 characters**. Actual
+  Size restores **1122 × 1051** before Quit.
+- The independent clean EN app qualifies renamed/binary reading and current-row
+  returns, related Go source selection, native Copy, Dock collapse and continued
+  draft. Raw editable AX verifies **19 → 249 → 260 characters**, including the
+  exact same 230-character source. A known two-line draft ending in visible text
+  establishes one serialization LF before copying; that fixed frame is excluded
+  consistently afterward. No private DOM identity is inferred from this scene.
+
+Limits: the other six native locales and added/deleted/untracked native scenes
+are not claimed; all five states in eight languages are covered by the public
+client regressions. Native comparisons use canonical deterministic providers,
+not live Git/filesystem writes, provider execution or Send. VoiceOver, OS IME,
+RTL and other-platform GUIs remain unqualified. The first private rename/binary
+probes assumed a contiguous AX path and different explanation wording; fresh
+observations establish the existing segmented path and canonical copy. A short
+draft's terminal blank line is omitted by AX, so that calibration is excluded in
+favor of the known multiline draft above. No product workaround follows those
+probe errors. The independent receiving-textarea limitation remains recorded.
+
+**Approve** for the localized status and complete inspected reading/return task.
+Publication sync finds main unchanged from the frozen base, so no unrelated
+validation repeats. All **25 recorded processes** are dead; **four apps** are
+unregistered. Cleanup removes **seven checkout outputs**, **eight owned Library
+paths** and **four bundle-temp paths**. All **36 output-presence baselines**,
+**three original file hashes/inventories** and **eleven accepted resources**
+match; the original native-check binary is restored byte-for-byte. The private
+evidence root remains only until publication and independent archive retirement.
+Preserve these comparison, status, source-selection and draft owners while
+continuing other material/result paths from fresh evidence. No migration is
+needed; the continuous goal remains active.
 
 ## Retained workspace and result views
 

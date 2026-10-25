@@ -9,7 +9,9 @@ Comparison mode, file selection, layout and filters are local presentation state
 workspace/focus instance defaults to working-tree comparison. Switching comparison
 cancels the prior read. Failed reads retain the accepted snapshot and label its
 actual comparison. Renames, binary evidence and partial reads retain their canonical
-meaning. Host target/focus replacement retires the render instance and joins SDK I/O.
+meaning. File rows and the reader heading render the canonical Runtime file status
+through the package catalogs; the accepted read keeps its wire values. Host
+target/focus replacement retires the render instance and joins SDK I/O.
 
 The general entry starts at a changed-file overview with aggregate text counts.
 A file-specific entry opens that file directly. File rows navigate to one reader;

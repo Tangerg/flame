@@ -44,6 +44,11 @@ export const en: Record<string, string> = {
   "file.binary":
     "Binary content is not displayed. Line counts are unavailable.",
   "file.metadataOnly": "No line changes. Only file metadata changed.",
+  "file.status.added": "Added",
+  "file.status.modified": "Modified",
+  "file.status.deleted": "Deleted",
+  "file.status.renamed": "Renamed",
+  "file.status.untracked": "Untracked",
   "table.region": "Scrollable diff for {{path}}",
   "table.beforeLine": "Before line",
   "table.beforeCode": "Before code",

@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, expect, it, vi } from "vitest";
 import { type ComponentContext } from "@flame/component-sdk";
 import { createFlameClient } from "@flame/runtime-client";
-import { type Diff } from "@flame/runtime-client/wire";
+import { type Diff, type FileStatus } from "@flame/runtime-client/wire";
 import { WorkspaceDiff } from "../../../plugins/diff/component/component";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
@@ -19,6 +19,7 @@ afterEach(async () => {
 function mountDiff(
   path = "",
   readDiff: (signal?: AbortSignal) => Promise<Diff> = async () => REVIEW_DIFF,
+  locale = "en",
 ) {
   const owner = new AbortController();
   const runtime = createFlameClient(
@@ -37,7 +38,7 @@ function mountDiff(
     runtime,
     workspace: { ref: { path: "/Users/visual/scope" }, focus: { path, revision: 1n } },
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
-    locale: "en",
+    locale,
     signal: owner.signal,
     track: (operation) => operation,
     compose: () => null,
@@ -277,6 +278,171 @@ it("keeps partial, binary, rename and metadata-only states distinct from a clean
   expect(screen.getByText("No line changes. Only file metadata changed.")).toBeTruthy();
   expect(screen.queryByRole("combobox", { name: "Diff layout" })).toBeNull();
 });
+
+const STATUS_DIFF: Diff = {
+  baseline: { type: "head", commit: "d".repeat(40) },
+  files: [
+    {
+      path: "src/created.ts",
+      status: "added",
+      added: 2,
+      removed: 0,
+      rows: [
+        { type: "hunk", text: "@@ -0,0 +1,2 @@" },
+        { type: "added", rightLine: 1, code: "export const created = true;" },
+        { type: "added", rightLine: 2, code: "export default created;" },
+      ],
+    },
+    {
+      path: "src/changed.ts",
+      status: "modified",
+      added: 1,
+      removed: 1,
+      rows: [
+        { type: "hunk", text: "@@ -1,1 +1,1 @@" },
+        { type: "deleted", leftLine: 1, code: "export const value = 1;" },
+        { type: "added", rightLine: 1, code: "export const value = 2;" },
+      ],
+    },
+    {
+      path: "src/removed.ts",
+      status: "deleted",
+      added: 0,
+      removed: 1,
+      rows: [
+        { type: "hunk", text: "@@ -1,1 +0,0 @@" },
+        { type: "deleted", leftLine: 1, code: "export {};" },
+      ],
+    },
+    {
+      path: "docs/new.md",
+      previousPath: "docs/old.md",
+      status: "renamed",
+      added: 0,
+      removed: 0,
+      rows: [],
+    },
+    { path: "assets/draft.png", status: "untracked", binary: true, rows: [] },
+  ],
+};
+const STATUS_COUNTS = ["+2 −0", "+1 −1", "+0 −1", "+0 −0", null];
+const STATUS_LABELS: Record<string, Record<FileStatus, string>> = {
+  en: {
+    added: "Added",
+    modified: "Modified",
+    deleted: "Deleted",
+    renamed: "Renamed",
+    untracked: "Untracked",
+  },
+  zh: {
+    added: "新增",
+    modified: "已修改",
+    deleted: "已删除",
+    renamed: "已重命名",
+    untracked: "未跟踪",
+  },
+  "zh-TW": {
+    added: "新增",
+    modified: "已修改",
+    deleted: "已刪除",
+    renamed: "已重新命名",
+    untracked: "未追蹤",
+  },
+  ja: {
+    added: "追加",
+    modified: "変更",
+    deleted: "削除",
+    renamed: "名前変更",
+    untracked: "未追跡",
+  },
+  ko: {
+    added: "추가됨",
+    modified: "수정됨",
+    deleted: "삭제됨",
+    renamed: "이름 변경됨",
+    untracked: "추적되지 않음",
+  },
+  es: {
+    added: "Añadido",
+    modified: "Modificado",
+    deleted: "Eliminado",
+    renamed: "Renombrado",
+    untracked: "Sin seguimiento",
+  },
+  fr: {
+    added: "Ajouté",
+    modified: "Modifié",
+    deleted: "Supprimé",
+    renamed: "Renommé",
+    untracked: "Non suivi",
+  },
+  de: {
+    added: "Hinzugefügt",
+    modified: "Geändert",
+    deleted: "Gelöscht",
+    renamed: "Umbenannt",
+    untracked: "Nicht verfolgt",
+  },
+};
+
+it.each(Object.entries(STATUS_LABELS))(
+  "labels every canonical file status in %s without changing file identity or focus",
+  async (locale, labels) => {
+    const { get } = mountDiff("", async () => STATUS_DIFF, locale);
+    const rows = await waitFor(() => {
+      const found = Array.from(document.querySelectorAll<HTMLElement>("[data-diff-file]"));
+      expect(found).toHaveLength(STATUS_DIFF.files!.length);
+      return found;
+    });
+
+    for (const [index, file] of STATUS_DIFF.files!.entries()) {
+      const label = labels[file.status];
+      const row = rows[index]!;
+      expect(row.dataset.diffFile).toBe(file.path);
+      expect(row.closest("[hidden]")).toBeNull();
+      expect(within(row).getByText(label)).toBeTruthy();
+      expect(within(row).queryByText(file.status)).toBeNull();
+      expect(row.querySelector('[data-slot="diff-stat"]')?.textContent ?? null).toBe(
+        STATUS_COUNTS[index],
+      );
+
+      fireEvent.click(row);
+      const controls = document.querySelector<HTMLElement>('[data-slot="panel-controls"]')!;
+      const heading = within(controls).getByRole<HTMLElement>("heading", {
+        name: file.path.slice(file.path.lastIndexOf("/") + 1),
+      });
+      expect(document.activeElement).toBe(heading);
+      const header = heading.parentElement!;
+      expect(within(header).getByText(label)).toBeTruthy();
+      expect(within(header).queryByText(file.status)).toBeNull();
+      expect(header.querySelector('[data-slot="diff-stat"]')?.textContent ?? null).toBe(
+        STATUS_COUNTS[index],
+      );
+      const previousPaths = screen
+        .queryAllByText("docs/old.md")
+        .filter((element) => !element.closest("[hidden]"));
+      expect(previousPaths.map((element) => element.textContent)).toEqual(
+        file.previousPath ? [file.previousPath] : [],
+      );
+
+      fireEvent.keyDown(heading, { key: "Escape" });
+      expect(document.querySelector(`[data-diff-file="${file.path}"]`)).toBe(row);
+      expect(row.closest("[hidden]")).toBeNull();
+      expect(row.getAttribute("aria-current")).toBe("true");
+      expect(document.activeElement).toBe(row);
+    }
+
+    expect(get).toHaveBeenCalledOnce();
+    const read: Diff = await get.mock.results[0]!.value;
+    expect(read.files!.map((file) => [file.status, file.previousPath])).toEqual([
+      ["added", undefined],
+      ["modified", undefined],
+      ["deleted", undefined],
+      ["renamed", "docs/old.md"],
+      ["untracked", undefined],
+    ]);
+  },
+);
 
 it("retains the accepted comparison on failure, then retries the requested scope", async () => {
   const read = vi.fn(async () => REVIEW_DIFF);

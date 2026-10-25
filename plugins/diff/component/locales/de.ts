@@ -47,6 +47,11 @@ export const de: Record<string, string> = {
     "Binärinhalt wird nicht angezeigt. Zeilenanzahl ist nicht verfügbar.",
   "file.metadataOnly":
     "Keine Zeilenänderungen. Nur die Dateimetadaten haben sich geändert.",
+  "file.status.added": "Hinzugefügt",
+  "file.status.modified": "Geändert",
+  "file.status.deleted": "Gelöscht",
+  "file.status.renamed": "Umbenannt",
+  "file.status.untracked": "Nicht verfolgt",
   "table.region": "Scrollbarer Diff für {{path}}",
   "table.beforeLine": "Zeile vorher",
   "table.beforeCode": "Code vorher",

@@ -42,6 +42,11 @@ export const ja: Record<string, string> = {
   "file.binary": "バイナリコンテンツは表示されません。行数は利用できません。",
   "file.metadataOnly":
     "行の変更はありません。ファイルのメタデータのみが変更されました。",
+  "file.status.added": "追加",
+  "file.status.modified": "変更",
+  "file.status.deleted": "削除",
+  "file.status.renamed": "名前変更",
+  "file.status.untracked": "未追跡",
   "table.region": "{{path}} のスクロール可能な diff",
   "table.beforeLine": "変更前の行",
   "table.beforeCode": "変更前のコード",

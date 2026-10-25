@@ -48,6 +48,11 @@ export const es: Record<string, string> = {
     "El contenido binario no se muestra. Los recuentos de líneas no están disponibles.",
   "file.metadataOnly":
     "Sin cambios de línea. Solo cambiaron los metadatos del archivo.",
+  "file.status.added": "Añadido",
+  "file.status.modified": "Modificado",
+  "file.status.deleted": "Eliminado",
+  "file.status.renamed": "Renombrado",
+  "file.status.untracked": "Sin seguimiento",
   "table.region": "Diff desplazable de {{path}}",
   "table.beforeLine": "Línea anterior",
   "table.beforeCode": "Código anterior",

@@ -49,6 +49,11 @@ export const fr: Record<string, string> = {
     "Le contenu binaire n’est pas affiché. Le nombre de lignes n’est pas disponible.",
   "file.metadataOnly":
     "Aucune modification de ligne. Seules les métadonnées du fichier ont changé.",
+  "file.status.added": "Ajouté",
+  "file.status.modified": "Modifié",
+  "file.status.deleted": "Supprimé",
+  "file.status.renamed": "Renommé",
+  "file.status.untracked": "Non suivi",
   "table.region": "Diff défilable pour {{path}}",
   "table.beforeLine": "Ligne avant",
   "table.beforeCode": "Code avant",

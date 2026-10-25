@@ -18,11 +18,11 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
-  FileDiff,
+  FileDiff as FileDiffIcon,
   List,
   Refresh,
 } from "@flame/icons/react";
-import type { Diff, DiffMode } from "@flame/runtime-client/wire";
+import type { Diff, DiffMode, FileDiff } from "@flame/runtime-client/wire";
 import {
   Button,
   DiffFileHeader,
@@ -43,6 +43,7 @@ import {
   SearchField,
   Select,
   Toolbar,
+  type DiffFileSummary,
 } from "@flame/ui";
 import { en } from "./locales/en";
 import { zh } from "./locales/zh";
@@ -58,6 +59,14 @@ const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 const COMPARISONS: DiffMode[] = ["worktree", "base"];
 const comparisonName = (t: Translate, mode: DiffMode) =>
   t(`comparison.${mode}`);
+
+const fileSummary = (t: Translate, file: FileDiff): DiffFileSummary => ({
+  path: file.path,
+  status: t(`file.status.${file.status}`),
+  added: file.added,
+  removed: file.removed,
+  binary: file.binary,
+});
 
 type Read = {
   loading: boolean;
@@ -353,7 +362,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   {t("files.button")}
                 </Button>
               </Toolbar>
-              <DiffFileHeader ref={heading} file={file}>
+              <DiffFileHeader ref={heading} file={fileSummary(t, file)}>
                 {!file.binary && file.rows.length > 0 && (
                   <Select
                     size="sm"
@@ -433,7 +442,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
             >
               {!files.length && !accepted.diff.truncated && (
                 <EmptyState
-                  icon={FileDiff}
+                  icon={FileDiffIcon}
                   size="compact"
                   title={t("empty.title")}
                   sub={t("empty.sub")}
@@ -448,7 +457,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               )}
               <DiffFileList
                 ref={list}
-                files={matching}
+                files={matching.map((item) => fileSummary(t, item))}
                 label={t("files.region")}
                 currentPath={selection.path}
                 onSelect={openFile}
