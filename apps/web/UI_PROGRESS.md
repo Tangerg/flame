@@ -1,13 +1,16 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. File previews now bound the persistent filename and keep the complete path in the scrolling reader across source, rendered and unavailable-content states. Native EN 14 px/Orange/320 px Dock and ZH 18 px/custom-blue/half-screen 200% reading/source-return/draft paths pass. Diff list sizing, formatted Find, gallery source geometry and new-conversation branding remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. File-source Select All stays within the source; code cells retain literal line breaks and whole-source copy writes current accepted text. Native English, Chinese 200% and an independent uninstrumented app qualify selection, copying and source return. A separately reproduced native textarea insertion issue remains: the first multiline paste into a single-line draft drops one trailing LF despite receiving complete clipboard data. See File-source selection and literal copying. Compact file identity, Diff list sizing, formatted Find, gallery source geometry and new-conversation branding remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/file-reading-identity-1025`. File-preview identity is accepted on
+is on `codex/file-source-selection-1025`. File-source selection and literal copying
+are qualified on frozen base `65bbbd15d70b3f621917c1830341fd06ed81cc5b`; see the
+corresponding file-browsing section for verification, publication and retirement.
+File-preview identity is accepted on
 frozen base `2d87f694bf75fe03186ce934a38b21e6f73a2232`; implementation
 `619352444a87a5d2d75c80b7a5d0d03b9972b342` is published to remote main, and
 owned evidence retirement is complete. See Bounded file-preview identity below.
@@ -3843,6 +3846,114 @@ maps bind **1,209 final artifacts** and **12 native input files**. This Markdown
 receipt changes no accepted product source. Preserve the file request, reading,
 comparison, Composer and Runtime owners for the next batch. The continuous goal
 remains active.
+
+### File-source selection and literal copying
+
+The task is reply reference → source reader → select/copy or quote → return to
+the original reply → continue its draft. Original Wails, including an app without
+observers, selects the whole workspace with Cmd+A from the file reader. A native
+drag through the closing brace of a captured 91-character sample copies only
+89 characters: two internal blank lines disappear. Tabs, CJK and double spaces
+already survive; no claim that those were broken is made.
+
+`FileView` now exposes its actual source through a normal React ref. Its existing
+code cells carry the captured LF separators, including blank and trailing lines;
+the plain fallback no longer inserts fake spaces. One stable child preserves a
+browser-owned whole-source Range as accepted rows grow or refresh. FilePreview
+passes its current accepted content and this boundary to the existing shared
+selection helpers through the existing named ScrollArea. Header, path, line
+labels and surrounding application are excluded. The shared helpers accept an
+optional contained boundary while preserving their default callers, IME/229,
+modifier, handled-event and editable-field guards. Partial selection stays native.
+There is no selection state, clipboard implementation, global input listener,
+extra Tab stop, new dependency or change to request/line-placement/history owners.
+
+The existing shared CodeBody and recorded-output reader contracts provide the
+selection/focus model. Retained Radix focus, ChatGPT reading and ZCode compact
+identity research inform task continuity; no external reader implementation is
+copied. Six better-* domains and the objective's typography, whitespace,
+hierarchy, color, motion, interaction, responsive and originality checks are
+reviewed in the complete native task. Existing code metrics, row rhythm, path
+hierarchy, focus and theme tokens remain intact. Light/Orange and dark/custom
+blue show distinct focus/selection and target-line states, with no decorative
+surface or motion. Contrast is not freshly measured. This is scoped acceptance,
+not a product-wide or award certification.
+
+Verification (2026-10-25):
+
+- The frozen two-file baseline passes **94 tests**. Bounded edit-only Claude CLI
+  supplies seven allowed files before timeout at **240.79 s**, wrapper exit 143;
+  its completion is not claimed. Primary reviews every edit, completes the
+  missing workspace integrations, types the highlighter mock and finishes native
+  attribute forwarding. Exactly **eight non-Markdown paths** differ from base.
+- Original production sources fail the new regressions: shared UI **2 failed /
+  64 passed**, Web **6 failed / 94 passed**. Exact candidate bytes and the shared
+  build are restored afterward. Regressions cover both modifier keys, source-only
+  boundaries, literal whole-copy, pending expansion/new rows/shorter refresh,
+  rendered Markdown and renderer fallback, native/editable/partial-copy guards,
+  and highlighted/plain blank-line, indentation and trailing-LF representation.
+- Shared UI checks pass in **7.74 s**: build, types, lint, format, **83 tests**
+  and the independent packed consumer. Final UI formatting also passes. Final
+  serial Web/native checks pass in **53.05 s**: **5 files / 264 tests**, all
+  **13 Web gates**, then normal **make check-native**, including staging,
+  Desktop Go tests/vet/build and the supported Wails build. An initial run stops
+  at the optional-role/event lint after tests/types pass; normal native-attribute
+  forwarding resolves it without disabling a rule. Linker deployment-version
+  and duplicate `-lobjc` warnings are non-failing. No browser visual suite or
+  performance benchmark runs.
+- Final production input has **5,771 non-Markdown files**, aggregate SHA-256
+  `e803b45beba839fc7b2a934245e57095675f6b8cf96c6190521819c9259720ed`.
+  All **11** product resources retain their original bytes. Final candidate/clean
+  assets build serially in **2.48 / 2.14 s**; EN/ZH/clean hosts in **6.64 / 4.85 /
+  4.86 s**. Later **2.46 / 2.50 s** builds add only passive clipboard-event
+  diagnostics, with no changed production input or native input behavior.
+- Actual Wails EN/light/14 px/Orange keeps a **320 px Dock**, a **96 px header**
+  and **758 px reader**, showing all ten source rows without added visual rows.
+  Focus reaches the existing named reader; Cmd+A selects the exact **93-character**
+  source. Native copy writes all 93 characters with the copy event handled, and
+  paste receives that exact text. A native partial drag through the brace retains
+  all **91** selected characters and both internal blanks. Actual Quote preserves
+  blank lines and file identity, including a real `:1-4` selection and a separate
+  whole-file quote. Raw editable AX text verifies the whole quote and continuation.
+  Final source return restores `src/review.go:6`; input ID 3 continues at caret 205.
+- ZH/dark/18 px/custom-blue/motion-off uses native Left arrangement, twenty
+  observed Zoom In actions and actual fixture-sidebar collapse: **561 × 525 CSS
+  px at 200%**. The reference opens a full pane with a **107 px header** and
+  **372.5 px reader**; all ten rows fit. Cmd+A and native Copy preserve all 93
+  characters. Back restores the original reference, and system Paste plus
+  continuation preserves input ID 3 at caret **103**. Actual Size returns to
+  **1122 × 1051** before Quit. Hidden zero-width reader geometry after returning
+  to the conversation is not presented-layout evidence.
+- An independent clean app has no observer or event diagnostics. Native source
+  selection exposes Quote; system Copy/Paste appends the exact 93-character source
+  to the original newline-ended draft. The observed AX baseline contributes one
+  serialization LF, which is excluded consistently when reading the value.
+  Source Back focuses the original reference and continuation produces the exact
+  **123-character** draft. No private DOM identity is claimed for this scene.
+
+**Known receiving-input issue:** a first multiline paste into a single-line draft
+inserts **92 of 93** characters, dropping one final LF. Passive native events prove
+the file copy writes 93 and Paste receives 93, with native insertion unprevented.
+Direct external paste reproduces the same loss without any file-copy path;
+multiline drafts retain all 93. This is not dismissed as a successful retry or
+claimed fixed. Investigate the native textarea insertion boundary in the next
+evidenced batch, preserving composition, undo and draft ownership. Do not hide it
+behind a source serializer or a blanket manual-paste handler.
+
+Other limits: all scenes use deterministic providers and real Wails presentation;
+no live filesystem write, Send, provider execution, VoiceOver, OS IME, RTL or other
+platform GUI is qualified. Expansion/refresh selection continuity is covered by
+integration tests, not a new native asynchronous provider scene. One coalesced
+Escape/Tab probe reaches fixture navigation and therefore selects the page; the
+step-observed reader run qualifies the intended scope. An undefined REPL value,
+a long AX-report truncation and an initial clean-value parser that consumed
+trailing newlines are excluded; fresh state and raw text with observed AX framing
+resolve those diagnostic errors without product changes. No migration is needed.
+
+**Approve** for the source-selection/copy boundary and complete source-return
+task, with the receiving-input defect explicitly retained above. Publication
+sync finds remote main unchanged from the frozen base; unrelated checks are not
+repeated for that sync. Publication and owned-resource retirement follow below.
 
 ### File-tree hierarchy and selectability
 

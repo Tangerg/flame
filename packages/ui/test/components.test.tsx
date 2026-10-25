@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FormEvent } from "react";
-import { createRef, useState } from "react";
+import { createRef, useRef, useState } from "react";
 import { Brain } from "@flame/icons/react";
 import {
   Button,
@@ -282,6 +282,152 @@ describe("recorded code", () => {
       region.childNodes.length,
     );
     expectNativeCopy();
+    selection.removeAllRanges();
+  });
+
+  it("selects and copies a content boundary within its focused reader without its framing", () => {
+    let handled = false;
+    function Reader({ rows }: { rows: string[] }) {
+      const content = useRef<HTMLDivElement>(null);
+      return (
+        <div
+          onKeyDownCapture={(event) => {
+            if (handled) event.preventDefault();
+          }}
+          onCopyCapture={(event) => {
+            if (handled) event.preventDefault();
+          }}
+        >
+          <p>Surrounding application text</p>
+          <div
+            role="region"
+            aria-label="Reader"
+            tabIndex={0}
+            onKeyDown={(event) => selectAllInReader(event, content.current!)}
+            onCopy={(event) =>
+              copyWholeReader(event, rows.join("\n"), content.current!)
+            }
+          >
+            <p>src/review.go</p>
+            <input aria-label="Reader field" defaultValue="draft" />
+            <div ref={content}>
+              <div>
+                {rows.map((row, index) => (
+                  <div key={index}>{row}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    const view = render(<Reader rows={["first", "", "\tthird"]} />);
+    const region = screen.getByRole("region", { name: "Reader" });
+    const content = screen.getByText("first").parentElement!.parentElement!;
+    const field = screen.getByRole("textbox", { name: "Reader field" });
+    const selection = document.getSelection()!;
+    const copy = () => {
+      const setData = vi.fn();
+      const proceeded = fireEvent.copy(region, { clipboardData: { setData } });
+      return { proceeded, setData };
+    };
+    const expectNativeCopy = () => {
+      const { proceeded, setData } = copy();
+      expect(proceeded).toBe(true);
+      expect(setData).not.toHaveBeenCalled();
+    };
+    selection.removeAllRanges();
+
+    expect(fireEvent.keyDown(field, { key: "a", metaKey: true })).toBe(true);
+    expect(selection.rangeCount).toBe(0);
+    for (const init of [
+      { key: "a", metaKey: true, isComposing: true },
+      { key: "a", metaKey: true, keyCode: 229 },
+      { key: "a", metaKey: true, shiftKey: true },
+      { key: "a" },
+    ]) {
+      expect(fireEvent.keyDown(region, init)).toBe(true);
+      expect(selection.rangeCount).toBe(0);
+    }
+    handled = true;
+    expect(fireEvent.keyDown(region, { key: "a", ctrlKey: true })).toBe(false);
+    expect(selection.rangeCount).toBe(0);
+    handled = false;
+
+    expect(fireEvent.keyDown(region, { key: "a", metaKey: true })).toBe(false);
+    const range = selection.getRangeAt(0);
+    expect(range.startContainer).toBe(content);
+    expect(range.endContainer).toBe(content);
+    expect(selection.toString()).not.toContain("src/review.go");
+    expect(selection.toString()).not.toContain("Surrounding");
+    const whole = copy();
+    expect(whole.proceeded).toBe(false);
+    expect(whole.setData).toHaveBeenCalledExactlyOnceWith(
+      "text/plain",
+      "first\n\n\tthird",
+    );
+
+    view.rerender(<Reader rows={["first", "", "\tthird", "", "fifth"]} />);
+    expect(copy().setData).toHaveBeenCalledExactlyOnceWith(
+      "text/plain",
+      "first\n\n\tthird\n\nfifth",
+    );
+    const fromField = vi.fn();
+    expect(
+      fireEvent.copy(field, { clipboardData: { setData: fromField } }),
+    ).toBe(true);
+    expect(fromField).not.toHaveBeenCalled();
+    handled = true;
+    expect(copy().setData).not.toHaveBeenCalled();
+    handled = false;
+
+    selection.selectAllChildren(screen.getByText("first"));
+    expectNativeCopy();
+    selection.setBaseAndExtent(content, 0, content, 0);
+    expectNativeCopy();
+    selection.setBaseAndExtent(
+      screen.getByText("src/review.go"),
+      0,
+      content,
+      content.childNodes.length,
+    );
+    expectNativeCopy();
+    selection.removeAllRanges();
+  });
+
+  it("leaves Select All and copy native for a boundary outside the reader", () => {
+    render(
+      <>
+        <p>Outside source</p>
+        <div
+          role="region"
+          aria-label="Reader"
+          tabIndex={0}
+          onKeyDown={(event) =>
+            selectAllInReader(event, screen.getByText("Outside source"))
+          }
+          onCopy={(event) =>
+            copyWholeReader(
+              event,
+              "outside",
+              screen.getByText("Outside source"),
+            )
+          }
+        >
+          captured
+        </div>
+      </>,
+    );
+    const region = screen.getByRole("region", { name: "Reader" });
+    const selection = document.getSelection()!;
+    selection.removeAllRanges();
+    expect(fireEvent.keyDown(region, { key: "a", metaKey: true })).toBe(true);
+    expect(selection.rangeCount).toBe(0);
+
+    selection.selectAllChildren(screen.getByText("Outside source"));
+    const setData = vi.fn();
+    expect(fireEvent.copy(region, { clipboardData: { setData } })).toBe(true);
+    expect(setData).not.toHaveBeenCalled();
     selection.removeAllRanges();
   });
 

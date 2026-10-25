@@ -1,9 +1,12 @@
 import { render } from "@testing-library/react";
+import { createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileView } from "@/features/workspace/ui/files/FileView";
 const projection = vi.hoisted(() => {
   const highlighter = {
-    codeToHtml: vi.fn(() => "<pre><code><span>highlighted</span></code></pre>"),
+    codeToHtml: vi.fn<(code: string) => string>(
+      () => "<pre><code><span>highlighted</span></code></pre>",
+    ),
     getLoadedLanguages: vi.fn(() => ["go", "text"]),
   };
   return { highlighter, currentHighlighter: highlighter as typeof highlighter | null };
@@ -137,6 +140,61 @@ describe("FileView syntax ownership", () => {
       <FileView path="a.go" content={"x\ny\nz"} startLine={2} targetLine={2} intent={{}} />,
     );
     expect(placed).toEqual(["3", "2"]);
+  });
+
+  describe("source line text", () => {
+    const SOURCE =
+      'package main\n\n// 核对空白与缩进\nfunc main() {\n\tmessage := "保留  double spaces"\n\tprintln(message)\n\n}\n\n';
+
+    function codeCells(root: HTMLElement) {
+      return Array.from(
+        root.querySelectorAll("[data-quote-line]"),
+        (row) => row.lastElementChild!.textContent,
+      );
+    }
+
+    it.each([
+      { label: "plain", highlighted: false },
+      { label: "highlighted", highlighted: true },
+    ])(
+      "keeps blank lines, the trailing newline and indentation in $label code cells",
+      ({ highlighted }) => {
+        if (highlighted) {
+          projection.highlighter.codeToHtml.mockImplementationOnce(
+            (code: string) =>
+              `<pre><code>${code
+                .split("\n")
+                .map((line) => `<span class="line"><span>${line}</span></span>`)
+                .join("\n")}</code></pre>`,
+          );
+        } else {
+          projection.currentHighlighter = null;
+        }
+        const source = createRef<HTMLDivElement>();
+        const view = render(
+          <FileView
+            ref={source}
+            path="src/review.go"
+            content={SOURCE}
+            startLine={1}
+            targetLine={0}
+            intent={INTENT}
+          />,
+        );
+
+        const cells = codeCells(view.container);
+        expect(cells).toHaveLength(SOURCE.split("\n").length);
+        expect(cells.join("")).toBe(SOURCE);
+        expect(cells[1]).toBe("\n");
+        expect(cells[4]).toBe('\tmessage := "保留  double spaces"\n');
+        expect(cells.at(-1)).toBe("");
+        expect(source.current?.getAttribute("data-quote-source")).toBe("file");
+        expect(source.current?.querySelectorAll("[data-quote-line]")).toHaveLength(cells.length);
+        expect(Boolean(view.container.querySelector('[data-quote-line="5"] .line'))).toBe(
+          highlighted,
+        );
+      },
+    );
   });
 
   it("places the line again when the same line is asked for again", () => {

@@ -1,5 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactNode, type Ref } from "react";
+import {
+  type ClipboardEventHandler,
+  type KeyboardEventHandler,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { cn } from "@/lib/classNames";
 const styles = stylex.create({
   port: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
@@ -14,26 +19,14 @@ interface Props {
   tabIndex?: number;
   role?: string;
   "aria-label"?: string;
+  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
+  onCopy?: ClipboardEventHandler<HTMLDivElement>;
 }
 
-export function ScrollArea({
-  className,
-  children,
-  ref,
-  tabIndex,
-  role,
-  "aria-label": ariaLabel,
-}: Props) {
+export function ScrollArea({ className, children, ref, ...attributes }: Props) {
   const styled = stylex.props(styles.port);
   return (
-    <div
-      ref={ref}
-      tabIndex={tabIndex}
-      role={role}
-      aria-label={ariaLabel}
-      {...styled}
-      className={cn(styled.className, className)}
-    >
+    <div ref={ref} {...attributes} {...styled} className={cn(styled.className, className)}>
       {children}
     </div>
   );

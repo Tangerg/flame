@@ -168,6 +168,10 @@ complete native range produced by that command; other ranges and editable
 descendants retain native copy. Custom readers supply their presented content
 without line labels or controls, and virtualized output supplies its complete
 source. Neither helper adds selection state.
+Both helpers accept an optional content element inside the event owner. A named
+scroll viewport can therefore keep focus and editable-field ownership while
+selecting only its presented source, excluding paths and other reader framing.
+The default boundary remains the event owner for existing readers.
 Readers with changing rows keep their contents under one stable child so DOM
 reconciliation cannot shorten the browser's whole-reader range.
 `CodeFrame` is that frame alone, for portable views

@@ -9,7 +9,12 @@ function isEditableTarget(reader: HTMLElement, target: EventTarget): boolean {
   return editable !== null && reader.contains(editable);
 }
 
-export function selectAllInReader(event: KeyboardEvent<HTMLElement>): void {
+// The event owner is the focused reader; `content` is the presented source inside
+// it, so framing such as a reader's path label stays outside the selected range.
+export function selectAllInReader(
+  event: KeyboardEvent<HTMLElement>,
+  content: Element = event.currentTarget,
+): void {
   if (
     event.defaultPrevented ||
     isImeKey(event.nativeEvent) ||
@@ -20,38 +25,42 @@ export function selectAllInReader(event: KeyboardEvent<HTMLElement>): void {
   )
     return;
   const reader = event.currentTarget;
-  if (isEditableTarget(reader, event.target)) return;
+  if (!reader.contains(content) || isEditableTarget(reader, event.target))
+    return;
   const selection = reader.ownerDocument.getSelection();
   if (!selection) return;
   event.preventDefault();
-  selection.selectAllChildren(reader);
+  selection.selectAllChildren(content);
 }
 
-// Select All spans the reader's DOM framing (labels, controls, virtual spacers),
-// so a whole-reader copy writes the reader's presented text instead.
+// Select All spans the content's DOM framing (labels, controls, virtual spacers),
+// so a whole-content copy writes the reader's presented text instead.
 export function copyWholeReader(
   event: ClipboardEvent<HTMLElement>,
   text: string,
+  content: Element = event.currentTarget,
 ): void {
+  const reader = event.currentTarget;
   if (
     event.defaultPrevented ||
-    isEditableTarget(event.currentTarget, event.target) ||
-    !isWholeReaderSelected(event.currentTarget)
+    !reader.contains(content) ||
+    isEditableTarget(reader, event.target) ||
+    !isWholeContentSelected(content)
   )
     return;
   event.preventDefault();
   event.clipboardData.setData("text/plain", text);
 }
 
-function isWholeReaderSelected(reader: Element): boolean {
-  const selection = reader.ownerDocument.getSelection();
+function isWholeContentSelected(content: Element): boolean {
+  const selection = content.ownerDocument.getSelection();
   if (selection?.rangeCount !== 1) return false;
   const range = selection.getRangeAt(0);
   return (
     !range.collapsed &&
-    range.startContainer === reader &&
+    range.startContainer === content &&
     range.startOffset === 0 &&
-    range.endContainer === reader &&
-    range.endOffset === reader.childNodes.length
+    range.endContainer === content &&
+    range.endOffset === content.childNodes.length
   );
 }

@@ -1404,6 +1404,121 @@ describe("expanded directory refresh continuity", () => {
   });
 });
 
+describe("file source selection", () => {
+  const path = "src/review.go";
+  const content =
+    'package main\n\n// 核对空白与缩进\nfunc main() {\n\tmessage := "保留  double spaces"\n\tprintln(message)\n\n}\n\n';
+  const captured = (text = content, totalLines = text.split("\n").length) => ({
+    content: text,
+    startLine: 1,
+    totalLines,
+  });
+  const sourceView = () => document.querySelector<HTMLElement>('[data-quote-source="file"]')!;
+  const clipboard = (host: HTMLElement) => {
+    const setData = vi.fn();
+    const native = fireEvent.copy(host, { clipboardData: { setData } });
+    return { setData, native };
+  };
+  const expectSourceRange = (source: HTMLElement) => {
+    const range = document.getSelection()!.getRangeAt(0);
+    expect(range.startContainer).toBe(source);
+    expect(range.startOffset).toBe(0);
+    expect(range.endContainer).toBe(source);
+    expect(range.endOffset).toBe(source.childNodes.length);
+  };
+
+  beforeEach(() => document.getSelection()!.removeAllRanges());
+  afterEach(() => document.getSelection()!.removeAllRanges());
+
+  it.each(["metaKey", "ctrlKey"])(
+    "selects only the presented source with %s and copies its literal content",
+    async (modifier) => {
+      readFile.mockResolvedValue(captured());
+      openWorkspaceFile(path);
+      mount(
+        <>
+          <textarea aria-label="Message" defaultValue="Retained draft" />
+          <FileWorkspace />
+        </>,
+      );
+      await waitFor(() => expect(row(10)).toBeTruthy());
+      const host = screen.getByRole("region", { name: path });
+      const source = sourceView();
+      act(() => host.focus());
+
+      expect(fireEvent.keyDown(host, { key: "a", [modifier]: true })).toBe(false);
+      expectSourceRange(source);
+      expect(source.contains(host.querySelector('[data-slot="file-path"]'))).toBe(false);
+      expect(document.activeElement).toBe(host);
+      const copied = clipboard(host);
+      expect(copied.native).toBe(false);
+      expect(copied.setData.mock.calls).toEqual([["text/plain", content]]);
+      expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" }).value).toBe(
+        "Retained draft",
+      );
+    },
+  );
+
+  it("leaves rendered Markdown native and scopes its selected or fallback source", async () => {
+    readFile.mockResolvedValue(captured("# Guide\n\nA  paragraph\n"));
+    openWorkspaceFile("docs/guide.md");
+    mount(<FileWorkspace />);
+    const rendered = await screen.findByTestId("rendered-markdown");
+    const host = screen.getByRole("region", { name: "docs/guide.md" });
+    document.getSelection()!.selectAllChildren(rendered);
+    expect(fireEvent.keyDown(host, { key: "a", metaKey: true })).toBe(true);
+    expect(clipboard(host).native).toBe(true);
+    expect(clipboard(host).setData).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Source" }));
+    expect(fireEvent.keyDown(host, { key: "a", metaKey: true })).toBe(false);
+    expectSourceRange(sourceView());
+    expect(clipboard(host).setData.mock.calls).toEqual([
+      ["text/plain", "# Guide\n\nA  paragraph\n"],
+    ]);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
+    await screen.findByTestId("rendered-markdown");
+    await resetKernelForTest();
+    expect(screen.queryByTestId("rendered-markdown")).toBeNull();
+    expect(fireEvent.keyDown(host, { key: "a", ctrlKey: true })).toBe(false);
+    expectSourceRange(sourceView());
+    expect(clipboard(host).setData.mock.calls).toEqual([
+      ["text/plain", "# Guide\n\nA  paragraph\n"],
+    ]);
+  });
+
+  it("copies accepted content through pending expansion, new rows and a shorter refresh", async () => {
+    readFile.mockResolvedValueOnce(captured(content, 30));
+    openWorkspaceFile(path);
+    mount(<FileWorkspace />);
+    await waitFor(() => expect(row(10)).toBeTruthy());
+    const host = screen.getByRole("region", { name: path });
+    const source = sourceView();
+    const pending = Promise.withResolvers<WorkspaceFileContent>();
+    readFile.mockReturnValueOnce(pending.promise);
+    fireEvent.click(screen.getByRole("button", { name: /more/i }));
+    fireEvent.keyDown(host, { key: "a", metaKey: true });
+    expectSourceRange(source);
+    expect(clipboard(host).setData.mock.calls).toEqual([["text/plain", content]]);
+
+    const expanded = content + "func extra() {}\n";
+    await act(async () => pending.resolve(captured(expanded, 30)));
+    await waitFor(() => expect(row(11)).toBeTruthy());
+    expect(sourceView()).toBe(source);
+    expectSourceRange(source);
+    expect(clipboard(host).setData.mock.calls).toEqual([["text/plain", expanded]]);
+
+    const shortened = "package main\n";
+    readFile.mockResolvedValueOnce(captured(shortened));
+    await act(() => client.refetchQueries({ type: "active" }));
+    await waitFor(() => expect(row(3)).toBeNull());
+    expect(sourceView()).toBe(source);
+    expectSourceRange(source);
+    expect(clipboard(host).setData.mock.calls).toEqual([["text/plain", shortened]]);
+  });
+});
+
 describe("file read refresh continuity", () => {
   const guide = "docs/reading-guide.md";
   const readQuery = (path: string, cwd?: string) => ({

@@ -1,6 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import { space, surface } from "@flame/ui/tokens.stylex";
-import { type ReactNode, type Ref } from "react";
+import {
+  type ClipboardEventHandler,
+  type KeyboardEventHandler,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { ScrollArea } from "@/ui/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
 import { ViewHeader, type ViewHeaderProps } from "@/features/workspace/ui/ViewHeader";
@@ -15,6 +20,8 @@ interface Props extends ViewHeaderProps {
   // When the scrolled content has no focusable elements (a file viewer), name
   // the region so it is keyboard-focusable and scrollable.
   scrollLabel?: string;
+  onScrollKeyDown?: KeyboardEventHandler<HTMLDivElement>;
+  onScrollCopy?: ClipboardEventHandler<HTMLDivElement>;
   notice?: ReactNode;
   children: ReactNode;
 }
@@ -23,6 +30,8 @@ export function WorkspaceViewLayout({
   scrollInset = "rows",
   scrollRef,
   scrollLabel,
+  onScrollKeyDown,
+  onScrollCopy,
   notice,
   children,
   ...header
@@ -36,6 +45,8 @@ export function WorkspaceViewLayout({
         tabIndex={scrollLabel ? 0 : undefined}
         role={scrollLabel ? "region" : undefined}
         aria-label={scrollLabel}
+        onKeyDown={onScrollKeyDown}
+        onCopy={onScrollCopy}
         className={stylex.props(wl.viewport, scrollInset === "rows" && wl.rows).className}
       >
         {children}

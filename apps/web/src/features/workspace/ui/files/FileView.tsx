@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type Highlighter } from "shiki";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef, type Ref } from "react";
 import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHighlight";
 import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
@@ -17,6 +17,7 @@ export function FileView({
   startLine,
   targetLine,
   intent,
+  ref,
 }: {
   path: string;
   content: string;
@@ -24,6 +25,8 @@ export function FileView({
   targetLine: number;
   // Null while the content is a placeholder for another request, so it cannot consume the intent.
   intent: object | null;
+  // The presented source, without framing outside the line rows.
+  ref?: Ref<HTMLDivElement>;
 }) {
   const { highlighter, theme: shikiTheme } = useCodeHighlighter();
 
@@ -42,29 +45,43 @@ export function FileView({
     targetRef.current.scrollIntoView({ block: "center" });
   }, [intent, content, targetLine]);
 
+  const last = plain.length - 1;
   return (
-    <div data-quote-source="file" data-quote-path={path} {...stylex.props(cs.sheet, typeStep.code)}>
-      {plain.map((line, i) => {
-        const n = startLine + i;
-        const isTarget = n === targetLine;
-        const html = highlighted?.[i];
-        return (
-          <div
-            key={i}
-            ref={isTarget ? targetRef : undefined}
-            data-quote-line={n}
-            style={{ gridTemplateColumns: `${numberWidth} minmax(0, 1fr)` }}
-            {...stylex.props(cs.lineRow, isTarget && cs.targetLine)}
-          >
-            <span {...stylex.props(cs.gutter)}>{n}</span>
-            {html !== undefined ? (
-              <span {...stylex.props(cs.wrap)} dangerouslySetInnerHTML={{ __html: html }} />
-            ) : (
-              <span {...stylex.props(cs.wrap, vocab.soft)}>{line || " "}</span>
-            )}
-          </div>
-        );
-      })}
+    <div
+      ref={ref}
+      data-quote-source="file"
+      data-quote-path={path}
+      {...stylex.props(cs.sheet, typeStep.code)}
+    >
+      {/* One stable child keeps a whole-source range intact while rows refresh or grow. */}
+      <div>
+        {plain.map((line, i) => {
+          const n = startLine + i;
+          const isTarget = n === targetLine;
+          const html = highlighted?.[i];
+          // The cell carries the source's own line break; row layout alone drops blank lines.
+          const separator = i < last ? "\n" : "";
+          return (
+            <div
+              key={i}
+              ref={isTarget ? targetRef : undefined}
+              data-quote-line={n}
+              style={{ gridTemplateColumns: `${numberWidth} minmax(0, 1fr)` }}
+              {...stylex.props(cs.lineRow, isTarget && cs.targetLine)}
+            >
+              <span {...stylex.props(cs.gutter)}>{n}</span>
+              {html !== undefined ? (
+                <span
+                  {...stylex.props(cs.wrap)}
+                  dangerouslySetInnerHTML={{ __html: html + separator }}
+                />
+              ) : (
+                <span {...stylex.props(cs.wrap, vocab.soft)}>{line + separator}</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

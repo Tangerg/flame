@@ -8,7 +8,9 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ClipboardEventHandler,
   type FormEvent,
+  type KeyboardEventHandler,
   type MouseEvent,
   type ReactNode,
   type Ref,
@@ -26,9 +28,11 @@ import { TextButton } from "@/ui/index";
 import { Icon, fileIconName } from "@/ui/index";
 import {
   Button,
+  copyWholeReader,
   EmptyState,
   IconButton,
   isImeKey,
+  selectAllInReader,
   TextField,
   useCopyFeedback,
   vocab,
@@ -187,6 +191,8 @@ export function FileWorkspace() {
 interface FileContentLayoutProps extends ViewHeaderProps {
   viewport: RefObject<HTMLDivElement | null>;
   scrollLabel?: string;
+  onScrollKeyDown?: KeyboardEventHandler<HTMLDivElement>;
+  onScrollCopy?: ClipboardEventHandler<HTMLDivElement>;
   notice?: ReactNode;
   children: ReactNode;
 }
@@ -392,6 +398,16 @@ function FilePreview({
     setLineWindow({ start: firstShown, end: lastShown + WINDOW_RADIUS });
   };
 
+  // Set only while FileView presents the source, including as a renderer's fallback;
+  // rendered content and editable fields keep their native selection and copy.
+  const source = useRef<HTMLDivElement>(null);
+  const selectSource: KeyboardEventHandler<HTMLDivElement> = (event) => {
+    if (source.current) selectAllInReader(event, source.current);
+  };
+  const copySource: ClipboardEventHandler<HTMLDivElement> = (event) => {
+    if (source.current && data) copyWholeReader(event, data.content, source.current);
+  };
+
   const unsupported = workspaceErrorClassifier().isUnsupportedFile(error);
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
@@ -431,6 +447,8 @@ function FilePreview({
     <FileContentLayout
       viewport={scrollPort}
       scrollLabel={viewer.path}
+      onScrollKeyDown={selectSource}
+      onScrollCopy={copySource}
       notice={
         <>
           {refreshFeedback}
@@ -531,6 +549,7 @@ function FilePreview({
                   const Renderer = renderer.component;
                   const recorded = (
                     <FileView
+                      ref={source}
                       path={viewer.path}
                       content={items[0]!.content}
                       startLine={items[0]!.startLine}
@@ -551,6 +570,7 @@ function FilePreview({
                 })()
               ) : (
                 <FileView
+                  ref={source}
                   path={viewer.path}
                   content={items[0]!.content}
                   startLine={items[0]!.startLine}

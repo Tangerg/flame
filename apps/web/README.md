@@ -35,6 +35,12 @@ scroller as source, rendered content and read/unsupported states. File requests,
 line placement, renderer mode and source-return history retain their existing
 owners.
 
+The focused file-source reader scopes Ctrl/Cmd+A to its presented source and
+copies that complete range from the current accepted content. Source cells carry
+literal line separators so native partial selection retains blank lines and
+indentation. Rendered previews and editable controls retain native commands;
+loading more rows or refreshing does not create a second selection owner.
+
 MCP server rows read their own tools directly, independent of configuration
 editing and server origin. Reconnect runs in the same exact-ID serial mutation
 generation as other server commands; its acknowledgement only admits a
