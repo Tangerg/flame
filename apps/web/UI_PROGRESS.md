@@ -8,9 +8,10 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/formatted-conversation-find-1025`. Formatted conversation Find is
-accepted on frozen base `50a3d3483c15d711da850f8357d30766ad1dcc2c`; publication
-and private retirement follow the completed native acceptance. See Formatted
-conversation Find below. Recorded output Find navigation is
+accepted on frozen base `50a3d3483c15d711da850f8357d30766ad1dcc2c`; implementation
+`fd6a07df6645e593de9359c93a0894194fa0bdfa` is published to remote main, and
+private evidence retirement is complete. See Formatted conversation Find below.
+Recorded output Find navigation is
 accepted on frozen base `8f27e6cdc534281fa70bdf38dcc542d1767b2fce`; implementation
 `29e7226aab9eb2df3483d17873d7b24fa4f19738` is published to remote main, and
 private evidence retirement is complete. See Recorded output Find navigation
@@ -25,7 +26,7 @@ private resource retirement is complete. Existing approved artwork, welcome/proj
 semantics, Composer identity and notification measurements retain their owners.
 Task return implementation `692b8547fa13aa28d91d934d854fd075d2578a0e`
 and its cleanup receipt are published to remote main. Its private resources are
-retired. Continue from fresh evidence after this brand batch; do not reopen the
+retired. Continue from fresh task evidence; do not reopen the
 qualified task return or reading-focus fixes.
 
 Reading-focus geometry is accepted on frozen
@@ -3039,8 +3040,25 @@ PROJECT_RULES.md, DEVELOPMENT.md and Web/Desktop/visual-fixture module READMEs.
 | MEDIUM   | UI     | `chat/search/adapters/messageRanges.ts:66` | Formatting fragments one visible phrase and silently omits its matches | Match each inline flow and map offsets back to original native Ranges | A reader searches the presented phrase; emphasis must not make that evidence absent |
 
 **Approve** for the inspected task and domains, with the stated coverage limits.
-Publication and owned resource retirement follow this acceptance. Continue from
-fresh evidence rather than repeating the completed formatting-boundary repair.
+Continue from fresh evidence rather than repeating the completed formatting-boundary
+repair.
+
+Implementation `fd6a07df6645e593de9359c93a0894194fa0bdfa` is published to remote
+main. The publication fetch finds no incoming commit. Normal formatter and
+workspace-lint hooks pass; independent retirement verifies the exact remote
+hash, clean owned checkout and zero commits ahead or behind. All **5,771**
+accepted non-Markdown inputs and **1,822** private artifacts retain their final
+bytes. All **18** recorded processes are dead and four apps are unregistered.
+Cleanup removes **four** new checkout outputs, **eight** owned Library directories
+and **four** bundle-temp directories. All **36** output-presence baselines,
+**three** original file hashes and **11** unchanged product resources match;
+no preexisting output needs byte restoration. The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-formatted-find-1025-IL5so7`
+is absent. The independently round-trip-verified evidence archive contains **115
+UTF-8 files** and **four screenshot digests**, gzip SHA-256
+`50b36e60ad5ca05102642a8a747bf2054f5781b10874e7de24ba0e4792ae45e3`.
+This documentation receipt changes no accepted product source. Primary user data
+and parallel work remain preserved; the continuous UI goal remains active.
 
 ## Composer model catalog recovery
 
