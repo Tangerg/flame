@@ -55,7 +55,7 @@ export const ja: Record<string, string> = {
   "catalog.summary": "保留中 {{pending}} 件 · 有効 {{active}} 件（このページ）",
   "catalog.group.label": "記録されたメモリ",
   "catalog.empty.filtered.title": "このページに一致する項目はありません。",
-  "catalog.empty.filtered.sub": "検索と絞り込みをクリアしてください。",
+  "catalog.empty.filtered.action": "検索と絞り込みをクリア",
   "catalog.empty.none.title": "この対象にメモリ項目はありません。",
   "catalog.empty.none.sub": "上部の「メモリを追加」で事実を保存します。",
   "record.details": "レコードの詳細",

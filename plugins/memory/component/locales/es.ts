@@ -59,7 +59,7 @@ export const es: Record<string, string> = {
   "catalog.group.label": "Memoria registrada",
   "catalog.empty.filtered.title":
     "No hay elementos coincidentes en esta página.",
-  "catalog.empty.filtered.sub": "Borra la búsqueda y los filtros.",
+  "catalog.empty.filtered.action": "Borrar búsqueda y filtros",
   "catalog.empty.none.title": "No hay elementos de memoria en este destino.",
   "catalog.empty.none.sub": "Usa «Añadir memoria» arriba para guardar un dato.",
   "record.details": "Detalles del registro",

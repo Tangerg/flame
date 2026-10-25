@@ -67,6 +67,10 @@ export function Memory({ context }: { context: ComponentContext }) {
     current,
     recordFeedback,
   } = useMemory(context);
+  function clearFiltersAndFocusSearch() {
+    clearFilters();
+    searchElement.current?.focus();
+  }
   return (
     <Panel
       label={t("panel.title")}
@@ -174,7 +178,11 @@ export function Memory({ context }: { context: ComponentContext }) {
               }
               actions={
                 activeFilters > 0 && (
-                  <Button size="sm" variant="ghost" onClick={clearFilters}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={clearFiltersAndFocusSearch}
+                  >
                     {t("filters.clear")}
                   </Button>
                 )
@@ -349,6 +357,10 @@ export function Memory({ context }: { context: ComponentContext }) {
             status={status}
             origin={origin}
             pinned={pinned}
+            clearSearchAndFilters={() => {
+              setSearch("");
+              clearFiltersAndFocusSearch();
+            }}
             feedback={
               <MemoryFeedback
                 feedback={recordFeedback}

@@ -118,6 +118,154 @@ const active = VISUAL_MEMORY_PAGE.Rows[1]!;
 
 const pending = VISUAL_MEMORY_PAGE.Rows[0]!;
 
+async function chooseFilter(name: string, value: string) {
+  fireEvent.click(screen.getByRole("combobox", { name }));
+  const option = await screen.findByRole("option", { name: value });
+  fireEvent.pointerDown(option, { pointerType: "mouse" });
+  fireEvent.click(option);
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+}
+
+it("clears search and every filter locally while keeping the open memory draft", async () => {
+  const { call } = await openMemory();
+  const { editor, content } = startDraft();
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+  await chooseFilter("Memory status", "Pending review");
+  await chooseFilter("Memory origin", "User authored");
+  fireEvent.click(screen.getByLabelText("Pinned only", { selector: "input" }));
+  fireEvent.change(search, { target: { value: "absent" } });
+  fireEvent.click(screen.getByRole("button", { name: "Filters · 3 active" }));
+  const issued = call.mock.calls.length;
+  const clear = within(catalog()).getByRole("button", { name: "Clear search and filters" });
+  clear.focus();
+  fireEvent.click(clear);
+
+  expect(search.value).toBe("");
+  expect(document.activeElement).toBe(search);
+  expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+  expect(content.value).toBe("Keep my unsaved memory draft.");
+  expect(screen.getByText(active.Content, { exact: true })).toBeTruthy();
+  expect(screen.getByText(pending.Content, { exact: true })).toBeTruthy();
+  expect(call.mock.calls).toHaveLength(issued);
+  fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+  expect(screen.getByRole("combobox", { name: "Memory status" }).textContent).toContain(
+    "All statuses",
+  );
+  expect(screen.getByRole("combobox", { name: "Memory origin" }).textContent).toContain(
+    "All origins",
+  );
+  expect(screen.getByRole("checkbox", { name: "Pinned only" }).getAttribute("aria-checked")).toBe(
+    "false",
+  );
+});
+
+it("returns secondary-filter clearing to search without changing its query", async () => {
+  const { call } = await openMemory();
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  fireEvent.change(search, { target: { value: "cutpoint" } });
+  fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+  fireEvent.click(screen.getByLabelText("Pinned only", { selector: "input" }));
+  const issued = call.mock.calls.length;
+  const clear = screen.getByRole("button", { name: "Clear filters" });
+  clear.focus();
+  fireEvent.click(clear);
+  expect(document.activeElement).toBe(search);
+  expect(search.value).toBe("cutpoint");
+  expect(screen.getByText(active.Content, { exact: true })).toBeTruthy();
+  expect(screen.queryByText(pending.Content, { exact: true })).toBeNull();
+  expect(call.mock.calls).toHaveLength(issued);
+});
+
+it.each(["pending", "failed"] as const)(
+  "keeps local empty-result recovery available during a %s catalog read",
+  async (state) => {
+    const { call } = await openMemory();
+    const { editor, content } = startDraft();
+    const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+    fireEvent.change(search, { target: { value: "absent" } });
+    const read = Promise.withResolvers<CallPluginResponse>();
+    call.mockImplementationOnce(() => read.promise as never);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await screen.findByText("Reading recorded memory…");
+    if (state === "failed") {
+      await act(async () => read.reject(new Error("Memory catalog is unavailable.")));
+      await screen.findByText("Memory catalog is unavailable.");
+    }
+    const issued = call.mock.calls.length;
+    fireEvent.click(within(catalog()).getByRole("button", { name: "Clear search and filters" }));
+    expect(search.value).toBe("");
+    expect(document.activeElement).toBe(search);
+    expect(screen.getByText(active.Content, { exact: true })).toBeTruthy();
+    expect(screen.getByText(pending.Content, { exact: true })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+    expect(content.value).toBe("Keep my unsaved memory draft.");
+    expect(call.mock.calls).toHaveLength(issued);
+    if (state === "pending") {
+      await act(async () => read.resolve({ output: JSON.stringify(VISUAL_MEMORY_PAGE) }));
+    }
+    await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
+    expect(document.activeElement).toBe(search);
+    expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+  },
+);
+
+it("keeps the original unknown command and later search focus through local recovery", async () => {
+  const { call, settle } = await openMemory();
+  const reply = settle.getMockImplementation()!;
+  const recovered = Promise.withResolvers<CallPluginResponse>();
+  settle
+    .mockRejectedValueOnce(new MutationLookupError(new Error("receipt unavailable")))
+    .mockImplementationOnce(() => recovered.promise);
+  const { editor, content } = startDraft();
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  fireEvent.change(search, { target: { value: "absent" } });
+  fireEvent.click(within(editor).getByRole("button", { name: "Save" }));
+  await within(editor).findByText(/confirmation unknown/);
+  const issued = call.mock.calls.length;
+  fireEvent.click(within(catalog()).getByRole("button", { name: "Clear search and filters" }));
+  expect(search.value).toBe("");
+  expect(document.activeElement).toBe(search);
+  expect(screen.getByRole("region", { name: "Add memory" })).toBe(editor);
+  expect(content.value).toBe("Keep my unsaved memory draft.");
+  expect(within(editor).getByRole<HTMLButtonElement>("button", { name: "Cancel" }).disabled).toBe(
+    true,
+  );
+  expect(call.mock.calls).toHaveLength(issued);
+  const reconcile = within(editor).getByRole("button", { name: "Check original result" });
+  reconcile.focus();
+  fireEvent.click(reconcile);
+  await waitFor(() => expect(settle).toHaveBeenCalledTimes(2));
+  search.focus();
+  await act(async () => recovered.resolve(await reply(...settle.mock.calls[1]!)));
+  await within(catalog()).findByText("Add project memory · confirmed.");
+  expect(screen.queryByRole("region", { name: "Add memory" })).toBeNull();
+  expect(document.activeElement).toBe(search);
+  expect(settle.mock.calls.map(([, key]) => key)).toEqual(["memory-command-1", "memory-command-1"]);
+});
+
+it.each(["empty", "unavailable"] as const)(
+  "offers no filter reset without records in the %s target",
+  async (state) => {
+    const { call } = await openMemory();
+    const admitted = call.getMockImplementation()!;
+    call.mockImplementation((request, options) =>
+      request.method === "flame.memory/list.v1"
+        ? ((state === "empty"
+            ? Promise.resolve({ output: JSON.stringify({ ...VISUAL_MEMORY_PAGE, Rows: [] }) })
+            : Promise.reject(new Error("Memory catalog is unavailable."))) as never)
+        : admitted(request, options),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "User" }));
+    await screen.findByText(
+      state === "empty" ? "No memory items in this target." : "Memory catalog is unavailable.",
+    );
+    expect(screen.queryByRole("button", { name: "Clear search and filters" })).toBeNull();
+    expect(screen.queryByText(active.Content, { exact: true })).toBeNull();
+    expect(screen.queryByText(pending.Content, { exact: true })).toBeNull();
+  },
+);
+
 it("cancels the local editor on Escape and returns to its opener with the query and filters", async () => {
   await openMemory();
   const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });

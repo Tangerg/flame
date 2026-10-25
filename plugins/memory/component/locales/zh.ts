@@ -54,7 +54,7 @@ export const zh: Record<string, string> = {
   "catalog.summary": "{{pending}} 项待审核 · {{active}} 项已启用（本页）",
   "catalog.group.label": "已记录的记忆",
   "catalog.empty.filtered.title": "本页没有匹配的条目。",
-  "catalog.empty.filtered.sub": "清除搜索和筛选。",
+  "catalog.empty.filtered.action": "清除搜索和筛选",
   "catalog.empty.none.title": "此目标中没有记忆条目。",
   "catalog.empty.none.sub": "使用上方的“添加记忆”保存一条事实。",
   "record.details": "记录详情",

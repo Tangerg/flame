@@ -1,19 +1,21 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Palette-generated focus and required control edges now read across every emitted background. Filled primary actions, checked boxes and switches retain an outer focus perimeter inside inset hosts. Native Orange, dim/pale custom accents, contrast 100, 320 px Dock, Chinese 200% and an uninstrumented build qualify the affected tasks and continued drafts. See Control contrast across surfaces. Earlier Trajectory search, Schedules recovery, brand, hosted identity, status, selection and copying work remains delivered. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. Memory filtered results now offer a local search-and-filter reset. Both reset actions return to search, with secondary-only clearing preserving its query; open drafts, captured targets and original command recovery retain their owners. Native English, 320 px Dock, Chinese 200% and an uninstrumented build qualify the changed task. See Memory filtered-result recovery. The preceding Schedule editor hierarchy, control contrast and new-conversation brand work remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/control-contrast-1025`. Control contrast is qualified on frozen base
-`1aa3797ee73ec04ddbea1b45e343ee5fdb82520a`; see Control contrast across surfaces
-for its two owners, measured pairs, complete tasks and verification limits.
-Implementation `6bf7b469fa8ae76ecf0e2d0ddd21ae4626b1365b` is published to remote
-main, and owned evidence retirement is complete. At the one publication-time
-fetch, main equaled the frozen base; there was no incoming source delta to merge
-or revalidate.
+is on `codex/memory-filter-recovery-1025`. Memory filtered-result recovery is
+qualified on frozen base `efd734472c9caedbea59e3aff36565b7f6346dcc`; see its
+section below for the owner, complete tasks, checks and verification limits.
+Publication and owned evidence retirement are recorded there. The preceding
+Schedule editor hierarchy implementation `90887c91e95039be1c8b6d33ea6264152319f0b5`
+and receipt `efd734472c9caedbea59e3aff36565b7f6346dcc` are already published
+to remote main, with their owned resources retired. Control contrast implementation
+`6bf7b469fa8ae76ecf0e2d0ddd21ae4626b1365b` also remains delivered; see Control
+contrast across surfaces for its measured pairs and complete task qualifications.
 Earlier Trajectory search evidence is qualified on
 frozen base `ee796a95ac88013b04d99b214f505c3903ae5d64`; see Trajectory search evidence
 boundary below for the owner, complete tasks and verification limits. Implementation
@@ -921,6 +923,116 @@ primary parallel checkout remain untouched. This documentation receipt changes
 no accepted product input; publication is followed by fresh remote, cleanliness
 and preservation checks. Continue from a fresh task observation, preserving this
 accepted hierarchy and the preceding color/focus work.
+
+### Memory filtered-result recovery
+
+A retained nonempty Memory page with no matching records now offers **Clear
+search and filters** in the existing empty-result action slot. It clears the
+local query, status, origin and pinned filter together, then focuses the existing
+search input. The separate **Clear filters** action still retains the query and
+now returns focus to that same input before its own button disappears. Empty or
+unavailable targets offer no reset that would imply retained records.
+
+Actual baseline Wails showed text-only recovery guidance and native BODY focus
+after the secondary clear action removed itself. The component owns these local
+filter changes and their focus destination. Its pure hook reset also serves scope
+navigation, so it remains unchanged. Memory stays nonmodal: the original form,
+draft, captured target and independent record operations retain their owners.
+No read, mutation, new state/effect, timer, shared primitive or style is added.
+All eight locales replace only the obsolete filtered guidance key with the action
+label. The rebuilt Memory ESM and module README match the new behavior.
+
+Read-only HeroUI controlled search and accepted-empty table examples inform a
+local reset attached to the result it recovers. They supply no Flame business
+state or focus implementation. Earlier ChatGPT/ZCode, Radix, Arc and Ace research
+remains context. Better-accessibility, layout and writing favor a reachable,
+named action with a stable focus destination over an instruction to visit two
+controls. Existing typography, semantic control/focus colors and surfaces apply.
+
+| Domain        | Evidence                                                                                                    | Result                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Accessibility | Native Tab/Return, stable search focus, both cancellation origins and later-focus regression                | Changed focus paths qualified; VoiceOver unverified                |
+| Layout        | Full view, 320 px Dock, 561 × 525 CSS px at 200%, actual wheel and Tab scrolling                            | Recovery and editing remain reachable                              |
+| Writing       | One action replaces filtered-result guidance in eight locales; secondary clear retains its distinct meaning | Labels match the local operations                                  |
+| Typography    | EN 14 px and ZH 18 px over shared text roles                                                                | Existing type scales retained                                      |
+| Colors        | Dark/dim, light/pale contrast 100 and light/Orange native scenes                                            | Existing semantic roles retained; no fresh pixel-ratio measurement |
+| UI polish     | Existing EmptyState action, outline Button and unchanged nonmodal form                                      | No extra surface, animation or decoration                          |
+
+| Severity | Location                                       | Before                                                                 | After                                                                         | Why                                             |
+| -------- | ---------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------- |
+| MEDIUM   | `plugins/memory/component/MemoryReport.tsx:92` | Filtered-empty guidance requires clearing multiple controls            | One local action restores the accepted page and search focus                  | Recovery belongs with the result it explains    |
+| MEDIUM   | `plugins/memory/component/component.tsx:70`    | Removing the focused secondary-clear button leaves native BODY focused | Its owner moves focus to the existing search input while preserving the query | Keyboard work needs a stable continuation point |
+
+Verification on the frozen base:
+
+- Focused baseline passes **1 file / 22 tests**. Against the restored original
+  ten presentation/locale owners, the new 28-test suite fails **4** cases and
+  passes **24**; the finally added unknown-command/later-focus case is not part
+  of that counterexample. Exact candidate bytes are restored afterward.
+- Final Memory draft, installed continuity and installed component suites pass
+  **3 files / 39 tests**, including **29** Memory tests. They cover all filters,
+  local reset without RPC, same open draft, secondary-query retention, accepted
+  data during pending/failed reads, no fake reset for empty/unavailable targets,
+  original unknown-command reconciliation and preservation of later search focus.
+- Final serial checks pass **8 Web gates**, **5 plugin gates**, and
+  `make check-native` in **35.87 s**. All **11** portable resources rebuild and
+  check; only Memory ESM changes. Existing nonfatal macOS linker warnings remain.
+  The first test setup mishandles Base UI native checkbox activation in Happy DOM
+  and a scope's second subscription read; corrected public input activation and
+  target-specific read setup pass without a production workaround. One overwritten
+  early child log is disclosed in the retained preparation note. Two subsequent
+  type/lint setup failures are corrected without disabling checks or weakening
+  assertions; the final full sequence passes.
+- Bounded Read/Edit/Write-only Claude CLI completes the two component files and
+  eight locale files in **54.57 s**. Primary reviews every change, independently
+  confirms that no other locale entry changes, adds the behavioral regressions,
+  regenerates resources and performs checks and actual native acceptance.
+- English dark, 14 px and dim custom accent qualifies combined reset, secondary
+  clearing with query `cutpoint`, and continuation of the same editor **7**.
+  Search Escape first clears its text; a second Escape cancels the nonmodal form
+  and preserves outside Search focus, matching the existing contract. Explicit
+  Cancel inside a new form returns Add. Actual pointer resize sets Dock width
+  **523 → 320 px**; forward Tab/Return activates recovery and focuses Search
+  **2** with both records restored. Returning to the main view and closing it
+  preserves Composer **3**, continued exactly **14 → 24 characters**.
+- Chinese light, 18 px, pale accent, contrast 100 and motion off reaches
+  **561 × 525 CSS px / 200%** through native Window → Left and twenty Zoom In
+  increments. The test-only sidebar is collapsed first. Five Tabs from Filters
+  reveal and focus the localized reset at **y=438.390625, height=30**. Return
+  restores Search **2**, two records and the exact draft in editor **5**. Two
+  Tabs resume that editor; text continues and explicit Cancel restores Add.
+  Native wheel scrolling is exercised and Actual Size is restored before Quit.
+- English light, 14 px and Orange, with **no private observer nodes**, confirms
+  combined reset, raw AX search focus, both retained records, unchanged draft
+  text and explicit cancellation back to Add. Instrumented accepted scenes
+  report zero unhandled errors.
+
+Reverse-Tab and AX-click splitter probes never focus the handle and do not
+qualify keyboard resizing. A first drag uses CSS points against 2× screenshot
+pixels and only selects fixture prose; the accepted pointer drag uses observed
+bitmap coordinates. A cancellation assertion incorrectly expects Schedules-style
+Add focus from outside Search; Memory correctly preserves Search. Another
+assertion omits a button name's leading space; fresh AX confirms Add focus.
+Two script cells fail before their intended click because a later `var`
+redeclaration hoists the state variable; subsequent assignments use fresh AX.
+These are excluded from acceptance and require no product workaround.
+
+Actual Wails beta.34 runs production Memory source through the real
+`InstalledComponent` over canonical deterministic read transport; it does not
+load the ordinary portable ESM in these scenes. That ESM is separately rebuilt
+and checked. Native Save/Approve/Pin, live Runtime/provider work, successful or
+unknown native writes, VoiceOver, OS IME, RTL/forced-colors, other-platform GUIs
+and a standalone 320 px native viewport are not newly qualified. No browser
+visual suite or performance benchmark runs. Runtime, protocol, persisted data,
+dependencies and host sources are unchanged; existing installations need normal
+explicit package release selection to consume the new ESM.
+
+Post-native integrity confirms **5,772** accepted non-Markdown inputs, SHA-256
+`142014e7210f102ba7e0e18966a0b871a38a624664a6de236b51b318f11af8ce`,
+**1,814** actual artifact hashes, **15** native construction input hashes and all
+**11** resources unchanged since construction. Scoped result: **Approve** for the
+local recovery task, its focus destinations and retained draft/command boundaries.
+Publication and owned resource retirement follow below.
 
 ### Native image save qualification
 

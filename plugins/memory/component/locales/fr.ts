@@ -58,7 +58,7 @@ export const fr: Record<string, string> = {
     "{{pending}} en attente · {{active}} actives sur cette page",
   "catalog.group.label": "Mémoire enregistrée",
   "catalog.empty.filtered.title": "Aucun élément correspondant sur cette page.",
-  "catalog.empty.filtered.sub": "Effacez la recherche et les filtres.",
+  "catalog.empty.filtered.action": "Effacer la recherche et les filtres",
   "catalog.empty.none.title": "Aucun élément de mémoire dans cette cible.",
   "catalog.empty.none.sub":
     "Utilisez « Ajouter une mémoire » ci-dessus pour enregistrer un fait.",

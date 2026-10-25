@@ -54,7 +54,7 @@ export const zhTW: Record<string, string> = {
   "catalog.summary": "{{pending}} 項待審核 · {{active}} 項已啟用（本頁）",
   "catalog.group.label": "已記錄的記憶",
   "catalog.empty.filtered.title": "本頁沒有相符的項目。",
-  "catalog.empty.filtered.sub": "清除搜尋和篩選。",
+  "catalog.empty.filtered.action": "清除搜尋和篩選",
   "catalog.empty.none.title": "此目標中沒有記憶項目。",
   "catalog.empty.none.sub": "使用上方的「新增記憶」儲存一筆事實。",
   "record.details": "記錄詳情",

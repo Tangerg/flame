@@ -28,6 +28,7 @@ export function MemoryReport({
   status,
   origin,
   pinned,
+  clearSearchAndFilters,
   feedback,
   t,
 }: {
@@ -45,6 +46,7 @@ export function MemoryReport({
   status: string;
   origin: string;
   pinned: boolean;
+  clearSearchAndFilters(): void;
   feedback: ReactNode;
   t: Translate;
 }) {
@@ -90,10 +92,17 @@ export function MemoryReport({
                     ? t("catalog.empty.filtered.title")
                     : t("catalog.empty.none.title")
                 }
-                sub={
-                  rows.length
-                    ? t("catalog.empty.filtered.sub")
-                    : t("catalog.empty.none.sub")
+                sub={rows.length ? undefined : t("catalog.empty.none.sub")}
+                action={
+                  rows.length ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearSearchAndFilters}
+                    >
+                      {t("catalog.empty.filtered.action")}
+                    </Button>
+                  ) : undefined
                 }
               />
             )}

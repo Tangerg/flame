@@ -55,7 +55,7 @@ export const ko: Record<string, string> = {
   "catalog.summary": "검토 대기 {{pending}}개 · 활성 {{active}}개 (이 페이지)",
   "catalog.group.label": "기록된 메모리",
   "catalog.empty.filtered.title": "이 페이지에 일치하는 항목이 없습니다.",
-  "catalog.empty.filtered.sub": "검색과 필터를 지우세요.",
+  "catalog.empty.filtered.action": "검색 및 필터 지우기",
   "catalog.empty.none.title": "이 대상에 메모리 항목이 없습니다.",
   "catalog.empty.none.sub": "위의 '메모리 추가'로 사실을 저장하세요.",
   "record.details": "레코드 세부 정보",

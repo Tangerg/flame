@@ -152,6 +152,11 @@ Scope and primary actions share the workbench toolbar, with search always visibl
 Secondary filters retain a visible active count and clear action while folded.
 Entering an editor folds those controls without changing the selected filters,
 so the form remains readable in short viewports.
+An accepted nonempty page with no matching records offers a local search-and-filter
+reset. Both that action and secondary-filter clearing return focus to search;
+secondary-filter clearing retains the query. Neither reads the backend, changes
+the captured target or discards an open draft. Empty or unavailable targets do
+not offer a reset that would imply retained records.
 
 The resource is ordinary prebuilt ESM from `component/component.tsx`, using shared React,
 public SDK and UI provider context. Build `icons` and `ui`, install plugin dependencies,
