@@ -8,8 +8,10 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/reading-focus-1025`. Reading-focus geometry is accepted on frozen
-base `bd146d20e50ce8b7e05633296d5681d0e523757a`; publication and private
-resource retirement are being completed. The shared repair covers both main
+base `bd146d20e50ce8b7e05633296d5681d0e523757a`. Implementation
+`4f44a785556799e6b436918e460b08e264b00257` is published to remote main;
+private resource retirement is complete. This documentation receipt changes no
+accepted product source. The shared repair covers both main
 and selected child transcripts without changing their task/follow owners.
 Tool activation implementation `34fb1be4938e23129567f22e61ba49f2b4b6d05d`
 and its receipt are already published; its continuous-zoom follow-up is now
@@ -6353,6 +6355,33 @@ Verification (2026-10-25):
   rerun. No protocol or persisted-data migration is required. Primary work and
   read-only references remain untouched; this batch does not fetch main during
   development. Publication and final resource retirement are recorded below.
+
+Implementation `4f44a785556799e6b436918e460b08e264b00257` is published to remote
+main and verified by exact remote hash with a clean owned checkout. The one
+publication-time fetch finds no incoming commits, so no merge or repeat UI run
+is needed. All **34 recorded processes** are dead; five new checkout outputs,
+eight unique Library paths and four bundle-temp directories are removed, and
+four apps are unregistered. All **36 output baselines**, exact inventories and
+hashes of **three original files**, and **11 resources** remain preserved;
+no original output requires byte restoration. The primary checkout is untouched.
+
+The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-reading-focus-1025-hwesCf`
+is absent. Its independently round-trip-verified archive contains **167 UTF-8
+files** and **six screenshot digests**, gzip SHA-256
+`c4e4e84b62195ff97d8ce21526996ccfc7ad37ce91f8bd3d2030f46b2672a6fe`.
+Before deletion, the retirement guard rechecks all **5,771** sources, **608**
+compiled artifacts, **37** final native captures, rejected counterexamples,
+passed gates, dead PIDs, preserved outputs/resources, clean Git and remote main.
+This receipt changes no tested product source.
+
+Next inspect selected subagent → nested child → list → parent as a complete
+reading task. The native selection path retains object identity, but a prior
+transcript position across selection is not qualified; the current render filter
+retains inspection sources rather than an arbitrary history of selected Runs.
+Trace the existing route/inspection owner and reproduce original behavior before
+calling it a defect or changing navigation. Do not reopen completed resize,
+Tool action, file return or retained hidden-reader work.
 
 **Approve** for the changed reading-focus geometry and inspected native task
 paths across the six domains. The continuous goal remains active; this is not
