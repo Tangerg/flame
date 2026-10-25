@@ -1,6 +1,5 @@
 export const en: Record<string, string> = {
   "panel.title": "Usage",
-  "panel.description": "Recorded model usage and cost.",
   "scope.label": "Report scope",
   refresh: "Refresh",
   "period.label": "Period",
@@ -44,9 +43,7 @@ export const en: Record<string, string> = {
   "accounting.note":
     "Token totals include reported usage only. Unknown outcomes and unreported usage may add consumption. The known price subtotal includes priced attempts only; total cost requires every attempt to be priced. Deleted or never recorded calls cannot be reconstructed. Zero tokens are recorded values. “Not reported” means there is no complete price for that total or bucket.",
   "empty.title": "No retained model attempts in this period.",
-  "empty.sub": "Choose another period above or refresh after model activity.",
   "breakdown.title": "Usage breakdown",
-  "breakdown.by": "Recorded costs by {{group}}",
   "breakdown.group": "Recorded usage by source",
   "bucket.costUsd": "{{cost}} USD",
   "bucket.attempts": "{{calls}} attempts",
@@ -57,7 +54,5 @@ export const en: Record<string, string> = {
   "fact.usagePerAttempts": "Usage / attempts",
   "fact.pricedPerAttempts": "Priced / attempts",
   "breakdown.empty.title": "No matching rows.",
-  "breakdown.empty.sub": "Clear the filter to show recorded usage.",
-  "breakdown.note": "Filtering rows does not change the report totals.",
   "cost.notReported": "Not reported",
 };

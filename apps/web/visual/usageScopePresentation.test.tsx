@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type ComponentContext } from "@flame/component-sdk";
 import { createFlameClient } from "@flame/runtime-client";
@@ -58,6 +58,10 @@ it("establishes the report range before local filters and preserves total meanin
   const filter = screen.getByRole("searchbox", { name: "Filter sources" });
   expect(scope.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   const totals = screen.getByLabelText("Recorded usage totals");
+  const breakdown = screen.getByRole("region", { name: "Usage breakdown" });
+  expect(within(breakdown).getByRole("searchbox", { name: "Filter sources" })).toBe(filter);
+  expect(within(breakdown).getByRole("combobox", { name: "Group by" })).toBeTruthy();
+  expect(totals.compareDocumentPosition(filter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   const before = totals.textContent;
   fireEvent.change(filter, { target: { value: "anthropic" } });
   expect(totals.textContent).toBe(before);
@@ -67,6 +71,60 @@ it("establishes the report range before local filters and preserves total meanin
   await choose("Period", "Last 7 days");
   await screen.findByText("Recorded usage loaded. Last 7 days.");
   expect(summary).toHaveBeenLastCalledWith({ sinceDays: 7 }, expect.any(AbortSignal));
+});
+
+it("keeps the same local controls and later focus when a refreshed report becomes empty and returns", async () => {
+  const summary = await openUsage();
+  await choose("Group by", "Model");
+  const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter sources" });
+  const group = screen.getByRole("combobox", { name: "Group by" });
+  fireEvent.change(filter, { target: { value: "anthropic" } });
+  const empty: typeof VISUAL_USAGE = {
+    ...VISUAL_USAGE,
+    total: { inputTokens: 0, outputTokens: 0, costUsd: 0 },
+    recordedCostUsd: 0,
+    coverage: {
+      calls: 0,
+      reportedCalls: 0,
+      pricedCalls: 0,
+      startedCalls: 0,
+      completedCalls: 0,
+      failedCalls: 0,
+      unknownCalls: 0,
+    },
+    byProvider: [],
+    byModel: [],
+    byDay: [],
+    byOrigin: [],
+    byScope: [],
+    sessions: 0,
+    runs: 0,
+  };
+  const emptyRead = Promise.withResolvers<typeof VISUAL_USAGE>();
+  summary.mockImplementationOnce(() => emptyRead.promise);
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  filter.focus();
+  await act(async () => emptyRead.resolve(empty));
+  await screen.findByText("No retained model attempts in this period.");
+  expect(screen.getByRole("searchbox", { name: "Filter sources" })).toBe(filter);
+  expect(screen.getByRole("combobox", { name: "Group by" })).toBe(group);
+  expect(filter.value).toBe("anthropic");
+  expect(group.textContent).toContain("Model");
+  expect(document.activeElement).toBe(filter);
+  expect(screen.queryByRole("region", { name: "Recorded usage by source" })).toBeNull();
+
+  const populatedRead = Promise.withResolvers<typeof VISUAL_USAGE>();
+  summary.mockImplementationOnce(() => populatedRead.promise);
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  filter.focus();
+  await act(async () => populatedRead.resolve(VISUAL_USAGE));
+  await screen.findByRole("heading", { name: "anthropic/claude-opus-5" });
+  expect(screen.getByRole("searchbox", { name: "Filter sources" })).toBe(filter);
+  expect(screen.getByRole("combobox", { name: "Group by" })).toBe(group);
+  expect(filter.value).toBe("anthropic");
+  expect(document.activeElement).toBe(filter);
+  expect(screen.queryByRole("heading", { name: "openai/gpt-5.6-sol" })).toBeNull();
+  expect(summary).toHaveBeenCalledTimes(3);
 });
 
 it("keeps the accepted period beside the requested range after failure and recovers on refresh", async () => {

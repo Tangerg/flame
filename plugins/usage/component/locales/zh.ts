@@ -1,6 +1,5 @@
 export const zh: Record<string, string> = {
   "panel.title": "用量",
-  "panel.description": "已记录的模型用量与费用。",
   "scope.label": "报告范围",
   refresh: "刷新",
   "period.label": "时间段",
@@ -44,9 +43,7 @@ export const zh: Record<string, string> = {
   "accounting.note":
     "标记合计仅包含已报告的用量。未知结果与未报告的用量可能增加消耗。已知价格小计仅包含已计价的尝试；总费用需要每次尝试都已计价。已删除或从未记录的调用无法重建。零标记是已记录的值。“未报告”表示该合计或分组没有完整价格。",
   "empty.title": "此时间段内没有保留的模型尝试。",
-  "empty.sub": "在上方选择其他时间段，或在模型活动后刷新。",
   "breakdown.title": "用量明细",
-  "breakdown.by": "按 {{group}} 记录的费用",
   "breakdown.group": "按来源记录的用量",
   "bucket.costUsd": "{{cost}} USD",
   "bucket.attempts": "{{calls}} 次尝试",
@@ -57,7 +54,5 @@ export const zh: Record<string, string> = {
   "fact.usagePerAttempts": "用量 / 尝试",
   "fact.pricedPerAttempts": "已计价 / 尝试",
   "breakdown.empty.title": "没有匹配的行。",
-  "breakdown.empty.sub": "清除筛选以显示已记录的用量。",
-  "breakdown.note": "筛选行不会改变报告合计。",
   "cost.notReported": "未报告",
 };
