@@ -10,7 +10,8 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/panel-heading-1025`. Hosted identity and reading density are
 qualified on frozen base `0ddbb425d0cf388ac28b4ccb285ee1bcf101c605`; see Hosted
 titles and reading density for the contract, complete tasks and verification
-boundaries. Publication and evidence retirement follow native qualification.
+boundaries. Implementation `01fedfaf7cd7bb03b5bb7f14d5ac0243f212e449` is published
+to remote main, and its owned evidence retirement is complete.
 Earlier Diff status presentation is qualified on frozen
 base `4c3f3584fb3b4ee430888c7364b42751346c765f`; see Diff status language and
 canonical identity for the owner, complete task and verification boundaries.
@@ -5919,7 +5920,19 @@ checkout outputs**, **ten owned Library paths** and **five bundle-temp paths**.
 All **36 output-presence baselines**, **three original file hashes/inventories**
 and **eleven product resources** match. The original native-check binary and UI
 Vitest results are restored byte-for-byte; the cache tag already matches. The
-private evidence root awaits publication and independent archive retirement.
+exact private root `flame-ui-panel-heading-1025-0Fg4mF` is absent after publication,
+ownership, process, source, artifact and archive guards pass. Implementation
+`01fedfaf7cd7bb03b5bb7f14d5ac0243f212e449` is independently verified on remote main
+with a clean owned checkout and zero commits ahead/behind. Commit formatting and
+workspace lint pass without changing accepted product bytes. Evidence rereading
+and gzip round trip verify **161 UTF-8 files / seven screenshot digests**, SHA-256
+`367a2f746a9afa8d2d60aee0c4b00d96ef922830cd25547c82950ad1e76af11c`.
+Accepted maps bind **1,202 final artifacts** and **thirteen native input files**,
+including the actual TypeScript observer/chrome and independent Schedules inputs.
+Fresh post-retirement checks again confirm all accepted source/resource bytes and
+original output inventories. This Markdown-only receipt changes no tested source.
+Primary parallel work, user data, compiler caches and read-only references remain
+preserved.
 Preserve this identity/density contract and the existing retained-material,
 source-return and draft owners while continuing from fresh task evidence. The
 continuous goal remains active.
