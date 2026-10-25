@@ -9,8 +9,10 @@ This user-requested file is the maintained progress and handoff record for the d
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/usage-reading-scope-1025`. Usage report/source scope is qualified
 on frozen base `dd4ffb4a8a75d2e2ca5b1ffc8e91913150a5c332`; see its section below for
-implementation, checks, native tasks and limits. Publication and owned evidence
-retirement are recorded there. Next, implement the user's requested optional
+implementation, checks, native tasks and limits. Implementation
+`6f89f24c0f5eb23667f7761237465aa266ba2032` is published to remote main, and
+owned evidence retirement is complete. The single publication-time fetch finds
+main at the frozen base; there is no incoming delta to revalidate. Next, implement the user's requested optional
 paper texture and strength control, preserving neutral page colors, text clarity,
 approved branding and the existing appearance preference owner.
 Earlier Memory recovery implementation `4131befc04411529ee7e4beaaec484022972ade2`
@@ -1159,6 +1161,27 @@ Baseline assets remain unchanged; original observer/build-helper bytes are prese
 under baseline names before final read-only scope/geometry diagnostics are added.
 Scoped verdict: **Approve** for report/source hierarchy and the exercised task.
 Publication and exact resource retirement follow below.
+
+Delivery: implementation `6f89f24c0f5eb23667f7761237465aa266ba2032` is pushed to
+remote `main`, independently matched with `ls-remote` before retirement. The
+single publication-time fetch finds main at the frozen base and merge is already
+up to date. Normal formatting, workspace lint and message hooks pass without
+changing accepted product bytes.
+
+All **32** recorded PIDs are dead; all **4** bundles are unregistered. Cleanup
+removes **7** new checkout output/cache paths, **8** owned Library paths and **4**
+bundle-temporary directories. The original native-check binary is restored.
+Independent checks before and after exact-root deletion preserve **36** output
+presence baselines, **3** original file hashes and all **11** accepted resources.
+
+The exact private root `flame-ui-usage-reading-1025-xMRiK5` is absent after
+UID/device/inode/birth-time, source, artifact and native-input guards. Its verified
+compressed in-memory archive retains **131** UTF-8 files and **13** capture hashes,
+SHA-256 `e8cc011a0cbef8b15539df7880b9b5fa73edc8881814012f4c8efa0c0d4706d0`.
+User data, the primary parallel checkout, dependencies, global caches and read-only
+references remain untouched. This receipt changes no accepted product input;
+publication is followed by fresh remote, cleanliness and preservation checks.
+The user's paper-texture request is the next product batch.
 
 ### Native image save qualification
 
