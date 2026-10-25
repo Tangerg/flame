@@ -134,6 +134,7 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     detail?: ReactNode;
     trailing?: ReactNode;
     actions?: ReactNode;
+    feedback?: ReactNode;
     open: boolean;
     onToggle: () => void;
     stickyHeader?: boolean;
@@ -155,6 +156,7 @@ export function AgentActivityDisclosure({
   detail,
   trailing,
   actions,
+  feedback,
   open,
   onToggle,
   stickyHeader,
@@ -282,6 +284,7 @@ export function AgentActivityDisclosure({
         )}
       </div>
       {progress && <ProgressBar value={progress.value} label={progress.label} weight="seam" />}
+      {feedback}
       {disclosable && (
         <Collapsible open={open}>
           <div

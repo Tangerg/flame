@@ -761,6 +761,7 @@ export const de: Record<string, string> = {
   "providers.embedding.none":
     "Noch kein Anbieter mit Embedding-Unterstützung konfiguriert — füge oben einen hinzu (z. B. OpenAI).",
   "providers.embedding.error": "Embedding-Modell konnte nicht gesetzt werden.",
+  "toolAction.failed": "„{{action}}“ konnte nicht abgeschlossen werden.",
   "mcp.add": "Server hinzufügen",
   "mcp.saveEffect":
     "Nach dem Speichern verbinden sich aktivierte Server im Hintergrund. Der Serverstatus zeigt die Bereitschaft an.",

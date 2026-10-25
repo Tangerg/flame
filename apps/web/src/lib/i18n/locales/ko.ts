@@ -758,6 +758,7 @@ export const ko: Record<string, string> = {
   "mcp.status.connected": "연결됨",
   "mcp.status.failed": "연결 실패",
   "mcp.status.needsAuth": "로그인 필요",
+  "toolAction.failed": "“{{action}}”을(를) 완료하지 못했습니다.",
   "mcp.form.name.placeholder": "서버 이름",
   "mcp.form.name.aria": "서버 이름",
   "mcp.form.transport.aria": "전송 방식",

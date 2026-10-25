@@ -764,6 +764,7 @@ export const en: Record<string, string> = {
   "tools.family.goals": "Goals",
 
   "toolAction.copyArguments": "Copy arguments",
+  "toolAction.failed": "Couldn’t complete “{{action}}”.",
   "toolAction.argumentsCopied": "Arguments copied",
   "toolAction.copyFailed":
     "Couldn't copy arguments. Expand the tool and copy them from {{section}}.",

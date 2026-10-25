@@ -17,6 +17,7 @@ import { ToolText } from "@/ui/agent/index";
 import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { toolMetaInk } from "@/features/chat/tools/ui/toolMetaInk";
 import {
+  ToolActionFailureLine,
   ToolFailureLine,
   ToolStatusMarks,
   useToolRowActions,
@@ -67,7 +68,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
 
   const summaryId = useId();
   const bodyId = useId();
-  const actions = useToolRowActions(tool, summaryId);
+  const { controls: actions, feedback } = useToolRowActions(tool, summaryId);
   // Disclosability is one fact: a denied tool has no preview, so the row is a
   // static summary, never a disclosure that claims aria-expanded with no panel.
   const disclosable = !model.denied;
@@ -124,6 +125,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
         )}
         {actions.length > 0 && <span {...stylex.props(gm.actions)}>{actions}</span>}
       </div>
+      <ToolActionFailureLine feedback={feedback} summaryId={summaryId} />
       <ToolFailureLine model={model} />
       {disclosed && (
         <div id={bodyId} {...stylex.props(gm.body)}>

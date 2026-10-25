@@ -755,6 +755,7 @@ export const ja: Record<string, string> = {
   "mcp.signingIn": "サインイン中…",
   "mcp.signIn.aria": "{{server}} にサインイン",
   "mcp.signingIn.aria": "{{server}} にサインイン中…",
+  "toolAction.failed": "「{{action}}」を完了できませんでした。",
   "mcp.reconnect": "再接続",
   "mcp.reconnect.aria": "{{server}} に再接続",
   "mcp.status.disabled": "無効",

@@ -774,6 +774,7 @@ export const fr: Record<string, string> = {
   "providers.embedding.none":
     "Aucun fournisseur compatible embedding pour l'instant — ajoutez-en un ci-dessus (par ex. OpenAI).",
   "providers.embedding.error": "Impossible de définir le modèle d'embedding.",
+  "toolAction.failed": "Impossible de terminer « {{action}} ».",
   "mcp.add": "Ajouter un serveur",
   "mcp.saveEffect":
     "Après enregistrement, les serveurs activés se connectent en arrière-plan. Consultez leur état pour vérifier la connexion.",

@@ -766,6 +766,7 @@ export const zh: Record<string, string> = {
   "connection.error.token": "请输入不含空格或控制字符的有效访问令牌。",
   "connection.error.urlScheme": "必须以 http:// 或 https:// 开头",
   "command.chatSearch": "在对话中查找",
+  "toolAction.failed": "无法完成「{{action}}」。",
   "composer.key.sendDesc": "发送消息",
   "composer.key.approveDesc": "批准待处理请求，否则发送",
   "composer.key.declineDesc": "拒绝待处理请求",

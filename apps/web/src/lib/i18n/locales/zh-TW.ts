@@ -564,6 +564,7 @@ export const zhTW: Record<string, string> = {
   "tools.family.goals": "目標",
 
   "toolAction.copyArguments": "複製參數",
+  "toolAction.failed": "無法完成「{{action}}」。",
   "toolAction.argumentsCopied": "參數已複製",
   "toolAction.copyFailed": "無法複製參數。請展開工具，從「{{section}}」中複製。",
   "approval.fallbackText": "核准此操作？",

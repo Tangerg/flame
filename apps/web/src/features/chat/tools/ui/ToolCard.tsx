@@ -12,6 +12,7 @@ import { ToolText } from "@/ui/agent/index";
 import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { toolMetaInk } from "@/features/chat/tools/ui/toolMetaInk";
 import {
+  ToolActionFailureLine,
   ToolFailureLine,
   ToolStatusMarks,
   useToolRowActions,
@@ -40,7 +41,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
   const t = useT();
   const model = toolCardModel(t, tool);
   const summaryId = useId();
-  const actions = useToolRowActions(tool, summaryId);
+  const { controls: actions, feedback } = useToolRowActions(tool, summaryId);
 
   return (
     <>
@@ -62,6 +63,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
           </>
         }
         actions={actions}
+        feedback={<ToolActionFailureLine feedback={feedback} summaryId={summaryId} />}
         open={expanded}
         onToggle={onToggleExpand}
       >

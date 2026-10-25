@@ -1,13 +1,17 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Local file Open and Reveal now report their captured target and actual failure inside the file workspace, retain notification history and keep the original action reachable. Native reading, retry, feedback dismissal and draft continuation pass, including Chinese large text at 200%. Go-to-line, footnote, unconfirmed-operation, run-settlement, captured-text, notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
+Updated: 2026-10-25. Contributed Tool actions and view openers now contain synchronous and asynchronous failures, identify the failed interface action beside its summary and preserve captured Tool results. Native recovery, current-file return and draft continuation pass, including Chinese large text at 200% after keyboard re-entry. Continuous-zoom focus visibility has a separate observed follow-up. Previously delivered local-file and reading improvements remain intact. The continuous goal remains active; UI uses a frozen base and main synchronization happens at intervals. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/local-file-feedback-1025`. Local file action outcomes and continued
+is on `codex/tool-action-feedback-1025`. Contributed Tool action outcomes are
+accepted on frozen base `8af9bc4296734751c4b275e1afe6c147f519e0c4`; publication
+and final evidence retirement are in progress. Native continuous-zoom focus
+visibility is the next observed task, with original-source qualification still
+pending. Local file action outcomes and continued
 reading are accepted on frozen base `5918ddcc976f39e77c9321caa975e3ef31d02e06`;
 implementation `d4f4acba6938b93d2b8fa5d5de8179cda7522191` is published to
 remote main. Private evidence retirement is complete, and the owned checkout
@@ -6132,6 +6136,110 @@ Verification for this surface (2026-10-21):
 - Complete Web validation passes **386 files / 3,053 tests** and all subsequent checks in **199.81 seconds** under Node 22.22.1. `make check-native` passes Desktop test/vet/build and the supported Wails build in **24.70 seconds**; final private native build passes in **5.14 seconds**. All **10** reviewed source/contract/fixture hashes and both private capture/build inputs remain stable through acceptance. The arm64 binary reports minimum macOS 13.0 / SDK 26.5. Recurring non-failing loopback diagnostics and the duplicate `-lobjc` warning remain separate. Independent unchanged shared UI, CLI, Runtime and SDK suites were not rerun; no protocol, persisted-data or installed-resource migration is needed.
 - Latest main `de6eb07a1` retains the model-contract generator consolidation and plugin-document alignment across **13 disjoint paths**. The owned diff and all reviewed hashes survive a fast-forward unchanged. Native checks pass again in **18.16 seconds**, followed by a private build in **2.51 seconds**. A new actual Wails ZH/dark18/custom-blue host retains query `read`, reaches Copy arguments through reverse Tab with its concise Tooltip, and returns to the exact editable draft `集成草稿 保留 继续`. Complete Web validation was not repeated after these Go-generator/directive/docs-only updates; their implementation and standalone generator behavior are outside this UI qualification.
 - Cleanup completed: all five native processes and the bounded CLI process exited. The exact app was unregistered; its bundle, disposable homes/data, captures, overlays, SDK-validation bundle, prompt/report, scripts, logs and pointer were removed. Ten newly created worktree output/cache paths and the unique bundle's Caches/WebKit paths were removed under preexistence, tracked-content, UID, birth-time and non-symlink guards. Pre-existing shared UI Vite/compiler/package caches, installed dependencies and read-only references remain. The primary checkout's former independent working/index changes became the retained upstream commits above.
+
+### Contributed Tool action outcomes
+
+Tool actions and view openers now contain synchronous exceptions and Promise
+rejections. Concise names, exact Tool arguments, immediate callback invocation
+and the opener DOM anchor remain intact. Capturing the plugin owner before the
+callback keeps delayed failures attributed to the contributor that ran, even
+after replacement. Existing diagnostic source, cause and detail tags remain.
+
+The existing `useAsyncFeedback` owns only the row's interface outcome, keyed by
+memoized `runId`/`id` identity. Snapshot refresh retains it; a replacement Tool
+or newer activation retires old presentation while diagnostics still record
+every failure. Successful activation clears the local error quietly. Both row
+consumers use the same plain `ToolActionFailureLine`, described by their summary.
+One optional presentation feedback slot in `AgentActivityDisclosure` keeps the
+single-card error between summary and open result. Denied records remain static.
+Captured execution status/error/result, disclosure and navigation owners are
+unchanged. Eight locales supply the action-specific key. There is no new toast,
+card, stripe, automatic retry or command state machine.
+
+Read-only ZCode `ToolCallBlocks/ToolLayout.tsx` separates summary actions, status
+and result content; `ToolSummaryRow.tsx` accepts a contextual action label.
+HeroUI's actual `demos/en/alert/basic.tsx` separates failure content from
+processing/success states. These inform local context and semantic state, while
+Flame retains its own components and restrained presentation. Existing ChatGPT
+disclosure research and the six better-* skills continue to guide the review.
+
+Scope: React 19, Wails 3.0.0-beta.34, existing Base UI, StyleX and shared controls;
+AGENTS, PROJECT_RULES, DEVELOPMENT and Web/visual conventions. Only Tool activation
+outcomes change; viewport focus reflow is a separate observed follow-up.
+
+| Domain        | Evidence inspected                                                                                           | Result                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Accessibility | Real contribution replacement, alert/summary relation, immediate targets, keyboard focus and late completion | Changed boundary clear; continuous-zoom follow-up below         |
+| Layout        | Grouped and expanded single results, split/full-pane file return, 561 × 365 viewport                         | Inline feedback stays with its row and can be read by scrolling |
+| Writing       | Action-specific failure and actual cause across eight locales                                                | Clear; no replay instruction or helper caption                  |
+| Typography    | Existing uiSm; EN 13 px/21.125 px and ZH 17 px/27.625 px, wrapping paths                                     | Clear                                                           |
+| Color         | Computed foreground and native screenshot canvas, Orange/custom blue                                         | Sampled light 15.80:1 and dark 16.52:1 contrast                 |
+| UI polish     | Existing icons, focus rings, plain surfaces and motion-off scene                                             | Clear within changed boundary; no new motion or decoration      |
+
+| Severity | Domain        | Location                                                      | Before                                                                               | After                                                                         | Why                                                     | Status                                                |
+| -------- | ------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------- |
+| MEDIUM   | Accessibility | `features/chat/tools/ui/ToolRowParts.tsx`                     | Sync callbacks escape the catch; rejection is diagnostic-only                        | Immediate try/await/catch records the original owner and shows local feedback | A failed interface action needs an intelligible outcome | Resolved                                              |
+| MEDIUM   | Layout        | Expanded `ToolCard`                                           | Initial candidate puts error after the entire result                                 | Feedback sits below summary, before result                                    | Keep the cause near its action                          | Resolved in primary review                            |
+| MEDIUM   | Accessibility | Native conversation during twenty successive Zoom In commands | Focused Copy becomes obscured at 175%–200%; Tab restores the adjacent visible action | Qualify original source, then repair the responsible viewport/focus owner     | Resizing should retain usable current action context    | Open follow-up; original-source qualification pending |
+
+Verification (2026-10-25):
+
+- Original row baseline passes **2 files / 12 tests**. Edit-only Claude CLI exits
+  0 in **155.17 s**, without denials. It reports 40 turns despite requested 36;
+  only the enforced **180 s wall bound** is claimed. Primary reviewed actual
+  writes, corrected the supplied nonexistent pt locale to actual zh-TW,
+  completed its translation, used a memoized identity object, replaced mock
+  ownership/reporting with the real kernel/store and added expanded-result/status
+  coverage plus the presentation slot. Focused checks pass **4 files / 45 tests**.
+  Against original production row sources, the final 26 new cases produce
+  **22 failures / 4 passes**; candidate bytes are restored.
+- Final serial checks pass **9 files / 83 tests** and Web typecheck, lint,
+  formatting, knip, design-system, tokens, chrome, styles, classes, locales,
+  layers, port-surface and production bundle in **21.71 s**. All **1,109 keys**
+  are complete across eight locales. Final private assets build in **2.09 s**,
+  native English in **6.56 s**, then Chinese in **4.69 s**, serially. Accepted
+  **5,770 non-Markdown files** have aggregate SHA-256
+  `10074c684aa6cbe96c935ba8d53ec8ae5ec8a38d184d888d59a44be62b014b8e`;
+  **607** accepted artifacts cover assets, module proxy and two native binaries.
+- Actual Wails EN/light/14 px/Orange qualifies keyboard Copy and current-file
+  opener sync failure, rejection and successful retry: same action node, no
+  escaped errors, unchanged Tool status. Grouped and expanded standalone results
+  remain readable with feedback above results. The successful opener delegates
+  actual workspace navigation; Back restores opener ID 8. Held failure after
+  moving to Composer keeps textarea ID 2/caret 32; native paste extends the exact
+  original draft **32 → 43**. A failed native selectText attempt is excluded;
+  the subsequent observed end caret qualifies the paste. First pointer clicks
+  that only reveal hover controls are excluded from activation evidence.
+- Actual Wails ZH/dark/18 px/custom blue/motion off qualifies localized failure.
+  Native Top Left resizing settles at **1122 × 730**; twenty separately observed
+  Zoom In commands reach **561 × 365 at 200%**. Original focus is obscured on
+  steps 15–20, excluded from focus-continuity acceptance; Tab restores visible
+  opener ID 8. Two native 0.1-page wheel steps bring the complete wrapped cause
+  above the jump control/Composer. Sync/rejected opener failures, successful
+  full-pane current-file reading → Back, adjacent Copy rejection/retry and exact
+  source focus pass. Original draft ID 2/caret 11 survives; native paste extends
+  **11 → 16** to `查看工具操作前的草稿。继续核对。`. Actual Size restores
+  **1122 × 730** before Quit. Index-based wheel attempts without movement are
+  excluded; screenshot-coordinate wheel proves reading.
+- Private callbacks supply deterministic failure/held/success outcomes; successful
+  open delegates production navigation. Private Copy does not write the clipboard.
+  Actual contribution replacement is covered by real-kernel component tests.
+  Live Runtime/provider execution, production plugin failures, OS clipboard
+  permissions, VoiceOver speech, OS IME, RTL and other native platforms are not
+  qualified. Browser visual suites, performance benchmarks and unrelated full
+  repository suites were not run. Unchanged qualifications are reused; no
+  protocol or persisted-data migration is required.
+- All **15** recorded processes are dead. Five new checkout output paths, six
+  unique Library paths and three bundle-temp directories are removed; three apps
+  are unregistered. All **36** output-presence baselines, exact inventories/hashes
+  of **three** original files and **11** product resources remain preserved;
+  no original output needs byte restoration. The owned private root is retained
+  only until evidence archival/publication is verified. Primary work and references
+  remain untouched. This batch does not fetch or merge main.
+
+**Approve** for contributed Tool activation outcomes in the inspected domains.
+The recoverable continuous-zoom focus observation remains the next explicit
+follow-up. This is not whole-application or award-tier completion.
 
 ## Connection token draft intent
 

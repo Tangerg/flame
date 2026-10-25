@@ -5,7 +5,10 @@ import { knownIconName } from "@/ui/index";
 import { reveal } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
 import { IconButton, vocab } from "@flame/ui";
+import { useMemo } from "react";
 import { useT } from "@/lib/i18n/index";
+import { type AsyncFeedback, useAsyncFeedback } from "@/lib/useAsyncFeedback";
+import { failureText } from "@/lib/rpcErrors";
 import {
   lookupToolActionOwner,
   lookupToolViewOpenerOwner,
@@ -29,6 +32,7 @@ const styles = stylex.create({
     overflowWrap: "anywhere",
     color: color.fg,
   },
+  preWrap: { whiteSpace: "pre-wrap" },
 });
 
 export function ToolStatusMarks({ model }: { model: ToolCardModel }) {
@@ -63,10 +67,60 @@ export function ToolFailureLine({ model }: { model: ToolCardModel }) {
   );
 }
 
+export function ToolActionFailureLine({
+  feedback,
+  summaryId,
+}: {
+  feedback: AsyncFeedback;
+  summaryId: string;
+}) {
+  if (feedback.state !== "error") return null;
+  return (
+    <p
+      data-slot="tool-action-error"
+      role="alert"
+      aria-describedby={summaryId}
+      {...stylex.props(styles.failureLine, styles.preWrap, typeStep.uiSm)}
+    >
+      {feedback.reason}
+    </p>
+  );
+}
+
 export function useToolRowActions(tool: ToolCall, summaryId: string) {
   const t = useT();
   const actions = toolCardActions(tool, useExtensionPoint(TOOL_ACTION));
   const opener = toolCardViewOpener(tool, useExtensionPoint(TOOL_VIEW_OPENER));
+  // Keyed to the call's identity, not the snapshot object: a refreshed snapshot
+  // of the same call keeps its outcome, a different call retires it.
+  const identity = useMemo(() => ({ runId: tool.runId, id: tool.id }), [tool.runId, tool.id]);
+  const { feedback, run } = useAsyncFeedback(identity);
+
+  // The callback is invoked synchronously inside the activation, so a sync
+  // throw and a rejection take the same path. The owner is read before the
+  // call so a later failure stays attributed to the contributor that ran.
+  const activate = (
+    label: string,
+    owner: string,
+    log: string,
+    detail: string,
+    invoke: () => void | Promise<void>,
+  ) => {
+    void run(async () => {
+      try {
+        await invoke();
+        return { ok: true };
+      } catch (err) {
+        console.error(log, err);
+        reportPluginError(owner, "command", err, detail);
+        return {
+          ok: false,
+          error: `${t("toolAction.failed", { action: label })} ${failureText(err, String(err))}`,
+        };
+      }
+    }, label);
+  };
+
   const controls = actions.map((action) => (
     <IconButton
       key={action.id}
@@ -78,11 +132,13 @@ export function useToolRowActions(tool: ToolCall, summaryId: string) {
       aria-describedby={summaryId}
       onClick={(event) => {
         event.stopPropagation();
-        void Promise.resolve(action.run(tool)).catch((err) => {
-          const owner = lookupToolActionOwner(action.id) ?? "unknown";
-          console.error(`[plugin] tool action ${action.id} threw:`, err);
-          reportPluginError(owner, "command", err, `tool action: ${action.id}`);
-        });
+        activate(
+          t(action.title),
+          lookupToolActionOwner(action.id) ?? "unknown",
+          `[plugin] tool action ${action.id} threw:`,
+          `tool action: ${action.id}`,
+          () => action.run(tool),
+        );
       }}
       className={stylex.props(reveal.shown).className}
     />
@@ -100,15 +156,18 @@ export function useToolRowActions(tool: ToolCall, summaryId: string) {
         aria-describedby={summaryId}
         onClick={(event) => {
           event.stopPropagation();
-          void Promise.resolve(opener.open(tool, event.currentTarget)).catch((err) => {
-            const owner = lookupToolViewOpenerOwner(opener.id) ?? "unknown";
-            console.error(`[plugin] tool view opener ${opener.id} threw:`, err);
-            reportPluginError(owner, "command", err, `tool view opener: ${opener.id}`);
-          });
+          const anchor = event.currentTarget;
+          activate(
+            t(opener.label(tool)),
+            lookupToolViewOpenerOwner(opener.id) ?? "unknown",
+            `[plugin] tool view opener ${opener.id} threw:`,
+            `tool view opener: ${opener.id}`,
+            () => opener.open(tool, anchor),
+          );
         }}
         className={stylex.props(reveal.shown).className}
       />,
     );
   }
-  return controls;
+  return { controls, feedback };
 }
