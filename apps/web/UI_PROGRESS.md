@@ -10,8 +10,10 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/mcp-import-clarity-1026`. MCP JSON import is qualified on frozen base
 `7d11351c98f2682bdb74409972623210530b9575`; see MCP import source preflight and
 recovery for ownership, regression counterexamples, native tasks and limits.
-Publication and owned-resource retirement are pending. The primary parallel
-checkout remains outside this batch. The user's latest instruction stops further
+Implementation `2b70ee84024cece612cccf31fabaf624a4df148c` is published to remote
+main and owned-resource retirement is complete. The single publication fetch
+finds no incoming delta from the frozen base. The primary parallel checkout
+remains outside this batch. The user's latest instruction stops further
 Claude CLI calls; subsequent edits and verification are owned directly by Codex.
 MCP editor implementation `0c2f14377d24af2c9a63c44e4153a8a296105bdf` and receipt
 `7d11351c98f2682bdb74409972623210530b9575` remain published and retired.
@@ -8231,6 +8233,31 @@ and three read-only references retain their hashes; all 28 recorded processes
 have exited. Publication and exact owned-resource retirement follow below.
 Scoped result: Approve for the exercised import source and recovery contracts,
 within the stated external-failure limits.
+
+Delivery: implementation 2b70ee84024cece612cccf31fabaf624a4df148c is pushed to
+remote main and independently matched with ls-remote. The one publication-time
+fetch finds no incoming commit; merge is already up to date. Normal formatting,
+workspace lint and commit-message hooks preserve every qualified product input.
+
+All 28 recorded PIDs are dead; all four bundles are unregistered, independently
+absent from the LaunchServices inventory. No exact-root or exact-bundle process
+matches remain. Cleanup removes seven new checkout output/cache paths, eight
+bundle-specific Library paths and four bundle temporary directories. The original
+native-check binary is restored exactly; all three original files, 36 output
+presence baselines and 11 unchanged portable resources survive independent checks
+before and after temporary-root deletion. The three read-only references retain
+their original hashes.
+
+The exact private root flame-ui-mcp-import-1026-XsOmbW is absent after UID,
+device/inode/birth-time, source, artifact, native-input, archive and process guards.
+Its round-trip-verified compressed in-memory archive retains 181 UTF-8 evidence
+files and 73 capture hashes, SHA-256
+723be0b041eaee9f4488e30a87a05f91fc761b5b77d40224cc541a3e7fa48a7f.
+Only the specific invalid-UTF-8 result class is excluded as a preserved binary;
+the original native binary retains its preservation hash. Installed dependencies,
+global caches, user data, the primary parallel checkout and reference repositories
+remain intact. This Markdown receipt changes no qualified product source; fresh
+remote, cleanliness and preservation checks follow its publication.
 
 ### MCP tool read identity and scoped recovery
 
