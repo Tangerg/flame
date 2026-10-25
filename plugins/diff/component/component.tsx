@@ -457,6 +457,9 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
           </div>
           {file && (
             <section aria-label={t("file.changes", { path: file.path })}>
+              <Metadata>
+                <DiffFilePath path={file.path} />
+              </Metadata>
               {file.previousPath && (
                 <Metadata>
                   {t("file.renamed")} <DiffFilePath path={file.previousPath} />

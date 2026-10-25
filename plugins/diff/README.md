@@ -16,7 +16,9 @@ A file-specific entry opens that file directly. File rows navigate to one reader
 they do not expand every file's code into a single report. The comparison and
 refresh controls precede the list filter. In the reader, the current file, position,
 previous/next commands and layout stay in the shared persistent control zone.
-Complete directories and rename provenance remain in the scrolling content.
+The persistent filename takes at most two lines. The complete current path and
+rename provenance remain selectable in the scrolling content for text, binary
+and metadata-only files; complete paths also remain in the overview rows.
 
 Returning from a list-owned reader retains its query and scroll and focuses the
 current row. A direct file entry leaves Escape to the host's source-return owner;

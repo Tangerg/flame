@@ -152,6 +152,84 @@ it("opens a requested file directly while keeping complete paths in the list and
   expect(document.activeElement).toBe(row);
 });
 
+it("shows each complete path in the scrolling reader while the filename stays in the controls", async () => {
+  const name = `${"long-file-name-".repeat(12)}${"x".repeat(14)}.tsx`;
+  const segments = Array.from({ length: 7 }, (_, index) => `level-${index}-${"d".repeat(39)}`);
+  const directory = segments.join("/");
+  const nested = `${directory}/${name}`;
+  const diff: Diff = {
+    baseline: { type: "head", commit: "c".repeat(40) },
+    files: [
+      {
+        path: nested,
+        status: "modified",
+        added: 1,
+        removed: 0,
+        rows: [
+          { type: "hunk", text: "@@ -1,0 +1,1 @@" },
+          { type: "added", rightLine: 1, code: "export {};" },
+        ],
+      },
+      { path: "logo.png", status: "added", binary: true, rows: [] },
+      {
+        path: "docs/new.md",
+        previousPath: "docs/old.md",
+        status: "renamed",
+        added: 0,
+        removed: 0,
+        rows: [],
+      },
+    ],
+  };
+  mountDiff(nested, async () => diff);
+  await loaded();
+
+  function expectReader(path: string) {
+    const controls = document.querySelector<HTMLElement>('[data-slot="panel-controls"]')!;
+    const reader = screen.getByRole("region", { name: `Changes in ${path}` });
+    expect(controls.contains(reader)).toBe(false);
+    const visible = Array.from(reader.querySelectorAll("*")).filter(
+      (element) =>
+        element.textContent === path &&
+        !element.closest(".sr-only, caption, [hidden], [aria-hidden='true']"),
+    );
+    expect(visible.length).toBeGreaterThan(0);
+    const heading = within(controls).getByRole<HTMLElement>("heading", {
+      name: path.slice(path.lastIndexOf("/") + 1),
+    });
+    expect(heading.textContent).toBe(path.slice(path.lastIndexOf("/") + 1));
+    expect(within(controls).getByRole("button", { name: "Previous file" })).toBeTruthy();
+    expect(within(controls).getByRole("button", { name: "Next file" })).toBeTruthy();
+    return { controls, heading };
+  }
+
+  const long = expectReader(nested);
+  expect(long.controls.textContent).not.toContain(directory);
+  expect(within(long.controls).getByRole("combobox", { name: "Diff layout" })).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Next file" }));
+  expect(document.activeElement).toBe(expectReader("logo.png").heading);
+  expect(
+    screen.getByText("Binary content is not displayed. Line counts are unavailable."),
+  ).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Next file" }));
+  expect(document.activeElement).toBe(expectReader("docs/new.md").heading);
+  expect(screen.getByText(/Renamed from/).textContent).toContain("docs/old.md");
+  expect(screen.getByText("No line changes. Only file metadata changed.")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: "Previous file" }));
+  fireEvent.click(screen.getByRole("button", { name: "Previous file" }));
+  expect(document.activeElement).toBe(expectReader(nested).heading);
+
+  fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
+  const row = screen.getByRole<HTMLElement>("button", {
+    name: (label) => label.startsWith(`${name} `),
+  });
+  expect(row.textContent).toContain(name);
+  expect(row.textContent).toContain(directory);
+});
+
 it("preserves query and focus when a refreshed file leaves the comparison", async () => {
   let result = REVIEW_DIFF;
   mountDiff(ACTIVE_DIFF_FILE, async () => result);

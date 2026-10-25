@@ -1,13 +1,16 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Conversation Find now matches continuous phrases across emphasis, inline code and other inline nodes, with exact native Range endpoints and separate block/message boundaries. English/light/14 px/Orange and Chinese/dark/18 px/custom-blue native paths pass, including half-screen 200%, result navigation and continued drafts. Recorded output Find, gallery source geometry and the new-conversation Flame companion remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. Diff now keeps its persistent filename bounded and the complete path in scrolling reader content. Shared resource lists use natural vertical sizing in native WebKit. English/light/14 px/Orange, 320 px Dock, Chinese/dark/18 px/custom blue and half-screen 200% reading/return paths pass. Formatted Find, gallery source geometry and the new-conversation Flame companion remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/formatted-conversation-find-1025`. Formatted conversation Find is
+is on `codex/diff-reading-identity-1025`. Diff reading identity and shared list sizing
+are accepted on frozen base `d0ace817fd61cf4834ec259853a97094e16d96cb`; publication
+and owned evidence retirement are pending. See Diff reading identity and native list sizing below.
+Formatted conversation Find is
 accepted on frozen base `50a3d3483c15d711da850f8357d30766ad1dcc2c`; implementation
 `fd6a07df6645e593de9359c93a0894194fa0bdfa` is published to remote main, and
 private evidence retirement is complete. See Formatted conversation Find below.
@@ -4859,6 +4862,112 @@ native close-focus proof. Better-series review retains current type, semantic
 surfaces, Orange/custom-blue focus and the same workbench composition. Static
 Ace references supply no keyboard evidence.
 
+## Diff reading identity and native list sizing
+
+The task remains reply → changed-file overview/filter → one file → source reading
+→ retained list/source return → continued draft. A native 1440 × 900 baseline
+with a valid 534-character path and 198-character filename exposed two failures:
+
+| Severity | Owner                            | Observed failure                                                                                           | Final behavior                                                                                                               |
+| -------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| MEDIUM   | Shared `RecordGroup` list        | Native rows were 9,435 / 628 px although their copy was 268 / 60 px high; the second file began at y=9,734 | Column flow sizes the same rows to 292 / 84 px; the list is 378 px rather than 10,065 px                                     |
+| MEDIUM   | `DiffFileHeader` / WorkspaceDiff | At a 466 px Dock, complete directory plus unbounded filename made persistent controls 370 px high          | Filename takes at most two lines; complete current path starts the scrolling reader for text, binary and metadata-only files |
+
+The shared list variant alone changes from one-column grid to flex column;
+sections/cards, separators, hidden state and controls retain their contracts.
+A private CSS-only comparator established the sizing cause on identical inputs,
+then restoring original assets reproduced it. Its first override did not win the
+cascade and is excluded as an applied comparison. The successful diagnostic
+priority override is absent from all accepted sources and final bundles. This
+qualifies this native composition, not a general WebKit standards defect.
+
+The selected heading keeps its full DOM text, heading role and ref. Complete
+paths remain visible/selectable in overview rows and the scrolling reader;
+rename provenance and source code keep their existing owners. No new state,
+measurement effect, listener, navigation model or helper copy is added. The
+original 14 px reader already displayed source; this is a hierarchy/efficiency
+repair, not evidence of complete baseline reading obstruction or an untested
+baseline 200% failure.
+
+Read-only ZCode `packages/ui/src/GitPaneChangeCard.tsx:86–166` supplies the
+bounded sticky-identity principle. Flame retains visible complete identity in
+its own scrolling content and the existing list/source-return model. Prior
+Ace composition, Radix focus and HeroUI component research remain references,
+not new native evidence. The six better-* domains guide the final review:
+
+| Domain        | Review and outcome                                                                                                                                  |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Full heading/ref and visible path; source region remains keyboard reachable, menu Escape restores its trigger, list Escape restores the current row |
+| Layout        | Natural list rows, two-line selected filename, 320 px Dock and 561 × 525 full-pane reading at native 200%                                           |
+| Writing       | Existing comparison/file/source names; no slogans, auxiliary labels or replacement instructions                                                     |
+| Typography    | Existing shared roles at EN 14 px / ZH 18 px; full path wraps and code retains its independent scroll surface                                       |
+| Color         | Existing light/Orange, dark/custom blue, state/count ink and focus tokens retained; rendered contrast not remeasured                                |
+| UI polish     | Same separators, surfaces, corners and motion; no decorative bars, extra animation or new asset                                                     |
+
+Typography, whitespace, hierarchy, color, motion, micro-interaction, responsive
+behavior and originality are reviewed against the retained reference principles
+and actual complete-task screenshots. The two observed gaps are repaired; this
+scoped approval does not certify an entire product or award outcome.
+
+Verification (2026-10-25):
+
+- Original focused baseline passes **2 files / 15 tests**. Edit-only bounded Claude
+  Code CLI supplies the detail repair and regression in **125.88 s / 26 reported
+  turns**, with exit zero, no denials and no delegated agent. Its configured turn
+  limit was 24; actual reported usage is retained rather than relabelled. Primary
+  reviews the diff, removes two input-length assertions, simplifies a literal row
+  lookup, owns documentation and independently executes validation.
+- Final serial checks pass in **59.09 s**: full shared UI check (**5 files / 81
+  tests**, packed-consumer build), plugin build, focused Web (**4 files / 35 tests**),
+  all **13 Web gates**, five plugin gates and normal **make check-native**. The
+  native check stages the production graph, runs Desktop Go tests/vet/build and
+  builds the supported Wails application. Its duplicate `-lobjc` linker warning
+  is non-failing. No check or valid assertion is weakened.
+- The new regression checks an actually visible full path outside the controls
+  and outside captions/sr-only content, then binary, root-level and renamed
+  metadata-only reading, heading navigation and complete overview identity.
+  Rebuilding the original shared sources makes exactly this new case fail while
+  **13 existing cases pass**. Candidate sources and all **123 UI dist files** are
+  restored byte-for-byte afterward; the counterexample wrapper exits zero only
+  after expected refusal and exact restoration.
+- Accepted product inputs contain **5,771 non-Markdown files**, SHA-256
+  `eb24790a6949b24d49cf7c115146bae3ea4c205457ada63352b57d33ee49c9b0`.
+  Final candidate/clean assets build serially in **2.16 / 2.08 s**; EN/ZH/clean
+  Wails hosts build in **6.61 / 4.72 / 4.78 s**. Clean assets omit the passive
+  observer completely. Production Runtime, host, fixture, protocol and dependency
+  sources are unchanged; only Diff's normal published ESM resource is regenerated.
+- Actual Wails EN/light/14 px/Orange qualifies normal list sizing, keyboard Home
+  to **320 px Dock**, retained `reading-boundary` filter, long file entry, split
+  layout, keyboard source focus, native wheel reading, previous/next, refresh and
+  ordinary menu Escape. The 198-character heading is **42 px** high; controls are
+  **159 px** high at that narrow width. List return restores the current row and
+  exact filter. The original unsent draft remains unchanged throughout.
+- Actual Wails ZH/dark/18 px/custom blue/motion off uses native Left arrangement,
+  twenty observed native Zoom In actions, the existing full-width material entry
+  and actual fixture-sidebar collapse. At **561 × 525 CSS px / 200%**, Tab from
+  the layout control scrolls the source into view: controls end at **189.5 px**,
+  source begins at **216 px**, and keyboard focus belongs to the source region.
+  Wheel input reaches the wrapping path. Escape returns to the current list row;
+  full-pane Close returns to Conversation. Explicit Composer entry continues
+  textarea ID **3** to exactly `差异阅读草稿 保留 继续`, caret **12**, matching its
+  sole draft owner. Actual Size restores **1122 × 1051** before native Quit.
+- The independent clean EN application shows both natural rows and compact reader
+  without diagnostic code. Filtered Escape restores the row; explicit Composer
+  entry continues exactly `Clean diff draft 保留 continued`. No DOM identity is
+  claimed from this uninstrumented scene. An earlier EN Mod-L probe does not
+  establish appended text and is excluded; a stale-index click and incomplete
+  diff-only report are also excluded, with final paths re-observed.
+- All accepted passive scenes record zero unhandled errors. Hidden retained
+  panels have zero-width diagnostic geometry and are not presented-layout
+  evidence. These canonical isolated presentation tasks do not qualify live
+  Runtime/Git writes, provider execution, Send, VoiceOver, OS IME, RTL, other
+  platform GUIs or exact hidden-scroll pixels. No browser visual suite or
+  performance benchmark runs.
+
+**Approve** for the inspected list sizing and complete Diff reading/return task.
+Publication and final owned evidence retirement remain pending. Preserve existing
+brand, Composer, comparison, navigation and Runtime owners for the next batch.
+
 ## Retained workspace and result views
 
 The native Memory query reset had two host causes. Activity hide disconnected
@@ -8795,10 +8904,10 @@ each dock view is still pending):
   the `list` variant: at the 320–480px dock width the `minmax(20rem, 1fr)` cards grid
   always collapsed to one column, so per-card borders were chrome with no multi-column
   benefit; one divided-row surface matches the ZCode/Codex schedule lists.
-- **diff** — the file identity was split between the sticky `DiffFileHeader` (basename)
-  and a repeated full-path `Metadata` at the top of the body; `DiffFileHeader` (in
-  `@flame/ui`, consumed only by this plugin; `apps/web` uses the unchanged
-  `DiffFileList`) now shows name + dimmed directory once and the body line is gone.
+- **diff** — the selected file now keeps a two-line filename in the sticky
+  `DiffFileHeader`, with its complete path in scrolling reader content. Native
+  long-path evidence supersedes the earlier directory-in-header choice; see
+  Diff reading identity and native list sizing above.
   Restating panel description removed. The overview Comparison (Uncommitted/Branch)
   selector is now a files-list control: it renders only in the files-list view, so
   opening a file drops a sticky bar (three → two in the narrow dock) and leads with the

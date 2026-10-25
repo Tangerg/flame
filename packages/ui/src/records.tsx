@@ -42,6 +42,10 @@ const styles = stylex.create({
     gap: layout.contentGap,
   },
   list: {
+    // Native WebKit sized one-column grid rows far beyond long wrapping
+    // records; a column flow keeps each record at its content height.
+    display: "flex",
+    flexDirection: "column",
     gap: 0,
     overflow: "clip",
   },

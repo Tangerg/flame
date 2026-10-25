@@ -54,7 +54,8 @@ Its title size can use the smaller existing display roles for workbench views.
 Page actions belong to the persistent `Panel.controls` zone, alongside filters.
 `PanelSection` groups one heading, supporting context, filters and content;
 `PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface, corners
-and separators. Callers own read and empty state: a truly empty group uses the
+and separators. Its rows follow their natural content height in a vertical flow,
+including complete wrapping paths in native WebKit. Callers own read and empty state: a truly empty group uses the
 native `hidden` attribute, and the group never infers visibility from transient
 DOM emptiness while its children are replaced. Its `cards` variant provides the responsive schedule grid;
 `ListRow variant="card"` owns each independent card surface.
@@ -74,9 +75,10 @@ edge, and a trailing chevron. It accepts the native button ref, events and
 attributes; `aria-current` selects the row with the shared selected state.
 Navigation history, origin focus and the destination belong to the consumer.
 `DiffFileList` renders its files as `RecordButton` rows with a primary filename, complete
-directory and compact state/count metadata. `DiffFileHeader` keeps that same
-identity above a selected reader, while `DiffFilePath` allows complete directory
-segments to wrap. Selection and source-return history belong to the consumer;
+directory and compact state/count metadata. `DiffFileHeader` keeps the filename
+to two visible lines beside state and reader actions, preserving its full heading
+text and ref. The consumer supplies the complete path in scrolling reader content;
+`DiffFilePath` allows complete directory segments to wrap. Selection and source-return history belong to the consumer;
 these components do not query files or own a second navigation model.
 `RecordSummary` owns the optional identity mark, copy and state alignment.
 `RecordBody` preserves recorded line breaks and allows selecting its complete text.
