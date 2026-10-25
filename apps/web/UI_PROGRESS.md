@@ -10,9 +10,10 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/control-contrast-1025`. Control contrast is qualified on frozen base
 `1aa3797ee73ec04ddbea1b45e343ee5fdb82520a`; see Control contrast across surfaces
 for its two owners, measured pairs, complete tasks and verification limits.
-Native acceptance is complete; publication and owned evidence retirement are
-recorded after delivery. Latest main was fetched once at publication and still
-equals the frozen base, so there is no incoming source delta to merge or revalidate.
+Implementation `6bf7b469fa8ae76ecf0e2d0ddd21ae4626b1365b` is published to remote
+main, and owned evidence retirement is complete. At the one publication-time
+fetch, main equaled the frozen base; there was no incoming source delta to merge
+or revalidate.
 Earlier Trajectory search evidence is qualified on
 frozen base `ee796a95ac88013b04d99b214f505c3903ae5d64`; see Trajectory search evidence
 boundary below for the owner, complete tasks and verification limits. Implementation
@@ -807,8 +808,27 @@ No Send, saved schedule, live provider/Runtime mutation, VoiceOver speech, OS IM
 forced-colors/RTL, arbitrary literal-token theme or image-overlaid-control
 contrast is newly qualified. Browser visual suites and performance benchmarks
 are not run. The separately retained native multiline paste issue stays outside
-this batch. Publication and owned evidence retirement are completed in the
-delivery receipt below.
+this batch.
+
+Delivery: implementation `6bf7b469fa8ae76ecf0e2d0ddd21ae4626b1365b` is pushed to
+remote main and independently matched by `ls-remote` before retirement. All
+**46** recorded PIDs are dead and all **7** owned native bundles are unregistered.
+Cleanup removes **8** new checkout output/cache paths, **14** bundle-specific
+Library paths and **7** bundle-specific temporary directories. The original
+native-check binary and shared UI Vitest results are restored exactly; all
+**36** output-presence baselines, **3** original file hashes and **11** portable
+resource hashes pass independent checks before and after root deletion. There
+are no remaining exact-root or exact-bundle process matches.
+
+The exact private root `flame-ui-focus-surfaces-1025-cmS7n0` is removed after
+UID/device/inode/birth-time, source, artifact and native-input checks. A compressed
+in-memory archive preserves **211** UTF-8 evidence files and **43** capture
+hashes, SHA-256
+`36df3b2519bce96ba47e05a9c758b254ebf5ba8815cea8c66d415c792d31a2a2`.
+Installed dependencies, global compiler/npm caches, read-only references, user
+data, unrelated processes and the primary parallel checkout remain untouched.
+This documentation receipt changes no accepted product input; its publication
+is followed by fresh remote, cleanliness and preservation checks.
 
 Continue from fresh task evidence. The observed 200% schedule editor spends a
 substantial first view on introductory and section copy; inspect that hierarchy
