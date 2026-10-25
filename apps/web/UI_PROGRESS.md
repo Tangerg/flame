@@ -9,8 +9,10 @@ This user-requested file is the maintained progress and handoff record for the d
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/appearance-layout-1025`. Appearance labels/search are qualified on
 frozen base `35c70c0a6e7da4314e8c5c39e525dcc314412279`; see that product section for
-owners, before/after geometry, native tasks and limits. Publication and exact
-resource retirement are pending the final delivery step. The next observed issue
+owners, before/after geometry, native tasks and limits. Implementation
+`40cbae863434ef53629071cfe75ccf86c46297b6` is published to remote main, and
+exact resource retirement is complete. The single publication-time fetch finds
+no incoming delta from the frozen base. The next observed issue
 is whole-row visibility when a settings control receives native focus at 200%.
 Earlier paper implementation `3c0c65e1d9b44a44600022bd56d46c1293a01ee9` and
 receipt `35c70c0a6e7da4314e8c5c39e525dcc314412279` are published to remote main,
@@ -861,7 +863,7 @@ text and secondary labels, with better-writing's minimal settings language and
 better-layout's grouping/alignment guidance. Existing component/reference research
 remains applicable; no component system, motion or color behavior is introduced.
 The final native review also exposed the repeated Language heading, which is
-removed before acceptance. Source, shared UI, neutral planes, Orange/custom
+removed before acceptance. Shared UI, neutral planes, Orange/custom
 accents, stronger paper, readouts and font popup models otherwise stay intact.
 
 The settings registration owns discoverability. Its existing keyword list now
@@ -945,7 +947,31 @@ Final integrity freezes **5,775** non-Markdown source inputs, SHA-256
 artifact hashes, **11** native construction-input hashes and **11** unchanged
 portable resources. Scoped result: **Approve** for this label/search refinement
 and exercised settings task, with the next focus-row finding retained above.
-Publication and exact resource retirement follow below.
+Publication and exact resource retirement are recorded below.
+
+Delivery: implementation `40cbae863434ef53629071cfe75ccf86c46297b6` is pushed to remote
+`main` and independently matched by ls-remote before retirement. The single
+publication-time fetch finds main at the frozen base; merge is already up to
+date. Normal formatting, workspace lint and message hooks pass without changing
+accepted product bytes.
+
+All **15** recorded PIDs are dead and all **3** bundles are unregistered. Cleanup
+removes **7** new checkout output/cache paths, **6** bundle-specific Library paths
+and **3** bundle-temporary directories. The original native-check binary is
+restored. Independent checks before and after exact-root deletion preserve
+**36** output-presence baselines, **3** original file hashes and **11** unchanged
+portable resources. No exact-root or exact-bundle process matches remain.
+
+The exact private root `flame-ui-appearance-layout-1025-avFJwy` is absent after
+UID/device/inode/birth-time, source, artifact and native-input guards. Its verified
+compressed in-memory archive retains **87** UTF-8 evidence files and **20** capture
+hashes, SHA-256
+`5b675fe19a44f8881d205e7acd4c76b677de1033a0ea6f75fdd961271b5a7d75`.
+The original native binary is excluded from text decoding and retained by its
+preservation hash. User data, the primary parallel checkout, installed
+dependencies, global caches and read-only references remain untouched. This
+receipt changes no accepted product input; publication is followed by fresh
+remote, cleanliness and preservation checks.
 
 VoiceOver speech, full OS IME, pseudo-localization, RTL/forced-colors GUI,
 other-platform GUIs, arbitrary palettes and live Runtime/provider work are not
