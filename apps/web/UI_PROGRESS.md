@@ -1,13 +1,16 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Recorded output Find now reveals a requested match again after manual scrolling, including a sole match and a refined query selecting the same line. Final English/light/14 px/Orange and Chinese/dark/18 px/custom-blue native paths pass, including half-screen 200%, manual reading, local Find return and continued drafts. Gallery source geometry and the new-conversation Flame companion remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. Conversation Find now matches continuous phrases across emphasis, inline code and other inline nodes, with exact native Range endpoints and separate block/message boundaries. English/light/14 px/Orange and Chinese/dark/18 px/custom-blue native paths pass, including half-screen 200%, result navigation and continued drafts. Recorded output Find, gallery source geometry and the new-conversation Flame companion remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/output-find-navigation-1025`. Recorded output Find navigation is
+is on `codex/formatted-conversation-find-1025`. Formatted conversation Find is
+accepted on frozen base `50a3d3483c15d711da850f8357d30766ad1dcc2c`; publication
+and private retirement follow the completed native acceptance. See Formatted
+conversation Find below. Recorded output Find navigation is
 accepted on frozen base `8f27e6cdc534281fa70bdf38dcc542d1767b2fce`; implementation
 `29e7226aab9eb2df3483d17873d7b24fa4f19738` is published to remote main, and
 private evidence retirement is complete. See Recorded output Find navigation
@@ -2898,9 +2901,9 @@ The first resize frame is transient 1125 × 1050, not the settled size.
 Native 561 CSS px at 200% and a separate 320 px Dock are covered; a fresh 320 CSS
 px viewport is not. System reduce true is covered by unit tests, not a changed OS
 setting. Native paste does not qualify OS IME. VoiceOver speech, RTL mirroring,
-other locale GUIs/platforms, fresh rendered contrast, dynamic streaming indexes
-and matches spanning separate inline text nodes remain unverified. Preserve
-the existing finder until those separate requirements are evidenced.
+other locale GUIs/platforms, fresh rendered contrast and dynamic streaming indexes
+remain unverified. The separate formatted-text matching boundary is now qualified
+in Formatted conversation Find below.
 
 All 5,724 tracked non-Markdown inputs retain accepted aggregate SHA-256
 `5c11ed9a094d4e93664ad216bc9dc61275675bb4cf3cbaf44f670eadcc02dafb`;
@@ -2923,6 +2926,121 @@ The actual six-source harness, manifest, native qualifications, source freezes,
 cleanup and delivery proofs are retained with that archive. Continue from this
 main revision with a new observed task defect, without repeating the completed
 Find or earlier approval work.
+
+### Formatted conversation Find
+
+Find now treats continuous inline prose as one phrase, retaining the original
+formatting and the existing query, highlight, navigation and source-return owners.
+Actual Wails reproduced the prior boundary failure: three occurrences of
+`application owns transaction policy` report **1 / 1** when two cross strong/code
+nodes; `连续查找与代码内容` reports **0 / 0** across the same normal Markdown formatting.
+Those native failures are independent of the already-delivered Find placement,
+lifetime, focus and motion repairs above.
+
+`chat/search/adapters/messageRanges.ts:12` collects each message's inline text
+flows. Actual computed display decides whether an element continues a flow;
+blocks, explicit line breaks and separate messages delimit it. Matching remains
+literal, case-insensitive and non-overlapping. Line 44 maps each matched UTF-16
+offset back to its original text node and returns a native cross-node Range.
+Empty nodes and segment edges retain exact endpoints. No text normalization,
+DOM rewrite, markup, persistent index, state, listener, timer or public API is
+added. Existing CSS highlights paint the resulting Range. Runtime, Composer,
+message rendering, source selection, motion preferences and theme tokens retain
+their owners.
+
+Read-only ZCode `v4/conversationFindHighlightDom.ts` confirms the local DOM/Range
+highlight boundary, but its collector also matches each text node separately.
+Its limitation is not copied. The six better-* domains guide the scoped review
+below; the previously recorded reference research remains applicable.
+
+**Verification**
+
+- The existing **3 files / 27 tests** pass before implementation. Bounded,
+  edit-only Claude Code CLI changes only the adapter and its tests in **125.90 s /
+  16 turns**, with no commands or permission denials. Primary reviews the actual
+  diff, removes an unnecessary silent skip and adds the UTF-16 regression.
+- Final **4 files / 80 tests + 13 Web gates** pass serially in **21.93 s**.
+  Coverage includes the matcher, Find interaction/lifetime, its Slot contribution
+  and production Markdown rendering. Gates: typecheck, lint, formatting, knip,
+  design-system, tokens, chrome, styles, classes, locales, layers, port-surface
+  and bundle. Ten new matcher regressions preserve the two original assertions
+  and cover English/Chinese phrases, ordered Range endpoints, nested/empty nodes,
+  display overrides, literal punctuation, emoji offsets and independent flows.
+- The first focused candidate run fails **5 tests / 74 pass** because Happy DOM
+  returns an empty computed display for strong/em/code/a/span, omitting their
+  native inline defaults. A separate normal-Node probe confirms that mismatch.
+  The local test stylesheet supplies those defaults while retaining inline-style
+  overrides; production continues to read actual layout. No assertion is weakened
+  and no production fallback is added. With the final tests, the original adapter
+  fails **7 / 5 pass**, then exact accepted source bytes are restored in finally.
+- Actual EN/light/14 px/Orange at **1440 × 900** navigates **1 / 3 → 2 / 3 →
+  3 / 3 → 2 / 3**, preserving Find input ID **4**. The first native Range starts
+  in strong text and ends in code. Pointer Next focuses its existing button;
+  repeated Cmd+F returns to the same query. Case-insensitive search, literal
+  `a+b[c].`, Chinese **1 / 1**, block-boundary **0 / 0** and empty-query retirement
+  pass. Close and Escape return to original Composer ID **3**, with exact draft
+  and caret continuing **23 → 34 → 44**.
+- Actual ZH/dark/18 px/custom-blue/motion-off uses native Left arrangement,
+  settling at **1122 × 1051**, then reaches **561 × 525 CSS px at 200%**. All
+  three matches, including a wrapped 59 px range, remain visible through next/
+  previous navigation. Query, counter and Close remain reachable. Literal,
+  Chinese and block-boundary results agree with English. Both close paths return
+  to original Composer ID **3**, retaining exact draft/caret **7 → 10 → 13**.
+  Native Actual Size restores **1122 × 1051** before Quit.
+- The native zoom observation loop times out after 30 s and resets only CUA's
+  kernel. Reinspection finds the same live app at **575 × 538 / 195%**; one
+  subsequently observed Zoom In establishes final 200%. The app is not relaunched
+  and the draft survives. The first resize report, **1125 × 1050**, is transient;
+  the separate settled capture establishes final dimensions.
+- A separate EN native scene loads the production chrome bootstrap without this
+  batch's diagnostic observer. Its eight AX captures repeat three-result forward/
+  backward navigation, Chinese matching, no block bridge, Escape and exact draft
+  continuation. A native screenshot confirms the third visible highlight. This
+  scene makes no private DOM-identity claim. All four apps exit through native
+  Quit; the **34** diagnostic captures report zero unhandled errors.
+- Four Wails **3.0.0-beta.34** hosts build serially in **6.86 / 6.26 / 5.42 /
+  6.31 s**; final diagnostic/clean assets build in **2.10 / 2.66 s**. A private
+  builder syntax error stops before its first build; the corrected baseline build
+  passes in **2.21 s**. The fixture freezes only captured final-answer text and
+  installs the real Find/shortcut contributions over production views. The final
+  literal-formatting input corrects an initially unparsed Markdown delimiter;
+  the original English/Chinese counterexamples are unchanged.
+- All **5,771** non-Markdown inputs retain SHA-256
+  `6d999625e3c626e81f915e4a20cb6211f67f2240a3973fd1b2511933ce8d3d5e`.
+  Only the adapter and its regression file differ from the frozen base. All
+  **1,822** accepted private artifacts and **11** unchanged product resources
+  match. No new plugin resource is generated.
+- Not verified: dynamic streaming indexes, automatic expansion of hidden text,
+  whitespace normalization, VoiceOver speech, real OS IME, fresh rendered contrast,
+  RTL, a fresh 320 px viewport or other platforms. Existing composition/focus/
+  motion guards retain regression coverage. Broader unchanged Runtime/CLI/backend
+  suites, another native distribution build, browser visual suites and performance
+  benchmarks do not run. These inert presentation scenes make no live Send or
+  provider/producer lifecycle claim.
+
+**Scope and coverage**
+
+Scope: reply → Find a formatted phrase → navigate results → close → continue the
+original draft. Stack: React 19, existing CSS Highlight/Range adapter, shared
+controls, StyleX/semantic tokens and Wails v3. Recon uses root AGENTS.md,
+PROJECT_RULES.md, DEVELOPMENT.md and Web/Desktop/visual-fixture module READMEs.
+
+| Domain        | Evidence inspected                                                                                   | Result                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Accessibility | Existing names/status, native query/buttons, both close paths and original Composer return           | Clear in inspected paths; VoiceOver/OS IME not verified |
+| Layout        | Native normal/half-screen, large text and 200%; query, counter, controls and wrapped selected range  | Clear in inspected states                               |
+| Writing       | Existing localized search/actions and accurate result count; no additional helper copy               | Clear in inspected states                               |
+| Typography    | Original emphasis, mono inline code and plain prose in EN 14 px / ZH 18 px                           | Preserved while one phrase crosses their DOM boundaries |
+| Colors        | Native light/Orange and dark/custom-blue active highlight and focus                                  | Preserved; contrast not remeasured                      |
+| UI polish     | Native three-result navigation, pointer Next, literal/empty results, reduced-motion scene and return | Matching boundary finding fixed                         |
+
+| Severity | Domain | Location                                   | Before                                                                 | After                                                                 | Why                                                                                 |
+| -------- | ------ | ------------------------------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| MEDIUM   | UI     | `chat/search/adapters/messageRanges.ts:66` | Formatting fragments one visible phrase and silently omits its matches | Match each inline flow and map offsets back to original native Ranges | A reader searches the presented phrase; emphasis must not make that evidence absent |
+
+**Approve** for the inspected task and domains, with the stated coverage limits.
+Publication and owned resource retirement follow this acceptance. Continue from
+fresh evidence rather than repeating the completed formatting-boundary repair.
 
 ## Composer model catalog recovery
 
