@@ -18,6 +18,8 @@ export default definePlugin({
         "settings.theme",
         "settings.accent",
         "settings.contrast",
+        "settings.paperTexture",
+        "settings.paperTexture.strength",
         "settings.customColors",
         "settings.density",
         "settings.font.ui",

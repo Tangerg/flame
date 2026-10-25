@@ -10,7 +10,10 @@ import { ScrollArea } from "@/ui/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
 import { ViewHeader, type ViewHeaderProps } from "@/features/workspace/ui/ViewHeader";
 const wl = stylex.create({
-  viewport: { backgroundColor: surface.canvas },
+  viewport: {
+    backgroundColor: surface.canvas,
+    backgroundImage: { default: null, ":is([data-paper-texture] *)": surface.texture },
+  },
   rows: { paddingBlock: space.s1 },
 });
 

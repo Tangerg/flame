@@ -12,14 +12,21 @@ export function paletteThemePlugin(
     name,
     setup(ctx) {
       const derive = (preference: AppearancePreference) =>
-        paletteThemeContribution(theme(preference), preference.accent, preference.contrast);
+        paletteThemeContribution(
+          theme(preference),
+          preference.accent,
+          preference.contrast,
+          preference,
+        );
       const contribution = ctx.contribute(COLOR_THEME, derive(useAppearanceStore.getState()));
       ctx.cleanup(
         useAppearanceStore.subscribe((next, previous) => {
           if (
             next.customTheme !== previous.customTheme ||
             next.accent !== previous.accent ||
-            next.contrast !== previous.contrast
+            next.contrast !== previous.contrast ||
+            next.paperTexture !== previous.paperTexture ||
+            next.paperTextureStrength !== previous.paperTextureStrength
           )
             contribution.update(derive(next));
         }),

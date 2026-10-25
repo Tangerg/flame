@@ -51,6 +51,7 @@ const styles = stylex.create({
     minWidth: 0,
     flexDirection: "column",
     backgroundColor: surface.surface,
+    backgroundImage: { default: null, ":is([data-paper-texture] *)": surface.texture },
   },
   list: {
     display: "flex",
@@ -98,6 +99,7 @@ const styles = stylex.create({
     overscrollBehavior: "contain",
     scrollPaddingBlock: space.s4,
     backgroundColor: surface.canvas,
+    backgroundImage: { default: null, ":is([data-paper-texture] *)": surface.texture },
   },
   heading: { paddingInline: space.s2, paddingBottom: space.s1, paddingTop: space.s4 },
 });

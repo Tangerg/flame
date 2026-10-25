@@ -6,7 +6,9 @@ import { type Paired } from "@/lib/persistedStore";
 import {
   DEFAULT_ACCENT,
   DEFAULT_CONTRAST,
+  DEFAULT_PAPER_TEXTURE_STRENGTH,
   DEFAULT_UI_DENSITY,
+  PAPER_TEXTURES,
   UI_DENSITY_MODES,
   type AppearanceEdit,
   type AppearancePreference,
@@ -29,6 +31,8 @@ const appearancePersistSchema = z.object({
   density: z.enum(UI_DENSITY_MODES),
   radiusScale: z.number(),
   motionScale: z.number(),
+  paperTexture: z.enum(PAPER_TEXTURES).default("off"),
+  paperTextureStrength: z.number().int().min(1).max(5).default(DEFAULT_PAPER_TEXTURE_STRENGTH),
 });
 
 const _paired: Paired<AppearancePreference, z.infer<typeof appearancePersistSchema>> = true;
@@ -51,6 +55,8 @@ export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>(
       density: DEFAULT_UI_DENSITY,
       radiusScale: 1,
       motionScale: 1,
+      paperTexture: "off",
+      paperTextureStrength: DEFAULT_PAPER_TEXTURE_STRENGTH,
 
       setTheme: (theme) => set({ theme }),
       setVisualStyle: (visualStyle) => set({ visualStyle }),
@@ -65,6 +71,8 @@ export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>(
       setDensity: (density) => set({ density }),
       setRadiusScale: (radiusScale) => set({ radiusScale }),
       setMotionScale: (motionScale) => set({ motionScale }),
+      setPaperTexture: (paperTexture) => set({ paperTexture }),
+      setPaperTextureStrength: (paperTextureStrength) => set({ paperTextureStrength }),
     }),
     {
       name: APPEARANCE_STORAGE_KEY,

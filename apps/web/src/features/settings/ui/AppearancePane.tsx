@@ -6,6 +6,7 @@ import { ContrastSection } from "@/features/theme/public/preferences/ContrastSec
 import { CustomThemeColors } from "@/features/theme/public/preferences/CustomThemeColors";
 import { FontSection } from "@/features/theme/public/preferences/FontSection";
 import { LanguageSection } from "@/features/i18n/public/LanguageSection";
+import { PaperTextureSection } from "@/features/theme/public/preferences/PaperTextureSection";
 import { ShapeMotionSection } from "@/features/theme/public/preferences/ShapeMotionSection";
 import { ThemeSection } from "@/features/theme/public/preferences/ThemeSection";
 export function AppearancePane() {
@@ -18,6 +19,7 @@ export function AppearancePane() {
           <CustomThemeColors />
           <AccentSection />
           <ContrastSection />
+          <PaperTextureSection />
         </SettingsGroup>
       </PanelSection>
       <PanelSection title={t("settings.appearance.typography")}>

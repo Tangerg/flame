@@ -7,6 +7,12 @@ components use the actual shared React/UI provider context and controlled font s
 the library never chooses or persists a theme. The former HTML guest projection,
 message channel and bootstrap exports are removed.
 
+`surface.texture` reads the host's optional `--surface-texture` background image,
+with `none` as its fallback. While the host marks `data-paper-texture` on the
+document root, `Panel` and its sticky controls paint this material
+behind content; control and card skins keep their existing solid surfaces. The
+application owns paper choices, strength, theme adaptation and persistence.
+
 `ButtonPrimitive` keeps command labels outside native text selection. Dragging a
 navigation or action button cannot begin selecting the surrounding document.
 Reading content and editable fields retain their native selection behavior.

@@ -24,6 +24,15 @@ registration and lifetime mechanisms; it never owns business extension points.
 `src/platform` translates Browser/Wails effects. `src/ui` contains product
 presentation composites over shared `@flame/ui` controls and tokens.
 
+The existing appearance preference owns optional Xuan paper, cotton paper and
+fine-grain backgrounds with a retained strength from 1 to 5. The document painter
+projects a static, seamless SVG image through `--surface-texture`; shell, reading
+and settings planes consume it behind their content. Paper is off by default,
+keeps the theme's page and pane colors, and leaves control, menu and card fills intact.
+Palette themes include the material's opacity bound in their existing text and
+focus contrast calculations. Forced colors suppress the image. No texture layer
+intercepts input or selection.
+
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested
 submenus keep their primitive's relationship to the controlling item instead of

@@ -3,16 +3,8 @@ import { Slider } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { useAppearance, editAppearance } from "@/features/theme/public/appearance";
 import { SettingRow } from "@/ui/settings/SettingRow";
-import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
-const a = stylex.create({
-  readout: {
-    width: space.s7,
-    textAlign: "right",
-    fontFamily: "var(--font-mono)",
-    color: color.fgMuted,
-  },
-});
 
 export function ContrastSection() {
   const t = useT();
@@ -29,7 +21,7 @@ export function ContrastSection() {
           onValueChange={setContrast}
           ariaLabel={t("settings.contrast")}
         />
-        <span {...stylex.props(a.readout, typeStep.uiMd)}>{contrast}</span>
+        <span {...stylex.props(ss.readout, typeStep.uiMd)}>{contrast}</span>
       </div>
     </SettingRow>
   );

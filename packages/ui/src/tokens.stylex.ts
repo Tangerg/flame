@@ -38,6 +38,7 @@ export const motion = stylex.defineVars({
 });
 
 export const surface = stylex.defineVars({
+  texture: "var(--surface-texture, none)",
   sunken: "var(--color-sunken)",
   sunkenHover: "var(--color-sunken-hover)",
   surface2: "var(--color-surface-2)",

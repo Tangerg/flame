@@ -35,6 +35,10 @@ const styles = stylex.create({
     flexShrink: 0,
     color: color.fg,
     backgroundColor: surface.canvas,
+    backgroundImage: {
+      default: null,
+      ":is([data-paper-texture] *)": surface.texture,
+    },
     fontFamily: "var(--font-sans)",
     lineHeight: leading.body,
     minWidth: 0,
@@ -70,6 +74,10 @@ const styles = stylex.create({
     gap: layout.contentGap,
     paddingBlock: layout.controlGap,
     backgroundColor: surface.canvas,
+    backgroundImage: {
+      default: null,
+      ":is([data-paper-texture] *)": surface.texture,
+    },
     minWidth: 0,
   },
   body: {

@@ -1,20 +1,22 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Usage now separates the complete report from its local source controls: Period/Refresh and read feedback, then totals, then filtering/grouping with the breakdown. Redundant helper copy is removed while empty-report controls, accounting meanings and continued writing retain their owners. Native EN, 320 px Dock, ZH 200% and an uninstrumented build qualify this task. See Usage report and source scope. Earlier Memory recovery, schedule hierarchy, contrast and branding remain delivered. The next requested feature is optional paper texture with adjustable strength.
+Updated: 2026-10-25. Optional paper texture now has three distinct materials and retained strength 1–5. The user-requested stronger effect is clear at the middle setting, while the palette protects text/focus contrast and Off restores the original background. Native EN/light/dark, ZH 18 px at 200% and an uninstrumented custom-base build qualify the exercised reading/settings task. See Paper texture and reading surfaces. Earlier Usage, Memory, schedules, contrast and approved branding remain delivered.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/usage-reading-scope-1025`. Usage report/source scope is qualified
-on frozen base `dd4ffb4a8a75d2e2ca5b1ffc8e91913150a5c332`; see its section below for
-implementation, checks, native tasks and limits. Implementation
-`6f89f24c0f5eb23667f7761237465aa266ba2032` is published to remote main, and
-owned evidence retirement is complete. The single publication-time fetch finds
-main at the frozen base; there is no incoming delta to revalidate. Next, implement the user's requested optional
-paper texture and strength control, preserving neutral page colors, text clarity,
-approved branding and the existing appearance preference owner.
+is on `codex/paper-texture-1025`. Paper texture is qualified on frozen base
+`ac9d04d59c035b6817ec2b991162c423558fbf5f`; see its product section below for
+the material, shared owners, native tasks, checks and limits. Implementation
+publication and exact resource retirement are pending the final delivery step.
+The next observed issue is excessive Appearance helper copy and vertical space
+at large type/zoom; preserve the qualified material and existing control semantics.
+Earlier Usage report/source-scope implementation
+`6f89f24c0f5eb23667f7761237465aa266ba2032` and receipt
+`ac9d04d59c035b6817ec2b991162c423558fbf5f` are published to remote main, with
+owned evidence retired.
 Earlier Memory recovery implementation `4131befc04411529ee7e4beaaec484022972ade2`
 and receipt `dd4ffb4a8a75d2e2ca5b1ffc8e91913150a5c332` are published to
 remote main, and their owned resources are retired. The preceding
@@ -839,6 +841,139 @@ data, unrelated processes and the primary parallel checkout remain untouched.
 This documentation receipt changes no accepted product input; its publication
 is followed by fresh remote, cleanliness and preservation checks.
 
+### Paper texture and reading surfaces
+
+Appearance offers Off, Xuan paper, Cotton paper and Fine grain through the existing
+Segmented control. Strength uses the shared Slider from 1 to 5 and retains its
+value across Off and restart. Existing installations start with Off and strength
+3; valid older appearance records retain their other settings. Both paper fields
+participate in settings search. New rows use labels without helper copy, and
+SettingRow no longer reserves space for an absent description.
+
+The user's paper reference defines this optional material and strength task.
+Its unrelated stickers, sunlight and tree controls are not added. After the
+user reported that the first effect was too faint, the material became visibly
+stronger at the middle setting. Xuan combines distributed fibers and grain;
+Cotton and Fine grain use distinct fixed noise fields. Existing HeroUI/Radix
+surface-role research and the better-accessibility, layout, writing, typography,
+colors and UI reviews guide the controls, reading planes and verification.
+Approved branding and artwork remain intact; no colored decorative stripe or
+new motion is added.
+
+One appearance preference owns the choice and strength. The document painter
+publishes a static seamless 512 px SVG image through --surface-texture and marks
+the root while paper is enabled. Shared Panel/sticky controls, settings rail/page,
+workspace viewport, conversation scroll viewport and the actual opaque sidebar
+face enroll at their surface owners. There is no overlay, animation, text filter,
+extra input handler or new dependency. Off removes the enrollment marker so it
+cannot mask an existing visual-style background image. Fields, menus and record
+cards retain their existing fills. Forced colors suppress the image.
+
+Grain opacity and Xuan fiber opacity have one owner in kit/paperTexture.ts.
+The same owner supplies the maximum combined opacity to the existing palette
+algorithm, which checks the painted canvas/drawer/surface bounds in addition to
+plain planes. Both built-in and public contributed palette producers update
+text, control edges and focus when paper or strength changes. The neutral plane
+colors, main text, solid accent/CTA and Off-state tokens are unchanged. Custom
+theme scheme changes repaint the material through the existing contribution
+subscription. No competing contrast state or correction layer is added.
+
+| Severity | Location                                | Before                                                                          | After                                                                        | Why                                                |
+| -------- | --------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------- |
+| MEDIUM   | theme kit and reading surfaces          | Initial material is too faint to recognize at ordinary size                     | Middle strength visibly carries grain; Xuan also has fine distributed fibers | The requested reading material must be perceptible |
+| MEDIUM   | palette and both contribution producers | Stronger image can reduce text and focus contrast on its darkest/lightest marks | Existing derivation includes the material's bounded painted planes           | Stronger material must preserve legibility         |
+| MEDIUM   | shared settings readout                 | Fixed 28 px box wraps Contrast 100 onto two lines at large type/zoom            | Contrast and paper strength share a 3ch, nowrap readout                      | Numeric values remain readable during adjustment   |
+
+The deterministic color matrix covers **756** built-in/custom light/dark,
+material, strength, contrast and accent combinations. Ten text roles meet **4.5:1**
+and required focus/control roles meet **3:1** on all plain and bounded painted
+planes. Replacing only the original three palette owners makes the regression
+scope fail **14 tests** and pass **140**; candidate bytes are restored exactly.
+Before settings keywords were added, the real settings search regression fails
+**1** and passes **1**. All eight locales retain their original values and gain
+exactly six paper keys. This is a bounded palette matrix, not certification of
+arbitrary literal-token themes or antialiased screenshot pixels.
+
+Focused baseline passes **4 files / 39 tests**. Final theme/settings/installed
+continuity scope passes **16 files / 249 tests**. Full shared UI checks pass
+**6 files / 97 tests**, build/type/lint/format and the independent offline packed
+UI/icons consumer. Sixteen Web gates and all five plugin gates pass; all eleven
+portable ESM resources rebuild without byte changes. Supported make check-native
+passes with the existing nonfatal macOS target/library warnings. The final
+conditional-surface edit repeats shared UI, the 249-test scope, affected Web
+checks, native staging and private assets serially. An introduced formatting
+failure is corrected before those checks pass.
+
+One unchanged frozen-base guard remains failed: check:shorthand reports margin
+beside marginBottom in src/ui/agent/dock-catalog.tsx:14. The file is byte-identical
+to base; this batch neither suppresses the check nor edits that unrelated owner.
+An early variables check runs before its required dist exists; it passes after
+production bundling. Browser visual suites and performance benchmarks are not run.
+
+Actual Wails v3.0.0-beta.34 tasks qualify:
+
+- EN/light/14 px/Orange/contrast 25 at 1440 × 900: all material choices, strength
+  Home/Right/End, pointer track selection, Off/re-enable, search by Texture
+  strength, settings scroll and Light/Dark/Light adaptation. The actual sidebar
+  face and reading area carry paper. Option+Tab reaches the slider in this Mac
+  session; plain Tab advances to Interface font. The same Composer element
+  retains Paper reading 保留 and continues to Paper reading 保留 continued after
+  the settings round trip. No message is sent.
+- ZH/dark/18 px/pale accent/contrast 100/motion Off: native Left window placement
+  and twenty View menu zoom actions reach **200%**, **561 × 525 CSS px**, with
+  document width 561 and zero observed unhandled errors. The rail stacks and
+  paper controls remain reachable. Off retains strength 3; keyboard adjustment,
+  font-menu open/Escape return and Actual Size restoration work. A settled
+  ordinary-size 18 px capture verifies Contrast 100 on one line; source nowrap
+  and native 200% geometry support the shared readout fix without claiming the
+  offscreen number was visible in the 200% capture.
+- An uninstrumented custom warm-base build, 14 px, purple accent and motion Off,
+  qualifies Xuan at 3/5, Off/re-enable, exact continued Paper work continued,
+  real Quit/relaunch and restored Fine grain/strength 5. It contains the actual
+  production chrome/font adapters and no private paper observer.
+
+CUA capture files contain JPEG bytes despite the helper's .png suffix. A fixed
+blank-region captured-image comparison gives grain variation about 0.73 for the
+initial quiet maximum, 4.59 for final Xuan 3 and 7.93 for final Xuan 5; Off regions
+retain their original uniform neutral values. These are visibility comparisons
+on lossy captures, not rendered-pixel contrast measurements. A mistaken PNG
+header dimension assumption is rejected before an invalid drag is dispatched.
+Synthetic native slider drags do not advance the value; pointer track and focused
+keyboard input do, so drag is not qualified and no speculative workaround is
+added. Font-popup wheel attempts do not advance the page; this batch makes no
+new popup scroll-following claim. VoiceOver, full OS IME, forced-colors/RTL GUI,
+other-platform GUIs, arbitrary theme combinations and live Runtime are not newly
+verified. Production components run over canonical deterministic read fixtures;
+ordinary portable ESM is independently built/checked rather than falsely claimed
+as loaded by these native scenes. No Runtime write or provider work runs.
+
+Read/Edit/Write-only Claude CLI supplies the scoped preference/control/locale
+work and three palette-owner edits. Actual runs take 120.27 s / 53 turns and
+74.86 s / 20 turns without errors or permission denials. The first run's reported
+turn count exceeds the configured 32-turn request; only its observed scope and
+results are relied on. Primary owns material rendering, review, regression
+counterexamples, native acceptance, numeric readout, Off restoration and delivery.
+
+The final conditional-surface edit is independently checked in native EN/light
+and the uninstrumented custom build: On paints the enrolled reading planes, Off
+restores their original backgrounds, and re-enable paints again. The clean final
+task confirms Texture reading before the settings round trip and Texture reading
+continued afterward. An earlier synthetic typeText probe omits CJK characters
+before that task; it supplies no exact-CJK or OS IME acceptance.
+
+Final integrity freezes **5,775** non-Markdown source inputs, SHA-256
+`b090cf87ac820b6a2b112dd8487f4b21cf3da192890ad01247135c5f6fdedaf1`, **1,205**
+actual artifact hashes, **11** native construction inputs and all **11** unchanged
+portable resources. All **44** recorded PIDs are dead before publication. Scoped
+result: **Approve** for the requested material, bounded legibility contracts and
+exercised reading/settings task. Publication and owned retirement follow below.
+
+Next evidenced refinement is
+the remaining Appearance helper-copy layout at large type/zoom; retain the
+qualified material, shared control behavior and neutral default. Revisit the
+pre-existing Dock shorthand failure when that owner changes. Native synthetic
+drag dispatch remains unqualified; isolate it before attributing a product defect.
+
 ### Schedule editor hierarchy
 
 New schedules begin with Title and Instructions directly in the shared dialog
@@ -1181,7 +1316,7 @@ SHA-256 `e8cc011a0cbef8b15539df7880b9b5fa73edc8881814012f4c8efa0c0d4706d0`.
 User data, the primary parallel checkout, dependencies, global caches and read-only
 references remain untouched. This receipt changes no accepted product input;
 publication is followed by fresh remote, cleanliness and preservation checks.
-The user's paper-texture request is the next product batch.
+The paper-texture request is qualified in Paper texture and reading surfaces.
 
 ### Native image save qualification
 
