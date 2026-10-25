@@ -8,8 +8,9 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/zoom-commands-1026`. The shared disabled-command boundary is
-qualified on frozen base `f0787cfc47bad54616b66133ea4aef6b0f95f712`; publication
-and resource retirement follow in that section. Native source return implementation
+qualified on frozen base `f0787cfc47bad54616b66133ea4aef6b0f95f712`. Implementation
+`bae5b99cff298e4d7d42427e18f093cf139fc82a` is published to remote main, with owned
+resources retired as recorded in that section. Native source return implementation
 `e99eb58c800cae12f831e9756607b3c24505f9fd` and receipt
 `f0787cfc47bad54616b66133ea4aef6b0f95f712` remain published and retired.
 The primary parallel checkout remains outside this batch.
@@ -1940,6 +1941,29 @@ Claude CLI, subagents and browser visual/performance suites were not invoked.
 This is **progress**, not whole-product or award-tier completion. Continue from
 fresh reading/Dock evidence after publication; the Actual Size accelerator is now
 qualified for the tested focused-disabled paths.
+
+**Delivery receipt**
+
+Implementation `bae5b99cff298e4d7d42427e18f093cf139fc82a` is published to remote main.
+The publication fetch finds no new commits beyond frozen main
+`f0787cfc47bad54616b66133ea4aef6b0f95f712`; no unrelated integration rerun is
+started. Independent remote verification matches the implementation hash.
+Pre-commit formatting/lint passes without changing the accepted product inputs.
+
+All **17** recorded processes are dead. Eleven new checkout output paths, eight
+owned Library paths and four bundle-temp paths are removed. All four native app
+registrations are absent. All **36** output-presence baselines and exact inventories
+of the **three** original output files are restored; the native-check binary and
+UI test-cache result regain their original bytes. All **11** product resources and
+**10** inspected read-only reference/dependency files retain their accepted bytes.
+The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-zoom-commands-1026-eqZhYx`
+is absent. The independently round-trip-verified in-memory archive retains
+**116 UTF-8 files**, **56 screenshot digests** and original binary metadata; gzip
+SHA-256 `8f64c7e533d265e61e4a9c758660fd18561b222e1787592aeb0e7327deaa811f`.
+Primary parallel work and user data remain outside this batch. This documentation-only
+receipt changes no tested product input. Preserve the delivered native command,
+SVG/gallery and source-return owners; continue from fresh reading/Dock evidence.
 
 ### Native source return after page zoom
 
