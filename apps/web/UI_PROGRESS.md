@@ -8,8 +8,10 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/file-source-selection-1025`. File-source selection and literal copying
-are qualified on frozen base `65bbbd15d70b3f621917c1830341fd06ed81cc5b`; see the
-corresponding file-browsing section for verification, publication and retirement.
+are accepted on frozen base `65bbbd15d70b3f621917c1830341fd06ed81cc5b`;
+implementation `c0e4231818e3ef612097d151bd4b3fb760d04fb5` is published to
+remote main and owned evidence retirement is complete. See the corresponding
+file-browsing section, including the separately retained native insertion issue.
 File-preview identity is accepted on
 frozen base `2d87f694bf75fe03186ce934a38b21e6f73a2232`; implementation
 `619352444a87a5d2d75c80b7a5d0d03b9972b342` is published to remote main, and
@@ -3953,7 +3955,27 @@ resolve those diagnostic errors without product changes. No migration is needed.
 **Approve** for the source-selection/copy boundary and complete source-return
 task, with the receiving-input defect explicitly retained above. Publication
 sync finds remote main unchanged from the frozen base; unrelated checks are not
-repeated for that sync. Publication and owned-resource retirement follow below.
+repeated for that sync. Implementation
+`c0e4231818e3ef612097d151bd4b3fb760d04fb5` is published to remote main. Independent
+retirement checks confirm exact publication, a clean owned checkout with zero
+commits ahead/behind, all **40 recorded processes dead** and **six apps**
+unregistered. Cleanup removes **eight checkout outputs**, **twelve owned Library
+paths** and **six bundle-temp paths**. All **36 output-presence baselines**,
+**three original file hashes/inventories** and **11 unchanged product resources**
+are preserved. The original native-check binary and UI Vitest results are
+restored byte-for-byte; the original cache tag already matches.
+
+The exact private root `flame-ui-file-selection-1025-nfHhcZ` is absent after
+ownership, publication, source, artifact and archive guards pass. Independent
+actual-evidence comparison and gzip round trip verify **181 UTF-8 files / ten
+screenshot digests**, SHA-256
+`86f48f734f501610a3f9a1f77d45e0168ca6ae2aaab645dc026cc56be15848b8`.
+Accepted maps bind **2,422 private artifacts** and **19 native input files**.
+Fresh checks after deletion again confirm all accepted product/resource bytes
+and preserved output inventories. This Markdown-only receipt changes no tested
+source; primary parallel work and read-only references remain preserved. The
+continuous goal stays active. The next evidenced investigation is the receiving
+native textarea's first multiline insertion, with the source-copy repair retained.
 
 ### File-tree hierarchy and selectability
 
